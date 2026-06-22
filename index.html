@@ -197,6 +197,7 @@ if ('serviceWorker' in navigator) {
     <button class="ntab" data-page="entry">Add Entry</button>
     <button class="ntab" data-page="report">Sale Report</button>
     <button class="ntab" data-page="tools">Tools</button>
+    <button class="ntab" data-page="credit">Credit</button>
     <button class="ntab" data-page="manager">👔 Manager</button>
   </div>
   <div class="nright">
@@ -216,6 +217,7 @@ if ('serviceWorker' in navigator) {
   <button class="bnav-item" data-page="entry"><span class="bicon">➕</span><span class="blabel">Entry</span></button>
   <button class="bnav-item" data-page="report"><span class="bicon">🧾</span><span class="blabel">Report</span></button>
   <button class="bnav-item" data-page="tools"><span class="bicon">⚙️</span><span class="blabel">Tools</span></button>
+  <button class="bnav-item" data-page="credit"><span class="bicon">💳</span><span class="blabel">Credit</span></button>
   <button class="bnav-item" data-page="manager"><span class="bicon">👔</span><span class="blabel">Manager</span></button>
 </div>
 
@@ -705,6 +707,43 @@ if ('serviceWorker' in navigator) {
   </div>
 </div>
 
+<!-- CREDIT PAGE -->
+<div class="page" id="page-credit" style="display:none;">
+    <div class="hero">
+        <div class="htitle">Credit Management</div>
+        <div class="hsub">Add and manage employee credit details.</div>
+    </div>
+    <div class="card">
+        <div class="fsec">
+            <div class="fsec-title">Add New Employee</div>
+            <div class="fgrid">
+                <div class="fg"><label>Employee Name</label><input type="text" id="c-employee-name"></div>
+                <div class="fg"><label>Credit Limit</label><input type="number" id="c-credit-limit"></div>
+            </div>
+            <div class="brow">
+                <button class="btn btn-p" onclick="addEmployee()">Add Employee</button>
+            </div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="ctitle">Employee Credit Details</div>
+        <div class="twrap tscroll">
+            <table id="tbl-credit" style="width:100%">
+                <thead>
+                    <tr>
+                        <th style="text-align:left; padding:8px;">Employee Name</th>
+                        <th style="text-align:right; padding:8px;">Credit Limit</th>
+                        <th style="text-align:right; padding:8px;">Credit Used</th>
+                        <th style="text-align:center; padding:8px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="credit-tbody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 <!-- MANAGER WORK -->
 <div class="page" id="page-manager">
   <div class="hero"><h1 class="htitle">👔 Manager Work</h1><p class="hsub" id="mgr-hero-sub">Salary · Generic · Expenses · Petty Detail · Incentive · Staff Credit</p></div>
@@ -1027,6 +1066,7 @@ if ('serviceWorker' in navigator) {
 <!-- 12. Manager: salary, generic, expense, credit, petty, incentive -->
 <script src="js/manager.js"></script>
 
+<script src="js/credit.js"></script>
 <!-- 13. Custom spreadsheet sections (manager add-on) -->
 <script src="js/custom-sections.js"></script>
 
