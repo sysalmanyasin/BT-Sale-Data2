@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<meta name="theme-color" content="#2563eb">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BT Sales">
+<meta name="application-name" content="BT Sales IC">
+<meta name="format-detection" content="telephone=no">
+<meta name="description" content="Bahria Town Petrol Station Intelligence Centre — daily sales tracking, reporting, and manager tools.">
+
+<!-- PWA Manifest -->
+<link rel="manifest" href="manifest.json">
+
+<!-- Icons -->
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+
+<title>Bahria Town — Sales IC</title>
+
+<!-- External Libraries -->
+<script src="https://accounts.google.com/gsi/client" async><\/script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"><\/script>
+
+<!-- CSS Modules — load order matters -->
+<link rel="stylesheet" href="css/variables.css">
+<link rel="stylesheet" href="css/auth.css">
+<link rel="stylesheet" href="css/nav.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/modals.css">
+<link rel="stylesheet" href="css/pages.css">
+<link rel="stylesheet" href="css/mobile.css">
+
+<!-- Service Worker registration -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => {
+        console.log('[SW] Registered, scope:', reg.scope);
+        reg.addEventListener('updatefound', () => {
+          const nw = reg.installing;
+          nw.addEventListener('statechange', () => {
+            if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+              console.log('[SW] New version available — will activate on next reload');
+            }
+          });
+        });
+      })
+      .catch(err => console.warn('[SW] Registration failed:', err));
+  });
+}
+<\/script>
+</head>
+<body>
+<!-- ====== AUTH GATE ====== -->
+<!-- ══ AUTH GATE ══ -->
+<div id="pin-gate">
+  <div class="plogo">BT</div>
+  <div class="ptitle">Bahria Town Sales IC</div>
+  <div class="psub">Petrol Station Intelligence Centre</div>
+
+  <!-- ─ Panel 1: Setup (hidden — baked-in Client ID, no manual setup needed) ─ -->
+  <div id="gauth-setup" style="display:none"></div>
+
+  <!-- ─ Panel 2: Google Sign-In ─ -->
+  <div class="pbox" id="gauth-main">
+    <div style="color:rgba(255,255,255,.6);font-size:12px;text-align:center;margin-bottom:20px;line-height:1.6">
+      Sign in with your authorised Google account to continue.
+    </div>
+    <div id="gauth-user-bar" style="display:none">
+      <div class="gauth-user">
+        <img id="gauth-avatar" class="gauth-avatar" src="" alt="">
+        <div><div class="gauth-uname" id="gauth-uname"></div><div class="gauth-uemail" id="gauth-uemail"></div></div>
+      </div>
+      <button class="btn btn-p" style="width:100%;height:44px;font-size:14px" onclick="gauthConfirmUser()">✓ Continue as this account</button>
+      <button class="gauth-link" style="margin-top:10px;display:block;text-align:center;width:100%" onclick="gauthSignOut()">Sign in with a different account</button>
+    </div>
+    <div id="gauth-btn-wrap" style="display:flex;justify-content:center">
+      <button id="google-signin-btn"
+        onclick="_gauthOAuthSignIn()"
+        style="display:flex;align-items:center;gap:10px;background:#fff;color:#3c4043;border:1px solid #dadce0;border-radius:4px;padding:0 16px;height:44px;font-size:14px;font-weight:500;font-family:'Google Sans',Roboto,sans-serif;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.12);min-width:220px;justify-content:center;transition:box-shadow .2s">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
+        Sign in with Google
+      </button>
+    </div>
+    <div class="gauth-error" id="gauth-error"></div>
+    <div class="gauth-sep">or</div>
+    <button class="gauth-link" onclick="gauthShowPin()">Use PIN instead (offline mode)</button>
+
+  </div>
+
+  <!-- ─ Panel 3: Password fallback ─ -->
+  <div class="pbox" id="gauth-pin" style="display:none">
+
+    <!-- Sub-view 1: Normal password entry -->
+    <div id="pw-view-enter">
+      <div id="pnote" class="pnote" style="display:none">First time? Create a password (8–20 characters).</div>
+      <div style="color:rgba(255,255,255,.6);font-size:12px;text-align:center;margin-bottom:18px">Enter your password to continue (offline mode)</div>
+      <div class="pw-wrap">
+        <input class="pw-inp" type="password" id="pw-input"
+          minlength="8" maxlength="20" autocomplete="current-password"
+          placeholder="Password (8–20 characters)"
+          oninput="pwStrengthUpdate()"
+          onkeydown="if(event.key==='Enter')pwSubmit()">
+        <button class="pw-toggle" type="button" onclick="pwToggleShow()" title="Show/hide">👁</button>
+      </div>
+      <div class="pw-strength" id="pw-strength-bar"></div>
+      <div class="pw-hint" id="pw-hint">8–20 characters</div>
+      <button class="btn btn-p" style="width:100%;height:44px;font-size:14px;margin-bottom:4px"
+        onclick="pwSubmit()">🔓 Unlock</button>
+      <div class="pmsg" id="pmsg"></div>
+      <div style="text-align:center;margin-top:10px">
+        <button class="gauth-link" onclick="pwShowForgot()">Forgot password?</button>
+      </div>
+      <div class="gauth-sep">or</div>
+      <button class="gauth-link" onclick="gauthShowMain()">← Back to Google Sign-in</button>
+    </div>
+
+    <!-- Sub-view 2: Verify identity via Google -->
+    <div id="pw-view-verify" style="display:none">
+      <div style="font-size:22px;text-align:center;margin-bottom:8px">🔑</div>
+      <div style="font-size:15px;font-weight:600;color:#fff;text-align:center;margin-bottom:6px">Reset Password</div>
+      <div style="font-size:12px;color:rgba(255,255,255,.55);text-align:center;margin-bottom:24px;line-height:1.5">
+        Verify your identity with Google to<br>set a new offline password.
+      </div>
+      <div id="pw-reset-error" style="display:none;color:#fca5a5;font-size:12px;text-align:center;margin-bottom:12px;background:rgba(220,38,38,.15);border-radius:8px;padding:8px"></div>
+      <div id="google-reset-btn-wrap" style="display:flex;justify-content:center;margin-bottom:16px">
+        <div id="google-reset-btn"></div>
+      </div>
+      <div style="text-align:center">
+        <button class="gauth-link" onclick="pwShowEnter()">← Back</button>
+      </div>
+    </div>
+
+    <!-- Sub-view 3: Set new password (after Google verification) -->
+    <div id="pw-view-newpw" style="display:none">
+      <div style="font-size:22px;text-align:center;margin-bottom:8px">✅</div>
+      <div style="font-size:15px;font-weight:600;color:#fff;text-align:center;margin-bottom:4px">Identity Verified</div>
+      <div id="pw-reset-who" style="font-size:11px;color:rgba(255,255,255,.45);text-align:center;margin-bottom:20px"></div>
+      <div class="pw-wrap">
+        <input class="pw-inp" type="password" id="pw-new1"
+          minlength="8" maxlength="20" autocomplete="new-password"
+          placeholder="New password (8–20 chars)"
+          oninput="pwResetStrength()"
+          onkeydown="if(event.key==='Enter')document.getElementById('pw-new2').focus()">
+        <button class="pw-toggle" type="button" onclick="pwResetToggle('pw-new1')" title="Show/hide">👁</button>
+      </div>
+      <div class="pw-strength" id="pw-reset-strength-bar" style="margin-bottom:6px"></div>
+      <div class="pw-wrap" style="margin-top:8px">
+        <input class="pw-inp" type="password" id="pw-new2"
+          minlength="8" maxlength="20" autocomplete="new-password"
+          placeholder="Confirm new password"
+          onkeydown="if(event.key==='Enter')pwResetSubmit()">
+        <button class="pw-toggle" type="button" onclick="pwResetToggle('pw-new2')" title="Show/hide">👁</button>
+      </div>
+      <div id="pw-reset-msg" style="font-size:12px;color:rgba(255,255,255,.45);text-align:center;margin:8px 0;min-height:16px"></div>
+      <button class="btn btn-p" style="width:100%;height:44px;font-size:14px"
+        onclick="pwResetSubmit()">💾 Save New Password</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- Baked-in Client ID bootstrap -->
+<script>
+/* ── Baked-in Client ID: force Google Sign-In screen immediately ── */
+(function(){
+  var CID='36704237826-6lg0o3u0voqhdkvdj3kd331jsft62uun.apps.googleusercontent.com';
+  try{localStorage.setItem('bt_gauth_cid',CID);}catch(e){}
+  function _skipToSignIn(){
+    var m=document.getElementById('gauth-main');
+    var p=document.getElementById('gauth-pin');
+    if(m)m.style.display='';
+    if(p)p.style.display='none';
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',_skipToSignIn);
+  else _skipToSignIn();
+})();
+</script>
+
+<!-- ====== NAV ====== -->
+<!-- ══ NAV ══ -->
+<nav id="nav" style="display:none" class="no-print">
+  <div class="nbrand">
+    <div class="nlogo">BT</div>
+    <div><div class="nbrand-text">Bahria Town Sales IC</div><div class="nbrand-sub">Intelligence Centre</div></div>
+  </div>
+  <div class="ntabs">
+    <button class="ntab" data-page="dashboard">Dashboard</button>
+    <button class="ntab" data-page="index">Index</button>
+    <button class="ntab" data-page="data">Daily Data</button>
+    <button class="ntab" data-page="entry">Add Entry</button>
+    <button class="ntab" data-page="report">Sale Report</button>
+    <button class="ntab" data-page="tools">Tools</button>
+    <button class="ntab" data-page="manager">👔 Manager</button>
+  </div>
+  <div class="nright">
+    <div class="syncbadge" id="synci" onclick="showPage('tools')" title="GitHub sync">
+      <span id="sync-icon">⚙</span><span id="sync-text">GitHub</span>
+    </div>
+    <div class="nclock" id="clock"></div>
+    <button class="lockbtn" onclick="lockApp()" title="Sign Out" style="width:auto;padding:0 10px;font-size:12px;font-weight:600;letter-spacing:.3px;color:var(--muted);">Sign Out</button>
+  </div>
+</nav>
+
+<!-- ══ BOTTOM TAB BAR (mobile) ══ -->
+<div class="bnav no-print" id="bnav" role="navigation" aria-label="Page navigation">
+  <button class="bnav-item" data-page="dashboard"><span class="bicon">📊</span><span class="blabel">Home</span></button>
+  <button class="bnav-item" data-page="index"><span class="bicon">🗂️</span><span class="blabel">Index</span></button>
+  <button class="bnav-item" data-page="data"><span class="bicon">📋</span><span class="blabel">Data</span></button>
+  <button class="bnav-item" data-page="entry"><span class="bicon">➕</span><span class="blabel">Entry</span></button>
+  <button class="bnav-item" data-page="report"><span class="bicon">🧾</span><span class="blabel">Report</span></button>
+  <button class="bnav-item" data-page="tools"><span class="bicon">⚙️</span><span class="blabel">Tools</span></button>
+  <button class="bnav-item" data-page="manager"><span class="bicon">👔</span><span class="blabel">Manager</span></button>
+</div>
+
+<!-- ====== PAGES ====== -->
+<!-- ══ PAGES ══ -->
+<!-- DASHBOARD -->
+<div class="page" id="page-dashboard">
+  <div class="hero">
+    <div class="hlabel">Cumulative since April 2020</div>
+    <div class="hamount">₨ <span id="grand-total"></span></div>
+    <div class="hsub" style="margin-top:4px" id="hero-sub"></div>
+  </div>
+  <div class="krow" id="krow"></div>
+  <div class="frow no-print" style="margin-bottom:14px">
+    <span style="font-size:11px;font-weight:600;color:var(--muted)">YEAR</span>
+    <select id="dash-year" onchange="buildDashboard()"></select>
+    <select id="dash-metric" onchange="buildDashboard()">
+      <option value="TOTAL">Total Sales</option>
+      <option value="Cash Sale">Cash Sales</option>
+      <option value="Customers">Customers</option>
+    </select>
+    <button class="btn btn-s" style="padding:5px 10px;font-size:11px" onclick="manualSync()">↻ Sync GitHub</button>
+    <button class="btn btn-s" style="padding:5px 10px;font-size:11px" onclick="window.print()">🖨 Print</button>
+  </div>
+  <div id="dash-credit-section" style="margin-bottom:14px"></div>
+  <div id="dash-working-section" style="margin-bottom:14px;display:none">
+    <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:8px">
+      <span>Working Summary</span>
+      <span style="flex:1;height:1px;background:var(--border);opacity:.4;display:inline-block"></span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px">
+      <div style="text-align:center;padding:10px 6px;background:var(--s2);border-radius:8px;border:1px solid var(--border)">
+        <div style="font-size:15px;font-weight:700;color:var(--text)" id="dw-salary">—</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">Salary</div>
+      </div>
+      <div style="text-align:center;padding:10px 6px;background:var(--s2);border-radius:8px;border:1px solid var(--border)">
+        <div style="font-size:15px;font-weight:700;color:var(--text)" id="dw-generic">—</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">Generic</div>
+      </div>
+      <div style="text-align:center;padding:10px 6px;background:var(--s2);border-radius:8px;border:1px solid var(--border)">
+        <div style="font-size:15px;font-weight:700;color:var(--text)" id="dw-petty">—</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">Patty Detail</div>
+      </div>
+      <div style="text-align:center;padding:10px 6px;background:var(--s2);border-radius:8px;border:1px solid var(--border)">
+        <div style="font-size:15px;font-weight:700;color:var(--text)" id="dw-incentive">—</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">Incentives</div>
+      </div>
+    </div>
+  </div>
+  <div class="g2">
+    <div class="card"><div class="ctitle"><span class="cdot" style="background:var(--accent)"></span>Monthly Total Sales</div><div style="height:220px"><canvas id="ch-total"></canvas></div></div>
+    <div class="card"><div class="ctitle"><span class="cdot" style="background:var(--amber)"></span>Cash vs Bank</div><div style="height:220px"><canvas id="ch-cashbank"></canvas></div></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div class="ctitle"><span class="cdot" style="background:var(--green)"></span>Top Clients — All Time</div><div style="height:240px"><canvas id="ch-clients"></canvas></div></div>
+    <div class="card"><div class="ctitle"><span class="cdot" style="background:var(--purple)"></span>Monthly Customers</div><div style="height:240px"><canvas id="ch-cust"></canvas></div></div>
+  </div>
+  <div class="card" style="margin-bottom:14px"><div class="ctitle"><span class="cdot" style="background:var(--amber)"></span>Year-on-Year</div><div style="height:240px"><canvas id="ch-yoy"></canvas></div></div>
+  <div class="card">
+    <div class="ctitle"><span class="cdot" style="background:var(--green)"></span>Last 12 Months Summary</div>
+    <div class="twrap tscroll"><table id="tbl-summary"></table></div>
+  </div>
+</div>
+
+<!-- INDEX -->
+<div class="page" id="page-index">
+  <div class="hero"><div class="hlabel">Month Index</div><div class="htitle">All Months</div><div class="hsub">Click any card to see daily breakdown &amp; full detail</div></div>
+  <div class="frow no-print">
+    <input type="text" id="idx-search" placeholder="Search month…" oninput="renderIndex()">
+    <select id="idx-year" onchange="renderIndex()"><option value="">All Years</option></select>
+    <select id="idx-sort" onchange="renderIndex()">
+      <option value="date">Date ↓</option><option value="total-d">Total ↓</option><option value="total-a">Total ↑</option>
+    </select>
+  </div>
+  <div id="idx-container"></div>
+</div>
+
+<!-- DAILY DATA -->
+<div class="page" id="page-data">
+  <div class="hero"><div class="hlabel">Daily Records</div><div class="htitle" id="data-htitle">All Entries</div><div class="hsub" id="data-hsub"></div></div>
+  <div class="frow no-print">
+    <input type="text" id="data-search" placeholder="Search date, month…" oninput="renderDataTable()">
+    <select id="data-month" onchange="renderDataTable()"><option value="">All Months</option></select>
+    <select id="data-col" onchange="renderDataTable()">
+      <option value="TOTAL">Total</option><option value="Cash Sale">Cash Sale</option>
+      <option value="Alfala Bank">Bank Alfalah</option><option value="Bank Al Habib">Bank Al Habib</option>
+      <option value="Meezan Bank (Paysa)">Meezan Bank</option><option value="HBL">HBL</option>
+      <option value="MCB">MCB</option><option value="PSO">PSO</option>
+      <option value="NESPAK">NESPAK</option><option value="PARCO">PARCO</option>
+      <option value="LDA">LDA</option><option value="F/Issue">F/Issue</option>
+      <option value="Customers">Customers</option>
+    </select>
+  </div>
+  <div class="card"><div class="twrap tscroll" style="max-height:500px"><table id="tbl-daily"></table></div></div>
+</div>
+
+<!-- ADD ENTRY -->
+<div class="page" id="page-entry">
+  <div class="hero">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+      <div>
+        <div class="hlabel">Data Entry</div>
+        <div class="htitle">Add Daily Record</div>
+        <div class="hsub">Total auto-calculates. Saved locally &amp; synced to GitHub if configured.</div>
+      </div>
+      <button class="fm-mgr-btn" onclick="openFieldManager()" title="Show/hide fields, add custom columns">⚙ Manage Fields</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="fsec"><div class="fsec-title">Period</div>
+      <div class="fgrid">
+        <div class="fg"><label>Month</label><select id="e-month"><option value="">Select…</option></select></div>
+        <div class="fg"><label>Date</label><input type="date" id="e-date"></div>
+      </div>
+    </div>
+    <div class="fsec" id="fsec-Cash"><div class="fsec-title">Cash</div>
+      <div class="fgrid" id="fgrid-Cash">
+        <div class="fg" data-field-id="Cash_Sale"><label>Cash Sale</label><input type="number" id="e-Cash_Sale" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="Cash_Returns"><label>Cash Returns</label><input type="number" id="e-Cash_Returns" placeholder="0" oninput="calcTotal()"></div>
+      </div>
+    </div>
+    <div class="fsec" id="fsec-Banks"><div class="fsec-title">Banks</div>
+      <div class="fgrid" id="fgrid-Banks">
+        <div class="fg" data-field-id="HBL"><label>HBL</label><input type="number" id="e-HBL" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="MCB"><label>MCB</label><input type="number" id="e-MCB" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="Alfala_Bank"><label>Bank Alfalah</label><input type="number" id="e-Alfala_Bank" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="Bank_Al_Habib"><label>Bank Al Habib</label><input type="number" id="e-Bank_Al_Habib" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="Meezan_Bank"><label>Meezan Bank</label><input type="number" id="e-Meezan_Bank" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="Askari_Bank"><label>Askari Bank</label><input type="number" id="e-Askari_Bank" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="Askari_Bank_Returns"><label>Askari Returns</label><input type="number" id="e-Askari_Bank_Returns" placeholder="0" oninput="calcTotal()"></div>
+      </div>
+    </div>
+    <div class="fsec" id="fsec-Credit-Clients"><div class="fsec-title">Credit Clients</div>
+      <div class="fgrid" id="fgrid-Credit-Clients">
+        <div class="fg" data-field-id="PSO"><label>PSO</label><input type="number" id="e-PSO" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="PSO_Returns"><label>PSO Returns</label><input type="number" id="e-PSO_Returns" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="NESPAK"><label>NESPAK</label><input type="number" id="e-NESPAK" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="NESPAK_Returns"><label>NESPAK Returns</label><input type="number" id="e-NESPAK_Returns" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="PARCO"><label>PARCO</label><input type="number" id="e-PARCO" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="PARCO_Returns"><label>PARCO Returns</label><input type="number" id="e-PARCO_Returns" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="TEPA"><label>TEPA</label><input type="number" id="e-TEPA" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="TEPA_Returns"><label>TEPA Returns</label><input type="number" id="e-TEPA_Returns" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="LDA"><label>LDA</label><input type="number" id="e-LDA" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="LDA_Returns"><label>LDA Returns</label><input type="number" id="e-LDA_Returns" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="Gourmet"><label>Gourmet</label><input type="number" id="e-Gourmet" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="Wapda_Hospital"><label>Wapda Hospital</label><input type="number" id="e-Wapda_Hospital" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="BTH"><label>BTH</label><input type="number" id="e-BTH" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="Berger_Paints"><label>Berger Paints</label><input type="number" id="e-Berger_Paints" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="Ecolean_PK"><label>Ecolean PK</label><input type="number" id="e-Ecolean_PK" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="Style_Textile"><label>Style Textile</label><input type="number" id="e-Style_Textile" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="Syed_Babar_Ali"><label>Syed Babar Ali Fdn</label><input type="number" id="e-Syed_Babar_Ali" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="Rahnuma_NGO"><label>Rahnuma NGO</label><input type="number" id="e-Rahnuma_NGO" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="Health_Pass"><label>Health Pass</label><input type="number" id="e-Health_Pass" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="Nisar_Spinning"><label>Nisar Spinning</label><input type="number" id="e-Nisar_Spinning" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="Food_Panda"><label>Food Panda</label><input type="number" id="e-Food_Panda" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="F_Issue"><label>F/Issue</label><input type="number" id="e-F_Issue" placeholder="0" oninput="calcTotal()"></div>
+      </div>
+    </div>
+    <div class="fsec" id="fsec-Summary"><div class="fsec-title">Summary &amp; Other</div>
+      <div class="fgrid" id="fgrid-Summary">
+        <div class="fg" data-field-id="TOTAL"><label>TOTAL (auto)</label><input type="number" id="e-TOTAL" class="calc" readonly></div>
+        <div class="fg" data-field-id="COMP_SALE"><label>COMP SALE</label><input type="number" id="e-COMP_SALE" placeholder="0"></div>
+        <div class="fg" data-field-id="Customers"><label>Customers</label><input type="number" id="e-Customers" placeholder="0"></div>
+        <div class="fg" data-field-id="FDPP"><label>FDPP POS</label><input type="number" id="e-FDPP" placeholder="0"></div>
+        <div class="fg" data-field-id="FDPP_Con"><label>FDPP Consumer</label><input type="number" id="e-FDPP_Con" placeholder="0"></div>
+        <div class="fg" data-field-id="Amount_Received"><label>Amount Received</label><input type="number" id="e-Amount_Received" placeholder="0"></div>
+        <div class="fg" data-field-id="Load_Sale"><label>Load Sale</label><input type="number" id="e-Load_Sale" placeholder="0"></div>
+        <div class="fg" data-field-id="Cash_to_Deposit"><label>Cash to be Deposited</label><input type="number" id="e-Cash_to_Deposit" placeholder="0"></div>
+        <div class="fg" data-field-id="Low_Sale_Reason"><label>Low Sale Reason</label><input type="text" id="e-Low_Sale_Reason" placeholder="Rain, Holiday…"></div>
+      </div>
+    </div>
+    <div class="brow">
+      <button class="btn btn-p" onclick="saveEntry()">💾 Save &amp; Sync</button>
+      <button class="btn btn-s" onclick="clearEntryForm()">✕ Clear</button>
+    </div>
+    <hr>
+    <div style="font-size:12px;font-weight:600;margin-bottom:8px">Session Entries</div>
+    <div id="entry-list" style="font-size:12px;color:var(--muted)">No entries this session.</div>
+  </div>
+</div>
+
+<!-- SALE REPORT -->
+<div class="page" id="page-report">
+  <div class="hero"><div class="hlabel">Daily Sale Report</div><div class="htitle">Auto-Fill Report Generator</div><div class="hsub">Select a date from the calendar — all fields fill automatically. Add Till Short &amp; Patty Cash, then print.</div></div>
+  <div class="rpt-wrap">
+    <div>
+      <div class="card" style="margin-bottom:12px">
+        <div class="ctitle"><span class="cdot" style="background:var(--accent)"></span>Select Date</div>
+        <div class="fg" style="margin-bottom:10px">
+          <label>Select Date (Apr 2020 – present)</label>
+          <input type="date" id="ds-input"
+            min="2020-04-01"
+            onchange="dsDateChange(this.value)"
+            style="width:100%;padding:10px 12px;background:var(--s2);border:1px solid var(--border);border-radius:7px;font-size:16px;font-family:var(--sans);color:var(--text);outline:none;cursor:pointer;"
+            onfocus="this.style.borderColor='var(--accent)';this.style.boxShadow='0 0 0 3px rgba(37,99,235,.1)'"
+            onblur="this.style.borderColor='';this.style.boxShadow=''">
+        </div>
+        <div class="fg" style="margin-bottom:10px">
+          <label>Till Short (manual entry)</label>
+          <input type="number" id="rpt-till" placeholder="0" value="0" oninput="renderReport()">
+        </div>
+        <div class="fg" style="margin-bottom:14px">
+          <label>Patty Cash (manual entry)</label>
+          <input type="number" id="rpt-patty" placeholder="0" value="0" oninput="renderReport()">
+        </div>
+        <div class="brow" style="margin-top:0">
+          <button class="btn btn-p" onclick="printDayReport()">🖨 Print Report</button>
+          <button class="btn btn-s" onclick="copyReportText()">📋 Copy Text</button>
+        </div>
+      </div>
+      <div class="card" id="rpt-tgt-card">
+        <div class="ctitle"><span class="cdot" style="background:var(--green)"></span>Monthly Target</div>
+        <div id="rpt-tgt-info" style="font-size:12px;color:var(--muted)">Select a date to see target</div>
+      </div>
+    </div>
+    <div class="card" id="rpt-card">
+      <div style="text-align:center;padding:40px;color:var(--muted);font-size:13px">Select a date to generate the report</div>
+    </div>
+  </div>
+</div>
+
+<!-- TOOLS -->
+<div class="page" id="page-tools">
+  <div class="hero"><div class="hlabel">Tools</div><div class="htitle">Settings &amp; Data Management</div><div class="hsub">Tap any card to expand it.</div></div>
+
+  <div class="tcard" id="tc-github">
+    <div class="tcard-hdr" onclick="toggleTcard('tc-github')">
+      <div class="ttitle">🐙 GitHub Sync <span id="gh-badge" class="badge bg-amber">Not configured</span></div>
+      <span class="tcard-chevron">▶</span>
+    </div>
+    <div class="tcard-body">
+      <div class="tdesc">Data saved to <strong>sysalmanyasin/BT-Sale-Data</strong> → <code style="font-family:var(--mono);color:var(--accent)">data/sales.json</code>. Token stored in this browser only — never in the file.</div>
+      <div class="fgrid" style="max-width:620px;margin-bottom:14px">
+        <div class="fg" style="grid-column:span 2"><label>GitHub Personal Access Token</label><input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off"></div>
+        <div class="fg"><label>Repository (owner/repo)</label><input type="text" id="gh-repo" value="sysalmanyasin/BT-Sale-Data"></div>
+        <div class="fg"><label>File path in repo</label><input type="text" id="gh-path" value="data/sales.json"></div>
+      </div>
+      <div class="brow" style="margin-top:0">
+        <button class="btn btn-p" onclick="saveGhConfig()">Save Config</button>
+        <button class="btn btn-s" onclick="manualSync()">↻ Pull from GitHub</button>
+        <button class="btn btn-g" onclick="pushToGitHub()">⬆ Push All Data</button>
+        <button class="btn btn-d" onclick="clearGhConfig()">Clear Token</button>
+      </div>
+      <div class="ghlog" id="ghlog">GitHub log ready…</div>
+      <div style="margin-top:10px;font-size:11px;color:var(--muted);line-height:1.8">
+        <strong style="color:var(--text)">Get a token:</strong>
+        1. <a href="https://github.com/settings/tokens/new" target="_blank" style="color:var(--accent)">github.com/settings/tokens/new</a>
+        2. Note: "BT Sales IC" · No expiration
+        3. Scope: ✅ <strong>repo</strong>
+        4. Generate → paste above
+      </div>
+    </div>
+  </div>
+
+  <div class="tcard" id="tc-autosync">
+    <div class="tcard-hdr" onclick="toggleTcard('tc-autosync')">
+      <div class="ttitle">⚡ Auto-Sync</div>
+      <span class="tcard-chevron">▶</span>
+    </div>
+    <div class="tcard-body">
+      <div style="display:flex;flex-direction:column;gap:10px;font-size:13px">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+          <input type="checkbox" id="auto-load" onchange="saveAutoSettings()" style="width:15px;height:15px;accent-color:var(--accent)">
+          <span><strong>Auto-load on unlock</strong> — pull latest from GitHub each time you sign in</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+          <input type="checkbox" id="auto-save" onchange="saveAutoSettings()" style="width:15px;height:15px;accent-color:var(--accent)">
+          <span><strong>Auto-save on entry</strong> — push to GitHub when a daily entry is saved</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+          <input type="checkbox" id="auto-interval" onchange="saveAutoSettings()" style="width:15px;height:15px;accent-color:var(--accent)">
+          <span><strong>Refresh every 30 min</strong> — auto-pull while app is open</span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <div class="tcard" id="tc-drive">
+    <div class="tcard-hdr" onclick="toggleTcard('tc-drive')">
+      <div class="ttitle">☁ Google Drive Backup <span id="drive-badge" class="badge bg-amber">Not set up</span></div>
+      <span class="tcard-chevron">▶</span>
+    </div>
+    <div class="tcard-body">
+      <div class="tdesc">Saves a daily JSON backup to your <strong>BT-SALE-DATA</strong> folder in Google Drive. Drive API is enabled ✓ — just authorize once and backups run automatically.</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.8">
+        <strong style="color:var(--green)">✓ Google Drive API is enabled.</strong><br>
+        Just click <strong>Authorize Drive</strong> below (once). After that, a backup is saved to
+        <a href="https://drive.google.com/drive/folders/1qDSFSlrcUA7EoaMx43bG3mxkpS1ESHGn" target="_blank" style="color:var(--accent)">BT-SALE-DATA</a>
+        automatically every day when you open the app.
+      </div>
+      <div class="brow">
+        <button class="btn btn-p" onclick="driveAuthorize()">🔑 Authorize Drive</button>
+        <button class="btn btn-g" onclick="driveBackupNow()">☁ Backup Now</button>
+        <button class="btn" style="background:var(--s3);border-color:var(--border)" onclick="driveOpenRestoreModal()">🔄 Restore Backup</button>
+      </div>
+      <div id="drive-log" style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.8"></div>
+    </div>
+  </div>
+
+  <div class="tcard" id="tc-targets">
+    <div class="tcard-hdr" onclick="toggleTcard('tc-targets')">
+      <div class="ttitle">🎯 Monthly Targets</div>
+      <span class="tcard-chevron">▶</span>
+    </div>
+    <div class="tcard-body">
+      <div class="tdesc">Set a sales goal for any month. Progress shows on Dashboard, Index cards, and the Sale Report page.</div>
+      <div class="fgrid" style="max-width:480px;margin-bottom:12px">
+        <div class="fg"><label>Month</label><select id="tgt-sel"><option value="">Select month…</option></select></div>
+        <div class="fg"><label>Target Amount (₨)</label><input type="number" id="tgt-amount" placeholder="e.g. 16000000"></div>
+      </div>
+      <button class="btn btn-g" onclick="saveTarget()">Save Target</button>
+      <div id="tgt-list" style="margin-top:14px"></div>
+    </div>
+  </div>
+
+  <div class="tcard" id="tc-pin">
+    <div class="tcard-hdr" onclick="toggleTcard('tc-pin')">
+      <div class="ttitle">🔐 Google Auth &amp; PIN Settings</div>
+      <span class="tcard-chevron">▶</span>
+    </div>
+    <div class="tcard-body">
+      <!-- Google Auth Settings -->
+      <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin-bottom:10px">Google Sign-In</div>
+      <div id="tc-gauth-status" style="font-size:12px;color:var(--muted);margin-bottom:10px"></div>
+      <div class="fg" style="margin-bottom:10px">
+        <label>Google OAuth Client ID</label>
+        <input type="text" id="tc-client-id" placeholder="xxxx.apps.googleusercontent.com"
+          style="font-size:12px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s2);width:100%;font-family:var(--mono);color:var(--text);outline:none"
+          autocomplete="off" spellcheck="false">
+      </div>
+      <div class="fg" style="margin-bottom:12px">
+        <label>Authorised Gmail Addresses (one per line)</label>
+        <textarea id="tc-allowed-emails" rows="4" placeholder="yourname@gmail.com&#10;colleague@gmail.com"
+          style="font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s2);width:100%;font-family:var(--sans);color:var(--text);outline:none;resize:vertical;box-sizing:border-box"></textarea>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px">Leave blank to allow the first Google login to auto-authorise. Case-insensitive.</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
+        <button class="btn btn-p" onclick="tcSaveGAuthSettings()">💾 Save Google Settings</button>
+        <button class="btn btn-s" onclick="tcClearGAuthSession()">🔓 Sign Out Google Session</button>
+        <button class="btn" style="background:var(--rlt,#fee2e2);color:var(--red);border:1px solid var(--red)" onclick="tcClearGAuthAll()">🗑 Remove Google Config</button>
+      </div>
+      <!-- PIN Settings -->
+      <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin-bottom:10px;border-top:1px solid var(--border);padding-top:16px">Password (offline fallback · 8–20 characters)</div>
+      <div class="fgrid" style="max-width:380px;margin-bottom:12px">
+        <div class="fg"><label>Current Password</label><input type="password" id="pin-cur" minlength="8" maxlength="20" placeholder="Current password" autocomplete="current-password"></div>
+        <div class="fg"><label>New Password <span style="color:var(--muted);font-weight:400">(8–20 chars)</span></label><input type="password" id="pin-new" minlength="8" maxlength="20" placeholder="New password" autocomplete="new-password" oninput="tcPwStrength(this)"></div>
+        <div class="fg"><label>Confirm New Password</label><input type="password" id="pin-confirm" minlength="8" maxlength="20" placeholder="Repeat new password" autocomplete="new-password"></div>
+      </div>
+      <div id="tc-pw-strength-wrap" style="margin-bottom:10px;display:none">
+        <div style="height:4px;border-radius:2px;background:var(--border);overflow:hidden"><div id="tc-pw-bar" style="height:100%;width:0;transition:all .3s;border-radius:2px"></div></div>
+        <div id="tc-pw-label" style="font-size:10px;color:var(--muted);margin-top:4px"></div>
+      </div>
+      <button class="btn btn-p" onclick="changePIN()">Update Password</button>
+    </div>
+  </div>
+
+  <div class="tcard" id="tc-export">
+    <div class="tcard-hdr" onclick="toggleTcard('tc-export')">
+      <div class="ttitle">📊 Export / Import</div>
+      <span class="tcard-chevron">▶</span>
+    </div>
+    <div class="tcard-body">
+      <div class="brow" style="margin-top:0">
+        <button class="btn btn-s" onclick="exportCSV('daily')">⬇ Daily CSV</button>
+        <button class="btn btn-s" onclick="exportCSV('monthly')">⬇ Monthly CSV</button>
+        <button class="btn btn-s" onclick="exportJSON()">⬇ Full JSON Backup</button>
+        <button class="btn btn-s" onclick="document.getElementById('import-file').click()">⬆ Import JSON</button>
+        <input type="file" id="import-file" accept=".json" style="display:none" onchange="importJSON(event)">
+      </div>
+    </div>
+  </div>
+
+  <div class="tcard" id="tc-newmonth">
+    <div class="tcard-hdr" onclick="toggleTcard('tc-newmonth')">
+      <div class="ttitle">📅 Add New Month</div>
+      <span class="tcard-chevron">▶</span>
+    </div>
+    <div class="tcard-body">
+      <div class="fgrid" style="max-width:380px;margin-bottom:12px">
+        <div class="fg"><label>Month</label>
+          <select id="nm-sel"><option>January</option><option>February</option><option>March</option><option>April</option><option>May</option><option>June</option><option>July</option><option>August</option><option>September</option><option>October</option><option>November</option><option>December</option></select>
+        </div>
+        <div class="fg"><label>Year</label><input type="number" id="nm-year" value="2026" min="2020" max="2040"></div>
+      </div>
+      <button class="btn btn-g" onclick="addNewMonth()">+ Create Month</button>
+    </div>
+  </div>
+
+  <div class="tcard" id="tc-summary">
+    <div class="tcard-hdr" onclick="toggleTcard('tc-summary')">
+      <div class="ttitle">📋 Data Summary</div>
+      <span class="tcard-chevron">▶</span>
+    </div>
+    <div class="tcard-body">
+      <div id="data-summary" style="font-size:13px;line-height:2.2;color:var(--t2)"></div>
+    </div>
+  </div>
+
+  <div class="tcard" id="tc-print">
+    <div class="tcard-hdr" onclick="toggleTcard('tc-print')">
+      <div class="ttitle">🖨 Print PDF Reports</div>
+      <span class="tcard-chevron">▶</span>
+    </div>
+    <div class="tcard-body">
+      <div class="tdesc">Generate printable PDF reports for any day, month, or full year. Use your browser's Print → Save as PDF to export.</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:0">
+        <!-- Daily -->
+        <div style="background:var(--s2);border:1px solid var(--border);border-radius:9px;padding:14px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin-bottom:10px">📅 Daily Report</div>
+          <div class="fg" style="margin-bottom:8px"><label>Select Date</label><input type="date" id="pr-daily-date" style="font-size:13px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;background:var(--surface);width:100%;font-family:var(--sans);color:var(--text);outline:none"></div>
+          <div class="fg" style="margin-bottom:8px"><label>Till Short</label><input type="number" id="pr-daily-till" placeholder="0" value="0" style="font-size:13px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;background:var(--surface);width:100%;font-family:var(--sans);color:var(--text);outline:none"></div>
+          <div class="fg" style="margin-bottom:10px"><label>Patty Cash</label><input type="number" id="pr-daily-patty" placeholder="0" value="0" style="font-size:13px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;background:var(--surface);width:100%;font-family:var(--sans);color:var(--text);outline:none"></div>
+          <button class="btn btn-p" style="width:100%" onclick="printDailyFromTools()">🖨 Print Daily</button>
+        </div>
+
+        <!-- Monthly -->
+        <div style="background:var(--s2);border:1px solid var(--border);border-radius:9px;padding:14px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--purple);margin-bottom:10px">📆 Monthly Report</div>
+          <div class="fg" style="margin-bottom:10px"><label>Select Month</label><select id="pr-month-sel" style="font-size:13px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;background:var(--surface);width:100%;font-family:var(--sans);color:var(--text);outline:none"><option value="">Select…</option></select></div>
+          <button class="btn" style="width:100%;background:var(--purple);color:#fff" onclick="printMonthFromTools()">🖨 Print Monthly</button>
+        </div>
+
+        <!-- Yearly -->
+        <div style="background:var(--s2);border:1px solid var(--border);border-radius:9px;padding:14px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--green);margin-bottom:10px">📊 Yearly Report</div>
+          <div class="fg" style="margin-bottom:10px"><label>Select Year</label><select id="pr-year-sel" style="font-size:13px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;background:var(--surface);width:100%;font-family:var(--sans);color:var(--text);outline:none"><option value="">Select…</option></select></div>
+          <button class="btn btn-g" style="width:100%" onclick="printYearFromTools()">🖨 Print Yearly</button>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.7">
+        💡 Tip: On the Index page, each year group has a 🖨 button to instantly print that year. Month cards in the Index open a modal with a <strong>Print Monthly</strong> button.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FIELD MANAGER MODAL -->
+<div class="fmbg" id="fmbg" onclick="if(event.target===this)closeFieldManager()">
+  <div class="fmbox">
+    <div class="sheet-handle"></div>
+    <div class="fmhdr">
+      <h3>Manage Fields <small>Show/hide columns · Add custom fields</small></h3>
+      <button class="fmclose" onclick="closeFieldManager()">✕</button>
+    </div>
+    <div class="fm-tabs" id="fm-tabs">
+      <button class="fm-tab active" data-sec="Cash" onclick="fmSwitchTab(this)">Cash</button>
+      <button class="fm-tab" data-sec="Banks" onclick="fmSwitchTab(this)">Banks</button>
+      <button class="fm-tab" data-sec="Credit Clients" onclick="fmSwitchTab(this)">Credit Clients</button>
+      <button class="fm-tab" data-sec="Summary" onclick="fmSwitchTab(this)">Summary</button>
+      <button class="fm-tab" data-sec="Custom" onclick="fmSwitchTab(this)">+ Custom</button>
+    </div>
+    <div class="fmbody" id="fm-body"></div>
+    <div class="fm-footer">
+      <button class="btn btn-p" style="flex:1" onclick="fmApplyAndClose()">✓ Apply &amp; Close</button>
+      <button class="btn btn-s" onclick="fmResetAll()">Reset All</button>
+    </div>
+  </div>
+</div>
+
+<!-- MONTH MODAL -->
+<div class="mbg" id="mbg" onclick="if(event.target===this)closeMon()">
+  <div class="modal">
+    <div class="sheet-handle"></div>
+    <div class="mhdr"><h2 id="mon-title">Month Detail</h2><button class="mclose" onclick="closeMon()">✕</button></div>
+    <div class="mbody" id="mon-body"></div>
+    <div class="dmprint-btn no-print" id="mon-print-footer">
+      <button class="btn btn-p" style="flex:1" onclick="printMonthReport(_curMon)">🖨 Print Monthly Report</button>
+      <button class="btn btn-s" onclick="closeMon()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- DAY MODAL -->
+<div class="dmbg" id="dmbg" onclick="if(event.target===this)closeDay()">
+  <div class="dmbox">
+    <div class="sheet-handle"></div>
+    <div class="dmhdr">
+      <h3 id="dm-title">Day Detail <small id="dm-sub"></small></h3>
+      <button class="dmclose" onclick="closeDay()">✕</button>
+    </div>
+    <div class="dmbody" id="dm-body"></div>
+    <div class="dmprint-btn no-print">
+      <button class="btn btn-p" style="flex:1" onclick="printCurrentDay()">🖨 Print This Report</button>
+      <button class="btn btn-s" onclick="closeDay()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- MANAGER WORK -->
+<div class="page" id="page-manager">
+  <div class="hero"><h1 class="htitle">👔 Manager Work</h1><p class="hsub" id="mgr-hero-sub">Salary · Generic · Expenses · Petty Detail · Incentive · Staff Credit</p></div>
+
+  <!-- sub-tabs -->
+  <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+    <button class="btn btn-p" onclick="saveAllManagerSections()" style="font-weight:700;font-size:13px;padding:8px 20px;gap:7px">💾 Save All &amp; Sync</button>
+  </div>
+  <div style="margin-bottom:18px" id="mgr-tabs">
+    <!-- ── Group: Credit Detail ────────────────────── -->
+    <div style="margin-bottom:12px">
+      <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.09em;text-transform:uppercase;margin-bottom:7px;display:flex;align-items:center;gap:9px">
+        <span style="white-space:nowrap">Credit Detail</span>
+        <span style="flex:1;height:1px;background:var(--border);opacity:.5;display:inline-block"></span>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn mgr-tab" data-mtab="credit" onclick="switchMgrTab('credit')">👥 A. Staff Credits</button>
+        <button class="btn mgr-tab" data-mtab="expense" onclick="switchMgrTab('expense')">🧾 B. Patty/Expenses</button>
+        <button class="btn mgr-tab" data-mtab="custom" onclick="switchMgrTab('custom')" id="mgr-tab-custom" style="background:var(--s2);border:2px dashed var(--border);color:var(--muted)">＋ C. New Sections</button>
+      </div>
+    </div>
+    <!-- ── Group: Working ──────────────────────────── -->
+    <div>
+      <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.09em;text-transform:uppercase;margin-bottom:7px;display:flex;align-items:center;gap:9px">
+        <span style="white-space:nowrap">Working</span>
+        <span style="flex:1;height:1px;background:var(--border);opacity:.5;display:inline-block"></span>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn mgr-tab active" data-mtab="salary" onclick="switchMgrTab('salary')">💰 a. Salary</button>
+        <button class="btn mgr-tab" data-mtab="generic" onclick="switchMgrTab('generic')">📈 b. Generic</button>
+        <button class="btn mgr-tab" data-mtab="petty" onclick="switchMgrTab('petty')">🧮 c. Patty Detail</button>
+        <button class="btn mgr-tab" data-mtab="incentive" onclick="switchMgrTab('incentive')">🏆 d. Incentives</button>
+      </div>
+    </div>
+  </div>
+  <!-- ═══ CUSTOM SPREADSHEET SECTIONS ═══ -->
+  <div id="mgr-custom" class="mgr-section" style="display:none">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap">
+      <div class="fg" style="flex:1;min-width:140px">
+        <label>Month</label>
+        <select id="csec-month-sel" onchange="loadCustomSections(this.value)" style="font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s2);width:100%;color:var(--text);outline:none"></select>
+      </div>
+      <button class="btn btn-p" style="margin-top:16px" onclick="promptAddCustomSection()">＋ Add Section</button>
+      <button class="btn btn-g" style="margin-top:16px" onclick="saveAllCustomSections()">💾 Save All</button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.7">
+      💡 Create any number of custom spreadsheet-like sections (e.g. Fuel Log, Maintenance, Stock). Each section is a live table with description, amount and notes columns. Data is saved per-month and synced with GitHub.
+    </div>
+    <div id="csec-container"></div>
+  </div>
+
+  <!-- ═══ SALARY ═══ -->
+  <div id="mgr-salary" class="mgr-section">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+      <div class="fg" style="flex:1;min-width:140px">
+        <label>Month</label>
+        <select id="sal-month-sel" onchange="loadSalaryMonth(this.value)" style="font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s2);width:100%;color:var(--text);outline:none"></select>
+      </div>
+      <button class="btn btn-p" style="margin-top:16px" onclick="addSalaryRow()">+ Add Employee</button>
+      <button class="btn" style="margin-top:16px;background:#0891b2;color:#fff" onclick="autoFillSalaryFromSheets()" title="Pull Advance from Credit sheet & Generic from Generic Working for this month">⚡ Auto-Fill</button>
+      <button class="btn btn-g" style="margin-top:16px" onclick="saveSalaryData()">💾 Save</button>
+      <button class="btn" style="margin-top:16px;background:var(--purple);color:#fff" onclick="printSalaryReport()">🖨 Print</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table id="sal-table" style="width:100%;border-collapse:collapse;font-size:12px;min-width:780px">
+        <thead>
+          <tr style="background:var(--s2)">
+            <th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">#</th>
+            <th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Name</th>
+            <th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Designation</th>
+            <th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Days</th>
+            <th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">HO Salary</th>
+            <th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Advance</th>
+            <th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Generic</th>
+            <th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Net Salary</th>
+            <th style="padding:8px 10px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Del</th>
+          </tr>
+        </thead>
+        <tbody id="sal-tbody"></tbody>
+        <tfoot id="sal-tfoot"></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══ GENERIC WORKING ═══ -->
+  <div id="mgr-generic" class="mgr-section" style="display:none">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+      <div class="fg" style="flex:1;min-width:140px">
+        <label>Month</label>
+        <select id="gen-month-sel" onchange="loadGenericMonth(this.value)" style="font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s2);width:100%;color:var(--text);outline:none"></select>
+      </div>
+      <button class="btn btn-p" style="margin-top:16px" onclick="addGenericRow()">+ Add Row</button>
+      <button class="btn btn-g" style="margin-top:16px" onclick="saveGenericData()">💾 Save</button>
+      <button class="btn" style="margin-top:16px;background:var(--purple);color:#fff" onclick="printGenericReport()">🖨 Print</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table id="gen-table" style="width:100%;border-collapse:collapse;font-size:12px;min-width:660px">
+        <thead>
+          <tr style="background:var(--s2)">
+            <th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">#</th>
+            <th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Name</th>
+            <th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Designation</th>
+            <th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Generic Sale</th>
+            <th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Incentive (4%)</th>
+            <th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Extra</th>
+            <th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Final</th>
+            <th style="padding:8px 10px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Del</th>
+          </tr>
+        </thead>
+        <tbody id="gen-tbody"></tbody>
+        <tfoot id="gen-tfoot"></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══ EXPENSE / PATTY ═══ -->
+  <div id="mgr-expense" class="mgr-section" style="display:none">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+      <div class="fg" style="flex:1;min-width:140px">
+        <label>Month</label>
+        <select id="exp-month-sel" onchange="loadExpenseMonth(this.value)" style="font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s2);width:100%;color:var(--text);outline:none"></select>
+      </div>
+      <div class="fg" style="min-width:120px">
+        <label>Opening Patty (₨)</label>
+        <input type="number" id="exp-opening" placeholder="0" style="font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s2);width:100%;color:var(--text);outline:none" oninput="recalcExpense()">
+      </div>
+      <button class="btn btn-p" style="margin-top:16px" onclick="addExpenseRow()">+ Add Row</button>
+      <button class="btn btn-g" style="margin-top:16px" onclick="saveExpenseData()">💾 Save</button>
+      <button class="btn" style="margin-top:16px;background:var(--purple);color:#fff" onclick="printExpenseReport()">🖨 Print</button>
+    </div>
+    <!-- KPI strip -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px" id="exp-kpis">
+      <div class="kpi"><div class="klbl">Opening Patty</div><div class="kval" id="exp-k-open">₨0</div></div>
+      <div class="kpi"><div class="klbl">HO Received</div><div class="kval" id="exp-k-ho">₨0</div></div>
+      <div class="kpi"><div class="klbl">Total Expenses</div><div class="kval" id="exp-k-total">₨0</div></div>
+      <div class="kpi"><div class="klbl">Current Balance</div><div class="kval" id="exp-k-bal" style="color:var(--green)">₨0</div></div>
+    </div>
+    <div style="overflow-x:auto">
+      <table id="exp-table" style="width:100%;border-collapse:collapse;font-size:12px;min-width:860px">
+        <thead>
+          <tr style="background:var(--s2)">
+            <th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Date</th>
+            <th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Description / Expense</th>
+            <th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Bill Amt</th>
+            <th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Fuel/HO</th>
+            <th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Soap/Tissue</th>
+            <th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Refreshment</th>
+            <th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Extra</th>
+            <th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Patty H/O</th>
+            <th style="padding:8px 10px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Del</th>
+          </tr>
+        </thead>
+        <tbody id="exp-tbody"></tbody>
+        <tfoot id="exp-tfoot"></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- ═══ STAFF CREDIT LEDGER ═══ -->
+  <div id="mgr-credit" class="mgr-section" style="display:none">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+      <div class="fg" style="flex:1;min-width:140px">
+        <label>Month</label>
+        <select id="crd-month-sel" onchange="loadCreditMonth(this.value)" style="font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s2);width:100%;color:var(--text);outline:none"></select>
+      </div>
+      <button class="btn btn-p" style="margin-top:16px" onclick="addCreditEmployee()">+ Add Employee</button>
+      <button class="btn btn-g" style="margin-top:16px" onclick="saveCreditData()">💾 Save</button>
+      <button class="btn" style="margin-top:16px;background:var(--amber);color:#fff" onclick="copyToNextMonth()" title="Save this month, then open next month with each employee's net as their new opening balance">📋 Copy → Next Month</button>
+      <button class="btn" style="margin-top:16px;background:var(--purple);color:#fff" onclick="printCreditReport()">🖨 Print</button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.7">
+      💡 Each employee row shows their previous balance, daily credits/deductions, and the net carried to next month. Positive = money owed to employee, Negative = deducted next month. When the month ends, click <strong>📋 Copy → Next Month</strong> — it saves current data and opens the next month with each person's net as their new opening balance.
+    </div>
+    <div id="crd-employees"></div>
+  </div>
+</div>
+
+  <!-- ═══ PETTY CASH DETAIL ═══ -->
+  <div id="mgr-petty" class="mgr-section" style="display:none">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+      <div class="fg" style="flex:1;min-width:140px">
+        <label>Month</label>
+        <select id="petty-month-sel" onchange="loadPettyMonth(this.value)" style="font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s2);width:100%;color:var(--text);outline:none"></select>
+      </div>
+      <button class="btn btn-p" style="margin-top:16px" onclick="addPettyGroup()">＋ Add New Group</button>
+      <button class="btn btn-g" style="margin-top:16px" onclick="savePettyData()">💾 Save</button>
+      <button class="btn" style="margin-top:16px;background:var(--amber,#f59e0b);color:#fff" onclick="pettyNextMonth()" title="Save this month and carry all groups/amounts into the next month">📋 Copy → Next Month</button>
+      <button class="btn" style="margin-top:16px;background:var(--purple);color:#fff" onclick="printPettyReport()">🖨 Print</button>
+    </div>
+    <!-- KPI strip -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
+      <div class="kpi"><div class="klbl">Groups</div><div class="kval" id="petty-k-groups">0</div></div>
+      <div class="kpi"><div class="klbl">Total Items</div><div class="kval" id="petty-k-items">0</div></div>
+      <div class="kpi"><div class="klbl">Grand Total</div><div class="kval" id="petty-k-total" style="color:var(--accent)">₨0</div></div>
+    </div>
+    <div id="petty-groups"></div>
+  </div>
+
+  <!-- ═══ INCENTIVE ═══ -->
+  <div id="mgr-incentive" class="mgr-section" style="display:none">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap">
+      <div class="fg" style="flex:1;min-width:140px">
+        <label>Month</label>
+        <select id="inc-month-sel" onchange="loadIncentiveMonth(this.value)" style="font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s2);width:100%;color:var(--text);outline:none"></select>
+      </div>
+      <button class="btn btn-g" style="margin-top:16px" onclick="saveIncentiveData()">💾 Save</button>
+      <button class="btn" style="margin-top:16px;background:var(--purple);color:#fff" onclick="printIncentiveReport()">🖨 Print</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:860px" id="inc-form">
+
+      <!-- LEFT: Inputs -->
+      <div>
+        <div class="inc-sec-hd">📊 Base Figures</div>
+        <div class="inc-row"><span>Sale Value</span><input type="number" id="inc-saleVal" class="mgr-inp" placeholder="0" oninput="recalcIncentive()"></div>
+        <div class="inc-row"><span>Generic Sale</span><input type="number" id="inc-genSale" class="mgr-inp" placeholder="0" oninput="recalcIncentive()"></div>
+        <div class="inc-row"><span>Less Pilferage</span><input type="number" id="inc-pilferage" class="mgr-inp" placeholder="0" oninput="recalcIncentive()"></div>
+        <div class="inc-row"><span>Unapproved Discount</span><input type="number" id="inc-unapproved" class="mgr-inp" placeholder="0" oninput="recalcIncentive()"></div>
+        <div class="inc-row"><span>Till Short</span><input type="number" id="inc-tillShort" class="mgr-inp" placeholder="0" oninput="recalcIncentive()"></div>
+
+        <div class="inc-sec-hd" style="margin-top:14px">💰 Bonus &amp; Fines</div>
+        <div class="inc-row"><span>Cash Target Bonus</span><input type="number" id="inc-cashTarget" class="mgr-inp" placeholder="0" oninput="recalcIncentive()"></div>
+        <div class="inc-row"><span>Less Excess Fine (Generic)</span><input type="number" id="inc-excessFine" class="mgr-inp" placeholder="0" oninput="recalcIncentive()"></div>
+        <div class="inc-row"><span>Less Plus % Fine</span><input type="number" id="inc-plusFine" class="mgr-inp" placeholder="0" oninput="recalcIncentive()"></div>
+        <div class="inc-row"><span>Less Paper Fine</span><input type="number" id="inc-paperFine" class="mgr-inp" placeholder="0" oninput="recalcIncentive()"></div>
+        <div class="inc-row"><span>Less Panel Fine</span><input type="number" id="inc-panelFine" class="mgr-inp" placeholder="0" oninput="recalcIncentive()"></div>
+
+        <div class="inc-sec-hd" style="margin-top:14px">🧾 Distribution</div>
+        <div class="inc-row"><span>Tax (Salman)</span><input type="number" id="inc-tax" class="mgr-inp" placeholder="0" oninput="recalcIncentive()"></div>
+      </div>
+
+      <!-- RIGHT: Calculated results -->
+      <div>
+        <div class="inc-sec-hd">📋 Commission</div>
+        <div class="inc-row calc"><span>Sale Commission (0.5%)</span><span id="ic-saleComm" class="inc-calc">₨0</span></div>
+        <div class="inc-row calc"><span>Less Pilferage</span><span id="ic-lessPilf" class="inc-calc red">₨0</span></div>
+        <div class="inc-row calc"><span>Till Cheque</span><span id="ic-tillCheque" class="inc-calc red">₨0</span></div>
+        <div class="inc-row calc total"><span>Total Commission</span><span id="ic-totalComm" class="inc-calc">₨0</span></div>
+
+        <div class="inc-sec-hd" style="margin-top:10px">🎯 Bonus</div>
+        <div class="inc-row calc total"><span>Total Bonus</span><span id="ic-totalBonus" class="inc-calc">₨0</span></div>
+
+        <div class="inc-sec-hd" style="margin-top:10px">💊 Generic</div>
+        <div class="inc-row calc"><span>Generic Incentive (4.5%)</span><span id="ic-genInc" class="inc-calc">₨0</span></div>
+        <div class="inc-row calc"><span>Less Excess Fine</span><span id="ic-lessExcess" class="inc-calc red">₨0</span></div>
+        <div class="inc-row calc total"><span>Total Generic</span><span id="ic-totalGen" class="inc-calc">₨0</span></div>
+
+        <div class="inc-row calc grand" style="margin-top:10px"><span>🏆 Grand Total</span><span id="ic-grandTotal" class="inc-calc">₨0</span></div>
+
+        <div class="inc-sec-hd" style="margin-top:10px">➖ Deductions</div>
+        <div class="inc-row calc"><span>Total Less (Fine)</span><span id="ic-totalLess" class="inc-calc red">₨0</span></div>
+        <div class="inc-row calc"><span>Pre-panel Total</span><span id="ic-prePanel" class="inc-calc">₨0</span></div>
+        <div class="inc-row calc"><span>Less Panel Fine</span><span id="ic-lessPanelFine" class="inc-calc red">₨0</span></div>
+        <div class="inc-row calc grand" style="margin-top:6px"><span>✅ Net Incentive</span><span id="ic-netInc" class="inc-calc" style="color:var(--green)">₨0</span></div>
+
+        <div class="inc-sec-hd" style="margin-top:10px">👤 Split (÷ 2)</div>
+        <div class="inc-row calc"><span>Tax</span><span id="ic-taxAmt" class="inc-calc red">₨0</span></div>
+        <div class="inc-row calc total"><span>Salman Net</span><span id="ic-salmanNet" class="inc-calc" style="color:var(--accent)">₨0</span></div>
+      </div>
+    </div>
+  </div>
+
+<!-- PRINT AREA (hidden, shown only during print) -->
+<div id="print-area"></div>
+
+<div id="toast"></div>
+
+
+<!-- ====== DRIVE RESTORE MODAL ====== -->
+<div id="drive-restore-modal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.65);align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--s1,#fff);border:1px solid var(--border);border-radius:16px;width:100%;max-width:480px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid var(--border)">
+      <div style="font-weight:700;font-size:15px">🔄 Restore from Drive Backup</div>
+      <button onclick="driveCloseRestoreModal()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1">×</button>
+    </div>
+    <div id="drm-list-wrap" style="flex:1;overflow-y:auto;padding:14px 20px">
+      <div id="drm-status" style="font-size:13px;color:var(--muted);text-align:center;padding:20px 0">Loading backups…</div>
+      <div id="drm-list"></div>
+    </div>
+    <div style="padding:14px 20px;border-top:1px solid var(--border);font-size:11px;color:var(--muted)">
+      ⚠ Restoring will <strong>merge</strong> backup data with current data (no duplicates). Existing entries are kept.
+    </div>
+  </div>
+</div>
+
+<!-- ====== JS MODULES — load order is critical ====== -->
+
+<!-- 1. Base data arrays (MONTHLY_BASE + DAILY_BASE — large file) -->
+<script src="js/data-base.js"><\/script>
+
+<!-- 2. Config: state vars, utils, column constants -->
+<script src="js/config.js"><\/script>
+
+<!-- 3. Auth: Google Sign-In + PIN password fallback -->
+<script src="js/auth.js"><\/script>
+
+<!-- 4. Storage: IndexedDB + render cache -->
+<script src="js/storage.js"><\/script>
+
+<!-- 5. UI: showPage, toast, clock, rebuild, dropdowns -->
+<script src="js/ui.js"><\/script>
+
+<!-- 6. GitHub: push / pull / auto-sync -->
+<script src="js/github.js"><\/script>
+
+<!-- 7. Targets: monthly target management -->
+<script src="js/targets.js"><\/script>
+
+<!-- 8. Dashboard: KPI cards, charts, credit section -->
+<script src="js/dashboard.js"><\/script>
+
+<!-- 9. Index page: year/month grid rendering -->
+<script src="js/index-page.js"><\/script>
+
+<!-- 10. Reports: day modal, month modal, all print helpers -->
+<script src="js/reports.js"><\/script>
+
+<!-- 11. Data page: daily table + entry form -->
+<script src="js/data-page.js"><\/script>
+
+<!-- 12. Manager: salary, generic, expense, credit, petty, incentive -->
+<script src="js/manager.js"><\/script>
+
+<!-- 13. Custom spreadsheet sections (manager add-on) -->
+<script src="js/custom-sections.js"><\/script>
+
+<!-- 14. Field manager modal -->
+<script src="js/fields.js"><\/script>
+
+<!-- 15. Google Drive backup / restore -->
+<script src="js/drive.js"><\/script>
+
+</body>
+</html>
