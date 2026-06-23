@@ -730,6 +730,7 @@ if ('serviceWorker' in navigator) {
         <span style="flex:1;height:1px;background:var(--border);opacity:.5;display:inline-block"></span>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn mgr-tab" data-mtab="staff" onclick="switchMgrTab('staff')" style="background:var(--green,#059669);color:#fff">👤 Staff Registry</button>
         <button class="btn mgr-tab" data-mtab="credit" onclick="switchMgrTab('credit')">👥 A. Staff Credits</button>
         <button class="btn mgr-tab" data-mtab="expense" onclick="switchMgrTab('expense')">🧾 B. Patty/Expenses</button>
         <button class="btn mgr-tab" data-mtab="custom" onclick="switchMgrTab('custom')" id="mgr-tab-custom" style="background:var(--s2);border:2px dashed var(--border);color:var(--muted)">＋ C. New Sections</button>
@@ -749,6 +750,28 @@ if ('serviceWorker' in navigator) {
       </div>
     </div>
   </div>
+  <!-- ═══ STAFF REGISTRY ═══ -->
+  <div id="mgr-staff" class="mgr-section" style="display:none">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+      <div style="flex:1">
+        <div style="font-size:15px;font-weight:700">👤 Employee Registry</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">Add employees here once — they auto-appear in Salary, Generic Working and Staff Credits every month.</div>
+      </div>
+      <button class="btn btn-p" onclick="addStaffEmployee()">＋ Add Employee</button>
+      <button class="btn btn-g" onclick="saveStaffRegistry()">💾 Save Staff List</button>
+    </div>
+    <!-- KPI strip -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
+      <div class="kpi"><div class="klbl">Total Employees</div><div class="kval" id="staff-k-total">0</div></div>
+      <div class="kpi"><div class="klbl">Active</div><div class="kval" id="staff-k-active" style="color:var(--green)">0</div></div>
+      <div class="kpi"><div class="klbl">Inactive</div><div class="kval" id="staff-k-inactive" style="color:var(--muted)">0</div></div>
+    </div>
+    <div id="staff-list"></div>
+    <div style="margin-top:14px;padding:12px 16px;background:var(--s2);border-radius:8px;font-size:11px;color:var(--muted);line-height:1.7">
+      💡 <strong>How it works:</strong> Saving the staff list here automatically updates Salary Sheet, Generic Working, and Staff Credit for the current month. Inactive employees are hidden from new months but their historical data stays intact. Changes sync to GitHub with the main data.
+    </div>
+  </div>
+
   <!-- ═══ CUSTOM SPREADSHEET SECTIONS ═══ -->
   <div id="mgr-custom" class="mgr-section" style="display:none">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap">
