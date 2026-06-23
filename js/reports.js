@@ -138,8 +138,16 @@ function closeMon() { document.getElementById('mbg').classList.remove('on'); }
 // ══════════════════════════════════════════
 let _allDates=[], _selDate=null, _selMy=null;
 
+const _MON_NUM={Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12};
+function _dateVal(s) {
+  // Converts "DD/Mon/YYYY" → numeric YYYYMMDD for correct chronological sorting
+  const p=s?s.split('/'):[];
+  if(p.length!==3) return 0;
+  return parseInt(p[2])*10000+(_MON_NUM[p[1]]||0)*100+parseInt(p[0]);
+}
+
 function buildDateList() {
-  _allDates=DAILY.filter(d=>n(d.TOTAL)!==0).sort((a,b)=>b.Date>a.Date?1:-1);
+  _allDates=DAILY.filter(d=>n(d.TOTAL)!==0).sort((a,b)=>_dateVal(b.Date)-_dateVal(a.Date));
 }
 
 function dsInit() {

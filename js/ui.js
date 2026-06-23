@@ -81,6 +81,8 @@ function rebuildAll() {
   if(_curPage==='index') renderIndex();
   if(_curPage==='data') renderDataTable();
   buildDateList();
+  // If report tab is open and a date was already selected, re-render so fresh data shows
+  if(_curPage==='report' && _selDate && _selMy) renderReport();
 }
 
 

@@ -16,7 +16,7 @@ function renderDataTable() {
 
   if(mon){
     // Single month selected — flat table
-    const rows=filtered.slice().sort((a,b)=>b.Date>a.Date?1:-1);
+    const rows=filtered.slice().sort((a,b)=>_dateVal(b.Date)-_dateVal(a.Date));
     const oldEl2=document.getElementById('tbl-daily');
     const tbl=document.createElement('table');
     tbl.id='tbl-daily';
@@ -57,7 +57,7 @@ function renderDataTable() {
 
   let totalRecords=0;
   sortedMons.forEach((monKey,mi)=>{
-    const rows=byMon[monKey].slice().sort((a,b)=>b.Date>a.Date?1:-1);
+    const rows=byMon[monKey].slice().sort((a,b)=>_dateVal(b.Date)-_dateVal(a.Date));
     totalRecords+=rows.length;
     const monTotal=rows.reduce((s,d)=>s+n(d.TOTAL),0);
     const monCust=rows.reduce((s,d)=>s+n(d.Customers),0);

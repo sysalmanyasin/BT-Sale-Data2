@@ -13,7 +13,7 @@ function buildMonthlyPrintHTML(my) {
   const m = MONTHLY.find(x => x.Month_Year === my);
   if (!m) return null;
   const days = DAILY.filter(d => d.Month_Year === my && (n(d.TOTAL) !== 0 || d['Low Sale Reason']));
-  days.sort((a, b) => a.Date > b.Date ? 1 : -1);
+  days.sort((a, b) => _dateVal(a.Date) - _dateVal(b.Date));
   const tgts = getTgts(), tgt = tgts[my];
   const total = n(m.TOTAL), cust = n(m.Customers);
   const pct = tgt ? Math.min(100, Math.round(total / tgt * 100)) : null;

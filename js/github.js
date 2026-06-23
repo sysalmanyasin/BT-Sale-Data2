@@ -252,6 +252,9 @@ async function pushToGitHub() {
     ghLog('✓ Pushed successfully. SHA: ' + finalSha.slice(0, 8) + '…' + mergeNote, 'ok');
     setSyncBadge('ok');
     toast(mergeNote ? '✓ Merged & pushed to GitHub' : '✓ Pushed to GitHub');
+    // Sync IDB cache and rebuild UI so all tabs reflect the pushed data
+    rebuildAll();
+    idbSaveData();
   } catch(e) {
     ghLog('✕ Push failed: ' + e.message, 'err');
     setSyncBadge('err');
