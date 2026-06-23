@@ -1,6 +1,8 @@
 let MONTHLY = [...MONTHLY_BASE];
 let DAILY   = [...DAILY_BASE];
 let newEntries = [];
+const STAFF_KEY = 'BT_Staff_v1';
+let STAFF = [];   // [{id, name, designation, active}] — loaded from localStorage / GitHub
 let _charts = {};
 let _printDay = null;   // holds the day record currently shown in day modal
 let _curMon = null;    // holds the month currently open in month modal

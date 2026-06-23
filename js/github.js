@@ -32,6 +32,7 @@ async function pushToGitHub() {
     const payload = {
       monthly:   MONTHLY,
       daily:     DAILY,
+      staff:     STAFF,
       manager:   JSON.parse(localStorage.getItem(MGR_KEY)   || '{}'),
       petty:     pettyAll,
       custom:    JSON.parse(localStorage.getItem(CSEC_KEY)  || '{}'),
@@ -89,6 +90,15 @@ async function manualSync(silent=false) {
     let mN=0,dN=0;
     if (data.monthly) data.monthly.forEach(m=>{ if(!MONTHLY.find(x=>x.Month_Year===m.Month_Year)){MONTHLY.push(m);mN++;} });
     if (data.daily)   data.daily.forEach(d=>{ if(!DAILY.find(x=>x.Date===d.Date&&x.Month_Year===d.Month_Year)){DAILY.push(d);dN++;} });
+    // Restore Staff registry
+    if (data.staff && data.staff.length) {
+      const localStaff = JSON.parse(localStorage.getItem(STAFF_KEY) || '[]');
+      // Merge: GitHub is source of truth for staff list; local additions win for new IDs
+      const merged = [...data.staff];
+      localStaff.forEach(le => { if (!merged.find(r => r.id === le.id)) merged.push(le); });
+      STAFF = merged;
+      localStorage.setItem(STAFF_KEY, JSON.stringify(STAFF));
+    }
     // Restore Manager data
     if (data.manager)  { const cur=JSON.parse(localStorage.getItem(MGR_KEY)||'{}'); localStorage.setItem(MGR_KEY, JSON.stringify(Object.assign({},data.manager,cur))); }
     if (data.petty)    { Object.entries(data.petty).forEach(([k,v])=>{ if (!localStorage.getItem(k)) localStorage.setItem(k, JSON.stringify(v)); }); }

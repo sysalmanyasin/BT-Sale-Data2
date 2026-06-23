@@ -259,10 +259,14 @@ function _mgrPopSel(selId, current) {
 function switchMgrTab(tab) {
   document.querySelectorAll('.mgr-tab').forEach(b => b.classList.toggle('active', b.dataset.mtab === tab));
   document.querySelectorAll('.mgr-section').forEach(s => s.style.display = 'none');
-  document.getElementById('mgr-' + tab).style.display = '';
+  const sec = document.getElementById('mgr-' + tab);
+  if (sec) sec.style.display = '';
+  if (tab === 'staff') renderStaffRegistry();
 }
 
 function loadManagerPage() {
+  staffLoad();
+  renderStaffRegistry();
   const mons = mgrMonths();
   const cur = mons[0] || '';
   _mgrPopSel('sal-month-sel', cur);
@@ -271,6 +275,7 @@ function loadManagerPage() {
   _mgrPopSel('crd-month-sel', cur);
   _mgrPopSel('petty-month-sel', cur);
   _mgrPopSel('inc-month-sel', cur);
+  _mgrPopSel('csec-month-sel', cur);
   loadSalaryMonth(cur);
   loadGenericMonth(cur);
   loadExpenseMonth(cur);
@@ -289,25 +294,151 @@ function _inp(type, val, cls, oninput, ph) {
 // ══════════════════════════════
 // SALARY SHEET
 // ══════════════════════════════
-const SAL_DEFAULTS = [
-  {name:'Salman Yasin',   desig:'Co Manager'},
-  {name:'Mian Waqas',    desig:'APM'},
-  {name:'Shah Faisal',   desig:'SSO'},
-  {name:'Dr Zeeshan',    desig:'Internee Pharmacist'},
-  {name:'Dr Shujaat',    desig:'Internee Pharmacist'},
-  {name:'M Reehan',      desig:'Salesman'},
-  {name:'Ali Husnain',   desig:'Salesman'},
-  {name:'Abdul Rehman',  desig:'Salesman'},
-  {name:'Shamshair',     desig:'Salesman'},
-  {name:'Asad Mushtaq',  desig:'Salesman'},
-  {name:'Husnain Haider',desig:'Salesman'},
-  {name:'Kashif',        desig:'Salesman'},
+// ══════════════════════════════════════════════════════
+// STAFF REGISTRY — single source of truth for employees
+// ══════════════════════════════════════════════════════
+
+const _STAFF_SEED = [
+  {name:'Salman Yasin',   designation:'Co Manager'},
+  {name:'Mian Waqas',    designation:'APM'},
+  {name:'Shah Faisal',   designation:'SSO'},
+  {name:'Dr Zeeshan',    designation:'Internee Pharmacist'},
+  {name:'Dr Shujaat',    designation:'Internee Pharmacist'},
+  {name:'M Reehan',      designation:'Salesman'},
+  {name:'Ali Husnain',   designation:'Salesman'},
+  {name:'Abdul Rehman',  designation:'Salesman'},
+  {name:'Shamshair',     designation:'Salesman'},
+  {name:'Asad Mushtaq',  designation:'Salesman'},
+  {name:'Husnain Haider',designation:'Salesman'},
+  {name:'Kashif',        designation:'Salesman'},
 ];
+
+function staffLoad() {
+  try {
+    const raw = localStorage.getItem(STAFF_KEY);
+    if (raw) { STAFF = JSON.parse(raw); return; }
+  } catch(e) {}
+  // First run: seed from defaults
+  STAFF = _STAFF_SEED.map((e, i) => ({
+    id: 'emp_' + (Date.now() + i),
+    name: e.name,
+    designation: e.designation,
+    active: true
+  }));
+  staffSave();
+}
+
+function staffSave() {
+  localStorage.setItem(STAFF_KEY, JSON.stringify(STAFF));
+}
+
+function activeStaff() {
+  return STAFF.filter(e => e.active !== false);
+}
+
+// ── Staff Registry UI ──────────────────────────────────
+function renderStaffRegistry() {
+  const cont = document.getElementById('staff-list');
+  if (!cont) return;
+  // Update KPIs
+  const active = STAFF.filter(e => e.active !== false).length;
+  const setK = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  setK('staff-k-total', STAFF.length);
+  setK('staff-k-active', active);
+  setK('staff-k-inactive', STAFF.length - active);
+  if (!STAFF.length) {
+    cont.innerHTML = '<div style="text-align:center;color:var(--muted);padding:32px">No employees yet — click <strong>+ Add Employee</strong></div>';
+    return;
+  }
+  cont.innerHTML = STAFF.map((emp, i) => `
+    <div class="crd-emp" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:${emp.active!==false?'var(--s1)':'var(--s2)'}">
+      <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">${(emp.name||'?')[0].toUpperCase()}</div>
+      <div style="flex:1;min-width:0">
+        <input type="text" value="${(emp.name||'').replace(/"/g,'&quot;')}" placeholder="Employee name"
+          class="mgr-inp" style="font-weight:600;margin-bottom:4px"
+          oninput="staffFieldChange(${i},'name',this.value)">
+        <input type="text" value="${(emp.designation||'').replace(/"/g,'&quot;')}" placeholder="Designation"
+          class="mgr-inp" style="font-size:11px;color:var(--muted)"
+          oninput="staffFieldChange(${i},'designation',this.value)">
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+        <label style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:5px;cursor:pointer">
+          <input type="checkbox" ${emp.active!==false?'checked':''} onchange="staffToggleActive(${i},this.checked)">
+          Active
+        </label>
+        <button class="mgr-del" onclick="staffDelete(${i})" title="Remove employee">🗑</button>
+      </div>
+    </div>`).join('');
+}
+
+function staffFieldChange(i, field, val) {
+  STAFF[i][field] = val;
+}
+
+function staffToggleActive(i, active) {
+  STAFF[i].active = active;
+  renderStaffRegistry();
+}
+
+function staffDelete(i) {
+  if (!confirm('Remove ' + (STAFF[i].name||'this employee') + ' from the staff list?\n\nHistorical data will be kept — they just won\'t appear in new months.')) return;
+  STAFF.splice(i, 1);
+  renderStaffRegistry();
+}
+
+function addStaffEmployee() {
+  STAFF.push({ id: 'emp_' + Date.now(), name: '', designation: 'Salesman', active: true });
+  renderStaffRegistry();
+  // Focus the new name input
+  setTimeout(() => {
+    const inputs = document.querySelectorAll('#staff-list .mgr-inp');
+    if (inputs.length) inputs[inputs.length - 2].focus();
+  }, 80);
+}
+
+function saveStaffRegistry() {
+  staffSave();
+  // Propagate to all loaded sheets immediately
+  _propagateStaffToSheets();
+  toast('✓ Staff list saved — all sheets updated');
+  if (localStorage.getItem('bt_auto_save') === '1') pushToGitHub();
+}
+
+// When staff list is saved, add any new employees to currently-loaded sheets
+function _propagateStaffToSheets() {
+  const cur = document.getElementById('sal-month-sel')?.value;
+  if (!cur) return;
+  const norm = s => (s||'').trim().toLowerCase();
+
+  // Salary — add missing
+  activeStaff().forEach(emp => {
+    if (!_salRows_cur.find(r => norm(r.name) === norm(emp.name))) {
+      _salRows_cur.push({ name: emp.name, desig: emp.designation, days: 31, hoSal: 0, advance: 0, generic: 0 });
+    }
+  });
+  renderSalaryTable(_salRows_cur);
+
+  // Generic — add missing
+  activeStaff().forEach(emp => {
+    if (!_genRows_cur.find(r => norm(r.name) === norm(emp.name))) {
+      _genRows_cur.push({ name: emp.name, desig: emp.designation, genericSale: 0, extra: 0 });
+    }
+  });
+  renderGenericTable(_genRows_cur);
+
+  // Credit — add missing
+  activeStaff().forEach(emp => {
+    if (!_crdData_cur.find(r => norm(r.name) === norm(emp.name))) {
+      _crdData_cur.push({ name: emp.name, prevBal: 0, entries: [], salary: 0, lessGeneric: 0 });
+    }
+  });
+  renderCreditLedger(_crdData_cur);
+}
 
 function _salRows(my) {
   const data = mgrLoad();
   const stored = data.salary && data.salary[my];
-  return stored || SAL_DEFAULTS.map(e => ({...e, days:31, hoSal:0, advance:0, generic:0}));
+  return stored || activeStaff().map(e => ({name:e.name, desig:e.designation, days:31, hoSal:0, advance:0, generic:0}));
 }
 
 function _salNet(r) { return _ni(r.hoSal) - _ni(r.advance) + _ni(r.generic); }
@@ -448,7 +579,7 @@ let _genRows_cur = [];
 function _genRows(my) {
   const data = mgrLoad();
   const stored = data.generic && data.generic[my];
-  return stored || SAL_DEFAULTS.map(e => ({name:e.name, desig:e.desig, genericSale:0, extra:0}));
+  return stored || activeStaff().map(e => ({name:e.name, desig:e.designation, genericSale:0, extra:0}));
 }
 
 function _genIncentive(r) { return Math.round(_ni(r.genericSale) * 0.04); }
@@ -484,6 +615,24 @@ function recalcGenRow(i) {
   if (inc) inc.value = _genIncentive(_genRows_cur[i]);
   if (fin) fin.value = _genFinal(_genRows_cur[i]);
   _genUpdateFooter(_genRows_cur);
+  // Live sync to salary sheet — update the matching employee's generic column
+  _syncGenericToSalary(i);
+}
+
+function _syncGenericToSalary(genIdx) {
+  const genRow = _genRows_cur[genIdx];
+  if (!genRow) return;
+  const norm = s => (s||'').trim().toLowerCase();
+  const salIdx = _salRows_cur.findIndex(r => norm(r.name) === norm(genRow.name));
+  if (salIdx === -1) return;
+  const finalVal = _genFinal(genRow);
+  _salRows_cur[salIdx].generic = finalVal;
+  // Update the salary net cell live (no full re-render needed)
+  const salGenInput = document.querySelector(`#sal-tbody tr:nth-child(${salIdx+1}) .mgr-inp:nth-child(4)`);
+  // Simpler: just update the net display field
+  const netEl = document.getElementById('sal-net-' + salIdx);
+  if (netEl) netEl.value = _salNet(_salRows_cur[salIdx]);
+  _salUpdateFooter(_salRows_cur);
 }
 function _genUpdateFooter(rows) {
   const totSale = rows.reduce((s,r) => s + _ni(r.genericSale), 0);
@@ -619,7 +768,7 @@ let _crdData_cur = []; // [{name, prevBal, entries:[{date,desc,amount}], salary,
 
 function _crdData(my) {
   const data = mgrLoad();
-  return (data.credit && data.credit[my]) || SAL_DEFAULTS.map(e => ({name:e.name, prevBal:0, entries:[], salary:0, lessGeneric:0}));
+  return (data.credit && data.credit[my]) || activeStaff().map(e => ({name:e.name, prevBal:0, entries:[], salary:0, lessGeneric:0}));
 }
 
 function _crdNet(emp) {
@@ -641,17 +790,22 @@ function renderCreditLedger(emps) {
         <td class="mgr-td" style="text-align:center"><button class="mgr-del" onclick="deleteCrdEntry(${ei},${eni})">🗑</button></td>
       </tr>`).join('');
     return `<div class="crd-emp" id="crd-emp-${ei}">
-      <div class="crd-emp-hdr">
-        <div class="crd-emp-name">${emp.name}</div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <div class="crd-emp-hdr" onclick="_toggleCrdEmpBody(${ei})" style="cursor:pointer" title="Click to expand/collapse">
+        <div class="crd-emp-name">
+          <span class="crd-chevron" id="crd-chev-${ei}" style="font-size:10px;margin-right:6px;transition:transform .2s;display:inline-block">▶</span>
+          ${emp.name}
+          <span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:6px">${emp.entries.length} entr${emp.entries.length===1?'y':'ies'}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap" onclick="event.stopPropagation()">
           <div style="font-size:11px;color:var(--muted)">Prev: <strong>₨${_fc2(emp.prevBal)}</strong></div>
           <div style="font-size:11px;color:var(--muted)">Salary: <strong>₨${_fc2(emp.salary)}</strong></div>
           <div style="font-size:11px;color:var(--muted)">LessGen: <strong>₨${_fc2(emp.lessGeneric)}</strong></div>
           <div class="crd-emp-bal" style="color:${netColor}" id="crd-net-${ei}">Net: ₨${_fc2(net)}</div>
-          <button class="btn btn-p" style="font-size:11px;padding:4px 10px" onclick="addCrdEntry(${ei})">+ Entry</button>
+          <button class="btn btn-p" style="font-size:11px;padding:4px 10px" onclick="addCrdEntryFocused(${ei})">💳 + Entry</button>
           <button class="mgr-del" onclick="deleteCrdEmp(${ei})" title="Remove employee">🗑</button>
         </div>
       </div>
+      <div class="crd-emp-body" id="crd-body-${ei}" style="display:none">
       <div class="crd-emp-body">
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
           <div class="fg"><label>Previous Balance (₨)</label><input type="number" value="${emp.prevBal||0}" class="mgr-inp" oninput="crdEmpField(${ei},'prevBal',this.value);recalcCrdEmp(${ei})"></div>
@@ -667,15 +821,85 @@ function renderCreditLedger(emps) {
           </tr></thead>
           <tbody id="crd-tbody-${ei}">${entryRows}</tbody>
         </table>
-        ${emp.entries.length === 0 ? '<p style="text-align:center;color:var(--muted);font-size:12px;padding:14px">No entries yet — click "+ Entry" to add credits or deductions.</p>' : ''}
+        ${emp.entries.length === 0 ? '<p style="text-align:center;color:var(--muted);font-size:12px;padding:14px">No entries yet — click "💳 + Entry" to add.</p>' : ''}
       </div>
     </div>`;
   }).join('');
+  // Expand cards that have entries
+  emps.forEach((emp, ei) => {
+    if (emp.entries.length > 0) {
+      const body = document.getElementById('crd-body-' + ei);
+      const chev = document.getElementById('crd-chev-' + ei);
+      if (body) body.style.display = '';
+      if (chev) chev.style.transform = 'rotate(90deg)';
+    }
+  });
+}
+
+function _toggleCrdEmpBody(ei) {
+  const body = document.getElementById('crd-body-' + ei);
+  const chev = document.getElementById('crd-chev-' + ei);
+  if (!body) return;
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : '';
+  if (chev) chev.style.transform = isOpen ? '' : 'rotate(90deg)';
+}
+
+function addCrdEntryFocused(ei) {
+  // Ensure body is open
+  const body = document.getElementById('crd-body-' + ei);
+  const chev = document.getElementById('crd-chev-' + ei);
+  if (body) body.style.display = '';
+  if (chev) chev.style.transform = 'rotate(90deg)';
+  addCrdEntry(ei);
+  // After render, focus the new amount input
+  setTimeout(() => {
+    const tbody = document.getElementById('crd-tbody-' + ei);
+    if (!tbody) return;
+    const inputs = tbody.querySelectorAll('input[type="number"]');
+    if (inputs.length) {
+      inputs[inputs.length - 1].focus();
+      inputs[inputs.length - 1].select();
+    }
+  }, 80);
 }
 
 function loadCreditMonth(my) {
   _crdData_cur = _crdData(my);
   renderCreditLedger(_crdData_cur);
+}
+
+// Auto-focus: scroll to an employee's credit card and add an entry if they have none
+function focusCreditEmployee(ei) {
+  // Switch to credit tab if not already there
+  switchMgrTab('credit');
+  // Sync month selector
+  const salMon = document.getElementById('sal-month-sel')?.value;
+  const crdSel = document.getElementById('crd-month-sel');
+  if (salMon && crdSel && crdSel.value !== salMon) {
+    crdSel.value = salMon;
+    loadCreditMonth(salMon);
+  }
+  setTimeout(() => {
+    const el = document.getElementById('crd-emp-' + ei);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Flash highlight
+    el.style.transition = 'box-shadow 0.3s';
+    el.style.boxShadow = '0 0 0 3px var(--accent)';
+    setTimeout(() => { el.style.boxShadow = ''; }, 1800);
+    // Auto-add an entry and focus amount field if no entries yet
+    if (_crdData_cur[ei] && _crdData_cur[ei].entries.length === 0) {
+      addCrdEntry(ei);
+    } else {
+      // Focus last amount input in this employee's tbody
+      const tbody = document.getElementById('crd-tbody-' + ei);
+      if (tbody) {
+        const inputs = tbody.querySelectorAll('input[type="number"]');
+        if (inputs.length) inputs[inputs.length - 1].focus();
+      }
+    }
+  }, 150);
 }
 function crdEmpField(ei, field, val) { _crdData_cur[ei][field] = _ni(val); }
 function crdEntryChange(ei, eni, field, val) {
@@ -694,6 +918,11 @@ function addCrdEntry(ei) {
   const dateStr = String(today.getDate()).padStart(2,'0') + '-' + ms[today.getMonth()] + '-' + today.getFullYear();
   _crdData_cur[ei].entries.push({date:dateStr, desc:'credit', amount:0});
   renderCreditLedger(_crdData_cur);
+  // Ensure the body stays open after re-render
+  const body = document.getElementById('crd-body-' + ei);
+  const chev = document.getElementById('crd-chev-' + ei);
+  if (body) body.style.display = '';
+  if (chev) chev.style.transform = 'rotate(90deg)';
 }
 function deleteCrdEntry(ei, eni) {
   _crdData_cur[ei].entries.splice(eni, 1);
@@ -1253,6 +1482,7 @@ function saveAllManagerSections() {
   if (!anyMonth) { toast('⚠ No month selected — open a tab and pick a month first','w'); return; }
   let saved = 0;
   function tryCall(fn) { try { if (typeof fn === 'function') { fn(); saved++; } } catch(e) {} }
+  staffSave(); saved++; // always save staff registry
   tryCall(saveSalaryData);
   tryCall(saveGenericData);
   tryCall(saveExpenseData);
