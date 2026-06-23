@@ -3,7 +3,7 @@
 .page{display:none;padding:20px;max-width:1500px;margin:0 auto;}
 .page.on{display:block;}
 .hero{background:linear-gradient(135deg,#1e3a5f,#2563eb);border-radius:14px;padding:24px 28px;margin-bottom:18px;color:#fff;position:relative;overflow:hidden;}
-.hero::after{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.06);}
+.hero::after{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.06);pointer-events:none;}
 .hlabel{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;opacity:.7;margin-bottom:5px;}
 .htitle{font-size:20px;font-weight:700;letter-spacing:-.02em;margin-bottom:3px;}
 .hsub{font-size:12px;opacity:.7;}

@@ -4,7 +4,7 @@
    Data (GitHub / Drive API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v1.65';
+const CACHE_NAME = 'bt-sales-v1.66';
 
 const APP_SHELL = [
   './',
