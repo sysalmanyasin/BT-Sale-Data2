@@ -12,55 +12,150 @@ async function pushToGitHub() {
   setSyncBadge('syncing');
   ghLog('Pushing to GitHub…');
   try {
-    // Always fetch fresh SHA first to avoid stale-SHA conflicts
-    try {
-      const shaResp = await fetch(`https://api.github.com/repos/${cfg.repo}/contents/${cfg.path}`, {
-        headers: { Authorization:`Bearer ${cfg.token}`, Accept:'application/vnd.github.v3+json' }
-      });
-      if (shaResp.ok) {
-        const shaData = await shaResp.json();
-        localStorage.setItem(GH_S, shaData.sha);
-      }
-    } catch(e) {} // file may not exist yet — that's fine
+    const headers = {
+      Authorization: `Bearer ${cfg.token}`,
+      Accept: 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json'
+    };
+    const apiBase = `https://api.github.com/repos/${cfg.repo}`;
 
     // Collect all petty months
     const pettyAll = {};
-    for (let i=0; i<localStorage.length; i++) {
+    for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
-      if (k && k.startsWith('mw_petty_')) pettyAll[k] = JSON.parse(localStorage.getItem(k)||'null');
+      if (k && k.startsWith('mw_petty_')) pettyAll[k] = JSON.parse(localStorage.getItem(k) || 'null');
     }
     const payload = {
-      monthly:   MONTHLY,
-      daily:     DAILY,
-      staff:     STAFF,
-      manager:   JSON.parse(localStorage.getItem(MGR_KEY)   || '{}'),
-      petty:     pettyAll,
-      custom:    JSON.parse(localStorage.getItem(CSEC_KEY)  || '{}'),
-      pushedAt:  new Date().toISOString()
+      monthly:  MONTHLY,
+      daily:    DAILY,
+      staff:    STAFF,
+      manager:  JSON.parse(localStorage.getItem(MGR_KEY)  || '{}'),
+      petty:    pettyAll,
+      custom:   JSON.parse(localStorage.getItem(CSEC_KEY) || '{}'),
+      pushedAt: new Date().toISOString()
     };
-    const content = btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 2))));
-    const sha  = localStorage.getItem(GH_S);
-    const body = { message: 'BT Sales IC — ' + new Date().toLocaleString('en-PK'), content, branch:'main' };
-    if (sha) body.sha = sha;
-    const r = await fetch(`https://api.github.com/repos/${cfg.repo}/contents/${cfg.path}`, {
-      method: 'PUT',
-      headers: { Authorization:`Bearer ${cfg.token}`, Accept:'application/vnd.github.v3+json', 'Content-Type':'application/json' },
-      body: JSON.stringify(body)
-    });
-    if (!r.ok) {
-      const e = await r.json();
-      let msg = e.message || 'HTTP '+r.status;
-      if (r.status === 403) msg = 'Token lacks write permission — go to github.com/settings/tokens → regenerate with "repo" scope enabled';
-      if (r.status === 401) msg = 'Token invalid or expired — paste a new token in GitHub Sync settings';
-      if (r.status === 422) msg = 'SHA conflict resolved — please try pushing again';
-      throw new Error(msg);
+    const jsonStr = JSON.stringify(payload, null, 2);
+
+    // ── Strategy: try Contents API first (simple); fall back to Git Data API for large files ──
+    const tryContentsAPI = async () => {
+      // Fresh SHA fetch
+      let sha = null;
+      try {
+        const shaResp = await fetch(`${apiBase}/contents/${cfg.path}`, { headers });
+        if (shaResp.ok) {
+          const shaData = await shaResp.json();
+          sha = shaData.sha;
+          localStorage.setItem(GH_S, sha);
+        }
+      } catch(e) {}
+
+      // Safe base64 encode (works for Unicode + large strings)
+      const b64 = btoa(encodeURIComponent(jsonStr).replace(/%([0-9A-F]{2})/g,
+        (_, p1) => String.fromCharCode('0x' + p1)));
+
+      const body = {
+        message: 'BT Sales IC — ' + new Date().toLocaleString('en-PK'),
+        content: b64,
+        branch: 'main'
+      };
+      if (sha) body.sha = sha;
+
+      const r = await fetch(`${apiBase}/contents/${cfg.path}`, {
+        method: 'PUT', headers, body: JSON.stringify(body)
+      });
+      if (!r.ok) {
+        const e = await r.json();
+        throw Object.assign(new Error(e.message || 'HTTP ' + r.status), { status: r.status, apiErr: e });
+      }
+      const res = await r.json();
+      localStorage.setItem(GH_S, res.content.sha);
+      return res.content.sha;
+    };
+
+    // Git Data API — no size limit, uses blobs + trees + commits
+    const tryGitDataAPI = async () => {
+      ghLog('File large — using Git Data API…');
+
+      // 1. Get latest commit SHA on main branch
+      const refResp = await fetch(`${apiBase}/git/refs/heads/main`, { headers });
+      if (!refResp.ok) throw new Error('Cannot read branch ref: HTTP ' + refResp.status);
+      const refData = await refResp.json();
+      const latestCommitSha = refData.object.sha;
+
+      // 2. Get base tree SHA from that commit
+      const commitResp = await fetch(`${apiBase}/git/commits/${latestCommitSha}`, { headers });
+      if (!commitResp.ok) throw new Error('Cannot read commit: HTTP ' + commitResp.status);
+      const commitData = await commitResp.json();
+      const baseTreeSha = commitData.tree.sha;
+
+      // 3. Create a blob with the file content
+      const blobResp = await fetch(`${apiBase}/git/blobs`, {
+        method: 'POST', headers,
+        body: JSON.stringify({ content: jsonStr, encoding: 'utf-8' })
+      });
+      if (!blobResp.ok) throw new Error('Cannot create blob: HTTP ' + blobResp.status);
+      const blobData = await blobResp.json();
+
+      // 4. Create a new tree referencing the blob
+      const treeResp = await fetch(`${apiBase}/git/trees`, {
+        method: 'POST', headers,
+        body: JSON.stringify({
+          base_tree: baseTreeSha,
+          tree: [{ path: cfg.path, mode: '100644', type: 'blob', sha: blobData.sha }]
+        })
+      });
+      if (!treeResp.ok) throw new Error('Cannot create tree: HTTP ' + treeResp.status);
+      const treeData = await treeResp.json();
+
+      // 5. Create a new commit
+      const newCommitResp = await fetch(`${apiBase}/git/commits`, {
+        method: 'POST', headers,
+        body: JSON.stringify({
+          message: 'BT Sales IC — ' + new Date().toLocaleString('en-PK'),
+          tree: treeData.sha,
+          parents: [latestCommitSha]
+        })
+      });
+      if (!newCommitResp.ok) throw new Error('Cannot create commit: HTTP ' + newCommitResp.status);
+      const newCommitData = await newCommitResp.json();
+
+      // 6. Update the branch ref to point to the new commit
+      const updateRefResp = await fetch(`${apiBase}/git/refs/heads/main`, {
+        method: 'PATCH', headers,
+        body: JSON.stringify({ sha: newCommitData.sha, force: false })
+      });
+      if (!updateRefResp.ok) throw new Error('Cannot update ref: HTTP ' + updateRefResp.status);
+
+      localStorage.setItem(GH_S, newCommitData.sha);
+      return newCommitData.sha;
+    };
+
+    let finalSha;
+    try {
+      finalSha = await tryContentsAPI();
+    } catch(e) {
+      // If file too large (422 with blob too large message) or content encoding issue → use Git Data API
+      if (e.status === 422 || e.status === 403 || (e.message && e.message.includes('too large'))) {
+        ghLog('Contents API rejected — switching to Git Data API…');
+        finalSha = await tryGitDataAPI();
+      } else {
+        // Re-throw with friendly messages
+        let msg = e.message;
+        if (e.status === 401) msg = 'Token invalid or expired — paste a new token in GitHub Sync settings';
+        if (e.status === 403) msg = 'Token lacks write permission — regenerate with "repo" scope at github.com/settings/tokens';
+        if (e.status === 422 && msg.includes('SHA')) msg = 'SHA conflict — please try pushing again';
+        throw new Error(msg);
+      }
     }
-    const res = await r.json();
-    localStorage.setItem(GH_S, res.content.sha);
-    ghLog('✓ Pushed (incl. Manager + Petty + Custom). SHA: '+res.content.sha.slice(0,8)+'…','ok');
+
+    ghLog('✓ Pushed successfully. SHA: ' + finalSha.slice(0, 8) + '…', 'ok');
     setSyncBadge('ok');
     toast('✓ Pushed to GitHub');
-  } catch(e) { ghLog('✕ Push failed: '+e.message,'err'); setSyncBadge('err'); toast('✕ Push failed','e'); }
+  } catch(e) {
+    ghLog('✕ Push failed: ' + e.message, 'err');
+    setSyncBadge('err');
+    toast('✕ ' + e.message.slice(0, 60), 'e');
+  }
 }
 
 // Restore manager/petty/custom on pull from GitHub
