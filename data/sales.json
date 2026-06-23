@@ -108645,19 +108645,359 @@
   ],
   "manager": {
     "generic": {
-      "July 2026": []
+      "July 2026": [],
+      "June 2026": [
+        {
+          "name": "Salman Yasin",
+          "desig": "Co Manager",
+          "genericSale": 0,
+          "extra": 0
+        },
+        {
+          "name": "Muhammad Zubair",
+          "desig": "Co Manager",
+          "genericSale": 0,
+          "extra": 0
+        },
+        {
+          "name": "Aftab Wizir",
+          "desig": "Head Cashier",
+          "genericSale": 0,
+          "extra": 0
+        },
+        {
+          "name": "Mian Waqas",
+          "desig": "APM",
+          "genericSale": 0,
+          "extra": 0
+        },
+        {
+          "name": "Dr Zeeshan",
+          "desig": "Pharmacist",
+          "genericSale": 0,
+          "extra": 0
+        },
+        {
+          "name": "Dr Hamza",
+          "desig": "Pharmacist",
+          "genericSale": 0,
+          "extra": 0
+        },
+        {
+          "name": "Shah Faisal Ali Khan",
+          "desig": "Salesman",
+          "genericSale": 0,
+          "extra": 0
+        },
+        {
+          "name": "Muhammad Reehan",
+          "desig": "Salesman",
+          "genericSale": 0,
+          "extra": 0
+        },
+        {
+          "name": "Shamshair Ali",
+          "desig": "Salesman",
+          "genericSale": 0,
+          "extra": 0
+        },
+        {
+          "name": "Asad",
+          "desig": "Salesman",
+          "genericSale": 0,
+          "extra": 0
+        },
+        {
+          "name": "Husnain Haider",
+          "desig": "Salesman",
+          "genericSale": 0,
+          "extra": 0
+        },
+        {
+          "name": "Ali Husnain ",
+          "desig": "Salesman",
+          "genericSale": 0,
+          "extra": 0
+        },
+        {
+          "name": "Muhammad Kashif",
+          "desig": "Salesman",
+          "genericSale": 0,
+          "extra": 0
+        },
+        {
+          "name": "M Rehman",
+          "desig": "Salesman",
+          "genericSale": 0,
+          "extra": 0
+        },
+        {
+          "name": "Salman Ghulam Ali",
+          "desig": "Salesman",
+          "genericSale": 0,
+          "extra": 0
+        }
+      ]
     },
     "credit": {
-      "June 2026": []
+      "June 2026": [
+        {
+          "name": "Salman Yasin",
+          "prevBal": 0,
+          "entries": [],
+          "salary": 0,
+          "lessGeneric": 0
+        },
+        {
+          "name": "Muhammad Zubair",
+          "prevBal": 0,
+          "entries": [],
+          "salary": 0,
+          "lessGeneric": 0
+        },
+        {
+          "name": "Aftab Wizir",
+          "prevBal": 0,
+          "entries": [],
+          "salary": 0,
+          "lessGeneric": 0
+        },
+        {
+          "name": "Mian Waqas",
+          "prevBal": 0,
+          "entries": [],
+          "salary": 0,
+          "lessGeneric": 0
+        },
+        {
+          "name": "Dr Zeeshan",
+          "prevBal": 0,
+          "entries": [],
+          "salary": 0,
+          "lessGeneric": 0
+        },
+        {
+          "name": "Dr Hamza",
+          "prevBal": 0,
+          "entries": [],
+          "salary": 0,
+          "lessGeneric": 0
+        },
+        {
+          "name": "Shah Faisal Ali Khan",
+          "prevBal": 0,
+          "entries": [],
+          "salary": 0,
+          "lessGeneric": 0
+        },
+        {
+          "name": "Muhammad Reehan",
+          "prevBal": 0,
+          "entries": [],
+          "salary": 0,
+          "lessGeneric": 0
+        },
+        {
+          "name": "Shamshair Ali",
+          "prevBal": 0,
+          "entries": [],
+          "salary": 0,
+          "lessGeneric": 0
+        },
+        {
+          "name": "Asad",
+          "prevBal": 0,
+          "entries": [],
+          "salary": 0,
+          "lessGeneric": 0
+        },
+        {
+          "name": "Husnain Haider",
+          "prevBal": 0,
+          "entries": [],
+          "salary": 0,
+          "lessGeneric": 0
+        },
+        {
+          "name": "Ali Husnain ",
+          "prevBal": 0,
+          "entries": [],
+          "salary": 0,
+          "lessGeneric": 0
+        },
+        {
+          "name": "Muhammad Kashif",
+          "prevBal": 0,
+          "entries": [],
+          "salary": 0,
+          "lessGeneric": 0
+        },
+        {
+          "name": "M Rehman",
+          "prevBal": 0,
+          "entries": [],
+          "salary": 0,
+          "lessGeneric": 0
+        },
+        {
+          "name": "Salman Ghulam Ali",
+          "prevBal": 0,
+          "entries": [],
+          "salary": 0,
+          "lessGeneric": 0
+        }
+      ]
+    },
+    "salary": {
+      "June 2026": [
+        {
+          "name": "Salman Yasin",
+          "desig": "Co Manager",
+          "days": 31,
+          "hoSal": 0,
+          "advance": 0,
+          "generic": 0
+        },
+        {
+          "name": "Muhammad Zubair",
+          "desig": "Co Manager",
+          "days": 31,
+          "hoSal": 0,
+          "advance": 0,
+          "generic": 0
+        },
+        {
+          "name": "Aftab Wizir",
+          "desig": "Head Cashier",
+          "days": 31,
+          "hoSal": 0,
+          "advance": 0,
+          "generic": 0
+        },
+        {
+          "name": "Mian Waqas",
+          "desig": "APM",
+          "days": 31,
+          "hoSal": 0,
+          "advance": 0,
+          "generic": 0
+        },
+        {
+          "name": "Dr Zeeshan",
+          "desig": "Pharmacist",
+          "days": 31,
+          "hoSal": 0,
+          "advance": 0,
+          "generic": 0
+        },
+        {
+          "name": "Dr Hamza",
+          "desig": "Pharmacist",
+          "days": 31,
+          "hoSal": 0,
+          "advance": 0,
+          "generic": 0
+        },
+        {
+          "name": "Shah Faisal Ali Khan",
+          "desig": "Salesman",
+          "days": 31,
+          "hoSal": 0,
+          "advance": 0,
+          "generic": 0
+        },
+        {
+          "name": "Muhammad Reehan",
+          "desig": "Salesman",
+          "days": 31,
+          "hoSal": 0,
+          "advance": 0,
+          "generic": 0
+        },
+        {
+          "name": "Shamshair Ali",
+          "desig": "Salesman",
+          "days": 31,
+          "hoSal": 0,
+          "advance": 0,
+          "generic": 0
+        },
+        {
+          "name": "Asad",
+          "desig": "Salesman",
+          "days": 31,
+          "hoSal": 0,
+          "advance": 0,
+          "generic": 0
+        },
+        {
+          "name": "Husnain Haider",
+          "desig": "Salesman",
+          "days": 31,
+          "hoSal": 0,
+          "advance": 0,
+          "generic": 0
+        },
+        {
+          "name": "Ali Husnain ",
+          "desig": "Salesman",
+          "days": 31,
+          "hoSal": 0,
+          "advance": 0,
+          "generic": 0
+        },
+        {
+          "name": "Muhammad Kashif",
+          "desig": "Salesman",
+          "days": 31,
+          "hoSal": 0,
+          "advance": 0,
+          "generic": 0
+        },
+        {
+          "name": "M Rehman",
+          "desig": "Salesman",
+          "days": 31,
+          "hoSal": 0,
+          "advance": 0,
+          "generic": 0
+        },
+        {
+          "name": "Salman Ghulam Ali",
+          "desig": "Salesman",
+          "days": 31,
+          "hoSal": 0,
+          "advance": 0,
+          "generic": 0
+        }
+      ]
+    },
+    "expense": {
+      "June 2026": {
+        "opening": 0,
+        "rows": []
+      }
     }
   },
-  "petty": {},
+  "petty": {
+    "mw_petty_July 2026": {
+      "groups": []
+    }
+  },
   "custom": {
     "cs_1782121961825": {
       "name": "Jazz Cash Salman",
       "emoji": "📋",
-      "months": {}
+      "months": {
+        "July 2026": [
+          {
+            "desc": "",
+            "amount": 0,
+            "notes": ""
+          }
+        ]
+      }
     }
   },
-  "pushedAt": "2026-06-23T05:30:30.854Z"
+  "pushedAt": "2026-06-23T05:31:05.968Z"
 }
