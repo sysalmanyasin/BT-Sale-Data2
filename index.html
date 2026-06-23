@@ -23,8 +23,8 @@
 <title>Bahria Town — Sales IC</title>
 
 <!-- External Libraries -->
-<script src="https://accounts.google.com/gsi/client" async><\/script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"><\/script>
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 
 <!-- CSS Modules — load order matters -->
 <link rel="stylesheet" href="css/variables.css">
@@ -54,7 +54,7 @@ if ('serviceWorker' in navigator) {
       .catch(err => console.warn('[SW] Registration failed:', err));
   });
 }
-<\/script>
+</script>
 </head>
 <body>
 <!-- ====== AUTH GATE ====== -->
@@ -992,49 +992,49 @@ if ('serviceWorker' in navigator) {
 <!-- ====== JS MODULES — load order is critical ====== -->
 
 <!-- 1. Base data arrays (MONTHLY_BASE + DAILY_BASE — large file) -->
-<script src="js/data-base.js"><\/script>
+<script src="js/data-base.js"></script>
 
 <!-- 2. Config: state vars, utils, column constants -->
-<script src="js/config.js"><\/script>
+<script src="js/config.js"></script>
 
 <!-- 3. Auth: Google Sign-In + PIN password fallback -->
-<script src="js/auth.js"><\/script>
+<script src="js/auth.js"></script>
 
 <!-- 4. Storage: IndexedDB + render cache -->
-<script src="js/storage.js"><\/script>
+<script src="js/storage.js"></script>
 
 <!-- 5. UI: showPage, toast, clock, rebuild, dropdowns -->
-<script src="js/ui.js"><\/script>
+<script src="js/ui.js"></script>
 
 <!-- 6. GitHub: push / pull / auto-sync -->
-<script src="js/github.js"><\/script>
+<script src="js/github.js"></script>
 
 <!-- 7. Targets: monthly target management -->
-<script src="js/targets.js"><\/script>
+<script src="js/targets.js"></script>
 
 <!-- 8. Dashboard: KPI cards, charts, credit section -->
-<script src="js/dashboard.js"><\/script>
+<script src="js/dashboard.js"></script>
 
 <!-- 9. Index page: year/month grid rendering -->
-<script src="js/index-page.js"><\/script>
+<script src="js/index-page.js"></script>
 
 <!-- 10. Reports: day modal, month modal, all print helpers -->
-<script src="js/reports.js"><\/script>
+<script src="js/reports.js"></script>
 
 <!-- 11. Data page: daily table + entry form -->
-<script src="js/data-page.js"><\/script>
+<script src="js/data-page.js"></script>
 
 <!-- 12. Manager: salary, generic, expense, credit, petty, incentive -->
-<script src="js/manager.js"><\/script>
+<script src="js/manager.js"></script>
 
 <!-- 13. Custom spreadsheet sections (manager add-on) -->
-<script src="js/custom-sections.js"><\/script>
+<script src="js/custom-sections.js"></script>
 
 <!-- 14. Field manager modal -->
-<script src="js/fields.js"><\/script>
+<script src="js/fields.js"></script>
 
 <!-- 15. Google Drive backup / restore -->
-<script src="js/drive.js"><\/script>
+<script src="js/drive.js"></script>
 
 </body>
 </html>
