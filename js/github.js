@@ -134,17 +134,22 @@ async function pushToGitHub() {
     try {
       finalSha = await tryContentsAPI();
     } catch(e) {
-      // If file too large (422 with blob too large message) or content encoding issue → use Git Data API
-      if (e.status === 422 || e.status === 403 || (e.message && e.message.includes('too large'))) {
-        ghLog('Contents API rejected — switching to Git Data API…');
+      const msg = (e.message || '').toLowerCase();
+      const isShaConflict = e.status === 409
+        || msg.includes('does not match')
+        || msg.includes('sha')
+        || msg.includes('conflict');
+      const isTooLarge = msg.includes('too large') || msg.includes('blob');
+      // SHA conflict (409), too large (422), permission issue (403) → all use Git Data API
+      if (e.status === 422 || e.status === 409 || e.status === 403 || isShaConflict || isTooLarge) {
+        ghLog('Contents API rejected (' + (e.status || '?') + ') — switching to Git Data API…');
         finalSha = await tryGitDataAPI();
       } else {
-        // Re-throw with friendly messages
-        let msg = e.message;
-        if (e.status === 401) msg = 'Token invalid or expired — paste a new token in GitHub Sync settings';
-        if (e.status === 403) msg = 'Token lacks write permission — regenerate with "repo" scope at github.com/settings/tokens';
-        if (e.status === 422 && msg.includes('SHA')) msg = 'SHA conflict — please try pushing again';
-        throw new Error(msg);
+        // Re-throw with friendly messages for unrecoverable errors
+        let errMsg = e.message;
+        if (e.status === 401) errMsg = 'Token invalid or expired — paste a new token in GitHub Sync settings';
+        if (e.status === 403) errMsg = 'Token lacks write permission — regenerate with "repo" scope at github.com/settings/tokens';
+        throw new Error(errMsg);
       }
     }
 
