@@ -6,6 +6,57 @@
 const GH_T='bt_gh_token', GH_R='bt_gh_repo', GH_P='bt_gh_path', GH_S='bt_gh_sha';
 let _autoHandle = null;
 
+// ── Fetch the current remote file (sha + parsed JSON), or null if it doesn't exist yet ──
+async function fetchRemoteFile(headers, apiBase, path) {
+  const r = await fetch(`${apiBase}/contents/${path}`, { headers });
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error('Cannot read remote file: HTTP ' + r.status);
+  const file = await r.json();
+  let data = null;
+  if (!file.content || file.size > 900000) {
+    const rawResp = await fetch(file.download_url);
+    if (!rawResp.ok) throw new Error('HTTP ' + rawResp.status + ' (raw)');
+    data = await rawResp.json();
+  } else {
+    const b64 = file.content.replace(/\n/g, '').replace(/\s/g, '');
+    if (b64) data = JSON.parse(atob(b64));
+  }
+  return { sha: file.sha, data };
+}
+
+// ── Merge incoming remote data into the local in-memory + localStorage state ──
+// Per-collection rules (unchanged from the original pull-only logic):
+//   monthly/daily : remote wins per-field on existing records, new records added either way
+//   staff         : remote is the source of truth; local-only IDs (not yet pushed) are kept
+//   manager       : LOCAL wins on key collision (your unsaved edits aren't clobbered by remote)
+//   petty         : remote wins per month
+//   custom        : remote wins for existing sections; local-only sections are kept
+// Returns counts so callers can log what changed.
+function mergeIncomingData(data) {
+  let mN=0,dN=0,mU=0,dU=0;
+  if (data.monthly) data.monthly.forEach(m=>{
+    const idx=MONTHLY.findIndex(x=>x.Month_Year===m.Month_Year);
+    if(idx===-1){ MONTHLY.push(m); mN++; }
+    else{ Object.assign(MONTHLY[idx],m); mU++; }
+  });
+  if (data.daily) data.daily.forEach(d=>{
+    const idx=DAILY.findIndex(x=>x.Date===d.Date&&x.Month_Year===d.Month_Year);
+    if(idx===-1){ DAILY.push(d); dN++; }
+    else{ Object.assign(DAILY[idx],d); dU++; }
+  });
+  if (data.staff && data.staff.length) {
+    const localStaff = JSON.parse(localStorage.getItem(STAFF_KEY) || '[]');
+    const merged = [...data.staff];
+    localStaff.forEach(le => { if (!merged.find(r => r.id === le.id)) merged.push(le); });
+    STAFF = merged;
+    localStorage.setItem(STAFF_KEY, JSON.stringify(STAFF));
+  }
+  if (data.manager) { const cur=JSON.parse(localStorage.getItem(MGR_KEY)||'{}'); localStorage.setItem(MGR_KEY, JSON.stringify(Object.assign({},data.manager,cur))); }
+  if (data.petty)   { Object.entries(data.petty).forEach(([k,v])=>{ if (v != null) localStorage.setItem(k, JSON.stringify(v)); }); }
+  if (data.custom)  { const localCus=JSON.parse(localStorage.getItem(CSEC_KEY)||'{}'); localStorage.setItem(CSEC_KEY, JSON.stringify(Object.assign({},localCus,data.custom))); }
+  return {mN,dN,mU,dU};
+}
+
 async function pushToGitHub() {
   const cfg = ghCfg();
   if (!cfg) { toast('⚠ GitHub not configured','w'); return; }
@@ -18,6 +69,30 @@ async function pushToGitHub() {
       'Content-Type': 'application/json'
     };
     const apiBase = `https://api.github.com/repos/${cfg.repo}`;
+
+    // ── Conflict check: has the remote moved since we last synced? ──
+    // If another device/tab pushed since our last pull, blindly overwriting
+    // with our local snapshot would silently discard their changes. Detect
+    // that here and fold the remote changes in first, using the same
+    // collection-level merge rules as a manual pull.
+    let mergeNote = '';
+    let remoteSha = null;
+    try {
+      const remote = await fetchRemoteFile(headers, apiBase, cfg.path);
+      const lastKnownSha = localStorage.getItem(GH_S);
+      if (remote) {
+        remoteSha = remote.sha;
+        if (lastKnownSha && remote.sha !== lastKnownSha && remote.data) {
+          ghLog('⚠ Remote changed since last sync — merging before push…', 'info');
+          const {mN,dN,mU,dU} = mergeIncomingData(remote.data);
+          rebuildAll();
+          idbSaveData();
+          mergeNote = ` · merged remote: +${mN}/${mU}u months, +${dN}/${dU}u daily`;
+        }
+      }
+    } catch(e) {
+      ghLog('⚠ Could not check remote before push (' + e.message + ') — pushing anyway', 'info');
+    }
 
     // Collect all petty months
     const pettyAll = {};
@@ -174,9 +249,9 @@ async function pushToGitHub() {
       }
     }
 
-    ghLog('✓ Pushed successfully. SHA: ' + finalSha.slice(0, 8) + '…', 'ok');
+    ghLog('✓ Pushed successfully. SHA: ' + finalSha.slice(0, 8) + '…' + mergeNote, 'ok');
     setSyncBadge('ok');
-    toast('✓ Pushed to GitHub');
+    toast(mergeNote ? '✓ Merged & pushed to GitHub' : '✓ Pushed to GitHub');
   } catch(e) {
     ghLog('✕ Push failed: ' + e.message, 'err');
     setSyncBadge('err');
@@ -208,35 +283,7 @@ async function manualSync(silent=false) {
       if (!b64) throw new Error('Empty file from GitHub');
       data = JSON.parse(atob(b64));
     }
-    let mN=0,dN=0,mU=0,dU=0;
-    // Monthly: GitHub wins — update existing records, add new ones
-    if (data.monthly) data.monthly.forEach(m=>{
-      const idx=MONTHLY.findIndex(x=>x.Month_Year===m.Month_Year);
-      if(idx===-1){ MONTHLY.push(m); mN++; }
-      else{ Object.assign(MONTHLY[idx],m); mU++; }
-    });
-    // Daily: GitHub wins — update existing records, add new ones
-    if (data.daily) data.daily.forEach(d=>{
-      const idx=DAILY.findIndex(x=>x.Date===d.Date&&x.Month_Year===d.Month_Year);
-      if(idx===-1){ DAILY.push(d); dN++; }
-      else{ Object.assign(DAILY[idx],d); dU++; }
-    });
-    // Restore Staff registry
-    if (data.staff && data.staff.length) {
-      const localStaff = JSON.parse(localStorage.getItem(STAFF_KEY) || '[]');
-      // Merge: GitHub is source of truth for staff list; local additions win for new IDs
-      const merged = [...data.staff];
-      localStaff.forEach(le => { if (!merged.find(r => r.id === le.id)) merged.push(le); });
-      STAFF = merged;
-      localStorage.setItem(STAFF_KEY, JSON.stringify(STAFF));
-    }
-    // Restore Manager data
-    // Manager: merge GitHub (base) + local (override) so unsaved local edits are not lost
-    if (data.manager)  { const cur=JSON.parse(localStorage.getItem(MGR_KEY)||'{}'); localStorage.setItem(MGR_KEY, JSON.stringify(Object.assign({},data.manager,cur))); }
-    // Petty: GitHub wins per-month — GitHub holds the last pushed state and must not be silently skipped
-    if (data.petty)    { Object.entries(data.petty).forEach(([k,v])=>{ if (v != null) localStorage.setItem(k, JSON.stringify(v)); }); }
-    // Custom: merge — GitHub wins for existing sections; local-only sections (not yet pushed) are kept
-    if (data.custom)   { const localCus=JSON.parse(localStorage.getItem(CSEC_KEY)||'{}'); localStorage.setItem(CSEC_KEY, JSON.stringify(Object.assign({},localCus,data.custom))); }
+    const {mN,dN,mU,dU} = mergeIncomingData(data);
     ghLog(`✓ Pulled. +${mN} new / ${mU} updated months · +${dN} new / ${dU} updated daily records.`,'ok');
     setSyncBadge('ok');
     rebuildAll();
