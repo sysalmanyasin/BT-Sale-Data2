@@ -96,7 +96,8 @@ function closeDay() { document.getElementById('dmbg').classList.remove('on'); _p
 function openMonthModal(my) {
   const m=MONTHLY.find(x=>x.Month_Year===my); if(!m) return;
   _curMon = my;
-  const days=DAILY.filter(d=>d.Month_Year===my&&n(d.TOTAL)>0);
+  const days=DAILY.filter(d=>d.Month_Year===my&&n(d.TOTAL)>0)
+    .sort((a,b)=>_dateVal(b.Date)-_dateVal(a.Date));
   const fields=[['Cash Sale',m['Cash Sale']],['Cash Returns',m['Cash Returns']],['HBL',m.HBL],['MCB',m.MCB],
     ['Bank Alfalah',m['Alfala Bank']],['Bank Al Habib',m['Bank Al Habib']],['Meezan Bank',m['Meezan Bank (Paysa)']],
     ['PSO',m.PSO],['NESPAK',m.NESPAK],['PARCO',m.PARCO],['LDA',m.LDA],
