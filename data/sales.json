@@ -3289,11 +3289,11 @@
       "Nisar Spinning Mills": null,
       "Food Panda": null,
       "F/Issue": 6750,
-      "TOTAL": 10031410,
+      "TOTAL": 12643940,
       "Sale Plus": 216984423,
       "COMP SALE": 9892062,
       "DIFF": 139348,
-      "Customers": 10338,
+      "Customers": 13416,
       "FDPP": 7569,
       "FDPP Con": 2769,
       "Amount Received": null,
@@ -108276,7 +108276,7 @@
     },
     {
       "Month_Year": "June 2026",
-      "Date": "2026-06-19",
+      "Date": "19/Jun/2026",
       "Cash Sale": 258558,
       "Cash Returns": 21020,
       "HBL": null,
@@ -108322,7 +108322,7 @@
     },
     {
       "Month_Year": "June 2026",
-      "Date": "2026-06-20",
+      "Date": "20/Jun/2026",
       "Cash Sale": 157084,
       "Cash Returns": null,
       "HBL": null,
@@ -108368,7 +108368,7 @@
     },
     {
       "Month_Year": "June 2026",
-      "Date": "2026-06-21",
+      "Date": "21/Jun/2026",
       "Cash Sale": 212840,
       "Cash Returns": null,
       "HBL": null,
@@ -108411,6 +108411,218 @@
       "TOTAL": "396479",
       "Sale Plus": null,
       "DIFF": null
+    },
+    {
+      "Month_Year": "June 2026",
+      "Date": "19/Jun/2026",
+      "Cash Sale": 258558,
+      "Cash Returns": 21020,
+      "HBL": null,
+      "MCB": null,
+      "Alfala Bank": 264235,
+      "Bank Al Habib": 22905,
+      "Meezan Bank (Paysa)": null,
+      "Askari Bank": null,
+      "Askari Bank Returns": null,
+      "PSO": null,
+      "PSO Returns": null,
+      "NESPAK": null,
+      "NESPAK Returns": null,
+      "PARCO": null,
+      "PARCO Returns": null,
+      "TEPA": null,
+      "TEPA Returns": null,
+      "LDA": 5820,
+      "LDA Returns": null,
+      "Gourmet": null,
+      "Wapda Hospital": null,
+      "BTH": null,
+      "Berger Paints": null,
+      "Ecolean PK": null,
+      "Style Textile": null,
+      "Syed Babar Ali Foundation": null,
+      "Rahnuma NGO": null,
+      "Health Pass": null,
+      "Nisar Spinning Mills": null,
+      "Food Panda": null,
+      "F/Issue": 3650,
+      "COMP SALE": null,
+      "Customers": 566,
+      "FDPP": 423,
+      "FDPP Con": 143,
+      "Amount Received": null,
+      "Load Sale": null,
+      "Cash to be Deposited": null,
+      "Low Sale Reason": null,
+      "TOTAL": "534148",
+      "Sale Plus": null,
+      "DIFF": null
+    },
+    {
+      "Month_Year": "June 2026",
+      "Date": "20/Jun/2026",
+      "Cash Sale": 157084,
+      "Cash Returns": null,
+      "HBL": null,
+      "MCB": null,
+      "Alfala Bank": 119695,
+      "Bank Al Habib": 92179,
+      "Meezan Bank (Paysa)": null,
+      "Askari Bank": null,
+      "Askari Bank Returns": null,
+      "PSO": null,
+      "PSO Returns": null,
+      "NESPAK": null,
+      "NESPAK Returns": null,
+      "PARCO": 1786,
+      "PARCO Returns": null,
+      "TEPA": null,
+      "TEPA Returns": null,
+      "LDA": 4894,
+      "LDA Returns": null,
+      "Gourmet": null,
+      "Wapda Hospital": null,
+      "BTH": null,
+      "Berger Paints": null,
+      "Ecolean PK": null,
+      "Style Textile": null,
+      "Syed Babar Ali Foundation": null,
+      "Rahnuma NGO": null,
+      "Health Pass": null,
+      "Nisar Spinning Mills": null,
+      "Food Panda": null,
+      "F/Issue": null,
+      "COMP SALE": null,
+      "Customers": 491,
+      "FDPP": 347,
+      "FDPP Con": 144,
+      "Amount Received": null,
+      "Load Sale": null,
+      "Cash to be Deposited": null,
+      "Low Sale Reason": null,
+      "TOTAL": "375638",
+      "Sale Plus": null,
+      "DIFF": null
+    },
+    {
+      "Month_Year": "June 2026",
+      "Date": "21/Jun/2026",
+      "Cash Sale": 212840,
+      "Cash Returns": null,
+      "HBL": null,
+      "MCB": null,
+      "Alfala Bank": 173436,
+      "Bank Al Habib": null,
+      "Meezan Bank (Paysa)": null,
+      "Askari Bank": null,
+      "Askari Bank Returns": null,
+      "PSO": 7475,
+      "PSO Returns": null,
+      "NESPAK": null,
+      "NESPAK Returns": null,
+      "PARCO": 2728,
+      "PARCO Returns": null,
+      "TEPA": null,
+      "TEPA Returns": null,
+      "LDA": null,
+      "LDA Returns": null,
+      "Gourmet": null,
+      "Wapda Hospital": null,
+      "BTH": null,
+      "Berger Paints": null,
+      "Ecolean PK": null,
+      "Style Textile": null,
+      "Syed Babar Ali Foundation": null,
+      "Rahnuma NGO": null,
+      "Health Pass": null,
+      "Nisar Spinning Mills": null,
+      "Food Panda": null,
+      "F/Issue": null,
+      "COMP SALE": null,
+      "Customers": 482,
+      "FDPP": 352,
+      "FDPP Con": 130,
+      "Amount Received": null,
+      "Load Sale": null,
+      "Cash to be Deposited": null,
+      "Low Sale Reason": null,
+      "TOTAL": "396479",
+      "Sale Plus": null,
+      "DIFF": null
+    }
+  ],
+  "staff": [
+    {
+      "id": "emp_1782192282070",
+      "name": "Salman Yasin",
+      "designation": "Co Manager",
+      "active": true
+    },
+    {
+      "id": "emp_1782192282071",
+      "name": "Mian Waqas",
+      "designation": "APM",
+      "active": true
+    },
+    {
+      "id": "emp_1782192282072",
+      "name": "Shah Faisal",
+      "designation": "SSO",
+      "active": true
+    },
+    {
+      "id": "emp_1782192282073",
+      "name": "Dr Zeeshan",
+      "designation": "Internee Pharmacist",
+      "active": true
+    },
+    {
+      "id": "emp_1782192282074",
+      "name": "Dr Shujaat",
+      "designation": "Internee Pharmacist",
+      "active": true
+    },
+    {
+      "id": "emp_1782192282075",
+      "name": "M Reehan",
+      "designation": "Salesman",
+      "active": true
+    },
+    {
+      "id": "emp_1782192282076",
+      "name": "Ali Husnain",
+      "designation": "Salesman",
+      "active": true
+    },
+    {
+      "id": "emp_1782192282077",
+      "name": "Abdul Rehman",
+      "designation": "Salesman",
+      "active": true
+    },
+    {
+      "id": "emp_1782192282078",
+      "name": "Shamshair",
+      "designation": "Salesman",
+      "active": true
+    },
+    {
+      "id": "emp_1782192282079",
+      "name": "Asad Mushtaq",
+      "designation": "Salesman",
+      "active": true
+    },
+    {
+      "id": "emp_1782192282080",
+      "name": "Husnain Haider",
+      "designation": "Salesman",
+      "active": true
+    },
+    {
+      "id": "emp_1782192282081",
+      "name": "Kashif",
+      "designation": "Salesman",
+      "active": true
     }
   ],
   "manager": {
@@ -108489,6 +108701,9 @@
           "extra": 0
         }
       ]
+    },
+    "credit": {
+      "June 2026": []
     }
   },
   "petty": {},
@@ -108499,5 +108714,5 @@
       "months": {}
     }
   },
-  "backedUpAt": "2026-06-22T15:25:09.603Z"
+  "pushedAt": "2026-06-23T05:25:40.296Z"
 }
