@@ -53,8 +53,7 @@ setInterval(tickClock,30000); tickClock();
 // ══════════════════════════════════════════
 // GITHUB SYNC
 // ══════════════════════════════════════════
-const GH_T='bt_gh_token', GH_R='bt_gh_repo', GH_P='bt_gh_path', GH_S='bt_gh_sha';
-let _autoHandle = null;
+// (GH_T/GH_R/GH_P/GH_S/_autoHandle are declared in github.js — removed duplicate here)
 
 function rebuildDropdowns() {
   const yrs=years();

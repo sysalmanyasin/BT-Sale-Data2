@@ -194,3 +194,5 @@ window.addEventListener('load', function() {
     _csecMonth = cur;
     if (cur) loadCustomSections(cur);
     else renderAllCustomSections();
+  };
+});
