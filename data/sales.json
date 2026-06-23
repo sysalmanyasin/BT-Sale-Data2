@@ -108365,78 +108365,6 @@
       "name": "Salman Ghulam Ali",
       "designation": "Salesman",
       "active": true
-    },
-    {
-      "id": "emp_1782225867165",
-      "name": "Salman Yasin",
-      "designation": "Co Manager",
-      "active": true
-    },
-    {
-      "id": "emp_1782225867166",
-      "name": "Mian Waqas",
-      "designation": "APM",
-      "active": true
-    },
-    {
-      "id": "emp_1782225867167",
-      "name": "Shah Faisal",
-      "designation": "SSO",
-      "active": true
-    },
-    {
-      "id": "emp_1782225867168",
-      "name": "Dr Zeeshan",
-      "designation": "Internee Pharmacist",
-      "active": true
-    },
-    {
-      "id": "emp_1782225867169",
-      "name": "Dr Shujaat",
-      "designation": "Internee Pharmacist",
-      "active": true
-    },
-    {
-      "id": "emp_1782225867170",
-      "name": "M Reehan",
-      "designation": "Salesman",
-      "active": true
-    },
-    {
-      "id": "emp_1782225867171",
-      "name": "Ali Husnain",
-      "designation": "Salesman",
-      "active": true
-    },
-    {
-      "id": "emp_1782225867172",
-      "name": "Abdul Rehman",
-      "designation": "Salesman",
-      "active": true
-    },
-    {
-      "id": "emp_1782225867173",
-      "name": "Shamshair",
-      "designation": "Salesman",
-      "active": true
-    },
-    {
-      "id": "emp_1782225867174",
-      "name": "Asad Mushtaq",
-      "designation": "Salesman",
-      "active": true
-    },
-    {
-      "id": "emp_1782225867175",
-      "name": "Husnain Haider",
-      "designation": "Salesman",
-      "active": true
-    },
-    {
-      "id": "emp_1782225867176",
-      "name": "Kashif",
-      "designation": "Salesman",
-      "active": true
     }
   ],
   "manager": {
@@ -109112,7 +109040,7 @@
   "custom": {
     "cs_1782192769028": {
       "name": "Salman Jazz Cash",
-      "emoji": "📋",
+      "emoji": "\ud83d\udccb",
       "months": {
         "June 2026": [
           {
@@ -109142,7 +109070,7 @@
     },
     "cs_1782192778545": {
       "name": "Adnan Sweeper",
-      "emoji": "📋",
+      "emoji": "\ud83d\udccb",
       "months": {
         "June 2026": [
           {
@@ -109172,7 +109100,7 @@
     },
     "cs_1782192793528": {
       "name": "Less / Excess Cash Details",
-      "emoji": "📋",
+      "emoji": "\ud83d\udccb",
       "months": {
         "June 2026": [
           {
@@ -109202,7 +109130,7 @@
     },
     "cs_1782192828235": {
       "name": "Others",
-      "emoji": "📋",
+      "emoji": "\ud83d\udccb",
       "months": {
         "June 2026": [
           {
