@@ -468,6 +468,19 @@ if ('serviceWorker' in navigator) {
         <button class="btn btn-g" onclick="pushToGitHub()">⬆ Push All Data</button>
         <button class="btn btn-d" onclick="clearGhConfig()">Clear Token</button>
       </div>
+      <!-- ── Auto-Refresh Status + Manual Hard Refresh ── -->
+      <div style="display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px 12px;background:rgba(255,255,255,.04);border-radius:8px;border:1px solid rgba(255,255,255,.08)">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;color:var(--text)">🔄 Auto-Refresh</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">
+            Checks GitHub every 60 s. If data changes on any device, <strong style="color:var(--accent)">all devices reload automatically.</strong>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px">
+            Last poll: <span id="ar-last-poll">—</span> &nbsp;·&nbsp; Status: <span id="ar-status" style="color:var(--green)">Active</span>
+          </div>
+        </div>
+        <button class="btn btn-s" style="white-space:nowrap;flex-shrink:0" onclick="hardRefreshCache()">⚡ Hard Refresh</button>
+      </div>
       <div class="ghlog" id="ghlog">GitHub log ready…</div>
       <div style="margin-top:10px;font-size:11px;color:var(--muted);line-height:1.8">
         <strong style="color:var(--text)">Get a token:</strong>

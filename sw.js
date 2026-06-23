@@ -4,7 +4,7 @@
    Data (GitHub / Drive API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v1.701';
+const CACHE_NAME = 'bt-sales-v1.702';
 
 const APP_SHELL = [
   './',
@@ -156,13 +156,30 @@ async function networkWithCacheFallback(request) {
 }
 
 /* ────────────────────────────────────────────────
-   MESSAGE — force update from client
+   MESSAGE — commands from the client page
    ──────────────────────────────────────────────── */
 self.addEventListener('message', event => {
+  /* Legacy force-update trigger */
   if (event.data === 'SKIP_WAITING') self.skipWaiting();
+
+  /* Manual hard-refresh: wipe cache, keep localStorage */
   if (event.data === 'CACHE_CLEAR') {
-    caches.delete(CACHE_NAME).then(() => {
+    caches.keys().then(keys =>
+      Promise.all(keys.map(k => caches.delete(k)))
+    ).then(() => {
       event.source.postMessage('CACHE_CLEARED');
+    });
+  }
+
+  /* ── AUTO-REFRESH triggered by SHA change detected in github.js ──
+     1. Wipe all SW caches
+     2. Broadcast RELOAD to every open tab/window of this app         */
+  if (event.data === 'DATA_CHANGED_RELOAD') {
+    caches.keys().then(keys =>
+      Promise.all(keys.map(k => caches.delete(k)))
+    ).then(async () => {
+      const clients = await self.clients.matchAll({ includeUncontrolled: true, type: 'window' });
+      clients.forEach(c => c.postMessage('SW_RELOAD'));
     });
   }
 });
