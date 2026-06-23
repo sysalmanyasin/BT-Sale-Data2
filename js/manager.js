@@ -235,19 +235,50 @@ function mgrLoad() {
 }
 function mgrSave(data) { localStorage.setItem(MGR_KEY, JSON.stringify(data)); }
 
-// Returns list of month strings ['January 2026','February 2026',…] from MONTHLY data + extras
+// Returns a continuous newest-first month list, so blank months do not disappear.
 function mgrMonths() {
-  const existing = [...months()].reverse(); // months() returns array from MONTHLY data
-  const now = new Date();
   const names = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  // ensure current + next month always present
+  const toVal = my => {
+    const p = String(my || '').split(' ');
+    const mi = names.indexOf(p[0]);
+    const yr = parseInt(p[1], 10);
+    return mi >= 0 && !isNaN(yr) ? yr * 12 + mi : null;
+  };
+  const toLabel = val => names[val % 12] + ' ' + Math.floor(val / 12);
+  const seen = new Set();
+
+  months().forEach(m => seen.add(m));
+  MONTHLY.forEach(m => { if (m.Month_Year) seen.add(m.Month_Year); });
+
+  try {
+    const mgr = mgrLoad();
+    ['salary','generic','expense','credit'].forEach(k => Object.keys(mgr[k] || {}).forEach(m => seen.add(m)));
+  } catch(e) {}
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('mw_petty_')) seen.add(k.slice('mw_petty_'.length));
+      if (k && k.startsWith('mw_incentive_')) seen.add(k.slice('mw_incentive_'.length));
+    }
+  } catch(e) {}
+  try {
+    const all = typeof _csecLoad === 'function' ? _csecLoad() : JSON.parse(localStorage.getItem('mw_custom_sections_v1') || '{}');
+    Object.values(all || {}).forEach(sec => Object.keys((sec && sec.months) || {}).forEach(m => seen.add(m)));
+  } catch(e) {}
+
+  const now = new Date();
   for (let delta = -1; delta <= 1; delta++) {
     const d = new Date(now.getFullYear(), now.getMonth() + delta, 1);
-    const label = names[d.getMonth()] + ' ' + d.getFullYear();
-    if (!existing.includes(label)) existing.unshift(label);
+    seen.add(names[d.getMonth()] + ' ' + d.getFullYear());
   }
-  // deduplicate keeping order
-  return [...new Set(existing)];
+
+  const vals = Array.from(seen).map(toVal).filter(v => v != null);
+  if (!vals.length) return [];
+  const min = Math.min(...vals);
+  const max = Math.max(...vals, now.getFullYear() * 12 + now.getMonth() + 1);
+  const out = [];
+  for (let v = max; v >= min; v--) out.push(toLabel(v));
+  return out;
 }
 
 function _mgrPopSel(selId, current) {
@@ -1198,6 +1229,15 @@ function savePettyData() {
   if (localStorage.getItem('bt_auto_save')==='1' && typeof pushToGitHub==='function') pushToGitHub();
 }
 
+function _pettyTotalForMonth(my) {
+  try {
+    const raw = localStorage.getItem(_pettyKey(my));
+    const data = raw ? JSON.parse(raw) : null;
+    const groups = data && Array.isArray(data.groups) ? data.groups : [];
+    return groups.reduce((s, g) => s + (Array.isArray(g.rows) ? g.rows.reduce((a, r) => a + _ni(r.amount), 0) : 0), 0);
+  } catch(e) { return 0; }
+}
+
 function addPettyGroup() {
   _pettyData.groups.push({ period: '', rows: [{ desc: '', amount: 0 }] });
   renderPettyGroups();
@@ -1478,7 +1518,7 @@ function printIncentiveReport() {
 
 // ── Save All Manager Sections ──────────────────────────────────────────────
 function saveAllManagerSections() {
-  const monthSels = ['sal-month-sel','gen-month-sel','exp-month-sel','crd-month-sel','pet-month-sel','inc-month-sel','csec-month-sel'];
+  const monthSels = ['sal-month-sel','gen-month-sel','exp-month-sel','crd-month-sel','petty-month-sel','inc-month-sel','csec-month-sel'];
   const anyMonth = monthSels.map(id => (document.getElementById(id)||{}).value || '').find(v => v);
   if (!anyMonth) { toast('⚠ No month selected — open a tab and pick a month first','w'); return; }
   let saved = 0;
@@ -1502,15 +1542,27 @@ function populateDashWorking(mon) {
   if (!mon) { wEl.style.display = 'none'; return; }
   wEl.style.display = '';
   const mgr = JSON.parse(localStorage.getItem('BT_ManagerWork_v1') || '{}');
-  const d = mgr[mon] || {};
-  function fmt(v) { return (v != null && v !== '' && v !== 0) ? v : '—'; }
+  const salaryRows = (mgr.salary && mgr.salary[mon]) || [];
+  const genericRows = (mgr.generic && mgr.generic[mon]) || [];
+  const salaryTotal = salaryRows.reduce((s, r) => s + (_ni(r.hoSal) - _ni(r.advance) + _ni(r.generic)), 0);
+  const genericTotal = genericRows.reduce((s, r) => s + (Math.round(_ni(r.genericSale) * 0.04) + _ni(r.extra)), 0);
+  const pettyTotal = typeof _pettyTotalForMonth === 'function' ? _pettyTotalForMonth(mon) : 0;
+  function fmt(v) { return (v != null && v !== '' && v !== 0) ? '₨' + _fc2(v) : '—'; }
   const el = id => document.getElementById(id);
-  if (el('dw-salary'))    el('dw-salary').textContent    = fmt(d.salNet || d.salGross || '');
-  if (el('dw-generic'))   el('dw-generic').textContent   = fmt(d.genTotal || '');
-  if (el('dw-petty'))     el('dw-petty').textContent     = fmt(d.petTotal || '');
+  if (el('dw-salary'))    el('dw-salary').textContent    = fmt(salaryTotal);
+  if (el('dw-generic'))   el('dw-generic').textContent   = fmt(genericTotal);
+  if (el('dw-petty'))     el('dw-petty').textContent     = fmt(pettyTotal);
   if (el('dw-incentive')) {
     const inc = JSON.parse(localStorage.getItem('mw_incentive_' + mon) || '{}');
-    el('dw-incentive').textContent = fmt(inc.netInc || '');
+    let incNet = inc.netInc;
+    if (incNet == null) {
+      const saleComm = Math.round(_ni(inc.saleVal) * 0.005);
+      const genInc = Math.round(_ni(inc.genSale) * 0.045);
+      const totalComm = saleComm - _ni(inc.pilferage) - _ni(inc.tillShort);
+      const totalGen = genInc - _ni(inc.excessFine);
+      incNet = totalComm + _ni(inc.cashTarget) + totalGen - _ni(inc.plusFine) - _ni(inc.paperFine) - _ni(inc.panelFine);
+    }
+    el('dw-incentive').textContent = fmt(incNet || '');
   }
 }
 

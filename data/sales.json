@@ -3258,24 +3258,24 @@
     },
     {
       "Month_Year": "June 2026",
-      "Cash Sale": 6420405,
-      "Cash Returns": -400179,
+      "Cash Sale": 5733424,
+      "Cash Returns": -350556,
       "HBL": null,
       "MCB": null,
-      "Alfala Bank": 3140615,
-      "Bank Al Habib": 2228552,
+      "Alfala Bank": 2686233,
+      "Bank Al Habib": 2084845,
       "Meezan Bank (Paysa)": null,
-      "Askari Bank": 215398,
+      "Askari Bank": 210504,
       "Askari Bank Returns": null,
-      "PSO": 10955,
+      "PSO": null,
       "PSO Returns": null,
       "NESPAK": 2072,
       "NESPAK Returns": null,
-      "PARCO": 160373,
+      "PARCO": 123287,
       "PARCO Returns": null,
       "TEPA": null,
       "TEPA Returns": null,
-      "LDA": 122962,
+      "LDA": 107389,
       "LDA Returns": null,
       "Gourmet": null,
       "Wapda Hospital": null,
@@ -3289,157 +3289,19 @@
       "Nisar Spinning Mills": null,
       "Food Panda": null,
       "F/Issue": 6750,
-      "TOTAL": "11865863",
+      "TOTAL": "10561908",
       "Sale Plus": null,
-      "COMP SALE": 11716255,
+      "COMP SALE": 10394878,
       "DIFF": null,
-      "Customers": 12515,
-      "FDPP": 9169,
-      "FDPP Con": 3346,
+      "Customers": 10904,
+      "FDPP": 7992,
+      "FDPP Con": 2912,
       "Amount Received": null,
       "Load Sale": null,
-      "Cash to be Deposited": 5990701
+      "Cash to be Deposited": 5351732
     }
   ],
   "daily": [
-    {
-      "Month_Year": "June 2026",
-      "Date": "20/Jun/2026",
-      "Cash Sale": 157084,
-      "Cash Returns": null,
-      "HBL": null,
-      "MCB": null,
-      "Alfala Bank": 119695,
-      "Bank Al Habib": 92179,
-      "Meezan Bank (Paysa)": null,
-      "Askari Bank": 4894,
-      "Askari Bank Returns": null,
-      "PSO": null,
-      "PSO Returns": null,
-      "NESPAK": null,
-      "NESPAK Returns": null,
-      "PARCO": 1786,
-      "PARCO Returns": null,
-      "TEPA": null,
-      "TEPA Returns": null,
-      "LDA": null,
-      "LDA Returns": null,
-      "Gourmet": null,
-      "Wapda Hospital": null,
-      "BTH": null,
-      "Berger Paints": null,
-      "Ecolean PK": null,
-      "Style Textile": null,
-      "Syed Babar Ali Foundation": null,
-      "Rahnuma NGO": null,
-      "Health Pass": null,
-      "Nisar Spinning Mills": null,
-      "Food Panda": null,
-      "F/Issue": null,
-      "COMP SALE": 444584,
-      "Customers": 491,
-      "FDPP": 347,
-      "FDPP Con": 144,
-      "Amount Received": null,
-      "Load Sale": null,
-      "Cash to be Deposited": 157575,
-      "Low Sale Reason": null,
-      "TOTAL": "375638",
-      "Sale Plus": null,
-      "DIFF": null
-    },
-    {
-      "Month_Year": "June 2026",
-      "Date": "21/Jun/2026",
-      "Cash Sale": 212840,
-      "Cash Returns": null,
-      "HBL": null,
-      "MCB": null,
-      "Alfala Bank": 173436,
-      "Bank Al Habib": null,
-      "Meezan Bank (Paysa)": null,
-      "Askari Bank": null,
-      "Askari Bank Returns": null,
-      "PSO": 7475,
-      "PSO Returns": null,
-      "NESPAK": null,
-      "NESPAK Returns": null,
-      "PARCO": 2728,
-      "PARCO Returns": null,
-      "TEPA": null,
-      "TEPA Returns": null,
-      "LDA": null,
-      "LDA Returns": null,
-      "Gourmet": null,
-      "Wapda Hospital": null,
-      "BTH": null,
-      "Berger Paints": null,
-      "Ecolean PK": null,
-      "Style Textile": null,
-      "Syed Babar Ali Foundation": null,
-      "Rahnuma NGO": null,
-      "Health Pass": null,
-      "Nisar Spinning Mills": null,
-      "Food Panda": null,
-      "F/Issue": null,
-      "COMP SALE": 380504,
-      "Customers": 482,
-      "FDPP": 352,
-      "FDPP Con": 130,
-      "Amount Received": null,
-      "Load Sale": null,
-      "Cash to be Deposited": 213322,
-      "Low Sale Reason": null,
-      "TOTAL": "396479",
-      "Sale Plus": null,
-      "DIFF": null
-    },
-    {
-      "Month_Year": "June 2026",
-      "Date": "22/Jun/2026",
-      "Cash Sale": 317057,
-      "Cash Returns": -49623,
-      "HBL": null,
-      "MCB": null,
-      "Alfala Bank": 161251,
-      "Bank Al Habib": 51528,
-      "Meezan Bank (Paysa)": null,
-      "Askari Bank": null,
-      "Askari Bank Returns": null,
-      "PSO": 3480,
-      "PSO Returns": null,
-      "NESPAK": null,
-      "NESPAK Returns": null,
-      "PARCO": 32572,
-      "PARCO Returns": null,
-      "TEPA": null,
-      "TEPA Returns": null,
-      "LDA": 15573,
-      "LDA Returns": null,
-      "Gourmet": null,
-      "Wapda Hospital": null,
-      "BTH": null,
-      "Berger Paints": null,
-      "Ecolean PK": null,
-      "Style Textile": null,
-      "Syed Babar Ali Foundation": null,
-      "Rahnuma NGO": null,
-      "Health Pass": null,
-      "Nisar Spinning Mills": null,
-      "Food Panda": null,
-      "F/Issue": null,
-      "COMP SALE": 496289,
-      "Customers": 638,
-      "FDPP": 478,
-      "FDPP Con": 160,
-      "Amount Received": null,
-      "Load Sale": null,
-      "Cash to be Deposited": 268072,
-      "Low Sale Reason": null,
-      "TOTAL": "531838",
-      "Sale Plus": null,
-      "DIFF": null
-    },
     {
       "Month_Year": "June 2026",
       "Date": "19/Jun/2026",
@@ -107908,6 +107770,144 @@
     },
     {
       "Month_Year": "June 2026",
+      "Date": "20/Jun/2026",
+      "Cash Sale": null,
+      "Cash Returns": null,
+      "HBL": null,
+      "MCB": null,
+      "Alfala Bank": null,
+      "Bank Al Habib": null,
+      "Meezan Bank (Paysa)": null,
+      "Askari Bank": null,
+      "Askari Bank Returns": null,
+      "PSO": null,
+      "PSO Returns": null,
+      "NESPAK": null,
+      "NESPAK Returns": null,
+      "PARCO": null,
+      "PARCO Returns": null,
+      "TEPA": null,
+      "TEPA Returns": null,
+      "LDA": null,
+      "LDA Returns": null,
+      "Gourmet": null,
+      "Wapda Hospital": null,
+      "BTH": null,
+      "Berger Paints": null,
+      "Ecolean PK": null,
+      "Style Textile": null,
+      "Syed Babar Ali Foundation": null,
+      "Rahnuma NGO": null,
+      "Health Pass": null,
+      "Nisar Spinning Mills": null,
+      "Food Panda": null,
+      "F/Issue": null,
+      "TOTAL": "0",
+      "Sale Plus": "10031410",
+      "COMP SALE": null,
+      "DIFF": "0",
+      "Customers": "0",
+      "FDPP": null,
+      "FDPP Con": null,
+      "Amount Received": null,
+      "Load Sale": null,
+      "Cash to be Deposited": 0,
+      "Low Sale Reason": null
+    },
+    {
+      "Month_Year": "June 2026",
+      "Date": "21/Jun/2026",
+      "Cash Sale": null,
+      "Cash Returns": null,
+      "HBL": null,
+      "MCB": null,
+      "Alfala Bank": null,
+      "Bank Al Habib": null,
+      "Meezan Bank (Paysa)": null,
+      "Askari Bank": null,
+      "Askari Bank Returns": null,
+      "PSO": null,
+      "PSO Returns": null,
+      "NESPAK": null,
+      "NESPAK Returns": null,
+      "PARCO": null,
+      "PARCO Returns": null,
+      "TEPA": null,
+      "TEPA Returns": null,
+      "LDA": null,
+      "LDA Returns": null,
+      "Gourmet": null,
+      "Wapda Hospital": null,
+      "BTH": null,
+      "Berger Paints": null,
+      "Ecolean PK": null,
+      "Style Textile": null,
+      "Syed Babar Ali Foundation": null,
+      "Rahnuma NGO": null,
+      "Health Pass": null,
+      "Nisar Spinning Mills": null,
+      "Food Panda": null,
+      "F/Issue": null,
+      "TOTAL": "0",
+      "Sale Plus": "10031410",
+      "COMP SALE": null,
+      "DIFF": "0",
+      "Customers": "0",
+      "FDPP": null,
+      "FDPP Con": null,
+      "Amount Received": null,
+      "Load Sale": null,
+      "Cash to be Deposited": 0,
+      "Low Sale Reason": null
+    },
+    {
+      "Month_Year": "June 2026",
+      "Date": "22/Jun/2026",
+      "Cash Sale": null,
+      "Cash Returns": null,
+      "HBL": null,
+      "MCB": null,
+      "Alfala Bank": null,
+      "Bank Al Habib": null,
+      "Meezan Bank (Paysa)": null,
+      "Askari Bank": null,
+      "Askari Bank Returns": null,
+      "PSO": null,
+      "PSO Returns": null,
+      "NESPAK": null,
+      "NESPAK Returns": null,
+      "PARCO": null,
+      "PARCO Returns": null,
+      "TEPA": null,
+      "TEPA Returns": null,
+      "LDA": null,
+      "LDA Returns": null,
+      "Gourmet": null,
+      "Wapda Hospital": null,
+      "BTH": null,
+      "Berger Paints": null,
+      "Ecolean PK": null,
+      "Style Textile": null,
+      "Syed Babar Ali Foundation": null,
+      "Rahnuma NGO": null,
+      "Health Pass": null,
+      "Nisar Spinning Mills": null,
+      "Food Panda": null,
+      "F/Issue": null,
+      "TOTAL": "0",
+      "Sale Plus": "10031410",
+      "COMP SALE": null,
+      "DIFF": "0",
+      "Customers": "0",
+      "FDPP": null,
+      "FDPP Con": null,
+      "Amount Received": null,
+      "Load Sale": null,
+      "Cash to be Deposited": 0,
+      "Low Sale Reason": null
+    },
+    {
+      "Month_Year": "June 2026",
       "Date": "23/Jun/2026",
       "Cash Sale": null,
       "Cash Returns": null,
@@ -108365,78 +108365,6 @@
       "name": "Salman Ghulam Ali",
       "designation": "Salesman",
       "active": true
-    },
-    {
-      "id": "emp_1782225867165",
-      "name": "Salman Yasin",
-      "designation": "Co Manager",
-      "active": true
-    },
-    {
-      "id": "emp_1782225867166",
-      "name": "Mian Waqas",
-      "designation": "APM",
-      "active": true
-    },
-    {
-      "id": "emp_1782225867167",
-      "name": "Shah Faisal",
-      "designation": "SSO",
-      "active": true
-    },
-    {
-      "id": "emp_1782225867168",
-      "name": "Dr Zeeshan",
-      "designation": "Internee Pharmacist",
-      "active": true
-    },
-    {
-      "id": "emp_1782225867169",
-      "name": "Dr Shujaat",
-      "designation": "Internee Pharmacist",
-      "active": true
-    },
-    {
-      "id": "emp_1782225867170",
-      "name": "M Reehan",
-      "designation": "Salesman",
-      "active": true
-    },
-    {
-      "id": "emp_1782225867171",
-      "name": "Ali Husnain",
-      "designation": "Salesman",
-      "active": true
-    },
-    {
-      "id": "emp_1782225867172",
-      "name": "Abdul Rehman",
-      "designation": "Salesman",
-      "active": true
-    },
-    {
-      "id": "emp_1782225867173",
-      "name": "Shamshair",
-      "designation": "Salesman",
-      "active": true
-    },
-    {
-      "id": "emp_1782225867174",
-      "name": "Asad Mushtaq",
-      "designation": "Salesman",
-      "active": true
-    },
-    {
-      "id": "emp_1782225867175",
-      "name": "Husnain Haider",
-      "designation": "Salesman",
-      "active": true
-    },
-    {
-      "id": "emp_1782225867176",
-      "name": "Kashif",
-      "designation": "Salesman",
-      "active": true
     }
   ],
   "manager": {
@@ -108646,66 +108574,36 @@
       "July 2026": [
         {
           "name": "Salman Yasin",
-          "prevBal": 670,
-          "entries": [
-            {
-              "date": "23-Jun-2026",
-              "desc": "credit",
-              "amount": 0
-            }
-          ],
+          "prevBal": 0,
+          "entries": [],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Muhammad Zubair",
-          "prevBal": 20900,
-          "entries": [
-            {
-              "date": "23-Jun-2026",
-              "desc": "credit",
-              "amount": 0
-            }
-          ],
+          "prevBal": 0,
+          "entries": [],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Aftab Wizir",
-          "prevBal": 150,
-          "entries": [
-            {
-              "date": "23-Jun-2026",
-              "desc": "credit",
-              "amount": 0
-            }
-          ],
+          "prevBal": 0,
+          "entries": [],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Mian Waqas",
-          "prevBal": 450,
-          "entries": [
-            {
-              "date": "23-Jun-2026",
-              "desc": "credit",
-              "amount": 0
-            }
-          ],
+          "prevBal": 0,
+          "entries": [],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Dr Zeeshan",
-          "prevBal": 6740,
-          "entries": [
-            {
-              "date": "23-Jun-2026",
-              "desc": "credit",
-              "amount": 0
-            }
-          ],
+          "prevBal": 0,
+          "entries": [],
           "salary": 0,
           "lessGeneric": 0
         },
@@ -108718,40 +108616,22 @@
         },
         {
           "name": "Shah Faisal Ali Khan",
-          "prevBal": 1995,
-          "entries": [
-            {
-              "date": "23-Jun-2026",
-              "desc": "credit",
-              "amount": 0
-            }
-          ],
+          "prevBal": 0,
+          "entries": [],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Muhammad Reehan",
-          "prevBal": 1604,
-          "entries": [
-            {
-              "date": "23-Jun-2026",
-              "desc": "credit",
-              "amount": 0
-            }
-          ],
+          "prevBal": 0,
+          "entries": [],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Shamshair Ali",
-          "prevBal": 9055,
-          "entries": [
-            {
-              "date": "23-Jun-2026",
-              "desc": "credit",
-              "amount": 0
-            }
-          ],
+          "prevBal": 0,
+          "entries": [],
           "salary": 0,
           "lessGeneric": 0
         },
@@ -108764,27 +108644,15 @@
         },
         {
           "name": "Husnain Haider",
-          "prevBal": 3950,
-          "entries": [
-            {
-              "date": "23-Jun-2026",
-              "desc": "credit",
-              "amount": 0
-            }
-          ],
+          "prevBal": 0,
+          "entries": [],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Ali Husnain ",
-          "prevBal": 2540,
-          "entries": [
-            {
-              "date": "23-Jun-2026",
-              "desc": "credit",
-              "amount": 0
-            }
-          ],
+          "prevBal": 0,
+          "entries": [],
           "salary": 0,
           "lessGeneric": 0
         },
@@ -108797,27 +108665,15 @@
         },
         {
           "name": "M Rehman",
-          "prevBal": 181,
-          "entries": [
-            {
-              "date": "23-Jun-2026",
-              "desc": "credit",
-              "amount": 0
-            }
-          ],
+          "prevBal": 0,
+          "entries": [],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Salman Ghulam Ali",
-          "prevBal": 2650,
-          "entries": [
-            {
-              "date": "23-Jun-2026",
-              "desc": "credit",
-              "amount": 0
-            }
-          ],
+          "prevBal": 0,
+          "entries": [],
           "salary": 0,
           "lessGeneric": 0
         }
@@ -108952,7 +108808,7 @@
           "desig": "Co Manager",
           "days": 31,
           "hoSal": 0,
-          "advance": 670,
+          "advance": 0,
           "generic": 0
         },
         {
@@ -108960,7 +108816,7 @@
           "desig": "Co Manager",
           "days": 31,
           "hoSal": 0,
-          "advance": 20900,
+          "advance": 0,
           "generic": 0
         },
         {
@@ -108968,7 +108824,7 @@
           "desig": "Head Cashier",
           "days": 31,
           "hoSal": 0,
-          "advance": 150,
+          "advance": 0,
           "generic": 0
         },
         {
@@ -108976,7 +108832,7 @@
           "desig": "APM",
           "days": 31,
           "hoSal": 0,
-          "advance": 450,
+          "advance": 0,
           "generic": 0
         },
         {
@@ -108984,7 +108840,7 @@
           "desig": "Pharmacist",
           "days": 31,
           "hoSal": 0,
-          "advance": 6740,
+          "advance": 0,
           "generic": 0
         },
         {
@@ -109000,7 +108856,7 @@
           "desig": "Salesman",
           "days": 31,
           "hoSal": 0,
-          "advance": 1995,
+          "advance": 0,
           "generic": 0
         },
         {
@@ -109008,7 +108864,7 @@
           "desig": "Salesman",
           "days": 31,
           "hoSal": 0,
-          "advance": 1604,
+          "advance": 0,
           "generic": 0
         },
         {
@@ -109016,7 +108872,7 @@
           "desig": "Salesman",
           "days": 31,
           "hoSal": 0,
-          "advance": 9055,
+          "advance": 0,
           "generic": 0
         },
         {
@@ -109032,7 +108888,7 @@
           "desig": "Salesman",
           "days": 31,
           "hoSal": 0,
-          "advance": 3950,
+          "advance": 0,
           "generic": 0
         },
         {
@@ -109040,7 +108896,7 @@
           "desig": "Salesman",
           "days": 31,
           "hoSal": 0,
-          "advance": 2540,
+          "advance": 0,
           "generic": 0
         },
         {
@@ -109056,7 +108912,7 @@
           "desig": "Salesman",
           "days": 31,
           "hoSal": 0,
-          "advance": 181,
+          "advance": 0,
           "generic": 0
         },
         {
@@ -109064,7 +108920,7 @@
           "desig": "Salesman",
           "days": 31,
           "hoSal": 0,
-          "advance": 2350,
+          "advance": 0,
           "generic": 0
         }
       ]
@@ -109076,28 +108932,7 @@
       },
       "July 2026": {
         "opening": 0,
-        "rows": [
-          {
-            "date": "22-Jun-2026",
-            "desc": "Patty Head Office",
-            "bill": -11497,
-            "fuel": 0,
-            "soap": 0,
-            "refresh": 0,
-            "extra": 0,
-            "pattyHO": 0
-          },
-          {
-            "date": "23-Jun-2026",
-            "desc": "Current Patty",
-            "bill": -9316,
-            "fuel": 0,
-            "soap": 0,
-            "refresh": 0,
-            "extra": 0,
-            "pattyHO": 0
-          }
-        ]
+        "rows": []
       }
     }
   },
@@ -109188,5 +109023,5 @@
       }
     }
   },
-  "pushedAt": "2026-06-23T15:52:10.269Z"
+  "pushedAt": "2026-06-23T10:33:59.597Z"
 }

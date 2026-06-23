@@ -56,20 +56,50 @@ function buildDashboard() {
 
   buildCharts(data);
   buildSummaryTable();
-  buildCreditSection(lat);
+  const managerMonth = latestManagerMonth() || (lat && lat.Month_Year);
+  buildCreditSection(managerMonth);
 
   // populate Working summary for the latest manager month
-  if (typeof populateDashWorking === 'function') { const mgr=JSON.parse(localStorage.getItem('BT_ManagerWork_v1')||'{}'); const mons=Object.keys(mgr).sort().reverse(); populateDashWorking(mons[0]||''); }
+  if (typeof populateDashWorking === 'function') populateDashWorking(managerMonth || '');
 }
 
 // ══════════════════════════════════════════
 // DASHBOARD CREDIT DETAILS SECTION
 // ══════════════════════════════════════════
+function _monthSortVal(my) {
+  const MN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const parts = String(my || '').split(' ');
+  const idx = MN.indexOf(parts[0]);
+  const yr = parseInt(parts[1], 10);
+  return idx >= 0 && !isNaN(yr) ? yr * 12 + idx : -1;
+}
+
+function latestManagerMonth() {
+  const found = new Set();
+  try {
+    const mgr = mgrLoad();
+    ['salary','generic','expense','credit'].forEach(k => {
+      Object.keys(mgr[k] || {}).forEach(m => found.add(m));
+    });
+  } catch(e) {}
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('mw_petty_')) found.add(k.slice('mw_petty_'.length));
+    }
+  } catch(e) {}
+  try {
+    const csecAll = typeof _csecLoad === 'function' ? _csecLoad() : {};
+    Object.values(csecAll).forEach(sec => Object.keys((sec && sec.months) || {}).forEach(m => found.add(m)));
+  } catch(e) {}
+  return Array.from(found).sort((a, b) => _monthSortVal(b) - _monthSortVal(a))[0] || '';
+}
+
 function buildCreditSection(lat) {
   const el = document.getElementById('dash-credit-section');
   if (!el || !lat) return;
 
-  const my = lat.Month_Year;
+  const my = typeof lat === 'string' ? lat : lat.Month_Year;
   const mgrData = mgrLoad();
 
   // ── 1. Staff Credit: net balance per employee ──────────────────
@@ -202,4 +232,3 @@ function buildSummaryTable() {
   tr2.innerHTML='<td><strong>TOTAL</strong></td>'+cols.map(c=>{ const s=last12.reduce((a,m)=>a+n(m[c]),0); return '<td><strong>'+(s?'₨'+fc(s):'—')+'</strong></td>'; }).join('');
   tf.appendChild(tr2); tbl.appendChild(tbody); tbl.appendChild(tf);
 }
-

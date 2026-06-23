@@ -29,8 +29,8 @@ async function fetchRemoteFile(headers, apiBase, path) {
 //   monthly/daily : remote wins per-field on existing records, new records added either way
 //   staff         : remote is the source of truth; local-only IDs (not yet pushed) are kept
 //   manager       : LOCAL wins on key collision (your unsaved edits aren't clobbered by remote)
-//   petty         : remote wins per month
-//   custom        : remote wins for existing sections; local-only sections are kept
+//   petty         : fills missing local months without replacing existing local months
+//   custom        : fills missing local sections/months without replacing existing local data
 // Returns counts so callers can log what changed.
 function mergeIncomingData(data) {
   let mN=0,dN=0,mU=0,dU=0;
@@ -51,9 +51,21 @@ function mergeIncomingData(data) {
     STAFF = merged;
     localStorage.setItem(STAFF_KEY, JSON.stringify(STAFF));
   }
-  if (data.manager) { const cur=JSON.parse(localStorage.getItem(MGR_KEY)||'{}'); localStorage.setItem(MGR_KEY, JSON.stringify(Object.assign({},data.manager,cur))); }
-  if (data.petty)   { Object.entries(data.petty).forEach(([k,v])=>{ if (v != null) localStorage.setItem(k, JSON.stringify(v)); }); }
-  if (data.custom)  { const localCus=JSON.parse(localStorage.getItem(CSEC_KEY)||'{}'); localStorage.setItem(CSEC_KEY, JSON.stringify(Object.assign({},localCus,data.custom))); }
+  if (data.manager) {
+    const cur = JSON.parse(localStorage.getItem(MGR_KEY)||'{}');
+    localStorage.setItem(MGR_KEY, JSON.stringify(Object.assign({}, data.manager, cur)));
+  }
+  if (data.petty) {
+    Object.entries(data.petty).forEach(([k,v]) => {
+      if (v == null) return;
+      if (localStorage.getItem(k)) return;
+      localStorage.setItem(k, JSON.stringify(v));
+    });
+  }
+  if (data.custom) {
+    const localCus = JSON.parse(localStorage.getItem(CSEC_KEY)||'{}');
+    localStorage.setItem(CSEC_KEY, JSON.stringify(Object.assign({}, data.custom, localCus)));
+  }
   return {mN,dN,mU,dU};
 }
 
@@ -422,4 +434,3 @@ function startAutoInterval() {
   if(_autoHandle) clearInterval(_autoHandle);
   if(localStorage.getItem('bt_auto_interval')==='1') _autoHandle=setInterval(()=>manualSync(true),30*60*1000);
 }
-
