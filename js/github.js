@@ -434,3 +434,132 @@ function startAutoInterval() {
   if(_autoHandle) clearInterval(_autoHandle);
   if(localStorage.getItem('bt_auto_interval')==='1') _autoHandle=setInterval(()=>manualSync(true),30*60*1000);
 }
+
+// ══════════════════════════════════════════════════════════════════
+// AUTO-REFRESH SYSTEM
+// Polls GitHub every 60 seconds (configurable via BT_POLL_MS).
+// If the remote file SHA has changed since our last known SHA,
+// it means another device pushed new data. We then:
+//   1. Pull + merge the new data silently (manualSync)
+//   2. Tell the Service Worker to wipe its cache
+//   3. The SW broadcasts SW_RELOAD to every open tab — all reload
+// LocalStorage (token, config, PIN) is NEVER touched by this flow.
+// ══════════════════════════════════════════════════════════════════
+
+const BT_POLL_MS       = 60_000;          // how often to check GitHub (ms)
+const BT_LAST_POLL_K   = 'bt_last_poll';  // localStorage key — last successful poll time
+let   _pollHandle      = null;
+let   _swReloadBound   = false;
+
+/* ── Listen for SW_RELOAD broadcast from the Service Worker ── */
+function _bindSwReload() {
+  if (_swReloadBound) return;
+  _swReloadBound = true;
+  if (!navigator.serviceWorker) return;
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data === 'SW_RELOAD') {
+      console.log('[AutoRefresh] SW says cache wiped — reloading…');
+      // Brief delay so the toast is visible before the reload
+      setTimeout(() => window.location.reload(), 800);
+    }
+  });
+}
+
+/* ── Fetch only the SHA of the remote file (lightweight HEAD-style check) ── */
+async function _fetchRemoteSha(cfg) {
+  const r = await fetch(
+    `https://api.github.com/repos/${cfg.repo}/contents/${cfg.path}`,
+    { headers: { Authorization: `Bearer ${cfg.token}`, Accept: 'application/vnd.github.v3+json' } }
+  );
+  if (!r.ok) return null;
+  const j = await r.json();
+  return j.sha || null;
+}
+
+/* ── One poll tick ── */
+async function _pollTick() {
+  const cfg = ghCfg();
+  if (!cfg) return; // not configured yet
+
+  try {
+    const remoteSha  = await _fetchRemoteSha(cfg);
+    if (!remoteSha) return;
+
+    const knownSha   = localStorage.getItem(GH_S);
+    localStorage.setItem(BT_LAST_POLL_K, Date.now());
+
+    if (!knownSha) {
+      // First time — just record the SHA, no reload needed
+      localStorage.setItem(GH_S, remoteSha);
+      return;
+    }
+
+    if (remoteSha === knownSha) return; // nothing changed
+
+    // ── SHA mismatch: remote has new data ──
+    console.log(`[AutoRefresh] SHA changed ${knownSha.slice(0,8)} → ${remoteSha.slice(0,8)}`);
+    toast('🔄 New data detected — syncing…', 'i');
+
+    // 1. Pull & merge the new data into memory
+    await manualSync(true);
+
+    // 2. Update the known SHA
+    localStorage.setItem(GH_S, remoteSha);
+
+    // 3. Tell SW to nuke the app-shell cache so files are freshly fetched
+    //    The SW will then broadcast SW_RELOAD to all tabs
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage('DATA_CHANGED_RELOAD');
+    } else {
+      // No SW controller yet (first install) — just reload directly
+      setTimeout(() => window.location.reload(), 800);
+    }
+
+  } catch (e) {
+    console.warn('[AutoRefresh] Poll failed:', e.message);
+  }
+}
+
+/* ── Start / stop the poller ── */
+function startAutoRefreshPoller() {
+  _bindSwReload();
+  if (_pollHandle) clearInterval(_pollHandle);
+  _pollHandle = setInterval(_pollTick, BT_POLL_MS);
+  console.log(`[AutoRefresh] Polling every ${BT_POLL_MS / 1000}s`);
+}
+
+function stopAutoRefreshPoller() {
+  if (_pollHandle) { clearInterval(_pollHandle); _pollHandle = null; }
+}
+
+/* ── Manual hard-refresh button: wipes SW cache, keeps localStorage ── */
+async function hardRefreshCache() {
+  toast('🔄 Clearing cache…', 'i');
+  if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage('DATA_CHANGED_RELOAD');
+    // SW will send back SW_RELOAD which triggers window.location.reload()
+  } else {
+    // Fallback: wipe caches directly from the page
+    const keys = await caches.keys();
+    await Promise.all(keys.map(k => caches.delete(k)));
+    window.location.reload();
+  }
+}
+
+/* ── Auto-start when the page is ready (called from unlockApp / init) ── */
+function initAutoRefresh() {
+  startAutoRefreshPoller();
+  // Run first tick after 5 s so the app has time to fully load
+  setTimeout(_pollTick, 5_000);
+}
+
+/* ── Update the "Last poll" display in the Tools panel ── */
+function _updatePollDisplay() {
+  const el = document.getElementById('ar-last-poll');
+  if (!el) return;
+  const t = localStorage.getItem(BT_LAST_POLL_K);
+  if (!t) { el.textContent = 'not yet'; return; }
+  const secs = Math.round((Date.now() - parseInt(t)) / 1000);
+  el.textContent = secs < 60 ? secs + 's ago' : Math.round(secs / 60) + 'm ago';
+}
+setInterval(_updatePollDisplay, 5000);

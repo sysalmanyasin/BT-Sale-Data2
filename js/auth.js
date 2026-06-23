@@ -457,9 +457,11 @@ function unlockApp() {
     if (loaded) { rebuildAll(); }
     if(ghCfg()&&localStorage.getItem('bt_auto_load')==='1') manualSync(true);
     startAutoInterval();
+    initAutoRefresh(); // ← start SHA poller + SW_RELOAD listener
   }).catch(() => {
     if(ghCfg()&&localStorage.getItem('bt_auto_load')==='1') manualSync(true);
     startAutoInterval();
+    initAutoRefresh(); // ← start SHA poller + SW_RELOAD listener
   });
 }
 
