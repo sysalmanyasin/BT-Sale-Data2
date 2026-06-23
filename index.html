@@ -450,6 +450,17 @@ if ('serviceWorker' in navigator) {
 <div class="page" id="page-tools">
   <div class="hero"><div class="hlabel">Tools</div><div class="htitle">Settings &amp; Data Management</div><div class="hsub">Tap any card to expand it.</div></div>
 
+  <!-- ── Quick Actions — always visible, no card to open ── -->
+  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px;padding:14px 16px;background:var(--s1);border:1px solid var(--border);border-radius:12px">
+    <div style="flex:1;min-width:160px">
+      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px">⚡ Quick Actions</div>
+      <div style="font-size:11px;color:var(--muted)">Last poll: <span id="ar-last-poll">—</span> &nbsp;·&nbsp; <span id="ar-status" style="color:var(--green)">Active</span></div>
+    </div>
+    <button class="btn btn-s" style="white-space:nowrap" onclick="manualSync()">↻ Pull</button>
+    <button class="btn btn-g" style="white-space:nowrap" onclick="pushToGitHub()">⬆ Push</button>
+    <button class="btn" style="white-space:nowrap;background:var(--red,#dc2626);color:#fff;font-weight:700" onclick="hardRefreshCache()">⚡ Hard Refresh</button>
+  </div>
+
   <div class="tcard" id="tc-github">
     <div class="tcard-hdr" onclick="toggleTcard('tc-github')">
       <div class="ttitle">🐙 GitHub Sync <span id="gh-badge" class="badge bg-amber">Not configured</span></div>
@@ -476,7 +487,7 @@ if ('serviceWorker' in navigator) {
             Checks GitHub every 60 s. If data changes on any device, <strong style="color:var(--accent)">all devices reload automatically.</strong>
           </div>
           <div style="font-size:11px;color:var(--muted);margin-top:3px">
-            Last poll: <span id="ar-last-poll">—</span> &nbsp;·&nbsp; Status: <span id="ar-status" style="color:var(--green)">Active</span>
+            Last poll: <span class="ar-last-poll-txt">—</span> &nbsp;·&nbsp; Status: <span class="ar-status-txt" style="color:var(--green)">Active</span>
           </div>
         </div>
         <button class="btn btn-s" style="white-space:nowrap;flex-shrink:0" onclick="hardRefreshCache()">⚡ Hard Refresh</button>
