@@ -80,4 +80,3 @@ tr.cl:active td{background:var(--alt)!important;}
 @media(max-width:480px){
   .krow{grid-template-columns:repeat(2,1fr);}
 }
-</style>

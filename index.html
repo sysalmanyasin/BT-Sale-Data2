@@ -337,7 +337,7 @@ if ('serviceWorker' in navigator) {
     <div class="fsec"><div class="fsec-title">Period</div>
       <div class="fgrid">
         <div class="fg"><label>Month</label><select id="e-month"><option value="">Select…</option></select></div>
-        <div class="fg"><label>Date</label><input type="date" id="e-date"></div>
+        <div class="fg"><label>Date</label><input type="date" id="e-date" onchange="syncEntryMonthFromDate()"></div>
       </div>
     </div>
     <div class="fsec" id="fsec-Cash"><div class="fsec-title">Cash</div>
@@ -353,12 +353,12 @@ if ('serviceWorker' in navigator) {
         <div class="fg" data-field-id="Alfala_Bank"><label>Bank Alfalah</label><input type="number" id="e-Alfala_Bank" placeholder="0" oninput="calcTotal()"></div>
         <div class="fg" data-field-id="Bank_Al_Habib"><label>Bank Al Habib</label><input type="number" id="e-Bank_Al_Habib" placeholder="0" oninput="calcTotal()"></div>
         <div class="fg" data-field-id="Meezan_Bank"><label>Meezan Bank</label><input type="number" id="e-Meezan_Bank" placeholder="0" oninput="calcTotal()"></div>
-        <div class="fg" data-field-id="Askari_Bank"><label>Askari Bank</label><input type="number" id="e-Askari_Bank" placeholder="0" oninput="calcTotal()"></div>
-        <div class="fg" data-field-id="Askari_Bank_Returns"><label>Askari Returns</label><input type="number" id="e-Askari_Bank_Returns" placeholder="0" oninput="calcTotal()"></div>
       </div>
     </div>
     <div class="fsec" id="fsec-Credit-Clients"><div class="fsec-title">Credit Clients</div>
       <div class="fgrid" id="fgrid-Credit-Clients">
+        <div class="fg" data-field-id="Askari_Bank"><label>Askari</label><input type="number" id="e-Askari_Bank" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="Askari_Bank_Returns"><label>Askari Returns</label><input type="number" id="e-Askari_Bank_Returns" placeholder="0" oninput="calcTotal()"></div>
         <div class="fg" data-field-id="PSO"><label>PSO</label><input type="number" id="e-PSO" placeholder="0" oninput="calcTotal()"></div>
         <div class="fg" data-field-id="PSO_Returns"><label>PSO Returns</label><input type="number" id="e-PSO_Returns" placeholder="0" oninput="calcTotal()"></div>
         <div class="fg" data-field-id="NESPAK"><label>NESPAK</label><input type="number" id="e-NESPAK" placeholder="0" oninput="calcTotal()"></div>

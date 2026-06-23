@@ -121,9 +121,7 @@ function _patchSaveEntry() {
   if (typeof saveEntry !== 'function') return;
   const _orig = saveEntry;
   window.saveEntry = function() {
-    // Inject custom field values into the form so the original saveEntry picks them up
-    // Original saveEntry reads by id "e-{fieldName}", so our inputs are already named correctly
-    _orig();
+    return _orig();
   };
 }
 

@@ -146,10 +146,40 @@ const FM={'Cash Sale':'Cash_Sale','Cash Returns':'Cash_Returns','HBL':'HBL','MCB
   'Amount Received':'Amount_Received','Load Sale':'Load_Sale','Cash to be Deposited':'Cash_to_Deposit',
   'Low Sale Reason':'Low_Sale_Reason'};
 
+const _ENTRY_MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function entryMonthYearFromIso(iso) {
+  if (!iso) return '';
+  const [y, m] = iso.split('-');
+  const mi = parseInt(m, 10) - 1;
+  if (!y || mi < 0 || mi > 11) return '';
+  return _ENTRY_MONTHS[mi] + ' ' + y;
+}
+
+function ensureEntryMonthOption(monthYear) {
+  const monthEl = document.getElementById('e-month');
+  if (!monthEl || !monthYear) return;
+  if (![...monthEl.options].some(o => o.value === monthYear)) {
+    const opt = document.createElement('option');
+    opt.value = monthYear;
+    opt.textContent = monthYear;
+    monthEl.appendChild(opt);
+  }
+  monthEl.value = monthYear;
+}
+
+function syncEntryMonthFromDate() {
+  const monthYear = entryMonthYearFromIso(document.getElementById('e-date')?.value);
+  if (monthYear) ensureEntryMonthOption(monthYear);
+}
+
 async function saveEntry() {
-  const month=document.getElementById('e-month').value;
   const dateRaw=document.getElementById('e-date').value;
-  if(!month||!dateRaw){ toast('⚠ Select a month and date','w'); return; }
+  if(!dateRaw){ toast('⚠ Select a date','w'); return; }
+  let month=document.getElementById('e-month').value;
+  if(!month) month=entryMonthYearFromIso(dateRaw);
+  if(!month){ toast('⚠ Could not determine month from date','w'); return; }
+  ensureEntryMonthOption(month);
   // Convert ISO date (2026-06-22) to DD/Mon/YYYY format used by DAILY
   const _months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const [_y,_m,_d]=dateRaw.split('-');
@@ -210,6 +240,9 @@ function autoFillEntryDate() {
   // Set the date field
   const dateEl=document.getElementById('e-date');
   if(dateEl && !dateEl.value) dateEl.value=isoDate;
+
+  // Keep month in sync with the selected date
+  syncEntryMonthFromDate();
 
   // Auto-select the month in the month dropdown if not already set
   const monthEl=document.getElementById('e-month');
