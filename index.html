@@ -1,15 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<div id="dbgbox" style="position:fixed;bottom:0;left:0;right:0;background:#000;color:#0f0;font-size:11px;padding:8px;z-index:99999;max-height:35vh;overflow:auto;white-space:pre-wrap;"></div>
-<script>
-window.addEventListener('error', function(e){
-  document.getElementById('dbgbox').textContent += 'ERROR: ' + e.message + ' (' + e.filename + ':' + e.lineno + ')\n';
-});
-window.addEventListener('unhandledrejection', function(e){
-  document.getElementById('dbgbox').textContent += 'REJECTION: ' + e.reason + '\n';
-});
-</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#2563eb">
@@ -1091,6 +1082,89 @@ if ('serviceWorker' in navigator) {
 
 <!-- 15. Google Drive backup / restore -->
 <script src="js/drive.js"></script>
+
+<!-- Staff Card Popup Modal -->
+<div class="sc-bg" id="sc-bg" onclick="if(event.target===this)closeStaffCard()">
+  <div class="sc-box">
+    <div class="sc-hdr">
+      <div class="sc-hdr-info">
+        <div class="sc-hdr-id" id="sc-title-id">EMP-001</div>
+        <div class="sc-hdr-name" id="sc-title-name">Employee</div>
+      </div>
+      <button onclick="closeStaffCard()" style="background:rgba(255,255,255,.2);border:none;color:#fff;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
+    </div>
+    <div class="sc-tabs">
+      <button class="sc-tab active" data-sctab="details" onclick="switchStaffCardTab('details')">👤 Details</button>
+      <button class="sc-tab" data-sctab="credit" onclick="switchStaffCardTab('credit')">💳 Credit Ledger</button>
+    </div>
+    <div class="sc-body">
+      <input type="hidden" id="sc-idx" value="">
+
+      <!-- Details Panel -->
+      <div id="sc-panel-details">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
+          <div class="sc-fg">
+            <label>Staff ID</label>
+            <input type="text" id="sc-f-staffId" class="mgr-inp" placeholder="EMP-001">
+          </div>
+          <div class="sc-fg">
+            <label>Full Name</label>
+            <input type="text" id="sc-f-name" class="mgr-inp" placeholder="Employee name">
+          </div>
+          <div class="sc-fg">
+            <label>Designation</label>
+            <input type="text" id="sc-f-designation" class="mgr-inp" placeholder="e.g. Salesman">
+          </div>
+          <div class="sc-fg">
+            <label>Father's Name</label>
+            <input type="text" id="sc-f-fatherName" class="mgr-inp" placeholder="Father's name">
+          </div>
+          <div class="sc-fg">
+            <label>CNIC</label>
+            <input type="text" id="sc-f-cnic" class="mgr-inp" placeholder="12345-1234567-1">
+          </div>
+          <div class="sc-fg">
+            <label>Blood Group</label>
+            <select id="sc-f-bloodGroup" class="mgr-inp">
+              <option value="">— Select —</option>
+              <option>A+</option><option>A-</option>
+              <option>B+</option><option>B-</option>
+              <option>O+</option><option>O-</option>
+              <option>AB+</option><option>AB-</option>
+            </select>
+          </div>
+          <div class="sc-fg">
+            <label>Phone</label>
+            <input type="text" id="sc-f-phone" class="mgr-inp" placeholder="03XX-XXXXXXX">
+          </div>
+          <div class="sc-fg">
+            <label>Date of Joining</label>
+            <input type="date" id="sc-f-doj" class="mgr-inp">
+          </div>
+          <div class="sc-fg" style="grid-column:1/-1">
+            <label>Address</label>
+            <input type="text" id="sc-f-address" class="mgr-inp" placeholder="Residential address">
+          </div>
+          <div class="sc-fg" style="grid-column:1/-1;flex-direction:row;align-items:center;gap:10px">
+            <input type="checkbox" id="sc-f-active" style="width:auto;margin:0">
+            <label style="text-transform:none;font-size:13px;font-weight:600;color:var(--text)" for="sc-f-active">Active Employee</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Credit Ledger Panel -->
+      <div id="sc-panel-credit" style="display:none">
+        <div id="sc-credit-history">
+          <p style="text-align:center;color:var(--muted);padding:32px">Select an employee to view credit history.</p>
+        </div>
+      </div>
+    </div>
+    <div class="sc-foot">
+      <button class="btn" onclick="closeStaffCard()" style="border:1px solid var(--border)">Cancel</button>
+      <button class="btn btn-p" onclick="saveStaffCard()">💾 Save Details</button>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
