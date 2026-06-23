@@ -66,7 +66,7 @@ function fmSave() {
   localStorage.setItem('bt_custom_cols', JSON.stringify(_fmCustom));
   // If GitHub auto-save is enabled, trigger a sync
   try {
-    const autoSave = localStorage.getItem('bt_auto_save') === 'true'
+    const autoSave = localStorage.getItem('bt_auto_save') === '1'
                   || document.getElementById('auto-save')?.checked;
     if (autoSave && typeof pushToGitHub === 'function') pushToGitHub();
   } catch(e) {}

@@ -124,7 +124,14 @@ async function pushToGitHub() {
         method: 'PATCH', headers,
         body: JSON.stringify({ sha: newCommitData.sha, force: false })
       });
-      if (!updateRefResp.ok) throw new Error('Cannot update ref: HTTP ' + updateRefResp.status);
+      if (!updateRefResp.ok) {
+        const refErr = await updateRefResp.json().catch(() => ({}));
+        const refMsg = (refErr.message || '').toLowerCase();
+        if (updateRefResp.status === 422 || refMsg.includes('not a fast forward') || refMsg.includes('update is not')) {
+          throw new Error('Push conflict — another device pushed at the same time. Pull first, then push again.');
+        }
+        throw new Error('Cannot update ref: HTTP ' + updateRefResp.status);
+      }
 
       localStorage.setItem(GH_S, newCommitData.sha);
       return newCommitData.sha;
@@ -187,9 +194,19 @@ async function manualSync(silent=false) {
       if (!b64) throw new Error('Empty file from GitHub');
       data = JSON.parse(atob(b64));
     }
-    let mN=0,dN=0;
-    if (data.monthly) data.monthly.forEach(m=>{ if(!MONTHLY.find(x=>x.Month_Year===m.Month_Year)){MONTHLY.push(m);mN++;} });
-    if (data.daily)   data.daily.forEach(d=>{ if(!DAILY.find(x=>x.Date===d.Date&&x.Month_Year===d.Month_Year)){DAILY.push(d);dN++;} });
+    let mN=0,dN=0,mU=0,dU=0;
+    // Monthly: GitHub wins — update existing records, add new ones
+    if (data.monthly) data.monthly.forEach(m=>{
+      const idx=MONTHLY.findIndex(x=>x.Month_Year===m.Month_Year);
+      if(idx===-1){ MONTHLY.push(m); mN++; }
+      else{ Object.assign(MONTHLY[idx],m); mU++; }
+    });
+    // Daily: GitHub wins — update existing records, add new ones
+    if (data.daily) data.daily.forEach(d=>{
+      const idx=DAILY.findIndex(x=>x.Date===d.Date&&x.Month_Year===d.Month_Year);
+      if(idx===-1){ DAILY.push(d); dN++; }
+      else{ Object.assign(DAILY[idx],d); dU++; }
+    });
     // Restore Staff registry
     if (data.staff && data.staff.length) {
       const localStaff = JSON.parse(localStorage.getItem(STAFF_KEY) || '[]');
@@ -200,10 +217,13 @@ async function manualSync(silent=false) {
       localStorage.setItem(STAFF_KEY, JSON.stringify(STAFF));
     }
     // Restore Manager data
+    // Manager: merge GitHub (base) + local (override) so unsaved local edits are not lost
     if (data.manager)  { const cur=JSON.parse(localStorage.getItem(MGR_KEY)||'{}'); localStorage.setItem(MGR_KEY, JSON.stringify(Object.assign({},data.manager,cur))); }
-    if (data.petty)    { Object.entries(data.petty).forEach(([k,v])=>{ if (!localStorage.getItem(k)) localStorage.setItem(k, JSON.stringify(v)); }); }
-    if (data.custom)   { if (!localStorage.getItem(CSEC_KEY)) localStorage.setItem(CSEC_KEY, JSON.stringify(data.custom)); }
-    ghLog(`✓ Pulled. +${mN} months, +${dN} daily. Manager data restored.`,'ok');
+    // Petty: GitHub wins per-month — GitHub holds the last pushed state and must not be silently skipped
+    if (data.petty)    { Object.entries(data.petty).forEach(([k,v])=>{ if (v != null) localStorage.setItem(k, JSON.stringify(v)); }); }
+    // Custom: merge — GitHub wins for existing sections; local-only sections (not yet pushed) are kept
+    if (data.custom)   { const localCus=JSON.parse(localStorage.getItem(CSEC_KEY)||'{}'); localStorage.setItem(CSEC_KEY, JSON.stringify(Object.assign({},localCus,data.custom))); }
+    ghLog(`✓ Pulled. +${mN} new / ${mU} updated months · +${dN} new / ${dU} updated daily records.`,'ok');
     setSyncBadge('ok');
     rebuildAll();
     idbSaveData();
@@ -242,7 +262,7 @@ function updateGhBadge() {
   const b=document.getElementById('gh-badge');
   if(b){ b.className='badge '+(ok?'bg-green':'bg-amber'); b.textContent=ok?'Connected':'Not configured'; }
   setSyncBadge('idle');
-  if(ok){ document.getElementById('synci').querySelector('#sync-icon').textContent='🐙'; }
+  if(ok){ const si=document.getElementById('sync-icon'); if(si) si.textContent='🐙'; }
 }
 
 async function _legacyManualSync(silent=false) {
