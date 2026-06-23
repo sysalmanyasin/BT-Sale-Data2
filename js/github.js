@@ -1,6 +1,11 @@
 // ══════════════════════════════════════════════════════════════════
 // ENHANCED GITHUB PUSH — includes Manager + Petty + Custom data
 // ══════════════════════════════════════════════════════════════════
+
+// ── Constants must be declared first (const is NOT hoisted) ──
+const GH_T='bt_gh_token', GH_R='bt_gh_repo', GH_P='bt_gh_path', GH_S='bt_gh_sha';
+let _autoHandle = null;
+
 async function pushToGitHub() {
   const cfg = ghCfg();
   if (!cfg) { toast('⚠ GitHub not configured','w'); return; }
@@ -97,8 +102,6 @@ async function manualSync(silent=false) {
 }
 
 // ══════════════════════════════════════════
-const GH_T='bt_gh_token', GH_R='bt_gh_repo', GH_P='bt_gh_path', GH_S='bt_gh_sha';
-let _autoHandle = null;
 
 function ghCfg() {
   const t=localStorage.getItem(GH_T);
