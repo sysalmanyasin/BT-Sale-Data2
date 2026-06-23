@@ -108646,12 +108646,12 @@
       "July 2026": [
         {
           "name": "Salman Yasin",
-          "prevBal": 0,
+          "prevBal": 670,
           "entries": [
             {
               "date": "23-Jun-2026",
               "desc": "credit",
-              "amount": 670
+              "amount": 0
             }
           ],
           "salary": 0,
@@ -108659,12 +108659,12 @@
         },
         {
           "name": "Muhammad Zubair",
-          "prevBal": 0,
+          "prevBal": 20900,
           "entries": [
             {
               "date": "23-Jun-2026",
               "desc": "credit",
-              "amount": 20900
+              "amount": 0
             }
           ],
           "salary": 0,
@@ -108672,12 +108672,12 @@
         },
         {
           "name": "Aftab Wizir",
-          "prevBal": 0,
+          "prevBal": 150,
           "entries": [
             {
               "date": "23-Jun-2026",
               "desc": "credit",
-              "amount": 150
+              "amount": 0
             }
           ],
           "salary": 0,
@@ -108685,12 +108685,12 @@
         },
         {
           "name": "Mian Waqas",
-          "prevBal": 0,
+          "prevBal": 450,
           "entries": [
             {
               "date": "23-Jun-2026",
               "desc": "credit",
-              "amount": 450
+              "amount": 0
             }
           ],
           "salary": 0,
@@ -108698,12 +108698,12 @@
         },
         {
           "name": "Dr Zeeshan",
-          "prevBal": 0,
+          "prevBal": 6740,
           "entries": [
             {
               "date": "23-Jun-2026",
               "desc": "credit",
-              "amount": 6740
+              "amount": 0
             }
           ],
           "salary": 0,
@@ -108718,12 +108718,12 @@
         },
         {
           "name": "Shah Faisal Ali Khan",
-          "prevBal": 0,
+          "prevBal": 1995,
           "entries": [
             {
               "date": "23-Jun-2026",
               "desc": "credit",
-              "amount": 1995
+              "amount": 0
             }
           ],
           "salary": 0,
@@ -108731,12 +108731,12 @@
         },
         {
           "name": "Muhammad Reehan",
-          "prevBal": 0,
+          "prevBal": 1604,
           "entries": [
             {
               "date": "23-Jun-2026",
               "desc": "credit",
-              "amount": 1604
+              "amount": 0
             }
           ],
           "salary": 0,
@@ -108744,12 +108744,12 @@
         },
         {
           "name": "Shamshair Ali",
-          "prevBal": 0,
+          "prevBal": 9055,
           "entries": [
             {
               "date": "23-Jun-2026",
               "desc": "credit",
-              "amount": 9055
+              "amount": 0
             }
           ],
           "salary": 0,
@@ -108764,12 +108764,12 @@
         },
         {
           "name": "Husnain Haider",
-          "prevBal": 0,
+          "prevBal": 3950,
           "entries": [
             {
               "date": "23-Jun-2026",
               "desc": "credit",
-              "amount": 3950
+              "amount": 0
             }
           ],
           "salary": 0,
@@ -108777,12 +108777,12 @@
         },
         {
           "name": "Ali Husnain ",
-          "prevBal": 0,
+          "prevBal": 2540,
           "entries": [
             {
               "date": "23-Jun-2026",
               "desc": "credit",
-              "amount": 2540
+              "amount": 0
             }
           ],
           "salary": 0,
@@ -108797,12 +108797,12 @@
         },
         {
           "name": "M Rehman",
-          "prevBal": 0,
+          "prevBal": 181,
           "entries": [
             {
               "date": "23-Jun-2026",
               "desc": "credit",
-              "amount": 181
+              "amount": 0
             }
           ],
           "salary": 0,
@@ -108810,12 +108810,12 @@
         },
         {
           "name": "Salman Ghulam Ali",
-          "prevBal": 0,
+          "prevBal": 2650,
           "entries": [
             {
               "date": "23-Jun-2026",
               "desc": "credit",
-              "amount": 2350
+              "amount": 0
             }
           ],
           "salary": 0,
@@ -109121,7 +109121,7 @@
         "July 2026": [
           {
             "desc": "",
-            "amount": 17298,
+            "amount": 0,
             "notes": ""
           }
         ]
@@ -109141,7 +109141,7 @@
         "July 2026": [
           {
             "desc": "",
-            "amount": 3000,
+            "amount": 0,
             "notes": ""
           }
         ]
@@ -109160,13 +109160,8 @@
         ],
         "July 2026": [
           {
-            "desc": "Less Generic",
-            "amount": -47780,
-            "notes": ""
-          },
-          {
-            "desc": "Less Strips",
-            "amount": -6000,
+            "desc": "",
+            "amount": 0,
             "notes": ""
           }
         ]
@@ -109185,18 +109180,13 @@
         ],
         "July 2026": [
           {
-            "desc": "Cuff",
-            "amount": 2000,
-            "notes": ""
-          },
-          {
-            "desc": "Alp",
-            "amount": 2047,
+            "desc": "",
+            "amount": 0,
             "notes": ""
           }
         ]
       }
     }
   },
-  "pushedAt": "2026-06-23T15:45:58.976Z"
+  "pushedAt": "2026-06-23T15:49:55.373Z"
 }
