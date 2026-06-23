@@ -25,15 +25,28 @@ async function fetchRemoteFile(headers, apiBase, path) {
 }
 
 // ── Merge incoming remote data into the local in-memory + localStorage state ──
-// Per-collection rules (unchanged from the original pull-only logic):
-//   monthly/daily : remote wins per-field on existing records, new records added either way
-//   staff         : remote is the source of truth; local-only IDs (not yet pushed) are kept
-//   manager       : LOCAL wins on key collision (your unsaved edits aren't clobbered by remote)
-//   petty         : fills missing local months without replacing existing local months
-//   custom        : fills missing local sections/months without replacing existing local data
+//
+// isPull = true  → called from manualSync() / auto-poll when user pulls.
+//                  Remote data should win so new data from another device appears.
+// isPull = false → called inside pushToGitHub() as a pre-push conflict fold.
+//                  Local data must win to protect unsaved in-progress edits.
+//
+// Per-collection rules:
+//   monthly/daily : remote wins per-field on existing records, new records added (both modes)
+//   staff         : remote is base; local-only employees (not yet pushed) are appended.
+//                   Deduplication by BOTH id AND name to prevent duplicates across devices.
+//   manager       : isPull → deep month-level merge, remote fills gaps, local months kept.
+//                   !isPull → shallow local-wins (protect unsaved edits before push).
+//   petty         : isPull → remote always overwrites (fixes "pull doesn't show" bug).
+//                   !isPull → skip if key exists locally (protect unsaved edits).
+//   custom        : isPull → remote fills gaps, local sections kept.
+//                   !isPull → local wins entirely.
+//
 // Returns counts so callers can log what changed.
-function mergeIncomingData(data) {
+function mergeIncomingData(data, isPull = false) {
   let mN=0,dN=0,mU=0,dU=0;
+
+  // ── Monthly / Daily: same in both modes ──────────────────────────────────
   if (data.monthly) data.monthly.forEach(m=>{
     const idx=MONTHLY.findIndex(x=>x.Month_Year===m.Month_Year);
     if(idx===-1){ MONTHLY.push(m); mN++; }
@@ -44,28 +57,74 @@ function mergeIncomingData(data) {
     if(idx===-1){ DAILY.push(d); dN++; }
     else{ Object.assign(DAILY[idx],d); dU++; }
   });
+
+  // ── Staff: remote is base; append local-only by BOTH id AND name ─────────
   if (data.staff && data.staff.length) {
     const localStaff = JSON.parse(localStorage.getItem(STAFF_KEY) || '[]');
     const merged = [...data.staff];
-    localStaff.forEach(le => { if (!merged.find(r => r.id === le.id)) merged.push(le); });
+    const norm = s => (s||'').trim().toLowerCase();
+    localStaff.forEach(le => {
+      const byId   = merged.find(r => r.id === le.id);
+      const byName = merged.find(r => norm(r.name) === norm(le.name));
+      // Only append if truly new — not matched by id OR by name
+      if (!byId && !byName) merged.push(le);
+    });
     STAFF = merged;
     localStorage.setItem(STAFF_KEY, JSON.stringify(STAFF));
   }
+
+  // ── Manager (salary / generic / expense / credit) ─────────────────────────
   if (data.manager) {
     const cur = JSON.parse(localStorage.getItem(MGR_KEY)||'{}');
-    localStorage.setItem(MGR_KEY, JSON.stringify(Object.assign({}, data.manager, cur)));
+    if (isPull) {
+      // Pull mode: deep merge at month level.
+      // Remote is the base (brings new months from other device).
+      // For months that exist locally, local version is kept (in-progress edits safe).
+      const merged = JSON.parse(JSON.stringify(data.manager)); // deep copy remote
+      ['salary','generic','expense','credit'].forEach(section => {
+        if (cur[section] && typeof cur[section] === 'object') {
+          if (!merged[section]) merged[section] = {};
+          Object.keys(cur[section]).forEach(month => {
+            // Local month wins — keeps any edits made on this device
+            merged[section][month] = cur[section][month];
+          });
+        }
+      });
+      localStorage.setItem(MGR_KEY, JSON.stringify(merged));
+    } else {
+      // Push pre-merge mode: shallow local-wins to protect unsaved edits.
+      localStorage.setItem(MGR_KEY, JSON.stringify(Object.assign({}, data.manager, cur)));
+    }
   }
+
+  // ── Petty cash ────────────────────────────────────────────────────────────
   if (data.petty) {
     Object.entries(data.petty).forEach(([k,v]) => {
       if (v == null) return;
-      if (localStorage.getItem(k)) return;
-      localStorage.setItem(k, JSON.stringify(v));
+      if (isPull) {
+        // Pull mode: always write remote data.
+        // Fixes the bug where opening a petty month locally (even empty) would
+        // permanently block that month's data from ever syncing from the remote.
+        localStorage.setItem(k, JSON.stringify(v));
+      } else {
+        // Push pre-merge: skip if key already exists locally (protect edits).
+        if (!localStorage.getItem(k)) localStorage.setItem(k, JSON.stringify(v));
+      }
     });
   }
+
+  // ── Custom sections ───────────────────────────────────────────────────────
   if (data.custom) {
     const localCus = JSON.parse(localStorage.getItem(CSEC_KEY)||'{}');
-    localStorage.setItem(CSEC_KEY, JSON.stringify(Object.assign({}, data.custom, localCus)));
+    if (isPull) {
+      // Pull mode: remote is base, then overlay local sections on top.
+      localStorage.setItem(CSEC_KEY, JSON.stringify(Object.assign({}, data.custom, localCus)));
+    } else {
+      // Push pre-merge: local wins entirely.
+      localStorage.setItem(CSEC_KEY, JSON.stringify(Object.assign({}, data.custom, localCus)));
+    }
   }
+
   return {mN,dN,mU,dU};
 }
 
@@ -96,7 +155,7 @@ async function pushToGitHub() {
         remoteSha = remote.sha;
         if (lastKnownSha && remote.sha !== lastKnownSha && remote.data) {
           ghLog('⚠ Remote changed since last sync — merging before push…', 'info');
-          const {mN,dN,mU,dU} = mergeIncomingData(remote.data);
+          const {mN,dN,mU,dU} = mergeIncomingData(remote.data, false); // push pre-merge: local wins
           recomputeAllMonths(); // keep MONTHLY totals in sync with DAILY entries
           rebuildAll();
           idbSaveData();
@@ -299,7 +358,7 @@ async function manualSync(silent=false) {
       if (!b64) throw new Error('Empty file from GitHub');
       data = JSON.parse(atob(b64));
     }
-    const {mN,dN,mU,dU} = mergeIncomingData(data);
+    const {mN,dN,mU,dU} = mergeIncomingData(data, true); // pull mode: remote wins for manager/petty
     recomputeAllMonths(); // keep MONTHLY totals in sync with DAILY entries
     ghLog(`✓ Pulled. +${mN} new / ${mU} updated months · +${dN} new / ${dU} updated daily records.`,'ok');
     setSyncBadge('ok');
@@ -553,13 +612,17 @@ function initAutoRefresh() {
   setTimeout(_pollTick, 5_000);
 }
 
-/* ── Update the "Last poll" display in the Tools panel ── */
+/* ── Update the "Last poll" display in the Quick Actions bar + old card location ── */
 function _updatePollDisplay() {
-  const el = document.getElementById('ar-last-poll');
-  if (!el) return;
   const t = localStorage.getItem(BT_LAST_POLL_K);
-  if (!t) { el.textContent = 'not yet'; return; }
-  const secs = Math.round((Date.now() - parseInt(t)) / 1000);
-  el.textContent = secs < 60 ? secs + 's ago' : Math.round(secs / 60) + 'm ago';
+  const txt = !t ? 'not yet' : (() => {
+    const secs = Math.round((Date.now() - parseInt(t)) / 1000);
+    return secs < 60 ? secs + 's ago' : Math.round(secs / 60) + 'm ago';
+  })();
+  // Primary: quick-actions bar
+  const el = document.getElementById('ar-last-poll');
+  if (el) el.textContent = txt;
+  // Secondary: legacy spans inside collapsed card
+  document.querySelectorAll('.ar-last-poll-txt').forEach(e => e.textContent = txt);
 }
 setInterval(_updatePollDisplay, 5000);

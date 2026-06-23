@@ -331,34 +331,18 @@ function _inp(type, val, cls, oninput, ph) {
 // STAFF REGISTRY — single source of truth for employees
 // ══════════════════════════════════════════════════════
 
-const _STAFF_SEED = [
-  {name:'Salman Yasin',   designation:'Co Manager'},
-  {name:'Mian Waqas',    designation:'APM'},
-  {name:'Shah Faisal',   designation:'SSO'},
-  {name:'Dr Zeeshan',    designation:'Internee Pharmacist'},
-  {name:'Dr Shujaat',    designation:'Internee Pharmacist'},
-  {name:'M Reehan',      designation:'Salesman'},
-  {name:'Ali Husnain',   designation:'Salesman'},
-  {name:'Abdul Rehman',  designation:'Salesman'},
-  {name:'Shamshair',     designation:'Salesman'},
-  {name:'Asad Mushtaq',  designation:'Salesman'},
-  {name:'Husnain Haider',designation:'Salesman'},
-  {name:'Kashif',        designation:'Salesman'},
-];
+// ── No seed list — staff is pulled from GitHub or added manually ──────────────
+// Removed _STAFF_SEED to prevent duplicate employees across devices.
+// On a fresh install: staff list starts empty. Either pull from GitHub
+// (if configured) or add employees manually via + Add Employee.
 
 function staffLoad() {
   try {
     const raw = localStorage.getItem(STAFF_KEY);
     if (raw) { STAFF = JSON.parse(raw); return; }
   } catch(e) {}
-  // First run: seed from defaults
-  STAFF = _STAFF_SEED.map((e, i) => ({
-    id: 'emp_' + (Date.now() + i),
-    name: e.name,
-    designation: e.designation,
-    active: true
-  }));
-  staffSave();
+  // Fresh install — start empty, no seeding
+  STAFF = [];
 }
 
 function staffSave() {
@@ -433,8 +417,10 @@ function saveStaffRegistry() {
   staffSave();
   // Propagate to all loaded sheets immediately
   _propagateStaffToSheets();
-  toast('✓ Staff list saved — all sheets updated');
-  if (localStorage.getItem('bt_auto_save') === '1') pushToGitHub();
+  toast('✓ Staff list saved — syncing to GitHub…');
+  // Always push staff changes regardless of auto-save setting,
+  // because staff is shared configuration, not just local data.
+  pushToGitHub();
 }
 
 // When staff list is saved, add any new employees to currently-loaded sheets
