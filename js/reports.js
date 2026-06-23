@@ -82,10 +82,15 @@ function openDayModal(date, my) {
   if(!d){ toast('Record not found for '+date,'w'); return; }
   _printDay={d,date,my};
   const r=dayData(d);
-  document.getElementById('dm-title').textContent=date;
-  document.getElementById('dm-sub').textContent=my;
-  document.getElementById('dm-body').innerHTML=buildDayHTML(r);
-  document.getElementById('dmbg').classList.add('on');
+  const titleEl=document.getElementById('dm-title');
+  const subEl=document.getElementById('dm-sub');
+  const bodyEl=document.getElementById('dm-body');
+  const bgEl=document.getElementById('dmbg');
+  if(!titleEl||!subEl||!bodyEl||!bgEl) return; // DOM not ready yet
+  titleEl.textContent=date;
+  subEl.textContent=my;
+  bodyEl.innerHTML=buildDayHTML(r);
+  bgEl.classList.add('on');
 }
 
 function closeDay() { document.getElementById('dmbg').classList.remove('on'); _printDay=null; }

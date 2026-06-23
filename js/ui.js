@@ -75,6 +75,7 @@ function rebuildDropdowns() {
 // ══════════════════════════════════════════
 function rebuildAll() {
   normalizeDates();
+  recomputeAllMonths(); // always re-derive MONTHLY from DAILY so dashboard & popups match Daily Data
   invalidateRenderCache();
   rebuildDropdowns();
   buildDashboard();
