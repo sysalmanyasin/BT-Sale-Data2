@@ -56,7 +56,7 @@ function buildDashboard() {
 
   buildCharts(data);
   buildSummaryTable();
-  const managerMonth = latestManagerMonth() || (lat && lat.Month_Year);
+  const managerMonth = latestManagerMonth() || latestSalesMonthForDashboard(lat);
   buildCreditSection(managerMonth);
 
   // populate Working summary for the latest manager month
@@ -72,6 +72,46 @@ function _monthSortVal(my) {
   const idx = MN.indexOf(parts[0]);
   const yr = parseInt(parts[1], 10);
   return idx >= 0 && !isNaN(yr) ? yr * 12 + idx : -1;
+}
+
+function _currentMonthVal() {
+  const d = new Date();
+  return d.getFullYear() * 12 + d.getMonth();
+}
+
+function latestSalesMonthForDashboard(lat) {
+  const current = _currentMonthVal();
+  if (lat && _monthSortVal(lat.Month_Year) <= current) return lat.Month_Year;
+  const latest = [...MONTHLY].reverse().find(m => _monthSortVal(m.Month_Year) <= current);
+  return latest ? latest.Month_Year : '';
+}
+
+function managerMonthHasData(my) {
+  let hasData = false;
+  try {
+    const mgr = mgrLoad();
+    const salary = (mgr.salary && mgr.salary[my]) || [];
+    const generic = (mgr.generic && mgr.generic[my]) || [];
+    const expense = mgr.expense && mgr.expense[my];
+    const credit = (mgr.credit && mgr.credit[my]) || [];
+    hasData = hasData
+      || salary.some(r => _ni(r.hoSal) || _ni(r.advance) || _ni(r.generic))
+      || generic.some(r => _ni(r.genericSale) || _ni(r.extra))
+      || !!(expense && (_ni(expense.opening) || (expense.rows || []).some(r => _ni(r.bill) || _ni(r.fuel) || _ni(r.soap) || _ni(r.refresh) || _ni(r.extra) || _ni(r.pattyHO))))
+      || credit.some(emp => _ni(emp.prevBal) || _ni(emp.salary) || _ni(emp.lessGeneric) || (emp.entries || []).some(e => _ni(e.amount) || e.desc || e.date));
+  } catch(e) {}
+  try {
+    hasData = hasData || (typeof _pettyTotalForMonth === 'function' && _pettyTotalForMonth(my) !== 0);
+  } catch(e) {}
+  try {
+    const csecAll = typeof _csecLoad === 'function' ? _csecLoad() : {};
+    hasData = hasData || Object.values(csecAll).some(sec => ((sec && sec.months && sec.months[my]) || []).some(r => (parseFloat(r.amount) || 0) !== 0 || r.desc || r.notes));
+  } catch(e) {}
+  try {
+    const inc = JSON.parse(localStorage.getItem('mw_incentive_' + my) || '{}');
+    hasData = hasData || Object.values(inc).some(v => _ni(v) !== 0);
+  } catch(e) {}
+  return hasData;
 }
 
 function latestManagerMonth() {
@@ -92,7 +132,10 @@ function latestManagerMonth() {
     const csecAll = typeof _csecLoad === 'function' ? _csecLoad() : {};
     Object.values(csecAll).forEach(sec => Object.keys((sec && sec.months) || {}).forEach(m => found.add(m)));
   } catch(e) {}
-  return Array.from(found).sort((a, b) => _monthSortVal(b) - _monthSortVal(a))[0] || '';
+  const current = _currentMonthVal();
+  return Array.from(found)
+    .filter(m => _monthSortVal(m) <= current && managerMonthHasData(m))
+    .sort((a, b) => _monthSortVal(b) - _monthSortVal(a))[0] || '';
 }
 
 function buildCreditSection(lat) {
