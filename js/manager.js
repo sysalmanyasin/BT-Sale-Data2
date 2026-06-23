@@ -357,7 +357,6 @@ function activeStaff() {
 function renderStaffRegistry() {
   const cont = document.getElementById('staff-list');
   if (!cont) return;
-  // Update KPIs
   const active = STAFF.filter(e => e.active !== false).length;
   const setK = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
   setK('staff-k-total', STAFF.length);
@@ -367,25 +366,65 @@ function renderStaffRegistry() {
     cont.innerHTML = '<div style="text-align:center;color:var(--muted);padding:32px">No employees yet — click <strong>+ Add Employee</strong></div>';
     return;
   }
-  cont.innerHTML = STAFF.map((emp, i) => `
-    <div class="crd-emp" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:${emp.active!==false?'var(--s1)':'var(--s2)'}">
-      <div style="width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">${(emp.name||'?')[0].toUpperCase()}</div>
-      <div style="flex:1;min-width:0">
-        <input type="text" value="${(emp.name||'').replace(/"/g,'&quot;')}" placeholder="Employee name"
-          class="mgr-inp" style="font-weight:600;margin-bottom:4px"
-          oninput="staffFieldChange(${i},'name',this.value)">
-        <input type="text" value="${(emp.designation||'').replace(/"/g,'&quot;')}" placeholder="Designation"
-          class="mgr-inp" style="font-size:11px;color:var(--muted)"
-          oninput="staffFieldChange(${i},'designation',this.value)">
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-        <label style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:5px;cursor:pointer">
-          <input type="checkbox" ${emp.active!==false?'checked':''} onchange="staffToggleActive(${i},this.checked)">
-          Active
-        </label>
-        <button class="mgr-del" onclick="staffDelete(${i})" title="Remove employee">🗑</button>
-      </div>
-    </div>`).join('');
+  cont.innerHTML = `<div style="overflow-x:auto">
+  <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:900px;border:2px solid var(--border)">
+    <thead>
+      <tr style="background:var(--accent);color:#fff">
+        <th style="padding:9px 10px;text-align:center;border:1px solid rgba(255,255,255,.2);white-space:nowrap;font-size:10px;text-transform:uppercase;letter-spacing:.05em">Staff ID</th>
+        <th style="padding:9px 10px;text-align:left;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Name</th>
+        <th style="padding:9px 10px;text-align:left;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Designation</th>
+        <th style="padding:9px 10px;text-align:left;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Father Name</th>
+        <th style="padding:9px 10px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">CNIC</th>
+        <th style="padding:9px 10px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Blood Group</th>
+        <th style="padding:9px 10px;text-align:left;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Phone</th>
+        <th style="padding:9px 10px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Active</th>
+        <th style="padding:9px 10px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+    ${STAFF.map((emp, i) => {
+      const sid = emp.staffId || ('EMP-' + String(i+1).padStart(3,'0'));
+      const bg = emp.active!==false ? 'var(--surface)' : 'var(--s2)';
+      return `<tr style="background:${bg}">
+        <td style="padding:7px 10px;border:1px solid var(--border);text-align:center">
+          <button onclick="openStaffCard(${i})" title="Open Staff Card"
+            style="background:var(--accent);color:#fff;border:none;border-radius:5px;padding:3px 10px;cursor:pointer;font-size:11px;font-weight:700;font-family:monospace;letter-spacing:.02em">
+            ${sid}
+          </button>
+        </td>
+        <td style="padding:7px 10px;border:1px solid var(--border)">
+          <span onclick="openStaffCard(${i})" style="cursor:pointer;font-weight:600;color:var(--accent);text-decoration:underline dotted;text-underline-offset:3px" title="Open Staff Card">
+            ${emp.name||'<em style="color:var(--muted)">(unnamed)</em>'}
+          </span>
+        </td>
+        <td style="padding:7px 10px;border:1px solid var(--border)">
+          <input type="text" value="${(emp.designation||'').replace(/"/g,'&quot;')}" placeholder="Designation"
+            class="mgr-inp" oninput="staffFieldChange(${i},'designation',this.value)">
+        </td>
+        <td style="padding:7px 10px;border:1px solid var(--border);color:var(--t2)">
+          ${emp.fatherName||'<span style="color:var(--muted)">—</span>'}
+        </td>
+        <td style="padding:7px 10px;border:1px solid var(--border);text-align:center;font-family:monospace;font-size:11px;color:var(--t2)">
+          ${emp.cnic||'<span style="color:var(--muted)">—</span>'}
+        </td>
+        <td style="padding:7px 10px;border:1px solid var(--border);text-align:center">
+          ${emp.bloodGroup ? `<span style="background:#fef2f2;color:var(--red,#dc2626);border:1px solid #fecaca;border-radius:4px;padding:2px 10px;font-weight:700;font-size:12px">${emp.bloodGroup}</span>` : '<span style="color:var(--muted)">—</span>'}
+        </td>
+        <td style="padding:7px 10px;border:1px solid var(--border);color:var(--t2)">
+          ${emp.phone||'<span style="color:var(--muted)">—</span>'}
+        </td>
+        <td style="padding:7px 10px;border:1px solid var(--border);text-align:center">
+          <input type="checkbox" ${emp.active!==false?'checked':''} onchange="staffToggleActive(${i},this.checked)" title="Active/Inactive">
+        </td>
+        <td style="padding:7px 10px;border:1px solid var(--border);text-align:center;white-space:nowrap">
+          <button class="btn btn-p" style="font-size:10px;padding:3px 10px;margin-right:4px" onclick="openStaffCard(${i})">✏ Edit</button>
+          <button class="mgr-del" onclick="staffDelete(${i})" title="Remove">🗑</button>
+        </td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+  </table>
+  </div>`;
 }
 
 function staffFieldChange(i, field, val) {
@@ -404,13 +443,23 @@ function staffDelete(i) {
 }
 
 function addStaffEmployee() {
-  STAFF.push({ id: 'emp_' + Date.now(), name: '', designation: 'Salesman', active: true });
+  const num = STAFF.length + 1;
+  const sid = 'EMP-' + String(num).padStart(3, '0');
+  STAFF.push({
+    id: 'emp_' + Date.now(),
+    staffId: sid,
+    name: '',
+    designation: 'Salesman',
+    fatherName: '',
+    cnic: '',
+    phone: '',
+    address: '',
+    bloodGroup: '',
+    doj: new Date().toISOString().split('T')[0],
+    active: true
+  });
   renderStaffRegistry();
-  // Focus the new name input
-  setTimeout(() => {
-    const inputs = document.querySelectorAll('#staff-list .mgr-inp');
-    if (inputs.length) inputs[inputs.length - 2].focus();
-  }, 80);
+  setTimeout(() => openStaffCard(STAFF.length - 1), 100);
 }
 
 function saveStaffRegistry() {
@@ -468,15 +517,15 @@ function renderSalaryTable(rows) {
   if (!tbody) return;
   tbody.innerHTML = rows.map((r, i) => `
     <tr class="mgr-tr">
-      <td class="mgr-td" style="color:var(--muted);font-size:11px">${i+1}</td>
+      <td class="mgr-td sal-c" style="font-size:11px;color:var(--muted)">${i+1}</td>
       <td class="mgr-td">${_inp('text', r.name||'', '', `salRowChange(${i},'name',this.value)`, 'Name')}</td>
       <td class="mgr-td">${_inp('text', r.desig||'', '', `salRowChange(${i},'desig',this.value)`, 'Designation')}</td>
-      <td class="mgr-td" style="width:60px">${_inp('number', r.days||31, '', `salRowChange(${i},'days',this.value)`, '31')}</td>
-      <td class="mgr-td">${_inp('number', r.hoSal||0, '', `salRowChange(${i},'hoSal',this.value);recalcSalNet(${i})`, '0')}</td>
-      <td class="mgr-td">${_inp('number', r.advance||0, '', `salRowChange(${i},'advance',this.value);recalcSalNet(${i})`, '0')}</td>
-      <td class="mgr-td">${_inp('number', r.generic||0, '', `salRowChange(${i},'generic',this.value);recalcSalNet(${i})`, '0')}</td>
-      <td class="mgr-td"><input type="number" id="sal-net-${i}" class="mgr-inp calc" value="${_salNet(r)}" readonly></td>
-      <td class="mgr-td" style="text-align:center"><button class="mgr-del" onclick="deleteSalRow(${i})">🗑</button></td>
+      <td class="mgr-td sal-c" style="width:60px"><input type="number" value="${r.days||31}" class="mgr-inp sal-num" placeholder="31" oninput="salRowChange(${i},'days',this.value)"></td>
+      <td class="mgr-td"><input type="number" value="${r.hoSal||0}" class="mgr-inp sal-num" placeholder="0" oninput="salRowChange(${i},'hoSal',this.value);recalcSalNet(${i})"></td>
+      <td class="mgr-td"><input type="number" value="${r.advance||0}" class="mgr-inp sal-num" placeholder="0" oninput="salRowChange(${i},'advance',this.value);recalcSalNet(${i})"></td>
+      <td class="mgr-td"><input type="number" value="${r.generic||0}" class="mgr-inp sal-num" placeholder="0" oninput="salRowChange(${i},'generic',this.value);recalcSalNet(${i})"></td>
+      <td class="mgr-td"><input type="number" id="sal-net-${i}" class="mgr-inp calc sal-num" value="${_salNet(r)}" readonly></td>
+      <td class="mgr-td sal-c"><button class="mgr-del" onclick="deleteSalRow(${i})">🗑</button></td>
     </tr>`).join('');
   _salUpdateFooter(rows);
 }
@@ -485,25 +534,33 @@ let _salRows_cur = [];
 
 function loadSalaryMonth(my) {
   _salRows_cur = _salRows(my);
-  // Auto-fill advance & generic from linked sheets if the month has no saved values yet
-  const hasValues = _salRows_cur.some(r => _ni(r.advance) !== 0 || _ni(r.generic) !== 0);
-  if (!hasValues) {
-    const crdRows = _crdData(my);
-    const genRowsData = _genRows(my);
-    const norm = s => (s||'').trim().toLowerCase();
-    _salRows_cur = _salRows_cur.map(row => {
-      const rName = norm(row.name);
-      if (!rName) return row;
-      const crd = crdRows.find(c => norm(c.name) === rName);
-      const gen = genRowsData.find(g => norm(g.name) === rName);
-      const entryTotal = crd ? crd.entries.reduce((s,e) => s + _ni(e.amount), 0) : 0;
-      return {
-        ...row,
-        advance: crd && entryTotal > 0 ? entryTotal : row.advance,
-        generic: gen ? _genFinal(gen) : row.generic
-      };
-    });
-  }
+  const norm = s => (s||'').trim().toLowerCase();
+  // Use in-memory credit data if credit tab is on the same month
+  const crdSel = document.getElementById('crd-month-sel');
+  const crdRows = (crdSel && crdSel.value === my && _crdData_cur.length)
+    ? _crdData_cur : _crdData(my);
+  // Use in-memory generic data if generic tab is on the same month
+  const genSel = document.getElementById('gen-month-sel');
+  const genRowsData = (genSel && genSel.value === my && _genRows_cur.length)
+    ? _genRows_cur : _genRows(my);
+  // Only gate advance on alreadySaved (don't overwrite manual advance edits)
+  const data = mgrLoad();
+  const alreadySaved = !!(data.salary && data.salary[my]);
+  _salRows_cur = _salRows_cur.map(row => {
+    const rName = norm(row.name);
+    if (!rName) return row;
+    const crd = crdRows.find(c => norm(c.name) === rName);
+    const gen = genRowsData.find(g => norm(g.name) === rName);
+    // Sum only positive credit entries (advances drawn by employee)
+    const entryTotal = crd ? crd.entries.reduce((s,e) => { const v=_ni(e.amount); return s+(v>0?v:0); }, 0) : 0;
+    return {
+      ...row,
+      // Advance: only auto-fill if salary not yet saved for this month
+      advance: alreadySaved ? row.advance : entryTotal,
+      // Generic: always pull latest Final value from Generic Working sheet
+      generic: gen ? _genFinal(gen) : row.generic
+    };
+  });
   renderSalaryTable(_salRows_cur);
 }
 
@@ -551,41 +608,36 @@ function saveSalaryData() {
 function autoFillSalaryFromSheets() {
   const my = document.getElementById('sal-month-sel').value;
   if (!my) { toast('⚠ Select a month first','w'); return; }
-
-  // Load Credit data for this month
-  const crdRows = _crdData(my);   // [{name, prevBal, entries, salary, lessGeneric}]
-  // Load Generic data for this month
-  const genRowsData = _genRows(my); // [{name, desig, genericSale, extra}]
-
-  // Helper: match name case-insensitively
+  // Use in-memory credit data if credit tab is on same month (unsaved changes)
+  const crdSel = document.getElementById('crd-month-sel');
+  const crdRows = (crdSel && crdSel.value === my && _crdData_cur.length)
+    ? _crdData_cur : _crdData(my);
+  // Use in-memory generic data if generic tab is on same month (unsaved changes)
+  const genSel = document.getElementById('gen-month-sel');
+  const genRowsData = (genSel && genSel.value === my && _genRows_cur.length)
+    ? _genRows_cur : _genRows(my);
   const norm = s => (s||'').trim().toLowerCase();
-
   let filledAdv = 0, filledGen = 0;
-
   _salRows_cur = _salRows_cur.map(row => {
     const rName = norm(row.name);
     if (!rName) return row;
-
-    // ── Advance: sum all credit entries for this employee ──
+    // Sum only positive entries (advances/credits given to employee)
     const crd = crdRows.find(c => norm(c.name) === rName);
     let advance = row.advance;
     if (crd) {
-      const entryTotal = crd.entries.reduce((s, e) => s + _ni(e.amount), 0);
-      advance = entryTotal > 0 ? entryTotal : 0; // only positive (drawn amounts)
+      const entryTotal = crd.entries.reduce((s, e) => { const v=_ni(e.amount); return s+(v>0?v:0); }, 0);
+      advance = entryTotal;
       filledAdv++;
     }
-
-    // ── Generic: final incentive from Generic Working sheet ──
+    // Always pull latest Final value from Generic Working sheet
     const gen = genRowsData.find(g => norm(g.name) === rName);
     let generic = row.generic;
     if (gen) {
       generic = _genFinal(gen);
       filledGen++;
     }
-
     return { ...row, advance, generic };
   });
-
   renderSalaryTable(_salRows_cur);
   toast(`⚡ Auto-filled: ${filledAdv} advance${filledAdv!==1?'s':''}, ${filledGen} generic value${filledGen!==1?'s':''} — click 💾 Save to keep`);
 }
@@ -825,23 +877,23 @@ function renderCreditLedger(emps) {
         </div>
       </div>
       <div class="crd-emp-body" id="crd-body-${ei}" style="display:none">
-      <div class="crd-emp-body">
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;padding:12px 14px;background:var(--s2);border-bottom:1px solid var(--border)">
           <div class="fg"><label>Previous Balance (₨)</label><input type="number" value="${emp.prevBal||0}" class="mgr-inp" oninput="crdEmpField(${ei},'prevBal',this.value);recalcCrdEmp(${ei})"></div>
           <div class="fg"><label>Salary Paid (₨)</label><input type="number" value="${emp.salary||0}" class="mgr-inp" oninput="crdEmpField(${ei},'salary',this.value);recalcCrdEmp(${ei})"></div>
           <div class="fg"><label>Less Generic (₨)</label><input type="number" value="${emp.lessGeneric||0}" class="mgr-inp" oninput="crdEmpField(${ei},'lessGeneric',this.value);recalcCrdEmp(${ei})"></div>
         </div>
-        <table style="width:100%;border-collapse:collapse;min-width:420px">
-          <thead><tr style="background:var(--s2)">
-            <th style="padding:6px 8px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);border-bottom:1px solid var(--border)">Date</th>
-            <th style="padding:6px 8px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);border-bottom:1px solid var(--border)">Description</th>
-            <th style="padding:6px 8px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);border-bottom:1px solid var(--border)">Amount (₨)</th>
-            <th style="padding:6px 8px;border-bottom:1px solid var(--border)"></th>
+        <div style="padding:12px 14px">
+        <table style="width:100%;border-collapse:collapse;min-width:420px;border:1px solid var(--border)">
+          <thead><tr style="background:var(--accent);color:#fff">
+            <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.06em;border:1px solid rgba(255,255,255,.2)">Date</th>
+            <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.06em;border:1px solid rgba(255,255,255,.2)">Description</th>
+            <th style="padding:7px 10px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:.06em;border:1px solid rgba(255,255,255,.2)">Amount (₨)</th>
+            <th style="padding:7px 10px;border:1px solid rgba(255,255,255,.2)"></th>
           </tr></thead>
           <tbody id="crd-tbody-${ei}">${entryRows}</tbody>
         </table>
         ${emp.entries.length === 0 ? '<p style="text-align:center;color:var(--muted);font-size:12px;padding:14px">No entries yet — click "💳 + Entry" to add.</p>' : ''}
-      </div>
+        </div>
     </div>`;
   }).join('');
   // Expand cards that have entries
@@ -1551,6 +1603,123 @@ function populateDashWorking(mon) {
     }
     el('dw-incentive').textContent = fmt(incNet || '');
   }
+}
+
+// ── Staff Card Popup ────────────────────────────────────────────────────────
+function openStaffCard(i) {
+  const emp = STAFF[i];
+  if (!emp) return;
+  const modal = document.getElementById('sc-bg');
+  if (!modal) return;
+  document.getElementById('sc-idx').value = i;
+  const sid = emp.staffId || ('EMP-' + String(i + 1).padStart(3, '0'));
+  document.getElementById('sc-title-id').textContent = sid;
+  document.getElementById('sc-title-name').textContent = emp.name || '(unnamed)';
+  // Fill form fields
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+  set('sc-f-staffId', sid);
+  set('sc-f-name', emp.name);
+  set('sc-f-designation', emp.designation);
+  set('sc-f-fatherName', emp.fatherName);
+  set('sc-f-cnic', emp.cnic);
+  set('sc-f-bloodGroup', emp.bloodGroup);
+  set('sc-f-phone', emp.phone);
+  set('sc-f-doj', emp.doj);
+  set('sc-f-address', emp.address);
+  const activeEl = document.getElementById('sc-f-active');
+  if (activeEl) activeEl.checked = emp.active !== false;
+  // Load credit history
+  renderStaffCreditHistory(emp.name);
+  modal.classList.add('on');
+  switchStaffCardTab('details');
+}
+
+function closeStaffCard() {
+  const modal = document.getElementById('sc-bg');
+  if (modal) modal.classList.remove('on');
+}
+
+function saveStaffCard() {
+  const i = parseInt(document.getElementById('sc-idx').value);
+  if (isNaN(i) || i < 0 || i >= STAFF.length) return;
+  const get = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+  STAFF[i].staffId     = get('sc-f-staffId');
+  STAFF[i].name        = get('sc-f-name');
+  STAFF[i].designation = get('sc-f-designation');
+  STAFF[i].fatherName  = get('sc-f-fatherName');
+  STAFF[i].cnic        = get('sc-f-cnic');
+  STAFF[i].bloodGroup  = get('sc-f-bloodGroup');
+  STAFF[i].phone       = get('sc-f-phone');
+  STAFF[i].doj         = get('sc-f-doj');
+  STAFF[i].address     = get('sc-f-address');
+  const activeEl = document.getElementById('sc-f-active');
+  if (activeEl) STAFF[i].active = activeEl.checked;
+  // Update header live
+  document.getElementById('sc-title-id').textContent   = STAFF[i].staffId || '';
+  document.getElementById('sc-title-name').textContent  = STAFF[i].name || '(unnamed)';
+  renderStaffRegistry();
+  toast('✓ Staff details saved — click 💾 Save Staff List to persist');
+}
+
+function switchStaffCardTab(tab) {
+  document.querySelectorAll('.sc-tab').forEach(b => b.classList.toggle('active', b.dataset.sctab === tab));
+  document.querySelectorAll('#sc-panel-details,#sc-panel-credit').forEach(p => { p.style.display = 'none'; });
+  const panel = document.getElementById('sc-panel-' + tab);
+  if (panel) panel.style.display = '';
+}
+
+function renderStaffCreditHistory(empName) {
+  const cont = document.getElementById('sc-credit-history');
+  if (!cont) return;
+  const norm = s => (s || '').trim().toLowerCase();
+  const data = mgrLoad();
+  const creditData = data.credit || {};
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const months = Object.keys(creditData).sort((a, b) => {
+    const pa = a.split(' '), pb = b.split(' ');
+    const ya = parseInt(pa[1]) || 0, yb = parseInt(pb[1]) || 0;
+    if (ya !== yb) return yb - ya;
+    return monthNames.indexOf(pb[0]) - monthNames.indexOf(pa[0]);
+  });
+  if (!months.length) {
+    cont.innerHTML = '<p style="text-align:center;color:var(--muted);padding:32px">No credit data saved yet.</p>';
+    return;
+  }
+  let html = '';
+  months.forEach(my => {
+    const emps = creditData[my] || [];
+    const emp = emps.find(e => norm(e.name) === norm(empName));
+    if (!emp) return;
+    const net = _crdNet(emp);
+    const netCol = net > 0 ? 'var(--green,#16a34a)' : net < 0 ? 'var(--red,#dc2626)' : 'var(--muted)';
+    const rows = (emp.entries || []).map(en => {
+      const amt = _ni(en.amount);
+      return `<tr>
+        <td style="padding:5px 10px;border-bottom:1px solid var(--border);font-size:12px">${en.date||''}</td>
+        <td style="padding:5px 10px;border-bottom:1px solid var(--border);font-size:12px">${en.desc||''}</td>
+        <td style="padding:5px 10px;border-bottom:1px solid var(--border);font-size:12px;text-align:right;font-family:monospace;color:${amt<0?'var(--red,#dc2626)':'var(--green,#16a34a)'}">₨${_fc2(en.amount)}</td>
+      </tr>`;
+    }).join('');
+    html += `<div style="margin-bottom:16px;border:1px solid var(--border);border-radius:8px;overflow:hidden">
+      <div style="background:var(--accent);color:#fff;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <strong style="font-size:14px">${my}</strong>
+        <div style="display:flex;gap:16px;font-size:12px;opacity:.9">
+          <span>Prev: ₨${_fc2(emp.prevBal)}</span>
+          <span>Sal: ₨${_fc2(emp.salary)}</span>
+          <span style="font-weight:700;color:#fff">Net: <span style="color:${netCol==='var(--green,#16a34a)'?'#bbf7d0':'#fecaca'}">₨${_fc2(net)}</span></span>
+        </div>
+      </div>
+      ${rows ? `<table style="width:100%;border-collapse:collapse">
+        <thead><tr style="background:var(--s2)">
+          <th style="padding:5px 10px;font-size:10px;text-align:left;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Date</th>
+          <th style="padding:5px 10px;font-size:10px;text-align:left;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Description</th>
+          <th style="padding:5px 10px;font-size:10px;text-align:right;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Amount</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>` : '<p style="text-align:center;color:var(--muted);font-size:12px;padding:12px">No entries for this month</p>'}
+    </div>`;
+  });
+  cont.innerHTML = html || '<p style="text-align:center;color:var(--muted);padding:32px">No credit history found for this employee.</p>';
 }
 
 function initApp() {
