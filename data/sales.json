@@ -108551,156 +108551,10 @@
       "DIFF": null
     }
   ],
-  "staff": [
-    {
-      "id": "emp_1782192282070",
-      "name": "Salman Yasin",
-      "designation": "Co Manager",
-      "active": true
-    },
-    {
-      "id": "emp_1782192282071",
-      "name": "Mian Waqas",
-      "designation": "APM",
-      "active": true
-    },
-    {
-      "id": "emp_1782192282072",
-      "name": "Shah Faisal",
-      "designation": "SSO",
-      "active": true
-    },
-    {
-      "id": "emp_1782192282073",
-      "name": "Dr Zeeshan",
-      "designation": "Internee Pharmacist",
-      "active": true
-    },
-    {
-      "id": "emp_1782192282074",
-      "name": "Dr Shujaat",
-      "designation": "Internee Pharmacist",
-      "active": true
-    },
-    {
-      "id": "emp_1782192282075",
-      "name": "M Reehan",
-      "designation": "Salesman",
-      "active": true
-    },
-    {
-      "id": "emp_1782192282076",
-      "name": "Ali Husnain",
-      "designation": "Salesman",
-      "active": true
-    },
-    {
-      "id": "emp_1782192282077",
-      "name": "Abdul Rehman",
-      "designation": "Salesman",
-      "active": true
-    },
-    {
-      "id": "emp_1782192282078",
-      "name": "Shamshair",
-      "designation": "Salesman",
-      "active": true
-    },
-    {
-      "id": "emp_1782192282079",
-      "name": "Asad Mushtaq",
-      "designation": "Salesman",
-      "active": true
-    },
-    {
-      "id": "emp_1782192282080",
-      "name": "Husnain Haider",
-      "designation": "Salesman",
-      "active": true
-    },
-    {
-      "id": "emp_1782192282081",
-      "name": "Kashif",
-      "designation": "Salesman",
-      "active": true
-    }
-  ],
+  "staff": [],
   "manager": {
     "generic": {
-      "July 2026": [
-        {
-          "name": "Salman Yasin",
-          "desig": "Co Manager",
-          "genericSale": 0,
-          "extra": 0
-        },
-        {
-          "name": "Mian Waqas",
-          "desig": "APM",
-          "genericSale": 100000,
-          "extra": 0
-        },
-        {
-          "name": "Shah Faisal",
-          "desig": "SSO",
-          "genericSale": 0,
-          "extra": 0
-        },
-        {
-          "name": "Dr Zeeshan",
-          "desig": "Internee Pharmacist",
-          "genericSale": 0,
-          "extra": 0
-        },
-        {
-          "name": "Dr Shujaat",
-          "desig": "Internee Pharmacist",
-          "genericSale": 0,
-          "extra": 0
-        },
-        {
-          "name": "M Reehan",
-          "desig": "Salesman",
-          "genericSale": 0,
-          "extra": 0
-        },
-        {
-          "name": "Ali Husnain",
-          "desig": "Salesman",
-          "genericSale": 0,
-          "extra": 0
-        },
-        {
-          "name": "Abdul Rehman",
-          "desig": "Salesman",
-          "genericSale": 0,
-          "extra": 0
-        },
-        {
-          "name": "Shamshair",
-          "desig": "Salesman",
-          "genericSale": 0,
-          "extra": 0
-        },
-        {
-          "name": "Asad Mushtaq",
-          "desig": "Salesman",
-          "genericSale": 0,
-          "extra": 0
-        },
-        {
-          "name": "Husnain Haider",
-          "desig": "Salesman",
-          "genericSale": 0,
-          "extra": 0
-        },
-        {
-          "name": "Kashif",
-          "desig": "Salesman",
-          "genericSale": 0,
-          "extra": 0
-        }
-      ]
+      "July 2026": []
     },
     "credit": {
       "June 2026": []
@@ -108714,5 +108568,5 @@
       "months": {}
     }
   },
-  "pushedAt": "2026-06-23T05:25:40.296Z"
+  "pushedAt": "2026-06-23T05:26:46.353Z"
 }
