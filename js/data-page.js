@@ -168,9 +168,11 @@ async function saveEntry() {
   if(existNewIdx!==-1) newEntries.splice(existNewIdx,1);
   newEntries.push(entry); DAILY.push(entry);
   localStorage.setItem('bt_entries',JSON.stringify(newEntries));
+  // Auto-compute MONTHLY totals from DAILY so dashboard/index/reports all reflect this entry
+  recomputeMonthly(month);
   renderEntryList();
   rebuildAll();
-  toast('✓ Entry saved');
+  toast('✓ Entry saved — dashboard & monthly totals updated');
   if(localStorage.getItem('bt_auto_save')==='1') pushToGitHub();
 }
 

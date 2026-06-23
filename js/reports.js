@@ -11,7 +11,7 @@ function dayData(d) {
   const ecolean=n(d['Ecolean PK']),style_t=n(d['Style Textile']),babar=n(d['Syed Babar Ali Foundation']);
   const rahnuma=n(d['Rahnuma NGO']),healthP=n(d['Health Pass']),nisar=n(d['Nisar Spinning Mills']),foodP=n(d['Food Panda']);
   const netCash=cashSale+meezan+alfalah+alHabib+hbl+mcb+cashRet;
-  const netCredit=pso+nespak+parco+askari+lda+tepa+fissue+gourmet+wapda+bth+berger+ecolean+style_t+babar+rahnuma+healthP+nisar+foodP+askariRet+psoRet+nespakRet+parcoRet+tepaRet+ldaRet;
+  const netCredit=pso+nespak+parco+askari+askariRet+lda+tepa+fissue+gourmet+wapda+bth+berger+ecolean+style_t+babar+rahnuma+healthP+nisar+foodP+psoRet+nespakRet+parcoRet+tepaRet+ldaRet;
   const grand=netCash+netCredit;
   return {cashSale,meezan,alfalah,alHabib,hbl,mcb,cashRet,askari,askariRet,pso,psoRet,nespak,nespakRet,parco,parcoRet,tepa,tepaRet,lda,ldaRet,fissue,gourmet,wapda,bth,berger,ecolean,style_t,babar,rahnuma,healthP,nisar,foodP,netCash,netCredit,grand,
     fdpp:n(d['FDPP']),fdppCon:n(d['FDPP Con']),customers:n(d['Customers']),
@@ -42,7 +42,6 @@ function buildDayHTML(r) {
       ${dmRowHTML('PSO',r.pso,'Sales Only')}
       ${dmRowHTML('Nespak',r.nespak,'Sales Only')}
       ${dmRowHTML('Parco',r.parco,'Sales Only')}
-      ${dmRowHTML('Askari',r.askari)}
       ${dmRowHTML('LDA',r.lda,'Sales Only')}
       ${dmRowHTML('Tepa',r.tepa)}
       ${dmRowHTML('Free Issue',r.fissue)}
@@ -62,6 +61,7 @@ function buildDayHTML(r) {
       ${dmRowHTML('Credit Return Parco',r.parcoRet,'Returns Only')}
       ${dmRowHTML('Credit Return Tepa',r.tepaRet,'Returns Only')}
       ${dmRowHTML('Credit Return LDA',r.ldaRet,'Returns Only')}
+      ${dmRowHTML('Askari',r.askari)}
       ${dmOptRow('Askari Returns',r.askariRet)}
     </div>
     <div class="dmnet"><span>Net Credit Sale</span><span style="font-family:var(--mono)">${fv(r.netCredit)}</span></div>
@@ -99,7 +99,7 @@ function openMonthModal(my) {
   const days=DAILY.filter(d=>d.Month_Year===my&&n(d.TOTAL)>0);
   const fields=[['Cash Sale',m['Cash Sale']],['Cash Returns',m['Cash Returns']],['HBL',m.HBL],['MCB',m.MCB],
     ['Bank Alfalah',m['Alfala Bank']],['Bank Al Habib',m['Bank Al Habib']],['Meezan Bank',m['Meezan Bank (Paysa)']],
-    ['Askari Bank',m['Askari Bank']],['PSO',m.PSO],['NESPAK',m.NESPAK],['PARCO',m.PARCO],['LDA',m.LDA],
+    ['PSO',m.PSO],['NESPAK',m.NESPAK],['PARCO',m.PARCO],['LDA',m.LDA],
     ['Gourmet',m.Gourmet],['F/Issue',m['F/Issue']],['TOTAL',m.TOTAL],['Customers',m.Customers]
   ].filter(([,v])=>v!=null&&n(v)!==0);
 

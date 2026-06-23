@@ -9,8 +9,8 @@ const FM_BUILTIN = [
   {id:'Alfala_Bank',    label:'Bank Alfalah',         section:'Banks',          calcType:'add'},
   {id:'Bank_Al_Habib',  label:'Bank Al Habib',        section:'Banks',          calcType:'add'},
   {id:'Meezan_Bank',    label:'Meezan Bank',          section:'Banks',          calcType:'add'},
-  {id:'Askari_Bank',    label:'Askari Bank',          section:'Banks',          calcType:'add'},
-  {id:'Askari_Bank_Returns', label:'Askari Returns',  section:'Banks',          calcType:'sub'},
+  {id:'Askari_Bank',    label:'Askari',               section:'Credit Clients', calcType:'add'},
+  {id:'Askari_Bank_Returns', label:'Askari Returns',  section:'Credit Clients', calcType:'sub'},
   // Credit Clients
   {id:'PSO',            label:'PSO',                  section:'Credit Clients', calcType:'add'},
   {id:'PSO_Returns',    label:'PSO Returns',          section:'Credit Clients', calcType:'sub'},
@@ -136,7 +136,12 @@ function openFieldManager() {
     t.classList.toggle('active', t.dataset.sec === _fmTabSec);
   });
   fmRenderBody();
-  document.getElementById('fmbg').classList.add('on');
+  const modal = document.getElementById('fmbg');
+  // Ensure modal is direct child of body — fixes desktop stacking context issues
+  if (modal && modal.parentElement !== document.body) {
+    document.body.appendChild(modal);
+  }
+  if (modal) modal.classList.add('on');
 }
 
 function closeFieldManager() {

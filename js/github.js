@@ -85,6 +85,7 @@ async function pushToGitHub() {
         if (lastKnownSha && remote.sha !== lastKnownSha && remote.data) {
           ghLog('⚠ Remote changed since last sync — merging before push…', 'info');
           const {mN,dN,mU,dU} = mergeIncomingData(remote.data);
+          recomputeAllMonths(); // keep MONTHLY totals in sync with DAILY entries
           rebuildAll();
           idbSaveData();
           mergeNote = ` · merged remote: +${mN}/${mU}u months, +${dN}/${dU}u daily`;
@@ -287,6 +288,7 @@ async function manualSync(silent=false) {
       data = JSON.parse(atob(b64));
     }
     const {mN,dN,mU,dU} = mergeIncomingData(data);
+    recomputeAllMonths(); // keep MONTHLY totals in sync with DAILY entries
     ghLog(`✓ Pulled. +${mN} new / ${mU} updated months · +${dN} new / ${dU} updated daily records.`,'ok');
     setSyncBadge('ok');
     rebuildAll();

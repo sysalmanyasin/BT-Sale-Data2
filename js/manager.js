@@ -36,7 +36,6 @@ function buildMonthlyPrintHTML(my) {
     ${_prRowOpt('Meezan Bank', m['Meezan Bank (Paysa)'])}
     ${_prRowOpt('HBL', m.HBL)}
     ${_prRowOpt('MCB', m.MCB)}
-    ${_prRowOpt('Askari Bank', m['Askari Bank'])}
     <tr class="grp"><td colspan="2">Credit Clients</td></tr>
     ${_prRowOpt('PSO', m.PSO)}
     ${_prRowOpt('NESPAK', m.NESPAK)}
@@ -54,6 +53,8 @@ function buildMonthlyPrintHTML(my) {
     ${_prRowOpt('Health Pass', m['Health Pass'])}
     ${_prRowOpt('Nisar Spinning', m['Nisar Spinning Mills'])}
     ${_prRowOpt('Food Panda', m['Food Panda'])}
+    ${_prRowOpt('Askari', m['Askari Bank'])}
+    ${_prRowOpt('Askari Returns', m['Askari Bank Returns'])}
     ${_prRowOpt('F/Issue', m['F/Issue'])}
     <tr class="tot"><td>GRAND TOTAL</td><td class="r">₨${Math.round(total).toLocaleString('en-PK')}</td></tr>
     <tr><td class="l">Customers</td><td class="r">${Math.round(cust).toLocaleString('en-PK')}</td></tr>
@@ -130,12 +131,12 @@ function buildYearlyPrintHTML(yr) {
     </tr>`;
   }).join('');
 
-  const clientCols = ['PSO','NESPAK','PARCO','TEPA','LDA','Gourmet','Wapda Hospital','BTH','Berger Paints','Ecolean PK','Style Textile','Syed Babar Ali Foundation','Rahnuma NGO','Health Pass','Nisar Spinning Mills','Food Panda','F/Issue'];
+  const clientCols = ['PSO','NESPAK','PARCO','TEPA','LDA','Gourmet','Wapda Hospital','BTH','Berger Paints','Ecolean PK','Style Textile','Syed Babar Ali Foundation','Rahnuma NGO','Health Pass','Nisar Spinning Mills','Food Panda','Askari Bank','Askari Bank Returns','F/Issue'];
   const clientRows = clientCols.map(c => {
     const v = mons.reduce((s, m) => s + n(m[c]), 0);
     return v !== 0 ? _prRow(c, v) : '';
   }).join('');
-  const bankCols = ['HBL','MCB','Alfala Bank','Bank Al Habib','Meezan Bank (Paysa)','Askari Bank'];
+  const bankCols = ['HBL','MCB','Alfala Bank','Bank Al Habib','Meezan Bank (Paysa)'];
   const bankRows = bankCols.map(c => {
     const v = mons.reduce((s, m) => s + n(m[c]), 0);
     return v !== 0 ? _prRow(c, v) : '';
