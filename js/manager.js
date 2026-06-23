@@ -267,15 +267,16 @@ function mgrMonths() {
   } catch(e) {}
 
   const now = new Date();
-  for (let delta = -1; delta <= 1; delta++) {
+  const currentVal = now.getFullYear() * 12 + now.getMonth();
+  for (let delta = -1; delta <= 0; delta++) {
     const d = new Date(now.getFullYear(), now.getMonth() + delta, 1);
     seen.add(names[d.getMonth()] + ' ' + d.getFullYear());
   }
 
-  const vals = Array.from(seen).map(toVal).filter(v => v != null);
+  const vals = Array.from(seen).map(toVal).filter(v => v != null && v <= currentVal);
   if (!vals.length) return [];
   const min = Math.min(...vals);
-  const max = Math.max(...vals, now.getFullYear() * 12 + now.getMonth() + 1);
+  const max = Math.min(currentVal, Math.max(...vals));
   const out = [];
   for (let v = max; v >= min; v--) out.push(toLabel(v));
   return out;
