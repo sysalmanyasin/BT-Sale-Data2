@@ -73,8 +73,12 @@ async function pushToGitHub() {
     };
 
     // Git Data API — no size limit, uses blobs + trees + commits
-    const tryGitDataAPI = async () => {
-      ghLog('File large — using Git Data API…');
+    // Self-healing: if the ref moved between read and write (another device/tab
+    // pushed in the meantime), rebuild the commit on top of the new tip and
+    // retry instead of failing immediately.
+    const MAX_PUSH_ATTEMPTS = 4;
+    const tryGitDataAPI = async (attempt = 1) => {
+      ghLog('File large — using Git Data API…' + (attempt > 1 ? ` (retry ${attempt}/${MAX_PUSH_ATTEMPTS})` : ''));
 
       // 1. Get latest commit SHA on main branch
       const refResp = await fetch(`${apiBase}/git/refs/heads/main`, { headers });
@@ -107,7 +111,7 @@ async function pushToGitHub() {
       if (!treeResp.ok) throw new Error('Cannot create tree: HTTP ' + treeResp.status);
       const treeData = await treeResp.json();
 
-      // 5. Create a new commit
+      // 5. Create a new commit, parented on whatever the tip was *just now*
       const newCommitResp = await fetch(`${apiBase}/git/commits`, {
         method: 'POST', headers,
         body: JSON.stringify({
@@ -127,8 +131,18 @@ async function pushToGitHub() {
       if (!updateRefResp.ok) {
         const refErr = await updateRefResp.json().catch(() => ({}));
         const refMsg = (refErr.message || '').toLowerCase();
-        if (updateRefResp.status === 422 || refMsg.includes('not a fast forward') || refMsg.includes('update is not')) {
-          throw new Error('Push conflict — another device pushed at the same time. Pull first, then push again.');
+        const isConflict = updateRefResp.status === 422
+          || refMsg.includes('not a fast forward')
+          || refMsg.includes('update is not');
+
+        if (isConflict && attempt < MAX_PUSH_ATTEMPTS) {
+          // Ref moved since step 1 — someone else pushed. Rebuild on the new
+          // tip and try again rather than bothering the user.
+          ghLog('Push conflict (ref moved) — rebuilding on latest tip…', 'info');
+          return tryGitDataAPI(attempt + 1);
+        }
+        if (isConflict) {
+          throw new Error('Push conflict — another device pushed repeatedly while retrying. Pull, then push again.');
         }
         throw new Error('Cannot update ref: HTTP ' + updateRefResp.status);
       }
