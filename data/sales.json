@@ -109082,6 +109082,16 @@
             "refresh": 0,
             "extra": 0,
             "pattyHO": 0
+          },
+          {
+            "date": "23-Jun-2026",
+            "desc": "Current",
+            "bill": -9316,
+            "fuel": 0,
+            "soap": 0,
+            "refresh": 0,
+            "extra": 0,
+            "pattyHO": 0
           }
         ]
       },
@@ -109231,5 +109241,5 @@
       }
     }
   },
-  "pushedAt": "2026-06-23T17:15:19.758Z"
+  "pushedAt": "2026-06-23T17:16:11.083Z"
 }
