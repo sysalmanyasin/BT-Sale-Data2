@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<div id="dbgbox" style="position:fixed;bottom:0;left:0;right:0;background:#000;color:#0f0;font-size:11px;padding:8px;z-index:99999;max-height:35vh;overflow:auto;white-space:pre-wrap;"></div>
+<script>
+window.addEventListener('error', function(e){
+  document.getElementById('dbgbox').textContent += 'ERROR: ' + e.message + ' (' + e.filename + ':' + e.lineno + ')\n';
+});
+window.addEventListener('unhandledrejection', function(e){
+  document.getElementById('dbgbox').textContent += 'REJECTION: ' + e.reason + '\n';
+});
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="theme-color" content="#2563eb">
