@@ -74,6 +74,7 @@ function rebuildDropdowns() {
 // REBUILD ALL
 // ══════════════════════════════════════════
 function rebuildAll() {
+  normalizeDates();
   invalidateRenderCache();
   rebuildDropdowns();
   buildDashboard();

@@ -23,6 +23,39 @@ const creditSales = m => CLIENT_COLS.reduce((s,c)=>s+n(m[c]),0);
 const cashSales = m => n(m['Cash Sale']) + n(m['Cash Returns']) + mBanks(m);
 const clamp = (v,lo,hi) => Math.max(lo,Math.min(hi,v));
 const pctNum = (a,b) => b?((a-b)/b*100):0;
+// ══════════════════════════════════════════
+// DATE NORMALIZATION
+// Fixes entries manually added to JSON with ISO dates (YYYY-MM-DD)
+// instead of the expected DD/Mon/YYYY format.
+// Also recomputes MONTHLY.TOTAL for any affected months.
+// ══════════════════════════════════════════
+function normalizeDates() {
+  const _months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const isoRe=/^(\d{4})-(\d{2})-(\d{2})$/;
+  const affectedMonths=new Set();
+
+  DAILY.forEach(d=>{
+    const m=isoRe.exec(d.Date);
+    if(m){
+      const [,yyyy,mm,dd]=m;
+      d.Date=`${dd}/${_months[parseInt(mm,10)-1]}/${yyyy}`;
+      affectedMonths.add(d.Month_Year);
+    }
+  });
+
+  // Recompute MONTHLY.TOTAL for each affected month from DAILY entries
+  affectedMonths.forEach(my=>{
+    const rec=MONTHLY.find(x=>x.Month_Year===my);
+    if(!rec) return;
+    const total=DAILY.filter(d=>d.Month_Year===my&&n(d.TOTAL)!==0)
+                     .reduce((s,d)=>s+n(d.TOTAL),0);
+    const custs=DAILY.filter(d=>d.Month_Year===my&&n(d.Customers)!==0)
+                     .reduce((s,d)=>s+n(d.Customers),0);
+    rec.TOTAL=total;
+    rec.Customers=custs;
+  });
+}
+
 function yearlyCAGR() {
   if (MONTHLY.length < 24) return null;
   const first12 = MONTHLY.slice(0,12).reduce((s,m)=>s+n(m.TOTAL),0);
