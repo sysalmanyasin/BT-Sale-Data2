@@ -5,6 +5,7 @@ const PIN_K        = 'bt_pin_hash';
 const GAUTH_CID_K  = 'bt_gauth_cid';        // Google OAuth Client ID
 const GAUTH_MAIL_K = 'bt_gauth_emails';      // comma-separated allowed emails
 const GAUTH_SESS_K = 'bt_gauth_session';     // {email,name,picture,exp}
+const DRIVE_GRANT_K = 'bt_drive_granted';    // '1' once user has granted the Drive scope at least once
 // ── Baked-in Client ID (no manual setup required) ─────────────
 (function(){var _k='bt_gauth_cid',_v='36704237826-6lg0o3u0voqhdkvdj3kd331jsft62uun.apps.googleusercontent.com';if(!localStorage.getItem(_k))localStorage.setItem(_k,_v);})();
 // ── Baked-in allowed emails (same list on every device, every load) ──
@@ -311,6 +312,7 @@ async function _gauthHandleRedirectToken() {
     // Reuse the Drive-scoped token so Drive backup works without a separate authorize step
     _driveAccessToken = token;
     _driveUpdateBadge('ok'); // reflect Drive-ready state immediately in Tools
+    localStorage.setItem(DRIVE_GRANT_K, '1'); // remember that Drive scope was granted, so future loads can silently refresh
     gauthSetSession({ email:info.email, name:info.name||info.email, picture:info.picture||'' });
     unlockApp();
     return true;
