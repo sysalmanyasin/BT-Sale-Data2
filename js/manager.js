@@ -350,7 +350,8 @@ function staffSave() {
 }
 
 function activeStaff() {
-  return STAFF.filter(e => e.active !== false);
+  return STAFF.filter(e => e.active !== false)
+    .sort((a, b) => (Number(a.srNum)||999) - (Number(b.srNum)||999));
 }
 
 // ── Staff Registry UI ──────────────────────────────────
@@ -366,11 +367,15 @@ function renderStaffRegistry() {
     cont.innerHTML = '<div style="text-align:center;color:var(--muted);padding:32px">No employees yet — click <strong>+ Add Employee</strong></div>';
     return;
   }
+  // Sort by srNum for display (STAFF array order unchanged)
+  const _srSorted = STAFF.map((emp, origIdx) => ({emp, origIdx}))
+    .sort((a, b) => (Number(a.emp.srNum)||999) - (Number(b.emp.srNum)||999));
   cont.innerHTML = `<div style="overflow-x:auto">
-  <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:900px;border:2px solid var(--border)">
+  <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:980px;border:2px solid var(--border)">
     <thead>
       <tr style="background:var(--accent);color:#fff">
-        <th style="padding:9px 10px;text-align:center;border:1px solid rgba(255,255,255,.2);white-space:nowrap;font-size:10px;text-transform:uppercase;letter-spacing:.05em">Staff ID</th>
+        <th style="padding:9px 8px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em" title="Editable Sr# — controls row order in Salary, Generic & Credit sheets">Sr#</th>
+        <th style="padding:9px 10px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Staff ID</th>
         <th style="padding:9px 10px;text-align:left;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Name</th>
         <th style="padding:9px 10px;text-align:left;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Designation</th>
         <th style="padding:9px 10px;text-align:left;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Father Name</th>
@@ -382,10 +387,18 @@ function renderStaffRegistry() {
       </tr>
     </thead>
     <tbody>
-    ${STAFF.map((emp, i) => {
-      const sid = emp.staffId || ('EMP-' + String(i+1).padStart(3,'0'));
+    ${_srSorted.map(({emp, origIdx}) => {
+      const i = origIdx;
+      const sid = emp.staffId || ('EMP-' + String(origIdx+1).padStart(3,'0'));
+      const srNum = emp.srNum != null ? emp.srNum : (origIdx + 1);
       const bg = emp.active!==false ? 'var(--surface)' : 'var(--s2)';
       return `<tr style="background:${bg}">
+        <td style="padding:4px 6px;border:1px solid var(--border);text-align:center;width:48px">
+          <input type="number" value="${srNum}" min="1" max="999"
+            class="mgr-inp sal-num" style="width:42px;text-align:center;font-weight:700;font-size:12px;padding:2px 4px"
+            title="Change Sr# to reorder in Salary/Generic/Credit sheets"
+            oninput="staffSrNumChange(${i},this.value)">
+        </td>
         <td style="padding:7px 10px;border:1px solid var(--border);text-align:center">
           <button onclick="openStaffCard(${i})" title="Open Staff Card"
             style="background:var(--accent);color:#fff;border:none;border-radius:5px;padding:3px 10px;cursor:pointer;font-size:11px;font-weight:700;font-family:monospace;letter-spacing:.02em">
@@ -408,7 +421,7 @@ function renderStaffRegistry() {
           ${emp.cnic||'<span style="color:var(--muted)">—</span>'}
         </td>
         <td style="padding:7px 10px;border:1px solid var(--border);text-align:center">
-          ${emp.bloodGroup ? `<span style="background:#fef2f2;color:var(--red,#dc2626);border:1px solid #fecaca;border-radius:4px;padding:2px 10px;font-weight:700;font-size:12px">${emp.bloodGroup}</span>` : '<span style="color:var(--muted)">—</span>'}
+          ${emp.bloodGroup ? '<span style="background:#fef2f2;color:var(--red,#dc2626);border:1px solid #fecaca;border-radius:4px;padding:2px 10px;font-weight:700;font-size:12px">'+emp.bloodGroup+'</span>' : '<span style="color:var(--muted)">—</span>'}
         </td>
         <td style="padding:7px 10px;border:1px solid var(--border);color:var(--t2)">
           ${emp.phone||'<span style="color:var(--muted)">—</span>'}
@@ -424,11 +437,16 @@ function renderStaffRegistry() {
     }).join('')}
     </tbody>
   </table>
-  </div>`;
-}
+  <div style="font-size:11px;color:var(--muted);padding:8px 4px">💡 <strong>Sr#</strong> controls the row order in Salary, Generic & Credit sheets. Edit any number then click 💾 Save Staff List to apply.</div>
+  </div>`;}
 
 function staffFieldChange(i, field, val) {
   STAFF[i][field] = val;
+}
+function staffSrNumChange(i, val) {
+  STAFF[i].srNum = Number(val) || 1;
+  // Re-render the table so the sort order updates live
+  renderStaffRegistry();
 }
 
 function staffToggleActive(i, active) {
@@ -445,9 +463,11 @@ function staffDelete(i) {
 function addStaffEmployee() {
   const num = STAFF.length + 1;
   const sid = 'EMP-' + String(num).padStart(3, '0');
+  const maxSr = STAFF.reduce((m, e) => Math.max(m, Number(e.srNum) || 0), 0);
   STAFF.push({
     id: 'emp_' + Date.now(),
     staffId: sid,
+    srNum: maxSr + 1,
     name: '',
     designation: 'Salesman',
     fatherName: '',
@@ -463,12 +483,12 @@ function addStaffEmployee() {
 }
 
 function saveStaffRegistry() {
+  // Migrate: assign srNum to any staff missing it
+  STAFF.forEach((emp, i) => { if (emp.srNum == null || emp.srNum === '') emp.srNum = i + 1; });
   staffSave();
-  // Propagate to all loaded sheets immediately
   _propagateStaffToSheets();
-  toast('✓ Staff list saved — syncing to GitHub…');
-  // Always push staff changes regardless of auto-save setting,
-  // because staff is shared configuration, not just local data.
+  toast('✓ Staff list saved — pushing to GitHub…');
+  // ALWAYS push staff registry — it is shared config, not just local data.
   pushToGitHub();
 }
 
@@ -515,18 +535,44 @@ function renderSalaryTable(rows) {
   const tbody = document.getElementById('sal-tbody');
   const tfoot = document.getElementById('sal-tfoot');
   if (!tbody) return;
-  tbody.innerHTML = rows.map((r, i) => `
-    <tr class="mgr-tr">
+  // FIX 1+2: Load credit detail for advance tooltip; find staff card index
+  const _salMon = document.getElementById('sal-month-sel')?.value || '';
+  const _crdForAdv = _crdData(_salMon);
+  const _salNorm = s => (s||'').trim().toLowerCase();
+  tbody.innerHTML = rows.map((r, i) => {
+    // FIX 1: Build advance tooltip from credit ledger entries
+    const _crdEmp = _crdForAdv.find(c => _salNorm(c.name) === _salNorm(r.name));
+    let _advTitle = '';
+    if (_crdEmp && _crdEmp.entries && _crdEmp.entries.length) {
+      const pos = _crdEmp.entries.filter(e => _ni(e.amount) > 0);
+      if (pos.length) {
+        _advTitle = 'Credit entries:\n' + pos.map(e => e.date + ': ' + (e.desc||'') + ' Rs' + _fc2(e.amount)).join('\n');
+      }
+    }
+    // FIX 2: Clickable Staff ID in salary
+    const _sIdx = STAFF.findIndex(s => _salNorm(s.name) === _salNorm(r.name));
+    const _sEmp = _sIdx >= 0 ? STAFF[_sIdx] : null;
+    const _sSid = _sEmp ? (_sEmp.staffId || ('EMP-' + String(_sIdx+1).padStart(3,'0'))) : null;
+    const _sNameInp = _inp('text', r.name||'', '', "salRowChange("+i+",'name',this.value)", 'Name');
+    const _sDesigInp = _inp('text', r.desig||'', '', "salRowChange("+i+",'desig',this.value)", 'Designation');
+    const _sNameCell = _sSid
+      ? '<div style="display:flex;align-items:center;gap:5px">'
+        + '<button onclick="openStaffCard('+_sIdx+')" title="Open '+(r.name||'Staff')+' Card"'
+        + ' style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:10px;font-weight:700;font-family:monospace;flex-shrink:0">'+_sSid+'</button>'
+        + _sNameInp + '</div>'
+      : _sNameInp;
+    return `<tr class="mgr-tr">
       <td class="mgr-td sal-c" style="font-size:11px;color:var(--muted)">${i+1}</td>
-      <td class="mgr-td">${_inp('text', r.name||'', '', `salRowChange(${i},'name',this.value)`, 'Name')}</td>
-      <td class="mgr-td">${_inp('text', r.desig||'', '', `salRowChange(${i},'desig',this.value)`, 'Designation')}</td>
+      <td class="mgr-td">${_sNameCell}</td>
+      <td class="mgr-td">${_sDesigInp}</td>
       <td class="mgr-td sal-c" style="width:60px"><input type="number" value="${r.days||31}" class="mgr-inp sal-num" placeholder="31" oninput="salRowChange(${i},'days',this.value)"></td>
       <td class="mgr-td"><input type="number" value="${r.hoSal||0}" class="mgr-inp sal-num" placeholder="0" oninput="salRowChange(${i},'hoSal',this.value);recalcSalNet(${i})"></td>
-      <td class="mgr-td"><input type="number" value="${r.advance||0}" class="mgr-inp sal-num" placeholder="0" oninput="salRowChange(${i},'advance',this.value);recalcSalNet(${i})"></td>
+      <td class="mgr-td" ${_advTitle ? 'title="'+_advTitle+'" style="position:relative"' : ''}><input type="number" value="${r.advance||0}" class="mgr-inp sal-num${_advTitle?' sal-adv-linked':''}" placeholder="0" oninput="salRowChange(${i},'advance',this.value);recalcSalNet(${i})">${_advTitle ? '<span style="position:absolute;top:2px;right:3px;font-size:9px;color:var(--accent);pointer-events:none" title="'+_advTitle+'">💳</span>' : ''}</td>
       <td class="mgr-td"><input type="number" value="${r.generic||0}" class="mgr-inp sal-num" placeholder="0" oninput="salRowChange(${i},'generic',this.value);recalcSalNet(${i})"></td>
       <td class="mgr-td"><input type="number" id="sal-net-${i}" class="mgr-inp calc sal-num" value="${_salNet(r)}" readonly></td>
       <td class="mgr-td sal-c"><button class="mgr-del" onclick="deleteSalRow(${i})">🗑</button></td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
   _salUpdateFooter(rows);
 }
 
@@ -659,17 +705,32 @@ function _genFinal(r) { return _genIncentive(r) + _ni(r.extra); }
 function renderGenericTable(rows) {
   const tbody = document.getElementById('gen-tbody');
   if (!tbody) return;
-  tbody.innerHTML = rows.map((r, i) => `
-    <tr class="mgr-tr">
-      <td class="mgr-td" style="color:var(--muted);font-size:11px">${i+1}</td>
-      <td class="mgr-td">${_inp('text', r.name||'', '', `genRowChange(${i},'name',this.value)`, 'Name')}</td>
-      <td class="mgr-td">${_inp('text', r.desig||'', '', `genRowChange(${i},'desig',this.value)`, 'Designation')}</td>
-      <td class="mgr-td">${_inp('number', r.genericSale||0, '', `genRowChange(${i},'genericSale',this.value);recalcGenRow(${i})`, '0')}</td>
-      <td class="mgr-td"><input type="number" id="gen-inc-${i}" class="mgr-inp calc" value="${_genIncentive(r)}" readonly></td>
-      <td class="mgr-td">${_inp('number', r.extra||0, '', `genRowChange(${i},'extra',this.value);recalcGenRow(${i})`, '0')}</td>
-      <td class="mgr-td"><input type="number" id="gen-fin-${i}" class="mgr-inp calc" value="${_genFinal(r)}" readonly></td>
-      <td class="mgr-td" style="text-align:center"><button class="mgr-del" onclick="deleteGenRow(${i})">🗑</button></td>
-    </tr>`).join('');
+  const _genNorm = s => (s||'').trim().toLowerCase();
+  tbody.innerHTML = rows.map((r, i) => {
+    const _gIdx = STAFF.findIndex(s => _genNorm(s.name) === _genNorm(r.name));
+    const _gEmp = _gIdx >= 0 ? STAFF[_gIdx] : null;
+    const _gSid = _gEmp ? (_gEmp.staffId || ('EMP-' + String(_gIdx+1).padStart(3,'0'))) : null;
+    const _gNameInp  = _inp('text',   r.name||'',        '', "genRowChange("+i+",'name',this.value)", 'Name');
+    const _gDesigInp = _inp('text',   r.desig||'',       '', "genRowChange("+i+",'desig',this.value)", 'Designation');
+    const _gSaleInp  = _inp('number', r.genericSale||0,  'sal-num', "genRowChange("+i+",'genericSale',this.value);recalcGenRow("+i+")", '0');
+    const _gExtraInp = _inp('number', r.extra||0,        'sal-num', "genRowChange("+i+",'extra',this.value);recalcGenRow("+i+")", '0');
+    const _gNameCell = _gSid
+      ? '<div style="display:flex;align-items:center;gap:5px">'
+        + '<button onclick="openStaffCard('+_gIdx+')" title="Open '+(r.name||'Staff')+' Card"'
+        + ' style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:10px;font-weight:700;font-family:monospace;flex-shrink:0">'+_gSid+'</button>'
+        + _gNameInp + '</div>'
+      : _gNameInp;
+    return `<tr class="mgr-tr">
+      <td class="mgr-td sal-c" style="font-size:11px;color:var(--muted)">${i+1}</td>
+      <td class="mgr-td">${_gNameCell}</td>
+      <td class="mgr-td">${_gDesigInp}</td>
+      <td class="mgr-td">${_gSaleInp}</td>
+      <td class="mgr-td"><input type="number" id="gen-inc-${i}" class="mgr-inp calc sal-num" value="${_genIncentive(r)}" readonly></td>
+      <td class="mgr-td">${_gExtraInp}</td>
+      <td class="mgr-td"><input type="number" id="gen-fin-${i}" class="mgr-inp calc sal-num" value="${_genFinal(r)}" readonly></td>
+      <td class="mgr-td sal-c"><button class="mgr-del" onclick="deleteGenRow(${i})">🗑</button></td>
+    </tr>`;
+  }).join('');
   _genUpdateFooter(rows);
 }
 
@@ -857,27 +918,32 @@ function renderCreditLedger(emps) {
       <tr class="mgr-tr">
         <td class="mgr-td">${_inp('text', en.date||'', '', `crdEntryChange(${ei},${eni},'date',this.value)`, 'Date')}</td>
         <td class="mgr-td">${_inp('text', en.desc||'', '', `crdEntryChange(${ei},${eni},'desc',this.value)`, 'Description (credit/deduction/…)')}</td>
-        <td class="mgr-td"><input type="number" value="${en.amount||0}" class="mgr-inp${_ni(en.amount)<0?' ':'  '}" style="${_ni(en.amount)<0?'color:var(--red)':'color:var(--green)'}" placeholder="0 (negative=deduction)" oninput="crdEntryChange(${ei},${eni},'amount',this.value);recalcCrdEmp(${ei})"></td>
+        <td class="mgr-td"><input type="number" value="${en.amount||0}" class="mgr-inp sal-num" style="font-weight:700;${_ni(en.amount)<0?'color:var(--red)':'color:var(--green)'}" placeholder="0 (negative=deduction)" oninput="crdEntryChange(${ei},${eni},'amount',this.value);recalcCrdEmp(${ei})"></td>
         <td class="mgr-td" style="text-align:center"><button class="mgr-del" onclick="deleteCrdEntry(${ei},${eni})">🗑</button></td>
       </tr>`).join('');
+    const _cNorm = s => (s||'').trim().toLowerCase();
+    const _cIdx = STAFF.findIndex(s => _cNorm(s.name) === _cNorm(emp.name));
+    const _cEmp = _cIdx >= 0 ? STAFF[_cIdx] : null;
+    const _cSid = _cEmp ? (_cEmp.staffId || ('EMP-' + String(_cIdx+1).padStart(3,'0'))) : null;
     return `<div class="crd-emp" id="crd-emp-${ei}">
-      <div class="crd-emp-hdr" onclick="_toggleCrdEmpBody(${ei})" style="cursor:pointer" title="Click to expand/collapse">
+      <div class="crd-emp-hdr" onclick="_toggleCrdEmpBody(${ei})" title="Click to expand/collapse">
         <div class="crd-emp-name">
-          <span class="crd-chevron" id="crd-chev-${ei}" style="font-size:10px;margin-right:6px;transition:transform .2s;display:inline-block">▶</span>
-          ${emp.name}
-          <span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:6px">${emp.entries.length} entr${emp.entries.length===1?'y':'ies'}</span>
+          <span class="crd-chevron" id="crd-chev-${ei}" style="font-size:10px;transition:transform .2s;display:inline-block">▶</span>
+          ${_cSid ? '<button onclick="event.stopPropagation();openStaffCard('+_cIdx+')" title="Open '+emp.name+' Card" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:10px;font-weight:700;font-family:monospace">'+_cSid+'</button>' : ''}
+          <span onclick="event.stopPropagation();${_cIdx>=0?'openStaffCard('+_cIdx+')':''}" style="cursor:${_cIdx>=0?'pointer':'default'};color:var(--accent);font-weight:600;${_cIdx>=0?'text-decoration:underline dotted;text-underline-offset:2px':''}">${emp.name}</span>
+          <span class="crd-entry-badge">${emp.entries.length} entr${emp.entries.length===1?'y':'ies'}</span>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap" onclick="event.stopPropagation()">
-          <div style="font-size:11px;color:var(--muted)">Prev: <strong>₨${_fc2(emp.prevBal)}</strong></div>
-          <div style="font-size:11px;color:var(--muted)">Salary: <strong>₨${_fc2(emp.salary)}</strong></div>
-          <div style="font-size:11px;color:var(--muted)">LessGen: <strong>₨${_fc2(emp.lessGeneric)}</strong></div>
-          <div class="crd-emp-bal" style="color:${netColor}" id="crd-net-${ei}">Net: ₨${_fc2(net)}</div>
+        <div class="crd-emp-stats" onclick="event.stopPropagation()">
+          <span class="crd-chip">Prev <strong>₨${_fc2(emp.prevBal)}</strong></span>
+          <span class="crd-chip">Salary <strong>₨${_fc2(emp.salary)}</strong></span>
+          <span class="crd-chip">LessGen <strong>₨${_fc2(emp.lessGeneric)}</strong></span>
+          <span class="crd-emp-bal" style="color:${netColor}" id="crd-net-${ei}">Net: ₨${_fc2(net)}</span>
           <button class="btn btn-p" style="font-size:11px;padding:4px 10px" onclick="addCrdEntryFocused(${ei})">💳 + Entry</button>
           <button class="mgr-del" onclick="deleteCrdEmp(${ei})" title="Remove employee">🗑</button>
         </div>
       </div>
       <div class="crd-emp-body" id="crd-body-${ei}" style="display:none">
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;padding:12px 14px;background:var(--s2);border-bottom:1px solid var(--border)">
+        <div class="crd-emp-fields">
           <div class="fg"><label>Previous Balance (₨)</label><input type="number" value="${emp.prevBal||0}" class="mgr-inp" oninput="crdEmpField(${ei},'prevBal',this.value);recalcCrdEmp(${ei})"></div>
           <div class="fg"><label>Salary Paid (₨)</label><input type="number" value="${emp.salary||0}" class="mgr-inp" oninput="crdEmpField(${ei},'salary',this.value);recalcCrdEmp(${ei})"></div>
           <div class="fg"><label>Less Generic (₨)</label><input type="number" value="${emp.lessGeneric||0}" class="mgr-inp" oninput="crdEmpField(${ei},'lessGeneric',this.value);recalcCrdEmp(${ei})"></div>
@@ -1618,6 +1684,7 @@ function openStaffCard(i) {
   // Fill form fields
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
   set('sc-f-staffId', sid);
+  set('sc-f-srNum', emp.srNum != null ? emp.srNum : (i + 1));
   set('sc-f-name', emp.name);
   set('sc-f-designation', emp.designation);
   set('sc-f-fatherName', emp.fatherName);
@@ -1644,6 +1711,7 @@ function saveStaffCard() {
   if (isNaN(i) || i < 0 || i >= STAFF.length) return;
   const get = id => { const el = document.getElementById(id); return el ? el.value : ''; };
   STAFF[i].staffId     = get('sc-f-staffId');
+  STAFF[i].srNum       = Number(get('sc-f-srNum')) || STAFF[i].srNum;
   STAFF[i].name        = get('sc-f-name');
   STAFF[i].designation = get('sc-f-designation');
   STAFF[i].fatherName  = get('sc-f-fatherName');
