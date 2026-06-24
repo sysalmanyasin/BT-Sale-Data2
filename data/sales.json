@@ -108474,36 +108474,66 @@
       "June 2026": [
         {
           "name": "Salman Yasin",
-          "prevBal": 670,
-          "entries": [],
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "24-Jun-2026",
+              "desc": "credit",
+              "amount": 670
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Muhammad Zubair",
-          "prevBal": 20900,
-          "entries": [],
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "24-Jun-2026",
+              "desc": "credit",
+              "amount": 20900
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Aftab Wizir",
-          "prevBal": 150,
-          "entries": [],
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "24-Jun-2026",
+              "desc": "credit",
+              "amount": 150
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Mian Waqas",
-          "prevBal": 450,
-          "entries": [],
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "24-Jun-2026",
+              "desc": "credit",
+              "amount": 450
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Dr Zeeshan",
-          "prevBal": 6740,
-          "entries": [],
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "24-Jun-2026",
+              "desc": "credit",
+              "amount": 6740
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
@@ -108516,22 +108546,40 @@
         },
         {
           "name": "Shah Faisal Ali Khan",
-          "prevBal": 1995,
-          "entries": [],
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "24-Jun-2026",
+              "desc": "credit",
+              "amount": 1995
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Muhammad Reehan",
-          "prevBal": 1604,
-          "entries": [],
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "24-Jun-2026",
+              "desc": "credit",
+              "amount": 1604
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Shamshair Ali",
-          "prevBal": 9055,
-          "entries": [],
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "24-Jun-2026",
+              "desc": "credit",
+              "amount": 9055
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
@@ -108544,15 +108592,27 @@
         },
         {
           "name": "Husnain Haider",
-          "prevBal": 3950,
-          "entries": [],
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "24-Jun-2026",
+              "desc": "credit",
+              "amount": 3950
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Ali Husnain ",
-          "prevBal": 2540,
-          "entries": [],
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "24-Jun-2026",
+              "desc": "credit",
+              "amount": 2540
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
@@ -108565,15 +108625,27 @@
         },
         {
           "name": "M Rehman",
-          "prevBal": 181,
-          "entries": [],
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "24-Jun-2026",
+              "desc": "credit",
+              "amount": 181
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Salman Ghulam Ali",
-          "prevBal": 2350,
-          "entries": [],
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "24-Jun-2026",
+              "desc": "credit",
+              "amount": 2350
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         }
@@ -109176,5 +109248,5 @@
       }
     }
   },
-  "pushedAt": "2026-06-24T05:48:48.057Z"
+  "pushedAt": "2026-06-24T05:58:54.155Z"
 }
