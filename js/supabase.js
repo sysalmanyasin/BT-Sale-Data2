@@ -280,64 +280,6 @@ async function pullFromSupabase(silent = false) {
   }
 }
 
-// ══════════════════════════════════════════════════════════════════
-// ONE-TIME MIGRATION FROM GITHUB → SUPABASE
-// ══════════════════════════════════════════════════════════════════
-async function migrateFromGitHub() {
-  const btn      = document.getElementById('migrate-btn');
-  const statusEl = document.getElementById('migrate-status');
-  if (btn) { btn.disabled = true; btn.textContent = 'Migrating…'; }
-  if (statusEl) statusEl.textContent = '';
-  sbLog('Migration started — fetching data from old GitHub repo…', 'info');
-
-  const RAW_URL = 'https://raw.githubusercontent.com/sysalmanyasin/BT-Sale-Data2/main/data/sales.json';
-
-  try {
-    const resp = await fetch(RAW_URL + '?t=' + Date.now());
-    if (!resp.ok) throw new Error('Could not fetch from GitHub: HTTP ' + resp.status);
-    const ghData = await resp.json();
-
-    const mCount = (ghData.monthly || []).length;
-    const dCount = (ghData.daily   || []).length;
-    sbLog(`Fetched from GitHub — ${mCount} monthly, ${dCount} daily records. Merging…`, 'info');
-
-    mergeIncomingData(ghData, true);
-    recomputeAllMonths();
-
-    sbLog('Pushing all data to Supabase…', 'info');
-    const db = _sb();
-    const { error } = await db.from(SB_TABLE).upsert(
-      { id: SB_ID, payload: _buildPayload(), updated_at: new Date().toISOString() },
-      { onConflict: 'id' }
-    );
-    if (error) throw new Error(error.message);
-
-    _clearPending();
-    idbSaveData();
-    rebuildAll();
-
-    sbLog(`✓ Migration complete — ${mCount} months + ${dCount} daily records now in Supabase`, 'ok');
-    toast('✓ Migration complete — all data is now in Supabase');
-    setSyncBadge('ok');
-    _recordHistory({ type: 'migration', status: 'ok', monthly: mCount, daily: dCount, msg: 'One-time migration from GitHub' });
-
-    if (btn)      { btn.textContent = '✓ Done'; btn.style.background = 'var(--green)'; }
-    if (statusEl) { statusEl.style.color = 'var(--green)'; statusEl.textContent = `✓ ${mCount} months + ${dCount} daily entries migrated.`; }
-
-    setTimeout(() => {
-      const sec = document.getElementById('migrate-section');
-      if (sec) sec.style.display = 'none';
-      localStorage.setItem('bt_migrated', '1');
-    }, 3000);
-
-  } catch (e) {
-    sbLog('✕ Migration failed: ' + e.message, 'err');
-    toast('✕ Migration failed: ' + e.message.slice(0, 60), 'e');
-    _recordHistory({ type: 'migration', status: 'err', msg: e.message.slice(0, 60) });
-    if (btn)      { btn.disabled = false; btn.textContent = '⬆ Retry Migration'; }
-    if (statusEl) { statusEl.style.color = 'var(--red)'; statusEl.textContent = '✕ ' + e.message; }
-  }
-}
 
 // ══════════════════════════════════════════════════════════════════
 // REAL-TIME SUBSCRIPTION
@@ -514,10 +456,30 @@ document.addEventListener('DOMContentLoaded', () => {
     sbLog('⚡ Offline changes pending — syncing…', 'info');
     pushToSupabase();
   }
-
-  // Show/hide migration section
-  const migSection = document.getElementById('migrate-section');
-  if (migSection && localStorage.getItem('bt_migrated') === '1') {
-    migSection.style.display = 'none';
-  }
 });
+
+// ══════════════════════════════════════════════════════════════════
+// HARD REFRESH — clear all caches then reload
+// ══════════════════════════════════════════════════════════════════
+async function hardRefreshCache() {
+  const btn = [...document.querySelectorAll('button')].find(b => b.textContent.includes('Hard Refresh'));
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Clearing…'; }
+
+  try {
+    // 1. Unregister all service workers
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+    }
+    // 2. Clear all Cache Storage caches
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+    // 3. Reload bypassing browser cache
+    location.reload(true);
+  } catch (e) {
+    console.error('Hard refresh failed:', e);
+    location.reload(true);
+  }
+}
