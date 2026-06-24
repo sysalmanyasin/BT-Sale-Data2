@@ -1,16 +1,20 @@
 // ══════════════════════════════════════════
 // DAY DETAIL MODAL
 // ══════════════════════════════════════════
+// Helper: returns are always stored as positive but must deduct — normalise to negative
+function _neg(v) { const x=n(v); return x>0?-x:x; }
+
 function dayData(d) {
-  const cashSale=n(d['Cash Sale']),meezan=n(d['Meezan Bank (Paysa)']),alfalah=n(d['Alfala Bank']),alHabib=n(d['Bank Al Habib']),hbl=n(d['HBL']),mcb=n(d['MCB']),cashRet=n(d['Cash Returns']);
-  const askari=n(d['Askari Bank']),askariRet=n(d['Askari Bank Returns']);
-  const pso=n(d['PSO']),psoRet=n(d['PSO Returns']),nespak=n(d['NESPAK']),nespakRet=n(d['NESPAK Returns']);
-  const parco=n(d['PARCO']),parcoRet=n(d['PARCO Returns']),tepa=n(d['TEPA']),tepaRet=n(d['TEPA Returns']);
-  const lda=n(d['LDA']),ldaRet=n(d['LDA Returns']),fissue=n(d['F/Issue']);
+  const cashSale=n(d['Cash Sale']),meezan=n(d['Meezan Bank (Paysa)']),alfalah=n(d['Alfala Bank']),alHabib=n(d['Bank Al Habib']),hbl=n(d['HBL']),mcb=n(d['MCB']);
+  const cashRet=_neg(d['Cash Returns']);                   // always negative
+  const askari=n(d['Askari Bank']),askariRet=_neg(d['Askari Bank Returns']);
+  const pso=n(d['PSO']),psoRet=_neg(d['PSO Returns']),nespak=n(d['NESPAK']),nespakRet=_neg(d['NESPAK Returns']);
+  const parco=n(d['PARCO']),parcoRet=_neg(d['PARCO Returns']),tepa=n(d['TEPA']),tepaRet=_neg(d['TEPA Returns']);
+  const lda=n(d['LDA']),ldaRet=_neg(d['LDA Returns']),fissue=n(d['F/Issue']);
   const gourmet=n(d['Gourmet']),wapda=n(d['Wapda Hospital']),bth=n(d['BTH']),berger=n(d['Berger Paints']);
   const ecolean=n(d['Ecolean PK']),style_t=n(d['Style Textile']),babar=n(d['Syed Babar Ali Foundation']);
   const rahnuma=n(d['Rahnuma NGO']),healthP=n(d['Health Pass']),nisar=n(d['Nisar Spinning Mills']),foodP=n(d['Food Panda']);
-  const netCash=cashSale+meezan+alfalah+alHabib+hbl+mcb+cashRet;
+  const netCash=cashSale+meezan+alfalah+alHabib+hbl+mcb+cashRet;   // cashRet is negative → subtracts
   const netCredit=pso+nespak+parco+askari+askariRet+lda+tepa+fissue+gourmet+wapda+bth+berger+ecolean+style_t+babar+rahnuma+healthP+nisar+foodP+psoRet+nespakRet+parcoRet+tepaRet+ldaRet;
   const grand=netCash+netCredit;
   return {cashSale,meezan,alfalah,alHabib,hbl,mcb,cashRet,askari,askariRet,pso,psoRet,nespak,nespakRet,parco,parcoRet,tepa,tepaRet,lda,ldaRet,fissue,gourmet,wapda,bth,berger,ecolean,style_t,babar,rahnuma,healthP,nisar,foodP,netCash,netCredit,grand,
@@ -120,12 +124,13 @@ function openMonthModal(my) {
     `<div class="statrow">${fields.map(([l,v])=>`<div class="stati"><div class="statil">${l}</div><div class="stativ">₨${fc(n(v))}</div></div>`).join('')}</div>
     <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Daily Breakdown — click any row for full detail</div>
     <div class="twrap tscroll" style="max-height:320px">
-      <table><thead><tr><th style="text-align:left">Date</th><th>Total</th><th>Customers</th><th>F/Issue</th><th style="text-align:left">Note</th></tr></thead>
+      <table><thead><tr><th style="text-align:left">Date</th><th>Total</th><th>Customers</th><th>F/Issue</th><th style="text-align:left">Note</th><th class="no-print" style="width:32px"></th></tr></thead>
       <tbody>${days.map(d=>`<tr class="cl" onclick="openDayFromMonth('${d.Date}','${my}')">
         <td>${d.Date}</td><td>₨${fc(n(d.TOTAL))}</td><td>${fc(n(d.Customers))}</td>
         <td>${n(d['F/Issue'])?'₨'+fc(n(d['F/Issue'])):'—'}</td>
         <td style="text-align:left;font-size:10px;color:var(--muted)">${d['Low Sale Reason']||''}</td>
-      </tr>`).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:18px">No daily data</td></tr>'}
+        <td class="no-print"><button onclick="event.stopPropagation();closeMon();setTimeout(()=>openEditModal('${d.Date}','${my}'),220)" title="Edit ${d.Date}" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(217,119,6,.3);background:var(--alt);color:#d97706;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">✏️</button></td>
+      </tr>`).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:18px">No daily data</td></tr>'}
       </tbody></table>
     </div>`;
   document.getElementById('mbg').classList.add('on');

@@ -23,7 +23,7 @@ function renderDataTable() {
     const tbl2=document.createElement('table');
     tbl2.id='tbl-daily';
     tbl2.innerHTML=`<thead><tr><th style="text-align:left">Date</th>
-      ${extraCol?'<th>'+extraCol+'</th>':''}<th>Total</th><th>Customers</th><th class="no-print" style="width:36px"></th>
+      ${extraCol?'<th>'+extraCol+'</th>':''}<th>Total</th><th>Customers</th><th class="no-print" style="width:70px"></th>
     </tr></thead>`;
     const tbody=document.createElement('tbody');
     rows.forEach(d=>{
@@ -31,7 +31,7 @@ function renderDataTable() {
       tr.className='cl'; tr.title='Click for full breakdown';
       tr.onclick=()=>openDayModal(d.Date,d.Month_Year);
       const ev=extraCol?'<td>'+(n(d[extraCol])?'&#8360;'+fc(n(d[extraCol])):'&#8212;')+'</td>':'';
-      tr.innerHTML=`<td>${d.Date||''}</td>${ev}<td>${n(d.TOTAL)?'&#8360;'+fc(n(d.TOTAL)):'&#8212;'}</td><td>${n(d.Customers)?fc(n(d.Customers)):'&#8212;'}</td><td class="no-print"><button onclick="event.stopPropagation();printDayDirectly('${d.Date}','${d.Month_Year}')" title="Print ${d.Date}" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(37,99,235,.25);background:var(--alt);color:var(--accent);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">🖨</button></td>`;
+      tr.innerHTML=`<td>${d.Date||''}</td>${ev}<td>${n(d.TOTAL)?'&#8360;'+fc(n(d.TOTAL)):'&#8212;'}</td><td>${n(d.Customers)?fc(n(d.Customers)):'&#8212;'}</td><td class="no-print" style="display:flex;gap:4px"><button onclick="event.stopPropagation();printDayDirectly('${d.Date}','${d.Month_Year}')" title="Print ${d.Date}" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(37,99,235,.25);background:var(--alt);color:var(--accent);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">🖨</button><button onclick="event.stopPropagation();openEditModal('${d.Date}','${d.Month_Year}')" title="Edit ${d.Date}" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(217,119,6,.3);background:var(--alt);color:#d97706;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">✏️</button></td>`;
       tbody.appendChild(tr);
     });
     if(!rows.length){ const tr=document.createElement('tr'); tr.innerHTML='<td colspan="5" style="text-align:center;padding:24px;color:var(--muted)">No records</td>'; tbody.appendChild(tr); }
@@ -80,7 +80,7 @@ function renderDataTable() {
     tblWrap.className='mon-tbl-wrap';
     const tbl=document.createElement('table');
     const thead=document.createElement('thead');
-    thead.innerHTML=`<tr><th style="text-align:left">Date</th>${extraCol?'<th>'+extraCol+'</th>':''}<th>Total</th><th>Customers</th><th class="no-print" style="width:36px"></th></tr>`;
+    thead.innerHTML=`<tr><th style="text-align:left">Date</th>${extraCol?'<th>'+extraCol+'</th>':''}<th>Total</th><th>Customers</th><th class="no-print" style="width:70px"></th></tr>`;
     tbl.appendChild(thead);
     const tbody=document.createElement('tbody');
     rows.forEach(d=>{
@@ -88,7 +88,7 @@ function renderDataTable() {
       tr.className='cl'; tr.title='Click for full breakdown';
       tr.onclick=()=>openDayModal(d.Date,d.Month_Year);
       const ev=extraCol?`<td>${n(d[extraCol])?'&#8360;'+fc(n(d[extraCol])):'&#8212;'}</td>`:'';
-      tr.innerHTML=`<td>${d.Date||''}</td>${ev}<td>${n(d.TOTAL)?'&#8360;'+fc(n(d.TOTAL)):'&#8212;'}</td><td>${n(d.Customers)?fc(n(d.Customers)):'&#8212;'}</td><td class="no-print"><button onclick="event.stopPropagation();printDayDirectly('${d.Date}','${d.Month_Year}')" title="Print ${d.Date}" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(37,99,235,.25);background:var(--alt);color:var(--accent);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">🖨</button></td>`;
+      tr.innerHTML=`<td>${d.Date||''}</td>${ev}<td>${n(d.TOTAL)?'&#8360;'+fc(n(d.TOTAL)):'&#8212;'}</td><td>${n(d.Customers)?fc(n(d.Customers)):'&#8212;'}</td><td class="no-print" style="display:flex;gap:4px"><button onclick="event.stopPropagation();printDayDirectly('${d.Date}','${d.Month_Year}')" title="Print ${d.Date}" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(37,99,235,.25);background:var(--alt);color:var(--accent);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">🖨</button><button onclick="event.stopPropagation();openEditModal('${d.Date}','${d.Month_Year}')" title="Edit ${d.Date}" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(217,119,6,.3);background:var(--alt);color:#d97706;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">✏️</button></td>`;
       tbody.appendChild(tr);
     });
     tbl.appendChild(tbody);
@@ -271,3 +271,162 @@ function autoFillEntryDate() {
   }
 }
 
+
+// ══════════════════════════════════════════
+// EDIT MODAL
+// ══════════════════════════════════════════
+let _editDate=null, _editMy=null;
+
+// Field definitions for edit modal (label → data key)
+const EDIT_FIELDS=[
+  {label:'Cash Sale',          key:'Cash Sale',              section:'Cash Sale', sub:'sub'},
+  {label:'Meezan Bank',        key:'Meezan Bank (Paysa)',    section:'Cash Sale'},
+  {label:'Bank Alfalah',       key:'Alfala Bank',            section:'Cash Sale'},
+  {label:'Bank Al Habib',      key:'Bank Al Habib',          section:'Cash Sale'},
+  {label:'HBL',                key:'HBL',                    section:'Cash Sale', opt:true},
+  {label:'MCB',                key:'MCB',                    section:'Cash Sale', opt:true},
+  {label:'Cash Returns',       key:'Cash Returns',           section:'Cash Sale', ret:true},
+  {label:'PSO',                key:'PSO',                    section:'Credit Sale'},
+  {label:'NESPAK',             key:'NESPAK',                 section:'Credit Sale'},
+  {label:'PARCO',              key:'PARCO',                  section:'Credit Sale'},
+  {label:'Askari',             key:'Askari Bank',            section:'Credit Sale'},
+  {label:'LDA',                key:'LDA',                    section:'Credit Sale'},
+  {label:'TEPA',               key:'TEPA',                   section:'Credit Sale'},
+  {label:'F/Issue',            key:'F/Issue',                section:'Credit Sale'},
+  {label:'Gourmet',            key:'Gourmet',                section:'Credit Sale', opt:true},
+  {label:'Wapda Hospital',     key:'Wapda Hospital',         section:'Credit Sale', opt:true},
+  {label:'BTH',                key:'BTH',                    section:'Credit Sale', opt:true},
+  {label:'Berger Paints',      key:'Berger Paints',          section:'Credit Sale', opt:true},
+  {label:'Ecolean PK',         key:'Ecolean PK',             section:'Credit Sale', opt:true},
+  {label:'Style Textile',      key:'Style Textile',          section:'Credit Sale', opt:true},
+  {label:'Syed Babar Ali Fdn', key:'Syed Babar Ali Foundation', section:'Credit Sale', opt:true},
+  {label:'Rahnuma NGO',        key:'Rahnuma NGO',            section:'Credit Sale', opt:true},
+  {label:'Health Pass',        key:'Health Pass',            section:'Credit Sale', opt:true},
+  {label:'Nisar Spinning',     key:'Nisar Spinning Mills',   section:'Credit Sale', opt:true},
+  {label:'Food Panda',         key:'Food Panda',             section:'Credit Sale', opt:true},
+  {label:'Credit Return PSO',  key:'PSO Returns',            section:'Credit Sale', ret:true},
+  {label:'Credit Return NESPAK', key:'NESPAK Returns',       section:'Credit Sale', ret:true},
+  {label:'Credit Return PARCO',  key:'PARCO Returns',        section:'Credit Sale', ret:true},
+  {label:'Credit Return TEPA',   key:'TEPA Returns',         section:'Credit Sale', ret:true},
+  {label:'Credit Return LDA',    key:'LDA Returns',          section:'Credit Sale', ret:true},
+  {label:'Askari Returns',       key:'Askari Bank Returns',  section:'Credit Sale', ret:true},
+  {label:'FDPP POS Sale',      key:'FDPP',                   section:'Info'},
+  {label:'FDPP Consumer POS',  key:'FDPP Con',               section:'Info'},
+  {label:'Customers',          key:'Customers',              section:'Info'},
+  {label:'Load Sale',          key:'Load Sale',              section:'Info', opt:true},
+  {label:'Amount Received',    key:'Amount Received',        section:'Info', opt:true},
+  {label:'Cash to Deposit',    key:'Cash to be Deposited',   section:'Info', opt:true},
+  {label:'COMP SALE',          key:'COMP SALE',              section:'Info', opt:true},
+  {label:'Low Sale Reason',    key:'Low Sale Reason',        section:'Info', text:true},
+];
+
+function openEditModal(date, my) {
+  const rec = DAILY.find(x=>x.Date===date && x.Month_Year===my);
+  if(!rec){ toast('⚠ Record not found','e'); return; }
+  _editDate=date; _editMy=my;
+
+  const sections={};
+  EDIT_FIELDS.forEach(f=>{
+    if(!sections[f.section]) sections[f.section]=[];
+    sections[f.section].push(f);
+  });
+
+  let html='';
+  for(const [sec, fields] of Object.entries(sections)){
+    html+=`<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 6px">${sec}</div>`;
+    html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">`;
+    fields.forEach(f=>{
+      const val = rec[f.key];
+      const raw = (val==null||val==='')?'':(f.ret?Math.abs(Number(val)||0):Number(val)||0);
+      const inputType = f.text?'text':'number';
+      const inputMode = f.text?'text':'decimal';
+      const hint = f.ret?' (enter positive)':'';
+      if(f.text){
+        html+=`<div style="grid-column:1/-1"><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:3px">${f.label}</label>
+          <input type="text" inputmode="text" id="em-${f.key.replace(/[^a-z0-9]/gi,'_')}" value="${String(val||'').replace(/"/g,'&quot;')}"
+            style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--s2);color:var(--text);box-sizing:border-box"></div>`;
+      } else {
+        html+=`<div><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:3px">${f.label}${hint}</label>
+          <input type="${inputType}" inputmode="${inputMode}" id="em-${f.key.replace(/[^a-z0-9]/gi,'_')}" value="${raw}"
+            oninput="editCalcTotal()"
+            style="width:100%;padding:8px 10px;border:1px solid ${f.ret?'rgba(220,38,38,.35)':'var(--border)'};border-radius:8px;font-size:14px;background:var(--s2);color:var(--text);box-sizing:border-box;${f.ret?'color:#dc2626':''}"></div>`;
+      }
+    });
+    html+=`</div>`;
+  }
+
+  html+=`<div style="margin-top:14px;padding:10px 12px;background:var(--alt);border-radius:8px;display:flex;justify-content:space-between;align-items:center">
+    <span style="font-size:13px;font-weight:600">Grand Total</span>
+    <span style="font-family:var(--mono);font-size:15px;font-weight:700;color:var(--accent)" id="em-total-preview">₨0</span>
+  </div>`;
+
+  document.getElementById('edit-modal-title').textContent='Edit — '+date;
+  document.getElementById('edit-modal-body').innerHTML=html;
+  document.getElementById('edit-modal-bg').style.display='flex';
+  editCalcTotal();
+}
+
+function openEditFromDay() {
+  if(!_printDay){ toast('⚠ No day open','w'); return; }
+  const date=_printDay.date, my=_printDay.my;
+  closeDay();
+  setTimeout(()=>openEditModal(date, my), 220);
+}
+
+function editCalcTotal() {
+  const ADD_KEYS=['Cash Sale','Meezan Bank (Paysa)','Alfala Bank','Bank Al Habib','HBL','MCB',
+    'Askari Bank','PSO','NESPAK','PARCO','TEPA','LDA','Gourmet','Wapda Hospital','BTH','Berger Paints',
+    'Ecolean PK','Style Textile','Syed Babar Ali Foundation','Rahnuma NGO','Health Pass','Nisar Spinning Mills','Food Panda','F/Issue'];
+  const SUB_KEYS=['Cash Returns','Askari Bank Returns','PSO Returns','NESPAK Returns','PARCO Returns','TEPA Returns','LDA Returns'];
+  let t=0;
+  ADD_KEYS.forEach(k=>{ const el=document.getElementById('em-'+k.replace(/[^a-z0-9]/gi,'_')); if(el) t+=Math.abs(parseFloat(el.value)||0); });
+  SUB_KEYS.forEach(k=>{ const el=document.getElementById('em-'+k.replace(/[^a-z0-9]/gi,'_')); if(el) t-=Math.abs(parseFloat(el.value)||0); });
+  const prev=document.getElementById('em-total-preview');
+  if(prev) prev.textContent='₨'+Math.round(t).toLocaleString('en-PK');
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal-bg').style.display='none';
+  _editDate=null; _editMy=null;
+}
+
+async function saveEditModal() {
+  if(!_editDate||!_editMy){ toast('⚠ Nothing to save','w'); return; }
+  const rec = DAILY.find(x=>x.Date===_editDate && x.Month_Year===_editMy);
+  if(!rec){ toast('⚠ Record not found','e'); return; }
+
+  const SUB_KEYS_SET=new Set(['Cash Returns','Askari Bank Returns','PSO Returns','NESPAK Returns','PARCO Returns','TEPA Returns','LDA Returns']);
+
+  EDIT_FIELDS.forEach(f=>{
+    const el=document.getElementById('em-'+f.key.replace(/[^a-z0-9]/gi,'_'));
+    if(!el) return;
+    if(f.text){ rec[f.key]=el.value||null; }
+    else {
+      const v=parseFloat(el.value)||0;
+      // Returns always stored as positive (calcTotal subtracts them by convention)
+      rec[f.key]=v===0?null:(SUB_KEYS_SET.has(f.key)?Math.abs(v):v);
+    }
+  });
+
+  // Recompute TOTAL
+  const ADD_KEYS=['Cash Sale','Meezan Bank (Paysa)','Alfala Bank','Bank Al Habib','HBL','MCB',
+    'Askari Bank','PSO','NESPAK','PARCO','TEPA','LDA','Gourmet','Wapda Hospital','BTH','Berger Paints',
+    'Ecolean PK','Style Textile','Syed Babar Ali Foundation','Rahnuma NGO','Health Pass','Nisar Spinning Mills','Food Panda','F/Issue'];
+  const SUB_KEYS=['Cash Returns','Askari Bank Returns','PSO Returns','NESPAK Returns','PARCO Returns','TEPA Returns','LDA Returns'];
+  let t=0;
+  ADD_KEYS.forEach(k=>{ t+=Math.abs(n(rec[k])); });
+  SUB_KEYS.forEach(k=>{ t-=Math.abs(n(rec[k])); });
+  rec['TOTAL']=String(Math.round(t));
+
+  // Sync to newEntries (for push) — overwrite or add
+  const ni=newEntries.findIndex(d=>d.Date===_editDate&&d.Month_Year===_editMy);
+  if(ni!==-1) newEntries[ni]=rec; else newEntries.push(rec);
+  localStorage.setItem('bt_entries',JSON.stringify(newEntries));
+
+  recomputeMonthly(_editMy);
+  renderEntryList();
+  rebuildAll();
+  closeEditModal();
+  toast('✓ Entry updated — dashboard & monthly totals refreshed');
+  if(localStorage.getItem('bt_auto_save')==='1') pushToGitHub();
+}

@@ -416,23 +416,29 @@ function buildDayOfWeek() {
   const maxAvg = Math.max(...avgs);
   const bestDow = avgs.indexOf(maxAvg);
 
-  // Only show Mon–Sat (indices 1–6); skip Sunday (index 0) — typical pharmacy week
-  const workDays = [1,2,3,4,5,6];
+  // Show all 7 days including Sunday
+  const workDays = [1,2,3,4,5,6,0]; // Mon–Sat then Sun
+
+  const workAvgs = workDays.map(i => avgs[i]).filter(a => a > 0);
+  const minAvg = workAvgs.length ? Math.min(...workAvgs) : 0;
+  const worstDow = minAvg > 0 ? avgs.indexOf(minAvg) : -1;
 
   const bars = workDays.map(i => {
     const avg = avgs[i];
     const pct = maxAvg ? Math.round(avg / maxAvg * 100) : 0;
     const isTop = i === bestDow;
-    const barColor = isTop ? 'var(--green)' : 'var(--accent)';
+    const isWorst = i === worstDow && avg > 0;
+    const barColor = isTop ? 'var(--green)' : isWorst ? 'var(--red,#dc2626)' : 'var(--accent)';
     return `
       <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:0">
-        <div style="font-size:10px;font-weight:600;color:var(--muted);font-family:var(--mono)">₨${ff(avg)}</div>
+        <div style="font-size:10px;font-weight:600;color:${isWorst?'#dc2626':isTop?'var(--green)':'var(--muted)'};font-family:var(--mono)">₨${ff(avg)}</div>
         <div style="width:100%;background:var(--border);border-radius:99px 99px 4px 4px;height:80px;display:flex;align-items:flex-end;overflow:hidden">
           <div style="width:100%;height:${pct}%;background:${barColor};border-radius:99px 99px 0 0;transition:height .5s;position:relative">
             ${isTop ? '<div style="position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:11px">⭐</div>' : ''}
+            ${isWorst ? '<div style="position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:11px">🔴</div>' : ''}
           </div>
         </div>
-        <div style="font-size:11px;font-weight:${isTop?'700':'500'};color:${isTop?'var(--accent)':'var(--text)'}">${DOW_LABELS[i]}</div>
+        <div style="font-size:11px;font-weight:${isTop||isWorst?'700':'500'};color:${isTop?'var(--accent)':isWorst?'#dc2626':'var(--text)'}">${DOW_LABELS[i]}</div>
         <div style="font-size:9px;color:var(--muted)">${buckets[i].count}d</div>
       </div>`;
   }).join('');
