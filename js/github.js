@@ -50,12 +50,16 @@ function mergeIncomingData(data, isPull = false) {
   if (data.monthly) data.monthly.forEach(m=>{
     const idx=MONTHLY.findIndex(x=>x.Month_Year===m.Month_Year);
     if(idx===-1){ MONTHLY.push(m); mN++; }
-    else{ Object.assign(MONTHLY[idx],m); mU++; }
+    else if(isPull){ Object.assign(MONTHLY[idx],m); mU++; }
+    // !isPull (pre-push fold): record already exists locally — keep local
+    // values intact so in-progress/just-saved edits aren't clobbered by
+    // the older remote copy right before we push.
   });
   if (data.daily) data.daily.forEach(d=>{
     const idx=DAILY.findIndex(x=>x.Date===d.Date&&x.Month_Year===d.Month_Year);
     if(idx===-1){ DAILY.push(d); dN++; }
-    else{ Object.assign(DAILY[idx],d); dU++; }
+    else if(isPull){ Object.assign(DAILY[idx],d); dU++; }
+    // !isPull: keep local record as-is (protect unsaved/just-saved edits)
   });
 
   // ── Staff: remote is base; append local-only by BOTH id AND name ─────────
