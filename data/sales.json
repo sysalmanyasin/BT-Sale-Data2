@@ -108837,7 +108837,7 @@
           "desig": "Co Manager",
           "days": 30,
           "hoSal": 0,
-          "advance": 0,
+          "advance": 670,
           "generic": 0
         },
         {
@@ -108845,7 +108845,7 @@
           "desig": "Co Manager",
           "days": 30,
           "hoSal": 0,
-          "advance": 0,
+          "advance": 20900,
           "generic": 0
         },
         {
@@ -108853,7 +108853,7 @@
           "desig": "Head Cashier",
           "days": 30,
           "hoSal": 0,
-          "advance": 0,
+          "advance": 150,
           "generic": 0
         },
         {
@@ -108861,7 +108861,7 @@
           "desig": "APM",
           "days": 30,
           "hoSal": 0,
-          "advance": 0,
+          "advance": 450,
           "generic": 0
         },
         {
@@ -108869,7 +108869,7 @@
           "desig": "Pharmacist",
           "days": 30,
           "hoSal": 0,
-          "advance": 0,
+          "advance": 6740,
           "generic": 0
         },
         {
@@ -108885,7 +108885,7 @@
           "desig": "Salesman",
           "days": 30,
           "hoSal": 0,
-          "advance": 0,
+          "advance": 1995,
           "generic": 0
         },
         {
@@ -108893,7 +108893,7 @@
           "desig": "Salesman",
           "days": 30,
           "hoSal": 0,
-          "advance": 0,
+          "advance": 1604,
           "generic": 0
         },
         {
@@ -108901,7 +108901,7 @@
           "desig": "Salesman",
           "days": 30,
           "hoSal": 0,
-          "advance": 0,
+          "advance": 9055,
           "generic": 0
         },
         {
@@ -108917,7 +108917,7 @@
           "desig": "Salesman",
           "days": 30,
           "hoSal": 0,
-          "advance": 0,
+          "advance": 3950,
           "generic": 0
         },
         {
@@ -108925,7 +108925,7 @@
           "desig": "Salesman",
           "days": 30,
           "hoSal": 0,
-          "advance": 0,
+          "advance": 2540,
           "generic": 0
         },
         {
@@ -108941,7 +108941,7 @@
           "desig": "Salesman",
           "days": 30,
           "hoSal": 0,
-          "advance": 0,
+          "advance": 181,
           "generic": 0
         },
         {
@@ -108949,7 +108949,7 @@
           "desig": "Salesman",
           "days": 30,
           "hoSal": 0,
-          "advance": 0,
+          "advance": 2350,
           "generic": 0
         }
       ],
@@ -109248,5 +109248,5 @@
       }
     }
   },
-  "pushedAt": "2026-06-24T06:02:44.170Z"
+  "pushedAt": "2026-06-24T06:02:57.045Z"
 }
