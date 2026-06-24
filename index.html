@@ -229,7 +229,9 @@ if ('serviceWorker' in navigator) {
     <div class="hsub" style="margin-top:4px" id="hero-sub"></div>
   </div>
   <div class="krow" id="krow"></div>
-  <div class="frow no-print" style="margin-bottom:14px">
+  <div id="dash-top10" style="margin-bottom:14px"></div>
+  <div id="dash-dow" style="margin-bottom:14px"></div>
+  <div id="dash-best-worst" style="margin-bottom:14px"></div>
     <span style="font-size:11px;font-weight:600;color:var(--muted)">YEAR</span>
     <select id="dash-year" onchange="buildDashboard()"></select>
     <select id="dash-metric" onchange="buildDashboard()">
@@ -300,13 +302,50 @@ if ('serviceWorker' in navigator) {
     <input type="text" id="data-search" placeholder="Search date, month…" oninput="renderDataTable()">
     <select id="data-month" onchange="renderDataTable()"><option value="">All Months</option></select>
     <select id="data-col" onchange="renderDataTable()">
-      <option value="TOTAL">Total</option><option value="Cash Sale">Cash Sale</option>
-      <option value="Alfala Bank">Bank Alfalah</option><option value="Bank Al Habib">Bank Al Habib</option>
-      <option value="Meezan Bank (Paysa)">Meezan Bank</option><option value="HBL">HBL</option>
-      <option value="MCB">MCB</option><option value="PSO">PSO</option>
-      <option value="NESPAK">NESPAK</option><option value="PARCO">PARCO</option>
-      <option value="LDA">LDA</option><option value="F/Issue">F/Issue</option>
-      <option value="Customers">Customers</option>
+      <optgroup label="── Summary ──">
+        <option value="TOTAL">Total</option>
+        <option value="Customers">Customers</option>
+        <option value="FDPP">FDPP POS</option>
+        <option value="FDPP Con">FDPP Consumer</option>
+        <option value="Cash to be Deposited">Cash to Deposit</option>
+        <option value="Amount Received">Amount Received</option>
+        <option value="Load Sale">Load Sale</option>
+      </optgroup>
+      <optgroup label="── Cash Sales ──">
+        <option value="Cash Sale">Cash Sale</option>
+        <option value="Cash Returns">Cash Returns</option>
+        <option value="Alfala Bank">Bank Alfalah</option>
+        <option value="Bank Al Habib">Bank Al Habib</option>
+        <option value="Meezan Bank (Paysa)">Meezan Bank</option>
+        <option value="HBL">HBL</option>
+        <option value="MCB">MCB</option>
+        <option value="Askari Bank">Askari Bank</option>
+        <option value="Askari Bank Returns">Askari Returns</option>
+      </optgroup>
+      <optgroup label="── Credit Sales ──">
+        <option value="PSO">PSO</option>
+        <option value="PSO Returns">PSO Returns</option>
+        <option value="NESPAK">NESPAK</option>
+        <option value="NESPAK Returns">NESPAK Returns</option>
+        <option value="PARCO">PARCO</option>
+        <option value="PARCO Returns">PARCO Returns</option>
+        <option value="TEPA">TEPA</option>
+        <option value="TEPA Returns">TEPA Returns</option>
+        <option value="LDA">LDA</option>
+        <option value="LDA Returns">LDA Returns</option>
+        <option value="F/Issue">F/Issue</option>
+        <option value="Gourmet">Gourmet</option>
+        <option value="Wapda Hospital">Wapda Hospital</option>
+        <option value="BTH">BTH</option>
+        <option value="Berger Paints">Berger Paints</option>
+        <option value="Ecolean PK">Ecolean PK</option>
+        <option value="Style Textile">Style Textile</option>
+        <option value="Syed Babar Ali Foundation">Syed Babar Ali</option>
+        <option value="Rahnuma NGO">Rahnuma NGO</option>
+        <option value="Health Pass">Health Pass</option>
+        <option value="Nisar Spinning Mills">Nisar Spinning</option>
+        <option value="Food Panda">Food Panda</option>
+      </optgroup>
     </select>
   </div>
   <div class="card"><div class="twrap tscroll" style="max-height:500px"><table id="tbl-daily"></table></div></div>
