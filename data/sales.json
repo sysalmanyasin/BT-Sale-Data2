@@ -108575,65 +108575,35 @@
         {
           "name": "Salman Yasin",
           "prevBal": 0,
-          "entries": [
-            {
-              "date": "23-Jun-2026",
-              "desc": "credit",
-              "amount": 0
-            }
-          ],
+          "entries": [],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Muhammad Zubair",
           "prevBal": 0,
-          "entries": [
-            {
-              "date": "23-Jun-2026",
-              "desc": "credit",
-              "amount": 0
-            }
-          ],
+          "entries": [],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Aftab Wizir",
           "prevBal": 0,
-          "entries": [
-            {
-              "date": "23-Jun-2026",
-              "desc": "credit",
-              "amount": 0
-            }
-          ],
+          "entries": [],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Mian Waqas",
           "prevBal": 0,
-          "entries": [
-            {
-              "date": "23-Jun-2026",
-              "desc": "credit",
-              "amount": 0
-            }
-          ],
+          "entries": [],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Dr Zeeshan",
           "prevBal": 0,
-          "entries": [
-            {
-              "date": "23-Jun-2026",
-              "desc": "credit",
-              "amount": 0
-            }
-          ],
+          "entries": [],
           "salary": 0,
           "lessGeneric": 0
         },
@@ -108647,39 +108617,21 @@
         {
           "name": "Shah Faisal Ali Khan",
           "prevBal": 0,
-          "entries": [
-            {
-              "date": "23-Jun-2026",
-              "desc": "credit",
-              "amount": 0
-            }
-          ],
+          "entries": [],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Muhammad Reehan",
           "prevBal": 0,
-          "entries": [
-            {
-              "date": "23-Jun-2026",
-              "desc": "credit",
-              "amount": 0
-            }
-          ],
+          "entries": [],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Shamshair Ali",
           "prevBal": 0,
-          "entries": [
-            {
-              "date": "23-Jun-2026",
-              "desc": "credit",
-              "amount": 0
-            }
-          ],
+          "entries": [],
           "salary": 0,
           "lessGeneric": 0
         },
@@ -108693,26 +108645,14 @@
         {
           "name": "Husnain Haider",
           "prevBal": 0,
-          "entries": [
-            {
-              "date": "23-Jun-2026",
-              "desc": "credit",
-              "amount": 0
-            }
-          ],
+          "entries": [],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Ali Husnain ",
           "prevBal": 0,
-          "entries": [
-            {
-              "date": "23-Jun-2026",
-              "desc": "credit",
-              "amount": 0
-            }
-          ],
+          "entries": [],
           "salary": 0,
           "lessGeneric": 0
         },
@@ -108726,26 +108666,14 @@
         {
           "name": "M Rehman",
           "prevBal": 0,
-          "entries": [
-            {
-              "date": "23-Jun-2026",
-              "desc": "credit",
-              "amount": 0
-            }
-          ],
+          "entries": [],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Salman Ghulam Ali",
           "prevBal": 0,
-          "entries": [
-            {
-              "date": "23-Jun-2026",
-              "desc": "credit",
-              "amount": 0
-            }
-          ],
+          "entries": [],
           "salary": 0,
           "lessGeneric": 0
         }
@@ -109059,13 +108987,7 @@
             "notes": ""
           }
         ],
-        "July 2026": [
-          {
-            "desc": "",
-            "amount": 0,
-            "notes": ""
-          }
-        ]
+        "July 2026": []
       }
     },
     "cs_1782192778545": {
@@ -109089,13 +109011,7 @@
             "notes": ""
           }
         ],
-        "July 2026": [
-          {
-            "desc": "",
-            "amount": 0,
-            "notes": ""
-          }
-        ]
+        "July 2026": []
       }
     },
     "cs_1782192793528": {
@@ -109119,13 +109035,7 @@
             "notes": ""
           }
         ],
-        "July 2026": [
-          {
-            "desc": "",
-            "amount": 0,
-            "notes": ""
-          }
-        ]
+        "July 2026": []
       }
     },
     "cs_1782192828235": {
@@ -109159,13 +109069,7 @@
             "notes": ""
           }
         ],
-        "July 2026": [
-          {
-            "desc": "",
-            "amount": 0,
-            "notes": ""
-          }
-        ]
+        "July 2026": []
       }
     }
   },
