@@ -2,7 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover" id="vp-meta">
+<script>
+// Apply saved view mode BEFORE first paint to avoid flash
+(function(){
+  if(localStorage.getItem('bt_view_mode')==='desktop'){
+    document.getElementById('vp-meta').content='width=1280';
+    document.documentElement.style.minWidth='1280px';
+  }
+})();
+</script>
 <meta name="theme-color" content="#2563eb">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -490,6 +499,7 @@ if ('serviceWorker' in navigator) {
     <button class="btn btn-s" style="white-space:nowrap" onclick="manualSync()">↻ Pull</button>
     <button class="btn btn-g" style="white-space:nowrap" onclick="pushToGitHub()">⬆ Push</button>
     <button class="btn" style="white-space:nowrap;background:var(--red,#dc2626);color:#fff;font-weight:700" onclick="hardRefreshCache()">⚡ Hard Refresh</button>
+    <button id="view-mode-btn" class="btn" style="white-space:nowrap;background:var(--s2);border:1px solid var(--border);font-weight:600" onclick="toggleViewMode()" title="Switch between Mobile and Desktop view">🖥️ Desktop View</button>
   </div>
 
   <div class="tcard" id="tc-github">
@@ -764,7 +774,23 @@ if ('serviceWorker' in navigator) {
     <div class="dmbody" id="dm-body"></div>
     <div class="dmprint-btn no-print">
       <button class="btn btn-p" style="flex:1" onclick="printCurrentDay()">🖨 Print This Report</button>
+      <button class="btn" style="flex:1;background:#d97706;color:#fff" onclick="openEditFromDay()">✏️ Edit</button>
       <button class="btn btn-s" onclick="closeDay()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT ENTRY MODAL -->
+<div id="edit-modal-bg" onclick="if(event.target===this)closeEditModal()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.65);align-items:flex-end;justify-content:center">
+  <div id="edit-modal-box" style="background:var(--s1,#fff);border-radius:16px 16px 0 0;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--s1,#fff);z-index:1">
+      <h3 style="margin:0;font-size:16px" id="edit-modal-title">Edit Entry</h3>
+      <button onclick="closeEditModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">✕</button>
+    </div>
+    <div id="edit-modal-body" style="padding:14px 16px"></div>
+    <div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;position:sticky;bottom:0;background:var(--s1,#fff)">
+      <button class="btn btn-p" style="flex:1" onclick="saveEditModal()">💾 Save &amp; Sync</button>
+      <button class="btn btn-s" onclick="closeEditModal()">Cancel</button>
     </div>
   </div>
 </div>
