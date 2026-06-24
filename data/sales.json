@@ -3304,6 +3304,52 @@
   "daily": [
     {
       "Month_Year": "June 2026",
+      "Date": "19/Jun/2026",
+      "Cash Sale": 258558,
+      "Cash Returns": 21020,
+      "HBL": null,
+      "MCB": null,
+      "Alfala Bank": 264235,
+      "Bank Al Habib": 22905,
+      "Meezan Bank (Paysa)": null,
+      "Askari Bank": null,
+      "Askari Bank Returns": null,
+      "PSO": null,
+      "PSO Returns": null,
+      "NESPAK": null,
+      "NESPAK Returns": null,
+      "PARCO": null,
+      "PARCO Returns": null,
+      "TEPA": null,
+      "TEPA Returns": null,
+      "LDA": 5820,
+      "LDA Returns": null,
+      "Gourmet": null,
+      "Wapda Hospital": null,
+      "BTH": null,
+      "Berger Paints": null,
+      "Ecolean PK": null,
+      "Style Textile": null,
+      "Syed Babar Ali Foundation": null,
+      "Rahnuma NGO": null,
+      "Health Pass": null,
+      "Nisar Spinning Mills": null,
+      "Food Panda": null,
+      "F/Issue": 3650,
+      "COMP SALE": 502816,
+      "Customers": 566,
+      "FDPP": 423,
+      "FDPP Con": 143,
+      "Amount Received": null,
+      "Load Sale": null,
+      "Cash to be Deposited": 238104,
+      "Low Sale Reason": null,
+      "TOTAL": "534148",
+      "Sale Plus": null,
+      "DIFF": null
+    },
+    {
+      "Month_Year": "June 2026",
       "Date": "20/Jun/2026",
       "Cash Sale": 157084,
       "Cash Returns": null,
@@ -3437,52 +3483,6 @@
       "Cash to be Deposited": 268072,
       "Low Sale Reason": null,
       "TOTAL": "531838",
-      "Sale Plus": null,
-      "DIFF": null
-    },
-    {
-      "Month_Year": "June 2026",
-      "Date": "19/Jun/2026",
-      "Cash Sale": 258558,
-      "Cash Returns": 21020,
-      "HBL": null,
-      "MCB": null,
-      "Alfala Bank": 264235,
-      "Bank Al Habib": 22905,
-      "Meezan Bank (Paysa)": null,
-      "Askari Bank": null,
-      "Askari Bank Returns": null,
-      "PSO": null,
-      "PSO Returns": null,
-      "NESPAK": null,
-      "NESPAK Returns": null,
-      "PARCO": null,
-      "PARCO Returns": null,
-      "TEPA": null,
-      "TEPA Returns": null,
-      "LDA": 5820,
-      "LDA Returns": null,
-      "Gourmet": null,
-      "Wapda Hospital": null,
-      "BTH": null,
-      "Berger Paints": null,
-      "Ecolean PK": null,
-      "Style Textile": null,
-      "Syed Babar Ali Foundation": null,
-      "Rahnuma NGO": null,
-      "Health Pass": null,
-      "Nisar Spinning Mills": null,
-      "Food Panda": null,
-      "F/Issue": 3650,
-      "COMP SALE": 502816,
-      "Customers": 566,
-      "FDPP": 423,
-      "FDPP Con": 143,
-      "Amount Received": null,
-      "Load Sale": null,
-      "Cash to be Deposited": 238104,
-      "Low Sale Reason": null,
-      "TOTAL": "534148",
       "Sale Plus": null,
       "DIFF": null
     },
@@ -108381,91 +108381,91 @@
         {
           "name": "Salman Yasin",
           "desig": "Co Manager",
-          "genericSale": 100,
+          "genericSale": 0,
           "extra": 0
         },
         {
           "name": "Muhammad Zubair",
           "desig": "Co Manager",
-          "genericSale": 200,
+          "genericSale": 0,
           "extra": 0
         },
         {
           "name": "Aftab Wizir",
           "desig": "Head Cashier",
-          "genericSale": 300,
+          "genericSale": 0,
           "extra": 0
         },
         {
           "name": "Mian Waqas",
           "desig": "APM",
-          "genericSale": 400,
+          "genericSale": 0,
           "extra": 0
         },
         {
           "name": "Dr Zeeshan",
           "desig": "Pharmacist",
-          "genericSale": 500,
+          "genericSale": 0,
           "extra": 0
         },
         {
           "name": "Dr Hamza",
           "desig": "Pharmacist",
-          "genericSale": 600,
+          "genericSale": 0,
           "extra": 0
         },
         {
           "name": "Shah Faisal Ali Khan",
           "desig": "Salesman",
-          "genericSale": 700,
+          "genericSale": 0,
           "extra": 0
         },
         {
           "name": "Muhammad Reehan",
           "desig": "Salesman",
-          "genericSale": 800,
+          "genericSale": 0,
           "extra": 0
         },
         {
           "name": "Shamshair Ali",
           "desig": "Salesman",
-          "genericSale": 900,
+          "genericSale": 0,
           "extra": 0
         },
         {
           "name": "Asad",
           "desig": "Salesman",
-          "genericSale": 1000,
+          "genericSale": 0,
           "extra": 0
         },
         {
           "name": "Husnain Haider",
           "desig": "Salesman",
-          "genericSale": 1100,
+          "genericSale": 0,
           "extra": 0
         },
         {
           "name": "Ali Husnain ",
           "desig": "Salesman",
-          "genericSale": 1200,
+          "genericSale": 0,
           "extra": 0
         },
         {
           "name": "Muhammad Kashif",
           "desig": "Salesman",
-          "genericSale": 1300,
+          "genericSale": 0,
           "extra": 0
         },
         {
           "name": "M Rehman",
           "desig": "Salesman",
-          "genericSale": 1400,
+          "genericSale": 0,
           "extra": 0
         },
         {
           "name": "Salman Ghulam Ali",
           "desig": "Salesman",
-          "genericSale": 1500,
+          "genericSale": 0,
           "extra": 0
         }
       ]
@@ -108540,7 +108540,13 @@
         {
           "name": "Dr Hamza",
           "prevBal": 0,
-          "entries": [],
+          "entries": [
+            {
+              "date": "24-Jun-2026",
+              "desc": "credit",
+              "amount": 220
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
@@ -108611,6 +108617,11 @@
               "date": "24-Jun-2026",
               "desc": "credit",
               "amount": 2540
+            },
+            {
+              "date": "24-Jun-2026",
+              "desc": "credit",
+              "amount": 7000
             }
           ],
           "salary": 0,
@@ -108644,6 +108655,11 @@
               "date": "24-Jun-2026",
               "desc": "credit",
               "amount": 2350
+            },
+            {
+              "date": "24-Jun-2026",
+              "desc": "credit",
+              "amount": 1000
             }
           ],
           "salary": 0,
@@ -108838,7 +108854,7 @@
           "days": 30,
           "hoSal": 0,
           "advance": 670,
-          "generic": 4
+          "generic": 0
         },
         {
           "name": "Muhammad Zubair",
@@ -108846,7 +108862,7 @@
           "days": 30,
           "hoSal": 0,
           "advance": 20900,
-          "generic": 8
+          "generic": 0
         },
         {
           "name": "Aftab Wizir",
@@ -108854,7 +108870,7 @@
           "days": 30,
           "hoSal": 0,
           "advance": 150,
-          "generic": 12
+          "generic": 0
         },
         {
           "name": "Mian Waqas",
@@ -108862,7 +108878,7 @@
           "days": 30,
           "hoSal": 0,
           "advance": 450,
-          "generic": 16
+          "generic": 0
         },
         {
           "name": "Dr Zeeshan",
@@ -108870,7 +108886,7 @@
           "days": 30,
           "hoSal": 0,
           "advance": 6740,
-          "generic": 20
+          "generic": 0
         },
         {
           "name": "Dr Hamza",
@@ -108878,7 +108894,7 @@
           "days": 15,
           "hoSal": 0,
           "advance": 0,
-          "generic": 24
+          "generic": 0
         },
         {
           "name": "Shah Faisal Ali Khan",
@@ -108886,7 +108902,7 @@
           "days": 30,
           "hoSal": 0,
           "advance": 1995,
-          "generic": 28
+          "generic": 0
         },
         {
           "name": "Muhammad Reehan",
@@ -108894,7 +108910,7 @@
           "days": 30,
           "hoSal": 0,
           "advance": 1604,
-          "generic": 32
+          "generic": 0
         },
         {
           "name": "Shamshair Ali",
@@ -108902,7 +108918,7 @@
           "days": 30,
           "hoSal": 0,
           "advance": 9055,
-          "generic": 36
+          "generic": 0
         },
         {
           "name": "Asad",
@@ -108910,7 +108926,7 @@
           "days": 30,
           "hoSal": 0,
           "advance": 0,
-          "generic": 40
+          "generic": 0
         },
         {
           "name": "Husnain Haider",
@@ -108918,7 +108934,7 @@
           "days": 30,
           "hoSal": 0,
           "advance": 3950,
-          "generic": 44
+          "generic": 0
         },
         {
           "name": "Ali Husnain ",
@@ -108926,7 +108942,7 @@
           "days": 30,
           "hoSal": 0,
           "advance": 2540,
-          "generic": 48
+          "generic": 0
         },
         {
           "name": "Muhammad Kashif",
@@ -108934,7 +108950,7 @@
           "days": 30,
           "hoSal": 0,
           "advance": 0,
-          "generic": 52
+          "generic": 0
         },
         {
           "name": "M Rehman",
@@ -108942,7 +108958,7 @@
           "days": 30,
           "hoSal": 0,
           "advance": 181,
-          "generic": 56
+          "generic": 0
         },
         {
           "name": "Salman Ghulam Ali",
@@ -108950,7 +108966,7 @@
           "days": 30,
           "hoSal": 0,
           "advance": 2350,
-          "generic": 60
+          "generic": 0
         }
       ],
       "July 2026": [
@@ -109099,6 +109115,26 @@
             "refresh": 0,
             "extra": 0,
             "pattyHO": 0
+          },
+          {
+            "date": "24-Jun-2026",
+            "desc": "Lancets",
+            "bill": -380,
+            "fuel": 0,
+            "soap": 0,
+            "refresh": 0,
+            "extra": 0,
+            "pattyHO": 0
+          },
+          {
+            "date": "24-Jun-2026",
+            "desc": "Guard",
+            "bill": -50,
+            "fuel": 0,
+            "soap": 0,
+            "refresh": 0,
+            "extra": 0,
+            "pattyHO": 0
           }
         ]
       },
@@ -109129,22 +109165,27 @@
           },
           {
             "desc": "",
-            "amount": 0,
+            "amount": 27502,
             "notes": ""
           },
           {
             "desc": "",
-            "amount": 0,
+            "amount": 440,
             "notes": ""
           },
           {
             "desc": "",
-            "amount": 0,
+            "amount": 4087,
             "notes": ""
           },
           {
             "desc": "",
-            "amount": 0,
+            "amount": 39925,
+            "notes": ""
+          },
+          {
+            "desc": "",
+            "amount": 1237,
             "notes": ""
           }
         ],
@@ -109278,5 +109319,5 @@
       }
     }
   },
-  "pushedAt": "2026-06-24T12:41:14.084Z"
+  "pushedAt": "2026-06-24T12:57:41.584Z"
 }
