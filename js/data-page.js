@@ -17,11 +17,13 @@ function renderDataTable() {
   if(mon){
     // Single month selected — flat table
     const rows=filtered.slice().sort((a,b)=>_dateVal(b.Date)-_dateVal(a.Date));
-    const oldEl2=document.getElementById('tbl-daily');
     const tbl=document.createElement('table');
     tbl.id='tbl-daily';
-    tbl.innerHTML=`<thead><tr><th style="text-align:left">Date</th>
-      ${extraCol?'<th>'+extraCol+'</th>':''}<th>Total</th><th>Customers</th>
+    const oldEl2=document.getElementById('tbl-daily');
+    const tbl2=document.createElement('table');
+    tbl2.id='tbl-daily';
+    tbl2.innerHTML=`<thead><tr><th style="text-align:left">Date</th>
+      ${extraCol?'<th>'+extraCol+'</th>':''}<th>Total</th><th>Customers</th><th class="no-print" style="width:36px"></th>
     </tr></thead>`;
     const tbody=document.createElement('tbody');
     rows.forEach(d=>{
@@ -29,12 +31,12 @@ function renderDataTable() {
       tr.className='cl'; tr.title='Click for full breakdown';
       tr.onclick=()=>openDayModal(d.Date,d.Month_Year);
       const ev=extraCol?'<td>'+(n(d[extraCol])?'&#8360;'+fc(n(d[extraCol])):'&#8212;')+'</td>':'';
-      tr.innerHTML=`<td>${d.Date||''}</td>${ev}<td>${n(d.TOTAL)?'&#8360;'+fc(n(d.TOTAL)):'&#8212;'}</td><td>${n(d.Customers)?fc(n(d.Customers)):'&#8212;'}</td>`;
+      tr.innerHTML=`<td>${d.Date||''}</td>${ev}<td>${n(d.TOTAL)?'&#8360;'+fc(n(d.TOTAL)):'&#8212;'}</td><td>${n(d.Customers)?fc(n(d.Customers)):'&#8212;'}</td><td class="no-print"><button onclick="event.stopPropagation();printDayDirectly('${d.Date}','${d.Month_Year}')" title="Print ${d.Date}" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(37,99,235,.25);background:var(--alt);color:var(--accent);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">🖨</button></td>`;
       tbody.appendChild(tr);
     });
-    if(!rows.length){ const tr=document.createElement('tr'); tr.innerHTML='<td colspan="4" style="text-align:center;padding:24px;color:var(--muted)">No records</td>'; tbody.appendChild(tr); }
-    tbl.appendChild(tbody);
-    if(oldEl2) oldEl2.replaceWith(tbl);
+    if(!rows.length){ const tr=document.createElement('tr'); tr.innerHTML='<td colspan="5" style="text-align:center;padding:24px;color:var(--muted)">No records</td>'; tbody.appendChild(tr); }
+    tbl2.appendChild(tbody);
+    if(oldEl2) oldEl2.replaceWith(tbl2);
     if(titleEl) titleEl.textContent=mon;
     if(subEl) subEl.textContent=rows.length+' records — '+mon;
     return;
@@ -78,7 +80,7 @@ function renderDataTable() {
     tblWrap.className='mon-tbl-wrap';
     const tbl=document.createElement('table');
     const thead=document.createElement('thead');
-    thead.innerHTML=`<tr><th style="text-align:left">Date</th>${extraCol?'<th>'+extraCol+'</th>':''}<th>Total</th><th>Customers</th></tr>`;
+    thead.innerHTML=`<tr><th style="text-align:left">Date</th>${extraCol?'<th>'+extraCol+'</th>':''}<th>Total</th><th>Customers</th><th class="no-print" style="width:36px"></th></tr>`;
     tbl.appendChild(thead);
     const tbody=document.createElement('tbody');
     rows.forEach(d=>{
@@ -86,7 +88,7 @@ function renderDataTable() {
       tr.className='cl'; tr.title='Click for full breakdown';
       tr.onclick=()=>openDayModal(d.Date,d.Month_Year);
       const ev=extraCol?`<td>${n(d[extraCol])?'&#8360;'+fc(n(d[extraCol])):'&#8212;'}</td>`:'';
-      tr.innerHTML=`<td>${d.Date||''}</td>${ev}<td>${n(d.TOTAL)?'&#8360;'+fc(n(d.TOTAL)):'&#8212;'}</td><td>${n(d.Customers)?fc(n(d.Customers)):'&#8212;'}</td>`;
+      tr.innerHTML=`<td>${d.Date||''}</td>${ev}<td>${n(d.TOTAL)?'&#8360;'+fc(n(d.TOTAL)):'&#8212;'}</td><td>${n(d.Customers)?fc(n(d.Customers)):'&#8212;'}</td><td class="no-print"><button onclick="event.stopPropagation();printDayDirectly('${d.Date}','${d.Month_Year}')" title="Print ${d.Date}" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(37,99,235,.25);background:var(--alt);color:var(--accent);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">🖨</button></td>`;
       tbody.appendChild(tr);
     });
     tbl.appendChild(tbody);

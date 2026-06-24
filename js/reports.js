@@ -133,7 +133,16 @@ function openMonthModal(my) {
 
 function openDayFromMonth(date, my) {
   closeMon();
-  setTimeout(()=>openDayModal(date, my), 80);
+  // Use 220ms — enough for modal close animation on slow phones
+  setTimeout(()=>openDayModal(date, my), 220);
+}
+
+// Direct print from table row — no modal needed, reliable on all devices
+function printDayDirectly(date, my) {
+  const d=DAILY.find(x=>x.Date===date&&x.Month_Year===my);
+  if(!d){ toast('Record not found for '+date,'w'); return; }
+  _printDay={d,date,my};
+  printCurrentDay();
 }
 
 function closeMon() { document.getElementById('mbg').classList.remove('on'); }
