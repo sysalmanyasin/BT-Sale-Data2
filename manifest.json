@@ -2,14 +2,45 @@
   "name": "Bahria Town Sales IC",
   "short_name": "BT Sales",
   "description": "Bahria Town Petrol Station Intelligence Centre — daily sales tracking, reporting, and manager tools.",
-  "start_url": "./",
-  "scope": "./",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#0f172a",
   "theme_color": "#2563eb",
   "lang": "en",
+  "id": "/",
   "categories": ["business", "finance", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Add Daily Entry",
+      "short_name": "Add Entry",
+      "description": "Quickly add today's sales entry",
+      "url": "/?page=entry",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "View sales dashboard",
+      "url": "/?page=dashboard",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Daily Data",
+      "short_name": "Daily Data",
+      "description": "View daily sales records",
+      "url": "/?page=data",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Sale Report",
+      "short_name": "Report",
+      "description": "Open sale report page",
+      "url": "/?page=report",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ],
   "icons": [
     {
       "src": "icons/favicon-32.png",
@@ -26,7 +57,7 @@
       "src": "icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "maskable any"
     },
     {
       "src": "icons/apple-touch-icon.png",
@@ -42,5 +73,8 @@
     }
   ],
   "screenshots": [],
-  "prefer_related_applications": false
+  "prefer_related_applications": false,
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  }
 }
