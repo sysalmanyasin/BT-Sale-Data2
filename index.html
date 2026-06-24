@@ -47,6 +47,12 @@
 <!-- Service Worker registration -->
 <script>
 if ('serviceWorker' in navigator) {
+  let swRefreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (swRefreshing) return;
+    swRefreshing = true;
+    window.location.reload();
+  });
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js')
       .then(reg => {
@@ -55,6 +61,7 @@ if ('serviceWorker' in navigator) {
           const nw = reg.installing;
           nw.addEventListener('statechange', () => {
             if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+              nw.postMessage('SKIP_WAITING');
               console.log('[SW] New version available — will activate on next reload');
             }
           });
@@ -508,10 +515,10 @@ if ('serviceWorker' in navigator) {
       <span class="tcard-chevron">▶</span>
     </div>
     <div class="tcard-body">
-      <div class="tdesc">Data saved to <strong>sysalmanyasin/BT-Sale-Data</strong> → <code style="font-family:var(--mono);color:var(--accent)">data/sales.json</code>. Token stored in this browser only — never in the file.</div>
+      <div class="tdesc">Data saved to <strong>sysalmanyasin/BT-Sale-Data2</strong> → <code style="font-family:var(--mono);color:var(--accent)">data/sales.json</code>. Token stored in this browser only — never in the file.</div>
       <div class="fgrid" style="max-width:620px;margin-bottom:14px">
         <div class="fg" style="grid-column:span 2"><label>GitHub Personal Access Token</label><input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off"></div>
-        <div class="fg"><label>Repository (owner/repo)</label><input type="text" id="gh-repo" value="sysalmanyasin/BT-Sale-Data"></div>
+        <div class="fg"><label>Repository (owner/repo)</label><input type="text" id="gh-repo" value="sysalmanyasin/BT-Sale-Data2"></div>
         <div class="fg"><label>File path in repo</label><input type="text" id="gh-path" value="data/sales.json"></div>
       </div>
       <div class="brow" style="margin-top:0">

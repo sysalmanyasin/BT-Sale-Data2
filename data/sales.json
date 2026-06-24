@@ -108275,7 +108275,105 @@
       "Low Sale Reason": null
     }
   ],
-  "staff": [],
+  "staff": [
+    {
+      "id": "emp_1782192434700",
+      "name": "Salman Yasin",
+      "designation": "Co Manager",
+      "active": true,
+      "staffId": "EMP-001",
+      "fatherName": "Muhammad Yasin",
+      "cnic": "35202-7183555-3",
+      "bloodGroup": "O+",
+      "phone": "0335-4382740",
+      "doj": "2015-03-15",
+      "address": "Mughal House, Near Noor Mosque, Munawar Park Street, Manga Mandi Lahore"
+    },
+    {
+      "id": "emp_1782192456802",
+      "name": "Muhammad Zubair",
+      "designation": "Co Manager",
+      "active": true
+    },
+    {
+      "id": "emp_1782192473301",
+      "name": "Aftab Wizir",
+      "designation": "Head Cashier",
+      "active": true
+    },
+    {
+      "id": "emp_1782192491030",
+      "name": "Mian Waqas",
+      "designation": "APM",
+      "active": true
+    },
+    {
+      "id": "emp_1782192500030",
+      "name": "Dr Zeeshan",
+      "designation": "Pharmacist",
+      "active": true
+    },
+    {
+      "id": "emp_1782192517409",
+      "name": "Dr Hamza",
+      "designation": "Pharmacist",
+      "active": true
+    },
+    {
+      "id": "emp_1782192528414",
+      "name": "Shah Faisal Ali Khan",
+      "designation": "Salesman",
+      "active": true
+    },
+    {
+      "id": "emp_1782192537767",
+      "name": "Muhammad Reehan",
+      "designation": "Salesman",
+      "active": true
+    },
+    {
+      "id": "emp_1782192544787",
+      "name": "Shamshair Ali",
+      "designation": "Salesman",
+      "active": true
+    },
+    {
+      "id": "emp_1782192553543",
+      "name": "Asad",
+      "designation": "Salesman",
+      "active": true
+    },
+    {
+      "id": "emp_1782192566703",
+      "name": "Husnain Haider",
+      "designation": "Salesman",
+      "active": true
+    },
+    {
+      "id": "emp_1782192575235",
+      "name": "Ali Husnain ",
+      "designation": "Salesman",
+      "active": true
+    },
+    {
+      "id": "emp_1782192581873",
+      "name": "Muhammad Kashif",
+      "designation": "Salesman",
+      "active": true
+    },
+    {
+      "id": "emp_1782192590111",
+      "name": "M Rehman",
+      "designation": "Salesman",
+      "active": true
+    },
+    {
+      "id": "emp_1782192598845",
+      "name": "Salman Ghulam Ali",
+      "designation": "Salesman",
+      "active": true
+    }
+  ],
   "manager": {
     "generic": {
       "July 2026": [],
@@ -109226,5 +109324,5 @@
       }
     }
   },
-  "pushedAt": "2026-06-24T13:58:42.610Z"
+  "pushedAt": "2026-06-24T13:36:11.704Z"
 }

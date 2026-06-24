@@ -4,7 +4,7 @@
    Data (GitHub / Drive API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v2.6';
+const CACHE_NAME = 'bt-sales-v2.7';
 
 const APP_SHELL = [
   './',
@@ -108,9 +108,9 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  /* 4. App shell (same origin): cache-first */
+  /* 4. App shell (same origin): network-first, cache fallback */
   if (url.origin === self.location.origin) {
-    event.respondWith(cacheFirst(request));
+    event.respondWith(networkFirst(request));
     return;
   }
 
@@ -132,6 +132,20 @@ async function cacheFirst(request) {
     return response;
   } catch {
     return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
+  }
+}
+
+async function networkFirst(request) {
+  try {
+    const response = await fetch(request, { cache: 'no-store' });
+    if (response.ok) {
+      const cache = await caches.open(CACHE_NAME);
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch {
+    const cached = await caches.match(request);
+    return cached || new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
   }
 }
 

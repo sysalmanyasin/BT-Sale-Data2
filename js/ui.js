@@ -116,7 +116,7 @@ function loadToolsPage() {
   const cfg=ghCfg();
   updateGhBadge();
   const gt=document.getElementById('gh-token'); if(gt) gt.placeholder=cfg?'Token saved ✓ (paste new to update)':'ghp_xxxxxxxxxxxxxxxxxxxx';
-  const gr=document.getElementById('gh-repo'); if(gr) gr.value=localStorage.getItem(GH_R)||'sysalmanyasin/BT-Sale-Data';
+  const gr=document.getElementById('gh-repo'); if(gr) gr.value=localStorage.getItem(GH_R)||'sysalmanyasin/BT-Sale-Data2';
   const gp=document.getElementById('gh-path'); if(gp) gp.value=localStorage.getItem(GH_P)||'data/sales.json';
   // Auto-sync checkboxes
   const al=document.getElementById('auto-load'); if(al) al.checked=localStorage.getItem('bt_auto_load')==='1';

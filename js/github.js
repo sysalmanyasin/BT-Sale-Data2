@@ -14,7 +14,7 @@ async function fetchRemoteFile(headers, apiBase, path) {
   const file = await r.json();
   let data = null;
   if (!file.content || file.size > 900000) {
-    const rawResp = await fetch(file.download_url);
+    const rawResp = await fetch(file.download_url, { cache: 'no-store' });
     if (!rawResp.ok) throw new Error('HTTP ' + rawResp.status + ' (raw)');
     data = await rawResp.json();
   } else {
@@ -81,16 +81,16 @@ function mergeIncomingData(data, isPull = false) {
   if (data.manager) {
     const cur = JSON.parse(localStorage.getItem(MGR_KEY)||'{}');
     if (isPull) {
-      // Pull mode: deep merge at month level.
-      // Remote is the base (brings new months from other device).
-      // For months that exist locally, local version is kept (in-progress edits safe).
-      const merged = JSON.parse(JSON.stringify(data.manager)); // deep copy remote
+      // Pull mode: GitHub is the source of truth for months it contains.
+      // Keep local-only months, but replace matching months so stale browser
+      // data cannot block fresh GitHub data on another device.
+      const merged = JSON.parse(JSON.stringify(cur || {}));
       ['salary','generic','expense','credit'].forEach(section => {
-        if (cur[section] && typeof cur[section] === 'object') {
+        if (data.manager[section] && typeof data.manager[section] === 'object') {
           if (!merged[section]) merged[section] = {};
-          Object.keys(cur[section]).forEach(month => {
+          Object.keys(data.manager[section]).forEach(month => {
             // Local month wins — keeps any edits made on this device
-            merged[section][month] = cur[section][month];
+            merged[section][month] = data.manager[section][month];
           });
         }
       });
@@ -121,8 +121,8 @@ function mergeIncomingData(data, isPull = false) {
   if (data.custom) {
     const localCus = JSON.parse(localStorage.getItem(CSEC_KEY)||'{}');
     if (isPull) {
-      // Pull mode: remote is base, then overlay local sections on top.
-      localStorage.setItem(CSEC_KEY, JSON.stringify(Object.assign({}, data.custom, localCus)));
+      // Pull mode: local-only sections are kept, but GitHub replaces matching sections.
+      localStorage.setItem(CSEC_KEY, JSON.stringify(Object.assign({}, localCus, data.custom)));
     } else {
       // Push pre-merge: local wins entirely.
       localStorage.setItem(CSEC_KEY, JSON.stringify(Object.assign({}, data.custom, localCus)));
@@ -354,7 +354,7 @@ async function manualSync(silent=false) {
     localStorage.setItem(GH_S, file.sha);
     let data;
     if (!file.content || file.size > 900000) {
-      const rawResp = await fetch(file.download_url);
+      const rawResp = await fetch(file.download_url, { cache: 'no-store' });
       if (!rawResp.ok) throw new Error('HTTP '+rawResp.status+' (raw)');
       data = await rawResp.json();
     } else {
@@ -377,7 +377,7 @@ async function manualSync(silent=false) {
 function ghCfg() {
   const t=localStorage.getItem(GH_T);
   if(!t) return null;
-  return { token:t, repo:localStorage.getItem(GH_R)||'sysalmanyasin/BT-Sale-Data', path:localStorage.getItem(GH_P)||'data/sales.json' };
+  return { token:t, repo:localStorage.getItem(GH_R)||'sysalmanyasin/BT-Sale-Data2', path:localStorage.getItem(GH_P)||'data/sales.json' };
 }
 
 function ghLog(msg, cls='info') {
@@ -422,7 +422,7 @@ async function _legacyManualSync(silent=false) {
     let data;
     if (!file.content || file.size > 900000) {
       // File exceeds GitHub Contents API 1MB limit — fetch raw via download_url
-      const rawResp = await fetch(file.download_url);
+      const rawResp = await fetch(file.download_url, { cache: 'no-store' });
       if (!rawResp.ok) throw new Error('HTTP ' + rawResp.status + ' (raw download)');
       data = await rawResp.json();
     } else {
