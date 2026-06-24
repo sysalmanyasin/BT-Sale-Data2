@@ -3288,8 +3288,8 @@
       "Health Pass": null,
       "Nisar Spinning Mills": null,
       "Food Panda": null,
-      "F/Issue": 6750,
-      "TOTAL": "12449681",
+      "F/Issue": 10400,
+      "TOTAL": "12453331",
       "Sale Plus": null,
       "COMP SALE": 11716255,
       "DIFF": null,
@@ -3302,6 +3302,52 @@
     }
   ],
   "daily": [
+    {
+      "Month_Year": "June 2026",
+      "Date": "23/Jun/2026",
+      "Cash Sale": 314853,
+      "Cash Returns": 21390,
+      "HBL": null,
+      "MCB": null,
+      "Alfala Bank": 202476,
+      "Bank Al Habib": 55002,
+      "Meezan Bank (Paysa)": null,
+      "Askari Bank": 3082,
+      "Askari Bank Returns": null,
+      "PSO": null,
+      "PSO Returns": null,
+      "NESPAK": null,
+      "NESPAK Returns": null,
+      "PARCO": 8360,
+      "PARCO Returns": null,
+      "TEPA": null,
+      "TEPA Returns": null,
+      "LDA": 21435,
+      "LDA Returns": null,
+      "Gourmet": null,
+      "Wapda Hospital": null,
+      "BTH": null,
+      "Berger Paints": null,
+      "Ecolean PK": null,
+      "Style Textile": null,
+      "Syed Babar Ali Foundation": null,
+      "Rahnuma NGO": null,
+      "Health Pass": null,
+      "Nisar Spinning Mills": null,
+      "Food Panda": null,
+      "F/Issue": null,
+      "COMP SALE": null,
+      "Customers": 569,
+      "FDPP": 437,
+      "FDPP Con": 132,
+      "Amount Received": null,
+      "Load Sale": null,
+      "Cash to be Deposited": null,
+      "Low Sale Reason": null,
+      "TOTAL": "583818",
+      "Sale Plus": null,
+      "DIFF": null
+    },
     {
       "Month_Year": "June 2026",
       "Date": "20/Jun/2026",
@@ -3452,7 +3498,7 @@
       "Meezan Bank (Paysa)": null,
       "Askari Bank": null,
       "Askari Bank Returns": null,
-      "PSO": 0,
+      "PSO": null,
       "PSO Returns": null,
       "NESPAK": null,
       "NESPAK Returns": null,
@@ -3473,7 +3519,7 @@
       "Health Pass": null,
       "Nisar Spinning Mills": null,
       "Food Panda": null,
-      "F/Issue": null,
+      "F/Issue": 3650,
       "COMP SALE": 502816,
       "Customers": 566,
       "FDPP": 423,
@@ -3482,7 +3528,7 @@
       "Load Sale": null,
       "Cash to be Deposited": 238104,
       "Low Sale Reason": null,
-      "TOTAL": "530498",
+      "TOTAL": "534148",
       "Sale Plus": null,
       "DIFF": null
     },
@@ -108227,52 +108273,6 @@
       "Load Sale": null,
       "Cash to be Deposited": 0,
       "Low Sale Reason": null
-    },
-    {
-      "Month_Year": "June 2026",
-      "Date": "23/Jun/2026",
-      "Cash Sale": 314853,
-      "Cash Returns": 21390,
-      "HBL": null,
-      "MCB": null,
-      "Alfala Bank": 202476,
-      "Bank Al Habib": 55002,
-      "Meezan Bank (Paysa)": null,
-      "Askari Bank": 3082,
-      "Askari Bank Returns": null,
-      "PSO": null,
-      "PSO Returns": null,
-      "NESPAK": null,
-      "NESPAK Returns": null,
-      "PARCO": 8360,
-      "PARCO Returns": null,
-      "TEPA": null,
-      "TEPA Returns": null,
-      "LDA": 21435,
-      "LDA Returns": null,
-      "Gourmet": null,
-      "Wapda Hospital": null,
-      "BTH": null,
-      "Berger Paints": null,
-      "Ecolean PK": null,
-      "Style Textile": null,
-      "Syed Babar Ali Foundation": null,
-      "Rahnuma NGO": null,
-      "Health Pass": null,
-      "Nisar Spinning Mills": null,
-      "Food Panda": null,
-      "F/Issue": null,
-      "COMP SALE": null,
-      "Customers": 569,
-      "FDPP": 437,
-      "FDPP Con": 132,
-      "Amount Received": null,
-      "Load Sale": null,
-      "Cash to be Deposited": null,
-      "Low Sale Reason": null,
-      "TOTAL": "583818",
-      "Sale Plus": null,
-      "DIFF": null
     }
   ],
   "staff": [
@@ -108376,80 +108376,7 @@
   ],
   "manager": {
     "generic": {
-      "July 2026": [
-        {
-          "name": "Salman Yasin",
-          "desig": "Co Manager",
-          "genericSale": 0,
-          "extra": 0
-        },
-        {
-          "name": "Mian Waqas",
-          "desig": "APM",
-          "genericSale": 0,
-          "extra": 0
-        },
-        {
-          "name": "Shah Faisal",
-          "desig": "SSO",
-          "genericSale": 0,
-          "extra": 0
-        },
-        {
-          "name": "Dr Zeeshan",
-          "desig": "Internee Pharmacist",
-          "genericSale": 0,
-          "extra": 0
-        },
-        {
-          "name": "Dr Shujaat",
-          "desig": "Internee Pharmacist",
-          "genericSale": 0,
-          "extra": 0
-        },
-        {
-          "name": "M Reehan",
-          "desig": "Salesman",
-          "genericSale": 0,
-          "extra": 0
-        },
-        {
-          "name": "Ali Husnain",
-          "desig": "Salesman",
-          "genericSale": 0,
-          "extra": 0
-        },
-        {
-          "name": "Abdul Rehman",
-          "desig": "Salesman",
-          "genericSale": 0,
-          "extra": 0
-        },
-        {
-          "name": "Shamshair",
-          "desig": "Salesman",
-          "genericSale": 0,
-          "extra": 0
-        },
-        {
-          "name": "Asad Mushtaq",
-          "desig": "Salesman",
-          "genericSale": 0,
-          "extra": 0
-        },
-        {
-          "name": "Husnain Haider",
-          "desig": "Salesman",
-          "genericSale": 0,
-          "extra": 0
-        },
-        {
-          "name": "Kashif",
-          "desig": "Salesman",
-          "genericSale": 0,
-          "extra": 0
-        }
-      ],
+      "July 2026": [],
       "June 2026": [
         {
           "name": "Salman Yasin",
@@ -108458,55 +108385,55 @@
           "extra": 0
         },
         {
-          "name": "Mian Waqas",
-          "desig": "APM",
+          "name": "Muhammad Zubair",
+          "desig": "Co Manager",
           "genericSale": 200,
           "extra": 0
         },
         {
-          "name": "Shah Faisal",
-          "desig": "SSO",
+          "name": "Aftab Wizir",
+          "desig": "Head Cashier",
           "genericSale": 300,
           "extra": 0
         },
         {
-          "name": "Dr Zeeshan",
-          "desig": "Internee Pharmacist",
+          "name": "Mian Waqas",
+          "desig": "APM",
           "genericSale": 400,
           "extra": 0
         },
         {
-          "name": "Dr Shujaat",
-          "desig": "Internee Pharmacist",
+          "name": "Dr Zeeshan",
+          "desig": "Pharmacist",
           "genericSale": 500,
           "extra": 0
         },
         {
-          "name": "M Reehan",
-          "desig": "Salesman",
+          "name": "Dr Hamza",
+          "desig": "Pharmacist",
           "genericSale": 600,
           "extra": 0
         },
         {
-          "name": "Ali Husnain",
+          "name": "Shah Faisal Ali Khan",
           "desig": "Salesman",
           "genericSale": 700,
           "extra": 0
         },
         {
-          "name": "Abdul Rehman",
+          "name": "Muhammad Reehan",
           "desig": "Salesman",
           "genericSale": 800,
           "extra": 0
         },
         {
-          "name": "Shamshair",
+          "name": "Shamshair Ali",
           "desig": "Salesman",
           "genericSale": 900,
           "extra": 0
         },
         {
-          "name": "Asad Mushtaq",
+          "name": "Asad",
           "desig": "Salesman",
           "genericSale": 1000,
           "extra": 0
@@ -108518,20 +108445,20 @@
           "extra": 0
         },
         {
-          "name": "Kashif",
+          "name": "Ali Husnain ",
           "desig": "Salesman",
           "genericSale": 1200,
           "extra": 0
         },
         {
-          "name": "Muhammad Zubair",
-          "desig": "Co Manager",
+          "name": "Muhammad Kashif",
+          "desig": "Salesman",
           "genericSale": 1300,
           "extra": 0
         },
         {
-          "name": "Aftab Wizir",
-          "desig": "Head Cashier",
+          "name": "M Rehman",
+          "desig": "Salesman",
           "genericSale": 1400,
           "extra": 0
         },
@@ -108547,69 +108474,117 @@
       "June 2026": [
         {
           "name": "Salman Yasin",
-          "prevBal": 670,
-          "entries": [],
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "24-Jun-2026",
+              "desc": "credit",
+              "amount": 670
+            }
+          ],
+          "salary": 0,
+          "lessGeneric": 0
+        },
+        {
+          "name": "Muhammad Zubair",
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "24-Jun-2026",
+              "desc": "credit",
+              "amount": 20900
+            }
+          ],
+          "salary": 0,
+          "lessGeneric": 0
+        },
+        {
+          "name": "Aftab Wizir",
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "24-Jun-2026",
+              "desc": "credit",
+              "amount": 150
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Mian Waqas",
           "prevBal": 0,
-          "entries": [],
-          "salary": 0,
-          "lessGeneric": 0
-        },
-        {
-          "name": "Shah Faisal",
-          "prevBal": 1995,
-          "entries": [],
+          "entries": [
+            {
+              "date": "24-Jun-2026",
+              "desc": "credit",
+              "amount": 450
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Dr Zeeshan",
-          "prevBal": 2000,
-          "entries": [],
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "24-Jun-2026",
+              "desc": "credit",
+              "amount": 6740
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
-          "name": "Dr Shujaat",
+          "name": "Dr Hamza",
           "prevBal": 0,
           "entries": [],
           "salary": 0,
           "lessGeneric": 0
         },
         {
-          "name": "M Reehan",
-          "prevBal": 1604,
-          "entries": [],
+          "name": "Shah Faisal Ali Khan",
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "24-Jun-2026",
+              "desc": "credit",
+              "amount": 1995
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
-          "name": "Ali Husnain",
-          "prevBal": 2440,
-          "entries": [],
+          "name": "Muhammad Reehan",
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "24-Jun-2026",
+              "desc": "credit",
+              "amount": 1604
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
-          "name": "Abdul Rehman",
-          "prevBal": 181,
-          "entries": [],
+          "name": "Shamshair Ali",
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "24-Jun-2026",
+              "desc": "credit",
+              "amount": 9055
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
-          "name": "Shamshair",
-          "prevBal": 9055,
-          "entries": [],
-          "salary": 0,
-          "lessGeneric": 0
-        },
-        {
-          "name": "Asad Mushtaq",
+          "name": "Asad",
           "prevBal": 0,
           "entries": [],
           "salary": 0,
@@ -108617,36 +108592,60 @@
         },
         {
           "name": "Husnain Haider",
-          "prevBal": 3950,
-          "entries": [],
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "24-Jun-2026",
+              "desc": "credit",
+              "amount": 3950
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
-          "name": "Kashif",
+          "name": "Ali Husnain ",
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "24-Jun-2026",
+              "desc": "credit",
+              "amount": 2540
+            }
+          ],
+          "salary": 0,
+          "lessGeneric": 0
+        },
+        {
+          "name": "Muhammad Kashif",
           "prevBal": 0,
           "entries": [],
           "salary": 0,
           "lessGeneric": 0
         },
         {
-          "name": "New Employee",
-          "prevBal": 12270,
-          "entries": [],
-          "salary": 0,
-          "lessGeneric": 0
-        },
-        {
-          "name": "New Employee",
+          "name": "M Rehman",
           "prevBal": 0,
-          "entries": [],
+          "entries": [
+            {
+              "date": "24-Jun-2026",
+              "desc": "credit",
+              "amount": 181
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
-          "name": "New Employee",
-          "prevBal": 3150,
-          "entries": [],
+          "name": "Salman Ghulam Ali",
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "24-Jun-2026",
+              "desc": "credit",
+              "amount": 2350
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         }
@@ -108654,69 +108653,117 @@
       "July 2026": [
         {
           "name": "Salman Yasin",
-          "prevBal": 670,
-          "entries": [],
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "23-Jun-2026",
+              "desc": "credit",
+              "amount": 0
+            }
+          ],
+          "salary": 0,
+          "lessGeneric": 0
+        },
+        {
+          "name": "Muhammad Zubair",
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "23-Jun-2026",
+              "desc": "credit",
+              "amount": 0
+            }
+          ],
+          "salary": 0,
+          "lessGeneric": 0
+        },
+        {
+          "name": "Aftab Wizir",
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "23-Jun-2026",
+              "desc": "credit",
+              "amount": 0
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Mian Waqas",
           "prevBal": 0,
-          "entries": [],
-          "salary": 0,
-          "lessGeneric": 0
-        },
-        {
-          "name": "Shah Faisal",
-          "prevBal": 1995,
-          "entries": [],
+          "entries": [
+            {
+              "date": "23-Jun-2026",
+              "desc": "credit",
+              "amount": 0
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Dr Zeeshan",
-          "prevBal": 2000,
-          "entries": [],
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "23-Jun-2026",
+              "desc": "credit",
+              "amount": 0
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
-          "name": "Dr Shujaat",
+          "name": "Dr Hamza",
           "prevBal": 0,
           "entries": [],
           "salary": 0,
           "lessGeneric": 0
         },
         {
-          "name": "M Reehan",
-          "prevBal": 1604,
-          "entries": [],
+          "name": "Shah Faisal Ali Khan",
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "23-Jun-2026",
+              "desc": "credit",
+              "amount": 0
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
-          "name": "Ali Husnain",
-          "prevBal": 2440,
-          "entries": [],
+          "name": "Muhammad Reehan",
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "23-Jun-2026",
+              "desc": "credit",
+              "amount": 0
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
-          "name": "Abdul Rehman",
-          "prevBal": 181,
-          "entries": [],
+          "name": "Shamshair Ali",
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "23-Jun-2026",
+              "desc": "credit",
+              "amount": 0
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
-          "name": "Shamshair",
-          "prevBal": 9055,
-          "entries": [],
-          "salary": 0,
-          "lessGeneric": 0
-        },
-        {
-          "name": "Asad Mushtaq",
+          "name": "Asad",
           "prevBal": 0,
           "entries": [],
           "salary": 0,
@@ -108724,36 +108771,60 @@
         },
         {
           "name": "Husnain Haider",
-          "prevBal": 3950,
-          "entries": [],
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "23-Jun-2026",
+              "desc": "credit",
+              "amount": 0
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
-          "name": "Kashif",
+          "name": "Ali Husnain ",
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "23-Jun-2026",
+              "desc": "credit",
+              "amount": 0
+            }
+          ],
+          "salary": 0,
+          "lessGeneric": 0
+        },
+        {
+          "name": "Muhammad Kashif",
           "prevBal": 0,
           "entries": [],
           "salary": 0,
           "lessGeneric": 0
         },
         {
-          "name": "New Employee",
-          "prevBal": 12270,
-          "entries": [],
-          "salary": 0,
-          "lessGeneric": 0
-        },
-        {
-          "name": "New Employee",
+          "name": "M Rehman",
           "prevBal": 0,
-          "entries": [],
+          "entries": [
+            {
+              "date": "23-Jun-2026",
+              "desc": "credit",
+              "amount": 0
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
-          "name": "New Employee",
-          "prevBal": 3150,
-          "entries": [],
+          "name": "Salman Ghulam Ali",
+          "prevBal": 0,
+          "entries": [
+            {
+              "date": "23-Jun-2026",
+              "desc": "credit",
+              "amount": 0
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         }
@@ -108764,79 +108835,79 @@
         {
           "name": "Salman Yasin",
           "desig": "Co Manager",
-          "days": 31,
+          "days": 30,
           "hoSal": 0,
-          "advance": 0,
+          "advance": 670,
           "generic": 4
+        },
+        {
+          "name": "Muhammad Zubair",
+          "desig": "Co Manager",
+          "days": 30,
+          "hoSal": 0,
+          "advance": 20900,
+          "generic": 8
+        },
+        {
+          "name": "Aftab Wizir",
+          "desig": "Head Cashier",
+          "days": 30,
+          "hoSal": 0,
+          "advance": 150,
+          "generic": 12
         },
         {
           "name": "Mian Waqas",
           "desig": "APM",
-          "days": 31,
+          "days": 30,
           "hoSal": 0,
-          "advance": 0,
-          "generic": 8
-        },
-        {
-          "name": "Shah Faisal",
-          "desig": "SSO",
-          "days": 31,
-          "hoSal": 0,
-          "advance": 0,
-          "generic": 12
-        },
-        {
-          "name": "Dr Zeeshan",
-          "desig": "Internee Pharmacist",
-          "days": 31,
-          "hoSal": 0,
-          "advance": 0,
+          "advance": 450,
           "generic": 16
         },
         {
-          "name": "Dr Shujaat",
-          "desig": "Internee Pharmacist",
-          "days": 31,
+          "name": "Dr Zeeshan",
+          "desig": "Pharmacist",
+          "days": 30,
           "hoSal": 0,
-          "advance": 0,
+          "advance": 6740,
           "generic": 20
         },
         {
-          "name": "M Reehan",
-          "desig": "Salesman",
-          "days": 31,
+          "name": "Dr Hamza",
+          "desig": "Pharmacist",
+          "days": 15,
           "hoSal": 0,
           "advance": 0,
           "generic": 24
         },
         {
-          "name": "Ali Husnain",
+          "name": "Shah Faisal Ali Khan",
           "desig": "Salesman",
-          "days": 31,
+          "days": 30,
           "hoSal": 0,
-          "advance": 0,
+          "advance": 1995,
           "generic": 28
         },
         {
-          "name": "Abdul Rehman",
+          "name": "Muhammad Reehan",
           "desig": "Salesman",
-          "days": 31,
+          "days": 30,
           "hoSal": 0,
-          "advance": 0,
+          "advance": 1604,
           "generic": 32
         },
         {
-          "name": "Shamshair",
+          "name": "Shamshair Ali",
           "desig": "Salesman",
-          "days": 31,
+          "days": 30,
           "hoSal": 0,
-          "advance": 0,
+          "advance": 9055,
           "generic": 36
         },
         {
-          "name": "Asad Mushtaq",
+          "name": "Asad",
           "desig": "Salesman",
-          "days": 31,
+          "days": 30,
           "hoSal": 0,
           "advance": 0,
           "generic": 40
@@ -108844,41 +108915,41 @@
         {
           "name": "Husnain Haider",
           "desig": "Salesman",
-          "days": 31,
+          "days": 30,
           "hoSal": 0,
-          "advance": 0,
+          "advance": 3950,
           "generic": 44
         },
         {
-          "name": "Kashif",
+          "name": "Ali Husnain ",
           "desig": "Salesman",
-          "days": 31,
+          "days": 30,
           "hoSal": 0,
-          "advance": 0,
+          "advance": 2540,
           "generic": 48
         },
         {
-          "name": "Muhammad Zubair",
-          "desig": "Co Manager",
-          "days": 31,
+          "name": "Muhammad Kashif",
+          "desig": "Salesman",
+          "days": 30,
           "hoSal": 0,
           "advance": 0,
           "generic": 52
         },
         {
-          "name": "Aftab Wizir",
-          "desig": "Head Cashier",
-          "days": 31,
+          "name": "M Rehman",
+          "desig": "Salesman",
+          "days": 30,
           "hoSal": 0,
-          "advance": 0,
+          "advance": 181,
           "generic": 56
         },
         {
           "name": "Salman Ghulam Ali",
           "desig": "Salesman",
-          "days": 31,
+          "days": 30,
           "hoSal": 0,
-          "advance": 0,
+          "advance": 2350,
           "generic": 60
         }
       ],
@@ -108888,7 +108959,23 @@
           "desig": "Co Manager",
           "days": 31,
           "hoSal": 0,
-          "advance": 0,
+          "advance": 670,
+          "generic": 0
+        },
+        {
+          "name": "Muhammad Zubair",
+          "desig": "Co Manager",
+          "days": 31,
+          "hoSal": 0,
+          "advance": 20900,
+          "generic": 0
+        },
+        {
+          "name": "Aftab Wizir",
+          "desig": "Head Cashier",
+          "days": 31,
+          "hoSal": 0,
+          "advance": 150,
           "generic": 0
         },
         {
@@ -108896,67 +108983,51 @@
           "desig": "APM",
           "days": 31,
           "hoSal": 0,
-          "advance": 0,
-          "generic": 4000
-        },
-        {
-          "name": "Shah Faisal",
-          "desig": "SSO",
-          "days": 31,
-          "hoSal": 0,
-          "advance": 0,
+          "advance": 450,
           "generic": 0
         },
         {
           "name": "Dr Zeeshan",
-          "desig": "Internee Pharmacist",
+          "desig": "Pharmacist",
+          "days": 31,
+          "hoSal": 0,
+          "advance": 6740,
+          "generic": 0
+        },
+        {
+          "name": "Dr Hamza",
+          "desig": "Pharmacist",
           "days": 31,
           "hoSal": 0,
           "advance": 0,
           "generic": 0
         },
         {
-          "name": "Dr Shujaat",
-          "desig": "Internee Pharmacist",
-          "days": 31,
-          "hoSal": 0,
-          "advance": 0,
-          "generic": 0
-        },
-        {
-          "name": "M Reehan",
+          "name": "Shah Faisal Ali Khan",
           "desig": "Salesman",
           "days": 31,
           "hoSal": 0,
-          "advance": 0,
+          "advance": 1995,
           "generic": 0
         },
         {
-          "name": "Ali Husnain",
+          "name": "Muhammad Reehan",
           "desig": "Salesman",
           "days": 31,
           "hoSal": 0,
-          "advance": 0,
+          "advance": 1604,
           "generic": 0
         },
         {
-          "name": "Abdul Rehman",
+          "name": "Shamshair Ali",
           "desig": "Salesman",
           "days": 31,
           "hoSal": 0,
-          "advance": 0,
+          "advance": 9055,
           "generic": 0
         },
         {
-          "name": "Shamshair",
-          "desig": "Salesman",
-          "days": 31,
-          "hoSal": 0,
-          "advance": 0,
-          "generic": 0
-        },
-        {
-          "name": "Asad Mushtaq",
+          "name": "Asad",
           "desig": "Salesman",
           "days": 31,
           "hoSal": 0,
@@ -108968,11 +109039,19 @@
           "desig": "Salesman",
           "days": 31,
           "hoSal": 0,
-          "advance": 0,
+          "advance": 3950,
           "generic": 0
         },
         {
-          "name": "Kashif",
+          "name": "Ali Husnain ",
+          "desig": "Salesman",
+          "days": 31,
+          "hoSal": 0,
+          "advance": 2540,
+          "generic": 0
+        },
+        {
+          "name": "Muhammad Kashif",
           "desig": "Salesman",
           "days": 31,
           "hoSal": 0,
@@ -108980,19 +109059,11 @@
           "generic": 0
         },
         {
-          "name": "Muhammad Zubair",
-          "desig": "Co Manager",
+          "name": "M Rehman",
+          "desig": "Salesman",
           "days": 31,
           "hoSal": 0,
-          "advance": 0,
-          "generic": 0
-        },
-        {
-          "name": "Aftab Wizir",
-          "desig": "Head Cashier",
-          "days": 31,
-          "hoSal": 0,
-          "advance": 0,
+          "advance": 181,
           "generic": 0
         },
         {
@@ -109000,7 +109071,7 @@
           "desig": "Salesman",
           "days": 31,
           "hoSal": 0,
-          "advance": 0,
+          "advance": 2350,
           "generic": 0
         }
       ]
@@ -109010,8 +109081,8 @@
         "opening": 0,
         "rows": [
           {
-            "date": "21-Jun-2026",
-            "desc": "Patty Head office",
+            "date": "22-Jun-2026",
+            "desc": "Patty Head Office",
             "bill": -11497,
             "fuel": 0,
             "soap": 0,
@@ -109020,9 +109091,9 @@
             "pattyHO": 0
           },
           {
-            "date": "22-Jun-2026",
+            "date": "23-Jun-2026",
             "desc": "Current",
-            "bill": -9266,
+            "bill": -9316,
             "fuel": 0,
             "soap": 0,
             "refresh": 0,
@@ -109207,5 +109278,5 @@
       }
     }
   },
-  "pushedAt": "2026-06-24T11:47:56.444Z"
+  "pushedAt": "2026-06-24T12:03:13.221Z"
 }
