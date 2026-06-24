@@ -108838,7 +108838,7 @@
           "days": 30,
           "hoSal": 0,
           "advance": 670,
-          "generic": 0
+          "generic": 4
         },
         {
           "name": "Muhammad Zubair",
@@ -108846,7 +108846,7 @@
           "days": 30,
           "hoSal": 0,
           "advance": 20900,
-          "generic": 0
+          "generic": 8
         },
         {
           "name": "Aftab Wizir",
@@ -108854,7 +108854,7 @@
           "days": 30,
           "hoSal": 0,
           "advance": 150,
-          "generic": 0
+          "generic": 12
         },
         {
           "name": "Mian Waqas",
@@ -108862,7 +108862,7 @@
           "days": 30,
           "hoSal": 0,
           "advance": 450,
-          "generic": 0
+          "generic": 16
         },
         {
           "name": "Dr Zeeshan",
@@ -108870,7 +108870,7 @@
           "days": 30,
           "hoSal": 0,
           "advance": 6740,
-          "generic": 0
+          "generic": 20
         },
         {
           "name": "Dr Hamza",
@@ -108878,7 +108878,7 @@
           "days": 15,
           "hoSal": 0,
           "advance": 0,
-          "generic": 0
+          "generic": 24
         },
         {
           "name": "Shah Faisal Ali Khan",
@@ -108886,7 +108886,7 @@
           "days": 30,
           "hoSal": 0,
           "advance": 1995,
-          "generic": 0
+          "generic": 28
         },
         {
           "name": "Muhammad Reehan",
@@ -108894,7 +108894,7 @@
           "days": 30,
           "hoSal": 0,
           "advance": 1604,
-          "generic": 0
+          "generic": 32
         },
         {
           "name": "Shamshair Ali",
@@ -108902,7 +108902,7 @@
           "days": 30,
           "hoSal": 0,
           "advance": 9055,
-          "generic": 0
+          "generic": 36
         },
         {
           "name": "Asad",
@@ -108910,7 +108910,7 @@
           "days": 30,
           "hoSal": 0,
           "advance": 0,
-          "generic": 0
+          "generic": 40
         },
         {
           "name": "Husnain Haider",
@@ -108918,7 +108918,7 @@
           "days": 30,
           "hoSal": 0,
           "advance": 3950,
-          "generic": 0
+          "generic": 44
         },
         {
           "name": "Ali Husnain ",
@@ -108926,7 +108926,7 @@
           "days": 30,
           "hoSal": 0,
           "advance": 2540,
-          "generic": 0
+          "generic": 48
         },
         {
           "name": "Muhammad Kashif",
@@ -108934,7 +108934,7 @@
           "days": 30,
           "hoSal": 0,
           "advance": 0,
-          "generic": 0
+          "generic": 52
         },
         {
           "name": "M Rehman",
@@ -108942,7 +108942,7 @@
           "days": 30,
           "hoSal": 0,
           "advance": 181,
-          "generic": 0
+          "generic": 56
         },
         {
           "name": "Salman Ghulam Ali",
@@ -108950,7 +108950,7 @@
           "days": 30,
           "hoSal": 0,
           "advance": 2350,
-          "generic": 0
+          "generic": 60
         }
       ],
       "July 2026": [
@@ -109248,5 +109248,5 @@
       }
     }
   },
-  "pushedAt": "2026-06-24T06:08:10.257Z"
+  "pushedAt": "2026-06-24T06:08:24.569Z"
 }
