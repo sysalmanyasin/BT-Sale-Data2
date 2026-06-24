@@ -229,19 +229,6 @@ if ('serviceWorker' in navigator) {
     <div class="hsub" style="margin-top:4px" id="hero-sub"></div>
   </div>
   <div class="krow" id="krow"></div>
-  <div id="dash-top10" style="margin-bottom:14px"></div>
-  <div id="dash-dow" style="margin-bottom:14px"></div>
-  <div id="dash-best-worst" style="margin-bottom:14px"></div>
-    <span style="font-size:11px;font-weight:600;color:var(--muted)">YEAR</span>
-    <select id="dash-year" onchange="buildDashboard()"></select>
-    <select id="dash-metric" onchange="buildDashboard()">
-      <option value="TOTAL">Total Sales</option>
-      <option value="Cash Sale">Cash Sales</option>
-      <option value="Customers">Customers</option>
-    </select>
-    <button class="btn btn-s" style="padding:5px 10px;font-size:11px" onclick="manualSync()">↻ Sync GitHub</button>
-    <button class="btn btn-s" style="padding:5px 10px;font-size:11px" onclick="window.print()">🖨 Print</button>
-  </div>
   <div id="dash-credit-section" style="margin-bottom:14px"></div>
   <div id="dash-working-section" style="margin-bottom:14px;display:none">
     <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:8px">
@@ -267,6 +254,20 @@ if ('serviceWorker' in navigator) {
       </div>
     </div>
   </div>
+  <div class="frow no-print" style="margin-bottom:14px">
+    <span style="font-size:11px;font-weight:600;color:var(--muted)">YEAR</span>
+    <select id="dash-year" onchange="buildDashboard()"></select>
+    <select id="dash-metric" onchange="buildDashboard()">
+      <option value="TOTAL">Total Sales</option>
+      <option value="Cash Sale">Cash Sales</option>
+      <option value="Customers">Customers</option>
+    </select>
+    <button class="btn btn-s" style="padding:5px 10px;font-size:11px" onclick="manualSync()">↻ Sync GitHub</button>
+    <button class="btn btn-s" style="padding:5px 10px;font-size:11px" onclick="window.print()">🖨 Print</button>
+  </div>
+  <div id="dash-top10" style="margin-bottom:14px"></div>
+  <div id="dash-dow" style="margin-bottom:14px"></div>
+  <div id="dash-best-worst" style="margin-bottom:14px"></div>
   <div class="g2">
     <div class="card"><div class="ctitle"><span class="cdot" style="background:var(--accent)"></span>Monthly Total Sales</div><div style="height:220px"><canvas id="ch-total"></canvas></div></div>
     <div class="card"><div class="ctitle"><span class="cdot" style="background:var(--amber)"></span>Cash vs Bank</div><div style="height:220px"><canvas id="ch-cashbank"></canvas></div></div>
