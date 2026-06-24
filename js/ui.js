@@ -197,17 +197,15 @@ function importJSON(e) {
 // ══════════════════════════════════════════
 // DESKTOP / MOBILE VIEW TOGGLE
 // ══════════════════════════════════════════
-function _applyViewMode(mode) {
-  const meta = document.getElementById('vp-meta');
-  const btn  = document.getElementById('view-mode-btn');
+function _applyViewModeBtn(mode) {
+  const btn = document.getElementById('view-mode-btn');
+  if (!btn) return;
   if (mode === 'desktop') {
-    if (meta) meta.content = 'width=1280';
-    document.documentElement.style.minWidth = '1280px';
-    if (btn) { btn.textContent = '📱 Mobile View'; btn.style.background = '#2563eb'; btn.style.color = '#fff'; btn.style.border = 'none'; }
+    btn.textContent = '📱 Mobile View';
+    btn.style.background = '#2563eb'; btn.style.color = '#fff'; btn.style.border = 'none';
   } else {
-    if (meta) meta.content = 'width=device-width,initial-scale=1.0,viewport-fit=cover';
-    document.documentElement.style.minWidth = '';
-    if (btn) { btn.textContent = '🖥️ Desktop View'; btn.style.background = 'var(--s2)'; btn.style.color = 'var(--text)'; btn.style.border = '1px solid var(--border)'; }
+    btn.textContent = '🖥️ Desktop View';
+    btn.style.background = 'var(--s2)'; btn.style.color = 'var(--text)'; btn.style.border = '1px solid var(--border)';
   }
 }
 
@@ -215,17 +213,16 @@ function toggleViewMode() {
   const cur = localStorage.getItem('bt_view_mode') || 'mobile';
   const next = cur === 'desktop' ? 'mobile' : 'desktop';
   localStorage.setItem('bt_view_mode', next);
-  _applyViewMode(next);
-  toast(next === 'desktop' ? '🖥️ Desktop view — reload if layout looks off' : '📱 Mobile view restored');
+  // Viewport meta changes only take effect on reload — save & reload
+  window.location.reload();
 }
 
-// Init button label on page load
+// Init button label on page load to reflect current saved mode
 (function() {
   const mode = localStorage.getItem('bt_view_mode') || 'mobile';
-  // Run after DOM ready
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => _applyViewMode(mode));
+    document.addEventListener('DOMContentLoaded', () => _applyViewModeBtn(mode));
   } else {
-    _applyViewMode(mode);
+    _applyViewModeBtn(mode);
   }
 })();
