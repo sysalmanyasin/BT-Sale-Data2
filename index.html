@@ -1102,7 +1102,11 @@ if ('serviceWorker' in navigator) {
 
       <!-- Details Panel -->
       <div id="sc-panel-details">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
+        <div style="display:grid;grid-template-columns:80px 1fr 1fr;gap:0 16px">
+          <div class="sc-fg">
+            <label title="Controls row order in Salary, Generic &amp; Credit sheets">Sr# <span style="font-size:9px;color:var(--muted)">(order)</span></label>
+            <input type="number" id="sc-f-srNum" class="mgr-inp" min="1" max="999" placeholder="1" style="text-align:center;font-weight:700">
+          </div>
           <div class="sc-fg">
             <label>Staff ID</label>
             <input type="text" id="sc-f-staffId" class="mgr-inp" placeholder="EMP-001">
@@ -1111,6 +1115,8 @@ if ('serviceWorker' in navigator) {
             <label>Full Name</label>
             <input type="text" id="sc-f-name" class="mgr-inp" placeholder="Employee name">
           </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
           <div class="sc-fg">
             <label>Designation</label>
             <input type="text" id="sc-f-designation" class="mgr-inp" placeholder="e.g. Salesman">
@@ -1149,7 +1155,7 @@ if ('serviceWorker' in navigator) {
             <input type="checkbox" id="sc-f-active" style="width:auto;margin:0">
             <label style="text-transform:none;font-size:13px;font-weight:600;color:var(--text)" for="sc-f-active">Active Employee</label>
           </div>
-        </div>
+        </div><!-- end 2-col grid -->
       </div>
 
       <!-- Credit Ledger Panel -->
