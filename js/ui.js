@@ -30,6 +30,25 @@ function showPage(id) {
 
 document.querySelectorAll('.ntab,.bnav-item').forEach(t=>t.addEventListener('click',()=>showPage(t.dataset.page)));
 
+// Handle ?page= shortcuts from PWA manifest shortcuts (long-press icon)
+(function() {
+  const p = new URLSearchParams(window.location.search).get('page');
+  if (p) {
+    // Clean the URL without reload, then navigate once app is ready
+    history.replaceState(null, '', window.location.pathname);
+    const _tryNav = () => {
+      if (typeof showPage === 'function' && document.getElementById('page-'+p)) {
+        showPage(p);
+      }
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => setTimeout(_tryNav, 800));
+    } else {
+      setTimeout(_tryNav, 800);
+    }
+  }
+})();
+
 // ══════════════════════════════════════════
 // TOAST
 // ══════════════════════════════════════════
