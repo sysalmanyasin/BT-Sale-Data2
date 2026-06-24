@@ -108381,91 +108381,91 @@
         {
           "name": "Salman Yasin",
           "desig": "Co Manager",
-          "genericSale": 0,
+          "genericSale": 100,
           "extra": 0
         },
         {
           "name": "Muhammad Zubair",
           "desig": "Co Manager",
-          "genericSale": 0,
+          "genericSale": 200,
           "extra": 0
         },
         {
           "name": "Aftab Wizir",
           "desig": "Head Cashier",
-          "genericSale": 0,
+          "genericSale": 300,
           "extra": 0
         },
         {
           "name": "Mian Waqas",
           "desig": "APM",
-          "genericSale": 0,
+          "genericSale": 400,
           "extra": 0
         },
         {
           "name": "Dr Zeeshan",
           "desig": "Pharmacist",
-          "genericSale": 0,
+          "genericSale": 500,
           "extra": 0
         },
         {
           "name": "Dr Hamza",
           "desig": "Pharmacist",
-          "genericSale": 0,
+          "genericSale": 600,
           "extra": 0
         },
         {
           "name": "Shah Faisal Ali Khan",
           "desig": "Salesman",
-          "genericSale": 0,
+          "genericSale": 700,
           "extra": 0
         },
         {
           "name": "Muhammad Reehan",
           "desig": "Salesman",
-          "genericSale": 0,
+          "genericSale": 800,
           "extra": 0
         },
         {
           "name": "Shamshair Ali",
           "desig": "Salesman",
-          "genericSale": 0,
+          "genericSale": 900,
           "extra": 0
         },
         {
           "name": "Asad",
           "desig": "Salesman",
-          "genericSale": 0,
+          "genericSale": 1000,
           "extra": 0
         },
         {
           "name": "Husnain Haider",
           "desig": "Salesman",
-          "genericSale": 0,
+          "genericSale": 1100,
           "extra": 0
         },
         {
           "name": "Ali Husnain ",
           "desig": "Salesman",
-          "genericSale": 0,
+          "genericSale": 1200,
           "extra": 0
         },
         {
           "name": "Muhammad Kashif",
           "desig": "Salesman",
-          "genericSale": 0,
+          "genericSale": 1300,
           "extra": 0
         },
         {
           "name": "M Rehman",
           "desig": "Salesman",
-          "genericSale": 0,
+          "genericSale": 1400,
           "extra": 0
         },
         {
           "name": "Salman Ghulam Ali",
           "desig": "Salesman",
-          "genericSale": 0,
+          "genericSale": 1500,
           "extra": 0
         }
       ]
@@ -109248,5 +109248,5 @@
       }
     }
   },
-  "pushedAt": "2026-06-24T06:05:19.674Z"
+  "pushedAt": "2026-06-24T06:08:10.257Z"
 }
