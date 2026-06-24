@@ -70,9 +70,8 @@ function tickClock() {
 setInterval(tickClock,30000); tickClock();
 
 // ══════════════════════════════════════════
-// GITHUB SYNC
+// SUPABASE SYNC
 // ══════════════════════════════════════════
-// (GH_T/GH_R/GH_P/GH_S/_autoHandle are declared in github.js — removed duplicate here)
 
 function rebuildDropdowns() {
   const yrs=years();
@@ -112,12 +111,8 @@ function rebuildAll() {
 function loadToolsPage() {
   _populatePrintSelectors();
   _tcLoadGAuthStatus();
-  // GitHub
-  const cfg=ghCfg();
+  // Supabase sync badge
   updateGhBadge();
-  const gt=document.getElementById('gh-token'); if(gt) gt.placeholder=cfg?'Token saved ✓ (paste new to update)':'ghp_xxxxxxxxxxxxxxxxxxxx';
-  const gr=document.getElementById('gh-repo'); if(gr) gr.value=localStorage.getItem(GH_R)||'sysalmanyasin/BT-Sale-Data2';
-  const gp=document.getElementById('gh-path'); if(gp) gp.value=localStorage.getItem(GH_P)||'data/sales.json';
   // Auto-sync checkboxes
   const al=document.getElementById('auto-load'); if(al) al.checked=localStorage.getItem('bt_auto_load')==='1';
   const as=document.getElementById('auto-save'); if(as) as.checked=localStorage.getItem('bt_auto_save')==='1';
@@ -132,8 +127,7 @@ function loadToolsPage() {
     <div><strong>Years covered:</strong> ${years().join(', ')}</div>
     <div><strong>Cumulative total:</strong> ₨${fc(MONTHLY.reduce((s,m)=>s+n(m.TOTAL),0))}</div>
     <div><strong>Session entries:</strong> ${newEntries.length}</div>
-    <div><strong>GitHub repo:</strong> ${localStorage.getItem(GH_R)||'Not configured'}</div>
-    <div><strong>Last SHA:</strong> ${(localStorage.getItem(GH_S)||'—').slice(0,14)}…</div>`;
+    <div><strong>Sync:</strong> Supabase (real-time)</div>`;
 }
 
 function populateTgtSel() {

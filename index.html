@@ -216,8 +216,8 @@ if ('serviceWorker' in navigator) {
     <button class="ntab" data-page="manager">👔 Manager</button>
   </div>
   <div class="nright">
-    <div class="syncbadge" id="synci" onclick="showPage('tools')" title="GitHub sync">
-      <span id="sync-icon">⚙</span><span id="sync-text">GitHub</span>
+    <div class="syncbadge" id="synci" onclick="showPage('tools')" title="Supabase sync">
+      <span id="sync-icon">☁</span><span id="sync-text">Supabase</span>
     </div>
     <div class="nclock" id="clock"></div>
     <button class="lockbtn" onclick="lockApp()" title="Sign Out" style="width:auto;padding:0 10px;font-size:12px;font-weight:600;letter-spacing:.3px;color:var(--muted);">Sign Out</button>
@@ -278,7 +278,7 @@ if ('serviceWorker' in navigator) {
       <option value="Cash Sale">Cash Sales</option>
       <option value="Customers">Customers</option>
     </select>
-    <button class="btn btn-s" style="padding:5px 10px;font-size:11px" onclick="manualSync()">↻ Sync GitHub</button>
+    <button class="btn btn-s" style="padding:5px 10px;font-size:11px" onclick="manualSync()">↻ Sync</button>
     <button class="btn btn-s" style="padding:5px 10px;font-size:11px" onclick="window.print()">🖨 Print</button>
   </div>
   <div id="dash-top10" style="margin-bottom:14px"></div>
@@ -375,7 +375,7 @@ if ('serviceWorker' in navigator) {
       <div>
         <div class="hlabel">Data Entry</div>
         <div class="htitle">Add Daily Record</div>
-        <div class="hsub">Total auto-calculates. Saved locally &amp; synced to GitHub if configured.</div>
+        <div class="hsub">Total auto-calculates. Saved locally &amp; synced to Supabase automatically.</div>
       </div>
       <button class="fm-mgr-btn" onclick="openFieldManager()" title="Show/hide fields, add custom columns">⚙ Manage Fields</button>
     </div>
@@ -503,50 +503,61 @@ if ('serviceWorker' in navigator) {
       <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px">⚡ Quick Actions</div>
       <div style="font-size:11px;color:var(--muted)">Last poll: <span id="ar-last-poll">—</span> &nbsp;·&nbsp; <span id="ar-status" style="color:var(--green)">Active</span></div>
     </div>
-    <button class="btn btn-s" style="white-space:nowrap" onclick="manualSync()">↻ Pull</button>
-    <button class="btn btn-g" style="white-space:nowrap" onclick="pushToGitHub()">⬆ Push</button>
+    <button class="btn btn-s" style="white-space:nowrap" onclick="pullFromSupabase()">↓ Pull</button>
+    <button class="btn btn-g" style="white-space:nowrap" onclick="pushToSupabase()">↑ Push</button>
     <button class="btn" style="white-space:nowrap;background:var(--red,#dc2626);color:#fff;font-weight:700" onclick="hardRefreshCache()">⚡ Hard Refresh</button>
     <button id="view-mode-btn" class="btn" style="white-space:nowrap;background:var(--s2);border:1px solid var(--border);font-weight:600" onclick="toggleViewMode()" title="Switch between Mobile and Desktop view">🖥️ Desktop View</button>
   </div>
 
   <div class="tcard" id="tc-github">
     <div class="tcard-hdr" onclick="toggleTcard('tc-github')">
-      <div class="ttitle">🐙 GitHub Sync <span id="gh-badge" class="badge bg-amber">Not configured</span></div>
+      <div class="ttitle">☁ Supabase Sync <span id="gh-badge" class="badge bg-green">Connected ✓</span></div>
       <span class="tcard-chevron">▶</span>
     </div>
     <div class="tcard-body">
-      <div class="tdesc">Data saved to <strong>sysalmanyasin/BT-Sale-Data2</strong> → <code style="font-family:var(--mono);color:var(--accent)">data/sales.json</code>. Token stored in this browser only — never in the file.</div>
-      <div class="fgrid" style="max-width:620px;margin-bottom:14px">
-        <div class="fg" style="grid-column:span 2"><label>GitHub Personal Access Token</label><input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off"></div>
-        <div class="fg"><label>Repository (owner/repo)</label><input type="text" id="gh-repo" value="sysalmanyasin/BT-Sale-Data2"></div>
-        <div class="fg"><label>File path in repo</label><input type="text" id="gh-path" value="data/sales.json"></div>
-      </div>
-      <div class="brow" style="margin-top:0">
-        <button class="btn btn-p" onclick="saveGhConfig()">Save Config</button>
-        <button class="btn btn-s" onclick="manualSync()">↻ Pull from GitHub</button>
-        <button class="btn btn-g" onclick="pushToGitHub()">⬆ Push All Data</button>
-        <button class="btn btn-d" onclick="clearGhConfig()">Clear Token</button>
-      </div>
-      <!-- ── Auto-Refresh Status + Manual Hard Refresh ── -->
-      <div style="display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px 12px;background:rgba(255,255,255,.04);border-radius:8px;border:1px solid rgba(255,255,255,.08)">
-        <div style="flex:1;min-width:0">
-          <div style="font-size:12px;font-weight:600;color:var(--text)">🔄 Auto-Refresh</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">
-            Checks GitHub every 60 s. If data changes on any device, <strong style="color:var(--accent)">all devices reload automatically.</strong>
-          </div>
-          <div style="font-size:11px;color:var(--muted);margin-top:3px">
-            Last poll: <span class="ar-last-poll-txt">—</span> &nbsp;·&nbsp; Status: <span class="ar-status-txt" style="color:var(--green)">Active</span>
-          </div>
-        </div>
+      <div class="tdesc">All data syncs automatically to Supabase in real-time. No configuration needed — just push and pull.</div>
+
+      <!-- Quick sync buttons -->
+      <div class="brow" style="margin-top:0;margin-bottom:14px">
+        <button class="btn btn-s" onclick="pullFromSupabase()">↓ Pull from Supabase</button>
+        <button class="btn btn-g" onclick="pushToSupabase()">↑ Push All Data</button>
+        <button id="test-conn-btn" class="btn" style="background:var(--s3);border:1px solid var(--border);white-space:nowrap" onclick="testSupabaseConnection()">🔍 Test Connection</button>
         <button class="btn btn-s" style="white-space:nowrap;flex-shrink:0" onclick="hardRefreshCache()">⚡ Hard Refresh</button>
       </div>
-      <div class="ghlog" id="ghlog">GitHub log ready…</div>
-      <div style="margin-top:10px;font-size:11px;color:var(--muted);line-height:1.8">
-        <strong style="color:var(--text)">Get a token:</strong>
-        1. <a href="https://github.com/settings/tokens/new" target="_blank" style="color:var(--accent)">github.com/settings/tokens/new</a>
-        2. Note: "BT Sales IC" · No expiration
-        3. Scope: ✅ <strong>repo</strong>
-        4. Generate → paste above
+      <!-- Test Connection results -->
+      <div id="test-conn-result" style="margin-bottom:10px"></div>
+
+      <!-- Sync log -->
+      <div class="ghlog" id="ghlog">Supabase sync ready…</div>
+
+      <!-- One-time migration from GitHub -->
+      <div id="migrate-section" style="margin-top:14px;padding:14px 16px;background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.25);border-radius:10px">
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">⬆ One-Time Migration from GitHub</div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.7;margin-bottom:12px">
+          Run this <strong>once</strong> to copy all your existing data from the GitHub repo into Supabase.<br>
+          After migration, GitHub is no longer used. This button disappears once done.
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <button id="migrate-btn" class="btn btn-g" onclick="migrateFromGitHub()" style="font-weight:700">⬆ Migrate from GitHub → Supabase</button>
+          <span id="migrate-status" style="font-size:12px;color:var(--muted)"></span>
+        </div>
+      </div>
+
+      <!-- Real-time info -->
+      <div style="margin-top:12px;padding:10px 14px;background:rgba(255,255,255,.03);border-radius:8px;border:1px solid rgba(255,255,255,.07);font-size:11px;color:var(--muted);line-height:1.8">
+        ⚡ <strong style="color:var(--text)">Real-time sync active</strong> — when another device saves data, this device receives it instantly. No polling needed.
+      </div>
+
+      <!-- Sync History -->
+      <div style="margin-top:14px">
+        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:8px">
+          🕐 Sync History
+          <span style="flex:1;height:1px;background:var(--border);opacity:.4;display:inline-block"></span>
+          <span style="font-size:10px;font-weight:400;color:var(--muted)">last 10 events</span>
+        </div>
+        <div id="sync-history-list" style="line-height:1.6">
+          <div style="color:var(--muted);font-size:11px;padding:8px 0">No sync events yet.</div>
+        </div>
       </div>
     </div>
   </div>
@@ -560,16 +571,13 @@ if ('serviceWorker' in navigator) {
       <div style="display:flex;flex-direction:column;gap:10px;font-size:13px">
         <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
           <input type="checkbox" id="auto-load" onchange="saveAutoSettings()" style="width:15px;height:15px;accent-color:var(--accent)">
-          <span><strong>Auto-load on unlock</strong> — pull latest from GitHub each time you sign in</span>
+          <span><strong>Auto-load on unlock</strong> — pull latest from Supabase each time you sign in</span>
         </label>
         <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
           <input type="checkbox" id="auto-save" onchange="saveAutoSettings()" style="width:15px;height:15px;accent-color:var(--accent)">
-          <span><strong>Auto-save on entry</strong> — push to GitHub when a daily entry is saved</span>
+          <span><strong>Auto-save on entry</strong> — push to Supabase when a daily entry is saved</span>
         </label>
-        <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
-          <input type="checkbox" id="auto-interval" onchange="saveAutoSettings()" style="width:15px;height:15px;accent-color:var(--accent)">
-          <span><strong>Refresh every 30 min</strong> — auto-pull while app is open</span>
-        </label>
+        <div style="font-size:11px;color:var(--muted);padding:6px 0">⚡ <strong>Real-time sync is always on</strong> — data from other devices arrives instantly. No 30-min polling needed.</div>
       </div>
     </div>
   </div>
@@ -856,7 +864,7 @@ if ('serviceWorker' in navigator) {
     </div>
     <div id="staff-list"></div>
     <div style="margin-top:14px;padding:12px 16px;background:var(--s2);border-radius:8px;font-size:11px;color:var(--muted);line-height:1.7">
-      💡 <strong>How it works:</strong> Saving the staff list here automatically updates Salary Sheet, Generic Working, and Staff Credit for the current month. Inactive employees are hidden from new months but their historical data stays intact. Changes sync to GitHub with the main data.
+      💡 <strong>How it works:</strong> Saving the staff list here automatically updates Salary Sheet, Generic Working, and Staff Credit for the current month. Inactive employees are hidden from new months but their historical data stays intact. Changes sync to Supabase automatically.
     </div>
   </div>
 
@@ -871,7 +879,7 @@ if ('serviceWorker' in navigator) {
       <button class="btn btn-g" style="margin-top:16px" onclick="saveAllCustomSections()">💾 Save All</button>
     </div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.7">
-      💡 Create any number of custom spreadsheet-like sections (e.g. Fuel Log, Maintenance, Stock). Each section is a live table with description, amount and notes columns. Data is saved per-month and synced with GitHub.
+      💡 Create any number of custom spreadsheet-like sections (e.g. Fuel Log, Maintenance, Stock). Each section is a live table with description, amount and notes columns. Data is saved per-month and synced with Supabase.
     </div>
     <div id="csec-container"></div>
   </div>
@@ -1126,8 +1134,9 @@ if ('serviceWorker' in navigator) {
 <!-- 5. UI: showPage, toast, clock, rebuild, dropdowns -->
 <script src="js/ui.js"></script>
 
-<!-- 6. GitHub: push / pull / auto-sync -->
-<script src="js/github.js"></script>
+<!-- 6. Supabase: real-time sync -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/supabase.js"></script>
 
 <!-- 7. Targets: monthly target management -->
 <script src="js/targets.js"></script>

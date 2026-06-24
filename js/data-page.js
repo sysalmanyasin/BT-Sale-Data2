@@ -205,7 +205,7 @@ async function saveEntry() {
   renderEntryList();
   rebuildAll();
   toast('✓ Entry saved — dashboard & monthly totals updated');
-  if(localStorage.getItem('bt_auto_save')==='1') pushToGitHub();
+  if(localStorage.getItem('bt_auto_save')==='1') pushToSupabase();
 }
 
 function renderEntryList() {
@@ -428,5 +428,5 @@ async function saveEditModal() {
   rebuildAll();
   closeEditModal();
   toast('✓ Entry updated — dashboard & monthly totals refreshed');
-  if(localStorage.getItem('bt_auto_save')==='1') pushToGitHub();
+  if(localStorage.getItem('bt_auto_save')==='1') pushToSupabase();
 }

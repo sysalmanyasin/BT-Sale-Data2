@@ -76,7 +76,7 @@ function saveAllCustomSections() {
   });
   _csecSave(all);
   toast('✓ Custom sections saved');
-  if (localStorage.getItem('bt_auto_save') === '1' && typeof pushToGitHub === 'function') pushToGitHub();
+  if (localStorage.getItem('bt_auto_save') === '1') pushToSupabase();
 }
 
 function promptAddCustomSection() {

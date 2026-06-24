@@ -2,7 +2,7 @@ let MONTHLY = [...MONTHLY_BASE];
 let DAILY   = [...DAILY_BASE];
 let newEntries = [];
 const STAFF_KEY = 'BT_Staff_v1';
-let STAFF = [];   // [{id, name, designation, active}] — loaded from localStorage / GitHub
+let STAFF = [];   // [{id, name, designation, active}] — loaded from localStorage / Supabase
 let _charts = {};
 let _printDay = null;   // holds the day record currently shown in day modal
 let _curMon = null;    // holds the month currently open in month modal
@@ -77,7 +77,7 @@ function recomputeMonthly(monthYear) {
   rec['DIFF'] = null;
 }
 
-// Recompute all months — called after GitHub pull so pulled data is always in sync
+// Recompute all months — called after Supabase pull so pulled data is always in sync
 function recomputeAllMonths() {
   const allMonths = [...new Set(DAILY.map(d => d.Month_Year))];
   allMonths.forEach(my => recomputeMonthly(my));

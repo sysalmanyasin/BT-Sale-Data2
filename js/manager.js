@@ -331,9 +331,9 @@ function _inp(type, val, cls, oninput, ph) {
 // STAFF REGISTRY — single source of truth for employees
 // ══════════════════════════════════════════════════════
 
-// ── No seed list — staff is pulled from GitHub or added manually ──────────────
+// ── No seed list — staff is pulled from Supabase or added manually ──────────────
 // Removed _STAFF_SEED to prevent duplicate employees across devices.
-// On a fresh install: staff list starts empty. Either pull from GitHub
+// On a fresh install: staff list starts empty. Either pull from Supabase
 // (if configured) or add employees manually via + Add Employee.
 
 function staffLoad() {
@@ -487,9 +487,9 @@ function saveStaffRegistry() {
   STAFF.forEach((emp, i) => { if (emp.srNum == null || emp.srNum === '') emp.srNum = i + 1; });
   staffSave();
   _propagateStaffToSheets();
-  toast('✓ Staff list saved — pushing to GitHub…');
+  toast('✓ Staff list saved — syncing to Supabase…');
   // ALWAYS push staff registry — it is shared config, not just local data.
-  pushToGitHub();
+  pushToSupabase();
 }
 
 // When staff list is saved, add any new employees to currently-loaded sheets
@@ -647,7 +647,7 @@ function saveSalaryData() {
   data.salary[my] = _salRows_cur.map(r => ({...r}));
   mgrSave(data);
   toast('✓ Salary saved for ' + my);
-  if (localStorage.getItem('bt_auto_save')==='1') pushToGitHub();
+  if (localStorage.getItem('bt_auto_save')==='1') pushToSupabase();
 }
 
 // ── Auto-fill Advance from Credit sheet & Generic from Generic Working ──────
@@ -795,7 +795,7 @@ function saveGenericData() {
   data.generic[my] = _genRows_cur.map(r => ({...r}));
   mgrSave(data);
   toast('✓ Generic Working saved for ' + my);
-  if (localStorage.getItem('bt_auto_save')==='1') pushToGitHub();
+  if (localStorage.getItem('bt_auto_save')==='1') pushToSupabase();
 }
 
 // ══════════════════════════════
@@ -890,7 +890,7 @@ function saveExpenseData() {
   data.expense[my] = { opening: _expOpening_cur, rows: _expRows_cur.map(r => ({...r})) };
   mgrSave(data);
   toast('✓ Expense data saved for ' + my);
-  if (localStorage.getItem('bt_auto_save')==='1') pushToGitHub();
+  if (localStorage.getItem('bt_auto_save')==='1') pushToSupabase();
 }
 
 // ══════════════════════════════
@@ -1081,7 +1081,7 @@ function saveCreditData() {
   data.credit[my] = _crdData_cur.map(e => ({...e, entries:[...e.entries]}));
   mgrSave(data);
   toast('✓ Staff Credit saved for ' + my);
-  if (localStorage.getItem('bt_auto_save')==='1') pushToGitHub();
+  if (localStorage.getItem('bt_auto_save')==='1') pushToSupabase();
 }
 
 function copyToNextMonth() {
@@ -1139,7 +1139,7 @@ function copyToNextMonth() {
   loadCreditMonth(nextMy);
 
   toast('✓ Copied to ' + nextMy + ' — net balances set as opening balances');
-  if (localStorage.getItem('bt_auto_save')==='1') pushToGitHub();
+  if (localStorage.getItem('bt_auto_save')==='1') pushToSupabase();
 }
 
 // ══════════════════════════════
@@ -1331,7 +1331,7 @@ function savePettyData() {
   if (!_pettyMonth) { toast('⚠ Select a month first','w'); return; }
   localStorage.setItem(_pettyKey(_pettyMonth), JSON.stringify(_pettyData));
   toast('✓ Petty Detail saved');
-  if (localStorage.getItem('bt_auto_save')==='1' && typeof pushToGitHub==='function') pushToGitHub();
+  if (localStorage.getItem('bt_auto_save')==='1') pushToSupabase();
 }
 
 function _pettyTotalForMonth(my) {
@@ -1532,7 +1532,7 @@ function saveIncentiveData() {
   });
   localStorage.setItem(_incKey(_incMonth), JSON.stringify(_incData));
   toast('✓ Incentive data saved');
-  if (localStorage.getItem('bt_auto_save')==='1' && typeof pushToGitHub==='function') pushToGitHub();
+  if (localStorage.getItem('bt_auto_save')==='1') pushToSupabase();
 }
 
 function recalcIncentive() {
@@ -1637,7 +1637,7 @@ function saveAllManagerSections() {
   tryCall(saveIncentiveData);
   tryCall(saveAllCustomSections);
   toast('✓ All sections saved (' + saved + ')');
-  setTimeout(() => { try { pushToGitHub(); } catch(e) {} }, 700);
+  setTimeout(() => { try { pushToSupabase(); } catch(e) {} }, 700);
 }
 
 // ── Populate Dashboard Working Summary ─────────────────────────────────────

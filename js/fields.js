@@ -64,11 +64,11 @@ function fmLoad() {
 function fmSave() {
   localStorage.setItem('bt_col_config', JSON.stringify(_fmHidden));
   localStorage.setItem('bt_custom_cols', JSON.stringify(_fmCustom));
-  // If GitHub auto-save is enabled, trigger a sync
+  // If auto-save is enabled, trigger a sync
   try {
     const autoSave = localStorage.getItem('bt_auto_save') === '1'
                   || document.getElementById('auto-save')?.checked;
-    if (autoSave && typeof pushToGitHub === 'function') pushToGitHub();
+    if (autoSave && typeof pushToSupabase === 'function') pushToSupabase();
   } catch(e) {}
 }
 

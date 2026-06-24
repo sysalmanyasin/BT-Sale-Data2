@@ -1,10 +1,10 @@
 /* ═══════════════════════════════════════════════════════════════
    BT Sales IC — Service Worker
    Strategy: Cache-first for all app shell assets.
-   Data (GitHub / Drive API calls) always go to network.
+   Data (Supabase / Drive API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v2.7';
+const CACHE_NAME = 'bt-sales-v3.0';
 
 const APP_SHELL = [
   './',
@@ -24,7 +24,7 @@ const APP_SHELL = [
   './js/auth.js',
   './js/storage.js',
   './js/ui.js',
-  './js/github.js',
+  './js/supabase.js',
   './js/targets.js',
   './js/dashboard.js',
   './js/index-page.js',
@@ -42,16 +42,17 @@ const APP_SHELL = [
   './icons/favicon-32.png',
 ];
 
-/* ── External CDN resources cached on first use ── */
+/* ── External CDN resources — cached on first use (stale-while-revalidate) ── */
 const CDN_ORIGINS = [
   'https://cdnjs.cloudflare.com',
   'https://fonts.googleapis.com',
   'https://fonts.gstatic.com',
+  'https://cdn.jsdelivr.net',   /* Supabase JS library — cache it so app loads offline */
 ];
 
-/* ── API / sync origins — always network, never cache ── */
+/* ── API / data origins — always network, never cache ── */
 const NETWORK_ONLY_ORIGINS = [
-  'https://api.github.com',
+  'https://wetbugzzchkghpzmowod.supabase.co',  /* Supabase data API */
   'https://www.googleapis.com',
   'https://accounts.google.com',
   'https://oauth2.googleapis.com',
@@ -185,7 +186,7 @@ self.addEventListener('message', event => {
     });
   }
 
-  /* ── AUTO-REFRESH triggered by SHA change detected in github.js ──
+  /* ── AUTO-REFRESH: real-time data change via Supabase channel ──
      1. Wipe all SW caches
      2. Broadcast RELOAD to every open tab/window of this app         */
   if (event.data === 'DATA_CHANGED_RELOAD') {
