@@ -31,79 +31,11 @@ function driveAuthorize() {
     toast('✓ Google Drive ready');
     return;
   }
-  // Already granted before? Try a silent refresh first — no redirect needed
-  if (localStorage.getItem(DRIVE_GRANT_K) === '1') {
-    driveLog('Reconnecting to Drive…');
-    const _check = setInterval(function(){
-      if (_driveAccessToken) { clearInterval(_check); }
-    }, 300);
-    setTimeout(function(){ clearInterval(_check); }, 4000);
-    _driveSilentReauth();
-    setTimeout(function(){
-      if (!_driveAccessToken) {
-        driveLog('Redirecting to Google for Drive authorization…');
-        toast('Redirecting to Google…','w');
-        _gauthOAuthSignIn();
-      }
-    }, 2500);
-    return;
-  }
-  // Never granted before — go straight to the redirect OAuth flow
+  // Token expired or missing — re-trigger the redirect OAuth flow
   // (it already requests drive.file scope, so sign-in + Drive are granted together)
   driveLog('Redirecting to Google for Drive authorization…');
   toast('Redirecting to Google…','w');
   _gauthOAuthSignIn();
-}
-
-// ── Silent Drive token refresh ──────────────────────────────────────────
-// Drive access tokens (implicit grant) only last ~1hr and are never persisted,
-// so on every hard refresh / fresh app load _driveAccessToken starts out empty.
-// If the user previously granted the Drive scope (DRIVE_GRANT_K flag) and is
-// still signed into the same Google account in this browser, Google Identity
-// Services can silently re-issue a token with no visible prompt at all —
-// no redirect, no account picker.
-let _driveTokenClient = null;
-function _driveSilentReauth(retries) {
-  retries = retries === undefined ? 10 : retries;
-  if (_driveAccessToken) return; // already have a live token (e.g. just came back from redirect)
-  if (localStorage.getItem(DRIVE_GRANT_K) !== '1') return; // never granted Drive before — nothing to refresh
-  const sess = (typeof gauthGetSession === 'function') ? gauthGetSession() : null;
-  if (!sess || !sess.email) return; // not signed in — manual Authorize will be needed
-
-  // The GIS script loads async; wait for it if it isn't ready yet
-  if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
-    if (retries > 0) { setTimeout(() => _driveSilentReauth(retries - 1), 300); }
-    return;
-  }
-
-  try {
-    if (!_driveTokenClient) {
-      _driveTokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: '36704237826-6lg0o3u0voqhdkvdj3kd331jsft62uun.apps.googleusercontent.com',
-        scope: 'https://www.googleapis.com/auth/drive.file',
-        hint: sess.email,
-        callback: function(resp) {
-          if (resp && resp.access_token) {
-            _driveAccessToken = resp.access_token;
-            localStorage.setItem(DRIVE_GRANT_K, '1');
-            _driveUpdateBadge('ok');
-            driveLog('✓ Drive silently reauthorized for ' + sess.email, 'ok');
-            _driveAutoBackup();
-          } else {
-            driveLog('Drive silent reauth returned no token — click Authorize Drive.', 'err');
-          }
-        },
-        error_callback: function() {
-          // Silent attempt failed (e.g. third-party cookies blocked, consent revoked) —
-          // badge stays "Not set up"; user can fall back to the visible Authorize Drive button.
-          driveLog('Drive silent reauth failed — click Authorize Drive to reconnect.', 'err');
-        }
-      });
-    }
-    _driveTokenClient.requestAccessToken({ prompt: '', hint: sess.email });
-  } catch (e) {
-    driveLog('Drive silent reauth error: ' + e.message, 'err');
-  }
 }
 
 async function driveBackupNow() {
@@ -162,16 +94,13 @@ function _driveGetAllPetty() {
   return result;
 }
 
-// Hook unlockApp to trigger Drive silent reauth + auto-backup after initialization
+// Hook unlockApp to trigger Drive auto-backup after initialization
 // Deferred to window load so unlockApp is guaranteed to be defined
 window.addEventListener('load', function(){
   var _origUnlock = unlockApp;
   unlockApp = function() {
     _origUnlock.apply(this, arguments);
-    setTimeout(function(){
-      if (_driveAccessToken) { _driveAutoBackup(); }
-      else { _driveSilentReauth(); } // callback runs _driveAutoBackup itself once a token lands
-    }, 1500);
+    setTimeout(function(){ _driveAutoBackup(); }, 6000); // run 6s after app loads
   };
 });
 
