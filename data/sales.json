@@ -109136,6 +109136,16 @@
             "desc": "",
             "amount": 0,
             "notes": ""
+          },
+          {
+            "desc": "",
+            "amount": 0,
+            "notes": ""
+          },
+          {
+            "desc": "",
+            "amount": 0,
+            "notes": ""
           }
         ],
         "July 2026": [
@@ -109155,6 +109165,16 @@
           {
             "desc": "Advance",
             "amount": 3000,
+            "notes": ""
+          },
+          {
+            "desc": "",
+            "amount": 0,
+            "notes": ""
+          },
+          {
+            "desc": "",
+            "amount": 0,
             "notes": ""
           },
           {
@@ -109190,6 +109210,16 @@
           {
             "desc": "Less Strips",
             "amount": -6000,
+            "notes": ""
+          },
+          {
+            "desc": "",
+            "amount": 0,
+            "notes": ""
+          },
+          {
+            "desc": "",
+            "amount": 0,
             "notes": ""
           },
           {
@@ -109248,5 +109278,5 @@
       }
     }
   },
-  "pushedAt": "2026-06-24T06:08:32.375Z"
+  "pushedAt": "2026-06-24T06:10:52.388Z"
 }
