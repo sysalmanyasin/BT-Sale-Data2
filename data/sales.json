@@ -3258,24 +3258,24 @@
     },
     {
       "Month_Year": "June 2026",
-      "Cash Sale": 5733424,
-      "Cash Returns": -350556,
+      "Cash Sale": 6420405,
+      "Cash Returns": -400179,
       "HBL": null,
       "MCB": null,
-      "Alfala Bank": 2686233,
-      "Bank Al Habib": 2084845,
+      "Alfala Bank": 3140615,
+      "Bank Al Habib": 2228552,
       "Meezan Bank (Paysa)": null,
-      "Askari Bank": 210504,
+      "Askari Bank": 215398,
       "Askari Bank Returns": null,
-      "PSO": null,
+      "PSO": 10955,
       "PSO Returns": null,
       "NESPAK": 2072,
       "NESPAK Returns": null,
-      "PARCO": 123287,
+      "PARCO": 160373,
       "PARCO Returns": null,
       "TEPA": null,
       "TEPA Returns": null,
-      "LDA": 107389,
+      "LDA": 122962,
       "LDA Returns": null,
       "Gourmet": null,
       "Wapda Hospital": null,
@@ -3289,16 +3289,16 @@
       "Nisar Spinning Mills": null,
       "Food Panda": null,
       "F/Issue": 6750,
-      "TOTAL": "10561908",
+      "TOTAL": "11865863",
       "Sale Plus": null,
-      "COMP SALE": 10394878,
+      "COMP SALE": 11716255,
       "DIFF": null,
-      "Customers": 10904,
-      "FDPP": 7992,
-      "FDPP Con": 2912,
+      "Customers": 12515,
+      "FDPP": 9169,
+      "FDPP Con": 3346,
       "Amount Received": null,
       "Load Sale": null,
-      "Cash to be Deposited": 5351732
+      "Cash to be Deposited": 5990701
     }
   ],
   "daily": [
@@ -108280,7 +108280,14 @@
       "id": "emp_1782192434700",
       "name": "Salman Yasin",
       "designation": "Co Manager",
-      "active": true
+      "active": true,
+      "staffId": "EMP-001",
+      "fatherName": "Muhammad Yasin",
+      "cnic": "35202-7183555-3",
+      "bloodGroup": "O+",
+      "phone": "0335-4382740",
+      "doj": "2015-03-15",
+      "address": "Mughal House, Near Noor Mosque, Munawar Park Street, Manga Mandi Lahore"
     },
     {
       "id": "emp_1782192456802",
@@ -108575,35 +108582,65 @@
         {
           "name": "Salman Yasin",
           "prevBal": 0,
-          "entries": [],
+          "entries": [
+            {
+              "date": "23-Jun-2026",
+              "desc": "credit",
+              "amount": 0
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Muhammad Zubair",
           "prevBal": 0,
-          "entries": [],
+          "entries": [
+            {
+              "date": "23-Jun-2026",
+              "desc": "credit",
+              "amount": 0
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Aftab Wizir",
           "prevBal": 0,
-          "entries": [],
+          "entries": [
+            {
+              "date": "23-Jun-2026",
+              "desc": "credit",
+              "amount": 0
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Mian Waqas",
           "prevBal": 0,
-          "entries": [],
+          "entries": [
+            {
+              "date": "23-Jun-2026",
+              "desc": "credit",
+              "amount": 0
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Dr Zeeshan",
           "prevBal": 0,
-          "entries": [],
+          "entries": [
+            {
+              "date": "23-Jun-2026",
+              "desc": "credit",
+              "amount": 0
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
@@ -108617,21 +108654,39 @@
         {
           "name": "Shah Faisal Ali Khan",
           "prevBal": 0,
-          "entries": [],
+          "entries": [
+            {
+              "date": "23-Jun-2026",
+              "desc": "credit",
+              "amount": 0
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Muhammad Reehan",
           "prevBal": 0,
-          "entries": [],
+          "entries": [
+            {
+              "date": "23-Jun-2026",
+              "desc": "credit",
+              "amount": 0
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Shamshair Ali",
           "prevBal": 0,
-          "entries": [],
+          "entries": [
+            {
+              "date": "23-Jun-2026",
+              "desc": "credit",
+              "amount": 0
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
@@ -108645,14 +108700,26 @@
         {
           "name": "Husnain Haider",
           "prevBal": 0,
-          "entries": [],
+          "entries": [
+            {
+              "date": "23-Jun-2026",
+              "desc": "credit",
+              "amount": 0
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Ali Husnain ",
           "prevBal": 0,
-          "entries": [],
+          "entries": [
+            {
+              "date": "23-Jun-2026",
+              "desc": "credit",
+              "amount": 0
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
@@ -108666,14 +108733,26 @@
         {
           "name": "M Rehman",
           "prevBal": 0,
-          "entries": [],
+          "entries": [
+            {
+              "date": "23-Jun-2026",
+              "desc": "credit",
+              "amount": 0
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         },
         {
           "name": "Salman Ghulam Ali",
           "prevBal": 0,
-          "entries": [],
+          "entries": [
+            {
+              "date": "23-Jun-2026",
+              "desc": "credit",
+              "amount": 0
+            }
+          ],
           "salary": 0,
           "lessGeneric": 0
         }
@@ -108958,17 +109037,17 @@
     }
   },
   "petty": {
-    "mw_petty_July 2026": {
+    "mw_petty_June 2026": {
       "groups": []
     },
-    "mw_petty_June 2026": {
+    "mw_petty_July 2026": {
       "groups": []
     }
   },
   "custom": {
     "cs_1782192769028": {
       "name": "Salman Jazz Cash",
-      "emoji": "\ud83d\udccb",
+      "emoji": "📋",
       "months": {
         "June 2026": [
           {
@@ -108987,12 +109066,18 @@
             "notes": ""
           }
         ],
-        "July 2026": []
+        "July 2026": [
+          {
+            "desc": "",
+            "amount": 0,
+            "notes": ""
+          }
+        ]
       }
     },
     "cs_1782192778545": {
       "name": "Adnan Sweeper",
-      "emoji": "\ud83d\udccb",
+      "emoji": "📋",
       "months": {
         "June 2026": [
           {
@@ -109011,12 +109096,18 @@
             "notes": ""
           }
         ],
-        "July 2026": []
+        "July 2026": [
+          {
+            "desc": "",
+            "amount": 0,
+            "notes": ""
+          }
+        ]
       }
     },
     "cs_1782192793528": {
       "name": "Less / Excess Cash Details",
-      "emoji": "\ud83d\udccb",
+      "emoji": "📋",
       "months": {
         "June 2026": [
           {
@@ -109035,12 +109126,18 @@
             "notes": ""
           }
         ],
-        "July 2026": []
+        "July 2026": [
+          {
+            "desc": "",
+            "amount": 0,
+            "notes": ""
+          }
+        ]
       }
     },
     "cs_1782192828235": {
       "name": "Others",
-      "emoji": "\ud83d\udccb",
+      "emoji": "📋",
       "months": {
         "June 2026": [
           {
@@ -109069,9 +109166,15 @@
             "notes": ""
           }
         ],
-        "July 2026": []
+        "July 2026": [
+          {
+            "desc": "",
+            "amount": 0,
+            "notes": ""
+          }
+        ]
       }
     }
   },
-  "pushedAt": "2026-06-23T17:16:26.927Z"
+  "pushedAt": "2026-06-24T05:10:20.161Z"
 }
