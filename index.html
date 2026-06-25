@@ -105,8 +105,6 @@ if ('serviceWorker' in navigator) {
       </button>
     </div>
     <div class="gauth-error" id="gauth-error"></div>
-    <div class="gauth-sep">or</div>
-    <button class="gauth-link" onclick="gauthShowPin()">Use PIN instead (offline mode)</button>
 
   </div>
 
@@ -626,25 +624,16 @@ if ('serviceWorker' in navigator) {
         <label>Authorised Gmail Addresses (one per line)</label>
         <textarea id="tc-allowed-emails" rows="4" placeholder="yourname@gmail.com&#10;colleague@gmail.com"
           style="font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s2);width:100%;font-family:var(--sans);color:var(--text);outline:none;resize:vertical;box-sizing:border-box"></textarea>
-        <div style="font-size:10px;color:var(--muted);margin-top:4px">Leave blank to allow the first Google login to auto-authorise. Case-insensitive.</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px">Only these exact addresses can sign in — anyone else is blocked, even if this box is empty. Case-insensitive.</div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
         <button class="btn btn-p" onclick="tcSaveGAuthSettings()">💾 Save Google Settings</button>
         <button class="btn btn-s" onclick="tcClearGAuthSession()">🔓 Sign Out Google Session</button>
         <button class="btn" style="background:var(--rlt,#fee2e2);color:var(--red);border:1px solid var(--red)" onclick="tcClearGAuthAll()">🗑 Remove Google Config</button>
       </div>
-      <!-- PIN Settings -->
-      <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin-bottom:10px;border-top:1px solid var(--border);padding-top:16px">Password (offline fallback · 8–20 characters)</div>
-      <div class="fgrid" style="max-width:380px;margin-bottom:12px">
-        <div class="fg"><label>Current Password</label><input type="password" id="pin-cur" minlength="8" maxlength="20" placeholder="Current password" autocomplete="current-password"></div>
-        <div class="fg"><label>New Password <span style="color:var(--muted);font-weight:400">(8–20 chars)</span></label><input type="password" id="pin-new" minlength="8" maxlength="20" placeholder="New password" autocomplete="new-password" oninput="tcPwStrength(this)"></div>
-        <div class="fg"><label>Confirm New Password</label><input type="password" id="pin-confirm" minlength="8" maxlength="20" placeholder="Repeat new password" autocomplete="new-password"></div>
+      <div style="font-size:11px;color:var(--muted);border-top:1px solid var(--border);padding-top:16px">
+        🔒 Offline password sign-in has been disabled. Access is restricted to the three authorised Google accounts above — no other sign-in method is available.
       </div>
-      <div id="tc-pw-strength-wrap" style="margin-bottom:10px;display:none">
-        <div style="height:4px;border-radius:2px;background:var(--border);overflow:hidden"><div id="tc-pw-bar" style="height:100%;width:0;transition:all .3s;border-radius:2px"></div></div>
-        <div id="tc-pw-label" style="font-size:10px;color:var(--muted);margin-top:4px"></div>
-      </div>
-      <button class="btn btn-p" onclick="changePIN()">Update Password</button>
     </div>
   </div>
 
