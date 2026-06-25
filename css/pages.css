@@ -26,17 +26,32 @@
 #rpt-card .rdate-row{display:flex;justify-content:space-between;padding:5px 12px;font-size:13px;font-weight:600;border-bottom:1px solid #eee;}
 
 /* PRINT */
+@page { size: letter portrait; margin: 12mm 10mm; }
+@page pr-landscape { size: letter landscape; margin: 10mm 8mm; }
 @media print{
-  body *{visibility:hidden;}
-  #print-area,#print-area *{visibility:visible;}
+  /* Hide everything except the print area by removing it from layout
+     entirely (display:none), instead of visibility:hidden. The old
+     visibility-based approach kept hidden elements occupying space and
+     combined with #print-area's position:absolute, mobile print engines
+     (Android/Chrome "Save as PDF") miscalculated pagination and silently
+     clipped content after the first page instead of flowing onto a
+     second page. display:none removes that ambiguity entirely. */
+  body > *:not(#print-area){display:none!important;}
   #print-area{
-    position:absolute;top:0;left:0;width:100%;
-    background:#fff;display:block;overflow:visible;
-    padding:12px 20px;
+    display:block!important;position:static;width:auto;
+    background:#fff;overflow:visible;margin:0;padding:0;
     font-family:'Inter',system-ui,sans-serif;
   }
+  #print-area *{visibility:visible;}
   .no-print{display:none!important;}
-  .pr-page-break{page-break-before:always;}
+  .pr-page-break{page-break-before:always;break-before:page;}
+  /* Page 2 (daily breakdown) renders on a landscape page so wide,
+     many-column tables fit without shrinking text unreadably. */
+  .pr-landscape{
+    page:pr-landscape;
+    page-break-before:always;break-before:page;
+  }
+  .pr-tbl tr{page-break-inside:avoid;break-inside:avoid;}
 }
 .pr-tbl{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px;}
 .pr-tbl th{background:#1e3a5f;color:#fff;padding:6px 10px;text-align:left;font-size:11px;letter-spacing:.05em;}
@@ -55,6 +70,12 @@
 .pr-kpi{background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px;padding:10px 14px;}
 .pr-kpi-l{font-size:9px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:#64748b;margin-bottom:4px;}
 .pr-kpi-v{font-size:16px;font-weight:700;color:#0f172a;font-family:monospace;}
+/* Page 2 — landscape daily breakdown: more columns, tighter spacing */
+.pr-landscape{font-family:'Inter',system-ui,sans-serif;}
+.pr-landscape .pr-tbl{font-size:10px;}
+.pr-landscape .pr-tbl th,.pr-landscape .pr-tbl td{padding:4px 6px;white-space:nowrap;}
+.pr-landscape .pr-tbl td.l{white-space:normal;}
+.pr-land-title{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#64748b;margin:0 0 6px;}
 #print-area{display:none;}
 /* Manager Work */
 .inc-sec-hd{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin:10px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border);}
