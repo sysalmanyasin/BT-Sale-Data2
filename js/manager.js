@@ -8,6 +8,30 @@ function _prRow(lbl, val, opts='') {
 }
 function _prRowOpt(lbl, val, opts='') { return n(val) !== 0 ? _prRow(lbl, val, opts) : ''; }
 
+// Candidate daily columns for the landscape breakdown page. Only columns
+// with at least one non-zero value in the selected month are rendered.
+const DAILY_COL_DEFS = [
+  ['Cash Sale','Cash Sale'], ['Cash Returns','Cash Returns'],
+  ['HBL','HBL'], ['MCB','MCB'], ['Alfala Bank','Bank Alfalah'],
+  ['Bank Al Habib','Bank Al Habib'], ['Meezan Bank (Paysa)','Meezan Bank'],
+  ['Askari Bank','Askari'], ['Askari Bank Returns','Askari Returns'],
+  ['PSO','PSO'], ['PSO Returns','PSO Returns'],
+  ['NESPAK','NESPAK'], ['NESPAK Returns','NESPAK Returns'],
+  ['PARCO','PARCO'], ['PARCO Returns','PARCO Returns'],
+  ['TEPA','TEPA'], ['TEPA Returns','TEPA Returns'],
+  ['LDA','LDA'], ['LDA Returns','LDA Returns'],
+  ['Gourmet','Gourmet'], ['Wapda Hospital','Wapda Hosp.'], ['BTH','BTH'],
+  ['Berger Paints','Berger Paints'], ['Ecolean PK','Ecolean PK'],
+  ['Style Textile','Style Textile'], ['Syed Babar Ali Foundation','SBA Fdn'],
+  ['Rahnuma NGO','Rahnuma NGO'], ['Health Pass','Health Pass'],
+  ['Nisar Spinning Mills','Nisar Spinning'], ['Food Panda','Food Panda'],
+  ['F/Issue','F/Issue'], ['COMP SALE','COMP Sale'],
+  ['FDPP','FDPP POS'], ['FDPP Con','FDPP Consumer'],
+  ['Amount Received','Amount Received'], ['Load Sale','Load Sale'],
+  ['Cash to be Deposited','Cash to Deposit'],
+];
+
+
 // ── Monthly print ─────────────────────────────────────────────────────────────
 function buildMonthlyPrintHTML(my) {
   const m = MONTHLY.find(x => x.Month_Year === my);
@@ -62,17 +86,38 @@ function buildMonthlyPrintHTML(my) {
     </tbody>
   </table>`;
 
-  const dayRows = days.map(d => `<tr>
-    <td class="l">${d.Date}</td>
-    <td class="r">${n(d.TOTAL) ? '₨ ' + Math.round(n(d.TOTAL)).toLocaleString('en-PK') : '—'}</td>
-    <td class="r">${n(d['Cash Sale']) ? '₨ ' + Math.round(n(d['Cash Sale'])).toLocaleString('en-PK') : '—'}</td>
-    <td class="r">${n(d.Customers) ? Math.round(n(d.Customers)).toLocaleString('en-PK') : '—'}</td>
-    <td class="l" style="font-size:10px;color:#64748b">${d['Low Sale Reason'] || ''}</td>
-  </tr>`).join('');
+  // Page 2: landscape daily breakdown — only columns with real data
+  const activeCols = DAILY_COL_DEFS.filter(([key]) => days.some(d => n(d[key]) !== 0));
+  const hasNotes = days.some(d => d['Low Sale Reason']);
+
+  const dayHeadCells = [
+    '<th>Date</th>', '<th class="r">Total</th>', '<th class="r">Customers</th>',
+    ...activeCols.map(([,label]) => `<th class="r">${label}</th>`),
+    ...(hasNotes ? ['<th>Note</th>'] : []),
+  ].join('');
+
+  const dayRows = days.map(d => {
+    const cells = [
+      `<td class="l">${d.Date}</td>`,
+      `<td class="r">${n(d.TOTAL) ? '₨ ' + Math.round(n(d.TOTAL)).toLocaleString('en-PK') : '—'}</td>`,
+      `<td class="r">${n(d.Customers) ? Math.round(n(d.Customers)).toLocaleString('en-PK') : '—'}</td>`,
+      ...activeCols.map(([key]) => `<td class="r">${n(d[key]) ? '₨ ' + Math.round(n(d[key])).toLocaleString('en-PK') : '—'}</td>`),
+      ...(hasNotes ? [`<td class="l" style="font-size:9px;color:#64748b">${d['Low Sale Reason'] || ''}</td>`] : []),
+    ];
+    return `<tr>${cells.join('')}</tr>`;
+  }).join('');
+
+  const totalsRow = dayRows ? `<tr class="tot">
+    <td class="l">TOTAL</td>
+    <td class="r">₨ ${Math.round(total).toLocaleString('en-PK')}</td>
+    <td class="r">${Math.round(cust).toLocaleString('en-PK')}</td>
+    ${activeCols.map(([key]) => `<td class="r">₨ ${Math.round(days.reduce((s,d)=>s+n(d[key]),0)).toLocaleString('en-PK')}</td>`).join('')}
+    ${hasNotes ? '<td></td>' : ''}
+  </tr>` : '';
 
   const daysHtml = `<table class="pr-tbl">
-    <thead><tr><th>Date</th><th class="r">Total</th><th class="r">Cash Sale</th><th class="r">Customers</th><th>Note</th></tr></thead>
-    <tbody>${dayRows || '<tr><td colspan="5" style="text-align:center;padding:12px;color:#94a3b8">No daily records</td></tr>'}</tbody>
+    <thead><tr>${dayHeadCells}</tr></thead>
+    <tbody>${dayRows || `<tr><td colspan="${3 + activeCols.length + (hasNotes?1:0)}" style="text-align:center;padding:12px;color:#94a3b8">No daily records</td></tr>`}${totalsRow}</tbody>
   </table>`;
 
   return `<div style="max-width:680px;margin:0 auto">
@@ -83,7 +128,9 @@ function buildMonthlyPrintHTML(my) {
     ${kpiHtml}
     <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#64748b;margin-bottom:6px">Summary</div>
     ${summHtml}
-    <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#64748b;margin:10px 0 6px">Daily Breakdown</div>
+  </div>
+  <div class="pr-landscape">
+    <div class="pr-land-title">Daily Breakdown — ${my} (${days.length} day${days.length===1?'':'s'})</div>
     ${daysHtml}
   </div>`;
 }
