@@ -58,25 +58,11 @@ function pwToggleShow() {
   if(inp) inp.type = inp.type==='password'?'text':'password';
 }
 function pwSubmit() {
-  if(_pinBusy) return;
-  const inp = document.getElementById('pw-input');
-  const pw  = inp?inp.value:'';
+  // PIN/password offline fallback removed — Google Sign-In with an authorised
+  // email is now the only way to unlock the app.
   const msg = document.getElementById('pmsg');
-  if(pw.length<8){ if(msg) msg.textContent='At least 8 characters required.'; if(inp){inp.classList.add('err');setTimeout(()=>inp.classList.remove('err'),1000);} return; }
-  if(pw.length>20){ if(msg) msg.textContent='Maximum 20 characters.'; return; }
-  _pinBusy=true;
-  const stored=localStorage.getItem(PIN_K);
-  const hashed=hashPIN(pw);
-  if(!stored){
-    localStorage.setItem(PIN_K,hashed);
-    _pinBusy=false; if(inp) inp.value=''; unlockApp();
-  } else if(hashed===stored){
-    _pinBusy=false; if(inp) inp.value=''; unlockApp();
-  } else {
-    if(inp){inp.classList.add('err'); inp.value=''; setTimeout(()=>{inp.classList.remove('err');inp.focus();},1000);}
-    if(msg) msg.textContent='Incorrect password. Try again.';
-    setTimeout(()=>{ _pinBusy=false; if(msg) msg.textContent=''; },1200);
-  }
+  if(msg) msg.textContent='Password sign-in is disabled. Please use Google Sign-In.';
+  gauthShowMain();
 }
 // Legacy stubs — kept to avoid reference errors
 function pk(k){}
@@ -126,18 +112,9 @@ function pwResetToggle(id) {
   if(inp) inp.type = inp.type==='password'?'text':'password';
 }
 function pwResetSubmit() {
-  if(!_resetVerifiedEmail){ toast('⚠ Identity not verified','w'); return; }
-  const nw  = document.getElementById('pw-new1').value;
-  const cf  = document.getElementById('pw-new2').value;
-  const msg = document.getElementById('pw-reset-msg');
-  if(nw.length<8||nw.length>20){ msg.textContent='Password must be 8–20 characters.'; msg.style.color='#fca5a5'; return; }
-  if(nw!==cf){ msg.textContent='Passwords do not match.'; msg.style.color='#fca5a5';
-    const i=document.getElementById('pw-new2'); if(i){i.classList.add('err'); setTimeout(()=>i.classList.remove('err'),800);} return; }
-  localStorage.setItem(PIN_K, hashPIN(nw));
-  _resetVerifiedEmail='';
-  toast('✓ Password reset successfully');
-  // Unlock directly — they just verified via Google
-  unlockApp();
+  // PIN/password offline fallback removed — nothing to reset, nothing to unlock.
+  toast('⚠ Password sign-in has been disabled. Use Google Sign-In.','w');
+  gauthShowMain();
 }
 
 // ── Google reset-verification button ─────────────────────────────
@@ -199,7 +176,8 @@ function gauthAllowedEmails() {
 }
 function gauthIsAllowed(email) {
   const list = gauthAllowedEmails();
-  if(list.length===0) return true; // no list = allow anyone who signs in
+  if(!email) return false;
+  if(list.length===0) return false; // fail-closed: no list = allow no one
   return list.includes(email.toLowerCase());
 }
 
@@ -214,20 +192,10 @@ function gauthShowMain() {
   _gauthRenderBtn();
 }
 function gauthShowPin() {
-  document.getElementById('gauth-setup').style.display='none';
-  document.getElementById('gauth-main').style.display='none';
-  document.getElementById('gauth-pin').style.display='';
-  // Always start at the normal enter-password sub-view
-  const ev=document.getElementById('pw-view-enter');
-  const vv=document.getElementById('pw-view-verify');
-  const nv=document.getElementById('pw-view-newpw');
-  if(ev) ev.style.display='';
-  if(vv) vv.style.display='none';
-  if(nv) nv.style.display='none';
-  const pnote=document.getElementById('pnote');
-  if(pnote) pnote.style.display=localStorage.getItem(PIN_K)?'none':'block';
-  pwStrengthUpdate();
-  setTimeout(()=>{ const inp=document.getElementById('pw-input'); if(inp) inp.focus(); }, 120);
+  // PIN/password offline fallback has been removed. Always route back to
+  // the Google Sign-In panel — this function is kept only so any stray
+  // references in older cached code don't throw errors.
+  gauthShowMain();
 }
 
 // ── Render the Google Sign-In button ─────────────────────────────
@@ -298,15 +266,10 @@ async function _gauthHandleRedirectToken() {
                    { headers:{ Authorization:'Bearer '+token } });
     const info = await r.json();
     if(!info.email){ _gauthShowError('Could not get account info — please try again.'); return false; }
-    // Access control: first login auto-registers; others must be on the list
+    // Access control: only the three authorised emails may proceed
     if(!gauthIsAllowed(info.email)){
-      const allowed = gauthAllowedEmails();
-      if(allowed.length===0){
-        localStorage.setItem(GAUTH_MAIL_K, info.email.toLowerCase());
-      } else {
-        _gauthShowError('⛔ ' + info.email + ' is not authorised to access this app.');
-        return false;
-      }
+      _gauthShowError('⛔ ' + info.email + ' is not authorised to access this app.');
+      return false;
     }
     // Reuse the Drive-scoped token so Drive backup works without a separate authorize step
     _driveAccessToken = token;
@@ -337,15 +300,9 @@ function _gauthCallback(response) {
     const errEl   = document.getElementById('gauth-error');
 
     if(!gauthIsAllowed(email)) {
-      // auto-register first login if list is empty
-      const allowed = gauthAllowedEmails();
-      if(allowed.length===0) {
-        localStorage.setItem(GAUTH_MAIL_K, email.toLowerCase());
-      } else {
-        errEl.textContent='⛔ ' + email + ' is not authorised to access this app. Contact the administrator.';
-        errEl.style.display='block';
-        return;
-      }
+      errEl.textContent='⛔ ' + email + ' is not authorised to access this app. Contact the administrator.';
+      errEl.style.display='block';
+      return;
     }
     gauthSetSession(payload);
     unlockApp();

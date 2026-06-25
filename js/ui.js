@@ -147,16 +147,8 @@ function tcPwStrength(inp) {
 }
 
 function changePIN() {
-  const cur=document.getElementById('pin-cur').value;
-  const nw=document.getElementById('pin-new').value;
-  const cf=document.getElementById('pin-confirm').value;
-  if(nw.length<8||nw.length>20){ toast('⚠ Password must be 8–20 characters','w'); return; }
-  if(nw!==cf){ toast('⚠ Passwords do not match','w'); return; }
-  const stored=localStorage.getItem(PIN_K);
-  if(stored&&hashPIN(cur)!==stored){ toast('⚠ Current password is incorrect','w'); return; }
-  localStorage.setItem(PIN_K,hashPIN(nw));
-  ['pin-cur','pin-new','pin-confirm'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
-  toast('✓ Password updated');
+  // Offline password fallback removed — nothing to update.
+  toast('⚠ Password sign-in has been disabled','w');
 }
 
 function addNewMonth() {
