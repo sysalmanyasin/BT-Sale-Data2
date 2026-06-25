@@ -76,17 +76,34 @@ self.addEventListener('install', event => {
 });
 
 /* ────────────────────────────────────────────────
-   ACTIVATE — delete old caches
+   ACTIVATE — delete old caches, then self-heal:
+   re-fetch any app-shell file that's missing from
+   the new cache (e.g. failed silently during install
+   due to a transient network blip).
    ──────────────────────────────────────────────── */
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
-        keys
-          .filter(k => k !== CACHE_NAME)
-          .map(k => caches.delete(k))
-      )
-    ).then(() => self.clients.claim())
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
+      .then(() => caches.open(CACHE_NAME))
+      .then(async cache => {
+        const missing = [];
+        for (const url of APP_SHELL) {
+          const hit = await cache.match(url);
+          if (!hit) missing.push(url);
+        }
+        if (missing.length) {
+          console.warn('[SW] Self-healing missing shell files:', missing);
+          await Promise.allSettled(
+            missing.map(url =>
+              fetch(url, { cache: 'no-store' }).then(res => {
+                if (res.ok) return cache.put(url, res);
+              }).catch(err => console.warn('[SW] Self-heal failed for', url, err.message))
+            )
+          );
+        }
+      })
+      .then(() => self.clients.claim())
   );
 });
 
@@ -121,11 +138,22 @@ self.addEventListener('fetch', event => {
 
 /* ── Strategy helpers ── */
 
+const NETWORK_TIMEOUT_MS = 6000;
+
+/* Race a fetch against a timeout so flaky/slow connections fail fast
+   instead of leaving the page hanging before falling back to cache. */
+function fetchWithTimeout(request, options, timeoutMs = NETWORK_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(request, { ...options, signal: controller.signal })
+    .finally(() => clearTimeout(timer));
+}
+
 async function cacheFirst(request) {
   const cached = await caches.match(request);
   if (cached) return cached;
   try {
-    const response = await fetch(request);
+    const response = await fetchWithTimeout(request);
     if (response.ok) {
       const cache = await caches.open(CACHE_NAME);
       cache.put(request, response.clone());
@@ -138,7 +166,7 @@ async function cacheFirst(request) {
 
 async function networkFirst(request) {
   try {
-    const response = await fetch(request, { cache: 'no-store' });
+    const response = await fetchWithTimeout(request, { cache: 'no-store' });
     if (response.ok) {
       const cache = await caches.open(CACHE_NAME);
       cache.put(request, response.clone());
@@ -153,20 +181,27 @@ async function networkFirst(request) {
 async function staleWhileRevalidate(request) {
   const cache = await caches.open(CACHE_NAME);
   const cached = await cache.match(request);
-  const fetchPromise = fetch(request).then(response => {
+  const fetchPromise = fetchWithTimeout(request).then(response => {
     if (response.ok) cache.put(request, response.clone());
     return response;
-  }).catch(() => cached);
+  }).catch(() => cached || new Response('Offline', { status: 503, statusText: 'Service Unavailable' }));
   return cached || fetchPromise;
 }
 
 async function networkWithCacheFallback(request) {
   try {
-    const response = await fetch(request);
+    const response = await fetchWithTimeout(request);
+    /* Cache successful GETs so the fallback below actually has something
+       to serve next time — previously this path never wrote to cache,
+       so any later failure fell back to an always-empty cache. */
+    if (response.ok) {
+      const cache = await caches.open(CACHE_NAME);
+      cache.put(request, response.clone());
+    }
     return response;
   } catch {
     const cached = await caches.match(request);
-    return cached || new Response('Offline', { status: 503 });
+    return cached || new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
   }
 }
 
