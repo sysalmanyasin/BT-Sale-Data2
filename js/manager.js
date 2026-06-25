@@ -86,9 +86,20 @@ function buildMonthlyPrintHTML(my) {
     </tbody>
   </table>`;
 
-  // Page 2: landscape daily breakdown — only columns with real data
+  // Page 2+: landscape daily breakdown — only columns with real data.
+  // Rows are explicitly chunked into fixed-size pages rather than letting
+  // one huge table overflow naturally. Letting the browser handle overflow
+  // across a landscape page caused two bugs in testing: (1) any rows past
+  // what fit on the first landscape page got silently pushed onto a 3rd
+  // page that reverted to portrait (named @page rules don't reliably
+  // re-apply to browser-generated continuation pages), and (2) faint
+  // ghosted content from page 1 bled through behind that broken page.
+  // Giving every page its own explicit .pr-landscape wrapper sidesteps
+  // both issues entirely — each page is independently forced to landscape.
+  const ROWS_PER_PAGE = 26; // fits comfortably on a Letter landscape page with ~9 columns
   const activeCols = DAILY_COL_DEFS.filter(([key]) => days.some(d => n(d[key]) !== 0));
   const hasNotes = days.some(d => d['Low Sale Reason']);
+  const colCount = 3 + activeCols.length + (hasNotes ? 1 : 0);
 
   const dayHeadCells = [
     '<th>Date</th>', '<th class="r">Total</th>', '<th class="r">Customers</th>',
@@ -96,29 +107,47 @@ function buildMonthlyPrintHTML(my) {
     ...(hasNotes ? ['<th>Note</th>'] : []),
   ].join('');
 
-  const dayRows = days.map(d => {
+  function rowHtml(d) {
     const cells = [
       `<td class="l">${d.Date}</td>`,
-      `<td class="r">${n(d.TOTAL) ? '₨ ' + Math.round(n(d.TOTAL)).toLocaleString('en-PK') : '—'}</td>`,
+      `<td class="r">${n(d.TOTAL) ? '₨ ' + Math.round(n(d.TOTAL)).toLocaleString('en-PK') : '—'}</td>`,
       `<td class="r">${n(d.Customers) ? Math.round(n(d.Customers)).toLocaleString('en-PK') : '—'}</td>`,
-      ...activeCols.map(([key]) => `<td class="r">${n(d[key]) ? '₨ ' + Math.round(n(d[key])).toLocaleString('en-PK') : '—'}</td>`),
+      ...activeCols.map(([key]) => `<td class="r">${n(d[key]) ? '₨ ' + Math.round(n(d[key])).toLocaleString('en-PK') : '—'}</td>`),
       ...(hasNotes ? [`<td class="l" style="font-size:9px;color:#64748b">${d['Low Sale Reason'] || ''}</td>`] : []),
     ];
     return `<tr>${cells.join('')}</tr>`;
+  }
+
+  function totalsRowHtml() {
+    return `<tr class="tot">
+      <td class="l">TOTAL</td>
+      <td class="r">₨ ${Math.round(total).toLocaleString('en-PK')}</td>
+      <td class="r">${Math.round(cust).toLocaleString('en-PK')}</td>
+      ${activeCols.map(([key]) => `<td class="r">₨ ${Math.round(days.reduce((s,d)=>s+n(d[key]),0)).toLocaleString('en-PK')}</td>`).join('')}
+      ${hasNotes ? '<td></td>' : ''}
+    </tr>`;
+  }
+
+  // Split days into fixed-size chunks, one per landscape page.
+  const dayChunks = [];
+  for (let i = 0; i < days.length; i += ROWS_PER_PAGE) dayChunks.push(days.slice(i, i + ROWS_PER_PAGE));
+  if (!dayChunks.length) dayChunks.push([]); // still render an empty page if no data
+
+  const totalPages = dayChunks.length;
+  const landscapePages = dayChunks.map((chunk, idx) => {
+    const isLast = idx === dayChunks.length - 1;
+    const rows = chunk.map(rowHtml).join('')
+      || `<tr><td colspan="${colCount}" style="text-align:center;padding:12px;color:#94a3b8">No daily records</td></tr>`;
+    const tbody = rows + (isLast && days.length ? totalsRowHtml() : '');
+    const pageNote = totalPages > 1 ? ` — Page ${idx + 1} of ${totalPages}` : '';
+    return `<div class="pr-landscape">
+      <div class="pr-land-title">Daily Breakdown — ${my} (${days.length} day${days.length===1?'':'s'})${pageNote}</div>
+      <table class="pr-tbl">
+        <thead><tr>${dayHeadCells}</tr></thead>
+        <tbody>${tbody}</tbody>
+      </table>
+    </div>`;
   }).join('');
-
-  const totalsRow = dayRows ? `<tr class="tot">
-    <td class="l">TOTAL</td>
-    <td class="r">₨ ${Math.round(total).toLocaleString('en-PK')}</td>
-    <td class="r">${Math.round(cust).toLocaleString('en-PK')}</td>
-    ${activeCols.map(([key]) => `<td class="r">₨ ${Math.round(days.reduce((s,d)=>s+n(d[key]),0)).toLocaleString('en-PK')}</td>`).join('')}
-    ${hasNotes ? '<td></td>' : ''}
-  </tr>` : '';
-
-  const daysHtml = `<table class="pr-tbl">
-    <thead><tr>${dayHeadCells}</tr></thead>
-    <tbody>${dayRows || `<tr><td colspan="${3 + activeCols.length + (hasNotes?1:0)}" style="text-align:center;padding:12px;color:#94a3b8">No daily records</td></tr>`}${totalsRow}</tbody>
-  </table>`;
 
   return `<div style="max-width:680px;margin:0 auto">
     <div class="pr-header">
@@ -129,10 +158,7 @@ function buildMonthlyPrintHTML(my) {
     <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#64748b;margin-bottom:6px">Summary</div>
     ${summHtml}
   </div>
-  <div class="pr-landscape">
-    <div class="pr-land-title">Daily Breakdown — ${my} (${days.length} day${days.length===1?'':'s'})</div>
-    ${daysHtml}
-  </div>`;
+  ${landscapePages}`;
 }
 
 function printMonthReport(my) {
