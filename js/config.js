@@ -11,6 +11,12 @@ let _curMon = null;    // holds the month currently open in month modal
 // UTILS
 // ══════════════════════════════════════════
 const n  = v => (v==null||v===''||isNaN(parseFloat(v)))?0:parseFloat(v);
+// "Returns" fields (Cash Returns, PSO Returns, etc.) must always reduce the
+// total, so they must always be stored/summed as negative — regardless of
+// whether they were typed/saved as positive or negative. Use this anywhere
+// a Returns-type field is read, so a sign mistake at entry time can never
+// silently flip a deduction into an addition.
+const negR = v => { const x = n(v); return x > 0 ? -x : x; };
 const ff = v => { const a=Math.abs(Math.round(v)); return a>=1e6?(v/1e6).toFixed(2)+'M':a>=1000?Math.round(v).toLocaleString('en-PK'):String(Math.round(v)); };
 const fc = v => Math.round(v).toLocaleString('en-PK');
 const fv = v => { const r=Math.round(n(v)); if(r===0)return '0'; const s=Math.abs(r).toLocaleString('en-PK'); return r<0?'-'+s:s; };
@@ -22,7 +28,7 @@ const months = () => [...new Set(DAILY.map(d=>d.Month_Year))];
 const CC = ['#2563eb','#7c3aed','#059669','#d97706','#dc2626','#0891b2','#be185d','#65a30d','#9333ea','#c2410c'];
 const CLIENT_COLS = ['PSO','NESPAK','PARCO','TEPA','LDA','Gourmet','Wapda Hospital','BTH','Berger Paints','Ecolean PK','Style Textile','Syed Babar Ali Foundation','Rahnuma NGO','Health Pass','Nisar Spinning Mills','Food Panda','Askari Bank','Askari Bank Returns'];
 const creditSales = m => CLIENT_COLS.reduce((s,c)=>s+n(m[c]),0);
-const cashSales = m => n(m['Cash Sale']) + n(m['Cash Returns']) + mBanks(m);
+const cashSales = m => n(m['Cash Sale']) + negR(m['Cash Returns']) + mBanks(m);
 const clamp = (v,lo,hi) => Math.max(lo,Math.min(hi,v));
 const pctNum = (a,b) => b?((a-b)/b*100):0;
 // ══════════════════════════════════════════
@@ -46,6 +52,14 @@ const MONTHLY_SUM_FIELDS = [
   'TOTAL','COMP SALE','Customers','FDPP','FDPP Con',
   'Amount Received','Load Sale','Cash to be Deposited'
 ];
+// These fields must always net negative (they reduce the total). A day's
+// stored value can occasionally end up positive due to a sign mistake at
+// entry time — summing with negR() here means the monthly total self-heals
+// automatically the next time it's recomputed, even before that day's
+// record is individually corrected.
+const RETURN_FIELDS = new Set([
+  'Cash Returns','Askari Bank Returns','PSO Returns','NESPAK Returns','PARCO Returns','TEPA Returns','LDA Returns'
+]);
 
 function recomputeMonthly(monthYear) {
   // Get all daily entries for this month
@@ -69,7 +83,8 @@ function recomputeMonthly(monthYear) {
 
   // Sum every numeric field from DAILY into MONTHLY
   MONTHLY_SUM_FIELDS.forEach(field => {
-    const sum = days.reduce((s, d) => s + n(d[field]), 0);
+    const pick = RETURN_FIELDS.has(field) ? negR : n;
+    const sum = days.reduce((s, d) => s + pick(d[field]), 0);
     rec[field] = sum || null;
   });
   rec['TOTAL'] = String(days.reduce((s, d) => s + n(d['TOTAL']), 0));

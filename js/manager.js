@@ -97,7 +97,12 @@ function buildMonthlyPrintHTML(my) {
   // Giving every page its own explicit .pr-landscape wrapper sidesteps
   // both issues entirely — each page is independently forced to landscape.
   const ROWS_PER_PAGE = 26; // fits comfortably on a Letter landscape page with ~9 columns
-  const activeCols = DAILY_COL_DEFS.filter(([key]) => days.some(d => n(d[key]) !== 0));
+  // Returns-type columns must always display/sum as negative, regardless of
+  // how the underlying record happens to be signed (see RETURN_FIELDS /
+  // negR in config.js) — this is what keeps the printed report correct
+  // even for records edited before that bug was fixed at the source.
+  const colVal = (d, key) => RETURN_FIELDS.has(key) ? negR(d[key]) : n(d[key]);
+  const activeCols = DAILY_COL_DEFS.filter(([key]) => days.some(d => colVal(d, key) !== 0));
   const hasNotes = days.some(d => d['Low Sale Reason']);
   const colCount = 3 + activeCols.length + (hasNotes ? 1 : 0);
 
@@ -112,7 +117,7 @@ function buildMonthlyPrintHTML(my) {
       `<td class="l">${d.Date}</td>`,
       `<td class="r">${n(d.TOTAL) ? '₨ ' + Math.round(n(d.TOTAL)).toLocaleString('en-PK') : '—'}</td>`,
       `<td class="r">${n(d.Customers) ? Math.round(n(d.Customers)).toLocaleString('en-PK') : '—'}</td>`,
-      ...activeCols.map(([key]) => `<td class="r">${n(d[key]) ? '₨ ' + Math.round(n(d[key])).toLocaleString('en-PK') : '—'}</td>`),
+      ...activeCols.map(([key]) => { const v = colVal(d, key); return `<td class="r">${v ? '₨ ' + Math.round(v).toLocaleString('en-PK') : '—'}</td>`; }),
       ...(hasNotes ? [`<td class="l" style="font-size:9px;color:#64748b">${d['Low Sale Reason'] || ''}</td>`] : []),
     ];
     return `<tr>${cells.join('')}</tr>`;
@@ -123,7 +128,7 @@ function buildMonthlyPrintHTML(my) {
       <td class="l">TOTAL</td>
       <td class="r">₨ ${Math.round(total).toLocaleString('en-PK')}</td>
       <td class="r">${Math.round(cust).toLocaleString('en-PK')}</td>
-      ${activeCols.map(([key]) => `<td class="r">₨ ${Math.round(days.reduce((s,d)=>s+n(d[key]),0)).toLocaleString('en-PK')}</td>`).join('')}
+      ${activeCols.map(([key]) => `<td class="r">₨ ${Math.round(days.reduce((s,d)=>s+colVal(d,key),0)).toLocaleString('en-PK')}</td>`).join('')}
       ${hasNotes ? '<td></td>' : ''}
     </tr>`;
   }
@@ -180,7 +185,7 @@ function buildYearlyPrintHTML(yr) {
   const tgts = getTgts();
   const total = mons.reduce((s, m) => s + n(m.TOTAL), 0);
   const totalCust = mons.reduce((s, m) => s + n(m.Customers), 0);
-  const totalCash = mons.reduce((s, m) => s + n(m['Cash Sale']) + n(m['Cash Returns']), 0);
+  const totalCash = mons.reduce((s, m) => s + n(m['Cash Sale']) + negR(m['Cash Returns']), 0);
   const today = new Date().toLocaleDateString('en-PK', {day:'2-digit',month:'short',year:'numeric'});
   const avgMon = mons.length ? total / mons.length : 0;
   const bestMon = mons.reduce((best, m) => n(m.TOTAL) > n(best.TOTAL) ? m : best, mons[0]);
@@ -206,7 +211,8 @@ function buildYearlyPrintHTML(yr) {
 
   const clientCols = ['PSO','NESPAK','PARCO','TEPA','LDA','Gourmet','Wapda Hospital','BTH','Berger Paints','Ecolean PK','Style Textile','Syed Babar Ali Foundation','Rahnuma NGO','Health Pass','Nisar Spinning Mills','Food Panda','Askari Bank','Askari Bank Returns','F/Issue'];
   const clientRows = clientCols.map(c => {
-    const v = mons.reduce((s, m) => s + n(m[c]), 0);
+    const pick = RETURN_FIELDS.has(c) ? negR : n;
+    const v = mons.reduce((s, m) => s + pick(m[c]), 0);
     return v !== 0 ? _prRow(c, v) : '';
   }).join('');
   const bankCols = ['HBL','MCB','Alfala Bank','Bank Al Habib','Meezan Bank (Paysa)'];

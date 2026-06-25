@@ -107,7 +107,7 @@ function openMonthModal(my) {
   _curMon = my;
   const days=DAILY.filter(d=>d.Month_Year===my&&n(d.TOTAL)>0)
     .sort((a,b)=>_dateVal(b.Date)-_dateVal(a.Date));
-  const fields=[['Cash Sale',m['Cash Sale']],['Cash Returns',m['Cash Returns']],['HBL',m.HBL],['MCB',m.MCB],
+  const fields=[['Cash Sale',m['Cash Sale']],['Cash Returns',negR(m['Cash Returns'])],['HBL',m.HBL],['MCB',m.MCB],
     ['Bank Alfalah',m['Alfala Bank']],['Bank Al Habib',m['Bank Al Habib']],['Meezan Bank',m['Meezan Bank (Paysa)']],
     ['PSO',m.PSO],['NESPAK',m.NESPAK],['PARCO',m.PARCO],['LDA',m.LDA],
     ['Gourmet',m.Gourmet],['F/Issue',m['F/Issue']],['TOTAL',m.TOTAL],['Customers',m.Customers]

@@ -189,7 +189,12 @@ async function saveEntry() {
   const entry={Month_Year:month,Date:date};
   for(const[col,id] of Object.entries(FM)){
     const el=document.getElementById('e-'+id); if(!el) continue;
-    entry[col]=el.type==='text'?(el.value||null):(el.value?parseFloat(el.value):null);
+    let val=el.type==='text'?(el.value||null):(el.value?parseFloat(el.value):null);
+    // Returns fields must always reduce the total — normalize to negative
+    // regardless of which sign was typed, so a forgotten "-" can never
+    // silently turn a deduction into an addition (see RETURN_FIELDS).
+    if(val!=null && RETURN_FIELDS.has(col)) val=negR(val);
+    entry[col]=val;
   }
   entry['TOTAL']=String(n(document.getElementById('e-TOTAL').value));
   entry['Sale Plus']=null; entry['DIFF']=null;
@@ -403,8 +408,12 @@ async function saveEditModal() {
     if(f.text){ rec[f.key]=el.value||null; }
     else {
       const v=parseFloat(el.value)||0;
-      // Returns always stored as positive (calcTotal subtracts them by convention)
-      rec[f.key]=v===0?null:(SUB_KEYS_SET.has(f.key)?Math.abs(v):v);
+      // Returns must always reduce the total, so they're always stored as
+      // negative — regardless of which sign was typed. (Previously this
+      // forced Math.abs(), i.e. always positive, which is what caused
+      // edited returns to silently flip sign and get added instead of
+      // subtracted from the monthly total.)
+      rec[f.key]=v===0?null:(SUB_KEYS_SET.has(f.key)?negR(v):v);
     }
   });
 
