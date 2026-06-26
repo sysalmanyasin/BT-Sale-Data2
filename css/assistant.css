@@ -83,6 +83,16 @@
 .ai-input-row input:focus{ outline:none; border-color:var(--accent); }
 .ai-input-row .btn{ padding:0 14px; border-radius:9px; }
 
+.ai-mic-btn{
+  flex-shrink:0; width:34px; height:34px; border-radius:9px;
+  border:1px solid var(--border); background:var(--s2); color:var(--text);
+  font-size:16px; cursor:pointer; display:flex; align-items:center;
+  justify-content:center; transition:background .15s, border-color .15s;
+  align-self:center;
+}
+.ai-mic-btn:hover{ border-color:var(--accent); background:var(--alt); }
+.ai-mic-btn:active{ transform:scale(.94); }
+
 @media (max-width:480px){
   .ai-panel{ right:8px; left:8px; width:auto; bottom:78px; }
   .ai-fab{ right:14px; bottom:14px; }
