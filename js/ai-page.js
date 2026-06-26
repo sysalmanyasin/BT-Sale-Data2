@@ -12,17 +12,26 @@ var _aipMicRec    = null;
 function loadAiPage() {
   _aipRenderChips();
   _aipRenderInsights();
+  var badge = document.getElementById('aip-live-badge');
+  var hasKey = (typeof aiHasKey === 'function') ? aiHasKey() : true;
+  if (badge) {
+    badge.textContent = hasKey ? 'LIVE' : 'NO KEY';
+    badge.style.background = hasKey ? '' : '#dc2626';
+  }
   if (!_aipInited) {
     _aipInited = true;
     _aipHistory.push({
       role: 'bot',
-      text: '\uD83D\uDC4B <b>Hello!</b> I am your Groq AI assistant, fully loaded with your sales data.' +
+      text: hasKey ?
+        ('\uD83D\uDC4B <b>Hello!</b> I am your Groq AI assistant, fully loaded with your sales data.' +
             '<br><br>I know everything about your petrol station:' +
             '<br>\u2022 Every day\u2019s sale, cash, credit, load sale, DIFF' +
             '<br>\u2022 Monthly totals and year-over-year trends' +
             '<br>\u2022 Staff, credits, expenses, petty cash' +
             '<br>\u2022 Jazz Cash and custom sections in Manager' +
-            '<br><br><b>Just ask me anything\u2014 in English, Urdu, or both.</b>',
+            '<br><br><b>Just ask me anything\u2014 in English, Urdu, or both.</b>') :
+        ('\u26a0\ufe0f <b>No API key set.</b> Tap the \u2699\ufe0f gear icon above to add your free Groq API key ' +
+            '(get one at <b>console.groq.com/keys</b>) before chatting or scanning images.'),
     });
   }
   _aipRender();
@@ -361,4 +370,173 @@ function _aipStopMic() {
   _aipMicActive = false;
   var micBtn = document.getElementById('aip-mic');
   if (micBtn) { micBtn.textContent = '🎤'; micBtn.classList.remove('recording'); }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// SETTINGS — Groq API key (gear icon)
+// ══════════════════════════════════════════════════════════════════════
+function aipOpenSettings() {
+  var cur = (typeof getAiSettings === 'function') ? getAiSettings().apiKey : '';
+  var box = document.getElementById('aip-settings-modal');
+  if (!box) return;
+  box.innerHTML =
+    '<div class="ai-modal-backdrop" onclick="aipCloseSettings()">' +
+      '<div class="ai-modal-card" onclick="event.stopPropagation()">' +
+        '<div class="ai-modal-title">⚙️ AI Settings</div>' +
+        '<div style="font-size:12.5px;color:#64748b;margin-bottom:10px">' +
+          'Enter your own Groq API key. Get a free key at <b>console.groq.com/keys</b>. ' +
+          'It is stored only on this device.' +
+        '</div>' +
+        '<label style="font-size:12px;font-weight:600;color:#334155;display:block;margin-bottom:4px">Groq API Key</label>' +
+        '<input id="aip-key-input" type="password" placeholder="gsk_..." value="' + (cur ? cur.replace(/"/g,'&quot;') : '') + '" ' +
+          'style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;margin-bottom:12px">' +
+        '<div style="display:flex;gap:8px;justify-content:flex-end">' +
+          (cur ? '<button class="ai-chip-dim" onclick="aipClearKey()">Remove Key</button>' : '') +
+          '<button class="ai-chip-dim" onclick="aipCloseSettings()">Cancel</button>' +
+          '<button class="ai-chip ai-chip-green" onclick="aipSaveKey()">Save</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+}
+function aipCloseSettings() {
+  var box = document.getElementById('aip-settings-modal');
+  if (box) box.innerHTML = '';
+}
+function aipSaveKey() {
+  var inp = document.getElementById('aip-key-input');
+  var val = inp ? inp.value.trim() : '';
+  if (!val) { if (typeof toast === 'function') toast('⚠ Enter a key first.', 'w'); return; }
+  if (typeof saveAiSettings === 'function') saveAiSettings(val);
+  aipCloseSettings();
+  if (typeof toast === 'function') toast('✅ API key saved.');
+}
+function aipClearKey() {
+  if (typeof clearAiSettings === 'function') clearAiSettings();
+  aipCloseSettings();
+  if (typeof toast === 'function') toast('🗑️ API key removed.');
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// SCAN IMAGE — extract entries from a photo/screenshot and let the
+// user confirm each one before it's filled into the app.
+// ══════════════════════════════════════════════════════════════════════
+function aipOpenScan() {
+  if (typeof aiHasKey === 'function' && !aiHasKey()) {
+    if (typeof toast === 'function') toast('⚠ Add your Groq API key first (⚙ icon) — vision needs it too.', 'w');
+    aipOpenSettings();
+    return;
+  }
+  var inp = document.getElementById('aip-scan-file');
+  if (inp) { inp.value = ''; inp.click(); }
+}
+
+function aipHandleScanFile(file) {
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = async function (e) {
+    var dataUrl = e.target.result;
+    _aipShowScanModal('loading', null, dataUrl);
+    try {
+      var entries = await _callGroqVision(dataUrl, '');
+      if (!entries.length) {
+        _aipShowScanModal('empty', null, dataUrl);
+      } else {
+        _aipShowScanModal('results', entries, dataUrl);
+      }
+    } catch (err) {
+      _aipShowScanModal('error', err.message, dataUrl);
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function _aipTypeLabel(t) {
+  return { credit: '🏦 Credit', expense: '💸 Expense', petty: '🪙 Petty Cash', cash: '💰 Cash', other: '📌 Other' }[t] || '📌 Other';
+}
+
+function _aipShowScanModal(state, payload, dataUrl) {
+  var box = document.getElementById('aip-scan-modal');
+  if (!box) return;
+
+  var inner = '';
+  if (state === 'loading') {
+    inner = '<div style="text-align:center;padding:30px 10px">' +
+      '<div class="ai-typing" style="justify-content:center;margin-bottom:10px"><span></span><span></span><span></span></div>' +
+      '<div style="font-size:13px;color:#64748b">Reading image and extracting entries…</div>' +
+      '</div>';
+  } else if (state === 'error') {
+    inner = '<div style="text-align:center;padding:24px 10px">' +
+      '<div style="font-size:30px;margin-bottom:8px">⚠️</div>' +
+      '<div style="font-size:13px;color:#dc2626;margin-bottom:14px">' + (typeof _aipEsc==='function'?_aipEsc(payload):payload) + '</div>' +
+      '<button class="ai-chip-dim" onclick="aipCloseScan()">Close</button>' +
+      '</div>';
+  } else if (state === 'empty') {
+    inner = '<div style="text-align:center;padding:24px 10px">' +
+      '<div style="font-size:30px;margin-bottom:8px">🤷</div>' +
+      '<div style="font-size:13px;color:#64748b;margin-bottom:14px">No entries with an amount were found in this image.</div>' +
+      '<button class="ai-chip-dim" onclick="aipCloseScan()">Close</button>' +
+      '</div>';
+  } else if (state === 'results') {
+    window._aipScanEntries = payload;
+    inner = '<div class="ai-modal-title">📷 Found ' + payload.length + ' entr' + (payload.length===1?'y':'ies') + '</div>' +
+      '<div style="font-size:12px;color:#64748b;margin-bottom:10px">Review each one, then tap ✅ Confirm to fill it into the app.</div>' +
+      '<div id="aip-scan-list" style="display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto">' +
+      payload.map(function (e, i) {
+        return '<div class="aip-scan-row" id="aip-scan-row-' + i + '" style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;background:#f8fafc">' +
+          '<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">' +
+            '<div style="flex:1">' +
+              '<div style="font-size:11px;font-weight:700;color:#2563eb;text-transform:uppercase;letter-spacing:.03em">' + _aipTypeLabel(e.type) + '</div>' +
+              '<div style="font-size:14px;font-weight:700;color:#1e293b;margin-top:2px">' + (e.name ? (typeof _aipEsc==='function'?_aipEsc(e.name):e.name) : '(no name)') + ' — ₨' + Math.round(e.amount).toLocaleString('en-PK') + '</div>' +
+              (e.description ? '<div style="font-size:12px;color:#64748b;margin-top:2px">' + (typeof _aipEsc==='function'?_aipEsc(e.description):e.description) + '</div>' : '') +
+            '</div>' +
+            '<button class="ai-chip ai-chip-green" style="white-space:nowrap" onclick="aipConfirmScanEntry(' + i + ')">✅ Confirm</button>' +
+          '</div>' +
+        '</div>';
+      }).join('') +
+      '</div>' +
+      '<div style="margin-top:12px;text-align:right"><button class="ai-chip-dim" onclick="aipCloseScan()">Done</button></div>';
+  }
+
+  box.innerHTML =
+    '<div class="ai-modal-backdrop" onclick="if(event.target===this)aipCloseScan()">' +
+      '<div class="ai-modal-card" style="max-width:460px">' + inner + '</div>' +
+    '</div>';
+}
+
+function aipCloseScan() {
+  var box = document.getElementById('aip-scan-modal');
+  if (box) box.innerHTML = '';
+  window._aipScanEntries = null;
+}
+
+function aipConfirmScanEntry(i) {
+  var entries = window._aipScanEntries || [];
+  var e = entries[i];
+  if (!e) return;
+  var today = (typeof _aiTodayStr === 'function') ? _aiTodayStr() : '';
+  var monthYear = (typeof _aiCurrentMonthYear === 'function') ? _aiCurrentMonthYear() : '';
+
+  try {
+    if (e.type === 'credit' && e.name) {
+      _aiAddCreditEntry(e.name, e.amount, e.description || 'scanned entry', today);
+    } else if (e.type === 'expense') {
+      _aiAddExpenseRow(today, e.description || e.name || 'scanned expense', e.amount, 0, 0, 0, 0, 0);
+    } else if (e.type === 'petty') {
+      _aiAddPettyItem(e.description || e.name || 'scanned item', e.amount, monthYear);
+    } else {
+      // cash / other / no-name credit — safest generic landing spot
+      _aiAddPettyItem((e.name ? e.name + ' — ' : '') + (e.description || 'scanned entry'), e.amount, monthYear);
+    }
+    if (typeof toast === 'function') toast('✅ Added: ' + (e.name || e.description || 'entry') + ' ₨' + Math.round(e.amount).toLocaleString('en-PK'));
+  } catch (err) {
+    if (typeof toast === 'function') toast('⚠ Could not add entry: ' + err.message, 'w');
+  }
+
+  // Mark row as confirmed in the modal
+  var row = document.getElementById('aip-scan-row-' + i);
+  if (row) {
+    row.style.opacity = '0.55';
+    var btn = row.querySelector('button');
+    if (btn) { btn.outerHTML = '<span style="font-size:12px;font-weight:700;color:#16a34a">✅ Confirmed</span>'; }
+  }
 }

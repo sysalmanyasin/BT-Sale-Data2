@@ -179,16 +179,18 @@
 .cmdhub-empty-icon { font-size: 28px; }
 .cmdhub-empty-text { font-size: 13px; }
 
-/* Mobile FAB — z-index 99997, above bnav (z-index 400) */
+/* Mobile FAB — z-index 99997, above bnav (z-index 400) — small, floating, left side */
 .cmdhub-fab {
-  position: fixed; bottom: 80px; right: 16px; z-index: 99997;
-  width: 52px; height: 52px; border-radius: 50%;
+  position: fixed; bottom: 80px; left: 12px; z-index: 99997;
+  width: 38px; height: 38px; border-radius: 50%;
   background: #2563eb; color: #fff; border: none;
   box-shadow: 0 4px 20px rgba(37,99,235,0.45);
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
   -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  opacity: 0.85;
 }
+.cmdhub-fab svg { width: 16px; height: 16px; }
 .cmdhub-fab:hover { transform: scale(1.08); box-shadow: 0 6px 24px rgba(37,99,235,0.55); }
 .cmdhub-fab:active { transform: scale(0.95); }
 .cmdhub-fab svg { pointer-events: none; }
@@ -539,7 +541,7 @@
         action: () => {
           closePalette();
           setTimeout(() => {
-            if (typeof global.aiToggle === 'function') global.aiToggle();
+            if (typeof global.showPage === 'function') global.showPage('ai');
           }, 80);
         }
       },
@@ -985,7 +987,7 @@
         <div class="cmdhub-empty">
           <div class="cmdhub-empty-icon">🔍</div>
           <div class="cmdhub-empty-text">No results found</div>
-          <button onclick="(function(){var q=document.getElementById('cmdhub-input')&&document.getElementById('cmdhub-input').value||'';CommandHub.close();setTimeout(function(){if(typeof aiOpenFromCommandHub==='function')aiOpenFromCommandHub(q);else if(typeof aiToggle==='function')aiToggle();},100);})()"
+          <button onclick="(function(){var q=document.getElementById('cmdhub-input')&&document.getElementById('cmdhub-input').value||'';CommandHub.close();setTimeout(function(){if(typeof showPage==='function')showPage('ai');},100);})()"
             style="margin-top:12px;padding:9px 20px;border-radius:20px;border:1.5px solid #dbeafe;background:#eff6ff;color:#1d4ed8;font-size:12px;font-weight:600;cursor:pointer;">
             🤖 Ask AI instead
           </button>
@@ -1177,7 +1179,7 @@
             <span class="cmdhub-hint"><span class="cmdhub-kbd">↵</span> open</span>
             <span class="cmdhub-hint"><span class="cmdhub-kbd">Esc</span> close</span>
             <span style="margin-left:auto">
-              <button onclick="CommandHub.close();setTimeout(function(){if(typeof aiToggle==='function')aiToggle();},80)"
+              <button onclick="CommandHub.close();setTimeout(function(){if(typeof showPage==='function')showPage('ai');},80)"
                 style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:12px;border:1px solid #dbeafe;background:#eff6ff;color:#1d4ed8;cursor:pointer;">
                 🤖 Ask AI
               </button>

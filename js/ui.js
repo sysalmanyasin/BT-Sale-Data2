@@ -12,11 +12,6 @@ function showPage(id) {
     if(id==='report') { dsInit(); }
     if(id==='diff')   { renderDiffReport(); }
     if(id==='entry') { autoFillEntryDate(); }
-    // Hide FAB when AI page is active (AI is embedded in the page itself)
-    const fab = document.getElementById('ai-fab');
-    if(fab) fab.style.display = (id==='ai') ? 'none' : '';
-    const bd  = document.getElementById('ai-backdrop');
-    if(bd && id==='ai') { bd.classList.remove('on'); if(typeof _aiOpen !== 'undefined') window._aiOpen = false; }
     if(id==='index') {
       const k = _rcKey('index');
       if (_rc.index && _rc.index.key === k) {

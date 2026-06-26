@@ -6,17 +6,27 @@
 // Groq handles everything else — natural language, analytics, actions.
 // ══════════════════════════════════════════════════════════════════════
 
-// ── Permanent Groq Configuration ─────────────────────────────────────────
-const _GROQ_KEY      = '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';
+// ── Groq Configuration — key is supplied by the user via Settings ─────────
+const _AI_KEY_STORAGE = 'BT_Groq_Key_v1';
 const _GROQ_MODEL    = 'llama-3.3-70b-versatile';
+const _GROQ_VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
 const _GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
 
 function getAiSettings() {
-  return { provider: 'groq', apiKey: _GROQ_KEY };
+  let key = '';
+  try { key = localStorage.getItem(_AI_KEY_STORAGE) || ''; } catch (_) {}
+  return { provider: 'groq', apiKey: key };
 }
-function saveAiSettings() {}
-function clearAiSettings() {}
-function aiHasKey() { return true; }
+function saveAiSettings(apiKey) {
+  try {
+    if (apiKey) localStorage.setItem(_AI_KEY_STORAGE, apiKey.trim());
+    else localStorage.removeItem(_AI_KEY_STORAGE);
+  } catch (_) {}
+}
+function clearAiSettings() {
+  try { localStorage.removeItem(_AI_KEY_STORAGE); } catch (_) {}
+}
+function aiHasKey() { return !!getAiSettings().apiKey; }
 
 // ── Safe intent whitelist ─────────────────────────────────────────────────
 const AI_SAFE_INTENTS = new Set([
@@ -251,8 +261,53 @@ function _aiParseDailyFieldCommand(text) {
   return null;
 }
 
+function _aiParseCustomSectionCommand(text) {
+  const t = text.trim();
+  // Needs a clear amount to act on — otherwise let Groq ask a clarifying question.
+  const amtMatch = t.match(/(-?\d[\d,]*)\s*(?:rs|rupees|₨)?\s*$/i) || t.match(/(?:rs|rupees|₨)\s*(-?\d[\d,]*)/i);
+  if (!amtMatch) return null;
+  const amount = parseFloat(amtMatch[1].replace(/,/g, ''));
+  if (!amount) return null;
+
+  let all;
+  try { all = JSON.parse(localStorage.getItem('mw_custom_sections_v1') || '{}'); } catch (_) { return null; }
+  const ids = Object.keys(all);
+  if (!ids.length) return null;
+
+  const norm = s => (s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const tNorm = norm(t.replace(amtMatch[0], ''));
+  if (!tNorm) return null;
+
+  // Fuzzy-match: every word of the section name must appear in the message
+  // (e.g. section "Salman Jazz Cash" matches "jazz cash salman 5000").
+  let best = null, bestScore = 0;
+  ids.forEach(function (id) {
+    const name = all[id].name || '';
+    const words = norm(name).split(' ').filter(Boolean);
+    if (!words.length) return;
+    const hits = words.filter(function (w) { return tNorm.includes(w); }).length;
+    const score = hits / words.length;
+    if (score > bestScore) { bestScore = score; best = id; }
+  });
+  if (!best || bestScore < 0.6) return null;
+
+  const secName = all[best].name;
+  const today   = _aiTodayStr();
+  return {
+    text: '\u2705 Adding \u20a8' + Math.abs(amount).toLocaleString('en-PK') + ' to <b>' + secName + '</b>.',
+    intent: { action: 'addCustomSectionRow', params: [secName, today, amount, ''] },
+  };
+}
+
 function _aiParseNavCommand(text) {
   const t = text.toLowerCase().trim();
+  // Be conservative: only treat this as pure navigation if the message IS a
+  // navigation phrase (short, or starts with an explicit nav verb) — not just
+  // any sentence that happens to mention a page/tab name in passing.
+  const isNavPhrase = /^(open|go to|goto|show|switch to|navigate to|take me to|jao|kholo)\b/.test(t) ||
+                       t.split(/\s+/).filter(Boolean).length <= 4;
+  if (!isNavPhrase) return null;
+
   const pages = {
     dashboard: ['dashboard','home','ghar','main','summary'],
     index:     ['index','month index','all months'],
@@ -424,7 +479,7 @@ function _buildLlmPrompt(question) {
   // ── App data snapshot ─────────────────────────────────────────────
   let ctx = '';
   try {
-    const snap = (typeof getAppContextSummary === 'function') ? getAppContextSummary({ fullMonths: 3 }) : null;
+    const snap = (typeof getAppContextSummary === 'function') ? getAppContextSummary({ fullMonths: 'all' }) : null;
     if (snap) ctx = '\nDATA SNAPSHOT:\n' + snap;
   } catch (_) {}
 
@@ -595,11 +650,13 @@ function _buildLlmPrompt(question) {
 // GROQ API CALLER — permanent key
 // ══════════════════════════════════════════════════════════════════════
 async function _callGroq(question) {
+  const apiKey = getAiSettings().apiKey;
+  if (!apiKey) throw new Error('No Groq API key set. Tap the ⚙ gear in the AI page to add yours.');
   const res = await fetch(_GROQ_ENDPOINT, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + _GROQ_KEY,
+      'Authorization': 'Bearer ' + apiKey,
     },
     body: JSON.stringify({
       model:       _GROQ_MODEL,
@@ -616,6 +673,73 @@ async function _callGroq(question) {
   const raw  = data.choices?.[0]?.message?.content;
   if (!raw) throw new Error('Groq returned an empty response.');
   return _parseLlmResponse(raw);
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// GROQ VISION CALLER — for "Scan Image" entry extraction
+// ══════════════════════════════════════════════════════════════════════
+async function _callGroqVision(base64DataUrl, extraNote) {
+  const apiKey = getAiSettings().apiKey;
+  if (!apiKey) throw new Error('No Groq API key set. Tap the ⚙ gear in the AI page to add yours.');
+
+  const sysPrompt = [
+    'You read photos of handwritten/printed closing sheets, credit registers, receipts, or WhatsApp chat screenshots',
+    'for a petrol station / retail business, and extract every distinct entry you can find.',
+    '',
+    'Return ONLY a JSON object, no markdown, no commentary, in this exact shape:',
+    '{"entries":[{"name":"person or client name (or empty)","amount":1234,"description":"short description / item / context","type":"credit|expense|petty|cash|other"}]}',
+    '',
+    '\u2022 "amount" must be a plain number (no commas, no currency symbol).',
+    '\u2022 "type":"credit" for money owed by/lent to a person or client.',
+    '\u2022 "type":"expense" for money spent (electricity, repairs, salary, etc).',
+    '\u2022 "type":"petty" for small day-to-day petty-cash items.',
+    '\u2022 "type":"cash"   for a plain cash/sale figure with no clear person/category.',
+    '\u2022 If unsure, use "other".',
+    '\u2022 Skip totals/subtotal lines \u2014 only list individual entries.',
+    '\u2022 If a line has no amount, skip it.',
+    extraNote ? ('\u2022 Extra context from user: ' + extraNote) : null,
+  ].filter(Boolean).join('\n');
+
+  const res = await fetch(_GROQ_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + apiKey,
+    },
+    body: JSON.stringify({
+      model: _GROQ_VISION_MODEL,
+      messages: [
+        { role: 'system', content: sysPrompt },
+        { role: 'user', content: [
+            { type: 'text', text: 'Extract all entries from this image as JSON.' },
+            { type: 'image_url', image_url: { url: base64DataUrl } },
+          ] },
+      ],
+      max_tokens: 1500,
+      temperature: 0.1,
+    }),
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error('Groq ' + res.status + ': ' + ((e.error && e.error.message) || res.statusText));
+  }
+  const data = await res.json();
+  const raw  = data.choices?.[0]?.message?.content;
+  if (!raw) throw new Error('Groq returned an empty response.');
+  const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+  let parsed;
+  try { parsed = JSON.parse(cleaned); } catch (_) { throw new Error('Could not parse AI response. Try a clearer photo.'); }
+  const entries = Array.isArray(parsed.entries) ? parsed.entries : [];
+  return entries
+    .map(function (e) {
+      return {
+        name: (e.name || '').toString().trim(),
+        amount: parseFloat(String(e.amount || '0').replace(/,/g, '')) || 0,
+        description: (e.description || '').toString().trim(),
+        type: ['credit','expense','petty','cash','other'].includes(e.type) ? e.type : 'other',
+      };
+    })
+    .filter(function (e) { return e.amount > 0; });
 }
 
 function _parseLlmResponse(raw) {
@@ -639,6 +763,7 @@ async function aiBridgeAnswer(text) {
     const expenseCmd = _aiParseExpenseCommand(text);    if (expenseCmd) return expenseCmd;
     const pettyCmd   = _aiParsePettyCommand(text);      if (pettyCmd)   return pettyCmd;
     const fieldCmd   = _aiParseDailyFieldCommand(text); if (fieldCmd)   return fieldCmd;
+    const csecCmd    = _aiParseCustomSectionCommand(text); if (csecCmd) return csecCmd;
     const printCmd   = _aiParsePrintCommand(text);      if (printCmd)   return printCmd;
     const navCmd     = _aiParseNavCommand(text);        if (navCmd)     return navCmd;
     const analytics  = _aiDeepSalesAnalysis(text);      if (analytics)  return { text: analytics, intent: null };
