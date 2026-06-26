@@ -151,20 +151,21 @@ function mergeIncomingData(data, isPull = false) {
 
   if (data.manager) {
     const cur = JSON.parse(localStorage.getItem(MGR_KEY) || '{}');
-    if (isPull) {
-      const merged = JSON.parse(JSON.stringify(cur || {}));
-      ['salary', 'generic', 'expense', 'credit'].forEach(sec => {
-        if (data.manager[sec] && typeof data.manager[sec] === 'object') {
-          if (!merged[sec]) merged[sec] = {};
-          Object.keys(data.manager[sec]).forEach(month => {
-            merged[sec][month] = data.manager[sec][month];
-          });
-        }
-      });
-      localStorage.setItem(MGR_KEY, JSON.stringify(merged));
-    } else {
-      localStorage.setItem(MGR_KEY, JSON.stringify(Object.assign({}, data.manager, cur)));
-    }
+    const merged = JSON.parse(JSON.stringify(cur || {}));
+    ['salary', 'generic', 'expense', 'credit'].forEach(sec => {
+      if (data.manager[sec] && typeof data.manager[sec] === 'object') {
+        if (!merged[sec]) merged[sec] = {};
+        Object.keys(data.manager[sec]).forEach(month => {
+          // Per-month merge, not per-section: a section key always exists
+          // locally once that tab has been opened, so overwriting the whole
+          // section object (instead of just the months that conflict) would
+          // silently drop any month-only-on-the-other-side.
+          if (isPull) merged[sec][month] = data.manager[sec][month];          // remote wins on pull
+          else if (!(month in merged[sec])) merged[sec][month] = data.manager[sec][month]; // local wins on push — only fill gaps
+        });
+      }
+    });
+    localStorage.setItem(MGR_KEY, JSON.stringify(merged));
   }
 
   if (data.petty) {
@@ -184,16 +185,31 @@ function mergeIncomingData(data, isPull = false) {
   }
 
   if (data.custom) {
-    const local = JSON.parse(localStorage.getItem(CSEC_KEY) || '{}');
-    localStorage.setItem(CSEC_KEY, JSON.stringify(
-      isPull ? Object.assign({}, local, data.custom)
-             : Object.assign({}, data.custom, local)
-    ));
+    const local  = JSON.parse(localStorage.getItem(CSEC_KEY) || '{}');
+    const merged = JSON.parse(JSON.stringify(local || {}));
+    Object.keys(data.custom).forEach(sectionId => {
+      const remoteSec = data.custom[sectionId];
+      if (!remoteSec || typeof remoteSec !== 'object') return;
+      if (!merged[sectionId]) merged[sectionId] = {};
+      // Section data is keyed by month (sectionId -> monthKey -> rows), so
+      // merge at the month level — a shallow per-section overwrite would
+      // drop any month that only exists on the other side.
+      Object.keys(remoteSec).forEach(month => {
+        if (isPull) merged[sectionId][month] = remoteSec[month];          // remote wins on pull
+        else if (!(month in merged[sectionId])) merged[sectionId][month] = remoteSec[month]; // local wins on push — only fill gaps
+      });
+    });
+    localStorage.setItem(CSEC_KEY, JSON.stringify(merged));
   }
 
-  if (data.targets && isPull) {
-    const local = JSON.parse(localStorage.getItem(TGT_K) || '{}');
-    localStorage.setItem(TGT_K, JSON.stringify(Object.assign({}, data.targets, local)));
+  if (data.targets) {
+    const local  = JSON.parse(localStorage.getItem(TGT_K) || '{}');
+    const merged = JSON.parse(JSON.stringify(local || {}));
+    Object.keys(data.targets).forEach(month => {
+      if (isPull) merged[month] = data.targets[month];          // remote wins on pull
+      else if (!(month in merged)) merged[month] = data.targets[month]; // local wins on push — only fill gaps
+    });
+    localStorage.setItem(TGT_K, JSON.stringify(merged));
   }
 
   return { mN, dN, mU, dU };

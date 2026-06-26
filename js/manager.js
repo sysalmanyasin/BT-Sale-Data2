@@ -79,6 +79,11 @@ function buildMonthlyPrintHTML(my) {
     ${_prRowOpt('Food Panda', m['Food Panda'])}
     ${_prRowOpt('Askari', m['Askari Bank'])}
     ${_prRowOpt('Askari Returns', m['Askari Bank Returns'])}
+    ${_prRowOpt('PSO Returns', negR(m['PSO Returns']))}
+    ${_prRowOpt('NESPAK Returns', negR(m['NESPAK Returns']))}
+    ${_prRowOpt('PARCO Returns', negR(m['PARCO Returns']))}
+    ${_prRowOpt('TEPA Returns', negR(m['TEPA Returns']))}
+    ${_prRowOpt('LDA Returns', negR(m['LDA Returns']))}
     ${_prRowOpt('F/Issue', m['F/Issue'])}
     <tr class="tot"><td>GRAND TOTAL</td><td class="r">₨${Math.round(total).toLocaleString('en-PK')}</td></tr>
     <tr><td class="l">Customers</td><td class="r">${Math.round(cust).toLocaleString('en-PK')}</td></tr>
@@ -209,7 +214,7 @@ function buildYearlyPrintHTML(yr) {
     </tr>`;
   }).join('');
 
-  const clientCols = ['PSO','NESPAK','PARCO','TEPA','LDA','Gourmet','Wapda Hospital','BTH','Berger Paints','Ecolean PK','Style Textile','Syed Babar Ali Foundation','Rahnuma NGO','Health Pass','Nisar Spinning Mills','Food Panda','Askari Bank','Askari Bank Returns','F/Issue'];
+  const clientCols = ['PSO','PSO Returns','NESPAK','NESPAK Returns','PARCO','PARCO Returns','TEPA','TEPA Returns','LDA','LDA Returns','Gourmet','Wapda Hospital','BTH','Berger Paints','Ecolean PK','Style Textile','Syed Babar Ali Foundation','Rahnuma NGO','Health Pass','Nisar Spinning Mills','Food Panda','Askari Bank','Askari Bank Returns','F/Issue'];
   const clientRows = clientCols.map(c => {
     const pick = RETURN_FIELDS.has(c) ? negR : n;
     const v = mons.reduce((s, m) => s + pick(m[c]), 0);
