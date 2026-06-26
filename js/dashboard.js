@@ -89,6 +89,15 @@ function buildDashboard() {
     ...(bScore!=null?[{label:'Branch Performance Score',value:bScore+'/100',
       bar:{pct:bScore,cls:bScore>=75?'g':bScore>=50?'a':'r'},
       borderColor:bScore>=75?'var(--green)':bScore>=50?'var(--amber)':'var(--red)'}]:[]),
+    // Cumulative DIFF KPI
+    (()=>{
+      const cumDiff=MONTHLY.reduce((s,m)=>s+Math.round(n(m.TOTAL)-n(m['COMP SALE'])),0);
+      const sign=cumDiff>=0?'+':'';
+      const col=cumDiff>0?'var(--green)':cumDiff<0?'var(--red)':'var(--muted)';
+      const lbl=cumDiff>0?'Physical ahead of system':'System ahead of physical';
+      return {label:'📉 CC Difference',value:sign+'₨ '+ff(cumDiff),
+        sub:lbl+' · '+MONTHLY.length+' months',borderColor:col};
+    })(),
   ];
 
   document.getElementById('krow').innerHTML=kpis.map(k=>`

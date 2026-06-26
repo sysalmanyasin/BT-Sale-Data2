@@ -8,6 +8,7 @@ function showPage(id) {
   if(id==='tools') { loadToolsPage(); }
   if(id==='manager') { loadManagerPage(); }
   if(id==='report') { dsInit(); }
+  if(id==='diff')   { renderDiffReport(); }
   if(id==='entry') { autoFillEntryDate(); }
   if(id==='index') {
     const k = _rcKey('index');
@@ -102,6 +103,7 @@ function rebuildAll() {
   buildDateList();
   // If report tab is open and a date was already selected, re-render so fresh data shows
   if(_curPage==='report' && _selDate && _selMy) renderReport();
+  if(_curPage==='diff') renderDiffReport();
 }
 
 
