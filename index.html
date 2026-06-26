@@ -210,6 +210,7 @@ if ('serviceWorker' in navigator) {
     <button class="ntab" data-page="data">Daily Data</button>
     <button class="ntab" data-page="entry">Add Entry</button>
     <button class="ntab" data-page="report">Sale Report</button>
+    <button class="ntab" data-page="diff">DIFF Report</button>
     <button class="ntab" data-page="tools">Tools</button>
     <button class="ntab" data-page="manager">👔 Manager</button>
   </div>
@@ -229,6 +230,7 @@ if ('serviceWorker' in navigator) {
   <button class="bnav-item" data-page="data"><span class="bicon">📋</span><span class="blabel">Data</span></button>
   <button class="bnav-item" data-page="entry"><span class="bicon">➕</span><span class="blabel">Entry</span></button>
   <button class="bnav-item" data-page="report"><span class="bicon">🧾</span><span class="blabel">Report</span></button>
+  <button class="bnav-item" data-page="diff"><span class="bicon">📉</span><span class="blabel">DIFF</span></button>
   <button class="bnav-item" data-page="tools"><span class="bicon">⚙️</span><span class="blabel">Tools</span></button>
   <button class="bnav-item" data-page="manager"><span class="bicon">👔</span><span class="blabel">Manager</span></button>
 </div>
@@ -786,6 +788,16 @@ if ('serviceWorker' in navigator) {
   </div>
 </div>
 
+<!-- DIFF REPORT -->
+<div class="page" id="page-diff">
+  <div class="hero">
+    <div class="hlabel">Difference Report</div>
+    <div class="htitle" style="font-size:18px">Total Sale vs COMP SALE</div>
+    <div class="hsub">Monthly gap between physical sales and computer records, with running cumulative.</div>
+  </div>
+  <div id="diff-report-wrap"></div>
+</div>
+
 <!-- MANAGER WORK -->
 <div class="page" id="page-manager">
   <div class="hero"><h1 class="htitle">👔 Manager Work</h1><p class="hsub" id="mgr-hero-sub">Salary · Generic · Expenses · Petty Detail · Incentive · Staff Credit</p></div>
@@ -1128,6 +1140,7 @@ if ('serviceWorker' in navigator) {
 
 <!-- 11. Data page: daily table + entry form -->
 <script src="js/data-page.js"></script>
+<script src="js/diff-report.js"></script>
 
 <!-- 12. Manager: salary, generic, expense, credit, petty, incentive -->
 <script src="js/manager.js"></script>
@@ -1140,9 +1153,6 @@ if ('serviceWorker' in navigator) {
 
 <!-- 15. Google Drive backup / restore -->
 <script src="js/drive.js"></script>
-
-<!-- 16. CommandHub — Universal Search & Command Palette (Ctrl+K) -->
-<script src="js/commandhub.js"></script>
 
 <!-- Staff Card Popup Modal -->
 <div class="sc-bg" id="sc-bg" onclick="if(event.target===this)closeStaffCard()">

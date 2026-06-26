@@ -4,7 +4,7 @@
    Data (Supabase / Drive API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v5.5';
+const CACHE_NAME = 'bt-sales-v4.3';
 
 const APP_SHELL = [
   './',
@@ -34,7 +34,6 @@ const APP_SHELL = [
   './js/custom-sections.js',
   './js/fields.js',
   './js/drive.js',
-  './js/commandhub.js',
   /* Icons */
   './icons/icon.svg',
   './icons/icon-192.png',
