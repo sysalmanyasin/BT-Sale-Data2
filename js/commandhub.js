@@ -195,8 +195,10 @@
 
 /* bnav shows at ≤860px — match the app's own breakpoint */
 @media (min-width: 861px) {
-  .cmdhub-fab { display: none; }
   .cmdhub-overlay { padding-top: 12vh; }
+}
+@media (min-width: 861px) and (hover: hover) and (pointer: fine) {
+  .cmdhub-fab { display: none; }
 }
 @media (max-width: 860px) {
   .cmdhub-overlay { align-items: flex-end; padding: 0; }
