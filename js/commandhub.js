@@ -379,6 +379,11 @@
         tags:['manager','staff','salary'],
         action: go('manager') },
 
+      { id:'nav-diff', icon:'📉', title:'DIFF Report',
+        sub:'Total Sale vs COMP SALE — cumulative CC difference by month',
+        tags:['diff','difference','comp','sale','cc','computer','report'],
+        action: go('diff') },
+
       // ── Manager sub-tabs ────────────────────────────────────────
       { id:'mgr-staff', icon:'👥', title:'Staff Management',
         sub:'Add, edit, and manage employees',
