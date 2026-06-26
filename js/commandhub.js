@@ -531,6 +531,18 @@
           }, 100);
         }
       },
+
+      // ── AI Assistant ─────────────────────────────────────────────
+      { id:'ask-ai', icon:'🤖', title:'Ask AI Assistant',
+        sub:'Groq AI — sales analytics, credit, Jazz Cash, custom entries',
+        tags:['ai','ask','groq','assistant','question','chat','analytics','credit','jazzcash','jazz cash','highest','compare','total','petty','expense','load sale','diff'],
+        action: () => {
+          closePalette();
+          setTimeout(() => {
+            if (typeof global.aiToggle === 'function') global.aiToggle();
+          }, 80);
+        }
+      },
     ];
   }
 
@@ -973,6 +985,10 @@
         <div class="cmdhub-empty">
           <div class="cmdhub-empty-icon">🔍</div>
           <div class="cmdhub-empty-text">No results found</div>
+          <button onclick="(function(){var q=document.getElementById('cmdhub-input')&&document.getElementById('cmdhub-input').value||'';CommandHub.close();setTimeout(function(){if(typeof aiOpenFromCommandHub==='function')aiOpenFromCommandHub(q);else if(typeof aiToggle==='function')aiToggle();},100);})()"
+            style="margin-top:12px;padding:9px 20px;border-radius:20px;border:1.5px solid #dbeafe;background:#eff6ff;color:#1d4ed8;font-size:12px;font-weight:600;cursor:pointer;">
+            🤖 Ask AI instead
+          </button>
         </div>`;
       return;
     }
@@ -1160,6 +1176,12 @@
             </span>
             <span class="cmdhub-hint"><span class="cmdhub-kbd">↵</span> open</span>
             <span class="cmdhub-hint"><span class="cmdhub-kbd">Esc</span> close</span>
+            <span style="margin-left:auto">
+              <button onclick="CommandHub.close();setTimeout(function(){if(typeof aiToggle==='function')aiToggle();},80)"
+                style="font-size:11px;font-weight:600;padding:4px 10px;border-radius:12px;border:1px solid #dbeafe;background:#eff6ff;color:#1d4ed8;cursor:pointer;">
+                🤖 Ask AI
+              </button>
+            </span>
           </div>
         </div>
       </div>
