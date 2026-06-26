@@ -23,7 +23,7 @@ function _driveUpdateBadge(state) {
   else { b.className='badge bg-amber'; b.textContent='Not set up'; }
 }
 
-function driveAuthorize() {
+async function driveAuthorize() {
   // If sign-in already granted a drive.file token, reuse it — no popup needed
   if (_driveAccessToken) {
     _driveUpdateBadge('ok');
@@ -31,7 +31,19 @@ function driveAuthorize() {
     toast('✓ Google Drive ready');
     return;
   }
-  // Token expired or missing — re-trigger the redirect OAuth flow
+  // Token expired or missing — first try a silent renewal (no UI at all);
+  // this succeeds whenever the browser still has an active Google session
+  // and previously granted the scope, which covers the common case of
+  // reopening the app after the access token (but not the app session) expired.
+  driveLog('Checking for an existing Google session…');
+  const token = await _driveSilentReauth();
+  if (token) {
+    _driveUpdateBadge('ok');
+    driveLog('✓ Drive reconnected silently. Ready to backup.','ok');
+    toast('✓ Google Drive ready');
+    return;
+  }
+  // Silent renewal not possible — fall back to the redirect OAuth flow
   // (it already requests drive.file scope, so sign-in + Drive are granted together)
   driveLog('Redirecting to Google for Drive authorization…');
   toast('Redirecting to Google…','w');

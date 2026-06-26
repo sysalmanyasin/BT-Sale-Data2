@@ -312,6 +312,53 @@ function _gauthCallback(response) {
   }
 }
 
+// ── Silent Drive token renewal (GIS) ──────────────────────────────
+// The 1-year app session (GAUTH_SESS_K) only remembers *who* is signed in —
+// it was never able to carry a live Drive access token across reloads,
+// since the old implicit-flow token isn't persisted (nor should it be).
+// This uses the Google Identity Services token client with prompt:'' to
+// silently re-request a Drive token, which succeeds with no UI as long as
+// the browser still has an active Google session and has previously
+// granted the drive.file scope — exactly the case right after a normal
+// sign-in. If silent renewal isn't possible (consent revoked, no active
+// Google session, GIS script blocked, etc.) it just resolves to null and
+// Drive falls back to the existing "Authorize Drive" redirect flow.
+const GAUTH_BAKED_CID = '36704237826-6lg0o3u0voqhdkvdj3kd331jsft62uun.apps.googleusercontent.com';
+let _gisTokenClient = null;
+function _driveSilentReauth(timeoutMs = 4000) {
+  return new Promise(resolve => {
+    let settled = false;
+    const finish = token => { if (!settled) { settled = true; resolve(token || null); } };
+    const tryNow = (attempt = 0) => {
+      if (!(window.google && window.google.accounts && window.google.accounts.oauth2)) {
+        // GIS script loads with `async` — it may not be ready yet on first load.
+        if (attempt < 15) { setTimeout(() => tryNow(attempt + 1), 300); return; }
+        finish(null); return;
+      }
+      try {
+        if (!_gisTokenClient) {
+          _gisTokenClient = google.accounts.oauth2.initTokenClient({
+            client_id: GAUTH_BAKED_CID,
+            scope: 'https://www.googleapis.com/auth/drive.file',
+            prompt: '',
+            callback: resp => {
+              if (resp && resp.access_token) {
+                _driveAccessToken = resp.access_token;
+                if (typeof _driveUpdateBadge === 'function') _driveUpdateBadge('ok');
+                finish(resp.access_token);
+              } else finish(null);
+            },
+            error_callback: () => finish(null)
+          });
+        }
+        _gisTokenClient.requestAccessToken();
+      } catch (e) { finish(null); }
+    };
+    tryNow();
+    setTimeout(() => finish(null), timeoutMs); // hard cap — never hang the caller
+  });
+}
+
 // ── If a valid session exists, show resume bar ────────────────────
 function _gauthCheckSession() {
   const s = gauthGetSession();
@@ -322,6 +369,11 @@ function _gauthCheckSession() {
   }
   // Valid session → auto-unlock immediately, no button click required
   unlockApp();
+  // Restore the Drive token silently in the background so Drive backup/restore
+  // work right away without forcing the user through a full redirect again.
+  _driveSilentReauth().then(token => {
+    if (token && typeof driveLog === 'function') driveLog('✓ Drive session restored silently', 'ok');
+  });
 }
 function gauthConfirmUser() { unlockApp(); }
 function gauthSignOut() {
