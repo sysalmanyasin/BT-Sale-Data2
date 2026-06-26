@@ -1,0 +1,1897 @@
+// PRINT REPORTS — Monthly & Yearly
+// ══════════════════════════════════════════
+
+function _prRow(lbl, val, opts='') {
+  const v = Math.round(n(val));
+  const s = v === 0 ? '—' : '₨ ' + Math.abs(v).toLocaleString('en-PK');
+  return `<tr${opts}><td class="l">${lbl}</td><td class="r">${s}</td></tr>`;
+}
+function _prRowOpt(lbl, val, opts='') { return n(val) !== 0 ? _prRow(lbl, val, opts) : ''; }
+
+// Candidate daily columns for the landscape breakdown page. Only columns
+// with at least one non-zero value in the selected month are rendered.
+const DAILY_COL_DEFS = [
+  ['Cash Sale','Cash Sale'], ['Cash Returns','Cash Returns'],
+  ['HBL','HBL'], ['MCB','MCB'], ['Alfala Bank','Bank Alfalah'],
+  ['Bank Al Habib','Bank Al Habib'], ['Meezan Bank (Paysa)','Meezan Bank'],
+  ['Askari Bank','Askari'], ['Askari Bank Returns','Askari Returns'],
+  ['PSO','PSO'], ['PSO Returns','PSO Returns'],
+  ['NESPAK','NESPAK'], ['NESPAK Returns','NESPAK Returns'],
+  ['PARCO','PARCO'], ['PARCO Returns','PARCO Returns'],
+  ['TEPA','TEPA'], ['TEPA Returns','TEPA Returns'],
+  ['LDA','LDA'], ['LDA Returns','LDA Returns'],
+  ['Gourmet','Gourmet'], ['Wapda Hospital','Wapda Hosp.'], ['BTH','BTH'],
+  ['Berger Paints','Berger Paints'], ['Ecolean PK','Ecolean PK'],
+  ['Style Textile','Style Textile'], ['Syed Babar Ali Foundation','SBA Fdn'],
+  ['Rahnuma NGO','Rahnuma NGO'], ['Health Pass','Health Pass'],
+  ['Nisar Spinning Mills','Nisar Spinning'], ['Food Panda','Food Panda'],
+  ['F/Issue','F/Issue'], ['COMP SALE','COMP Sale'],
+  ['FDPP','FDPP POS'], ['FDPP Con','FDPP Consumer'],
+  ['Amount Received','Amount Received'], ['Load Sale','Load Sale'],
+  ['Cash to be Deposited','Cash to Deposit'],
+];
+
+
+// ── Monthly print ─────────────────────────────────────────────────────────────
+function buildMonthlyPrintHTML(my) {
+  const m = MONTHLY.find(x => x.Month_Year === my);
+  if (!m) return null;
+  const days = DAILY.filter(d => d.Month_Year === my && (n(d.TOTAL) !== 0 || d['Low Sale Reason']));
+  days.sort((a, b) => _dateVal(a.Date) - _dateVal(b.Date));
+  const tgts = getTgts(), tgt = tgts[my];
+  const total = n(m.TOTAL), cust = n(m.Customers);
+  const pct = tgt ? Math.min(100, Math.round(total / tgt * 100)) : null;
+  const today = new Date().toLocaleDateString('en-PK', {day:'2-digit',month:'short',year:'numeric'});
+
+  const kpiHtml = `<div class="pr-kpis">
+    <div class="pr-kpi"><div class="pr-kpi-l">Total Sales</div><div class="pr-kpi-v">₨${(total/1e6).toFixed(2)}M</div></div>
+    <div class="pr-kpi"><div class="pr-kpi-l">Customers</div><div class="pr-kpi-v">${Math.round(cust).toLocaleString('en-PK')}</div></div>
+    <div class="pr-kpi"><div class="pr-kpi-l">Target Progress</div><div class="pr-kpi-v">${pct !== null ? pct + '%' : 'N/A'}</div></div>
+  </div>`;
+
+  const summHtml = `<table class="pr-tbl">
+    <thead><tr><th>Category</th><th class="r">Amount (₨)</th></tr></thead>
+    <tbody>
+    <tr class="grp"><td colspan="2">Cash</td></tr>
+    ${_prRow('Cash Sale', m['Cash Sale'])}
+    ${_prRowOpt('Cash Returns', m['Cash Returns'])}
+    ${_prRowOpt('Bank Alfalah', m['Alfala Bank'])}
+    ${_prRowOpt('Bank Al Habib', m['Bank Al Habib'])}
+    ${_prRowOpt('Meezan Bank', m['Meezan Bank (Paysa)'])}
+    ${_prRowOpt('HBL', m.HBL)}
+    ${_prRowOpt('MCB', m.MCB)}
+    <tr class="grp"><td colspan="2">Credit Clients</td></tr>
+    ${_prRowOpt('PSO', m.PSO)}
+    ${_prRowOpt('NESPAK', m.NESPAK)}
+    ${_prRowOpt('PARCO', m.PARCO)}
+    ${_prRowOpt('TEPA', m.TEPA)}
+    ${_prRowOpt('LDA', m.LDA)}
+    ${_prRowOpt('Gourmet', m.Gourmet)}
+    ${_prRowOpt('Wapda Hospital', m['Wapda Hospital'])}
+    ${_prRowOpt('BTH', m.BTH)}
+    ${_prRowOpt('Berger Paints', m['Berger Paints'])}
+    ${_prRowOpt('Ecolean PK', m['Ecolean PK'])}
+    ${_prRowOpt('Style Textile', m['Style Textile'])}
+    ${_prRowOpt('Syed Babar Ali Fdn', m['Syed Babar Ali Foundation'])}
+    ${_prRowOpt('Rahnuma NGO', m['Rahnuma NGO'])}
+    ${_prRowOpt('Health Pass', m['Health Pass'])}
+    ${_prRowOpt('Nisar Spinning', m['Nisar Spinning Mills'])}
+    ${_prRowOpt('Food Panda', m['Food Panda'])}
+    ${_prRowOpt('Askari', m['Askari Bank'])}
+    ${_prRowOpt('Askari Returns', m['Askari Bank Returns'])}
+    ${_prRowOpt('PSO Returns', negR(m['PSO Returns']))}
+    ${_prRowOpt('NESPAK Returns', negR(m['NESPAK Returns']))}
+    ${_prRowOpt('PARCO Returns', negR(m['PARCO Returns']))}
+    ${_prRowOpt('TEPA Returns', negR(m['TEPA Returns']))}
+    ${_prRowOpt('LDA Returns', negR(m['LDA Returns']))}
+    ${_prRowOpt('F/Issue', m['F/Issue'])}
+    <tr class="tot"><td>GRAND TOTAL</td><td class="r">₨${Math.round(total).toLocaleString('en-PK')}</td></tr>
+    <tr><td class="l">Customers</td><td class="r">${Math.round(cust).toLocaleString('en-PK')}</td></tr>
+    ${tgt ? `<tr><td class="l">Monthly Target</td><td class="r">₨${Math.round(tgt).toLocaleString('en-PK')} (${pct}%)</td></tr>` : ''}
+    </tbody>
+  </table>`;
+
+  // Page 2+: landscape daily breakdown — only columns with real data.
+  // Rows are explicitly chunked into fixed-size pages rather than letting
+  // one huge table overflow naturally. Letting the browser handle overflow
+  // across a landscape page caused two bugs in testing: (1) any rows past
+  // what fit on the first landscape page got silently pushed onto a 3rd
+  // page that reverted to portrait (named @page rules don't reliably
+  // re-apply to browser-generated continuation pages), and (2) faint
+  // ghosted content from page 1 bled through behind that broken page.
+  // Giving every page its own explicit .pr-landscape wrapper sidesteps
+  // both issues entirely — each page is independently forced to landscape.
+  const ROWS_PER_PAGE = 26; // fits comfortably on a Letter landscape page with ~9 columns
+  // Returns-type columns must always display/sum as negative, regardless of
+  // how the underlying record happens to be signed (see RETURN_FIELDS /
+  // negR in config.js) — this is what keeps the printed report correct
+  // even for records edited before that bug was fixed at the source.
+  const colVal = (d, key) => RETURN_FIELDS.has(key) ? negR(d[key]) : n(d[key]);
+  const activeCols = DAILY_COL_DEFS.filter(([key]) => days.some(d => colVal(d, key) !== 0));
+  const hasNotes = days.some(d => d['Low Sale Reason']);
+  const colCount = 3 + activeCols.length + (hasNotes ? 1 : 0);
+
+  const dayHeadCells = [
+    '<th>Date</th>', '<th class="r">Total</th>', '<th class="r">Customers</th>',
+    ...activeCols.map(([,label]) => `<th class="r">${label}</th>`),
+    ...(hasNotes ? ['<th>Note</th>'] : []),
+  ].join('');
+
+  function rowHtml(d) {
+    const cells = [
+      `<td class="l">${d.Date}</td>`,
+      `<td class="r">${n(d.TOTAL) ? '₨ ' + Math.round(n(d.TOTAL)).toLocaleString('en-PK') : '—'}</td>`,
+      `<td class="r">${n(d.Customers) ? Math.round(n(d.Customers)).toLocaleString('en-PK') : '—'}</td>`,
+      ...activeCols.map(([key]) => { const v = colVal(d, key); return `<td class="r">${v ? '₨ ' + Math.round(v).toLocaleString('en-PK') : '—'}</td>`; }),
+      ...(hasNotes ? [`<td class="l" style="font-size:9px;color:#64748b">${d['Low Sale Reason'] || ''}</td>`] : []),
+    ];
+    return `<tr>${cells.join('')}</tr>`;
+  }
+
+  function totalsRowHtml() {
+    return `<tr class="tot">
+      <td class="l">TOTAL</td>
+      <td class="r">₨ ${Math.round(total).toLocaleString('en-PK')}</td>
+      <td class="r">${Math.round(cust).toLocaleString('en-PK')}</td>
+      ${activeCols.map(([key]) => `<td class="r">₨ ${Math.round(days.reduce((s,d)=>s+colVal(d,key),0)).toLocaleString('en-PK')}</td>`).join('')}
+      ${hasNotes ? '<td></td>' : ''}
+    </tr>`;
+  }
+
+  // Split days into fixed-size chunks, one per landscape page.
+  const dayChunks = [];
+  for (let i = 0; i < days.length; i += ROWS_PER_PAGE) dayChunks.push(days.slice(i, i + ROWS_PER_PAGE));
+  if (!dayChunks.length) dayChunks.push([]); // still render an empty page if no data
+
+  const totalPages = dayChunks.length;
+  const landscapePages = dayChunks.map((chunk, idx) => {
+    const isLast = idx === dayChunks.length - 1;
+    const rows = chunk.map(rowHtml).join('')
+      || `<tr><td colspan="${colCount}" style="text-align:center;padding:12px;color:#94a3b8">No daily records</td></tr>`;
+    const tbody = rows + (isLast && days.length ? totalsRowHtml() : '');
+    const pageNote = totalPages > 1 ? ` — Page ${idx + 1} of ${totalPages}` : '';
+    return `<div class="pr-landscape">
+      <div class="pr-land-title">Daily Breakdown — ${my} (${days.length} day${days.length===1?'':'s'})${pageNote}</div>
+      <table class="pr-tbl">
+        <thead><tr>${dayHeadCells}</tr></thead>
+        <tbody>${tbody}</tbody>
+      </table>
+    </div>`;
+  }).join('');
+
+  return `<div style="max-width:680px;margin:0 auto">
+    <div class="pr-header">
+      <div><h1>BAHRIA TOWN SALES IC</h1><p>Monthly Sales Report — ${my}</p></div>
+      <div class="pr-meta">Printed: ${today}</div>
+    </div>
+    ${kpiHtml}
+    <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#64748b;margin-bottom:6px">Summary</div>
+    ${summHtml}
+  </div>
+  ${landscapePages}`;
+}
+
+function printMonthReport(my) {
+  if (!my) { toast('⚠ No month selected', 'w'); return; }
+  const html = buildMonthlyPrintHTML(my);
+  if (!html) { toast('⚠ No data for ' + my, 'e'); return; }
+  const pa = document.getElementById('print-area');
+  pa.innerHTML = html; pa.style.display = 'block';
+  window.print();
+  setTimeout(() => { pa.style.display = 'none'; }, 1200);
+}
+
+// ── Yearly print ──────────────────────────────────────────────────────────────
+function buildYearlyPrintHTML(yr) {
+  const MONTH_ORDER = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const mons = MONTHLY.filter(m => m.Month_Year.endsWith(yr))
+    .sort((a, b) => MONTH_ORDER.indexOf(a.Month_Year.split(' ')[0]) - MONTH_ORDER.indexOf(b.Month_Year.split(' ')[0]));
+  if (!mons.length) return null;
+  const tgts = getTgts();
+  const total = mons.reduce((s, m) => s + n(m.TOTAL), 0);
+  const totalCust = mons.reduce((s, m) => s + n(m.Customers), 0);
+  const totalCash = mons.reduce((s, m) => s + n(m['Cash Sale']) + negR(m['Cash Returns']), 0);
+  const today = new Date().toLocaleDateString('en-PK', {day:'2-digit',month:'short',year:'numeric'});
+  const avgMon = mons.length ? total / mons.length : 0;
+  const bestMon = mons.reduce((best, m) => n(m.TOTAL) > n(best.TOTAL) ? m : best, mons[0]);
+
+  const kpiHtml = `<div class="pr-kpis">
+    <div class="pr-kpi"><div class="pr-kpi-l">Total Sales ${yr}</div><div class="pr-kpi-v">₨${(total/1e6).toFixed(2)}M</div></div>
+    <div class="pr-kpi"><div class="pr-kpi-l">Total Customers</div><div class="pr-kpi-v">${Math.round(totalCust).toLocaleString('en-PK')}</div></div>
+    <div class="pr-kpi"><div class="pr-kpi-l">Monthly Average</div><div class="pr-kpi-v">₨${(avgMon/1e6).toFixed(2)}M</div></div>
+  </div>`;
+
+  const monRows = mons.map(m => {
+    const t = n(m.TOTAL), tgt = tgts[m.Month_Year];
+    const pct = tgt ? Math.min(100, Math.round(t / tgt * 100)) : null;
+    return `<tr>
+      <td class="l">${m.Month_Year.split(' ')[0]}</td>
+      <td class="r">₨ ${Math.round(t).toLocaleString('en-PK')}</td>
+      <td class="r">₨ ${Math.round(n(m['Cash Sale'])).toLocaleString('en-PK')}</td>
+      <td class="r">${Math.round(n(m.Customers)).toLocaleString('en-PK')}</td>
+      <td class="r">${tgt ? '₨ ' + Math.round(tgt).toLocaleString('en-PK') : '—'}</td>
+      <td class="r">${pct !== null ? pct + '%' : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  const clientCols = ['PSO','PSO Returns','NESPAK','NESPAK Returns','PARCO','PARCO Returns','TEPA','TEPA Returns','LDA','LDA Returns','Gourmet','Wapda Hospital','BTH','Berger Paints','Ecolean PK','Style Textile','Syed Babar Ali Foundation','Rahnuma NGO','Health Pass','Nisar Spinning Mills','Food Panda','Askari Bank','Askari Bank Returns','F/Issue'];
+  const clientRows = clientCols.map(c => {
+    const pick = RETURN_FIELDS.has(c) ? negR : n;
+    const v = mons.reduce((s, m) => s + pick(m[c]), 0);
+    return v !== 0 ? _prRow(c, v) : '';
+  }).join('');
+  const bankCols = ['HBL','MCB','Alfala Bank','Bank Al Habib','Meezan Bank (Paysa)'];
+  const bankRows = bankCols.map(c => {
+    const v = mons.reduce((s, m) => s + n(m[c]), 0);
+    return v !== 0 ? _prRow(c, v) : '';
+  }).join('');
+
+  return `<div style="max-width:720px;margin:0 auto">
+    <div class="pr-header">
+      <div><h1>BAHRIA TOWN SALES IC</h1><p>Annual Sales Report — ${yr} &nbsp;·&nbsp; ${mons.length} months &nbsp;·&nbsp; Best: ${bestMon.Month_Year.split(' ')[0]}</p></div>
+      <div class="pr-meta">Printed: ${today}</div>
+    </div>
+    ${kpiHtml}
+    <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#64748b;margin-bottom:6px">Month-by-Month Breakdown</div>
+    <table class="pr-tbl">
+      <thead><tr><th>Month</th><th class="r">Total</th><th class="r">Cash Sale</th><th class="r">Customers</th><th class="r">Target</th><th class="r">% Achieved</th></tr></thead>
+      <tbody>
+        ${monRows}
+        <tr class="tot">
+          <td class="l">TOTAL ${yr}</td>
+          <td class="r">₨ ${Math.round(total).toLocaleString('en-PK')}</td>
+          <td class="r">₨ ${Math.round(totalCash).toLocaleString('en-PK')}</td>
+          <td class="r">${Math.round(totalCust).toLocaleString('en-PK')}</td>
+          <td class="r">—</td><td class="r">—</td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#64748b;margin:10px 0 6px">Banks (Annual Total)</div>
+    <table class="pr-tbl"><thead><tr><th>Bank</th><th class="r">Amount (₨)</th></tr></thead><tbody>${bankRows || '<tr><td colspan="2" style="padding:10px;color:#94a3b8">No bank data</td></tr>'}</tbody></table>
+    <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#64748b;margin:10px 0 6px">Credit Clients (Annual Total)</div>
+    <table class="pr-tbl"><thead><tr><th>Client</th><th class="r">Amount (₨)</th></tr></thead><tbody>${clientRows || '<tr><td colspan="2" style="padding:10px;color:#94a3b8">No credit data</td></tr>'}</tbody></table>
+  </div>`;
+}
+
+function printYearlyReport(yr) {
+  if (!yr) { toast('⚠ Select a year', 'w'); return; }
+  const html = buildYearlyPrintHTML(yr);
+  if (!html) { toast('⚠ No data for ' + yr, 'e'); return; }
+  const pa = document.getElementById('print-area');
+  pa.innerHTML = html; pa.style.display = 'block';
+  window.print();
+  setTimeout(() => { pa.style.display = 'none'; }, 1200);
+}
+
+// ── Tools card helpers ────────────────────────────────────────────────────────
+function printDailyFromTools() {
+  const dateInput = document.getElementById('pr-daily-date').value;
+  if (!dateInput) { toast('⚠ Select a date', 'w'); return; }
+  const d = new Date(dateInput + 'T00:00:00');
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const dateStr = String(d.getDate()).padStart(2,'0') + '/' + months[d.getMonth()] + '/' + d.getFullYear();
+  const rec = DAILY.find(x => x.Date === dateStr);
+  if (!rec) { toast('⚠ No data for ' + dateStr, 'e'); return; }
+  const till = n(document.getElementById('pr-daily-till').value);
+  const patty = n(document.getElementById('pr-daily-patty').value);
+  const html = buildPrintHTML(dateStr, rec.Month_Year, till, patty);
+  if (!html) { toast('⚠ Record not found', 'e'); return; }
+  const pa = document.getElementById('print-area');
+  pa.innerHTML = html; pa.style.display = 'flex';
+  window.print();
+  setTimeout(() => { pa.style.display = 'none'; }, 1200);
+}
+
+function printMonthFromTools() {
+  const sel = document.getElementById('pr-month-sel').value;
+  if (!sel) { toast('⚠ Select a month', 'w'); return; }
+  printMonthReport(sel);
+}
+
+function printYearFromTools() {
+  const sel = document.getElementById('pr-year-sel').value;
+  if (!sel) { toast('⚠ Select a year', 'w'); return; }
+  printYearlyReport(sel);
+}
+
+// Populate print tool card selectors when it opens
+function _populatePrintSelectors() {
+  const mons = [...months()].reverse();
+  const ms = document.getElementById('pr-month-sel');
+  if (ms) { const v = ms.value; ms.innerHTML = '<option value="">Select…</option>' + mons.map(m => `<option value="${m}">${m}</option>`).join(''); ms.value = v; }
+  const yrs = years().slice().reverse();
+  const ys = document.getElementById('pr-year-sel');
+  if (ys) { const v = ys.value; ys.innerHTML = '<option value="">Select…</option>' + yrs.map(y => `<option value="${y}">${y}</option>`).join(''); ys.value = v; }
+  // Set today as default for daily
+  const di = document.getElementById('pr-daily-date');
+  if (di && !di.value) { di.value = new Date().toISOString().split('T')[0]; }
+}
+
+
+// ══════════════════════════════════════════════════════════════════
+// MANAGER WORK — Salary, Generic Working, Expense/Patty, Staff Credit
+// ══════════════════════════════════════════════════════════════════
+
+const MGR_KEY = 'BT_ManagerWork_v1';
+
+function mgrLoad() {
+  try { return JSON.parse(localStorage.getItem(MGR_KEY)) || {}; } catch(e) { return {}; }
+}
+function mgrSave(data) { localStorage.setItem(MGR_KEY, JSON.stringify(data)); }
+
+// Returns a continuous newest-first month list, so blank months do not disappear.
+function mgrMonths() {
+  const names = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const toVal = my => {
+    const p = String(my || '').split(' ');
+    const mi = names.indexOf(p[0]);
+    const yr = parseInt(p[1], 10);
+    return mi >= 0 && !isNaN(yr) ? yr * 12 + mi : null;
+  };
+  const toLabel = val => names[val % 12] + ' ' + Math.floor(val / 12);
+  const seen = new Set();
+
+  months().forEach(m => seen.add(m));
+  MONTHLY.forEach(m => { if (m.Month_Year) seen.add(m.Month_Year); });
+
+  try {
+    const mgr = mgrLoad();
+    ['salary','generic','expense','credit'].forEach(k => Object.keys(mgr[k] || {}).forEach(m => seen.add(m)));
+  } catch(e) {}
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('mw_petty_')) seen.add(k.slice('mw_petty_'.length));
+      if (k && k.startsWith('mw_incentive_')) seen.add(k.slice('mw_incentive_'.length));
+    }
+  } catch(e) {}
+  try {
+    const all = typeof _csecLoad === 'function' ? _csecLoad() : JSON.parse(localStorage.getItem('mw_custom_sections_v1') || '{}');
+    Object.values(all || {}).forEach(sec => Object.keys((sec && sec.months) || {}).forEach(m => seen.add(m)));
+  } catch(e) {}
+
+  const now = new Date();
+  const currentVal = now.getFullYear() * 12 + now.getMonth();
+  for (let delta = -1; delta <= 0; delta++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + delta, 1);
+    seen.add(names[d.getMonth()] + ' ' + d.getFullYear());
+  }
+
+  const vals = Array.from(seen).map(toVal).filter(v => v != null && v <= currentVal);
+  if (!vals.length) return [];
+  const min = Math.min(...vals);
+  const max = Math.min(currentVal, Math.max(...vals));
+  const out = [];
+  for (let v = max; v >= min; v--) out.push(toLabel(v));
+  return out;
+}
+
+function _mgrPopSel(selId, current) {
+  const el = document.getElementById(selId);
+  if (!el) return;
+  const mons = mgrMonths();
+  el.innerHTML = mons.map(m => `<option value="${m}"${m === current ? ' selected' : ''}>${m}</option>`).join('');
+}
+
+function switchMgrTab(tab) {
+  document.querySelectorAll('.mgr-tab').forEach(b => b.classList.toggle('active', b.dataset.mtab === tab));
+  document.querySelectorAll('.mgr-section').forEach(s => s.style.display = 'none');
+  const sec = document.getElementById('mgr-' + tab);
+  if (sec) sec.style.display = '';
+  if (tab === 'staff') renderStaffRegistry();
+}
+
+function loadManagerPage() {
+  staffLoad();
+  renderStaffRegistry();
+  const mons = mgrMonths();
+  const cur = mons[0] || '';
+  _mgrPopSel('sal-month-sel', cur);
+  _mgrPopSel('gen-month-sel', cur);
+  _mgrPopSel('exp-month-sel', cur);
+  _mgrPopSel('crd-month-sel', cur);
+  _mgrPopSel('petty-month-sel', cur);
+  _mgrPopSel('inc-month-sel', cur);
+  _mgrPopSel('csec-month-sel', cur);
+  loadSalaryMonth(cur);
+  loadGenericMonth(cur);
+  loadExpenseMonth(cur);
+  loadCreditMonth(cur);
+  loadPettyMonth(cur);
+  loadIncentiveMonth(cur);
+}
+
+// ─── helpers ───────────────────────────────────────────────────────
+function _ni(v) { return Math.round(Number(v) || 0); }
+function _fc2(v) { return _ni(v).toLocaleString('en-PK'); }
+function _inp(type, val, cls, oninput, ph) {
+  return `<input type="${type}" value="${val}" class="mgr-inp${cls ? ' ' + cls : ''}" placeholder="${ph||''}" ${oninput ? 'oninput="' + oninput + '"' : ''}>`;
+}
+
+// ══════════════════════════════
+// SALARY SHEET
+// ══════════════════════════════
+// ══════════════════════════════════════════════════════
+// STAFF REGISTRY — single source of truth for employees
+// ══════════════════════════════════════════════════════
+
+// ── No seed list — staff is pulled from Supabase or added manually ──────────────
+// Removed _STAFF_SEED to prevent duplicate employees across devices.
+// On a fresh install: staff list starts empty. Either pull from Supabase
+// (if configured) or add employees manually via + Add Employee.
+
+function staffLoad() {
+  try {
+    const raw = localStorage.getItem(STAFF_KEY);
+    if (raw) { STAFF = JSON.parse(raw); return; }
+  } catch(e) {}
+  // Fresh install — start empty, no seeding
+  STAFF = [];
+}
+
+function staffSave() {
+  localStorage.setItem(STAFF_KEY, JSON.stringify(STAFF));
+}
+
+function activeStaff() {
+  return STAFF.filter(e => e.active !== false)
+    .sort((a, b) => (Number(a.srNum)||999) - (Number(b.srNum)||999));
+}
+
+// ── Staff Registry UI ──────────────────────────────────
+function renderStaffRegistry() {
+  const cont = document.getElementById('staff-list');
+  if (!cont) return;
+  const active = STAFF.filter(e => e.active !== false).length;
+  const setK = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  setK('staff-k-total', STAFF.length);
+  setK('staff-k-active', active);
+  setK('staff-k-inactive', STAFF.length - active);
+  if (!STAFF.length) {
+    cont.innerHTML = '<div style="text-align:center;color:var(--muted);padding:32px">No employees yet — click <strong>+ Add Employee</strong></div>';
+    return;
+  }
+  // Sort by srNum for display (STAFF array order unchanged)
+  const _srSorted = STAFF.map((emp, origIdx) => ({emp, origIdx}))
+    .sort((a, b) => (Number(a.emp.srNum)||999) - (Number(b.emp.srNum)||999));
+  cont.innerHTML = `<div style="overflow-x:auto">
+  <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:980px;border:2px solid var(--border)">
+    <thead>
+      <tr style="background:var(--accent);color:#fff">
+        <th style="padding:9px 8px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em" title="Editable Sr# — controls row order in Salary, Generic & Credit sheets">Sr#</th>
+        <th style="padding:9px 10px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Staff ID</th>
+        <th style="padding:9px 10px;text-align:left;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Name</th>
+        <th style="padding:9px 10px;text-align:left;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Designation</th>
+        <th style="padding:9px 10px;text-align:left;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Father Name</th>
+        <th style="padding:9px 10px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">CNIC</th>
+        <th style="padding:9px 10px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Blood Group</th>
+        <th style="padding:9px 10px;text-align:left;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Phone</th>
+        <th style="padding:9px 10px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Active</th>
+        <th style="padding:9px 10px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+    ${_srSorted.map(({emp, origIdx}) => {
+      const i = origIdx;
+      const sid = emp.staffId || ('EMP-' + String(origIdx+1).padStart(3,'0'));
+      const srNum = emp.srNum != null ? emp.srNum : (origIdx + 1);
+      const bg = emp.active!==false ? 'var(--surface)' : 'var(--s2)';
+      return `<tr style="background:${bg}">
+        <td style="padding:4px 6px;border:1px solid var(--border);text-align:center;width:48px">
+          <input type="number" value="${srNum}" min="1" max="999"
+            class="mgr-inp sal-num" style="width:42px;text-align:center;font-weight:700;font-size:12px;padding:2px 4px"
+            title="Change Sr# to reorder in Salary/Generic/Credit sheets"
+            oninput="staffSrNumChange(${i},this.value)">
+        </td>
+        <td style="padding:7px 10px;border:1px solid var(--border);text-align:center">
+          <button onclick="openStaffCard(${i})" title="Open Staff Card"
+            style="background:var(--accent);color:#fff;border:none;border-radius:5px;padding:3px 10px;cursor:pointer;font-size:11px;font-weight:700;font-family:monospace;letter-spacing:.02em">
+            ${sid}
+          </button>
+        </td>
+        <td style="padding:7px 10px;border:1px solid var(--border)">
+          <span onclick="openStaffCard(${i})" style="cursor:pointer;font-weight:600;color:var(--accent);text-decoration:underline dotted;text-underline-offset:3px" title="Open Staff Card">
+            ${emp.name||'<em style="color:var(--muted)">(unnamed)</em>'}
+          </span>
+        </td>
+        <td style="padding:7px 10px;border:1px solid var(--border)">
+          <input type="text" value="${(emp.designation||'').replace(/"/g,'&quot;')}" placeholder="Designation"
+            class="mgr-inp" oninput="staffFieldChange(${i},'designation',this.value)">
+        </td>
+        <td style="padding:7px 10px;border:1px solid var(--border);color:var(--t2)">
+          ${emp.fatherName||'<span style="color:var(--muted)">—</span>'}
+        </td>
+        <td style="padding:7px 10px;border:1px solid var(--border);text-align:center;font-family:monospace;font-size:11px;color:var(--t2)">
+          ${emp.cnic||'<span style="color:var(--muted)">—</span>'}
+        </td>
+        <td style="padding:7px 10px;border:1px solid var(--border);text-align:center">
+          ${emp.bloodGroup ? '<span style="background:#fef2f2;color:var(--red,#dc2626);border:1px solid #fecaca;border-radius:4px;padding:2px 10px;font-weight:700;font-size:12px">'+emp.bloodGroup+'</span>' : '<span style="color:var(--muted)">—</span>'}
+        </td>
+        <td style="padding:7px 10px;border:1px solid var(--border);color:var(--t2)">
+          ${emp.phone||'<span style="color:var(--muted)">—</span>'}
+        </td>
+        <td style="padding:7px 10px;border:1px solid var(--border);text-align:center">
+          <input type="checkbox" ${emp.active!==false?'checked':''} onchange="staffToggleActive(${i},this.checked)" title="Active/Inactive">
+        </td>
+        <td style="padding:7px 10px;border:1px solid var(--border);text-align:center;white-space:nowrap">
+          <button class="btn btn-p" style="font-size:10px;padding:3px 10px;margin-right:4px" onclick="openStaffCard(${i})">✏ Edit</button>
+          <button class="mgr-del" onclick="staffDelete(${i})" title="Remove">🗑</button>
+        </td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+  </table>
+  <div style="font-size:11px;color:var(--muted);padding:8px 4px">💡 <strong>Sr#</strong> controls the row order in Salary, Generic & Credit sheets. Edit any number then click 💾 Save Staff List to apply.</div>
+  </div>`;}
+
+function staffFieldChange(i, field, val) {
+  STAFF[i][field] = val;
+}
+function staffSrNumChange(i, val) {
+  STAFF[i].srNum = Number(val) || 1;
+  // Re-render the table so the sort order updates live
+  renderStaffRegistry();
+}
+
+function staffToggleActive(i, active) {
+  STAFF[i].active = active;
+  renderStaffRegistry();
+}
+
+function staffDelete(i) {
+  if (!confirm('Remove ' + (STAFF[i].name||'this employee') + ' from the staff list?\n\nHistorical data will be kept — they just won\'t appear in new months.')) return;
+  STAFF.splice(i, 1);
+  renderStaffRegistry();
+}
+
+function addStaffEmployee() {
+  const num = STAFF.length + 1;
+  const sid = 'EMP-' + String(num).padStart(3, '0');
+  const maxSr = STAFF.reduce((m, e) => Math.max(m, Number(e.srNum) || 0), 0);
+  STAFF.push({
+    id: 'emp_' + Date.now(),
+    staffId: sid,
+    srNum: maxSr + 1,
+    name: '',
+    designation: 'Salesman',
+    fatherName: '',
+    cnic: '',
+    phone: '',
+    address: '',
+    bloodGroup: '',
+    doj: new Date().toISOString().split('T')[0],
+    active: true
+  });
+  renderStaffRegistry();
+  setTimeout(() => openStaffCard(STAFF.length - 1), 100);
+}
+
+function saveStaffRegistry() {
+  // Migrate: assign srNum to any staff missing it
+  STAFF.forEach((emp, i) => { if (emp.srNum == null || emp.srNum === '') emp.srNum = i + 1; });
+  staffSave();
+  _propagateStaffToSheets();
+  toast('✓ Staff list saved — syncing to Supabase…');
+  // ALWAYS push staff registry — it is shared config, not just local data.
+  pushToSupabase();
+}
+
+// When staff list is saved, add any new employees to currently-loaded sheets
+function _propagateStaffToSheets() {
+  const cur = document.getElementById('sal-month-sel')?.value;
+  if (!cur) return;
+  const norm = s => (s||'').trim().toLowerCase();
+
+  // Salary — add missing
+  activeStaff().forEach(emp => {
+    if (!_salRows_cur.find(r => norm(r.name) === norm(emp.name))) {
+      _salRows_cur.push({ name: emp.name, desig: emp.designation, days: 31, hoSal: 0, advance: 0, generic: 0 });
+    }
+  });
+  renderSalaryTable(_salRows_cur);
+
+  // Generic — add missing
+  activeStaff().forEach(emp => {
+    if (!_genRows_cur.find(r => norm(r.name) === norm(emp.name))) {
+      _genRows_cur.push({ name: emp.name, desig: emp.designation, genericSale: 0, extra: 0 });
+    }
+  });
+  renderGenericTable(_genRows_cur);
+
+  // Credit — add missing
+  activeStaff().forEach(emp => {
+    if (!_crdData_cur.find(r => norm(r.name) === norm(emp.name))) {
+      _crdData_cur.push({ name: emp.name, prevBal: 0, entries: [], salary: 0, lessGeneric: 0 });
+    }
+  });
+  renderCreditLedger(_crdData_cur);
+}
+
+function _salRows(my) {
+  const data = mgrLoad();
+  const stored = data.salary && data.salary[my];
+  return stored || activeStaff().map(e => ({name:e.name, desig:e.designation, days:31, hoSal:0, advance:0, generic:0}));
+}
+
+function _salNet(r) { return _ni(r.hoSal) - _ni(r.advance) + _ni(r.generic); }
+
+function renderSalaryTable(rows) {
+  const tbody = document.getElementById('sal-tbody');
+  const tfoot = document.getElementById('sal-tfoot');
+  if (!tbody) return;
+  // FIX 1+2: Load credit detail for advance tooltip; find staff card index
+  const _salMon = document.getElementById('sal-month-sel')?.value || '';
+  const _crdForAdv = _crdData(_salMon);
+  const _salNorm = s => (s||'').trim().toLowerCase();
+  tbody.innerHTML = rows.map((r, i) => {
+    // FIX 1: Build advance tooltip from credit ledger entries
+    const _crdEmp = _crdForAdv.find(c => _salNorm(c.name) === _salNorm(r.name));
+    let _advTitle = '';
+    if (_crdEmp && _crdEmp.entries && _crdEmp.entries.length) {
+      const pos = _crdEmp.entries.filter(e => _ni(e.amount) > 0);
+      if (pos.length) {
+        _advTitle = 'Credit entries:\n' + pos.map(e => e.date + ': ' + (e.desc||'') + ' Rs' + _fc2(e.amount)).join('\n');
+      }
+    }
+    // FIX 2: Clickable Staff ID in salary
+    const _sIdx = STAFF.findIndex(s => _salNorm(s.name) === _salNorm(r.name));
+    const _sEmp = _sIdx >= 0 ? STAFF[_sIdx] : null;
+    const _sSid = _sEmp ? (_sEmp.staffId || ('EMP-' + String(_sIdx+1).padStart(3,'0'))) : null;
+    const _sNameInp = _inp('text', r.name||'', '', "salRowChange("+i+",'name',this.value)", 'Name');
+    const _sDesigInp = _inp('text', r.desig||'', '', "salRowChange("+i+",'desig',this.value)", 'Designation');
+    const _sNameCell = _sSid
+      ? '<div style="display:flex;align-items:center;gap:5px">'
+        + '<button onclick="openStaffCard('+_sIdx+')" title="Open '+(r.name||'Staff')+' Card"'
+        + ' style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:10px;font-weight:700;font-family:monospace;flex-shrink:0">'+_sSid+'</button>'
+        + _sNameInp + '</div>'
+      : _sNameInp;
+    return `<tr class="mgr-tr">
+      <td class="mgr-td sal-c" style="font-size:11px;color:var(--muted)">${i+1}</td>
+      <td class="mgr-td">${_sNameCell}</td>
+      <td class="mgr-td">${_sDesigInp}</td>
+      <td class="mgr-td sal-c" style="width:60px"><input type="number" value="${r.days||31}" class="mgr-inp sal-num" placeholder="31" oninput="salRowChange(${i},'days',this.value)"></td>
+      <td class="mgr-td"><input type="number" value="${r.hoSal||0}" class="mgr-inp sal-num" placeholder="0" oninput="salRowChange(${i},'hoSal',this.value);recalcSalNet(${i})"></td>
+      <td class="mgr-td" ${_advTitle ? 'title="'+_advTitle+'" style="position:relative"' : ''}><input type="number" value="${r.advance||0}" class="mgr-inp sal-num${_advTitle?' sal-adv-linked':''}" placeholder="0" oninput="salRowChange(${i},'advance',this.value);recalcSalNet(${i})">${_advTitle ? '<span style="position:absolute;top:2px;right:3px;font-size:9px;color:var(--accent);pointer-events:none" title="'+_advTitle+'">💳</span>' : ''}</td>
+      <td class="mgr-td"><input type="number" value="${r.generic||0}" class="mgr-inp sal-num" placeholder="0" oninput="salRowChange(${i},'generic',this.value);recalcSalNet(${i})"></td>
+      <td class="mgr-td"><input type="number" id="sal-net-${i}" class="mgr-inp calc sal-num" value="${_salNet(r)}" readonly></td>
+      <td class="mgr-td sal-c"><button class="mgr-del" onclick="deleteSalRow(${i})">🗑</button></td>
+    </tr>`;
+  }).join('');
+  _salUpdateFooter(rows);
+}
+
+let _salRows_cur = [];
+
+function loadSalaryMonth(my) {
+  _salRows_cur = _salRows(my);
+  const norm = s => (s||'').trim().toLowerCase();
+  // Use in-memory credit data if credit tab is on the same month
+  const crdSel = document.getElementById('crd-month-sel');
+  const crdRows = (crdSel && crdSel.value === my && _crdData_cur.length)
+    ? _crdData_cur : _crdData(my);
+  // Use in-memory generic data if generic tab is on the same month
+  const genSel = document.getElementById('gen-month-sel');
+  const genRowsData = (genSel && genSel.value === my && _genRows_cur.length)
+    ? _genRows_cur : _genRows(my);
+  // Only gate advance on alreadySaved (don't overwrite manual advance edits)
+  const data = mgrLoad();
+  const alreadySaved = !!(data.salary && data.salary[my]);
+  _salRows_cur = _salRows_cur.map(row => {
+    const rName = norm(row.name);
+    if (!rName) return row;
+    const crd = crdRows.find(c => norm(c.name) === rName);
+    const gen = genRowsData.find(g => norm(g.name) === rName);
+    // Sum only positive credit entries (advances drawn by employee)
+    const entryTotal = crd ? crd.entries.reduce((s,e) => { const v=_ni(e.amount); return s+(v>0?v:0); }, 0) : 0;
+    return {
+      ...row,
+      // Advance: only auto-fill if salary not yet saved for this month
+      advance: alreadySaved ? row.advance : entryTotal,
+      // Generic: always pull latest Final value from Generic Working sheet
+      generic: gen ? _genFinal(gen) : row.generic
+    };
+  });
+  renderSalaryTable(_salRows_cur);
+}
+
+function salRowChange(i, field, val) {
+  _salRows_cur[i][field] = field === 'name' || field === 'desig' ? val : _ni(val);
+}
+function recalcSalNet(i) {
+  const el = document.getElementById('sal-net-' + i);
+  if (el) el.value = _salNet(_salRows_cur[i]);
+  _salUpdateFooter(_salRows_cur);
+}
+function _salUpdateFooter(rows) {
+  const totalHO = rows.reduce((s,r) => s + _ni(r.hoSal), 0);
+  const totalAdv = rows.reduce((s,r) => s + _ni(r.advance), 0);
+  const totalGen = rows.reduce((s,r) => s + _ni(r.generic), 0);
+  const totalNet = rows.reduce((s,r) => s + _salNet(r), 0);
+  document.getElementById('sal-tfoot').innerHTML = `<tr class="mgr-tfoot">
+    <td colspan="4" style="text-align:right;padding:7px 10px;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">TOTALS</td>
+    <td class="mgr-td" style="text-align:right;font-weight:700;font-family:var(--mono)">₨${_fc2(totalHO)}</td>
+    <td class="mgr-td" style="text-align:right;font-weight:700;font-family:var(--mono)">₨${_fc2(totalAdv)}</td>
+    <td class="mgr-td" style="text-align:right;font-weight:700;font-family:var(--mono)">₨${_fc2(totalGen)}</td>
+    <td class="mgr-td" style="text-align:right;font-weight:700;font-family:var(--mono);color:var(--accent)">₨${_fc2(totalNet)}</td>
+    <td></td>
+  </tr>`;
+}
+function addSalaryRow() {
+  _salRows_cur.push({name:'', desig:'Salesman', days:31, hoSal:0, advance:0, generic:0});
+  renderSalaryTable(_salRows_cur);
+}
+function deleteSalRow(i) {
+  _salRows_cur.splice(i, 1);
+  renderSalaryTable(_salRows_cur);
+}
+function saveSalaryData() {
+  const my = document.getElementById('sal-month-sel').value;
+  const data = mgrLoad();
+  if (!data.salary) data.salary = {};
+  data.salary[my] = _salRows_cur.map(r => ({...r}));
+  mgrSave(data);
+  toast('✓ Salary saved for ' + my);
+  if (localStorage.getItem('bt_auto_save')==='1') pushToSupabase();
+}
+
+// ── Auto-fill Advance from Credit sheet & Generic from Generic Working ──────
+function autoFillSalaryFromSheets() {
+  const my = document.getElementById('sal-month-sel').value;
+  if (!my) { toast('⚠ Select a month first','w'); return; }
+  // Use in-memory credit data if credit tab is on same month (unsaved changes)
+  const crdSel = document.getElementById('crd-month-sel');
+  const crdRows = (crdSel && crdSel.value === my && _crdData_cur.length)
+    ? _crdData_cur : _crdData(my);
+  // Use in-memory generic data if generic tab is on same month (unsaved changes)
+  const genSel = document.getElementById('gen-month-sel');
+  const genRowsData = (genSel && genSel.value === my && _genRows_cur.length)
+    ? _genRows_cur : _genRows(my);
+  const norm = s => (s||'').trim().toLowerCase();
+  let filledAdv = 0, filledGen = 0;
+  _salRows_cur = _salRows_cur.map(row => {
+    const rName = norm(row.name);
+    if (!rName) return row;
+    // Sum only positive entries (advances/credits given to employee)
+    const crd = crdRows.find(c => norm(c.name) === rName);
+    let advance = row.advance;
+    if (crd) {
+      const entryTotal = crd.entries.reduce((s, e) => { const v=_ni(e.amount); return s+(v>0?v:0); }, 0);
+      advance = entryTotal;
+      filledAdv++;
+    }
+    // Always pull latest Final value from Generic Working sheet
+    const gen = genRowsData.find(g => norm(g.name) === rName);
+    let generic = row.generic;
+    if (gen) {
+      generic = _genFinal(gen);
+      filledGen++;
+    }
+    return { ...row, advance, generic };
+  });
+  renderSalaryTable(_salRows_cur);
+  toast(`⚡ Auto-filled: ${filledAdv} advance${filledAdv!==1?'s':''}, ${filledGen} generic value${filledGen!==1?'s':''} — click 💾 Save to keep`);
+}
+
+// ══════════════════════════════
+// GENERIC WORKING
+// ══════════════════════════════
+let _genRows_cur = [];
+
+function _genRows(my) {
+  const data = mgrLoad();
+  const stored = data.generic && data.generic[my];
+  return stored || activeStaff().map(e => ({name:e.name, desig:e.designation, genericSale:0, extra:0}));
+}
+
+function _genIncentive(r) { return Math.round(_ni(r.genericSale) * 0.04); }
+function _genFinal(r) { return _genIncentive(r) + _ni(r.extra); }
+
+function renderGenericTable(rows) {
+  const tbody = document.getElementById('gen-tbody');
+  if (!tbody) return;
+  const _genNorm = s => (s||'').trim().toLowerCase();
+  tbody.innerHTML = rows.map((r, i) => {
+    const _gIdx = STAFF.findIndex(s => _genNorm(s.name) === _genNorm(r.name));
+    const _gEmp = _gIdx >= 0 ? STAFF[_gIdx] : null;
+    const _gSid = _gEmp ? (_gEmp.staffId || ('EMP-' + String(_gIdx+1).padStart(3,'0'))) : null;
+    const _gNameInp  = _inp('text',   r.name||'',        '', "genRowChange("+i+",'name',this.value)", 'Name');
+    const _gDesigInp = _inp('text',   r.desig||'',       '', "genRowChange("+i+",'desig',this.value)", 'Designation');
+    const _gSaleInp  = _inp('number', r.genericSale||0,  'sal-num', "genRowChange("+i+",'genericSale',this.value);recalcGenRow("+i+")", '0');
+    const _gExtraInp = _inp('number', r.extra||0,        'sal-num', "genRowChange("+i+",'extra',this.value);recalcGenRow("+i+")", '0');
+    const _gNameCell = _gSid
+      ? '<div style="display:flex;align-items:center;gap:5px">'
+        + '<button onclick="openStaffCard('+_gIdx+')" title="Open '+(r.name||'Staff')+' Card"'
+        + ' style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:10px;font-weight:700;font-family:monospace;flex-shrink:0">'+_gSid+'</button>'
+        + _gNameInp + '</div>'
+      : _gNameInp;
+    return `<tr class="mgr-tr">
+      <td class="mgr-td sal-c" style="font-size:11px;color:var(--muted)">${i+1}</td>
+      <td class="mgr-td">${_gNameCell}</td>
+      <td class="mgr-td">${_gDesigInp}</td>
+      <td class="mgr-td">${_gSaleInp}</td>
+      <td class="mgr-td"><input type="number" id="gen-inc-${i}" class="mgr-inp calc sal-num" value="${_genIncentive(r)}" readonly></td>
+      <td class="mgr-td">${_gExtraInp}</td>
+      <td class="mgr-td"><input type="number" id="gen-fin-${i}" class="mgr-inp calc sal-num" value="${_genFinal(r)}" readonly></td>
+      <td class="mgr-td sal-c"><button class="mgr-del" onclick="deleteGenRow(${i})">🗑</button></td>
+    </tr>`;
+  }).join('');
+  _genUpdateFooter(rows);
+}
+
+function loadGenericMonth(my) {
+  _genRows_cur = _genRows(my);
+  renderGenericTable(_genRows_cur);
+}
+function genRowChange(i, field, val) {
+  _genRows_cur[i][field] = field === 'name' || field === 'desig' ? val : _ni(val);
+}
+function recalcGenRow(i) {
+  const inc = document.getElementById('gen-inc-' + i);
+  const fin = document.getElementById('gen-fin-' + i);
+  if (inc) inc.value = _genIncentive(_genRows_cur[i]);
+  if (fin) fin.value = _genFinal(_genRows_cur[i]);
+  _genUpdateFooter(_genRows_cur);
+  // Live sync to salary sheet — update the matching employee's generic column
+  _syncGenericToSalary(i);
+}
+
+function _syncGenericToSalary(genIdx) {
+  const genRow = _genRows_cur[genIdx];
+  if (!genRow) return;
+  const norm = s => (s||'').trim().toLowerCase();
+  const salIdx = _salRows_cur.findIndex(r => norm(r.name) === norm(genRow.name));
+  if (salIdx === -1) return;
+  const finalVal = _genFinal(genRow);
+  _salRows_cur[salIdx].generic = finalVal;
+  // Update the salary net cell live (no full re-render needed)
+  const salGenInput = document.querySelector(`#sal-tbody tr:nth-child(${salIdx+1}) .mgr-inp:nth-child(4)`);
+  // Simpler: just update the net display field
+  const netEl = document.getElementById('sal-net-' + salIdx);
+  if (netEl) netEl.value = _salNet(_salRows_cur[salIdx]);
+  _salUpdateFooter(_salRows_cur);
+}
+function _genUpdateFooter(rows) {
+  const totSale = rows.reduce((s,r) => s + _ni(r.genericSale), 0);
+  const totInc = rows.reduce((s,r) => s + _genIncentive(r), 0);
+  const totExtra = rows.reduce((s,r) => s + _ni(r.extra), 0);
+  const totFin = rows.reduce((s,r) => s + _genFinal(r), 0);
+  document.getElementById('gen-tfoot').innerHTML = `<tr class="mgr-tfoot">
+    <td colspan="3" style="text-align:right;padding:7px 10px;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">TOTALS</td>
+    <td class="mgr-td" style="text-align:right;font-weight:700;font-family:var(--mono)">₨${_fc2(totSale)}</td>
+    <td class="mgr-td" style="text-align:right;font-weight:700;font-family:var(--mono);color:var(--green)">₨${_fc2(totInc)}</td>
+    <td class="mgr-td" style="text-align:right;font-weight:700;font-family:var(--mono)">₨${_fc2(totExtra)}</td>
+    <td class="mgr-td" style="text-align:right;font-weight:700;font-family:var(--mono);color:var(--accent)">₨${_fc2(totFin)}</td>
+    <td></td>
+  </tr>`;
+}
+function addGenericRow() {
+  _genRows_cur.push({name:'', desig:'Salesman', genericSale:0, extra:0});
+  renderGenericTable(_genRows_cur);
+}
+function deleteGenRow(i) {
+  _genRows_cur.splice(i, 1);
+  renderGenericTable(_genRows_cur);
+}
+function saveGenericData() {
+  const my = document.getElementById('gen-month-sel').value;
+  const data = mgrLoad();
+  if (!data.generic) data.generic = {};
+  data.generic[my] = _genRows_cur.map(r => ({...r}));
+  mgrSave(data);
+  toast('✓ Generic Working saved for ' + my);
+  if (localStorage.getItem('bt_auto_save')==='1') pushToSupabase();
+}
+
+// ══════════════════════════════
+// EXPENSE / PATTY CASH
+// ══════════════════════════════
+let _expRows_cur = [];
+let _expOpening_cur = 0;
+
+function _expRows(my) {
+  const data = mgrLoad();
+  const stored = data.expense && data.expense[my];
+  return stored ? stored.rows : [];
+}
+function _expOpening(my) {
+  const data = mgrLoad();
+  return (data.expense && data.expense[my] && data.expense[my].opening) || 0;
+}
+
+function renderExpenseTable(rows) {
+  const tbody = document.getElementById('exp-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = rows.map((r, i) => `
+    <tr class="mgr-tr">
+      <td class="mgr-td">${_inp('text', r.date||'', '', `expRowChange(${i},'date',this.value)`, 'DD-Mon-YYYY')}</td>
+      <td class="mgr-td">${_inp('text', r.desc||'', '', `expRowChange(${i},'desc',this.value)`, 'Description / Expense')}</td>
+      <td class="mgr-td">${_inp('number', r.bill||0, '', `expRowChange(${i},'bill',this.value);recalcExpense()`, '0')}</td>
+      <td class="mgr-td">${_inp('number', r.fuel||0, '', `expRowChange(${i},'fuel',this.value);recalcExpense()`, '0')}</td>
+      <td class="mgr-td">${_inp('number', r.soap||0, '', `expRowChange(${i},'soap',this.value);recalcExpense()`, '0')}</td>
+      <td class="mgr-td">${_inp('number', r.refresh||0, '', `expRowChange(${i},'refresh',this.value);recalcExpense()`, '0')}</td>
+      <td class="mgr-td">${_inp('number', r.extra||0, '', `expRowChange(${i},'extra',this.value);recalcExpense()`, '0')}</td>
+      <td class="mgr-td">${_inp('number', r.pattyHO||0, '', `expRowChange(${i},'pattyHO',this.value);recalcExpense()`, '0')}</td>
+      <td class="mgr-td" style="text-align:center"><button class="mgr-del" onclick="deleteExpRow(${i})">🗑</button></td>
+    </tr>`).join('');
+  recalcExpense();
+}
+
+function loadExpenseMonth(my) {
+  _expRows_cur = _expRows(my);
+  _expOpening_cur = _expOpening(my);
+  const op = document.getElementById('exp-opening');
+  if (op) op.value = _expOpening_cur;
+  renderExpenseTable(_expRows_cur);
+}
+function expRowChange(i, field, val) {
+  _expRows_cur[i][field] = (field === 'date' || field === 'desc') ? val : _ni(val);
+}
+function recalcExpense() {
+  const op = _ni(document.getElementById('exp-opening')?.value);
+  _expOpening_cur = op;
+  const totBill = _expRows_cur.reduce((s,r) => s + _ni(r.bill), 0);
+  const totFuel = _expRows_cur.reduce((s,r) => s + _ni(r.fuel), 0);
+  const totSoap = _expRows_cur.reduce((s,r) => s + _ni(r.soap), 0);
+  const totRef  = _expRows_cur.reduce((s,r) => s + _ni(r.refresh), 0);
+  const totExt  = _expRows_cur.reduce((s,r) => s + _ni(r.extra), 0);
+  const totHO   = _expRows_cur.reduce((s,r) => s + _ni(r.pattyHO), 0);
+  const totalExp = totBill + totFuel + totSoap + totRef + totExt;
+  const balance  = op + totHO - totalExp;
+  // KPIs
+  const setK = (id, v, col) => { const el = document.getElementById(id); if(el){ el.textContent = '₨' + _fc2(v); if(col) el.style.color = col; } };
+  setK('exp-k-open', op);
+  setK('exp-k-ho', totHO);
+  setK('exp-k-total', totalExp);
+  setK('exp-k-bal', balance, balance >= 0 ? 'var(--green)' : 'var(--red)');
+  // Footer
+  const ft = document.getElementById('exp-tfoot');
+  if (ft) ft.innerHTML = `<tr class="mgr-tfoot">
+    <td colspan="2" style="text-align:right;padding:7px 10px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">TOTALS</td>
+    <td class="mgr-td" style="text-align:right">₨${_fc2(totBill)}</td>
+    <td class="mgr-td" style="text-align:right">₨${_fc2(totFuel)}</td>
+    <td class="mgr-td" style="text-align:right">₨${_fc2(totSoap)}</td>
+    <td class="mgr-td" style="text-align:right">₨${_fc2(totRef)}</td>
+    <td class="mgr-td" style="text-align:right">₨${_fc2(totExt)}</td>
+    <td class="mgr-td" style="text-align:right">₨${_fc2(totHO)}</td>
+    <td></td>
+  </tr>`;
+}
+function addExpenseRow() {
+  const today = new Date();
+  const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const dateStr = String(today.getDate()).padStart(2,'0') + '-' + ms[today.getMonth()] + '-' + today.getFullYear();
+  _expRows_cur.push({date:dateStr, desc:'', bill:0, fuel:0, soap:0, refresh:0, extra:0, pattyHO:0});
+  renderExpenseTable(_expRows_cur);
+}
+function deleteExpRow(i) {
+  _expRows_cur.splice(i, 1);
+  renderExpenseTable(_expRows_cur);
+}
+function saveExpenseData() {
+  const my = document.getElementById('exp-month-sel').value;
+  const data = mgrLoad();
+  if (!data.expense) data.expense = {};
+  data.expense[my] = { opening: _expOpening_cur, rows: _expRows_cur.map(r => ({...r})) };
+  mgrSave(data);
+  toast('✓ Expense data saved for ' + my);
+  if (localStorage.getItem('bt_auto_save')==='1') pushToSupabase();
+}
+
+// ══════════════════════════════
+// STAFF CREDIT LEDGER
+// ══════════════════════════════
+let _crdData_cur = []; // [{name, prevBal, entries:[{date,desc,amount}], salary, lessGeneric}]
+
+function _crdData(my) {
+  const data = mgrLoad();
+  return (data.credit && data.credit[my]) || activeStaff().map(e => ({name:e.name, prevBal:0, entries:[], salary:0, lessGeneric:0}));
+}
+
+function _crdNet(emp) {
+  const totalEntries = emp.entries.reduce((s,e) => s + _ni(e.amount), 0);
+  return _ni(emp.prevBal) + totalEntries - _ni(emp.salary) - _ni(emp.lessGeneric);
+}
+
+function renderCreditLedger(emps) {
+  const container = document.getElementById('crd-employees');
+  if (!container) return;
+  container.innerHTML = emps.map((emp, ei) => {
+    const net = _crdNet(emp);
+    const netColor = net > 0 ? 'var(--green)' : net < 0 ? 'var(--red)' : 'var(--muted)';
+    const entryRows = emp.entries.map((en, eni) => `
+      <tr class="mgr-tr">
+        <td class="mgr-td">${_inp('text', en.date||'', '', `crdEntryChange(${ei},${eni},'date',this.value)`, 'Date')}</td>
+        <td class="mgr-td">${_inp('text', en.desc||'', '', `crdEntryChange(${ei},${eni},'desc',this.value)`, 'Description (credit/deduction/…)')}</td>
+        <td class="mgr-td"><input type="number" value="${en.amount||0}" class="mgr-inp sal-num" style="font-weight:700;${_ni(en.amount)<0?'color:var(--red)':'color:var(--green)'}" placeholder="0 (negative=deduction)" oninput="crdEntryChange(${ei},${eni},'amount',this.value);recalcCrdEmp(${ei})"></td>
+        <td class="mgr-td" style="text-align:center"><button class="mgr-del" onclick="deleteCrdEntry(${ei},${eni})">🗑</button></td>
+      </tr>`).join('');
+    const _cNorm = s => (s||'').trim().toLowerCase();
+    const _cIdx = STAFF.findIndex(s => _cNorm(s.name) === _cNorm(emp.name));
+    const _cEmp = _cIdx >= 0 ? STAFF[_cIdx] : null;
+    const _cSid = _cEmp ? (_cEmp.staffId || ('EMP-' + String(_cIdx+1).padStart(3,'0'))) : null;
+    return `<div class="crd-emp" id="crd-emp-${ei}">
+      <div class="crd-emp-hdr" onclick="_toggleCrdEmpBody(${ei})" title="Click to expand/collapse">
+        <div class="crd-emp-name">
+          <span class="crd-chevron" id="crd-chev-${ei}" style="font-size:10px;transition:transform .2s;display:inline-block">▶</span>
+          ${_cSid ? '<button onclick="event.stopPropagation();openStaffCard('+_cIdx+')" title="Open '+emp.name+' Card" style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:10px;font-weight:700;font-family:monospace">'+_cSid+'</button>' : ''}
+          <span onclick="event.stopPropagation();${_cIdx>=0?'openStaffCard('+_cIdx+')':''}" style="cursor:${_cIdx>=0?'pointer':'default'};color:var(--accent);font-weight:600;${_cIdx>=0?'text-decoration:underline dotted;text-underline-offset:2px':''}">${emp.name}</span>
+          <span class="crd-entry-badge">${emp.entries.length} entr${emp.entries.length===1?'y':'ies'}</span>
+        </div>
+        <div class="crd-emp-stats" onclick="event.stopPropagation()">
+          <span class="crd-chip">Prev <strong>₨${_fc2(emp.prevBal)}</strong></span>
+          <span class="crd-chip">Salary <strong>₨${_fc2(emp.salary)}</strong></span>
+          <span class="crd-chip">LessGen <strong>₨${_fc2(emp.lessGeneric)}</strong></span>
+          <span class="crd-emp-bal" style="color:${netColor}" id="crd-net-${ei}">Net: ₨${_fc2(net)}</span>
+          <button class="btn btn-p" style="font-size:11px;padding:4px 10px" onclick="addCrdEntryFocused(${ei})">💳 + Entry</button>
+          <button class="mgr-del" onclick="deleteCrdEmp(${ei})" title="Remove employee">🗑</button>
+        </div>
+      </div>
+      <div class="crd-emp-body" id="crd-body-${ei}" style="display:none">
+        <div class="crd-emp-fields">
+          <div class="fg"><label>Previous Balance (₨)</label><input type="number" value="${emp.prevBal||0}" class="mgr-inp" oninput="crdEmpField(${ei},'prevBal',this.value);recalcCrdEmp(${ei})"></div>
+          <div class="fg"><label>Salary Paid (₨)</label><input type="number" value="${emp.salary||0}" class="mgr-inp" oninput="crdEmpField(${ei},'salary',this.value);recalcCrdEmp(${ei})"></div>
+          <div class="fg"><label>Less Generic (₨)</label><input type="number" value="${emp.lessGeneric||0}" class="mgr-inp" oninput="crdEmpField(${ei},'lessGeneric',this.value);recalcCrdEmp(${ei})"></div>
+        </div>
+        <div style="padding:12px 14px">
+        <table style="width:100%;border-collapse:collapse;min-width:420px;border:1px solid var(--border)">
+          <thead><tr style="background:var(--accent);color:#fff">
+            <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.06em;border:1px solid rgba(255,255,255,.2)">Date</th>
+            <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.06em;border:1px solid rgba(255,255,255,.2)">Description</th>
+            <th style="padding:7px 10px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:.06em;border:1px solid rgba(255,255,255,.2)">Amount (₨)</th>
+            <th style="padding:7px 10px;border:1px solid rgba(255,255,255,.2)"></th>
+          </tr></thead>
+          <tbody id="crd-tbody-${ei}">${entryRows}</tbody>
+        </table>
+        ${emp.entries.length === 0 ? '<p style="text-align:center;color:var(--muted);font-size:12px;padding:14px">No entries yet — click "💳 + Entry" to add.</p>' : ''}
+        </div>
+    </div>`;
+  }).join('');
+  // Expand cards that have entries
+  emps.forEach((emp, ei) => {
+    if (emp.entries.length > 0) {
+      const body = document.getElementById('crd-body-' + ei);
+      const chev = document.getElementById('crd-chev-' + ei);
+      if (body) body.style.display = '';
+      if (chev) chev.style.transform = 'rotate(90deg)';
+    }
+  });
+}
+
+function _toggleCrdEmpBody(ei) {
+  const body = document.getElementById('crd-body-' + ei);
+  const chev = document.getElementById('crd-chev-' + ei);
+  if (!body) return;
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : '';
+  if (chev) chev.style.transform = isOpen ? '' : 'rotate(90deg)';
+}
+
+function addCrdEntryFocused(ei) {
+  // Ensure body is open
+  const body = document.getElementById('crd-body-' + ei);
+  const chev = document.getElementById('crd-chev-' + ei);
+  if (body) body.style.display = '';
+  if (chev) chev.style.transform = 'rotate(90deg)';
+  addCrdEntry(ei);
+  // After render, focus the new amount input
+  setTimeout(() => {
+    const tbody = document.getElementById('crd-tbody-' + ei);
+    if (!tbody) return;
+    const inputs = tbody.querySelectorAll('input[type="number"]');
+    if (inputs.length) {
+      inputs[inputs.length - 1].focus();
+      inputs[inputs.length - 1].select();
+    }
+  }, 80);
+}
+
+function loadCreditMonth(my) {
+  _crdData_cur = _crdData(my);
+  renderCreditLedger(_crdData_cur);
+}
+
+// Auto-focus: scroll to an employee's credit card and add an entry if they have none
+function focusCreditEmployee(ei) {
+  // Switch to credit tab if not already there
+  switchMgrTab('credit');
+  // Sync month selector
+  const salMon = document.getElementById('sal-month-sel')?.value;
+  const crdSel = document.getElementById('crd-month-sel');
+  if (salMon && crdSel && crdSel.value !== salMon) {
+    crdSel.value = salMon;
+    loadCreditMonth(salMon);
+  }
+  setTimeout(() => {
+    const el = document.getElementById('crd-emp-' + ei);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Flash highlight
+    el.style.transition = 'box-shadow 0.3s';
+    el.style.boxShadow = '0 0 0 3px var(--accent)';
+    setTimeout(() => { el.style.boxShadow = ''; }, 1800);
+    // Auto-add an entry and focus amount field if no entries yet
+    if (_crdData_cur[ei] && _crdData_cur[ei].entries.length === 0) {
+      addCrdEntry(ei);
+    } else {
+      // Focus last amount input in this employee's tbody
+      const tbody = document.getElementById('crd-tbody-' + ei);
+      if (tbody) {
+        const inputs = tbody.querySelectorAll('input[type="number"]');
+        if (inputs.length) inputs[inputs.length - 1].focus();
+      }
+    }
+  }, 150);
+}
+function crdEmpField(ei, field, val) { _crdData_cur[ei][field] = _ni(val); }
+function crdEntryChange(ei, eni, field, val) {
+  _crdData_cur[ei].entries[eni][field] = field === 'amount' ? _ni(val) : val;
+}
+function recalcCrdEmp(ei) {
+  const el = document.getElementById('crd-net-' + ei);
+  if (!el) return;
+  const net = _crdNet(_crdData_cur[ei]);
+  el.textContent = 'Net: ₨' + _fc2(net);
+  el.style.color = net > 0 ? 'var(--green)' : net < 0 ? 'var(--red)' : 'var(--muted)';
+}
+function addCrdEntry(ei) {
+  const today = new Date();
+  const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const dateStr = String(today.getDate()).padStart(2,'0') + '-' + ms[today.getMonth()] + '-' + today.getFullYear();
+  _crdData_cur[ei].entries.push({date:dateStr, desc:'credit', amount:0});
+  renderCreditLedger(_crdData_cur);
+  // Ensure the body stays open after re-render
+  const body = document.getElementById('crd-body-' + ei);
+  const chev = document.getElementById('crd-chev-' + ei);
+  if (body) body.style.display = '';
+  if (chev) chev.style.transform = 'rotate(90deg)';
+}
+function deleteCrdEntry(ei, eni) {
+  _crdData_cur[ei].entries.splice(eni, 1);
+  renderCreditLedger(_crdData_cur);
+}
+function addCreditEmployee() {
+  _crdData_cur.push({name:'New Employee', prevBal:0, entries:[], salary:0, lessGeneric:0});
+  renderCreditLedger(_crdData_cur);
+}
+function deleteCrdEmp(ei) {
+  if (!confirm('Remove ' + _crdData_cur[ei].name + '?')) return;
+  _crdData_cur.splice(ei, 1);
+  renderCreditLedger(_crdData_cur);
+}
+function saveCreditData() {
+  const my = document.getElementById('crd-month-sel').value;
+  const data = mgrLoad();
+  if (!data.credit) data.credit = {};
+  data.credit[my] = _crdData_cur.map(e => ({...e, entries:[...e.entries]}));
+  mgrSave(data);
+  toast('✓ Staff Credit saved for ' + my);
+  if (localStorage.getItem('bt_auto_save')==='1') pushToSupabase();
+}
+
+function copyToNextMonth() {
+  const sel = document.getElementById('crd-month-sel');
+  const curMy = sel.value;
+  if (!curMy) { toast('⚠ Select a month first', 'w'); return; }
+
+  // Save current month first
+  const data = mgrLoad();
+  if (!data.credit) data.credit = {};
+  data.credit[curMy] = _crdData_cur.map(e => ({...e, entries:[...e.entries]}));
+  mgrSave(data);
+
+  // Compute next month string
+  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const parts = curMy.split(' ');       // e.g. ['June', '2026']
+  const mIdx = MONTH_NAMES.indexOf(parts[0]);
+  const yr   = parseInt(parts[1]);
+  const nextMIdx = (mIdx + 1) % 12;
+  const nextYr   = mIdx === 11 ? yr + 1 : yr;
+  const nextMy   = MONTH_NAMES[nextMIdx] + ' ' + nextYr;
+
+  // Build next month data: net of each employee becomes prevBal, entries reset
+  const existingNext = data.credit[nextMy];
+  if (existingNext) {
+    if (!confirm(`${nextMy} already has data. Overwrite the Previous Balance values with this month's net balances? (Entries and salary fields will be kept as-is.)`)) return;
+    // Merge: update prevBal only, keep existing entries/salary/lessGeneric
+    const updated = existingNext.map(existing => {
+      const src = _crdData_cur.find(e => e.name === existing.name);
+      return src ? {...existing, prevBal: _crdNet(src)} : existing;
+    });
+    // Add any employees present in current month but not in next
+    _crdData_cur.forEach(src => {
+      if (!updated.find(e => e.name === src.name)) {
+        updated.push({name: src.name, prevBal: _crdNet(src), entries: [], salary: 0, lessGeneric: 0});
+      }
+    });
+    data.credit[nextMy] = updated;
+  } else {
+    // Fresh next month: copy employee list, set prevBal = net, clear entries
+    data.credit[nextMy] = _crdData_cur.map(e => ({
+      name: e.name,
+      prevBal: _crdNet(e),
+      entries: [],
+      salary: 0,
+      lessGeneric: 0
+    }));
+  }
+  mgrSave(data);
+
+  // Switch the dropdown to next month and reload
+  // Repopulate selector so the new month is available even if not in MONTHLY data
+  _mgrPopSel('crd-month-sel', nextMy);
+  sel.value = nextMy;
+  loadCreditMonth(nextMy);
+
+  toast('✓ Copied to ' + nextMy + ' — net balances set as opening balances');
+  if (localStorage.getItem('bt_auto_save')==='1') pushToSupabase();
+}
+
+// ══════════════════════════════
+// MANAGER PRINT FUNCTIONS
+// ══════════════════════════════
+function _mgrPrint(html) {
+  const pa = document.getElementById('print-area');
+  pa.innerHTML = html; pa.style.display = 'block';
+  window.print();
+  setTimeout(() => { pa.style.display = 'none'; }, 1200);
+}
+
+function printSalaryReport() {
+  const my = document.getElementById('sal-month-sel').value;
+  const rows = _salRows_cur;
+  const today = new Date().toLocaleDateString('en-PK',{day:'2-digit',month:'short',year:'numeric'});
+  const trows = rows.map((r,i) => `<tr>
+    <td style="padding:5px 8px;border-bottom:1px solid #eee">${i+1}</td>
+    <td style="padding:5px 8px;border-bottom:1px solid #eee;font-weight:600">${r.name}</td>
+    <td style="padding:5px 8px;border-bottom:1px solid #eee">${r.desig}</td>
+    <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right">${r.days}</td>
+    <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${_fc2(r.hoSal)}</td>
+    <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${_fc2(r.advance)}</td>
+    <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${_fc2(r.generic)}</td>
+    <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace;font-weight:700;color:#1e40af">₨${_fc2(_salNet(r))}</td>
+  </tr>`).join('');
+  const totNet = rows.reduce((s,r) => s + _salNet(r), 0);
+  _mgrPrint(`<div style="max-width:700px;margin:0 auto;font-family:Arial,sans-serif">
+    <div style="background:#0f172a;color:#fff;padding:14px 20px;border-radius:8px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+      <div><h2 style="margin:0;font-size:16px">FDPP SALARY DETAIL — BAHRIA TOWN</h2><p style="margin:4px 0 0;font-size:11px;opacity:.7">${my}</p></div>
+      <div style="font-size:11px;opacity:.7">Printed: ${today}</div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr style="background:#f8fafc">
+        <th style="padding:7px 8px;text-align:left;border-bottom:2px solid #000;font-size:10px">#</th>
+        <th style="padding:7px 8px;text-align:left;border-bottom:2px solid #000;font-size:10px">Name</th>
+        <th style="padding:7px 8px;text-align:left;border-bottom:2px solid #000;font-size:10px">Designation</th>
+        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">Days</th>
+        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">HO Salary</th>
+        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">Advance</th>
+        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">Generic</th>
+        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">Net Salary</th>
+      </tr></thead>
+      <tbody>${trows}</tbody>
+      <tfoot><tr style="background:#eff6ff">
+        <td colspan="7" style="padding:7px 8px;font-weight:700;font-size:11px">TOTAL</td>
+        <td style="padding:7px 8px;text-align:right;font-weight:700;font-family:monospace;color:#1e40af">₨${_fc2(totNet)}</td>
+      </tr></tfoot>
+    </table>
+  </div>`);
+}
+
+function printGenericReport() {
+  const my = document.getElementById('gen-month-sel').value;
+  const rows = _genRows_cur;
+  const today = new Date().toLocaleDateString('en-PK',{day:'2-digit',month:'short',year:'numeric'});
+  const trows = rows.map((r,i) => `<tr>
+    <td style="padding:5px 8px;border-bottom:1px solid #eee">${i+1}</td>
+    <td style="padding:5px 8px;border-bottom:1px solid #eee;font-weight:600">${r.name}</td>
+    <td style="padding:5px 8px;border-bottom:1px solid #eee">${r.desig}</td>
+    <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${_fc2(r.genericSale)}</td>
+    <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace;color:#059669">₨${_fc2(_genIncentive(r))}</td>
+    <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${_fc2(r.extra)}</td>
+    <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace;font-weight:700;color:#1e40af">₨${_fc2(_genFinal(r))}</td>
+  </tr>`).join('');
+  const totFin = rows.reduce((s,r) => s + _genFinal(r), 0);
+  _mgrPrint(`<div style="max-width:680px;margin:0 auto;font-family:Arial,sans-serif">
+    <div style="background:#0f172a;color:#fff;padding:14px 20px;border-radius:8px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+      <div><h2 style="margin:0;font-size:16px">GENERIC WORKING — ${my}</h2><p style="margin:4px 0 0;font-size:11px;opacity:.7">4% incentive on generic sales</p></div>
+      <div style="font-size:11px;opacity:.7">Printed: ${today}</div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr style="background:#f8fafc">
+        <th style="padding:7px 8px;text-align:left;border-bottom:2px solid #000;font-size:10px">#</th>
+        <th style="padding:7px 8px;text-align:left;border-bottom:2px solid #000;font-size:10px">Name</th>
+        <th style="padding:7px 8px;text-align:left;border-bottom:2px solid #000;font-size:10px">Designation</th>
+        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">Generic Sale</th>
+        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">Incentive (4%)</th>
+        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">Extra</th>
+        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">Final</th>
+      </tr></thead>
+      <tbody>${trows}</tbody>
+      <tfoot><tr style="background:#eff6ff">
+        <td colspan="6" style="padding:7px 8px;font-weight:700;font-size:11px">TOTAL INCENTIVE</td>
+        <td style="padding:7px 8px;text-align:right;font-weight:700;font-family:monospace;color:#1e40af">₨${_fc2(totFin)}</td>
+      </tr></tfoot>
+    </table>
+  </div>`);
+}
+
+function printExpenseReport() {
+  const my = document.getElementById('exp-month-sel').value;
+  const rows = _expRows_cur;
+  const op = _expOpening_cur;
+  const today = new Date().toLocaleDateString('en-PK',{day:'2-digit',month:'short',year:'numeric'});
+  const totBill = rows.reduce((s,r) => s + _ni(r.bill), 0);
+  const totHO   = rows.reduce((s,r) => s + _ni(r.pattyHO), 0);
+  const totalExp = rows.reduce((s,r) => s + _ni(r.bill) + _ni(r.fuel) + _ni(r.soap) + _ni(r.refresh) + _ni(r.extra), 0);
+  const balance  = op + totHO - totalExp;
+  const trows = rows.map(r => `<tr>
+    <td style="padding:5px 8px;border-bottom:1px solid #eee">${r.date}</td>
+    <td style="padding:5px 8px;border-bottom:1px solid #eee">${r.desc}</td>
+    <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${_fc2(r.bill)}</td>
+    <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${_fc2(r.fuel)}</td>
+    <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${_fc2(r.soap)}</td>
+    <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${_fc2(r.refresh)}</td>
+    <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${_fc2(r.extra)}</td>
+    <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${_fc2(r.pattyHO)}</td>
+  </tr>`).join('');
+  _mgrPrint(`<div style="max-width:760px;margin:0 auto;font-family:Arial,sans-serif">
+    <div style="background:#0f172a;color:#fff;padding:14px 20px;border-radius:8px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
+      <div><h2 style="margin:0;font-size:16px">PATTY CASH / EXPENSE DETAIL — ${my}</h2></div>
+      <div style="font-size:11px;opacity:.7">Printed: ${today}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px 12px"><div style="font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#64748b">Opening Patty</div><div style="font-size:15px;font-weight:700;font-family:monospace">₨${_fc2(op)}</div></div>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px 12px"><div style="font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#64748b">HO Received</div><div style="font-size:15px;font-weight:700;font-family:monospace">₨${_fc2(totHO)}</div></div>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px 12px"><div style="font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#64748b">Total Expenses</div><div style="font-size:15px;font-weight:700;font-family:monospace;color:#dc2626">₨${_fc2(totalExp)}</div></div>
+      <div style="background:${balance>=0?'#f0fdf4':'#fef2f2'};border:1px solid ${balance>=0?'#bbf7d0':'#fecaca'};border-radius:6px;padding:8px 12px"><div style="font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#64748b">Balance</div><div style="font-size:15px;font-weight:700;font-family:monospace;color:${balance>=0?'#059669':'#dc2626'}">₨${_fc2(balance)}</div></div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr style="background:#f8fafc">
+        <th style="padding:7px 8px;text-align:left;border-bottom:2px solid #000;font-size:10px">Date</th>
+        <th style="padding:7px 8px;text-align:left;border-bottom:2px solid #000;font-size:10px">Description</th>
+        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">Bill Amt</th>
+        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">Fuel/HO</th>
+        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">Soap/Tissue</th>
+        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">Refreshment</th>
+        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">Extra</th>
+        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">Patty H/O</th>
+      </tr></thead>
+      <tbody>${trows}</tbody>
+    </table>
+  </div>`);
+}
+
+function printCreditReport() {
+  const my = document.getElementById('crd-month-sel').value;
+  const emps = _crdData_cur;
+  const today = new Date().toLocaleDateString('en-PK',{day:'2-digit',month:'short',year:'numeric'});
+  const empBlocks = emps.map(emp => {
+    const net = _crdNet(emp);
+    const erows = emp.entries.map(en => `<tr>
+      <td style="padding:4px 8px;border-bottom:1px solid #f0f0f0;font-size:11px">${en.date}</td>
+      <td style="padding:4px 8px;border-bottom:1px solid #f0f0f0;font-size:11px">${en.desc}</td>
+      <td style="padding:4px 8px;border-bottom:1px solid #f0f0f0;font-size:11px;text-align:right;font-family:monospace;color:${_ni(en.amount)<0?'#dc2626':'#059669'}">₨${_fc2(en.amount)}</td>
+    </tr>`).join('');
+    return `<div style="margin-bottom:12px;break-inside:avoid">
+      <div style="display:flex;justify-content:space-between;background:#1e3a5f;color:#fff;padding:6px 10px;border-radius:6px 6px 0 0">
+        <strong style="font-size:13px">${emp.name}</strong>
+        <span style="font-size:12px;font-family:monospace">Net: ₨${_fc2(net)}</span>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px;border:1px solid #e2e8f0;border-top:none">
+        <tr style="background:#f8fafc"><td style="padding:4px 8px">Prev Balance</td><td style="padding:4px 8px;text-align:right;font-family:monospace">₨${_fc2(emp.prevBal)}</td><td style="padding:4px 8px">Salary Paid</td><td style="padding:4px 8px;text-align:right;font-family:monospace">₨${_fc2(emp.salary)}</td><td style="padding:4px 8px">Less Generic</td><td style="padding:4px 8px;text-align:right;font-family:monospace">₨${_fc2(emp.lessGeneric)}</td></tr>
+        ${erows || '<tr><td colspan="3" style="padding:6px 8px;color:#94a3b8;text-align:center">No entries</td></tr>'}
+      </table>
+    </div>`;
+  }).join('');
+  _mgrPrint(`<div style="max-width:680px;margin:0 auto;font-family:Arial,sans-serif">
+    <div style="background:#0f172a;color:#fff;padding:14px 20px;border-radius:8px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+      <div><h2 style="margin:0;font-size:16px">STAFF CREDIT LEDGER — ${my}</h2></div>
+      <div style="font-size:11px;opacity:.7">Printed: ${today}</div>
+    </div>
+    ${empBlocks}
+  </div>`);
+}
+
+
+// ══════════════════════════════════════════════════════
+// PETTY CASH DETAIL
+// ══════════════════════════════════════════════════════
+const PETTY_PFX = 'mw_petty_';
+let _pettyData = { groups: [] };  // current working copy
+let _pettyMonth = '';
+
+function _pettyKey(my) { return PETTY_PFX + my; }
+
+function loadPettyMonth(my) {
+  _pettyMonth = my;
+  try {
+    const raw = localStorage.getItem(_pettyKey(my));
+    _pettyData = raw ? JSON.parse(raw) : { groups: [] };
+  } catch(e) { _pettyData = { groups: [] }; }
+  if (!_pettyData.groups) _pettyData.groups = [];
+  renderPettyGroups();
+}
+
+function savePettyData() {
+  if (!_pettyMonth) { toast('⚠ Select a month first','w'); return; }
+  localStorage.setItem(_pettyKey(_pettyMonth), JSON.stringify(_pettyData));
+  toast('✓ Petty Detail saved');
+  if (localStorage.getItem('bt_auto_save')==='1') pushToSupabase();
+}
+
+function _pettyTotalForMonth(my) {
+  try {
+    const raw = localStorage.getItem(_pettyKey(my));
+    const data = raw ? JSON.parse(raw) : null;
+    const groups = data && Array.isArray(data.groups) ? data.groups : [];
+    return groups.reduce((s, g) => s + (Array.isArray(g.rows) ? g.rows.reduce((a, r) => a + _ni(r.amount), 0) : 0), 0);
+  } catch(e) { return 0; }
+}
+
+function addPettyGroup() {
+  _pettyData.groups.push({ period: '', rows: [{ desc: '', amount: 0 }] });
+  renderPettyGroups();
+  // Scroll to the new group
+  setTimeout(() => {
+    const gs = document.querySelectorAll('.petty-group');
+    if (gs.length) gs[gs.length - 1].scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
+}
+
+function deletePettyGroup(gi) {
+  if (!confirm('Delete this group?')) return;
+  _pettyData.groups.splice(gi, 1);
+  renderPettyGroups();
+}
+
+function addPettyRow(gi) {
+  _pettyData.groups[gi].rows.push({ desc: '', amount: 0 });
+  renderPettyGroups();
+}
+
+function deletePettyRow(gi, ri) {
+  _pettyData.groups[gi].rows.splice(ri, 1);
+  renderPettyGroups();
+}
+
+function pettyChange(gi, field, val) {
+  _pettyData.groups[gi][field] = field === 'period' ? val : _ni(val);
+  recalcPettyKpis();
+}
+
+function pettyRowChange(gi, ri, field, val) {
+  _pettyData.groups[gi].rows[ri][field] = field === 'desc' ? val : _ni(val);
+  // Update sub-total live
+  const sub = _pettyData.groups[gi].rows.reduce((s, r) => s + _ni(r.amount), 0);
+  const el = document.getElementById('petty-sub-' + gi);
+  if (el) el.textContent = '₨' + _fc2(sub);
+  recalcPettyKpis();
+}
+
+function _pettyGroupTotal(g) {
+  return g.rows.reduce((s, r) => s + _ni(r.amount), 0);
+}
+
+function recalcPettyKpis() {
+  const gs = _pettyData.groups;
+  const grand = gs.reduce((s, g) => s + _pettyGroupTotal(g), 0);
+  const items = gs.reduce((s, g) => s + g.rows.length, 0);
+  const kGroups = document.getElementById('petty-k-groups');
+  const kItems  = document.getElementById('petty-k-items');
+  const kTotal  = document.getElementById('petty-k-total');
+  if (kGroups) kGroups.textContent = gs.length;
+  if (kItems)  kItems.textContent  = items;
+  if (kTotal)  kTotal.textContent  = '₨' + _fc2(grand);
+}
+
+function renderPettyGroups() {
+  const cont = document.getElementById('petty-groups');
+  if (!cont) return;
+  const gs = _pettyData.groups;
+  if (!gs.length) {
+    cont.innerHTML = '<div style="text-align:center;color:var(--muted);padding:40px;border:2px dashed var(--border);border-radius:10px">No groups yet — click <strong>＋ Add New Group</strong> to create the first sub-voucher.</div>';
+    recalcPettyKpis(); return;
+  }
+  cont.innerHTML = gs.map((g, gi) => {
+    const sub = _pettyGroupTotal(g);
+    const rows = g.rows.map((r, ri) => `
+      <tr class="mgr-tr">
+        <td class="mgr-td" style="color:var(--muted);font-size:11px">${ri + 1}</td>
+        <td class="mgr-td"><input class="mgr-inp" type="text" value="${(r.desc||'').replace(/"/g,'&quot;')}" placeholder="Description / item"
+          oninput="pettyRowChange(${gi},${ri},'desc',this.value)"></td>
+        <td class="mgr-td" style="width:130px"><input class="mgr-inp" type="number" value="${r.amount||''}" placeholder="0"
+          oninput="pettyRowChange(${gi},${ri},'amount',this.value)" style="text-align:right"></td>
+        <td class="mgr-td" style="text-align:center"><button class="mgr-del" onclick="deletePettyRow(${gi},${ri})">🗑</button></td>
+      </tr>`).join('');
+    return `
+    <div class="petty-group" id="petty-grp-${gi}">
+      <div class="petty-group-hd">
+        <span style="font-size:10px;font-weight:700;color:var(--accent);letter-spacing:.05em">GROUP ${gi + 1}</span>
+        <input class="mgr-inp" type="text" value="${(g.period||'').replace(/"/g,'&quot;')}" placeholder="Period / Date range (e.g. 1–7 June 2026)"
+          oninput="pettyRowChange_period(${gi},this.value)"
+          style="flex:1;max-width:320px">
+        <button class="mgr-del" onclick="deletePettyGroup(${gi})" title="Delete group" style="margin-left:auto">🗑 Group</button>
+      </div>
+      <div class="petty-group-body">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="background:var(--s2)">
+            <th style="padding:6px 8px;text-align:left;font-size:10px;color:var(--muted);border-bottom:2px solid var(--border)">#</th>
+            <th style="padding:6px 8px;text-align:left;font-size:10px;color:var(--muted);border-bottom:2px solid var(--border)">Description</th>
+            <th style="padding:6px 8px;text-align:right;font-size:10px;color:var(--muted);border-bottom:2px solid var(--border)">Amount (₨)</th>
+            <th style="padding:6px 8px;text-align:center;font-size:10px;color:var(--muted);border-bottom:2px solid var(--border)">Del</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div class="petty-group-foot">
+        <button class="btn btn-p" style="font-size:11px;padding:5px 12px" onclick="addPettyRow(${gi})">＋ Add Item</button>
+        <div style="font-family:var(--mono);font-weight:700;font-size:13px">
+          Total: <span id="petty-sub-${gi}" style="color:var(--accent)">₨${_fc2(sub)}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  recalcPettyKpis();
+}
+
+function pettyRowChange_period(gi, val) {
+  _pettyData.groups[gi].period = val;
+}
+
+function printPettyReport() {
+  const my = document.getElementById('petty-month-sel').value;
+  const gs = _pettyData.groups;
+  const today = new Date().toLocaleDateString('en-PK',{day:'2-digit',month:'short',year:'numeric'});
+  const grand = gs.reduce((s,g) => s + _pettyGroupTotal(g), 0);
+  const groupBlocks = gs.map((g, gi) => {
+    const sub = _pettyGroupTotal(g);
+    const rows = g.rows.map((r,ri) => `<tr>
+      <td style="padding:4px 8px;border-bottom:1px solid #eee">${ri+1}</td>
+      <td style="padding:4px 8px;border-bottom:1px solid #eee">${r.desc||'—'}</td>
+      <td style="padding:4px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${_fc2(r.amount)}</td>
+    </tr>`).join('');
+    return `
+    <div style="margin-bottom:18px;border:1px solid #d1d5db;border-radius:8px;overflow:hidden">
+      <div style="background:#eff6ff;padding:8px 14px;display:flex;justify-content:space-between;align-items:center">
+        <strong style="font-size:12px;color:#1e40af">Group ${gi+1} — ${g.period||'No period'}</strong>
+        <span style="font-size:11px;color:#6b7280">Sub-total: <strong style="color:#1e40af">₨${_fc2(sub)}</strong></span>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="background:#f8fafc">
+          <th style="padding:5px 8px;text-align:left;border-bottom:1px solid #d1d5db;font-size:10px">#</th>
+          <th style="padding:5px 8px;text-align:left;border-bottom:1px solid #d1d5db;font-size:10px">Description</th>
+          <th style="padding:5px 8px;text-align:right;border-bottom:1px solid #d1d5db;font-size:10px">Amount</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr style="background:#eff6ff">
+          <td colspan="2" style="padding:6px 8px;font-weight:700;font-size:11px">Total Petty Detail:</td>
+          <td style="padding:6px 8px;text-align:right;font-weight:700;font-family:monospace;color:#1e40af">₨${_fc2(sub)}</td>
+        </tr></tfoot>
+      </table>
+    </div>`;
+  }).join('');
+  _mgrPrint(`<div style="max-width:620px;margin:0 auto;font-family:Arial,sans-serif">
+    <div style="background:#1e40af;color:#fff;padding:14px 20px;border-radius:8px;margin-bottom:16px">
+      <h2 style="margin:0;font-size:16px">PETTY CASH DETAIL — ${my}</h2>
+      <p style="margin:4px 0 0;font-size:11px;opacity:.7">Bahria Town Fazal Din Pharma Plus · Printed: ${today}</p>
+    </div>
+    ${groupBlocks}
+    <div style="background:#0f172a;color:#fff;padding:10px 16px;border-radius:8px;display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+      <strong>Grand Total — All Groups</strong>
+      <strong style="font-family:monospace;font-size:15px">₨${_fc2(grand)}</strong>
+    </div>
+  </div>`);
+}
+
+// ══════════════════════════════════════════════════════
+// INCENTIVE CALCULATOR
+// ══════════════════════════════════════════════════════
+const INCEN_PFX = 'mw_incentive_';
+let _incData = {};
+let _incMonth = '';
+
+const _INC_FIELDS = ['saleVal','genSale','pilferage','unapproved','tillShort',
+                     'cashTarget','excessFine','plusFine','paperFine','panelFine','tax'];
+
+function _incKey(my) { return INCEN_PFX + my; }
+
+function loadIncentiveMonth(my) {
+  _incMonth = my;
+  try {
+    const raw = localStorage.getItem(_incKey(my));
+    _incData = raw ? JSON.parse(raw) : {};
+  } catch(e) { _incData = {}; }
+  // Populate inputs
+  _INC_FIELDS.forEach(f => {
+    const el = document.getElementById('inc-' + f);
+    if (el) el.value = _incData[f] || '';
+  });
+  recalcIncentive();
+}
+
+function saveIncentiveData() {
+  if (!_incMonth) { toast('⚠ Select a month first','w'); return; }
+  _INC_FIELDS.forEach(f => {
+    const el = document.getElementById('inc-' + f);
+    if (el) _incData[f] = _ni(el.value);
+  });
+  localStorage.setItem(_incKey(_incMonth), JSON.stringify(_incData));
+  toast('✓ Incentive data saved');
+  if (localStorage.getItem('bt_auto_save')==='1') pushToSupabase();
+}
+
+function recalcIncentive() {
+  const g = id => _ni(document.getElementById(id)?.value);
+  const set = (id, val) => { const el=document.getElementById(id); if(el) el.textContent='₨'+_fc2(val); };
+  const setRed = (id, val) => { const el=document.getElementById(id); if(el){ el.textContent='₨'+_fc2(Math.abs(val)); el.classList.toggle('red', val>0); } };
+
+  const saleVal    = g('inc-saleVal');
+  const genSale    = g('inc-genSale');
+  const pilferage  = g('inc-pilferage');
+  const tillShort  = g('inc-tillShort');
+  const cashTarget = g('inc-cashTarget');
+  const excessFine = g('inc-excessFine');
+  const plusFine   = g('inc-plusFine');
+  const paperFine  = g('inc-paperFine');
+  const panelFine  = g('inc-panelFine');
+  const tax        = g('inc-tax');
+
+  const saleComm   = Math.round(saleVal * 0.005);      // 0.5%
+  const genInc     = Math.round(genSale * 0.045);       // 4.5%
+  const totalComm  = saleComm - pilferage - tillShort;
+  const totalBonus = cashTarget;
+  const totalGen   = genInc - excessFine;
+  const grandTotal = totalComm + totalBonus + totalGen;
+  const totalLess  = plusFine + paperFine;
+  const prePanel   = grandTotal - totalLess;
+  const netInc     = prePanel - panelFine;
+  const salmanNet  = Math.round(netInc / 2) - tax;
+
+  set('ic-saleComm',    saleComm);
+  setRed('ic-lessPilf', pilferage);
+  setRed('ic-tillCheque', tillShort);
+  set('ic-totalComm',   totalComm);
+  set('ic-totalBonus',  totalBonus);
+  set('ic-genInc',      genInc);
+  setRed('ic-lessExcess', excessFine);
+  set('ic-totalGen',    totalGen);
+  set('ic-grandTotal',  grandTotal);
+  setRed('ic-totalLess', totalLess);
+  set('ic-prePanel',    prePanel);
+  setRed('ic-lessPanelFine', panelFine);
+  set('ic-netInc',      netInc);
+  setRed('ic-taxAmt',   tax);
+  set('ic-salmanNet',   salmanNet);
+}
+
+function printIncentiveReport() {
+  const my = document.getElementById('inc-month-sel').value;
+  const today = new Date().toLocaleDateString('en-PK',{day:'2-digit',month:'short',year:'numeric'});
+  const g = id => _ni(document.getElementById(id)?.value);
+  const fv = v => '₨'+_fc2(v);
+  const saleVal=g('inc-saleVal'), genSale=g('inc-genSale'), pilferage=g('inc-pilferage'),
+        tillShort=g('inc-tillShort'), cashTarget=g('inc-cashTarget'), excessFine=g('inc-excessFine'),
+        plusFine=g('inc-plusFine'), paperFine=g('inc-paperFine'), panelFine=g('inc-panelFine'), tax=g('inc-tax');
+  const saleComm=Math.round(saleVal*.005), genInc=Math.round(genSale*.045);
+  const totalComm=saleComm-pilferage-tillShort, totalBonus=cashTarget, totalGen=genInc-excessFine;
+  const grandTotal=totalComm+totalBonus+totalGen, totalLess=plusFine+paperFine;
+  const prePanel=grandTotal-totalLess, netInc=prePanel-panelFine, salmanNet=Math.round(netInc/2)-tax;
+  const row=(lbl,val,style='')=>`<tr><td style="padding:5px 10px;border-bottom:1px solid #f1f5f9">${lbl}</td><td style="padding:5px 10px;border-bottom:1px solid #f1f5f9;text-align:right;font-family:monospace;${style}">${val}</td></tr>`;
+  const sec=(hd)=>`<tr style="background:#eff6ff"><td colspan="2" style="padding:6px 10px;font-weight:700;font-size:11px;color:#1e40af">${hd}</td></tr>`;
+  const tot=(lbl,val,clr='#1e40af')=>`<tr style="background:#f0fdf4"><td style="padding:6px 10px;font-weight:700">${lbl}</td><td style="padding:6px 10px;text-align:right;font-family:monospace;font-weight:700;color:${clr}">${val}</td></tr>`;
+  _mgrPrint(`<div style="max-width:520px;margin:0 auto;font-family:Arial,sans-serif">
+    <div style="background:#1e40af;color:#fff;padding:14px 20px;border-radius:8px;margin-bottom:14px">
+      <h2 style="margin:0;font-size:16px">INCENTIVE DETAIL — ${my}</h2>
+      <p style="margin:4px 0 0;font-size:11px;opacity:.7">Printed: ${today}</p>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      ${sec('Base Figures')}
+      ${row('Sale Value',fv(saleVal))}${row('Generic Sale',fv(genSale))}${row('Less Pilferage',fv(pilferage),'color:#dc2626')}${row('Till Short',fv(tillShort),'color:#dc2626')}
+      ${sec('Commission')}
+      ${row('Sale Commission (0.5%)',fv(saleComm))}${row('Less Pilferage','-'+fv(pilferage),'color:#dc2626')}${row('Till Cheque','-'+fv(tillShort),'color:#dc2626')}
+      ${tot('Total Commission',fv(totalComm))}
+      ${sec('Bonus')}${tot('Cash Target Bonus',fv(totalBonus))}
+      ${sec('Generic')}${row('Generic Incentive (4.5%)',fv(genInc))}${row('Less Excess Fine','-'+fv(excessFine),'color:#dc2626')}${tot('Total Generic',fv(totalGen))}
+      <tr style="background:#0f172a;color:#fff"><td style="padding:8px 10px;font-weight:700;font-size:13px">🏆 Grand Total</td><td style="padding:8px 10px;text-align:right;font-family:monospace;font-weight:700;font-size:14px;color:#fff">${fv(grandTotal)}</td></tr>
+      ${sec('Deductions / Fine')}
+      ${row('Plus % Fine',fv(plusFine),'color:#dc2626')}${row('Paper Fine',fv(paperFine),'color:#dc2626')}${tot('Total Deductions',fv(totalLess),'#dc2626')}
+      ${row('Pre-panel Total',fv(prePanel))}${row('Panel Fine',fv(panelFine),'color:#dc2626')}
+      <tr style="background:#052e16;color:#fff"><td style="padding:8px 10px;font-weight:700;font-size:13px">✅ Net Incentive</td><td style="padding:8px 10px;text-align:right;font-family:monospace;font-weight:700;font-size:14px;color:#4ade80">${fv(netInc)}</td></tr>
+      ${sec('Split (÷ 2)')}${row('Tax',fv(tax),'color:#dc2626')}${tot('Salman Net',fv(salmanNet),'#1e40af')}
+    </table>
+  </div>`);
+}
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+
+// ── Save All Manager Sections ──────────────────────────────────────────────
+function saveAllManagerSections() {
+  const monthSels = ['sal-month-sel','gen-month-sel','exp-month-sel','crd-month-sel','petty-month-sel','inc-month-sel','csec-month-sel'];
+  const anyMonth = monthSels.map(id => (document.getElementById(id)||{}).value || '').find(v => v);
+  if (!anyMonth) { toast('⚠ No month selected — open a tab and pick a month first','w'); return; }
+  let saved = 0;
+  function tryCall(fn) { try { if (typeof fn === 'function') { fn(); saved++; } } catch(e) {} }
+  staffSave(); saved++; // always save staff registry
+  tryCall(saveSalaryData);
+  tryCall(saveGenericData);
+  tryCall(saveExpenseData);
+  tryCall(saveCreditData);
+  tryCall(savePettyData);
+  tryCall(saveIncentiveData);
+  tryCall(saveAllCustomSections);
+  toast('✓ All sections saved (' + saved + ')');
+  setTimeout(() => { try { pushToSupabase(); } catch(e) {} }, 700);
+}
+
+// ── Populate Dashboard Working Summary ─────────────────────────────────────
+function populateDashWorking(mon) {
+  const wEl = document.getElementById('dash-working-section');
+  if (!wEl) return;
+  if (!mon) { wEl.style.display = 'none'; return; }
+  wEl.style.display = '';
+  const mgr = JSON.parse(localStorage.getItem('BT_ManagerWork_v1') || '{}');
+  const salaryRows = (mgr.salary && mgr.salary[mon]) || [];
+  const genericRows = (mgr.generic && mgr.generic[mon]) || [];
+  const salaryTotal = salaryRows.reduce((s, r) => s + (_ni(r.hoSal) - _ni(r.advance) + _ni(r.generic)), 0);
+  const genericTotal = genericRows.reduce((s, r) => s + (Math.round(_ni(r.genericSale) * 0.04) + _ni(r.extra)), 0);
+  const pettyTotal = typeof _pettyTotalForMonth === 'function' ? _pettyTotalForMonth(mon) : 0;
+  function fmt(v) { return (v != null && v !== '' && v !== 0) ? '₨' + _fc2(v) : '—'; }
+  const el = id => document.getElementById(id);
+  if (el('dw-salary'))    el('dw-salary').textContent    = fmt(salaryTotal);
+  if (el('dw-generic'))   el('dw-generic').textContent   = fmt(genericTotal);
+  if (el('dw-petty'))     el('dw-petty').textContent     = fmt(pettyTotal);
+  if (el('dw-incentive')) {
+    const inc = JSON.parse(localStorage.getItem('mw_incentive_' + mon) || '{}');
+    let incNet = inc.netInc;
+    if (incNet == null) {
+      const saleComm = Math.round(_ni(inc.saleVal) * 0.005);
+      const genInc = Math.round(_ni(inc.genSale) * 0.045);
+      const totalComm = saleComm - _ni(inc.pilferage) - _ni(inc.tillShort);
+      const totalGen = genInc - _ni(inc.excessFine);
+      incNet = totalComm + _ni(inc.cashTarget) + totalGen - _ni(inc.plusFine) - _ni(inc.paperFine) - _ni(inc.panelFine);
+    }
+    el('dw-incentive').textContent = fmt(incNet || '');
+  }
+}
+
+// ── Staff Card Popup ────────────────────────────────────────────────────────
+function openStaffCard(i) {
+  const emp = STAFF[i];
+  if (!emp) return;
+  const modal = document.getElementById('sc-bg');
+  if (!modal) return;
+  document.getElementById('sc-idx').value = i;
+  const sid = emp.staffId || ('EMP-' + String(i + 1).padStart(3, '0'));
+  document.getElementById('sc-title-id').textContent = sid;
+  document.getElementById('sc-title-name').textContent = emp.name || '(unnamed)';
+  // Fill form fields
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+  set('sc-f-staffId', sid);
+  set('sc-f-srNum', emp.srNum != null ? emp.srNum : (i + 1));
+  set('sc-f-name', emp.name);
+  set('sc-f-designation', emp.designation);
+  set('sc-f-fatherName', emp.fatherName);
+  set('sc-f-cnic', emp.cnic);
+  set('sc-f-bloodGroup', emp.bloodGroup);
+  set('sc-f-phone', emp.phone);
+  set('sc-f-doj', emp.doj);
+  set('sc-f-address', emp.address);
+  const activeEl = document.getElementById('sc-f-active');
+  if (activeEl) activeEl.checked = emp.active !== false;
+  // Load credit history
+  renderStaffCreditHistory(emp.name);
+  modal.classList.add('on');
+  switchStaffCardTab('details');
+}
+
+function closeStaffCard() {
+  const modal = document.getElementById('sc-bg');
+  if (modal) modal.classList.remove('on');
+}
+
+function saveStaffCard() {
+  const i = parseInt(document.getElementById('sc-idx').value);
+  if (isNaN(i) || i < 0 || i >= STAFF.length) return;
+  const get = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+  STAFF[i].staffId     = get('sc-f-staffId');
+  STAFF[i].srNum       = Number(get('sc-f-srNum')) || STAFF[i].srNum;
+  STAFF[i].name        = get('sc-f-name');
+  STAFF[i].designation = get('sc-f-designation');
+  STAFF[i].fatherName  = get('sc-f-fatherName');
+  STAFF[i].cnic        = get('sc-f-cnic');
+  STAFF[i].bloodGroup  = get('sc-f-bloodGroup');
+  STAFF[i].phone       = get('sc-f-phone');
+  STAFF[i].doj         = get('sc-f-doj');
+  STAFF[i].address     = get('sc-f-address');
+  const activeEl = document.getElementById('sc-f-active');
+  if (activeEl) STAFF[i].active = activeEl.checked;
+  // Update header live
+  document.getElementById('sc-title-id').textContent   = STAFF[i].staffId || '';
+  document.getElementById('sc-title-name').textContent  = STAFF[i].name || '(unnamed)';
+  renderStaffRegistry();
+  toast('✓ Staff details saved — click 💾 Save Staff List to persist');
+}
+
+function switchStaffCardTab(tab) {
+  document.querySelectorAll('.sc-tab').forEach(b => b.classList.toggle('active', b.dataset.sctab === tab));
+  document.querySelectorAll('#sc-panel-details,#sc-panel-credit').forEach(p => { p.style.display = 'none'; });
+  const panel = document.getElementById('sc-panel-' + tab);
+  if (panel) panel.style.display = '';
+}
+
+function renderStaffCreditHistory(empName) {
+  const cont = document.getElementById('sc-credit-history');
+  if (!cont) return;
+  const norm = s => (s || '').trim().toLowerCase();
+  const data = mgrLoad();
+  const creditData = data.credit || {};
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const months = Object.keys(creditData).sort((a, b) => {
+    const pa = a.split(' '), pb = b.split(' ');
+    const ya = parseInt(pa[1]) || 0, yb = parseInt(pb[1]) || 0;
+    if (ya !== yb) return yb - ya;
+    return monthNames.indexOf(pb[0]) - monthNames.indexOf(pa[0]);
+  });
+  if (!months.length) {
+    cont.innerHTML = '<p style="text-align:center;color:var(--muted);padding:32px">No credit data saved yet.</p>';
+    return;
+  }
+  let html = '';
+  months.forEach(my => {
+    const emps = creditData[my] || [];
+    const emp = emps.find(e => norm(e.name) === norm(empName));
+    if (!emp) return;
+    const net = _crdNet(emp);
+    const netCol = net > 0 ? 'var(--green,#16a34a)' : net < 0 ? 'var(--red,#dc2626)' : 'var(--muted)';
+    const rows = (emp.entries || []).map(en => {
+      const amt = _ni(en.amount);
+      return `<tr>
+        <td style="padding:5px 10px;border-bottom:1px solid var(--border);font-size:12px">${en.date||''}</td>
+        <td style="padding:5px 10px;border-bottom:1px solid var(--border);font-size:12px">${en.desc||''}</td>
+        <td style="padding:5px 10px;border-bottom:1px solid var(--border);font-size:12px;text-align:right;font-family:monospace;color:${amt<0?'var(--red,#dc2626)':'var(--green,#16a34a)'}">₨${_fc2(en.amount)}</td>
+      </tr>`;
+    }).join('');
+    html += `<div style="margin-bottom:16px;border:1px solid var(--border);border-radius:8px;overflow:hidden">
+      <div style="background:var(--accent);color:#fff;padding:8px 14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <strong style="font-size:14px">${my}</strong>
+        <div style="display:flex;gap:16px;font-size:12px;opacity:.9">
+          <span>Prev: ₨${_fc2(emp.prevBal)}</span>
+          <span>Sal: ₨${_fc2(emp.salary)}</span>
+          <span style="font-weight:700;color:#fff">Net: <span style="color:${netCol==='var(--green,#16a34a)'?'#bbf7d0':'#fecaca'}">₨${_fc2(net)}</span></span>
+        </div>
+      </div>
+      ${rows ? `<table style="width:100%;border-collapse:collapse">
+        <thead><tr style="background:var(--s2)">
+          <th style="padding:5px 10px;font-size:10px;text-align:left;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Date</th>
+          <th style="padding:5px 10px;font-size:10px;text-align:left;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Description</th>
+          <th style="padding:5px 10px;font-size:10px;text-align:right;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Amount</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>` : '<p style="text-align:center;color:var(--muted);font-size:12px;padding:12px">No entries for this month</p>'}
+    </div>`;
+  });
+  cont.innerHTML = html || '<p style="text-align:center;color:var(--muted);padding:32px">No credit history found for this employee.</p>';
+}
+
+function initApp() {
+  // Restore session entries
+  try {
+    const se=localStorage.getItem('bt_entries');
+    if(se){ newEntries=JSON.parse(se); newEntries.forEach(e=>{ if(!DAILY.find(d=>d.Date===e.Date&&d.Month_Year===e.Month_Year)) DAILY.push(e); }); }
+    const sm=localStorage.getItem('bt_new_months');
+    if(sm){ JSON.parse(sm).forEach(m=>{ if(!MONTHLY.find(x=>x.Month_Year===m.Month_Year)) MONTHLY.push(m); }); }
+  } catch(e){}
+  rebuildDropdowns();
+  // Default dashboard to latest year
+  const dashYrSel = document.getElementById('dash-year');
+  if (dashYrSel) {
+    const yrsArr = years();
+    if (yrsArr.length) dashYrSel.value = yrsArr[yrsArr.length - 1];
+  }
+  showPage('dashboard');
+  renderEntryList();
+  updateGhBadge();
+}
+
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeMon(); closeDay(); }});
