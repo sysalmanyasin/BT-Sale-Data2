@@ -197,7 +197,9 @@ async function saveEntry() {
     entry[col]=val;
   }
   entry['TOTAL']=String(n(document.getElementById('e-TOTAL').value));
-  entry['Sale Plus']=null; entry['DIFF']=null;
+  // DIFF = Total Sale − COMP SALE, stored on daily entry for export consistency
+  const _eDiff=Math.round(n(entry['TOTAL'])-n(entry['COMP SALE']));
+  entry['Sale Plus']=null; entry['DIFF']=_eDiff!==0?String(_eDiff):null;
   // Custom fields (Field Manager → Custom tab) — store their raw value under
   // their own id so they survive reload/edit. Previously these only affected
   // the live TOTAL while filling the form and were never actually saved.
@@ -236,7 +238,17 @@ function renderEntryList() {
     </div>`).join('');
 }
 
-function delEntry(i){ newEntries.splice(i,1); localStorage.setItem('bt_entries',JSON.stringify(newEntries)); renderEntryList(); }
+function delEntry(i){
+  const e=newEntries[i];
+  newEntries.splice(i,1);
+  const di=DAILY.findIndex(d=>d.Date===e.Date&&d.Month_Year===e.Month_Year);
+  if(di!==-1) DAILY.splice(di,1);
+  recomputeMonthly(e.Month_Year);
+  localStorage.setItem('bt_entries',JSON.stringify(newEntries));
+  renderEntryList();
+  rebuildAll();
+  if(localStorage.getItem('bt_auto_save')==='1') pushToSupabase();
+}
 function clearEntryForm(){ document.querySelectorAll('#page-entry input,#page-entry select').forEach(el=>{ if(el.type!=='submit') el.value=''; }); autoFillEntryDate(); }
 function autoFillEntryDate() {
   // Find the latest date that does NOT yet have an entry in DAILY
@@ -479,6 +491,9 @@ async function saveEditModal() {
     });
   }
   rec['TOTAL']=String(Math.round(t));
+  // Update DIFF = Total Sale − COMP SALE
+  const _editDiff=Math.round(n(rec['TOTAL'])-n(rec['COMP SALE']));
+  rec['DIFF']=_editDiff!==0?String(_editDiff):null;
 
   // Sync to newEntries (for push) — overwrite or add
   const ni=newEntries.findIndex(d=>d.Date===_editDate&&d.Month_Year===_editMy);

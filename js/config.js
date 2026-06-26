@@ -89,7 +89,9 @@ function recomputeMonthly(monthYear) {
   });
   rec['TOTAL'] = String(days.reduce((s, d) => s + n(d['TOTAL']), 0));
   rec['Sale Plus'] = null;
-  rec['DIFF'] = null;
+  // DIFF = Total Sale − COMP SALE (auto-computed; legacy manual field replaced)
+  const _diffVal = Math.round(n(rec['TOTAL']) - n(rec['COMP SALE']));
+  rec['DIFF'] = _diffVal !== 0 ? String(_diffVal) : null;
 }
 
 // Recompute all months — called after Supabase pull so pulled data is always in sync

@@ -45,9 +45,10 @@ function buildDashboard() {
   //   If latest month is already complete → compare full months as before
   const _D=_lastFilledDay;
   const _prvTotal     = _isLive ? _dailyMTD(prv.Month_Year,_D) : n(prv.TOTAL);
-  const _prvCash      = _isLive ? (['Cash Sale','HBL','MCB','Alfala Bank','Bank Al Habib','Meezan Bank (Paysa)','Askari Bank']
-                          .reduce((s,f)=>s+_dailyMTDField(prv.Month_Year,_D,f),0)) : cashSales(prv);
-  const _prvCredit    = _isLive ? _dailyMTDField(prv.Month_Year,_D,'F/Issue') : creditSales(prv);
+  const _prvCash      = _isLive ? (['Cash Sale','HBL','MCB','Alfala Bank','Bank Al Habib','Meezan Bank (Paysa)']
+                          .reduce((s,f)=>s+_dailyMTDField(prv.Month_Year,_D,f),0)
+                          - Math.abs(_dailyMTDField(prv.Month_Year,_D,'Cash Returns'))) : cashSales(prv);
+  const _prvCredit    = _isLive ? CLIENT_COLS.reduce((s,c)=>s+_dailyMTDField(prv.Month_Year,_D,c),0) : creditSales(prv);
   const _prvCustomers = _isLive ? _dailyMTDField(prv.Month_Year,_D,'Customers') : n(prv.Customers);
   const _vsLabel      = _isLive ? 'vs prev (day 1–'+_D+')' : 'vs prev';
 
@@ -315,11 +316,15 @@ function buildCharts(data) {
 
 function buildSummaryTable() {
   const last12=MONTHLY.slice(-12);
-  const cols=['TOTAL','Cash Sale','HBL','MCB','Alfala Bank','Bank Al Habib','Meezan Bank (Paysa)','F/Issue','Customers'];
+  const cols=['TOTAL','Cash Sale','HBL','MCB','Alfala Bank','Bank Al Habib','Meezan Bank (Paysa)','F/Issue','COMP SALE','DIFF','Customers'];
   const tbl=document.getElementById('tbl-summary');
-  tbl.innerHTML='<thead><tr><th>Month</th>'+cols.map(c=>'<th>'+c+'</th>').join('')+'</tr></thead>';
+  tbl.innerHTML='<thead><tr><th>Month</th>'+cols.map(c=>'<th>'+(c==='DIFF'?'Difference':c)+'</th>').join('')+'</tr></thead>';
   const tbody=document.createElement('tbody');
-  last12.forEach(m=>{ const tr=document.createElement('tr'); tr.innerHTML='<td>'+m.Month_Year+'</td>'+cols.map(c=>{ const v=n(m[c]); return '<td>'+(v?'₨'+fc(v):'—')+'</td>'; }).join(''); tbody.appendChild(tr); });
+  last12.forEach(m=>{
+    // Compute DIFF on the fly in case legacy monthly record has null
+    const diff = Math.round(n(m.TOTAL) - n(m['COMP SALE']));
+    const rowData = {...m, DIFF: diff || null};
+    const tr=document.createElement('tr'); tr.innerHTML='<td>'+m.Month_Year+'</td>'+cols.map(c=>{ const v=n(rowData[c]); return '<td>'+(v?'₨'+fc(v):'—')+'</td>'; }).join(''); tbody.appendChild(tr); });
   const tf=document.createElement('tfoot'); const tr2=document.createElement('tr');
   tr2.innerHTML='<td><strong>TOTAL</strong></td>'+cols.map(c=>{ const s=last12.reduce((a,m)=>a+n(m[c]),0); return '<td><strong>'+(s?'₨'+fc(s):'—')+'</strong></td>'; }).join('');
   tf.appendChild(tr2); tbl.appendChild(tbody); tbl.appendChild(tf);

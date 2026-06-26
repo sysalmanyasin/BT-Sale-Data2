@@ -20,6 +20,7 @@ function dayData(d) {
   return {cashSale,meezan,alfalah,alHabib,hbl,mcb,cashRet,askari,askariRet,pso,psoRet,nespak,nespakRet,parco,parcoRet,tepa,tepaRet,lda,ldaRet,fissue,gourmet,wapda,bth,berger,ecolean,style_t,babar,rahnuma,healthP,nisar,foodP,netCash,netCredit,grand,
     fdpp:n(d['FDPP']),fdppCon:n(d['FDPP Con']),customers:n(d['Customers']),
     amtRec:n(d['Amount Received']),loadSale:n(d['Load Sale']),cashDepo:n(d['Cash to be Deposited']),compSale:n(d['COMP SALE']),
+    diff:Math.round(n(d['TOTAL'])-n(d['COMP SALE'])),
     note:d['Low Sale Reason']||''};
 }
 
@@ -74,6 +75,7 @@ function buildDayHTML(r) {
     <div class="dmmisc"><span>FDPP Consumer POS Sale</span><span class="dmv">${fv(r.fdppCon)}</span></div>
     <div class="dmmisc"><span>Customers</span><span class="dmv">${fv(r.customers)}</span></div>
     ${r.compSale?`<div class="dmmisc"><span>COMP SALE</span><span class="dmv">${fv(r.compSale)}</span></div>`:''}
+    ${(r.compSale||r.diff!==0)?`<div class="dmmisc" style="font-weight:700;border-top:1px dashed var(--border);padding-top:4px"><span style="color:${r.diff>0?'var(--green)':r.diff<0?'var(--red)':'var(--muted)'}">Difference (Total − COMP)</span><span class="dmv" style="color:${r.diff>0?'var(--green)':r.diff<0?'var(--red)':'var(--muted)'}">${fv(r.diff)}</span></div>`:''}
     ${r.amtRec?`<div class="dmmisc"><span>Amount Received</span><span class="dmv">${fv(r.amtRec)}</span></div>`:''}
     ${r.cashDepo?`<div class="dmmisc"><span>Cash to be Deposited</span><span class="dmv">${fv(r.cashDepo)}</span></div>`:''}
     ${r.loadSale?`<div class="dmmisc"><span>Load Sale</span><span class="dmv">${fv(r.loadSale)}</span></div>`:''}
@@ -110,7 +112,8 @@ function openMonthModal(my) {
   const fields=[['Cash Sale',m['Cash Sale']],['Cash Returns',negR(m['Cash Returns'])],['HBL',m.HBL],['MCB',m.MCB],
     ['Bank Alfalah',m['Alfala Bank']],['Bank Al Habib',m['Bank Al Habib']],['Meezan Bank',m['Meezan Bank (Paysa)']],
     ['PSO',m.PSO],['NESPAK',m.NESPAK],['PARCO',m.PARCO],['LDA',m.LDA],
-    ['Gourmet',m.Gourmet],['F/Issue',m['F/Issue']],['TOTAL',m.TOTAL],['Customers',m.Customers]
+    ['Gourmet',m.Gourmet],['F/Issue',m['F/Issue']],['COMP SALE',m['COMP SALE']],
+    ['Difference',n(m.TOTAL)-n(m['COMP SALE'])],['TOTAL',m.TOTAL],['Customers',m.Customers]
   ].filter(([,v])=>v!=null&&n(v)!==0);
 
   const tgts=getTgts(), tgt=tgts[my];
@@ -260,6 +263,8 @@ function renderReport() {
       ${ropt('Askari Returns',r.askariRet)}
       <div class="rnet"><span>Net Credit Sale:</span><span class="rv">${fv(r.netCredit)}</span></div>
       <div class="rgrand"><span>Grand Total:</span><span class="rv">₨${fv(r.grand)}</span></div>
+      ${(r.compSale||r.diff!==0)?`<div class="rmisc"><span>COMP SALE</span><span class="rv">${fv(r.compSale)}</span></div>`:''}
+      ${(r.compSale||r.diff!==0)?`<div class="rmisc" style="font-weight:700;color:${r.diff>0?'#15803d':r.diff<0?'#c00':'#64748b'}"><span>Difference (Total − COMP)</span><span class="rv">${fv(r.diff)}</span></div>`:''}
       <div class="rmisc"><span style="color:#c00;font-weight:600">FDPP POS Sale:</span><span class="rv">${fv(r.fdpp)}</span></div>
       <div class="rmisc"><span style="color:#c00;font-weight:600">FDPP Consumer POS Sale:</span><span class="rv">${fv(r.fdppCon)}</span></div>
       <div class="rmisc"><span style="font-weight:600">Customers</span><span class="rv">${fv(r.customers)}</span></div>
@@ -301,6 +306,8 @@ function buildPrintHTML(date, my, till, patty) {
       ${row('Credit Return LDA (Returns Only)',r.ldaRet)}${orow('Askari Returns',r.askariRet)}
       <tr><td style="padding:6px 12px;font-size:13px;font-weight:700;color:#c00;background:#fff5f5;border-top:1px solid #fecaca">Net Credit Sale:</td><td style="padding:6px 12px;font-size:13px;font-weight:700;color:#c00;text-align:right;font-family:monospace;background:#fff5f5;border-top:1px solid #fecaca">${fv(r.netCredit)}</td></tr>
       <tr><td style="padding:10px 12px;font-size:16px;font-weight:700;color:#1e40af;background:#eff6ff;border-top:2px solid #bfdbfe">Grand Total:</td><td style="padding:10px 12px;font-size:16px;font-weight:700;color:#1e40af;text-align:right;font-family:monospace;background:#eff6ff;border-top:2px solid #bfdbfe">₨${fv(r.grand)}</td></tr>
+      ${(r.compSale||r.diff!==0)?`<tr><td style="padding:5px 12px;font-size:12px;font-weight:600;border-bottom:1px solid #eee">COMP SALE</td><td style="padding:5px 12px;font-size:12px;text-align:right;font-family:monospace;border-bottom:1px solid #eee">${fv(r.compSale)}</td></tr>`:''}
+      ${(r.compSale||r.diff!==0)?`<tr><td style="padding:5px 12px;font-size:13px;font-weight:700;border-bottom:2px solid #000;color:${r.diff>0?'#15803d':r.diff<0?'#c00':'#64748b'}">Difference (Total − COMP)</td><td style="padding:5px 12px;font-size:13px;font-weight:700;text-align:right;font-family:monospace;border-bottom:2px solid #000;color:${r.diff>0?'#15803d':r.diff<0?'#c00':'#64748b'}">${fv(r.diff)}</td></tr>`:''}
       <tr><td style="padding:5px 12px;font-size:12px;color:#c00;font-weight:600;border-bottom:1px solid #eee">FDPP POS Sale:</td><td style="padding:5px 12px;font-size:12px;text-align:right;font-family:monospace;border-bottom:1px solid #eee">${fv(r.fdpp)}</td></tr>
       <tr><td style="padding:5px 12px;font-size:12px;color:#c00;font-weight:600;border-bottom:1px solid #eee">FDPP Consumer POS Sale:</td><td style="padding:5px 12px;font-size:12px;text-align:right;font-family:monospace;border-bottom:1px solid #eee">${fv(r.fdppCon)}</td></tr>
       <tr><td style="padding:5px 12px;font-size:12px;font-weight:600;border-bottom:1px solid #eee">Customers</td><td style="padding:5px 12px;font-size:12px;text-align:right;font-family:monospace;border-bottom:1px solid #eee">${fv(r.customers)}</td></tr>
@@ -350,6 +357,7 @@ function copyReportText() {
     line('Credit Return PSO',r.psoRet),line('Credit Return Nespak',r.nespakRet),
     line('Credit Return Parco',r.parcoRet),line('Credit Return Tepa',r.tepaRet),line('Credit Return LDA',r.ldaRet),
     'Net Credit Sale: '+fv(r.netCredit),'','Grand Total: ₨'+fv(r.grand),
+    ...(r.compSale||r.diff!==0?[line('COMP SALE',r.compSale),'Difference (Total − COMP): '+fv(r.diff)]:[]),
     line('FDPP POS Sale',r.fdpp),line('FDPP Consumer POS Sale',r.fdppCon),
     line('Customers',r.customers),line('Till Short',till),line('Patty Cash',patty)
   ].join('\n');
