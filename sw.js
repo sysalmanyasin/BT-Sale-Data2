@@ -47,7 +47,6 @@ const APP_SHELL = [
   /* JS — AI assistant */
   './js/ai-bridge.js',
   './js/ai-page.js',
-  './js/assistant.js',
   /* Icons */
   './icons/icon.svg',
   './icons/icon-192.png',
