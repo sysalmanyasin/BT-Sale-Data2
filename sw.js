@@ -12,6 +12,7 @@ const APP_SHELL = [
   './manifest.json',
   /* CSS */
   './css/variables.css',
+  './css/assitant.css',
   './css/auth.css',
   './css/nav.css',
   './css/components.css',
