@@ -116,14 +116,8 @@ function _patchCalcTotal() {
   };
 }
 
-// ── Patch saveEntry to include custom field values ────────────────────────────
-function _patchSaveEntry() {
-  if (typeof saveEntry !== 'function') return;
-  const _orig = saveEntry;
-  window.saveEntry = function() {
-    return _orig();
-  };
-}
+// Custom field values are persisted directly inside saveEntry() and
+// saveEditModal() (data-page.js) — see _fmCustom handling there.
 
 // ── Modal open / close ────────────────────────────────────────────────────────
 function openFieldManager() {
@@ -329,8 +323,8 @@ function toggleTcard(id) {
 window.addEventListener('load', function() {
   fmLoad();
   fmApply();
-  // Patch the original functions once they exist
+  // Patch the original calcTotal once it exists (custom field saving is
+  // handled directly in data-page.js, not via a patch here)
   _patchCalcTotal();
-  _patchSaveEntry();
 });
 

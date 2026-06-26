@@ -198,6 +198,16 @@ async function saveEntry() {
   }
   entry['TOTAL']=String(n(document.getElementById('e-TOTAL').value));
   entry['Sale Plus']=null; entry['DIFF']=null;
+  // Custom fields (Field Manager → Custom tab) — store their raw value under
+  // their own id so they survive reload/edit. Previously these only affected
+  // the live TOTAL while filling the form and were never actually saved.
+  if (typeof _fmCustom !== 'undefined') {
+    _fmCustom.forEach(f => {
+      const el = document.getElementById('e-' + f.id);
+      if (!el) return;
+      entry[f.id] = el.value !== '' ? parseFloat(el.value) : null;
+    });
+  }
   // Remove any existing entry for the same date (overwrite)
   const existDailyIdx=DAILY.findIndex(d=>d.Date===date&&d.Month_Year===month);
   if(existDailyIdx!==-1) DAILY.splice(existDailyIdx,1);
@@ -360,6 +370,24 @@ function openEditModal(date, my) {
     html+=`</div>`;
   }
 
+  // Custom fields (Field Manager → Custom tab) — without this the Edit modal
+  // had no way to show or change a custom field's value, and resaving from
+  // here would silently drop its contribution to TOTAL.
+  if (typeof _fmCustom !== 'undefined' && _fmCustom.length) {
+    html+=`<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 6px">Custom Fields</div>`;
+    html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">`;
+    _fmCustom.forEach(f=>{
+      const val = rec[f.id];
+      const raw = (val==null||val==='')?'':(Number(val)||0);
+      const hint = f.calcType==='add'?' (+ adds)':f.calcType==='sub'?' (− subtracts)':'';
+      html+=`<div><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:3px">${f.label}${hint}</label>
+        <input type="number" inputmode="decimal" id="em-${f.id.replace(/[^a-z0-9]/gi,'_')}" value="${raw}"
+          oninput="editCalcTotal()"
+          style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--s2);color:var(--text);box-sizing:border-box"></div>`;
+    });
+    html+=`</div>`;
+  }
+
   html+=`<div style="margin-top:14px;padding:10px 12px;background:var(--alt);border-radius:8px;display:flex;justify-content:space-between;align-items:center">
     <span style="font-size:13px;font-weight:600">Grand Total</span>
     <span style="font-family:var(--mono);font-size:15px;font-weight:700;color:var(--accent)" id="em-total-preview">₨0</span>
@@ -386,6 +414,14 @@ function editCalcTotal() {
   let t=0;
   ADD_KEYS.forEach(k=>{ const el=document.getElementById('em-'+k.replace(/[^a-z0-9]/gi,'_')); if(el) t+=Math.abs(parseFloat(el.value)||0); });
   SUB_KEYS.forEach(k=>{ const el=document.getElementById('em-'+k.replace(/[^a-z0-9]/gi,'_')); if(el) t-=Math.abs(parseFloat(el.value)||0); });
+  if (typeof _fmCustom !== 'undefined') {
+    _fmCustom.forEach(f=>{
+      if (f.calcType==='none') return;
+      const el=document.getElementById('em-'+f.id.replace(/[^a-z0-9]/gi,'_')); if(!el) return;
+      const v=Math.abs(parseFloat(el.value)||0);
+      if (f.calcType==='add') t+=v; else if (f.calcType==='sub') t-=v;
+    });
+  }
   const prev=document.getElementById('em-total-preview');
   if(prev) prev.textContent='₨'+Math.round(t).toLocaleString('en-PK');
 }
@@ -417,6 +453,16 @@ async function saveEditModal() {
     }
   });
 
+  // Custom fields (Field Manager → Custom tab) — persist their value too,
+  // so it survives this edit instead of being dropped from TOTAL silently.
+  if (typeof _fmCustom !== 'undefined') {
+    _fmCustom.forEach(f=>{
+      const el=document.getElementById('em-'+f.id.replace(/[^a-z0-9]/gi,'_'));
+      if(!el) return;
+      rec[f.id]=el.value!==''?(parseFloat(el.value)||0):null;
+    });
+  }
+
   // Recompute TOTAL
   const ADD_KEYS=['Cash Sale','Meezan Bank (Paysa)','Alfala Bank','Bank Al Habib','HBL','MCB',
     'Askari Bank','PSO','NESPAK','PARCO','TEPA','LDA','Gourmet','Wapda Hospital','BTH','Berger Paints',
@@ -425,6 +471,13 @@ async function saveEditModal() {
   let t=0;
   ADD_KEYS.forEach(k=>{ t+=Math.abs(n(rec[k])); });
   SUB_KEYS.forEach(k=>{ t-=Math.abs(n(rec[k])); });
+  if (typeof _fmCustom !== 'undefined') {
+    _fmCustom.forEach(f=>{
+      if (f.calcType==='none') return;
+      const v=Math.abs(n(rec[f.id]));
+      if (f.calcType==='add') t+=v; else if (f.calcType==='sub') t-=v;
+    });
+  }
   rec['TOTAL']=String(Math.round(t));
 
   // Sync to newEntries (for push) — overwrite or add
