@@ -12,14 +12,20 @@ const APP_SHELL = [
   './manifest.json',
   /* CSS */
   './css/variables.css',
-  './css/assitant.css',
   './css/auth.css',
   './css/nav.css',
   './css/components.css',
   './css/modals.css',
   './css/pages.css',
   './css/mobile.css',
-  /* JS modules */
+  './css/assistant.css',
+  /* JS — shared service layer (must precede config.js) */
+  './js/bt-format.js',
+  './js/bt-date.js',
+  './js/bt-calc.js',
+  './js/bt-search.js',
+  './js/app-context.js',
+  /* JS — application modules */
   './js/data-base.js',
   './js/config.js',
   './js/auth.js',
@@ -31,12 +37,16 @@ const APP_SHELL = [
   './js/index-page.js',
   './js/reports.js',
   './js/data-page.js',
+  './js/diff-report.js',
+  './js/commandhub.js',
+  './js/reports-print.js',
   './js/manager.js',
   './js/custom-sections.js',
   './js/fields.js',
   './js/drive.js',
-  './js/diff-report.js',
-  './js/commandhub.js',
+  /* JS — AI assistant */
+  './js/ai-bridge.js',
+  './js/assistant.js',
   /* Icons */
   './icons/icon.svg',
   './icons/icon-192.png',

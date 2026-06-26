@@ -1111,6 +1111,13 @@ if ('serviceWorker' in navigator) {
 <!-- 1. Base data arrays (MONTHLY_BASE + DAILY_BASE — large file) -->
 <script src="js/data-base.js"></script>
 
+<!-- 1b. Shared service layer (Steps 1-4, 10 extraction) — must come before config.js -->
+<script src="js/bt-format.js"></script>
+<script src="js/bt-date.js"></script>
+<script src="js/bt-calc.js"></script>
+<script src="js/bt-search.js"></script>
+<script src="js/app-context.js"></script>
+
 <!-- 2. Config: state vars, utils, column constants -->
 <script src="js/config.js"></script>
 
@@ -1144,6 +1151,9 @@ if ('serviceWorker' in navigator) {
 <script src="js/diff-report.js"></script>
 <script src="js/commandhub.js"></script>
 
+<!-- 11b. Reports print helpers (extracted from manager.js — Step 8) -->
+<script src="js/reports-print.js"></script>
+
 <!-- 12. Manager: salary, generic, expense, credit, petty, incentive -->
 <script src="js/manager.js"></script>
 
@@ -1156,6 +1166,8 @@ if ('serviceWorker' in navigator) {
 <!-- 15. Google Drive backup / restore -->
 <script src="js/drive.js"></script>
 
+<!-- AI Bridge (Step 6) — must load before assistant.js -->
+<script src="js/ai-bridge.js"></script>
 <script src="js/assistant.js"></script>
 
 <!-- Staff Card Popup Modal -->
