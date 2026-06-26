@@ -190,13 +190,21 @@ function mergeIncomingData(data, isPull = false) {
     Object.keys(data.custom).forEach(sectionId => {
       const remoteSec = data.custom[sectionId];
       if (!remoteSec || typeof remoteSec !== 'object') return;
-      if (!merged[sectionId]) merged[sectionId] = {};
-      // Section data is keyed by month (sectionId -> monthKey -> rows), so
-      // merge at the month level — a shallow per-section overwrite would
-      // drop any month that only exists on the other side.
-      Object.keys(remoteSec).forEach(month => {
-        if (isPull) merged[sectionId][month] = remoteSec[month];          // remote wins on pull
-        else if (!(month in merged[sectionId])) merged[sectionId][month] = remoteSec[month]; // local wins on push — only fill gaps
+      if (!merged[sectionId]) merged[sectionId] = { name: remoteSec.name, emoji: remoteSec.emoji, months: {} };
+      if (!merged[sectionId].months) merged[sectionId].months = {};
+      // Keep name/emoji in sync — remote wins on pull, local wins on push
+      if (isPull) {
+        if (remoteSec.name)  merged[sectionId].name  = remoteSec.name;
+        if (remoteSec.emoji) merged[sectionId].emoji = remoteSec.emoji;
+      }
+      // Actual rows live at sectionId.months[monthKey] — merge at that level.
+      // A shallow per-section overwrite would drop any month that only
+      // exists on the other side (and would also wrongly treat the
+      // section's own name/emoji fields as if they were month keys).
+      const remoteMonths = remoteSec.months || {};
+      Object.keys(remoteMonths).forEach(month => {
+        if (isPull) merged[sectionId].months[month] = remoteMonths[month];          // remote wins on pull
+        else if (!(month in merged[sectionId].months)) merged[sectionId].months[month] = remoteMonths[month]; // local wins on push — only fill gaps
       });
     });
     localStorage.setItem(CSEC_KEY, JSON.stringify(merged));
