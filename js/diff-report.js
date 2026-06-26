@@ -6,9 +6,12 @@ function renderDiffReport() {
   if (!wrap) return;
 
   /* ── sort months chronologically ── */
+  const _MO={January:0,February:1,March:2,April:3,May:4,June:5,July:6,August:7,September:8,October:9,November:10,December:11};
+  const _myVal = my => { const [m,y]=my.split(' '); return parseInt(y)*12+(_MO[m]??0); };
+
   const sorted = [...MONTHLY]
     .filter(m => m.Month_Year)
-    .sort((a, b) => a.Month_Year.localeCompare(b.Month_Year));
+    .sort((a, b) => _myVal(a.Month_Year) - _myVal(b.Month_Year));
 
   if (!sorted.length) {
     wrap.innerHTML = '<p style="color:var(--muted);text-align:center;padding:40px">No data yet.</p>';
