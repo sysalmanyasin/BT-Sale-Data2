@@ -1,31 +1,36 @@
 function showPage(id) {
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
-  document.querySelectorAll('.ntab,.bnav-item').forEach(t=>t.classList.remove('active'));
-  const pg = document.getElementById('page-'+id);
-  if(pg) pg.classList.add('on');
-  document.querySelectorAll('.ntab[data-page="'+id+'"],.bnav-item[data-page="'+id+'"]').forEach(t=>t.classList.add('active'));
-  _curPage = id;
-  if(id==='tools') { loadToolsPage(); }
-  if(id==='manager') { loadManagerPage(); }
-  if(id==='report') { dsInit(); }
-  if(id==='diff')   { renderDiffReport(); }
-  if(id==='entry') { autoFillEntryDate(); }
-  if(id==='index') {
-    const k = _rcKey('index');
-    if (_rc.index && _rc.index.key === k) {
-      document.getElementById('idx-container').innerHTML = _rc.index.html;
-    } else {
-      renderIndex();
+  try {
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+    document.querySelectorAll('.ntab,.bnav-item').forEach(t=>t.classList.remove('active'));
+    const pg = document.getElementById('page-'+id);
+    if(pg) pg.classList.add('on');
+    document.querySelectorAll('.ntab[data-page="'+id+'"],.bnav-item[data-page="'+id+'"]').forEach(t=>t.classList.add('active'));
+    _curPage = id;
+    if(id==='tools') { loadToolsPage(); }
+    if(id==='manager') { loadManagerPage(); }
+    if(id==='report') { dsInit(); }
+    if(id==='diff')   { renderDiffReport(); }
+    if(id==='entry') { autoFillEntryDate(); }
+    if(id==='index') {
+      const k = _rcKey('index');
+      if (_rc.index && _rc.index.key === k) {
+        document.getElementById('idx-container').innerHTML = _rc.index.html;
+      } else {
+        renderIndex();
+      }
     }
-  }
-  if(id==='data') {
-    const k = _rcKey('data');
-    if (_rc.data && _rc.data.key === k) {
-      const old = document.getElementById('tbl-daily');
-      if (old) { const d = document.createElement('div'); d.id='tbl-daily'; d.innerHTML = _rc.data.html; old.replaceWith(d); }
-    } else {
-      renderDataTable();
+    if(id==='data') {
+      const k = _rcKey('data');
+      if (_rc.data && _rc.data.key === k) {
+        const old = document.getElementById('tbl-daily');
+        if (old) { const d = document.createElement('div'); d.id='tbl-daily'; d.innerHTML = _rc.data.html; old.replaceWith(d); }
+      } else {
+        renderDataTable();
+      }
     }
+  } catch(err) {
+    if (typeof toast === 'function') toast('\u26a0 Page error: ' + err.message, 'e');
+    console.error('[showPage] error for page "' + id + '":', err);
   }
 }
 
@@ -93,17 +98,22 @@ function rebuildDropdowns() {
 // REBUILD ALL
 // ══════════════════════════════════════════
 function rebuildAll() {
-  normalizeDates();
-  recomputeAllMonths(); // always re-derive MONTHLY from DAILY so dashboard & popups match Daily Data
-  invalidateRenderCache();
-  rebuildDropdowns();
-  buildDashboard();
-  if(_curPage==='index') renderIndex();
-  if(_curPage==='data') renderDataTable();
-  buildDateList();
-  // If report tab is open and a date was already selected, re-render so fresh data shows
-  if(_curPage==='report' && _selDate && _selMy) renderReport();
-  if(_curPage==='diff') renderDiffReport();
+  try {
+    normalizeDates();
+    recomputeAllMonths(); // always re-derive MONTHLY from DAILY so dashboard & popups match Daily Data
+    invalidateRenderCache();
+    rebuildDropdowns();
+    buildDashboard();
+    if(_curPage==='index') renderIndex();
+    if(_curPage==='data') renderDataTable();
+    buildDateList();
+    // If report tab is open and a date was already selected, re-render so fresh data shows
+    if(_curPage==='report' && _selDate && _selMy) renderReport();
+    if(_curPage==='diff') renderDiffReport();
+  } catch(err) {
+    if (typeof toast === 'function') toast('\u26a0 Rebuild error: ' + err.message, 'e');
+    console.error('[rebuildAll] error:', err);
+  }
 }
 
 

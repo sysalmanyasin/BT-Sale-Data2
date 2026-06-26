@@ -248,9 +248,13 @@
   /* ═══════════════════════════════════════════════════════════════════════
      FUZZY SEARCH ENGINE
   ═══════════════════════════════════════════════════════════════════════ */
-  function norm(s) { return String(s || '').toLowerCase().trim(); }
+  // Step 10: delegate to BTSearch (bt-search.js) with inline fallback
+  function norm(s) {
+    return (typeof BTSearch !== 'undefined') ? BTSearch.norm(s) : String(s || '').toLowerCase().trim();
+  }
 
   function score(text, query) {
+    if (typeof BTSearch !== 'undefined') return BTSearch.score(text, query);
     const t = norm(text), q = norm(query);
     if (!q) return 50;
     if (t === q) return 100;
@@ -259,7 +263,6 @@
     const qWords = q.split(/\s+/);
     if (qWords.length > 1 && qWords.every(w => t.includes(w))) return 80;
     if (qWords.some(w => w.length >= 2 && t.includes(w))) return 60;
-    // Fuzzy subsequence only for queries ≥3 chars to avoid noise
     if (q.length >= 3) {
       let ti = 0;
       for (let qi = 0; qi < q.length; qi++) {
@@ -281,10 +284,13 @@
   /* ═══════════════════════════════════════════════════════════════════════
      NUMBER HELPERS
   ═══════════════════════════════════════════════════════════════════════ */
+  // Step 10: delegate to BTFormat (bt-format.js) with inline fallback
   function _n(v) {
-    return (v == null || v === '' || isNaN(parseFloat(v))) ? 0 : parseFloat(v);
+    return (typeof BTFormat !== 'undefined') ? BTFormat.num(v) :
+      ((v == null || v === '' || isNaN(parseFloat(v))) ? 0 : parseFloat(v));
   }
   function fmtAmt(v) {
+    if (typeof BTFormat !== 'undefined') return BTFormat.compact(v);
     const a = Math.abs(Math.round(v));
     if (a >= 1e6) return '₨ ' + (v / 1e6).toFixed(2) + 'M';
     if (a >= 1000) return '₨ ' + Math.round(v).toLocaleString('en-PK');
@@ -294,33 +300,37 @@
   /* ═══════════════════════════════════════════════════════════════════════
      DATE HELPERS
   ═══════════════════════════════════════════════════════════════════════ */
-  const MON_NAMES = ['January','February','March','April','May','June',
-                     'July','August','September','October','November','December'];
-  const MON_SHORT = ['Jan','Feb','Mar','Apr','May','Jun',
-                     'Jul','Aug','Sep','Oct','Nov','Dec'];
+  // Step 10: delegate to BTDate (bt-date.js) with inline fallback arrays
+  const MON_NAMES = (typeof BTDate !== 'undefined') ? BTDate.monthNames :
+    ['January','February','March','April','May','June',
+     'July','August','September','October','November','December'];
+  const MON_SHORT = (typeof BTDate !== 'undefined') ? BTDate.monthShort :
+    ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
   function todayStr() {
-    const d  = new Date();
-    const dd = String(d.getDate()).padStart(2, '0');
+    if (typeof BTDate !== 'undefined') return BTDate.today();
+    const d = new Date(), dd = String(d.getDate()).padStart(2, '0');
     return `${dd}/${MON_SHORT[d.getMonth()]}/${d.getFullYear()}`;
   }
 
   function currentMonthYear() {
+    if (typeof BTDate !== 'undefined') return BTDate.currentMonthYear();
     const d = new Date();
     return `${MON_NAMES[d.getMonth()]} ${d.getFullYear()}`;
   }
 
   function currentYear() {
-    return String(new Date().getFullYear());
+    return (typeof BTDate !== 'undefined') ? BTDate.currentYear() : String(new Date().getFullYear());
   }
 
   /* ═══════════════════════════════════════════════════════════════════════
      SAFE DATA ACCESSORS
   ═══════════════════════════════════════════════════════════════════════ */
-  function daily()   { return Array.isArray(global.DAILY)   ? global.DAILY   : []; }
-  function monthly() { return Array.isArray(global.MONTHLY) ? global.MONTHLY : []; }
-  function staff()   { return Array.isArray(global.STAFF)   ? global.STAFF   : []; }
-  function tgts()    { return (typeof global.getTgts === 'function') ? global.getTgts() : {}; }
+  // Step 10: delegate to getAppContext() (app-context.js) with inline fallback
+  function daily()   { return (typeof getAppContext === 'function') ? getAppContext().daily   : (Array.isArray(global.DAILY)   ? global.DAILY   : []); }
+  function monthly() { return (typeof getAppContext === 'function') ? getAppContext().monthly : (Array.isArray(global.MONTHLY) ? global.MONTHLY : []); }
+  function staff()   { return (typeof getAppContext === 'function') ? getAppContext().staff   : (Array.isArray(global.STAFF)   ? global.STAFF   : []); }
+  function tgts()    { return (typeof getAppContext === 'function') ? getAppContext().targets : ((typeof global.getTgts === 'function') ? global.getTgts() : {}); }
 
   /* ═══════════════════════════════════════════════════════════════════════
      COMMAND REGISTRY

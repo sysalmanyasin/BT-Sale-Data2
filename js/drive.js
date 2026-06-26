@@ -214,12 +214,6 @@ async function _driveRestoreFile(fileId, label) {
 function _driveAutoBackup() {
   const last = localStorage.getItem(DRIVE_LAST_K);
   const today = new Date().toISOString().slice(0,10);
-  if (last === today) return; // already backed up today — nothing to do, no token needed
-  if (_driveAccessToken) { driveBackupNow(); return; }
-  // No token yet — try ONE silent reauth, but only because a backup is
-  // actually due today (at most once per day, not on every page refresh).
-  if (typeof _driveSilentReauth === 'function') {
-    _driveSilentReauth().then(token => { if (token) driveBackupNow(); });
-  }
+  if (last !== today && _driveAccessToken) driveBackupNow();
 }
 

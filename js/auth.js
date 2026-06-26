@@ -369,13 +369,11 @@ function _gauthCheckSession() {
   }
   // Valid session → auto-unlock immediately, no button click required
   unlockApp();
-  // NOTE: Drive token is now fetched lazily (on Authorize/Backup click, or by
-  // _driveAutoBackup's own check) instead of automatically here. Calling
-  // _driveSilentReauth() unconditionally on every load could pop a visible
-  // Google account-chooser window when the browser can't fully reuse the
-  // existing grant (e.g. storage partitioning on mobile) — that's the
-  // "auth screen on every refresh" issue. Leaving Drive token empty until
-  // actually needed avoids that surprise popup.
+  // Restore the Drive token silently in the background so Drive backup/restore
+  // work right away without forcing the user through a full redirect again.
+  _driveSilentReauth().then(token => {
+    if (token && typeof driveLog === 'function') driveLog('✓ Drive session restored silently', 'ok');
+  });
 }
 function gauthConfirmUser() { unlockApp(); }
 function gauthSignOut() {
