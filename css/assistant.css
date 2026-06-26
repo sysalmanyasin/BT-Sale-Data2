@@ -63,6 +63,15 @@
   cursor:pointer; white-space:nowrap;
 }
 .ai-chip:hover{ border-color:var(--accent); color:var(--accent); }
+.ai-chip-dim{
+  font-size:11px; padding:5px 9px; border-radius:20px;
+  border:1px solid var(--border); background:transparent; color:var(--muted);
+  cursor:pointer; white-space:nowrap;
+}
+.ai-chip-dim:hover{ border-color:var(--border); color:var(--text); }
+.ai-intent-row{
+  display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;
+}
 
 .ai-input-row{
   display:flex; gap:8px; padding:10px 12px; border-top:1px solid var(--border);
