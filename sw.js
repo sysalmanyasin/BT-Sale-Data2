@@ -46,6 +46,7 @@ const APP_SHELL = [
   './js/drive.js',
   /* JS — AI assistant */
   './js/ai-bridge.js',
+  './js/ai-page.js',
   './js/assistant.js',
   /* Icons */
   './icons/icon.svg',
