@@ -4,7 +4,7 @@
    Data (Supabase / Drive / Anthropic API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v4.6';
+const CACHE_NAME = 'bt-sales-v4.7';
 
 const APP_SHELL = [
   './',
