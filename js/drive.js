@@ -102,6 +102,12 @@ async function driveBackupNow() {
       manager: JSON.parse(localStorage.getItem(MGR_KEY)||'{}'),
       petty:   _driveGetAllPetty(),
       custom:  JSON.parse(localStorage.getItem(CSEC_KEY)||'{}'),
+      jazzcash: JSON.parse(localStorage.getItem(JC_KEY)       || 'null'),
+      jcTally:  JSON.parse(localStorage.getItem(JC_TALLY_KEY) || 'null'),
+      colConfig: {
+        hidden: JSON.parse(localStorage.getItem('bt_col_config')  || '[]'),
+        custom: JSON.parse(localStorage.getItem('bt_custom_cols') || '[]')
+      },
       backedUpAt: new Date().toISOString()
     };
     const content = JSON.stringify(payload, null, 2);
@@ -240,7 +246,33 @@ async function _driveRestoreFile(fileId, label) {
       Object.keys(data.custom).forEach(k => { if (!cur[k]) cur[k]=data.custom[k]; });
       localStorage.setItem(CSEC_KEY, JSON.stringify(cur));
     }
-    driveLog(`✓ Restored from ${label}: +${mN} months, +${dN} days of sales data. Manager/Petty/Custom merged.`,'ok');
+    // Restore JazzCash ledger (fill gaps by entry id — never drop local entries)
+    if (data.jazzcash && typeof data.jazzcash === 'object') {
+      const cur = JSON.parse(localStorage.getItem(JC_KEY)||'null') || { openingBalance:0, entries:[] };
+      const byId = {}; (cur.entries||[]).forEach(e => byId[e.id]=e);
+      (data.jazzcash.entries||[]).forEach(e => { if (e && e.id && !byId[e.id]) byId[e.id]=e; });
+      if (!cur.entries || !cur.entries.length) cur.openingBalance = data.jazzcash.openingBalance ?? cur.openingBalance ?? 0;
+      cur.entries = Object.values(byId);
+      localStorage.setItem(JC_KEY, JSON.stringify(cur));
+    }
+    // Restore JazzCash tally (accounts by id, snapshots by date — fill gaps only)
+    if (data.jcTally && typeof data.jcTally === 'object') {
+      const cur = JSON.parse(localStorage.getItem(JC_TALLY_KEY)||'null') || { accounts:[], snapshots:[] };
+      const acctById = {}; (cur.accounts||[]).forEach(a => acctById[a.id]=a);
+      (data.jcTally.accounts||[]).forEach(a => { if (a && a.id && !acctById[a.id]) acctById[a.id]=a; });
+      const snapByDate = {}; (cur.snapshots||[]).forEach(s => snapByDate[s.date]=s);
+      (data.jcTally.snapshots||[]).forEach(s => { if (s && s.date && !snapByDate[s.date]) snapByDate[s.date]=s; });
+      cur.accounts = Object.values(acctById);
+      cur.snapshots = Object.values(snapByDate);
+      localStorage.setItem(JC_TALLY_KEY, JSON.stringify(cur));
+    }
+    // Restore column/field config (only if nothing set locally yet)
+    if (data.colConfig && typeof data.colConfig === 'object') {
+      if (!localStorage.getItem('bt_col_config')  && Array.isArray(data.colConfig.hidden)) localStorage.setItem('bt_col_config',  JSON.stringify(data.colConfig.hidden));
+      if (!localStorage.getItem('bt_custom_cols') && Array.isArray(data.colConfig.custom)) localStorage.setItem('bt_custom_cols', JSON.stringify(data.colConfig.custom));
+      if (typeof fmLoad === 'function') fmLoad();
+    }
+    driveLog(`✓ Restored from ${label}: +${mN} months, +${dN} days of sales data. Manager/Petty/Custom/JazzCash/Fields merged.`,'ok');
     toast(`✓ Restored from ${label}`);
     if (typeof showPage==='function') showPage(_curPage||'ai');
   } catch(e) {

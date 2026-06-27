@@ -11,8 +11,11 @@ const SB_ID      = 'main';
 const SB_PENDING = 'bt_sb_pending';    // dirty flag for offline queue
 const SB_HISTORY = 'bt_sync_history'; // last 10 sync events
 
-let _sbClient  = null;
-let _sbChannel = null;
+let _sbClient      = null;
+let _sbChannel     = null;
+let _pushInFlight  = false;   // prevents concurrent pushes
+let _pushQueued    = false;   // a second push was requested while one was running
+let _pushDebounce  = null;    // debounce timer so rapid saves coalesce into one push
 
 function _sb() {
   if (!_sbClient) _sbClient = supabase.createClient(SB_URL, SB_KEY);
@@ -116,6 +119,12 @@ function _buildPayload() {
     custom:   JSON.parse(localStorage.getItem(CSEC_KEY) || '{}'),
     targets:  JSON.parse(localStorage.getItem(TGT_K)    || '{}'),
     assistant: (typeof aimBuildAssistantPayload === 'function') ? aimBuildAssistantPayload() : null,
+    jazzcash: JSON.parse(localStorage.getItem(JC_KEY)       || 'null'),
+    jcTally:  JSON.parse(localStorage.getItem(JC_TALLY_KEY) || 'null'),
+    colConfig: {
+      hidden: JSON.parse(localStorage.getItem('bt_col_config')  || '[]'),
+      custom: JSON.parse(localStorage.getItem('bt_custom_cols') || '[]')
+    },
     pushedAt: new Date().toISOString()
   };
 }
@@ -228,13 +237,82 @@ function mergeIncomingData(data, isPull = false) {
     aimMergeAssistantIncoming(data.assistant, isPull);
   }
 
+  // ── JazzCash ledger — entries merged by id, openingBalance follows the
+  // same local-wins-on-push / remote-wins-on-pull convention as the rest ──
+  if (data.jazzcash) {
+    const local  = JSON.parse(localStorage.getItem(JC_KEY) || 'null') || { openingBalance: 0, entries: [] };
+    const remote = data.jazzcash;
+    const byId = {};
+    (local.entries || []).forEach(e => { byId[e.id] = e; });
+    (remote.entries || []).forEach(e => {
+      if (!e || !e.id) return;
+      if (isPull) byId[e.id] = e;              // remote wins on pull
+      else if (!byId[e.id]) byId[e.id] = e;     // local wins on push — fill gaps only
+    });
+    const merged = {
+      openingBalance: isPull ? (remote.openingBalance ?? local.openingBalance ?? 0) : (local.openingBalance ?? remote.openingBalance ?? 0),
+      entries: Object.values(byId)
+    };
+    localStorage.setItem(JC_KEY, JSON.stringify(merged));
+  }
+
+  // ── JazzCash tally — accounts merged by id, snapshots merged by date ──
+  if (data.jcTally) {
+    const local  = JSON.parse(localStorage.getItem(JC_TALLY_KEY) || 'null') || { accounts: [], snapshots: [] };
+    const remote = data.jcTally;
+    const acctById = {};
+    (local.accounts || []).forEach(a => { acctById[a.id] = a; });
+    (remote.accounts || []).forEach(a => {
+      if (!a || !a.id) return;
+      if (isPull) acctById[a.id] = a;              // remote wins on pull
+      else if (!acctById[a.id]) acctById[a.id] = a; // local wins on push — fill gaps only
+    });
+    const snapByDate = {};
+    (local.snapshots || []).forEach(s => { snapByDate[s.date] = s; });
+    (remote.snapshots || []).forEach(s => {
+      if (!s || !s.date) return;
+      if (isPull) snapByDate[s.date] = s;               // remote wins on pull
+      else if (!snapByDate[s.date]) snapByDate[s.date] = s; // local wins on push — fill gaps only
+    });
+    const merged = { accounts: Object.values(acctById), snapshots: Object.values(snapByDate) };
+    localStorage.setItem(JC_TALLY_KEY, JSON.stringify(merged));
+  }
+
+  // ── Column / field manager config — small list, remote wins on pull,
+  // local wins on push (kept whole since there's no natural per-item key
+  // worth reconciling beyond "newest edit wins") ──
+  if (data.colConfig) {
+    if (isPull) {
+      if (Array.isArray(data.colConfig.hidden)) localStorage.setItem('bt_col_config',  JSON.stringify(data.colConfig.hidden));
+      if (Array.isArray(data.colConfig.custom)) localStorage.setItem('bt_custom_cols', JSON.stringify(data.colConfig.custom));
+      if (typeof fmLoad === 'function') fmLoad();
+    } else {
+      // local wins on push — only adopt remote values if nothing exists locally yet
+      if (!localStorage.getItem('bt_col_config')  && Array.isArray(data.colConfig.hidden)) localStorage.setItem('bt_col_config',  JSON.stringify(data.colConfig.hidden));
+      if (!localStorage.getItem('bt_custom_cols') && Array.isArray(data.colConfig.custom)) localStorage.setItem('bt_custom_cols', JSON.stringify(data.colConfig.custom));
+    }
+  }
+
   return { mN, dN, mU, dU };
 }
 
 // ══════════════════════════════════════════════════════════════════
 // PUSH TO SUPABASE
+// Debounced (300 ms) + lock-guarded so rapid saves (e.g. manager
+// "Save All" calls pushToSupabase 8+ times in quick succession)
+// collapse into a single network round-trip.
 // ══════════════════════════════════════════════════════════════════
-async function pushToSupabase() {
+function pushToSupabase() {
+  // Debounce: reset the timer on every call; fire after 300 ms of silence
+  clearTimeout(_pushDebounce);
+  _pushDebounce = setTimeout(_doPush, 300);
+}
+
+async function _doPush() {
+  // Lock: if a push is already in flight, note that another is wanted
+  if (_pushInFlight) { _pushQueued = true; return; }
+  _pushInFlight = true;
+
   setSyncBadge('syncing');
   sbLog('Pushing to Supabase…');
   try {
@@ -260,6 +338,7 @@ async function pushToSupabase() {
     setSyncBadge('ok');
     toast('✓ Saved to Supabase');
     _recordHistory({ type: 'push', status: 'ok', monthly: MONTHLY.length, daily: DAILY.length, msg: 'Push complete' });
+    _updateLastPollDisplay();
   } catch (e) {
     sbLog('✕ Push failed: ' + e.message, 'err');
     _markPending();
@@ -271,6 +350,10 @@ async function pushToSupabase() {
       setSyncBadge('err');
       toast('✕ Sync error — will retry', 'e');
     }
+  } finally {
+    _pushInFlight = false;
+    // If another push was requested while this one was running, fire it now
+    if (_pushQueued) { _pushQueued = false; setTimeout(_doPush, 100); }
   }
 }
 
@@ -304,6 +387,7 @@ async function pullFromSupabase(silent = false) {
     }
     setSyncBadge('ok');
     _recordHistory({ type: 'pull', status: 'ok', monthly: mN + mU, daily: dN + dU, msg: silent ? 'Auto-pull on unlock' : 'Manual pull' });
+    _updateLastPollDisplay();
   } catch (e) {
     sbLog('✕ Pull failed: ' + e.message, 'err');
     setSyncBadge('err');
@@ -315,10 +399,12 @@ async function pullFromSupabase(silent = false) {
 
 // ══════════════════════════════════════════════════════════════════
 // REAL-TIME SUBSCRIPTION
+// Handles subscribe errors, logs state, and exposes channel health
+// to the Test Connection checker.
 // ══════════════════════════════════════════════════════════════════
 function _startRealtime() {
   const db = _sb();
-  if (_sbChannel) db.removeChannel(_sbChannel);
+  if (_sbChannel) { try { db.removeChannel(_sbChannel); } catch(_) {} }
   _sbChannel = db
     .channel('bt-sync')
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: SB_TABLE }, () => {
@@ -326,9 +412,33 @@ function _startRealtime() {
       pullFromSupabase(true).then(() => {
         toast('⚡ Synced from another device');
         _recordHistory({ type: 'realtime', status: 'ok', msg: 'Received update from another device' });
+        _updateLastPollDisplay();
       });
     })
-    .subscribe();
+    .subscribe((status, err) => {
+      if (status === 'SUBSCRIBED') {
+        _updateRealtimeStatus(true);
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        sbLog('⚠ Real-time channel ' + status + (err ? ': ' + err.message : '') + ' — will reconnect on next event', 'err');
+        _updateRealtimeStatus(false);
+        // Auto-reconnect after 5 seconds
+        setTimeout(_startRealtime, 5000);
+      }
+    });
+}
+
+function _updateRealtimeStatus(ok) {
+  const el = document.getElementById('ar-status');
+  if (!el) return;
+  el.textContent = ok ? 'Active' : 'Reconnecting…';
+  el.style.color  = ok ? 'var(--green)' : 'var(--amber, #f59e0b)';
+}
+
+function _updateLastPollDisplay() {
+  const el = document.getElementById('ar-last-poll');
+  if (!el) return;
+  const now = new Date();
+  el.textContent = now.toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -336,6 +446,11 @@ function _startRealtime() {
 // ══════════════════════════════════════════════════════════════════
 window.addEventListener('online', () => {
   sbLog('↑ Back online' + (_hasPending() ? ' — flushing queue…' : ''), 'info');
+  // Reconnect real-time channel if it dropped while offline
+  const chState = _sbChannel ? _sbChannel.state : '';
+  if (!_sbChannel || (chState !== 'joined' && chState !== 'joining')) {
+    _startRealtime();
+  }
   if (_hasPending()) {
     _recordHistory({ type: 'offline', status: 'ok', msg: 'Back online — flushing queued changes' });
     pushToSupabase();
@@ -346,6 +461,23 @@ window.addEventListener('online', () => {
 window.addEventListener('offline', () => {
   sbLog('↓ Offline — changes saved locally, sync on reconnect', 'info');
   setSyncBadge('queue');
+  _updateRealtimeStatus(false);
+});
+
+// ── PWA / mobile: reconnect real-time when tab becomes visible again ──
+// Phones kill WebSocket connections when the screen sleeps or the app
+// is backgrounded. Reconnect and do a silent pull on wakeup.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) return;
+  const chState = _sbChannel ? _sbChannel.state : '';
+  if (!_sbChannel || (chState !== 'joined' && chState !== 'joining')) {
+    sbLog('↩ App foregrounded — reconnecting real-time…', 'info');
+    _startRealtime();
+  }
+  // Always do a silent pull on wake so stale data is refreshed
+  if (navigator.onLine) {
+    pullFromSupabase(true).catch(() => {});
+  }
 });
 
 // ══════════════════════════════════════════════════════════════════
@@ -416,10 +548,11 @@ async function testSupabaseConnection() {
   checks += row('✏️', 'Write (RLS check)', canWrite, writeDetail);
 
   // 4. Real-time channel status
-  const rtOk   = _sbChannel !== null;
-  const rtStat = _sbChannel ? (_sbChannel.state || 'subscribed') : 'not started';
+  const rtState = _sbChannel ? (_sbChannel.state || '') : '';
+  const rtOk    = rtState === 'joined' || rtState === 'joining';
+  const rtStat  = _sbChannel ? (rtState || 'unknown') : 'not started';
   if (!rtOk) allOk = false;
-  checks += row('⚡', 'Real-time', rtOk, rtOk ? `Channel: ${rtStat}` : 'Channel not initialised');
+  checks += row('⚡', 'Real-time', rtOk, rtOk ? `Channel: ${rtStat}` : `Channel: ${rtStat} — reconnecting`);
 
   // 5. Offline queue
   const pending  = _hasPending();
@@ -455,9 +588,11 @@ function updateGhBadge() {
 }
 
 function saveAutoSettings() {
-  localStorage.setItem('bt_auto_load', document.getElementById('auto-load')?.checked ? '1' : '0');
-  localStorage.setItem('bt_auto_save', document.getElementById('auto-save')?.checked ? '1' : '0');
-  toast('✓ Auto-sync settings saved');
+  const autoLoad = document.getElementById('auto-load')?.checked;
+  const autoSave = document.getElementById('auto-save')?.checked;
+  localStorage.setItem('bt_auto_load', autoLoad ? '1' : '0');
+  localStorage.setItem('bt_auto_save', autoSave ? '1' : '0');
+  toast('✓ Auto-sync settings saved — load:' + (autoLoad?'on':'off') + ' save:' + (autoSave?'on':'off'));
 }
 
 function startAutoInterval() { /* replaced by real-time subscription */ }
@@ -476,6 +611,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Render history immediately from localStorage
   renderSyncHistory();
+
+  // Initialize status display
+  _updateRealtimeStatus(false); // will flip to true when channel subscribes
+  _updateLastPollDisplay();
 
   // Start real-time listener
   _startRealtime();

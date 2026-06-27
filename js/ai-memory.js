@@ -507,6 +507,7 @@ function aimBuildAssistantPayload() {
     voiceLog:     _aimGet(AIMEM_K_VOICE, []),
     briefing:     _aimGet(AIMEM_K_BRIEF, {}),
     instructions: _aimGet('bt_ai_instructions_v1', []),  // ← instructions included in every push
+    context:      _aimGet('bt_ai_context_v1', null),     // ← AI business context (AIContext module)
     updatedAt:    _aimNow(),
   };
 }
@@ -562,6 +563,17 @@ function aimMergeAssistantIncoming(assistant, isPull) {
     // newer briefing wins
     if (!local.date || new Date(assistant.updatedAt || 0) > new Date(local._mergedAt || 0)) {
       _aimSet(AIMEM_K_BRIEF, assistant.briefing);
+    }
+  }
+
+  // AI business context — only meaningful to pull in (it's set live by the
+  // active device); a stale remote copy should never overwrite a device
+  // that's mid-conversation, so this never runs on push.
+  if (assistant.context && isPull) {
+    _aimSet('bt_ai_context_v1', assistant.context);
+    if (typeof AIContext !== 'undefined' && AIContext && typeof AIContext.get === 'function') {
+      // Force the live module to re-read what we just wrote, if it exposes a reload hook
+      if (typeof AIContext.reload === 'function') { try { AIContext.reload(); } catch(_) {} }
     }
   }
 }

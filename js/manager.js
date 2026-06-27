@@ -1412,7 +1412,9 @@ function saveAllManagerSections() {
   tryCall(saveIncentiveData);
   tryCall(saveAllCustomSections);
   toast('✓ All sections saved (' + saved + ')');
-  setTimeout(() => { try { pushToSupabase(); } catch(e) {} }, 700);
+  // pushToSupabase is debounced — each save* call above already triggers it;
+  // this call ensures a push happens even when auto-save is off.
+  if (typeof pushToSupabase === 'function') pushToSupabase();
 }
 
 // ── Populate Dashboard Working Summary ─────────────────────────────────────

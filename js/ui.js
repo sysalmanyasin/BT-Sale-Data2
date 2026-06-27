@@ -129,7 +129,6 @@ function loadToolsPage() {
   // Auto-sync checkboxes
   const al=document.getElementById('auto-load'); if(al) al.checked=localStorage.getItem('bt_auto_load')==='1';
   const as=document.getElementById('auto-save'); if(as) as.checked=localStorage.getItem('bt_auto_save')==='1';
-  const ai=document.getElementById('auto-interval'); if(ai) ai.checked=localStorage.getItem('bt_auto_interval')==='1';
   // Targets
   populateTgtSel(); renderTargetList();
   // Summary
