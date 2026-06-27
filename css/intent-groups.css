@@ -93,7 +93,79 @@
   margin-top: 1px;
 }
 
-/* ── Suggested shortcuts strip ───────────────────────────────────────── */
+/* ── Shortcut grid as a collapsible side drawer ──────────────────────── */
+.igs-drawer-wrap {
+  margin-bottom: 10px;
+}
+
+/* Permanent tab — always visible, sits flush against the right edge */
+.igs-drawer-tab {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 6px;
+  border: 1.5px solid #dbeafe;
+  border-right: none;
+  border-radius: 12px 0 0 12px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: -2px 2px 10px rgba(37,99,235,0.12);
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.igs-drawer-tab:hover { background: #dbeafe; }
+.igs-drawer-tab.igs-drawer-tab-active {
+  background: #2563eb; color: #fff; border-color: #2563eb;
+}
+.igs-drawer-tab-icon { font-size: 15px; line-height: 1; }
+.igs-drawer-tab-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+/* Sliding panel — anchored to the same edge, hidden offscreen until open */
+.igs-drawer-panel {
+  position: absolute;
+  top: 8px;
+  right: 0;
+  bottom: 8px;
+  width: min(82vw, 320px);
+  max-width: calc(100% - 44px);
+  background: #fff;
+  border: 1.5px solid #dbeafe;
+  border-radius: 14px;
+  box-shadow: -6px 4px 24px rgba(15,23,42,0.16);
+  padding: 12px;
+  overflow-y: auto;
+  z-index: 25;
+  transform: translateX(calc(100% + 12px));
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform 0.22s cubic-bezier(.34,1.2,.64,1), opacity 0.18s ease, visibility 0.22s;
+}
+.igs-drawer-panel.igs-drawer-open {
+  transform: translateX(0);
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+.igs-drawer-panel .igs-grid { margin-bottom: 0; }
+
+@media (max-width: 480px) {
+  .igs-drawer-tab { padding: 8px 5px; }
+  .igs-drawer-panel { padding: 10px; }
+}
 .igs-suggestions {
   border-top: 1px solid #f1f5f9;
   padding-top: 8px;

@@ -2,50 +2,7 @@
    AI ASSISTANT — redesigned for readability
    ══════════════════════════════════════════════════════════════════════ */
 
-/* ── FAB button ─────────────────────────────────────────────────────── */
-.ai-fab{
-  position:fixed; right:18px; bottom:18px; z-index:19000;
-  width:56px; height:56px; border-radius:50%;
-  background:linear-gradient(135deg,#2563eb,#1d4ed8); color:#fff; border:none;
-  font-size:24px; cursor:pointer;
-  box-shadow:0 6px 20px rgba(37,99,235,.50);
-  display:flex; align-items:center; justify-content:center;
-  transition:transform .15s ease, box-shadow .15s ease;
-  -webkit-tap-highlight-color:transparent;
-}
-.ai-fab:hover{ transform:scale(1.08); box-shadow:0 8px 24px rgba(37,99,235,.60); }
-.ai-fab:active{ transform:scale(.95); }
-.ai-fab-ping{
-  position:absolute; top:0; right:0; width:14px; height:14px;
-  background:#22c55e; border:2px solid #fff; border-radius:50%;
-}
-
-/* ── Backdrop ───────────────────────────────────────────────────────── */
-.ai-backdrop{
-  position:fixed; inset:0; z-index:19001;
-  background:rgba(0,0,0,.45);
-  backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
-  opacity:0; visibility:hidden;
-  transition:opacity .2s ease, visibility .2s ease;
-}
-.ai-backdrop.on{ opacity:1; visibility:visible; }
-
-/* ── Panel ──────────────────────────────────────────────────────────── */
-.ai-panel{
-  position:fixed; right:18px; bottom:84px; z-index:19002;
-  width:380px; max-width:calc(100vw - 28px);
-  height:560px; max-height:calc(100vh - 110px);
-  background:#fff; border-radius:18px;
-  box-shadow:0 20px 60px rgba(0,0,0,.30), 0 4px 16px rgba(0,0,0,.12);
-  display:flex; flex-direction:column; overflow:hidden;
-  opacity:0; transform:translateY(16px) scale(.97);
-  pointer-events:none;
-  transition:opacity .2s ease, transform .2s cubic-bezier(.34,1.46,.64,1);
-}
-.ai-panel.on{
-  opacity:1; transform:translateY(0) scale(1);
-  pointer-events:auto;
-}
+/* ── FAB / Panel / Backdrop removed — dead code, no HTML references ── */
 
 /* ── Header ─────────────────────────────────────────────────────────── */
 .ai-head{
@@ -183,17 +140,9 @@
 
 /* ── Mobile: full-screen sheet ──────────────────────────────────────── */
 @media (max-width:480px){
-  .ai-panel{
-    right:0; left:0; bottom:0; width:100%;
-    max-width:100%; border-radius:20px 20px 0 0;
-    height:75vh; max-height:75vh;
-    transform:translateY(100%);
-  }
-  .ai-panel.on{ transform:translateY(0); }
-  .ai-fab{ right:14px; bottom:14px; }
   .ai-head{ border-radius:20px 20px 0 0; }
 }
-@media print{ .ai-panel,.ai-fab,.ai-backdrop{ display:none!important; } }
+@media print{ .ai-input-row,.ai-quick{ display:none!important; } }
 
 /* ══════════════════════════════════════════════════════════════════════
    AI PAGE — Dedicated full-page tab
@@ -305,6 +254,7 @@
   flex-direction: column;
   overflow: hidden;
   background: #fff;
+  position: relative;
 }
 
 .aip-chat-header {
