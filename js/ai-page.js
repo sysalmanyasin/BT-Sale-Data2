@@ -3,8 +3,8 @@
 // Separate chat history from the floating panel; shares aiBridgeAnswer()
 // ══════════════════════════════════════════════════════════════════════
 
-var _aipHistory  = [];
-var _aipInited   = false;
+var _aipHistory   = [];
+var _aipInited    = false;
 var _aipMicActive = false;
 var _aipMicRec    = null;
 
@@ -25,8 +25,11 @@ function loadAiPage() {
       }, 700);
     }).catch(function() { _aipRenderInsights(); });
   }
-  _aipRenderChips();
+
+  // Render the smart home screen (shortcut grid) in the chips area
+  _aipRenderHome();
   _aipRenderInsights();
+
   var badge = document.getElementById('aip-live-badge');
   var hasKey = (typeof aiHasKey === 'function') ? aiHasKey() : true;
   if (badge) {
@@ -53,7 +56,7 @@ function loadAiPage() {
             '<br>\u2022 \uD83D\uDCB0 Salary, Generic, Expense, Credit, Petty Cash' +
             '<br>\u2022 \uD83C\uDFAF Targets, Custom Sections, Sync &amp; Backup' +
             '<br>\u2022 \uD83E\uDDE0 Memory, Rules &amp; Training \u2014 tap \uD83E\uDDE0 above' +
-            '<br><br><b>Just tell me what to do \u2014 in English, Urdu, or both.</b>' +
+            '<br><br><b>Use the shortcuts below or just type/speak!</b>' +
             '<br><span style="font-size:11px;color:var(--muted)">\u26a0\ufe0f Destructive actions (delete, overwrite) will always ask for confirmation first.</span>' + ruleAlerts)) :
         ('\u26a0\ufe0f <b>No API key set.</b> Tap the \u2699\ufe0f gear icon above to add your free Groq API key ' +
             '(get one at <b>console.groq.com/keys</b>) before chatting or scanning images.'),
@@ -64,6 +67,199 @@ function loadAiPage() {
     var inp = document.getElementById('aip-input');
     if (inp) inp.focus();
   }, 200);
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// HOME SCREEN — Shortcut Grid (replaces the plain chips bar)
+// ══════════════════════════════════════════════════════════════════════
+
+// Group config for the 2x4 grid (order matches design spec)
+var _IGS_GRID_ORDER = [
+  'sales',    'payroll',
+  'expenses', 'staff',
+  'records',  'reports',
+  'navigation','ai',
+];
+
+function _aipRenderHome() {
+  var wrap = document.getElementById('aip-chips');
+  if (!wrap) return;
+
+  // If user has typed something, show the regular chip suggestions instead
+  var inp = document.getElementById('aip-input');
+  var hasText = inp && inp.value.trim().length > 0;
+  if (hasText) { _aipRenderChips(); return; }
+
+  if (typeof IntentGroupRegistry === 'undefined') {
+    _aipRenderChips(); return;
+  }
+
+  var groups = IntentGroupRegistry.getAllGroups();
+
+  // Build lookup by id
+  var byId = {};
+  groups.forEach(function(g){ byId[g.id] = g; });
+
+  // Suggested groups (usage-based)
+  var suggested = IntentGroupRegistry.getSuggestedGroups(3);
+  // Only show suggestions if there's any usage history
+  var hasUsage = suggested.some(function(g) {
+    try {
+      var u = JSON.parse(localStorage.getItem('bt_igr_usage') || '{}');
+      return (u[g.id] || 0) > 0;
+    } catch(_){ return false; }
+  });
+
+  var html = '<div class="igs-home" id="igs-home-panel">';
+
+  // ── Speak button ──
+  html += '<div class="igs-speak-row">';
+  html += '<button class="igs-speak-btn" id="igs-speak-btn" onclick="aiPageToggleMic()" title="Voice input">';
+  html += '<span style="font-size:20px">🎤</span>';
+  html += '<span>Speak</span>';
+  html += '</button>';
+  html += '</div>';
+
+  // ── 2-column grid ──
+  html += '<div class="igs-grid">';
+  _IGS_GRID_ORDER.forEach(function(gid) {
+    var g = byId[gid];
+    if (!g) return;
+    html += '<button class="igs-btn" onclick="igsOpenGroup(\'' + _aipEsc(gid) + '\')" ' +
+      'style="background:' + _aipEsc(g.bg) + ';border-color:' + _aipEsc(g.border) + ';color:' + _aipEsc(g.color) + '">' +
+      '<span class="igs-btn-emoji">' + g.emoji + '</span>' +
+      '<span class="igs-btn-label">' +
+        '<span class="igs-btn-name">' + _aipEsc(g.label) + '</span>' +
+        '<span class="igs-btn-sub">' + _aipEsc(g.name) + '</span>' +
+      '</span>' +
+      '</button>';
+  });
+  html += '</div>';
+
+  // ── Suggested shortcuts (usage-based) ──
+  if (hasUsage) {
+    html += '<div class="igs-suggestions">';
+    html += '<div class="igs-sug-label">⚡ Frequent</div>';
+    html += '<div class="igs-sug-row">';
+    suggested.forEach(function(g) {
+      html += '<button class="igs-sug-chip" onclick="igsOpenGroup(\'' + _aipEsc(g.id) + '\')">' +
+        g.shortcut + '</button>';
+    });
+    html += '</div></div>';
+  }
+
+  html += '</div>';
+
+  wrap.innerHTML = html;
+
+  // Sync mic button state if already recording
+  if (_aipMicActive) {
+    var spkBtn = document.getElementById('igs-speak-btn');
+    if (spkBtn) spkBtn.classList.add('recording');
+  }
+}
+
+// Called when user taps a group shortcut
+function igsOpenGroup(groupId) {
+  if (typeof IntentGroupRegistry === 'undefined') return;
+  var g = IntentGroupRegistry.getGroupById(groupId);
+  if (!g) return;
+
+  // Track usage
+  IntentGroupRegistry.trackUsage(groupId);
+
+  // Inject a group exploration message into chat
+  var groupIntentsHtml = g.intents.slice(0,8).map(function(id){
+    return '<span class="igs-intent-tag">' + _aipEsc(id) + '</span>';
+  }).join('');
+  if (g.intents.length > 8) {
+    groupIntentsHtml += ' <span class="igs-intent-tag">+' + (g.intents.length - 8) + ' more</span>';
+  }
+
+  var card = '<div class="igs-group-card">' +
+    '<div class="igs-group-card-header">' +
+      '<div class="igs-group-card-icon" style="background:' + _aipEsc(g.bg) + ';border:1.5px solid ' + _aipEsc(g.border) + '">' + g.emoji + '</div>' +
+      '<div>' +
+        '<div class="igs-group-card-title">' + _aipEsc(g.name) + '</div>' +
+        '<div class="igs-group-card-sub">Shortcut: <b>' + _aipEsc(g.shortcut) + '</b> &nbsp;&bull;&nbsp; ' + g.intents.length + ' actions</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="igs-group-intents">' + groupIntentsHtml + '</div>' +
+    '</div>';
+
+  var prompt = 'Tell me what I can do in the <b>' + _aipEsc(g.name) + '</b> group. ' +
+    'Show example commands I can say for: ' + g.intents.slice(0,4).join(', ') + '.';
+
+  _aipHistory.push({ role: 'user', text: g.shortcut + ' — ' + _aipEsc(g.name) });
+  _aipHistory.push({ role: 'bot', text: card + '<div style="margin-top:8px;font-size:12.5px;color:#475569">Here\'s what you can do in this group. Try saying something like:<br>' + _igsGetGroupExamples(groupId) + '</div>' });
+  _aipRender();
+
+  // Re-render home without the open group highlighted
+  setTimeout(_aipRenderHome, 0);
+}
+
+// Quick example commands per group
+function _igsGetGroupExamples(groupId) {
+  var examples = {
+    navigation: '"Open dashboard" &nbsp;&bull;&nbsp; "Go to manager" &nbsp;&bull;&nbsp; "Switch to salary tab"',
+    sales:      '"Jazz Cash 5000" &nbsp;&bull;&nbsp; "Set cash sale to 80000" &nbsp;&bull;&nbsp; "Edit yesterday\'s entry"',
+    staff:      '"Add staff Ali Raza" &nbsp;&bull;&nbsp; "Deactivate Kashif" &nbsp;&bull;&nbsp; "Open staff card for Usman"',
+    payroll:    '"Credit 2500 for Kashif" &nbsp;&bull;&nbsp; "Add salary row for Ali" &nbsp;&bull;&nbsp; "Copy to next month"',
+    expenses:   '"Add expense fuel 1200" &nbsp;&bull;&nbsp; "Add petty chai 300" &nbsp;&bull;&nbsp; "Add expense electricity 8000"',
+    records:    '"Add 5000 to Wapda section" &nbsp;&bull;&nbsp; "Create section NBP" &nbsp;&bull;&nbsp; "Delete row in PSO register"',
+    reports:    '"Open month report" &nbsp;&bull;&nbsp; "Print yearly report" &nbsp;&bull;&nbsp; "Set target June 2026 50 lakh"',
+    ai:         '"Push to Supabase" &nbsp;&bull;&nbsp; "Remember: target is 5M" &nbsp;&bull;&nbsp; "Backup to Drive"',
+  };
+  return examples[groupId] || 'Type a command to get started.';
+}
+
+// ── Regular chips (shown when user is typing) ─────────────────────────
+function _aipRenderChips() {
+  var chips = document.getElementById('aip-chips');
+  if (!chips) return;
+
+  // If the home panel is currently shown, replace it
+  var homeEl = document.getElementById('igs-home-panel');
+  if (homeEl) {
+    chips.innerHTML = '';
+  }
+
+  var opts = [
+    'Jazz Cash 5000',
+    'Credit 2500 for Kashif',
+    'Add expense fuel 800',
+    'Set target June 2026 50 lakh',
+    'Add staff Muhammad Usman',
+    'Highest sale day?',
+    'Compare last two months',
+    'Push to Supabase',
+  ];
+  chips.innerHTML = '<div class="igs-chips-mode">' +
+    opts.map(function(o) {
+      return '<button class="ai-chip" onclick="aiPageAsk(\'' + o.replace(/'/g, "\\'") + '\')">' + o + '</button>';
+    }).join('') +
+    '</div>';
+}
+
+// Watch input field to switch between home screen and chip suggestions
+function _aipBindInputWatch() {
+  var inp = document.getElementById('aip-input');
+  if (!inp || inp._igsWatching) return;
+  inp._igsWatching = true;
+  inp.addEventListener('input', function() {
+    if (inp.value.trim().length > 0) {
+      // Show chips when typing
+      var homeEl = document.getElementById('igs-home-panel');
+      if (homeEl) _aipRenderChips();
+    } else {
+      // Show home screen when cleared
+      var homeEl = document.getElementById('igs-home-panel');
+      if (!homeEl) _aipRenderHome();
+    }
+  });
+  inp.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') { inp.value = ''; _aipRenderHome(); }
+  });
 }
 
 // ── Auto-Insights sidebar ─────────────────────────────────────────────
@@ -93,16 +289,11 @@ function _aipRenderInsights() {
   var prevT  = prev ? n(prev.TOTAL) : 0;
   var chg    = prevT > 0 ? Math.round((lastT - prevT) / prevT * 100) : null;
 
-  // Best month
   var bestM  = M.reduce(function(a, b){ return n(b.TOTAL) > n(a.TOTAL) ? b : a; }, M[0]);
-  // Best day
   var bestD  = D.length ? D.reduce(function(a, b){ return n(b.TOTAL) > n(a.TOTAL) ? b : a; }, D[0]) : null;
-  // Average monthly
   var avgM   = Math.round(grand / M.length);
-  // Last 6 months trend
   var last6  = M.slice(-6).map(function(m){ return n(m.TOTAL); });
   var maxL6  = Math.max.apply(null, last6);
-  // Cash vs credit (last month)
   var ctx    = (typeof getAppContext === 'function') ? getAppContext() : {};
   var cCols  = ctx.clientCols || [];
   var cashT  = n(last['Cash_Sale'] || last['Cash Sale'] || 0);
@@ -111,28 +302,23 @@ function _aipRenderInsights() {
   var cashPct  = totalT > 0 ? Math.round(cashT / totalT * 100) : 0;
   var credPct  = 100 - cashPct;
 
-  // Current month progress vs target
   var tgts   = (typeof window.getTgts === 'function') ? window.getTgts() : {};
   var curMY  = last.Month_Year;
   var curTgt = n(tgts[curMY]);
   var pctTgt = (curTgt > 0) ? Math.round(lastT / curTgt * 100) : null;
 
-  // Active credit clients (last 3 months)
   var activeCred = cCols.filter(function(c){
     return M.slice(-3).some(function(m){ return n(m[c]) > 0; });
   });
 
-  // Streak: consecutive months ≥ avgM
   var streak = 0;
   for (var i = M.length - 1; i >= 0; i--) {
     if (n(M[i].TOTAL) >= avgM) streak++;
     else break;
   }
 
-  // Load Sale (last month)
   var loadLast = n(last['Load_Sale'] || last['Load Sale'] || 0);
 
-  // ── Build HTML ───────────────────────────────────────────────────
   var chgHtml = '';
   if (chg !== null) {
     var chgColor = chg >= 0 ? '#16a34a' : '#dc2626';
@@ -151,7 +337,6 @@ function _aipRenderInsights() {
       '</div>';
   }
 
-  // Sparkline (simple bar chart using divs)
   var sparkHtml = last6.map(function(v, i) {
     var h = maxL6 > 0 ? Math.max(4, Math.round((v / maxL6) * 38)) : 4;
     var isLast = i === last6.length - 1;
@@ -162,28 +347,24 @@ function _aipRenderInsights() {
 
   var html = '<div class="aip-section-title">\u26a1 Live Insights</div>';
 
-  // Grand total card
   html += '<div class="aip-card aip-card-accent">' +
     '<div class="aip-card-label">Total All-Time</div>' +
     '<div class="aip-card-val">\u20a8' + fc(grand) + '</div>' +
     '<div class="aip-card-sub">' + M.length + ' months of data</div>' +
     '</div>';
 
-  // Last month card
   html += '<div class="aip-card">' +
-    '<div class="aip-card-label">Last Month — ' + last.Month_Year + '</div>' +
+    '<div class="aip-card-label">Last Month \u2014 ' + last.Month_Year + '</div>' +
     '<div class="aip-card-val">\u20a8' + fc(lastT) + chgHtml + '</div>' +
     (tgtHtml || '') +
     '</div>';
 
-  // Best month
   html += '<div class="aip-card">' +
     '<div class="aip-card-label">\uD83C\uDFC6 Best Month Ever</div>' +
     '<div class="aip-card-val">\u20a8' + fc(n(bestM.TOTAL)) + '</div>' +
     '<div class="aip-card-sub">' + bestM.Month_Year + '</div>' +
     '</div>';
 
-  // Best day
   if (bestD) {
     html += '<div class="aip-card">' +
       '<div class="aip-card-label">\uD83D\uDD25 Best Day Ever</div>' +
@@ -192,17 +373,15 @@ function _aipRenderInsights() {
       '</div>';
   }
 
-  // Avg monthly
   html += '<div class="aip-card">' +
     '<div class="aip-card-label">\uD83D\uDCCA Avg Monthly Sale</div>' +
     '<div class="aip-card-val">\u20a8' + fc(avgM) + '</div>' +
     (streak > 1 ? '<div class="aip-card-sub">\uD83D\uDD25 ' + streak + ' consecutive months \u2265 avg</div>' : '') +
     '</div>';
 
-  // Cash vs Credit
   if (totalT > 0) {
     html += '<div class="aip-card">' +
-      '<div class="aip-card-label">Cash vs Credit — ' + last.Month_Year + '</div>' +
+      '<div class="aip-card-label">Cash vs Credit \u2014 ' + last.Month_Year + '</div>' +
       '<div style="display:flex;align-items:center;gap:6px;margin:6px 0">' +
         '<div style="flex:' + cashPct + ';height:10px;background:#2563eb;border-radius:5px 0 0 5px"></div>' +
         '<div style="flex:' + credPct + ';height:10px;background:#bfdbfe;border-radius:0 5px 5px 0"></div>' +
@@ -214,15 +393,13 @@ function _aipRenderInsights() {
       '</div>';
   }
 
-  // Load Sale
   if (loadLast > 0) {
     html += '<div class="aip-card">' +
-      '<div class="aip-card-label">\u26FD Load Sale — ' + last.Month_Year + '</div>' +
+      '<div class="aip-card-label">\u26FD Load Sale \u2014 ' + last.Month_Year + '</div>' +
       '<div class="aip-card-val">\u20a8' + fc(loadLast) + '</div>' +
       '</div>';
   }
 
-  // Last 6 months sparkline
   html += '<div class="aip-card">' +
     '<div class="aip-card-label">Last 6 Months Trend</div>' +
     '<div style="display:flex;align-items:flex-end;gap:4px;height:44px;margin-top:8px">' + sparkHtml + '</div>' +
@@ -232,7 +409,6 @@ function _aipRenderInsights() {
     '</div>' +
     '</div>';
 
-  // Active credit clients
   if (activeCred.length) {
     html += '<div class="aip-card">' +
       '<div class="aip-card-label">\uD83C\uDFE6 Active Credit Clients</div>' +
@@ -244,7 +420,6 @@ function _aipRenderInsights() {
       '</div>';
   }
 
-  // Quick ask buttons
   html += '<div class="aip-section-title" style="margin-top:4px">\uD83D\uDCA1 Quick Ask</div>';
   var quickAsks = [
     'Highest sale day this year?',
@@ -265,35 +440,58 @@ function _aipRenderInsights() {
   sb.innerHTML = html;
 }
 
-// ── Chips above input ─────────────────────────────────────────────────
-function _aipRenderChips() {
-  var chips = document.getElementById('aip-chips');
-  if (!chips) return;
-  var opts = [
-    'Jazz Cash 5000',
-    'Credit 2500 for Kashif',
-    'Add expense fuel 800',
-    'Set target June 2026 50 lakh',
-    'Add staff Muhammad Usman',
-    'Highest sale day?',
-    'Compare last two months',
-    'Push to Supabase',
-  ];
-  chips.innerHTML = opts.map(function(o) {
-    return '<button class="ai-chip" onclick="aiPageAsk(\'' + o.replace(/'/g, "\\'") + '\')">' + o + '</button>';
-  }).join('');
-}
-
-// ── Chat send ─────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════
+// CHAT SEND — with group search interception & intent enrichment
+// ══════════════════════════════════════════════════════════════════════
 async function aiPageSend() {
   var input = document.getElementById('aip-input');
   var text  = (input ? input.value : '').trim();
   if (!text) return;
   if (input) { input.value = ''; input.disabled = true; }
 
+  // ── Restore home screen when input is cleared ──
+  setTimeout(_aipRenderHome, 0);
+
   _aipHistory.push({ role: 'user', text: _aipEsc(text) });
   _aipRender();
 
+  // ── Group Search Interception ──────────────────────────────────────
+  if (typeof IntentGroupRegistry !== 'undefined') {
+    // Check for "open reports", "show ledger", "go to records" etc.
+    if (IntentGroupRegistry.isGroupSearchQuery(text)) {
+      var matchedGroup = IntentGroupRegistry.resolveGroupQuery(text);
+      if (matchedGroup) {
+        // Track usage
+        IntentGroupRegistry.trackUsage(matchedGroup.id);
+
+        var groupIntentsHtml2 = matchedGroup.intents.slice(0,8).map(function(id){
+          return '<span class="igs-intent-tag">' + _aipEsc(id) + '</span>';
+        }).join('');
+        if (matchedGroup.intents.length > 8) {
+          groupIntentsHtml2 += ' <span class="igs-intent-tag">+' + (matchedGroup.intents.length - 8) + ' more</span>';
+        }
+
+        var groupCard = '<div class="igs-group-card">' +
+          '<div class="igs-group-card-header">' +
+            '<div class="igs-group-card-icon" style="background:' + _aipEsc(matchedGroup.bg) + ';border:1.5px solid ' + _aipEsc(matchedGroup.border) + '">' + matchedGroup.emoji + '</div>' +
+            '<div>' +
+              '<div class="igs-group-card-title">' + _aipEsc(matchedGroup.name) + '</div>' +
+              '<div class="igs-group-card-sub">Shortcut: <b>' + _aipEsc(matchedGroup.shortcut) + '</b></div>' +
+            '</div>' +
+          '</div>' +
+          '<div style="font-size:12px;color:#475569;margin-bottom:8px">' + _igsGetGroupExamples(matchedGroup.id) + '</div>' +
+          '<div class="igs-group-intents">' + groupIntentsHtml2 + '</div>' +
+          '</div>';
+
+        _aipHistory.push({ role: 'bot', text: '\uD83D\uDCCC Showing <b>' + _aipEsc(matchedGroup.name) + '</b> group:<br>' + groupCard });
+        if (input) input.disabled = false;
+        _aipRender();
+        return;
+      }
+    }
+  }
+
+  // ── Normal AI processing ───────────────────────────────────────────
   var thinkId = '_aip_' + Date.now();
   _aipHistory.push({
     role: 'bot',
@@ -304,15 +502,33 @@ async function aiPageSend() {
 
   try {
     var result = await aiBridgeAnswer(text);
+
+    // ── Group enrichment ──────────────────────────────────────────────
+    if (result && result.intent && typeof IntentGroupRegistry !== 'undefined') {
+      IntentGroupRegistry.enrichIntent(result.intent);
+      if (result.intent.groupId) {
+        IntentGroupRegistry.trackUsage(result.intent.groupId);
+      }
+    }
+
     var idx = _aipHistory.findIndex(function(m){ return m._id === thinkId; });
     if (idx !== -1) _aipHistory.splice(idx, 1);
 
     var displayText = result.text;
+
+    // ── Group badge on intent ──────────────────────────────────────
+    if (result.intent && result.intent.groupId && typeof IntentGroupRegistry !== 'undefined') {
+      var g = IntentGroupRegistry.getGroupById(result.intent.groupId);
+      if (g) {
+        displayText += '<span class="igs-intent-badge" style="background:' + g.bg + ';color:' + g.color + ';border:1px solid ' + g.border + '">' + g.emoji + ' ' + _aipEsc(g.name) + '</span>';
+      }
+    }
+
     if (result.intent) {
       var label      = _aipIntentLabel(result.intent);
       var isDestruct = !!result.requiresConfirm;
       var btnClass   = isDestruct ? 'ai-chip ai-chip-red' : 'ai-chip ai-chip-green';
-      var btnLabel   = isDestruct ? ('⚠️ ' + label) : ('✅ ' + label);
+      var btnLabel   = isDestruct ? ('\u26a0\ufe0f ' + label) : ('\u2705 ' + label);
       displayText += '<div class="ai-intent-row">' +
         '<button class="' + btnClass + '" onclick="aiBridgeExecuteIntent(JSON.parse(this.dataset.i));this.parentNode.remove()" data-i="' + JSON.stringify(result.intent).replace(/"/g,'&quot;') + '">' + btnLabel + '</button>' +
         '<button class="ai-chip-dim" onclick="this.parentNode.remove()">Cancel</button>' +
@@ -320,7 +536,6 @@ async function aiPageSend() {
     }
     _aipHistory.push({ role: 'bot', text: displayText });
 
-    // Refresh insights after any action
     setTimeout(_aipRenderInsights, 400);
   } catch(err) {
     var idx2 = _aipHistory.findIndex(function(m){ return m._id === thinkId; });
@@ -330,6 +545,7 @@ async function aiPageSend() {
 
   if (input) input.disabled = false;
   _aipRender();
+  _aipRenderHome();
 }
 
 function aiPageAsk(text) {
@@ -351,21 +567,25 @@ function _aipRender() {
     return '<div class="ai-msg ' + m.role + '"><div class="ai-bubble">' + m.text + '</div></div>';
   }).join('');
   box.scrollTop = box.scrollHeight;
+
+  // Bind input watcher after DOM is ready
+  setTimeout(_aipBindInputWatch, 0);
 }
 
 function _aipEsc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// INTENT LABELS
+// ══════════════════════════════════════════════════════════════════════
 function _aipIntentLabel(intent) {
   var labels = {
-    // Navigation
     showPage:              'Open page',
     switchMgrTab:          'Switch tab',
     openStaffCard:         'Open staff card',
     openFieldManager:      'Open field manager',
     switchMonth:           'Switch month',
-    // Reports
     openDayModal:          'Open day report',
     openMonthModal:        'Open month report',
     printMonthReport:      'Print month',
@@ -373,34 +593,28 @@ function _aipIntentLabel(intent) {
     printMgrReport:        'Print report',
     printDayReport:        'Print day',
     printIncentiveReport:  'Print incentive',
-    // Daily entry
     setDailyField:         'Fill field',
     saveNewDailyEntry:     'Save daily entry',
     editDailyEntry:        'Edit entry',
     deleteDailyEntry:      'DELETE entry',
     clearEntryForm:        'Clear form',
-    // Staff
     addStaff:              'Add staff',
     editStaffField:        'Edit staff field',
     deactivateStaff:       'DEACTIVATE staff',
     reactivateStaff:       'Reactivate staff',
     deleteStaff:           'DELETE staff',
-    // Salary
     addSalaryRow:          'Add salary row',
     editSalaryRow:         'Edit salary row',
     setSalaryField:        'Set salary field',
     deleteSalaryRow:       'DELETE salary row',
     autoFillSalary:        'Auto-fill salary',
-    // Generic
     addGenericRow:         'Add generic row',
     editGenericRow:        'Edit generic row',
     setGenericSale:        'Set generic sale',
     deleteGenericRow:      'DELETE generic row',
-    // Expense
     addExpense:            'Add expense',
     editExpenseRow:        'Edit expense row',
     deleteExpenseRow:      'DELETE expense row',
-    // Credit
     addCredit:             'Add credit',
     addCreditEmployee:     'Add to credit ledger',
     editCreditEntry:       'Edit credit entry',
@@ -409,31 +623,24 @@ function _aipIntentLabel(intent) {
     setCreditEmpField:     'Set credit field',
     copyToNextMonth:       'COPY to next month',
     copyManagerToNextMonth:'COPY to next month',
-    // Petty
     addPettyItem:          'Add petty item',
     addPettyGroup:         'Add petty group',
     editPettyRow:          'Edit petty row',
     deletePettyRow:        'DELETE petty row',
     deletePettyGroup:      'DELETE petty group',
-    // Targets
     setMonthTarget:        'Set target',
     deleteMonthTarget:     'DELETE target',
-    // Custom sections
     addCustomSectionRow:   'Add to section',
     createCustomSection:   'Create section',
     deleteCustomSectionRow:'DELETE section row',
     deleteCustomSection:   'DELETE section',
-    // Field manager
     toggleFieldVisibility: 'Toggle field',
     addCustomField:        'Add custom field',
     resetAllFields:        'RESET all fields',
-    // Incentive
     recalcIncentive:       'Recalculate incentive',
-    // Sync
     pushToSupabase:        'Push to Supabase',
     pullFromSupabase:      'PULL from Supabase',
     backupToDrive:         'Backup to Drive',
-    // AI Memory
     addMemoryFact:         'Remember fact',
     deleteMemoryFact:      'Forget fact',
     addRule:               'Add rule',
@@ -451,12 +658,14 @@ function aiPageToggleMic() {
   _aipMicRec = new SR();
   _aipMicRec.lang = 'en-US';
   _aipMicRec.interimResults = true;
-  var micBtn = document.getElementById('aip-mic');
-  var inp    = document.getElementById('aip-input');
+  var micBtn  = document.getElementById('aip-mic');
+  var spkBtn  = document.getElementById('igs-speak-btn');
+  var inp     = document.getElementById('aip-input');
   _aipMicRec.onstart = function() {
     _aipMicActive = true;
-    if (micBtn) { micBtn.textContent = '🔴'; micBtn.classList.add('recording'); }
-    if (inp) inp.placeholder = 'Listening…';
+    if (micBtn) { micBtn.textContent = '\uD83D\uDD34'; micBtn.classList.add('recording'); }
+    if (spkBtn) spkBtn.classList.add('recording');
+    if (inp) inp.placeholder = 'Listening\u2026';
   };
   _aipMicRec.onresult = function(e) {
     var t = Array.from(e.results).map(function(r){ return r[0].transcript; }).join('');
@@ -464,26 +673,33 @@ function aiPageToggleMic() {
   };
   _aipMicRec.onend = function() {
     _aipMicActive = false;
-    if (micBtn) { micBtn.textContent = '🎤'; micBtn.classList.remove('recording'); }
+    if (micBtn) { micBtn.textContent = '\uD83C\uDFA4'; micBtn.classList.remove('recording'); }
+    if (spkBtn) spkBtn.classList.remove('recording');
     if (inp) inp.placeholder = 'Ask anything\u2026';
     _aipMicRec = null;
     if (inp && inp.value.trim()) {
       if (typeof aimVoiceLogAdd === 'function') aimVoiceLogAdd(inp.value.trim());
       aiPageSend();
+    } else {
+      _aipRenderHome();
     }
   };
   _aipMicRec.onerror = function() {
     _aipMicActive = false;
-    if (micBtn) { micBtn.textContent = '🎤'; micBtn.classList.remove('recording'); }
+    if (micBtn) { micBtn.textContent = '\uD83C\uDFA4'; micBtn.classList.remove('recording'); }
+    if (spkBtn) spkBtn.classList.remove('recording');
     _aipMicRec = null;
   };
   _aipMicRec.start();
 }
+
 function _aipStopMic() {
   if (_aipMicRec) { try { _aipMicRec.stop(); } catch(_) {} _aipMicRec = null; }
   _aipMicActive = false;
   var micBtn = document.getElementById('aip-mic');
-  if (micBtn) { micBtn.textContent = '🎤'; micBtn.classList.remove('recording'); }
+  if (micBtn) { micBtn.textContent = '\uD83C\uDFA4'; micBtn.classList.remove('recording'); }
+  var spkBtn = document.getElementById('igs-speak-btn');
+  if (spkBtn) spkBtn.classList.remove('recording');
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -496,7 +712,7 @@ function aipOpenSettings() {
   box.innerHTML =
     '<div class="ai-modal-backdrop" onclick="aipCloseSettings()">' +
       '<div class="ai-modal-card" onclick="event.stopPropagation()">' +
-        '<div class="ai-modal-title">⚙️ AI Settings</div>' +
+        '<div class="ai-modal-title">\u2699\uFE0F AI Settings</div>' +
         '<div style="font-size:12.5px;color:#64748b;margin-bottom:10px">' +
           'Enter your own Groq API key. Get a free key at <b>console.groq.com/keys</b>. ' +
           'It is stored only on this device.' +
@@ -519,138 +735,218 @@ function aipCloseSettings() {
 function aipSaveKey() {
   var inp = document.getElementById('aip-key-input');
   var val = inp ? inp.value.trim() : '';
-  if (!val) { if (typeof toast === 'function') toast('⚠ Enter a key first.', 'w'); return; }
+  if (!val) { if (typeof toast === 'function') toast('\u26a0 Enter a key first.', 'w'); return; }
   if (typeof saveAiSettings === 'function') saveAiSettings(val);
   aipCloseSettings();
-  if (typeof toast === 'function') toast('✅ API key saved.');
+  if (typeof toast === 'function') toast('\u2705 API key saved.');
+  var badge = document.getElementById('aip-live-badge');
+  if (badge) { badge.textContent = 'LIVE'; badge.style.background = ''; }
 }
 function aipClearKey() {
   if (typeof clearAiSettings === 'function') clearAiSettings();
   aipCloseSettings();
-  if (typeof toast === 'function') toast('🗑️ API key removed.');
+  if (typeof toast === 'function') toast('\uD83D\uDDD1\uFE0F API key removed.');
 }
 
 // ══════════════════════════════════════════════════════════════════════
-// SCAN IMAGE — extract entries from a photo/screenshot and let the
-// user confirm each one before it's filled into the app.
+// IMAGE SCAN
 // ══════════════════════════════════════════════════════════════════════
 function aipOpenScan() {
-  if (typeof aiHasKey === 'function' && !aiHasKey()) {
-    if (typeof toast === 'function') toast('⚠ Add your Groq API key first (⚙ icon) — vision needs it too.', 'w');
-    aipOpenSettings();
-    return;
-  }
   var inp = document.getElementById('aip-scan-file');
-  if (inp) { inp.value = ''; inp.click(); }
+  if (inp) inp.click();
 }
 
-function aipHandleScanFile(file) {
+async function aipHandleScanFile(file) {
   if (!file) return;
-  var reader = new FileReader();
-  reader.onload = async function (e) {
-    var dataUrl = e.target.result;
-    _aipShowScanModal('loading', null, dataUrl);
-    try {
-      var entries = await _callGroqVision(dataUrl, '');
-      if (!entries.length) {
-        _aipShowScanModal('empty', null, dataUrl);
-      } else {
-        _aipShowScanModal('results', entries, dataUrl);
-      }
-    } catch (err) {
-      _aipShowScanModal('error', err.message, dataUrl);
-    }
-  };
-  reader.readAsDataURL(file);
-}
-
-function _aipTypeLabel(t) {
-  return { credit: '🏦 Credit', expense: '💸 Expense', petty: '🪙 Petty Cash', cash: '💰 Cash', other: '📌 Other' }[t] || '📌 Other';
-}
-
-function _aipShowScanModal(state, payload, dataUrl) {
-  var box = document.getElementById('aip-scan-modal');
-  if (!box) return;
-
-  var inner = '';
-  if (state === 'loading') {
-    inner = '<div style="text-align:center;padding:30px 10px">' +
-      '<div class="ai-typing" style="justify-content:center;margin-bottom:10px"><span></span><span></span><span></span></div>' +
-      '<div style="font-size:13px;color:#64748b">Reading image and extracting entries…</div>' +
-      '</div>';
-  } else if (state === 'error') {
-    inner = '<div style="text-align:center;padding:24px 10px">' +
-      '<div style="font-size:30px;margin-bottom:8px">⚠️</div>' +
-      '<div style="font-size:13px;color:#dc2626;margin-bottom:14px">' + (typeof _aipEsc==='function'?_aipEsc(payload):payload) + '</div>' +
-      '<button class="ai-chip-dim" onclick="aipCloseScan()">Close</button>' +
-      '</div>';
-  } else if (state === 'empty') {
-    inner = '<div style="text-align:center;padding:24px 10px">' +
-      '<div style="font-size:30px;margin-bottom:8px">🤷</div>' +
-      '<div style="font-size:13px;color:#64748b;margin-bottom:14px">No entries with an amount were found in this image.</div>' +
-      '<button class="ai-chip-dim" onclick="aipCloseScan()">Close</button>' +
-      '</div>';
-  } else if (state === 'results') {
-    window._aipScanEntries = payload;
-    inner = '<div class="ai-modal-title">📷 Found ' + payload.length + ' entr' + (payload.length===1?'y':'ies') + '</div>' +
-      '<div style="font-size:12px;color:#64748b;margin-bottom:10px">Review each one, then tap ✅ Confirm to fill it into the app.</div>' +
-      '<div id="aip-scan-list" style="display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto">' +
-      payload.map(function (e, i) {
-        return '<div class="aip-scan-row" id="aip-scan-row-' + i + '" style="border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;background:#f8fafc">' +
-          '<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">' +
-            '<div style="flex:1">' +
-              '<div style="font-size:11px;font-weight:700;color:#2563eb;text-transform:uppercase;letter-spacing:.03em">' + _aipTypeLabel(e.type) + '</div>' +
-              '<div style="font-size:14px;font-weight:700;color:#1e293b;margin-top:2px">' + (e.name ? (typeof _aipEsc==='function'?_aipEsc(e.name):e.name) : '(no name)') + ' — ₨' + Math.round(e.amount).toLocaleString('en-PK') + '</div>' +
-              (e.description ? '<div style="font-size:12px;color:#64748b;margin-top:2px">' + (typeof _aipEsc==='function'?_aipEsc(e.description):e.description) + '</div>' : '') +
-            '</div>' +
-            '<button class="ai-chip ai-chip-green" style="white-space:nowrap" onclick="aipConfirmScanEntry(' + i + ')">✅ Confirm</button>' +
-          '</div>' +
-        '</div>';
-      }).join('') +
-      '</div>' +
-      '<div style="margin-top:12px;text-align:right"><button class="ai-chip-dim" onclick="aipCloseScan()">Done</button></div>';
-  }
-
-  box.innerHTML =
-    '<div class="ai-modal-backdrop" onclick="if(event.target===this)aipCloseScan()">' +
-      '<div class="ai-modal-card" style="max-width:460px">' + inner + '</div>' +
-    '</div>';
-}
-
-function aipCloseScan() {
-  var box = document.getElementById('aip-scan-modal');
-  if (box) box.innerHTML = '';
-  window._aipScanEntries = null;
-}
-
-function aipConfirmScanEntry(i) {
-  var entries = window._aipScanEntries || [];
-  var e = entries[i];
-  if (!e) return;
-  var today = (typeof _aiTodayStr === 'function') ? _aiTodayStr() : '';
-  var monthYear = (typeof _aiCurrentMonthYear === 'function') ? _aiCurrentMonthYear() : '';
-
+  var modal = document.getElementById('aip-scan-modal');
+  if (!modal) return;
+  modal.innerHTML = '<div class="ai-modal-backdrop"><div class="ai-modal-card"><div style="text-align:center;padding:20px"><div class="ai-typing"><span></span><span></span><span></span></div><div style="margin-top:10px;font-size:13px;color:#64748b">Reading image\u2026</div></div></div></div>';
   try {
-    if (e.type === 'credit' && e.name) {
-      _aiAddCreditEntry(e.name, e.amount, e.description || 'scanned entry', today);
-    } else if (e.type === 'expense') {
-      _aiAddExpenseRow(today, e.description || e.name || 'scanned expense', e.amount, 0, 0, 0, 0, 0);
-    } else if (e.type === 'petty') {
-      _aiAddPettyItem(e.description || e.name || 'scanned item', e.amount, monthYear);
-    } else {
-      // cash / other / no-name credit — safest generic landing spot
-      _aiAddPettyItem((e.name ? e.name + ' — ' : '') + (e.description || 'scanned entry'), e.amount, monthYear);
-    }
-    if (typeof toast === 'function') toast('✅ Added: ' + (e.name || e.description || 'entry') + ' ₨' + Math.round(e.amount).toLocaleString('en-PK'));
-  } catch (err) {
-    if (typeof toast === 'function') toast('⚠ Could not add entry: ' + err.message, 'w');
-  }
-
-  // Mark row as confirmed in the modal
-  var row = document.getElementById('aip-scan-row-' + i);
-  if (row) {
-    row.style.opacity = '0.55';
-    var btn = row.querySelector('button');
-    if (btn) { btn.outerHTML = '<span style="font-size:12px;font-weight:700;color:#16a34a">✅ Confirmed</span>'; }
+    var reader = new FileReader();
+    var dataUrl = await new Promise(function(res, rej) { reader.onload = function(e){ res(e.target.result); }; reader.onerror = rej; reader.readAsDataURL(file); });
+    var entries = await (typeof _callGroqVision === 'function' ? _callGroqVision(dataUrl, '') : Promise.reject(new Error('Vision not available')));
+    if (!entries.length) { modal.innerHTML = ''; if (typeof toast === 'function') toast('\u26a0 No entries found in image.', 'w'); return; }
+    _aipShowScanResults(entries, modal);
+  } catch(e) {
+    modal.innerHTML = '';
+    if (typeof toast === 'function') toast('\u26a0 Scan failed: ' + e.message, 'w');
   }
 }
+
+function _aipShowScanResults(entries, modal) {
+  var rows = entries.map(function(e, i) {
+    var typeColor = { credit:'#eff6ff', expense:'#fef3c7', petty:'#f0fdf4', cash:'#f5f3ff', other:'#f8fafc' };
+    return '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f1f5f9">' +
+      '<input type="checkbox" id="sc-r-'+i+'" checked style="width:auto;margin:0">' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:12.5px;font-weight:600;color:#0f172a">' + _aipEsc(e.name || e.description || 'Entry') + '</div>' +
+        '<div style="font-size:11px;color:#64748b">' + _aipEsc(e.description || '') + '</div>' +
+      '</div>' +
+      '<div style="font-size:13px;font-weight:700;color:#1e293b;flex-shrink:0">\u20a8' + Math.round(e.amount).toLocaleString('en-PK') + '</div>' +
+      '<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:6px;background:' + (typeColor[e.type]||'#f8fafc') + ';color:#334155">' + e.type + '</span>' +
+    '</div>';
+  }).join('');
+
+  modal.innerHTML = '<div class="ai-modal-backdrop" onclick="if(event.target===this){document.getElementById(\'aip-scan-modal\').innerHTML=\'\'}">' +
+    '<div class="ai-modal-card">' +
+      '<div class="ai-modal-title">\uD83D\uDCF7 Scan Results (' + entries.length + ' entries)</div>' +
+      '<div style="max-height:340px;overflow-y:auto;margin-bottom:12px">' + rows + '</div>' +
+      '<div style="font-size:12px;color:#64748b;margin-bottom:12px">Select entries to import, then choose a destination.</div>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">' +
+        '<button class="ai-chip-dim" onclick="document.getElementById(\'aip-scan-modal\').innerHTML=\'\'">Cancel</button>' +
+        '<button class="ai-chip ai-chip-green" onclick="_aipImportScanEntries(' + JSON.stringify(entries).replace(/"/g,'&quot;') + ',\'credit\')">→ Credit Ledger</button>' +
+        '<button class="ai-chip ai-chip-green" onclick="_aipImportScanEntries(' + JSON.stringify(entries).replace(/"/g,'&quot;') + ',\'expense\')">→ Expenses</button>' +
+        '<button class="ai-chip ai-chip-green" onclick="_aipImportScanEntries(' + JSON.stringify(entries).replace(/"/g,'&quot;') + ',\'petty\')">→ Petty Cash</button>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function _aipImportScanEntries(entries, dest) {
+  var modal = document.getElementById('aip-scan-modal');
+  var checked = entries.filter(function(e, i) { var cb = document.getElementById('sc-r-'+i); return cb && cb.checked; });
+  if (!checked.length) { if (typeof toast === 'function') toast('\u26a0 No entries selected.', 'w'); return; }
+  if (modal) modal.innerHTML = '';
+
+  var M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var d = new Date(); var today = String(d.getDate()).padStart(2,'0')+'-'+M[d.getMonth()]+'-'+d.getFullYear();
+
+  checked.forEach(function(e) {
+    if (dest === 'credit' && typeof _aiAddCreditEntry === 'function') {
+      _aiAddCreditEntry(e.name || 'Unknown', e.amount, e.description, today);
+    } else if (dest === 'expense' && typeof _aiAddExpenseRow === 'function') {
+      _aiAddExpenseRow(today, e.description || e.name || 'Scanned expense', 0, 0, 0, 0, Math.round(e.amount), 0);
+    } else if (dest === 'petty' && typeof _aiAddPettyItem === 'function') {
+      _aiAddPettyItem(e.description || e.name || 'Scanned item', Math.round(e.amount), '');
+    }
+  });
+
+  if (typeof toast === 'function') toast('\u2705 ' + checked.length + ' entr' + (checked.length===1?'y':'ies') + ' imported to ' + dest + '.');
+  _aipHistory.push({ role: 'bot', text: '\u2705 <b>' + checked.length + '</b> scanned entr' + (checked.length===1?'y':'ies') + ' imported to <b>' + dest + '</b>.' });
+  _aipRender();
+  setTimeout(_aipRenderInsights, 500);
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// AI PAGE NAV RAIL — aipNavSelect + attach picker
+// ══════════════════════════════════════════════════════════════════════
+
+// Track active nav tab
+var _aipActiveNav = 'chat';
+
+function aipNavSelect(tab) {
+  _aipActiveNav = tab;
+
+  // Update active state on ALL nav buttons (desktop rail + mobile bar)
+  ['chat','context','instructions','memory','scan','settings'].forEach(function(t) {
+    var desktop = document.getElementById('aip-nav-' + t);
+    var mobile  = document.getElementById('aip-mob-' + t);
+    var active = (t === tab);
+    if (desktop) desktop.classList.toggle('active', active);
+    if (mobile)  mobile.classList.toggle('active', active);
+  });
+
+  // Open the corresponding panel
+  switch (tab) {
+    case 'chat':         /* do nothing – chat is always visible */ break;
+    case 'context':      if (typeof actxOpen === 'function') actxOpen(); break;
+    case 'instructions': if (typeof ainOpen  === 'function') ainOpen();  break;
+    case 'memory':       if (typeof aimOpenPanel === 'function') aimOpenPanel(); break;
+    case 'scan':         aipOpenAttach(); break;
+    case 'settings':     if (typeof aipOpenSettings === 'function') aipOpenSettings(); break;
+  }
+
+  // Reset to 'chat' after panel opens (so tap→open→close leaves chat highlighted)
+  if (tab !== 'chat') {
+    setTimeout(function() {
+      _aipActiveNav = 'chat';
+      var dc = document.getElementById('aip-nav-chat');
+      var mc = document.getElementById('aip-mob-chat');
+      if (dc) dc.classList.add('active');
+      if (mc) mc.classList.add('active');
+      ['context','instructions','memory','scan','settings'].forEach(function(t) {
+        var d = document.getElementById('aip-nav-' + t);
+        var m = document.getElementById('aip-mob-' + t);
+        if (d) d.classList.remove('active');
+        if (m) m.classList.remove('active');
+      });
+    }, 400);
+  }
+}
+
+// ── Attach / image picker ────────────────────────────────────────────
+function aipOpenAttach() {
+  var existing = document.getElementById('aip-attach-sheet');
+  if (existing) { existing.classList.add('open'); return; }
+
+  var sheet = document.createElement('div');
+  sheet.id = 'aip-attach-sheet';
+  sheet.className = 'aip-attach-sheet';
+  sheet.innerHTML =
+    '<div class="aip-attach-inner">' +
+      '<div class="aip-attach-title">📎 Attach Image</div>' +
+      '<div class="aip-attach-grid">' +
+        '<button class="aip-attach-opt" onclick="aipAttachPick(\'camera\')">' +
+          '<span class="aip-attach-opt-icon">📷</span>Camera' +
+        '</button>' +
+        '<button class="aip-attach-opt" onclick="aipAttachPick(\'gallery\')">' +
+          '<span class="aip-attach-opt-icon">🖼️</span>Gallery' +
+        '</button>' +
+        '<button class="aip-attach-opt" onclick="aipAttachPick(\'file\')">' +
+          '<span class="aip-attach-opt-icon">📁</span>File' +
+        '</button>' +
+      '</div>' +
+      '<div style="margin-top:14px;padding:10px 12px;background:#eff6ff;border-radius:10px;border:1.5px solid #bfdbfe">' +
+        '<div style="font-size:11.5px;font-weight:700;color:#1d4ed8;margin-bottom:5px">📋 What can I scan?</div>' +
+        '<div style="font-size:11px;color:#3730a3;line-height:1.7">' +
+          '• Handwritten ledger sheets &amp; credit lists<br>' +
+          '• Screenshots of expense tables<br>' +
+          '• Photos of written entries<br>' +
+          '• Any document with names &amp; amounts' +
+        '</div>' +
+      '</div>' +
+      '<button class="aip-attach-cancel" onclick="aipCloseAttach()">Cancel</button>' +
+    '</div>';
+
+  sheet.addEventListener('click', function(e) { if (e.target === sheet) aipCloseAttach(); });
+  document.body.appendChild(sheet);
+  requestAnimationFrame(function() { sheet.classList.add('open'); });
+}
+
+function aipCloseAttach() {
+  var sheet = document.getElementById('aip-attach-sheet');
+  if (sheet) { sheet.classList.remove('open'); }
+}
+
+function aipAttachPick(source) {
+  aipCloseAttach();
+  // Re-use the existing hidden file input, adjusting capture attribute
+  var inp = document.getElementById('aip-scan-file');
+  if (!inp) return;
+  if (source === 'camera') {
+    inp.setAttribute('capture', 'environment');
+    inp.setAttribute('accept', 'image/*');
+  } else if (source === 'gallery') {
+    inp.removeAttribute('capture');
+    inp.setAttribute('accept', 'image/*');
+  } else {
+    inp.removeAttribute('capture');
+    inp.setAttribute('accept', 'image/*,application/pdf,.pdf');
+  }
+  setTimeout(function() { inp.click(); }, 120);
+}
+
+// ── Auto-init nav rail active state ──────────────────────────────────
+(function _aipNavInit() {
+  function _setInitial() {
+    var btn = document.getElementById('aip-nav-chat');
+    var mob = document.getElementById('aip-mob-chat');
+    if (btn) btn.classList.add('active');
+    if (mob) mob.classList.add('active');
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _setInitial);
+  } else {
+    setTimeout(_setInitial, 100);
+  }
+}());

@@ -335,7 +335,8 @@ function _aiParseCustomSectionCommand(text) {
   if (!best || bestScore < 0.6) return null;
 
   const secName = all[best].name;
-  const today   = _aiTodayStr();
+  // LLM prompt specifies DD/Mon/YYYY (slash) for addCustomSectionRow — use BTDate.today().
+  const today   = (typeof BTDate !== 'undefined') ? BTDate.today() : _aiTodayStr();
   return {
     text: '\u2705 Adding \u20a8' + Math.abs(amount).toLocaleString('en-PK') + ' to <b>' + secName + '</b>.',
     intent: { action: 'addCustomSectionRow', params: [secName, today, amount, ''] },
@@ -632,12 +633,16 @@ function _buildLlmPrompt(question) {
     }
   } catch (_) {}
 
-  const memBlock = (typeof aimFullPromptBlock === 'function') ? aimFullPromptBlock() : '';
+  const memBlock   = (typeof aimFullPromptBlock  === 'function') ? aimFullPromptBlock()           : '';
+  const instrBlock = (typeof AIInstructions !== 'undefined') ? AIInstructions.buildPromptBlock() : '';
+  const ctxBlock   = (typeof AIContext      !== 'undefined') ? AIContext.buildPromptBlock()      : '';
 
   const lines = [
     'You are the AI brain of "Bahria Town Sales IC" — a petrol station management app for a petrol pump in Bahria Town.',
     'The user is the owner/manager. They speak English, Urdu, or a mix (Urdu words like "kitna","mein","daalo","batao","aaj"). You understand everything.',
     'You are a PERSONAL ASSISTANT — you take actions, answer questions, and analyze sales data.',
+    instrBlock,
+    ctxBlock,
     '',
     'TODAY: ' + today + '   CURRENT MONTH: ' + curMonth,
     staffList,
@@ -912,6 +917,28 @@ function _parseLlmResponse(raw) {
 // ══════════════════════════════════════════════════════════════════════
 async function aiBridgeAnswer(text) {
   try {
+    // ── Context follow-up resolution (highest priority, rule-based, instant) ──
+    if (typeof AIContext !== 'undefined') {
+      const fu = AIContext.resolveFollowUp(text);
+      if (fu) {
+        if (fu._rewrite) {
+          // pronoun rewrite — recurse with enriched text
+          return aiBridgeAnswer(fu._rewrite);
+        }
+        if (fu.text !== null) {
+          if (fu.intent) {
+            window._aiLastIntent = fu.intent;
+            AIContext.updateFromIntent(fu.intent);
+          }
+          return fu;
+        }
+      }
+      // Enrich short ambiguous messages before LLM so it understands context
+      if (AIContext.isFollowUp(text)) {
+        text = AIContext.enrichText(text);
+      }
+    }
+
     // Persistent memory / custom rules / correction-training commands — instant, no Groq.
     if (typeof aimHandleChatCommand === 'function') {
       const memHit = aimHandleChatCommand(text, window._aiLastIntent || null);
@@ -1095,7 +1122,8 @@ function _aiAddCustomSectionRow(sectionName, desc, amount, notes) {
       if (!all[sid].months) all[sid].months = {};
       if (!all[sid].months[curMon]) all[sid].months[curMon] = [];
       all[sid].months[curMon].push({
-        desc:   desc   || _aiTodayStr(),
+        // Use slash-format date (DD/Mon/YYYY) to match LLM prompt spec and app conventions.
+        desc:   desc   || ((typeof BTDate !== 'undefined') ? BTDate.today() : _aiTodayStr()),
         amount: parseFloat(amount) || 0,
         notes:  notes  || '',
       });
@@ -1277,7 +1305,9 @@ function _aiAddSalaryRow(name, designation, hoSal, advance, generic) {
     if (typeof switchMgrTab === 'function') switchMgrTab('salary');
     setTimeout(function () {
       if (typeof _salRows_cur === 'undefined') { if (typeof toast === 'function') toast('\u26a0 Salary data not loaded.', 'w'); return; }
-      _salRows_cur.push({ name: name || '', desig: designation || 'Salesman', days: 31, hoSal: Math.round(Number(hoSal)||0), advance: Math.round(Number(advance)||0), generic: Math.round(Number(generic)||0) });
+      const _nowD = new Date();
+      const _daysInMonth = new Date(_nowD.getFullYear(), _nowD.getMonth() + 1, 0).getDate();
+      _salRows_cur.push({ name: name || '', desig: designation || 'Salesman', days: _daysInMonth, hoSal: Math.round(Number(hoSal)||0), advance: Math.round(Number(advance)||0), generic: Math.round(Number(generic)||0) });
       if (typeof renderSalaryTable === 'function') renderSalaryTable(_salRows_cur);
       if (typeof saveSalaryData === 'function') saveSalaryData();
       if (typeof toast === 'function') toast('\u2705 Salary row added for ' + (name || 'new employee') + '.');
@@ -1610,7 +1640,7 @@ function _aiResetAllFields() {
 
 function _aiSwitchMonth(monthYear) {
   // Try all known month selects
-  ['e-month','sal-month-sel','gen-month-sel','exp-month-sel','crd-month-sel','csec-month-sel'].forEach(function(id) {
+  ['e-month','sal-month-sel','gen-month-sel','exp-month-sel','crd-month-sel','petty-month-sel','inc-month-sel','csec-month-sel'].forEach(function(id) {
     const sel = document.getElementById(id);
     if (sel) { sel.value = monthYear; sel.dispatchEvent(new Event('change')); }
   });
@@ -1746,6 +1776,10 @@ function aiBridgeExecuteIntent(intent) {
       case 'addRule':            _aiAddRule(p[0]); break;
       case 'deleteRule':         _aiDeleteRule(p[0]); break;
       case 'setSectionAiConfig': _aiSetSectionAiConfig(p[0], p[1]); break;
+    }
+    // ── Update working context after every intent ──
+    if (typeof AIContext !== 'undefined') {
+      try { AIContext.updateFromIntent(intent); } catch(_) {}
     }
   } catch (e) {
     if (typeof toast === 'function') toast('\u26a0 Action failed: ' + e.message, 'w');

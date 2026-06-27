@@ -245,11 +245,18 @@ function getAppContextSummary(opts) {
       lines.push('=== MANAGER > CUSTOM SECTIONS (all entries) ===');
       ids.forEach(function (id) {
         const s = secs[id];
-        const rows = s.rows || s.entries || [];
+        // Custom sections store data under s.months[monthYear] = [{desc, amount, notes}].
+        // s.rows / s.entries are legacy field names that are never populated — flatten months.
+        const allMonthRows = Object.values(s.months || {}).reduce(function (acc, r) { return acc.concat(r); }, []);
+        const rows = (s.rows && s.rows.length) ? s.rows : ((s.entries && s.entries.length) ? s.entries : allMonthRows);
         const tot = rows.reduce(function (sum, r) { return sum + n(r.amount); }, 0);
         lines.push('  ' + (s.emoji || '') + ' ' + s.name + ': \u20a8' + fc(tot) + ' total (' + rows.length + ' entries)');
-        rows.forEach(function (r) {
-          lines.push('    ' + (r.date || r.desc || '') + ' ' + (r.notes || '') + ': \u20a8' + fc(n(r.amount)));
+        // Emit by month so the AI can see when each entry was made.
+        Object.entries(s.months || {}).forEach(function (me) {
+          var my = me[0], mrs = me[1] || [];
+          mrs.forEach(function (r) {
+            lines.push('    [' + my + '] ' + (r.date || r.desc || '') + (r.notes ? ' — ' + r.notes : '') + ': \u20a8' + fc(n(r.amount)));
+          });
         });
       });
       lines.push('');

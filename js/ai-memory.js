@@ -17,7 +17,14 @@ const AIMEM_K_RULEFLAGS   = 'bt_ai_rule_fired';     // which rules already alert
 
 function _aimUid() { return 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 function _aimNow()  { return new Date().toISOString(); }
-function _aimToday() { return (typeof _aiTodayStr === 'function') ? _aiTodayStr() : new Date().toDateString(); }
+function _aimToday() {
+  // DAILY records store dates as DD/Mon/YYYY (slash). Use BTDate.today() so
+  // date comparisons against d.Date work correctly. Fall back gracefully if
+  // bt-date.js is not yet loaded (should not happen — it loads first).
+  if (typeof BTDate !== 'undefined') return BTDate.today();
+  if (typeof _aiTodayStr === 'function') return _aiTodayStr();
+  return new Date().toDateString();
+}
 
 function _aimGet(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }

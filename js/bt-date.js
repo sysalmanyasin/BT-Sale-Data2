@@ -27,7 +27,9 @@ const BTDate = Object.freeze({
   parseDate(str) {
     if (!str) return 0;
     const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (isoMatch) return new Date(str).getTime();
+    // Parse ISO dates as LOCAL midnight, not UTC midnight. new Date("YYYY-MM-DD") parses
+    // as UTC which causes an off-by-one day in +5 (PKT) and other positive-offset timezones.
+    if (isoMatch) return new Date(+isoMatch[1], +isoMatch[2] - 1, +isoMatch[3]).getTime();
     const parts = str.split('/');
     if (parts.length !== 3) return 0;
     const [dd, mon, yyyy] = parts;
