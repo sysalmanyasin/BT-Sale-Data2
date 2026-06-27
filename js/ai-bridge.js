@@ -541,7 +541,9 @@ function _aiDeepSalesAnalysis(text) {
     }
     if (/unusual|anomal|outlier|odd day|khaas/.test(t)) {
       if (D.length < 5) return 'Not enough daily data yet.';
-      const recent = D.slice(-30), vals = recent.map(d=>n(d.TOTAL));
+      // Sort by actual date before slicing — DAILY insertion order is not guaranteed
+      const _sortedD30 = D.slice().sort(function(a,b){ return BTDate.parseDate(a.Date) - BTDate.parseDate(b.Date); });
+      const recent = _sortedD30.slice(-30), vals = recent.map(d=>n(d.TOTAL));
       const avg = vals.reduce((s,v)=>s+v,0)/vals.length;
       const sd  = Math.sqrt(vals.reduce((s,v)=>s+(v-avg)**2,0)/vals.length)||1;
       const flagged = recent.filter(d=>Math.abs(n(d.TOTAL)-avg)>1.8*sd);

@@ -14,10 +14,13 @@ function getAppContext() {
     daily:        Array.isArray(DAILY)        ? DAILY        : [],
     staff:        Array.isArray(STAFF)        ? STAFF        : [],
     targets:      typeof window.getTgts === 'function' ? window.getTgts()  : {},
-    clientCols:   typeof window.CLIENT_COLS !== 'undefined' ? window.CLIENT_COLS : [],
-    bankCols:     typeof window.BANK_COLS   !== 'undefined' ? window.BANK_COLS   : [],
-    returnFields: typeof window.RETURN_FIELDS !== 'undefined' ? window.RETURN_FIELDS : new Set(),
-    currentPage:  typeof window._curPage !== 'undefined' ? window._curPage : '',
+    // CLIENT_COLS / BANK_COLS / RETURN_FIELDS are `const` in config.js and
+    // _curPage is `let` in storage.js — neither attaches to window, so
+    // window.X is always undefined.  Reference as bare identifiers instead.
+    clientCols:   typeof CLIENT_COLS   !== 'undefined' ? CLIENT_COLS   : [],
+    bankCols:     typeof BANK_COLS     !== 'undefined' ? BANK_COLS     : [],
+    returnFields: typeof RETURN_FIELDS !== 'undefined' ? RETURN_FIELDS : new Set(),
+    currentPage:  typeof _curPage      !== 'undefined' ? _curPage      : '',
   });
 }
 
@@ -137,10 +140,19 @@ function getAppContextSummary(opts) {
     lines.push('Format: Date [Month]: Total | Cash | Credit | DIFF | Customers');
     dailySet.forEach(function (d) {
       const tot   = n(d.TOTAL);
-      const cash  = (typeof cashSales === 'function') ? cashSales(d) : n(d['Cash Sale'] || 0);
+      // Daily records use underscore keys (Cash_Sale, Alfala_Bank…) not the space keys
+      // that cashSales()/mBanks() read from MONTHLY — compute directly from both formats.
+      const _dv   = function(k) { return n(d[k] !== undefined ? d[k] : d[k.replace(/ /g,'_')]); };
+      const cash  = _dv('Cash_Sale') + _dv('HBL') + _dv('MCB') +
+                    _dv('Alfala_Bank') + _dv('Bank_Al_Habib') + _dv('Meezan_Bank') + _dv('Askari_Bank') -
+                    Math.abs(_dv('Cash_Returns'));
       const comp  = n(d['COMP SALE'] || d['COMP_SALE'] || 0);
       const diff  = comp ? (tot - comp) : null;
-      const credit = (typeof creditSales === 'function') ? creditSales(d) : 0;
+      // creditSales() reads CLIENT_COLS with space keys — also fails on daily underscore keys.
+      // Read both key formats so multi-word clients (Wapda Hospital → Wapda_Hospital) resolve.
+      const credit = (typeof CLIENT_COLS !== 'undefined' ? CLIENT_COLS : []).reduce(function(s, c) {
+        return s + n(d[c] !== undefined ? d[c] : d[c.replace(/ /g,'_')]);
+      }, 0);
       const cust  = Math.round(n(d.Customers || d['Customers'] || 0));
       const reason = d['Low Sale Reason'] ? ' [NOTE: ' + d['Low Sale Reason'] + ']' : '';
       let line = d.Date + ' [' + d.Month_Year + ']: \u20a8' + fc(tot);

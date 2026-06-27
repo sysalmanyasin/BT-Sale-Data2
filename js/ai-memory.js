@@ -223,7 +223,10 @@ function aimRulesCheckAll() {
           if (v > 0 && v < c.value) fired.push({ id: r.id, msg: '⚠️ Today\'s ' + c.field.replace(/_/g, ' ') + ' is ₨' + Math.round(v).toLocaleString('en-PK') + ' — below your rule threshold of ₨' + c.value.toLocaleString('en-PK') + '.' });
         });
       } else if (c.type === 'dailyFieldZeroDays' || c.type === 'sectionZeroDays') {
-        const recent = D.slice(-c.days);
+        // Sort by date before slicing so we get the actual last N calendar days,
+        // not the last N array positions (DAILY insertion order isn't guaranteed)
+        const recentSorted = D.slice().sort((a, b) => BTDate.parseDate(a.Date) - BTDate.parseDate(b.Date));
+        const recent = recentSorted.slice(-c.days);
         if (recent.length < c.days) return;
         const field = c.field || null;
         const allZero = field ? recent.every(d => n(d[field]) === 0) : false;
@@ -391,11 +394,13 @@ function aimBriefingGenerate(force) {
   const n  = v => isNaN(parseFloat(v)) ? 0 : parseFloat(v);
   const fc = v => Math.round(v).toLocaleString('en-PK');
 
-  const sortedD = D.slice().sort((a, b) => new Date(a._sortKey || 0) - new Date(b._sortKey || 0));
+  // Sort by actual date value so slice(-N) reliably gives the N most-recent days
+  // (_sortKey may be absent; BTDate.parseDate handles the DD/Mon/YYYY format used in DAILY)
+  const sortedD = D.slice().sort((a, b) => BTDate.parseDate(a.Date) - BTDate.parseDate(b.Date));
   const yesterday = sortedD[sortedD.length - 1]; // most recent recorded day
   if (!yesterday) return null;
 
-  const last30 = D.slice(-30);
+  const last30 = sortedD.slice(-30); // use sortedD — D is not guaranteed to be in date order
   const avg30  = last30.length ? last30.reduce((s, d) => s + n(d.TOTAL), 0) / last30.length : 0;
   const yT     = n(yesterday.TOTAL);
   const diffPct = avg30 > 0 ? Math.round(((yT - avg30) / avg30) * 100) : 0;
