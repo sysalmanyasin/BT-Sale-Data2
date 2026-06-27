@@ -63,6 +63,8 @@ const AI_SAFE_INTENTS = new Set([
   'pushToSupabase', 'pullFromSupabase', 'backupToDrive',
   // Month
   'switchMonth', 'copyManagerToNextMonth',
+  // AI Memory / Rules / Section AI Config
+  'addMemoryFact', 'deleteMemoryFact', 'addRule', 'deleteRule', 'setSectionAiConfig',
 ]);
 
 // ── Destructive intents — always require confirm chip ──────────────────
@@ -576,7 +578,7 @@ function _buildLlmPrompt(question) {
   let ctx = '';
   try {
     // If DAILY/MONTHLY are empty, attempt a silent Supabase pull first
-    const _hasDat = (typeof window.MONTHLY !== 'undefined' && window.MONTHLY && window.MONTHLY.length > 0);
+    const _hasDat = (typeof MONTHLY !== 'undefined' && MONTHLY && MONTHLY.length > 0);
     if (!_hasDat && typeof pullFromSupabase === 'function') {
       pullFromSupabase(true).catch(function(){});
     }
@@ -628,6 +630,8 @@ function _buildLlmPrompt(question) {
     }
   } catch (_) {}
 
+  const memBlock = (typeof aimFullPromptBlock === 'function') ? aimFullPromptBlock() : '';
+
   const lines = [
     'You are the AI brain of "Bahria Town Sales IC" — a petrol station management app for a petrol pump in Bahria Town.',
     'The user is the owner/manager. They speak English, Urdu, or a mix (Urdu words like "kitna","mein","daalo","batao","aaj"). You understand everything.',
@@ -639,6 +643,7 @@ function _buildLlmPrompt(question) {
     entryCtx,
     mgrCtx,
     ctx,
+    memBlock,
     '',
     '══════════ RESPONSE FORMAT (strict JSON only — no markdown, no code fences) ══════════',
     '{"text":"<answer, max 180 words, HTML allowed>","intent":null}',
@@ -752,9 +757,18 @@ function _buildLlmPrompt(question) {
     '',
     '══════════ SYNC / BACKUP ══════════',
     '',
-    'PUSH TO SUPABASE → pushToSupabase  params: []',
-    'PULL FROM SUPABASE → pullFromSupabase  requiresConfirm: true  params: []',
+    'PUSH → pushToSupabase  params: []',
+    'PULL → pullFromSupabase  requiresConfirm: true  params: []',
     'BACKUP TO DRIVE → backupToDrive  params: []',
+    '',
+    '══════════ AI MEMORY / RULES / SECTION CONFIG ══════════',
+    '',
+    'Use these ONLY if the rule-based parser did not already catch a "remember/forget/rule/correct" command.',
+    'ADD MEMORY FACT → addMemoryFact  params: ["fact text"]',
+    'DELETE MEMORY FACT → deleteMemoryFact  requiresConfirm: true  params: ["fact text or keyword"]',
+    'ADD RULE → addRule  params: ["plain-English IF/THEN rule"]',
+    'DELETE RULE → deleteRule  requiresConfirm: true  params: ["keyword from rule text"]',
+    'SET SECTION AI CONFIG → setSectionAiConfig  params: ["sectionName", {aliases:[...], default_desc:"...", alert_if_zero:true|false}]',
     '',
     '══════════ FIELD REFERENCE (Daily Entry) ══════════',
     'Cash_Sale | Cash_Returns | HBL | MCB | Alfala_Bank | Bank_Al_Habib | Meezan_Bank',
@@ -896,6 +910,12 @@ function _parseLlmResponse(raw) {
 // ══════════════════════════════════════════════════════════════════════
 async function aiBridgeAnswer(text) {
   try {
+    // Persistent memory / custom rules / correction-training commands — instant, no Groq.
+    if (typeof aimHandleChatCommand === 'function') {
+      const memHit = aimHandleChatCommand(text, window._aiLastIntent || null);
+      if (memHit) return memHit;
+    }
+
     const creditCmd  = _aiParseCreditCommand(text);     if (creditCmd)  return creditCmd;
     const creditQry  = _aiParseCreditQuery(text);       if (creditQry)  return creditQry;
     const expenseCmd = _aiParseExpenseCommand(text);    if (expenseCmd) return expenseCmd;
@@ -910,7 +930,9 @@ async function aiBridgeAnswer(text) {
     const analytics  = _aiDeepSalesAnalysis(text);      if (analytics)  return { text: analytics, intent: null };
 
     try {
-      return await _callGroq(text);
+      const result = await _callGroq(text);
+      if (result && result.intent) window._aiLastIntent = result.intent;
+      return result;
     } catch (llmErr) {
       return { text: '\u26a0\ufe0f AI call failed: ' + llmErr.message, intent: null };
     }
@@ -1593,6 +1615,47 @@ function _aiSwitchMonth(monthYear) {
   if (typeof toast === 'function') toast('\u2192 Switched to ' + monthYear + '.');
 }
 
+// ── AI Memory / Rules / Section Config executors ──────────────────────
+function _aiAddMemoryFact(fact) {
+  if (typeof aimFactAdd !== 'function') return;
+  aimFactAdd(fact);
+  if (typeof toast === 'function') toast('\u{1F9E0} Remembered: ' + fact);
+}
+function _aiDeleteMemoryFact(needle) {
+  if (typeof aimFactList !== 'function') return;
+  const list = aimFactList();
+  const n = (needle || '').toLowerCase();
+  const hit = list.find(function(f){ return f.fact.toLowerCase().includes(n) || n.includes(f.fact.toLowerCase()); });
+  if (!hit) { if (typeof toast === 'function') toast('\u26a0 No matching memory found.', 'w'); return; }
+  aimFactDelete(hit.id);
+  if (typeof toast === 'function') toast('\u{1F5D1}\uFE0F Forgotten: ' + hit.fact);
+}
+function _aiAddRule(ruleText) {
+  if (typeof aimRuleAdd !== 'function') return;
+  const cond = (typeof aimRuleParseCondition === 'function') ? aimRuleParseCondition(ruleText) : null;
+  aimRuleAdd(ruleText, cond);
+  if (typeof toast === 'function') toast('\u{1F4D0} Rule saved: ' + ruleText);
+}
+function _aiDeleteRule(needle) {
+  if (typeof aimRuleList !== 'function') return;
+  const list = aimRuleList();
+  const n = (needle || '').toLowerCase();
+  const hit = list.find(function(r){ return r.rule.toLowerCase().includes(n); });
+  if (!hit) { if (typeof toast === 'function') toast('\u26a0 No matching rule found.', 'w'); return; }
+  aimRuleDelete(hit.id);
+  if (typeof toast === 'function') toast('\u{1F5D1}\uFE0F Rule removed: ' + hit.rule);
+}
+function _aiSetSectionAiConfig(sectionName, config) {
+  if (typeof aimSectionConfigGetAll !== 'function') return;
+  const all = aimSectionConfigGetAll();
+  const norm = s => (s||'').trim().toLowerCase();
+  const t    = norm(sectionName);
+  const sid  = Object.keys(all).find(function(k){ const n=norm(all[k].name); return n===t||n.includes(t)||t.includes(n); });
+  if (!sid) { if (typeof toast === 'function') toast('\u26a0 Section "' + sectionName + '" not found.', 'w'); return; }
+  aimSectionConfigSet(sid, config || {});
+  if (typeof toast === 'function') toast('\u2705 AI config updated for "' + all[sid].name + '".');
+}
+
 // ══════════════════════════════════════════════════════════════════════
 // MASTER EXECUTOR
 // ══════════════════════════════════════════════════════════════════════
@@ -1675,6 +1738,12 @@ function aiBridgeExecuteIntent(intent) {
       case 'pushToSupabase':     if(typeof pushToSupabase==='function')pushToSupabase(); else if(typeof toast==='function')toast('\u26a0 Supabase not configured.','w'); break;
       case 'pullFromSupabase':   if(typeof pullFromSupabase==='function')pullFromSupabase(); else if(typeof toast==='function')toast('\u26a0 Supabase not configured.','w'); break;
       case 'backupToDrive':      if(typeof driveBackupNow==='function')driveBackupNow(); else if(typeof toast==='function')toast('\u26a0 Google Drive not connected.','w'); break;
+      // AI Memory / Rules / Section Config
+      case 'addMemoryFact':      _aiAddMemoryFact(p[0]); break;
+      case 'deleteMemoryFact':   _aiDeleteMemoryFact(p[0]); break;
+      case 'addRule':            _aiAddRule(p[0]); break;
+      case 'deleteRule':         _aiDeleteRule(p[0]); break;
+      case 'setSectionAiConfig': _aiSetSectionAiConfig(p[0], p[1]); break;
     }
   } catch (e) {
     if (typeof toast === 'function') toast('\u26a0 Action failed: ' + e.message, 'w');

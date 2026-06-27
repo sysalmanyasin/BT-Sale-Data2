@@ -10,9 +10,9 @@ const MGR_STORAGE_KEY = 'BT_ManagerWork_v1';
 
 function getAppContext() {
   return Object.freeze({
-    monthly:      Array.isArray(window.MONTHLY)      ? window.MONTHLY      : [],
-    daily:        Array.isArray(window.DAILY)        ? window.DAILY        : [],
-    staff:        Array.isArray(window.STAFF)        ? window.STAFF        : [],
+    monthly:      Array.isArray(MONTHLY)      ? MONTHLY      : [],
+    daily:        Array.isArray(DAILY)        ? DAILY        : [],
+    staff:        Array.isArray(STAFF)        ? STAFF        : [],
     targets:      typeof window.getTgts === 'function' ? window.getTgts()  : {},
     clientCols:   typeof window.CLIENT_COLS !== 'undefined' ? window.CLIENT_COLS : [],
     bankCols:     typeof window.BANK_COLS   !== 'undefined' ? window.BANK_COLS   : [],

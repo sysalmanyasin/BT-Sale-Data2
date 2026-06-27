@@ -11,15 +11,15 @@ var _aipMicRec    = null;
 // ── Entry point called by showPage('ai') ─────────────────────────────
 function loadAiPage() {
   // ── Auto-load data if arrays are empty ─────────────────────────
-  var _hasData = (typeof window.MONTHLY !== 'undefined' && window.MONTHLY && window.MONTHLY.length > 0);
+  var _hasData = (typeof MONTHLY !== 'undefined' && MONTHLY && MONTHLY.length > 0);
   if (!_hasData && typeof pullFromSupabase === 'function') {
     var _sb = document.getElementById('aip-sidebar');
     if (_sb) _sb.innerHTML = '<div class="aip-no-data"><div style="font-size:36px;margin-bottom:10px">\u23F3</div><div style="font-weight:700;font-size:14px;color:#1e293b;margin-bottom:6px">Loading your data\u2026</div><div style="color:#64748b;font-size:12px">Pulling from Supabase</div></div>';
     pullFromSupabase(true).then(function() {
       setTimeout(function() {
         _aipRenderInsights();
-        if (window.MONTHLY && window.MONTHLY.length > 0) {
-          _aipHistory.push({ role: 'bot', text: '\u2705 <b>Data loaded!</b> ' + window.MONTHLY.length + ' months \u00b7 ' + window.DAILY.length + ' daily records ready.<br>Ask me anything about your sales.' });
+        if (MONTHLY && MONTHLY.length > 0) {
+          _aipHistory.push({ role: 'bot', text: '\u2705 <b>Data loaded!</b> ' + MONTHLY.length + ' months \u00b7 ' + DAILY.length + ' daily records ready.<br>Ask me anything about your sales.' });
           _aipRender();
         }
       }, 700);
@@ -35,17 +35,26 @@ function loadAiPage() {
   }
   if (!_aipInited) {
     _aipInited = true;
+    var briefing = (typeof aimBriefingGenerate === 'function') ? aimBriefingGenerate() : null;
+    var ruleAlerts = '';
+    try {
+      var fired = (typeof aimRulesCheckAll === 'function') ? aimRulesCheckAll() : [];
+      if (fired.length) ruleAlerts = '<br><br>' + fired.map(function(f){ return f.msg; }).join('<br>');
+    } catch (_) {}
     _aipHistory.push({
       role: 'bot',
       text: hasKey ?
-        ('\uD83D\uDC4B <b>Hello!</b> I\'m your full personal assistant for Bahria Town Sales IC.' +
+        (briefing ?
+          ('\u2600\uFE0F <b>Daily Briefing</b><br>' + briefing + ruleAlerts) :
+          ('\uD83D\uDC4B <b>Hello!</b> I\'m your full personal assistant for Bahria Town Sales IC.' +
             '<br><br>I can <b>read, write, and act</b> on everything in the app:' +
             '<br>\u2022 \uD83D\uDCCA Daily entries, edits, analytics' +
             '<br>\u2022 \uD83D\uDC65 Staff \u2014 add, edit, activate/deactivate' +
             '<br>\u2022 \uD83D\uDCB0 Salary, Generic, Expense, Credit, Petty Cash' +
             '<br>\u2022 \uD83C\uDFAF Targets, Custom Sections, Sync &amp; Backup' +
+            '<br>\u2022 \uD83E\uDDE0 Memory, Rules &amp; Training \u2014 tap \uD83E\uDDE0 above' +
             '<br><br><b>Just tell me what to do \u2014 in English, Urdu, or both.</b>' +
-            '<br><span style="font-size:11px;color:var(--muted)">\u26a0\ufe0f Destructive actions (delete, overwrite) will always ask for confirmation first.</span>') :
+            '<br><span style="font-size:11px;color:var(--muted)">\u26a0\ufe0f Destructive actions (delete, overwrite) will always ask for confirmation first.</span>' + ruleAlerts)) :
         ('\u26a0\ufe0f <b>No API key set.</b> Tap the \u2699\ufe0f gear icon above to add your free Groq API key ' +
             '(get one at <b>console.groq.com/keys</b>) before chatting or scanning images.'),
     });
@@ -62,8 +71,8 @@ function _aipRenderInsights() {
   var sb = document.getElementById('aip-sidebar');
   if (!sb) return;
 
-  var M = (typeof window.MONTHLY !== 'undefined' && window.MONTHLY) ? window.MONTHLY : [];
-  var D = (typeof window.DAILY   !== 'undefined' && window.DAILY)   ? window.DAILY   : [];
+  var M = (typeof MONTHLY !== 'undefined' && MONTHLY) ? MONTHLY : [];
+  var D = (typeof DAILY !== 'undefined' && DAILY)   ? DAILY   : [];
 
   if (!M.length) {
     sb.innerHTML = '<div class="aip-no-data">' +
@@ -424,6 +433,12 @@ function _aipIntentLabel(intent) {
     pushToSupabase:        'Push to Supabase',
     pullFromSupabase:      'PULL from Supabase',
     backupToDrive:         'Backup to Drive',
+    // AI Memory
+    addMemoryFact:         'Remember fact',
+    deleteMemoryFact:      'Forget fact',
+    addRule:               'Add rule',
+    deleteRule:            'DELETE rule',
+    setSectionAiConfig:    'Update section AI config',
   };
   return labels[intent.action] || intent.action;
 }
@@ -452,7 +467,10 @@ function aiPageToggleMic() {
     if (micBtn) { micBtn.textContent = '🎤'; micBtn.classList.remove('recording'); }
     if (inp) inp.placeholder = 'Ask anything\u2026';
     _aipMicRec = null;
-    if (inp && inp.value.trim()) aiPageSend();
+    if (inp && inp.value.trim()) {
+      if (typeof aimVoiceLogAdd === 'function') aimVoiceLogAdd(inp.value.trim());
+      aiPageSend();
+    }
   };
   _aipMicRec.onerror = function() {
     _aipMicActive = false;

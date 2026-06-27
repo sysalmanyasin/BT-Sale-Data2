@@ -115,6 +115,7 @@ function _buildPayload() {
     incentive,
     custom:   JSON.parse(localStorage.getItem(CSEC_KEY) || '{}'),
     targets:  JSON.parse(localStorage.getItem(TGT_K)    || '{}'),
+    assistant: (typeof aimBuildAssistantPayload === 'function') ? aimBuildAssistantPayload() : null,
     pushedAt: new Date().toISOString()
   };
 }
@@ -196,6 +197,9 @@ function mergeIncomingData(data, isPull = false) {
       if (isPull) {
         if (remoteSec.name)  merged[sectionId].name  = remoteSec.name;
         if (remoteSec.emoji) merged[sectionId].emoji = remoteSec.emoji;
+        if (remoteSec.aiConfig) merged[sectionId].aiConfig = remoteSec.aiConfig;
+      } else if (!merged[sectionId].aiConfig && remoteSec.aiConfig) {
+        merged[sectionId].aiConfig = remoteSec.aiConfig; // local wins on push — fill gap only
       }
       // Actual rows live at sectionId.months[monthKey] — merge at that level.
       // A shallow per-section overwrite would drop any month that only
@@ -218,6 +222,10 @@ function mergeIncomingData(data, isPull = false) {
       else if (!(month in merged)) merged[month] = data.targets[month]; // local wins on push — only fill gaps
     });
     localStorage.setItem(TGT_K, JSON.stringify(merged));
+  }
+
+  if (data.assistant && typeof aimMergeAssistantIncoming === 'function') {
+    aimMergeAssistantIncoming(data.assistant, isPull);
   }
 
   return { mN, dN, mU, dU };
