@@ -242,7 +242,7 @@ async function _driveRestoreFile(fileId, label) {
     }
     driveLog(`✓ Restored from ${label}: +${mN} months, +${dN} days of sales data. Manager/Petty/Custom merged.`,'ok');
     toast(`✓ Restored from ${label}`);
-    if (typeof showPage==='function') showPage(_curPage||'dashboard');
+    if (typeof showPage==='function') showPage(_curPage||'ai');
   } catch(e) {
     driveLog('✕ Restore failed: '+e.message,'err');
     toast('✕ Restore failed: '+e.message,'e');

@@ -116,14 +116,6 @@ function _aipRenderHome() {
 
   var html = '<div class="igs-home" id="igs-home-panel">';
 
-  // ── Speak button ──
-  html += '<div class="igs-speak-row">';
-  html += '<button class="igs-speak-btn" id="igs-speak-btn" onclick="aiPageToggleMic()" title="Voice input">';
-  html += '<span style="font-size:20px">🎤</span>';
-  html += '<span>Speak</span>';
-  html += '</button>';
-  html += '</div>';
-
   // ── Shortcut grid — tucked behind a permanent collapsible side tab ──
   html += '<div class="igs-drawer-wrap">';
   html += '<button class="igs-drawer-tab' + (_igsDrawerOpen ? ' igs-drawer-tab-active' : '') + '" ' +
@@ -148,18 +140,6 @@ function _aipRenderHome() {
   html += '</div>'; // .igs-grid
   html += '</div>'; // .igs-drawer-panel
   html += '</div>'; // .igs-drawer-wrap
-
-  // ── Suggested shortcuts (usage-based) ──
-  if (hasUsage) {
-    html += '<div class="igs-suggestions">';
-    html += '<div class="igs-sug-label">⚡ Frequent</div>';
-    html += '<div class="igs-sug-row">';
-    suggested.forEach(function(g) {
-      html += '<button class="igs-sug-chip" onclick="igsOpenGroup(\'' + _aipEsc(g.id) + '\')">' +
-        g.shortcut + '</button>';
-    });
-    html += '</div></div>';
-  }
 
   html += '</div>';
 

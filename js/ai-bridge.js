@@ -56,7 +56,7 @@ const AI_SAFE_INTENTS = new Set([
   // Targets
   'setMonthTarget', 'deleteMonthTarget',
   // Custom Sections
-  'addCustomSectionRow', 'createCustomSection', 'deleteCustomSectionRow', 'deleteCustomSection',
+  'addCustomSectionRow', 'editCustomSectionRow', 'createCustomSection', 'deleteCustomSectionRow', 'deleteCustomSection',
   // Field Manager
   'openFieldManager', 'toggleFieldVisibility', 'addCustomField', 'resetAllFields',
   // Sync / Backup
@@ -86,6 +86,33 @@ function _aiTodayStr() {
 }
 function _aiCurrentMonthYear() {
   const d = new Date();
+  const M = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return M[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+// ── Shared month resolver — used by every Manager-section read/edit ────
+// Recognizes: "this month", "last month", "June", "June 2026", or falls
+// back to current month. Keeps all 6 sections reading the SAME month
+// whenever the user doesn't say one explicitly.
+const _AI_MONTH_NAMES = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+function _aiResolveMonth(text) {
+  const t = (text || '').toLowerCase();
+  const now = new Date();
+  if (/\blast month\b|\bpichla mahine\b|\bpichle mahine\b/.test(t)) {
+    const d = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    return _aiMonthYearFor(d);
+  }
+  if (/\bthis month\b|\bis mahine\b|\bcurrent month\b/.test(t)) return _aiCurrentMonthYear();
+  // Explicit "June 2026" or just "June" (assume current/most-recent year)
+  const m = t.match(/\b(january|february|march|april|may|june|july|august|september|october|november|december)\b(?:\s+(\d{4}))?/);
+  if (m) {
+    const monName = m[1].charAt(0).toUpperCase() + m[1].slice(1);
+    const year = m[2] || now.getFullYear();
+    return monName + ' ' + year;
+  }
+  return _aiCurrentMonthYear();
+}
+function _aiMonthYearFor(d) {
   const M = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   return M[d.getMonth()] + ' ' + d.getFullYear();
 }
@@ -202,6 +229,55 @@ function _aiParseCreditQuery(text) {
     if (!name || name.length < 2) continue;
     const matchedName = _aiFuzzyStaff(name);
     const result = _aiReadCreditBalance(matchedName);
+    if (result) return { text: result, intent: null };
+  }
+  return null;
+}
+
+// ── Custom section fuzzy resolver (shared by add/edit/delete/read) ─────
+const _AI_CSEC_KEY = 'mw_custom_sections_v1';
+function _aiResolveCustomSection(rawName) {
+  let all;
+  try { all = JSON.parse(localStorage.getItem(_AI_CSEC_KEY) || '{}'); } catch(_){ all = {}; }
+  const norm = s => (s || '').trim().toLowerCase();
+  const t = norm(rawName);
+  const sid = Object.keys(all).find(k => {
+    const n = norm(all[k].name);
+    return n === t || n.includes(t) || t.includes(n);
+  });
+  return sid ? { sid, name: all[sid].name, all } : null;
+}
+
+// ── Staff Registry — read ───────────────────────────────────────────────
+function _aiReadStaffInfo(rawName) {
+  try {
+    if (typeof STAFF === 'undefined' || !STAFF.length) return null;
+    const idx = _aiFuzzyStaffIndex(rawName);
+    if (idx === -1) return null;
+    const e = STAFF[idx];
+    const sid = e.staffId || ('EMP-' + String(idx + 1).padStart(3, '0'));
+    const status = e.active !== false ? 'Active' : 'Inactive';
+    let out = '<b>' + (e.name || '(unnamed)') + '</b> (' + sid + ')<br>';
+    out += '\u2022 Designation: ' + (e.designation || '\u2014') + '<br>';
+    out += '\u2022 Status: ' + status + '<br>';
+    if (e.fatherName) out += '\u2022 Father Name: ' + e.fatherName + '<br>';
+    if (e.cnic)       out += '\u2022 CNIC: ' + e.cnic + '<br>';
+    if (e.phone)      out += '\u2022 Phone: ' + e.phone + '<br>';
+    if (e.bloodGroup) out += '\u2022 Blood Group: ' + e.bloodGroup;
+    return out;
+  } catch (_) { return null; }
+}
+function _aiParseStaffQuery(text) {
+  const pats = [
+    /(?:who is|details? of|info(?:rmation)? (?:on|of|about))\s+(.+)/i,
+    /(.+?)(?:'s|ka|ki)?\s+(?:phone|number|cnic|designation|details?|info)(?:\s+number)?(?:\s+hai|\s+batao|\s+dekho)?$/i,
+  ];
+  for (const pat of pats) {
+    const m = text.match(pat);
+    if (!m) continue;
+    const name = (m[1] || '').trim();
+    if (!name || name.length < 2) continue;
+    const result = _aiReadStaffInfo(name);
     if (result) return { text: result, intent: null };
   }
   return null;
@@ -341,6 +417,214 @@ function _aiParseCustomSectionCommand(text) {
     text: '\u2705 Adding \u20a8' + Math.abs(amount).toLocaleString('en-PK') + ' to <b>' + secName + '</b>.',
     intent: { action: 'addCustomSectionRow', params: [secName, today, amount, ''] },
   };
+}
+
+// ── Expenses / Patty — read ─────────────────────────────────────────────
+function _aiReadExpenseSummary(monthStr) {
+  try {
+    const data = mgrLoad();
+    const stored = data.expense && data.expense[monthStr];
+    if (!stored) return '<b>' + monthStr + ':</b> No expense data found.';
+    const rows = stored.rows || [];
+    const opening = _ni(stored.opening);
+    const totBill = rows.reduce((s, r) => s + _ni(r.bill), 0);
+    const totFuel = rows.reduce((s, r) => s + _ni(r.fuel), 0);
+    const totSoap = rows.reduce((s, r) => s + _ni(r.soap), 0);
+    const totRef  = rows.reduce((s, r) => s + _ni(r.refresh), 0);
+    const totExt  = rows.reduce((s, r) => s + _ni(r.extra), 0);
+    const totHO   = rows.reduce((s, r) => s + _ni(r.pattyHO), 0);
+    const totalExp = totBill + totFuel + totSoap + totRef + totExt;
+    const balance = opening + totHO - totalExp;
+    const fmt = v => '\u20a8' + Math.abs(Math.round(v)).toLocaleString('en-PK');
+    let out = '<b>Expenses \u2014 ' + monthStr + '</b><br>';
+    out += '\u2022 Opening Patty: ' + fmt(opening) + '<br>';
+    out += '\u2022 HO Received: ' + fmt(totHO) + '<br>';
+    out += '\u2022 Total Expenses: ' + (totalExp < 0 ? '-' : '') + fmt(totalExp) + '<br>';
+    out += '\u2022 Current Balance: ' + (balance < 0 ? '-' : '') + fmt(balance);
+    return out;
+  } catch (_) { return null; }
+}
+function _aiParseExpenseQuery(text) {
+  const pats = [
+    /(?:total\s+)?expenses?\s+(?:summary\s+)?(?:for\s+|of\s+|in\s+)?(this month|last month|[a-z]+(?:\s+\d{4})?)/i,
+    /(?:what(?:'s|\s+is)|show|check|batao|dekho)\s+(?:our\s+|the\s+)?(?:total\s+)?expenses?/i,
+    /expense\s+balance/i,
+    /current\s+(?:patty\s+)?balance/i,
+  ];
+  for (const pat of pats) {
+    const m = text.match(pat);
+    if (!m) continue;
+    const month = _aiResolveMonth(text);
+    const result = _aiReadExpenseSummary(month);
+    if (result) return { text: result, intent: null };
+  }
+  return null;
+}
+
+// ── Custom Sections — read ──────────────────────────────────────────────
+function _aiReadCustomSectionTotal(rawName, monthStr) {
+  try {
+    const resolved = _aiResolveCustomSection(rawName);
+    if (!resolved) return null;
+    const monthRows = (resolved.all[resolved.sid].months && resolved.all[resolved.sid].months[monthStr]) || [];
+    if (!monthRows.length) return '<b>' + resolved.name + '</b> (' + monthStr + '): no entries found.';
+    const total = monthRows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+    const fmt = v => '\u20a8' + Math.abs(Math.round(v)).toLocaleString('en-PK');
+    let out = '<b>' + resolved.name + '</b> \u2014 ' + monthStr + ': ' + (total < 0 ? '-' : '') + fmt(total) + '<br>';
+    const recent = monthRows.slice(-3).map((r, i) => {
+      const idx = monthRows.length - monthRows.slice(-3).length + i;
+      return '\u2022 #' + idx + ' ' + (r.desc || '?') + ': ' + (r.amount < 0 ? '-' : '') + fmt(r.amount);
+    }).join('<br>');
+    return out + '<em style="font-size:11px;color:var(--muted)">Recent:</em><br>' + recent;
+  } catch (_) { return null; }
+}
+function _aiParseCustomSectionQuery(text) {
+  const month = _aiResolveMonth(text);
+  // Strip any month phrase from the text first, so "Jazz Cash total June 2026"
+  // still matches the section-name pattern (which anchors on $).
+  const stripped = text
+    .replace(/\b(?:this month|last month|is mahine|pichla mahine|pichle mahine)\b/i, '')
+    .replace(/\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\b(?:\s+\d{4})?/i, '')
+    .trim();
+  const pats = [
+    /(?:total|show|check|batao|dekho)\s+(.+?)\s+(?:total|entries|section)?(?:\s+for\s+(.+))?$/i,
+    /(.+?)\s+(?:total|kitna|kya)$/i,
+  ];
+  for (const pat of pats) {
+    const m = stripped.match(pat);
+    if (!m) continue;
+    const name = (m[1] || '').trim();
+    if (!name || name.length < 2) continue;
+    const resolved = _aiResolveCustomSection(name);
+    if (!resolved) continue;
+    const result = _aiReadCustomSectionTotal(name, month);
+    if (result) return { text: result, intent: null };
+  }
+  return null;
+}
+// ── Custom Sections — edit a specific row (add/delete already existed) ──
+function _aiEditCustomSectionRow(sectionName, rowIndex, field, value) {
+  const resolved = _aiResolveCustomSection(sectionName);
+  if (!resolved) { if (typeof toast === 'function') toast('\u26a0 Section "' + sectionName + '" not found.', 'w'); return; }
+  const sel = document.getElementById('csec-month-sel') || document.getElementById('mgr-month-sel');
+  const curMon = (sel && sel.value) ? sel.value : _aiCurrentMonthYear();
+  const rows = (resolved.all[resolved.sid].months && resolved.all[resolved.sid].months[curMon]) || [];
+  if (!rows[rowIndex]) { if (typeof toast === 'function') toast('\u26a0 Row index ' + rowIndex + ' not found.', 'w'); return; }
+  rows[rowIndex][field] = (field === 'amount') ? (parseFloat(value) || 0) : value;
+  localStorage.setItem(_AI_CSEC_KEY, JSON.stringify(resolved.all));
+  if (typeof renderAllCustomSections === 'function') renderAllCustomSections();
+  if (typeof toast === 'function') toast('\u2705 ' + resolved.name + ' row ' + rowIndex + ' updated.');
+}
+
+// ── Salary — read ────────────────────────────────────────────────────────
+function _aiReadNetSalary(rawName, monthStr) {
+  try {
+    const data = mgrLoad();
+    const rows = (data.salary && data.salary[monthStr]) || [];
+    if (!rows.length) return null;
+    const norm = s => (s || '').trim().toLowerCase();
+    const t = norm(rawName);
+    const r = rows.find(x => { const n = norm(x.name); return n === t || n.includes(t) || t.includes(n); });
+    if (!r) return null;
+    const net = _ni(r.hoSal) - _ni(r.advance) + _ni(r.generic);
+    const fmt = v => '\u20a8' + Math.abs(Math.round(v)).toLocaleString('en-PK');
+    let out = '<b>' + r.name + '</b> \u2014 ' + monthStr + '<br>';
+    out += '\u2022 HO Salary: ' + fmt(r.hoSal) + '<br>';
+    out += '\u2022 Advance: ' + fmt(r.advance) + '<br>';
+    out += '\u2022 Generic: ' + fmt(r.generic) + '<br>';
+    out += '\u2022 <b>Net Salary: ' + (net < 0 ? '-' : '') + fmt(net) + '</b>';
+    return out;
+  } catch (_) { return null; }
+}
+function _aiReadTotalSalaryPayout(monthStr) {
+  try {
+    const data = mgrLoad();
+    const rows = (data.salary && data.salary[monthStr]) || [];
+    if (!rows.length) return '<b>' + monthStr + ':</b> No salary data found.';
+    const totNet = rows.reduce((s, r) => s + (_ni(r.hoSal) - _ni(r.advance) + _ni(r.generic)), 0);
+    const totAdv = rows.reduce((s, r) => s + _ni(r.advance), 0);
+    const fmt = v => '\u20a8' + Math.abs(Math.round(v)).toLocaleString('en-PK');
+    return '<b>Salary \u2014 ' + monthStr + '</b><br>\u2022 Total Advance: ' + fmt(totAdv) + '<br>\u2022 <b>Total Net Payout: ' + (totNet < 0 ? '-' : '') + fmt(totNet) + '</b>';
+  } catch (_) { return null; }
+}
+function _aiParseSalaryQuery(text) {
+  if (/total\s+(?:salary|payout)/i.test(text)) {
+    const month = _aiResolveMonth(text);
+    const result = _aiReadTotalSalaryPayout(month);
+    if (result) return { text: result, intent: null };
+  }
+  const pats = [
+    /(.+?)(?:'s|ka|ki)?\s+(?:net\s+)?salary(?:\s+kitna|\s+kya|\s+hai|\s+batao|\s+dekho)?/i,
+    /(?:what(?:'s|\s+is)|check|show|batao|dekho)\s+(.+?)(?:'s|ka|ki)?\s+(?:net\s+)?salary/i,
+    /salary\s+(?:of|for|ka)\s+(.+)/i,
+  ];
+  for (const pat of pats) {
+    const m = text.match(pat);
+    if (!m) continue;
+    const name = (m[1] || '').trim();
+    if (!name || name.length < 2) continue;
+    const matchedName = _aiFuzzyStaff(name);
+    const month = _aiResolveMonth(text);
+    const result = _aiReadNetSalary(matchedName, month);
+    if (result) return { text: result, intent: null };
+  }
+  return null;
+}
+
+// ── Generic Working — read ───────────────────────────────────────────────
+function _aiReadGenericDetail(rawName, monthStr) {
+  try {
+    const data = mgrLoad();
+    const rows = (data.generic && data.generic[monthStr]) || [];
+    if (!rows.length) return null;
+    const norm = s => (s || '').trim().toLowerCase();
+    const t = norm(rawName);
+    const r = rows.find(x => { const n = norm(x.name); return n === t || n.includes(t) || t.includes(n); });
+    if (!r) return null;
+    const inc = Math.round(_ni(r.genericSale) * 0.04);
+    const fin = inc + _ni(r.extra);
+    const fmt = v => '\u20a8' + Math.abs(Math.round(v)).toLocaleString('en-PK');
+    let out = '<b>' + r.name + '</b> \u2014 ' + monthStr + '<br>';
+    out += '\u2022 Generic Sale: ' + fmt(r.genericSale) + '<br>';
+    out += '\u2022 Incentive (4%): ' + fmt(inc) + '<br>';
+    out += '\u2022 Extra: ' + fmt(r.extra) + '<br>';
+    out += '\u2022 <b>Final: ' + fmt(fin) + '</b>';
+    return out;
+  } catch (_) { return null; }
+}
+function _aiReadTotalIncentive(monthStr) {
+  try {
+    const data = mgrLoad();
+    const rows = (data.generic && data.generic[monthStr]) || [];
+    if (!rows.length) return '<b>' + monthStr + ':</b> No generic working data found.';
+    const totSale = rows.reduce((s, r) => s + _ni(r.genericSale), 0);
+    const totInc  = rows.reduce((s, r) => s + Math.round(_ni(r.genericSale) * 0.04), 0);
+    const totFin  = rows.reduce((s, r) => s + Math.round(_ni(r.genericSale) * 0.04) + _ni(r.extra), 0);
+    const fmt = v => '\u20a8' + Math.abs(Math.round(v)).toLocaleString('en-PK');
+    return '<b>Generic Working \u2014 ' + monthStr + '</b><br>\u2022 Total Generic Sale: ' + fmt(totSale) + '<br>\u2022 Total Incentive: ' + fmt(totInc) + '<br>\u2022 <b>Total Final: ' + fmt(totFin) + '</b>';
+  } catch (_) { return null; }
+}
+function _aiParseGenericQuery(text) {
+  if (/total\s+(?:incentive|generic)/i.test(text)) {
+    const month = _aiResolveMonth(text);
+    const result = _aiReadTotalIncentive(month);
+    if (result) return { text: result, intent: null };
+  }
+  const pats = [
+    /(.+?)(?:'s|ka|ki)?\s+(?:generic\s+sale|generic|incentive)(?:\s+kitna|\s+kya|\s+hai|\s+batao|\s+dekho)?/i,
+    /(?:what(?:'s|\s+is)|check|show|batao|dekho)\s+(.+?)(?:'s|ka|ki)?\s+(?:generic|incentive)/i,
+  ];
+  for (const pat of pats) {
+    const m = text.match(pat);
+    if (!m) continue;
+    const name = (m[1] || '').trim();
+    if (!name || name.length < 2) continue;
+    const matchedName = _aiFuzzyStaff(name);
+    const month = _aiResolveMonth(text);
+    const result = _aiReadGenericDetail(matchedName, month);
+    if (result) return { text: result, intent: null };
+  }
+  return null;
 }
 
 function _aiParseNavCommand(text) {
@@ -1056,6 +1340,11 @@ async function aiBridgeAnswer(text) {
 
     const creditCmd  = _aiParseCreditCommand(text);     if (creditCmd)  return creditCmd;
     const creditQry  = _aiParseCreditQuery(text);       if (creditQry)  return creditQry;
+    const staffQry   = _aiParseStaffQuery(text);        if (staffQry)   return staffQry;
+    const expenseQry = _aiParseExpenseQuery(text);      if (expenseQry) return expenseQry;
+    const csecQry    = _aiParseCustomSectionQuery(text); if (csecQry)   return csecQry;
+    const salaryQry  = _aiParseSalaryQuery(text);       if (salaryQry)  return salaryQry;
+    const genericQry = _aiParseGenericQuery(text);      if (genericQry) return genericQry;
     const expenseCmd = _aiParseExpenseCommand(text);    if (expenseCmd) return expenseCmd;
     const pettyCmd   = _aiParsePettyCommand(text);      if (pettyCmd)   return pettyCmd;
     const fieldCmd   = _aiParseDailyFieldCommand(text); if (fieldCmd)   return fieldCmd;
@@ -1868,6 +2157,7 @@ function aiBridgeExecuteIntent(intent) {
       case 'deleteMonthTarget':  _aiDeleteMonthTarget(p[0]); break;
       // Custom Sections
       case 'addCustomSectionRow':  _aiAddCustomSectionRow(p[0],p[1],p[2],p[3]); break;
+      case 'editCustomSectionRow': _aiEditCustomSectionRow(p[0],p[1],p[2],p[3]); break;
       case 'createCustomSection':  _aiCreateCustomSection(p[0],p[1]); break;
       case 'deleteCustomSectionRow': _aiDeleteCustomSectionRow(p[0],p[1]); break;
       case 'deleteCustomSection':  _aiDeleteCustomSection(p[0]); break;
