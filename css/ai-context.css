@@ -1,0 +1,354 @@
+/* ══════════════════════════════════════════════════════════════════════
+   AI Context Panel — Styles
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* ── Context strip inside chat pane ─────────────────────────────────── */
+.actx-strip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  background: linear-gradient(90deg, #eff6ff, #f8fafc);
+  border-top: 1px solid #dbeafe;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+  min-height: 36px;
+  overflow: hidden;
+  position: relative;
+  transition: background .2s;
+}
+.actx-strip.has-context {
+  background: linear-gradient(90deg, #eff6ff, #fff);
+}
+.actx-strip-empty {
+  font-size: 11px;
+  color: #94a3b8;
+  font-style: italic;
+}
+.actx-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border: 1.5px solid #dbeafe;
+  background: #eff6ff;
+  color: #1d4ed8;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background .1s, border-color .1s;
+}
+.actx-chip:hover { background: #dbeafe; border-color: #93c5fd; }
+.actx-chip.employee { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+.actx-chip.section  { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+.actx-chip.page     { background: #faf5ff; border-color: #e9d5ff; color: #6b21a8; }
+.actx-chip.month    { background: #ecfeff; border-color: #a5f3fc; color: #0e7490; }
+.actx-conf-bar {
+  flex-shrink: 0;
+  width: 48px;
+  height: 6px;
+  border-radius: 3px;
+  background: #e2e8f0;
+  overflow: hidden;
+  margin-left: auto;
+}
+.actx-conf-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width .4s ease, background .4s;
+}
+.actx-clear-btn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 2px 4px;
+  color: #94a3b8;
+  border-radius: 5px;
+  transition: color .1s, background .1s;
+  margin-left: 2px;
+  font-family: inherit;
+}
+.actx-clear-btn:hover { color: #dc2626; background: #fff1f2; }
+
+/* ── Overlay ─────────────────────────────────────────────────────────── */
+.actx-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 20500;
+  background: rgba(15, 23, 42, 0.50);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease;
+}
+.actx-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ── Panel ───────────────────────────────────────────────────────────── */
+.actx-panel {
+  width: 100%;
+  max-width: 520px;
+  background: #fff;
+  border-radius: 22px 22px 0 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 -8px 48px rgba(0,0,0,.18);
+  transform: translateY(40px);
+  transition: transform .25s cubic-bezier(.34,1.3,.64,1);
+  max-height: 85vh;
+}
+.actx-overlay.open .actx-panel { transform: translateY(0); }
+
+/* ── Header ──────────────────────────────────────────────────────────── */
+.actx-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 13px;
+  background: linear-gradient(135deg, #0891b2, #0e7490);
+  flex-shrink: 0;
+}
+.actx-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #fff;
+}
+.actx-title-sub { font-size: 11px; color: rgba(255,255,255,.72); margin-top: 2px; }
+.actx-hclose {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(255,255,255,.18);
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .12s;
+  font-family: inherit;
+}
+.actx-hclose:hover { background: rgba(255,255,255,.32); }
+
+/* ── Confidence band ─────────────────────────────────────────────────── */
+.actx-conf-band {
+  padding: 8px 18px;
+  background: #0e7490;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.actx-conf-label {
+  font-size: 11px;
+  color: rgba(255,255,255,.80);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.actx-conf-track {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255,255,255,.20);
+  overflow: hidden;
+}
+.actx-conf-inner {
+  height: 100%;
+  border-radius: 4px;
+  background: #34d399;
+  transition: width .5s ease, background .5s;
+}
+.actx-conf-pct {
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  min-width: 36px;
+  text-align: right;
+}
+
+/* ── Content ─────────────────────────────────────────────────────────── */
+.actx-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Empty state ─────────────────────────────────────────────────────── */
+.actx-empty {
+  text-align: center;
+  padding: 40px 20px;
+}
+.actx-empty-icon  { font-size: 52px; margin-bottom: 12px; }
+.actx-empty-title { font-size: 15px; font-weight: 700; color: #334155; margin-bottom: 8px; }
+.actx-empty-sub   { font-size: 13px; color: #94a3b8; line-height: 1.7; }
+
+/* ── Slot card ───────────────────────────────────────────────────────── */
+.actx-slot {
+  background: #fff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 13px 15px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  position: relative;
+  transition: border-color .15s, box-shadow .15s;
+}
+.actx-slot:hover { border-color: #bfdbfe; box-shadow: 0 2px 8px rgba(37,99,235,.07); }
+.actx-slot.faded { opacity: 0.5; }
+
+.actx-slot-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.actx-slot-body  { flex: 1; min-width: 0; }
+.actx-slot-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: #94a3b8;
+  margin-bottom: 3px;
+}
+.actx-slot-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  word-break: break-word;
+}
+.actx-slot-meta {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.actx-slot-via {
+  background: #f1f5f9;
+  border-radius: 6px;
+  padding: 1px 7px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #64748b;
+}
+.actx-slot-clear {
+  background: none;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  color: #94a3b8;
+  transition: color .1s, background .1s;
+  flex-shrink: 0;
+  font-family: inherit;
+}
+.actx-slot-clear:hover { color: #dc2626; background: #fff1f2; }
+
+/* ── Follow-up examples ──────────────────────────────────────────────── */
+.actx-followups {
+  background: #f0fdf4;
+  border: 1.5px solid #bbf7d0;
+  border-radius: 14px;
+  padding: 12px 15px;
+}
+.actx-followups-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #166534;
+  margin-bottom: 9px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.actx-followups-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.actx-fu-chip {
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1.5px solid #86efac;
+  background: #fff;
+  color: #166534;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .1s;
+}
+.actx-fu-chip:hover { background: #dcfce7; }
+
+/* ── Footer ──────────────────────────────────────────────────────────── */
+.actx-footer {
+  padding: 10px 18px 16px;
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  flex-wrap: wrap;
+}
+.actx-footer-btn {
+  padding: 8px 18px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  border: 1.5px solid;
+  transition: background .1s, transform .12s;
+}
+.actx-footer-btn:active { transform: scale(.97); }
+.actx-footer-btn.danger {
+  background: #fff1f2;
+  border-color: #fecaca;
+  color: #dc2626;
+}
+.actx-footer-btn.danger:hover { background: #fee2e2; }
+.actx-footer-btn.ghost {
+  background: #fff;
+  border-color: #e2e8f0;
+  color: #334155;
+}
+.actx-footer-btn.ghost:hover { background: #f1f5f9; }
+
+/* ── Expiry info ─────────────────────────────────────────────────────── */
+.actx-expiry {
+  margin-left: auto;
+  font-size: 10.5px;
+  color: #94a3b8;
+  align-self: center;
+}
+
+@media (min-width: 640px) {
+  .actx-overlay { align-items: center; }
+  .actx-panel { border-radius: 22px; max-height: 80vh; }
+}
