@@ -30,9 +30,9 @@ function _aimGet(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
   catch (_) { return fallback; }
 }
-function _aimSet(key, val) {
+function _aimSet(key, val, markDirty = true) {
   try { localStorage.setItem(key, JSON.stringify(val)); } catch (_) {}
-  if (typeof _markPending === 'function') _markPending(); // queue for Supabase push
+  if (markDirty && typeof _markPending === 'function') _markPending(); // queue for Supabase push
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -527,7 +527,7 @@ function aimMergeAssistantIncoming(assistant, isPull) {
       if (isPull) byId[item.id] = item;                 // remote wins on pull
       else if (!byId[item.id]) byId[item.id] = item;     // local wins on push — fill gaps only
     });
-    _aimSet(key, Object.values(byId));
+    _aimSet(key, Object.values(byId), false);
   }
 
   mergeListById(AIMEM_K_FACTS, assistant.facts);
@@ -555,14 +555,14 @@ function aimMergeAssistantIncoming(assistant, isPull) {
     });
     local.sort((a, b) => new Date(a.at) - new Date(b.at));
     if (local.length > 500) local.splice(0, local.length - 500);
-    _aimSet(AIMEM_K_VOICE, local);
+    _aimSet(AIMEM_K_VOICE, local, false);
   }
 
   if (assistant.briefing && isPull) {
     const local = _aimGet(AIMEM_K_BRIEF, {});
     // newer briefing wins
     if (!local.date || new Date(assistant.updatedAt || 0) > new Date(local._mergedAt || 0)) {
-      _aimSet(AIMEM_K_BRIEF, assistant.briefing);
+      _aimSet(AIMEM_K_BRIEF, assistant.briefing, false);
     }
   }
 
@@ -570,7 +570,7 @@ function aimMergeAssistantIncoming(assistant, isPull) {
   // active device); a stale remote copy should never overwrite a device
   // that's mid-conversation, so this never runs on push.
   if (assistant.context && isPull) {
-    _aimSet('bt_ai_context_v1', assistant.context);
+    _aimSet('bt_ai_context_v1', assistant.context, false);
     if (typeof AIContext !== 'undefined' && AIContext && typeof AIContext.get === 'function') {
       // Force the live module to re-read what we just wrote, if it exposes a reload hook
       if (typeof AIContext.reload === 'function') { try { AIContext.reload(); } catch(_) {} }
