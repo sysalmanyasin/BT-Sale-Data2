@@ -4,7 +4,7 @@
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v5.3';
+const CACHE_NAME = 'bt-sales-v5.1';
 
 const APP_SHELL = [
   './',
@@ -35,7 +35,6 @@ const APP_SHELL = [
   './js/auth.js',
   './js/storage.js',
   './js/ui.js',
-  './js/jazz-cash.js',
   './js/supabase.js',
   './js/targets.js',
   './js/dashboard.js',
