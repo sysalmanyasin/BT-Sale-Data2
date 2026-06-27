@@ -253,6 +253,7 @@ if ('serviceWorker' in navigator) {
       <div class="aip-chat-header">
         <div class="aip-chat-title"><span style="font-size:22px">🤖</span> Groq AI Assistant <span class="ai-head-badge" id="aip-live-badge">LIVE</span></div>
         <div style="display:flex;align-items:center;gap:6px">
+          <button class="aip-clear-btn" onclick="aimOpenPanel()" title="AI Memory, Rules &amp; Training">🧠 Memory</button>
           <button class="aip-clear-btn" onclick="aipOpenScan()" title="Scan a photo / screenshot for entries">📷 Scan</button>
           <button class="aip-clear-btn" onclick="aiPageClear()" title="Clear chat">Clear</button>
           <button class="aip-clear-btn" onclick="aipOpenSettings()" title="AI Settings — API key">⚙️</button>
@@ -272,6 +273,7 @@ if ('serviceWorker' in navigator) {
   <input type="file" id="aip-scan-file" accept="image/*" capture="environment" style="display:none" onchange="aipHandleScanFile(this.files[0])">
   <div id="aip-scan-modal"></div>
   <div id="aip-settings-modal"></div>
+  <div id="aim-panel-modal"></div>
 </div>
 
 <!-- DASHBOARD -->
@@ -1201,6 +1203,9 @@ if ('serviceWorker' in navigator) {
 
 <!-- 15. Google Drive backup / restore -->
 <script src="js/drive.js"></script>
+
+<!-- AI Memory — persistent memory, custom rules, training, section AI config -->
+<script src="js/ai-memory.js"></script>
 
 <!-- AI Bridge — powers the dedicated AI page only (no floating widget) -->
 <script src="js/ai-bridge.js"></script>
