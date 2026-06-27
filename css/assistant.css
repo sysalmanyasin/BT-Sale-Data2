@@ -128,6 +128,13 @@
   border-color:#bbf7d0; background:#f0fdf4; color:#166534;
 }
 .ai-chip-green:hover{ background:#dcfce7; }
+.ai-chip-red{
+  border-color:#fecaca; background:#fff1f2; color:#991b1b;
+  font-size:11.5px; padding:6px 12px; border-radius:20px; white-space:nowrap;
+  border-width:1.5px; border-style:solid; cursor:pointer; flex-shrink:0; font-weight:600;
+  transition:background .1s, border-color .1s;
+}
+.ai-chip-red:hover{ background:#fee2e2; border-color:#f87171; }
 .ai-chip-dim{
   border-color:#e2e8f0; background:#f8fafc; color:#64748b;
   font-size:11px; padding:5px 10px; border-radius:20px; white-space:nowrap;
