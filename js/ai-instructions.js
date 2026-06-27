@@ -242,12 +242,11 @@ var AIInstructions = (function () {
      CLOUD SYNC — uses the app's existing Supabase functions if available
   ────────────────────────────────────────────────────────────────── */
   function syncToSupabase() {
-    // The existing _markPending() on every _save() piggybacks instructions
-    // into the main Supabase push payload. This function triggers an explicit push.
+    // pushToSupabase() now includes instructions via aimBuildAssistantPayload()
     if (typeof pushToSupabase === 'function') {
       return pushToSupabase().then(function() {
         try { localStorage.setItem(SYNC_KEY, _now()); } catch(_) {}
-        return { ok: true };
+        return { ok: true, count: _load().length };
       }).catch(function(e) {
         return { ok: false, error: e.message };
       });
@@ -256,11 +255,15 @@ var AIInstructions = (function () {
   }
 
   function syncFromSupabase() {
+    // pullFromSupabase() → mergeIncomingData() → aimMergeAssistantIncoming()
+    // which now merges assistant.instructions and stamps SYNC_KEY automatically.
     if (typeof pullFromSupabase === 'function') {
+      var beforeCount = _load().length;
       return pullFromSupabase(true).then(function() {
-        // After pull, the storage key is refreshed by the pull function
+        var afterCount = _load().length;
+        // Ensure SYNC_KEY is stamped even if aimMergeAssistantIncoming didn't run
         try { localStorage.setItem(SYNC_KEY, _now()); } catch(_) {}
-        return { ok: true, count: _load().length };
+        return { ok: true, count: afterCount, added: Math.max(0, afterCount - beforeCount) };
       }).catch(function(e) {
         return { ok: false, error: e.message };
       });

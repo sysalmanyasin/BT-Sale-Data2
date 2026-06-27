@@ -546,7 +546,10 @@ function ainSyncToCloud() {
 function ainSyncFromCloud() {
   if (typeof toast === 'function') toast('↙ Pulling from cloud…');
   AIInstructions.syncFromSupabase().then(function(r) {
-    if (typeof toast === 'function') toast(r.ok ? '✅ Pulled ' + r.count + ' instructions from cloud.' : '⚠ Sync failed: ' + r.error, r.ok ? '' : 'w');
+    var msg = r.ok
+      ? ('✅ Pulled from Supabase — ' + r.count + ' instructions total' + (r.added > 0 ? ', ' + r.added + ' new' : ' (up to date)'))
+      : ('⚠ Sync failed: ' + r.error);
+    if (typeof toast === 'function') toast(msg, r.ok ? '' : 'w');
     renderAiInstructionsPanel();
   });
 }

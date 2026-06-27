@@ -506,6 +506,7 @@ function aimBuildAssistantPayload() {
     corrections:  aimCorrList(),
     voiceLog:     _aimGet(AIMEM_K_VOICE, []),
     briefing:     _aimGet(AIMEM_K_BRIEF, {}),
+    instructions: _aimGet('bt_ai_instructions_v1', []),  // ← instructions included in every push
     updatedAt:    _aimNow(),
   };
 }
@@ -531,6 +532,17 @@ function aimMergeAssistantIncoming(assistant, isPull) {
   mergeListById(AIMEM_K_FACTS, assistant.facts);
   mergeListById(AIMEM_K_RULES, assistant.rules);
   mergeListById(AIMEM_K_CORR,  assistant.corrections);
+
+  // Instructions — same id-based merge as facts/rules
+  if (Array.isArray(assistant.instructions)) {
+    mergeListById('bt_ai_instructions_v1', assistant.instructions);
+    // Stamp the sync time so the Instructions panel shows "Synced X ago"
+    try { localStorage.setItem('bt_ai_instructions_synced', _aimNow()); } catch(_) {}
+    // Refresh the open Instructions panel if visible
+    if (typeof renderAiInstructionsPanel === 'function') {
+      try { renderAiInstructionsPanel(); } catch(_) {}
+    }
+  }
 
   if (Array.isArray(assistant.voiceLog)) {
     // voice log: just union by (text+at), cap at 500

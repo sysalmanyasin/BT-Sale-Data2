@@ -236,7 +236,7 @@ function actxRenderStrip() {
 
   if (s.isEmpty || conf === 0) {
     strip.className = 'actx-strip';
-    strip.innerHTML = '<span class="actx-strip-empty">No active context — open a staff member or section to start</span>';
+    strip.innerHTML = '<span class="actx-strip-empty" onclick="actxOpen()" title="Tap to set active context">🗺 No context — tap to set who/what you\'re talking about</span>';
     return;
   }
 
