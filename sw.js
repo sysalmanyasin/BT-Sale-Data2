@@ -1,10 +1,10 @@
 /* ═══════════════════════════════════════════════════════════════
-   BT Sales IC — Service Worker
+   BT Sales IC — Service Worker  v4.6
    Strategy: Cache-first for all app shell assets.
-   Data (Supabase / Drive API calls) always go to network.
+   Data (Supabase / Drive / Anthropic API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v4.5';
+const CACHE_NAME = 'bt-sales-v4.6';
 
 const APP_SHELL = [
   './',
@@ -45,6 +45,7 @@ const APP_SHELL = [
   './js/fields.js',
   './js/drive.js',
   /* JS — AI assistant */
+  './js/ai-memory.js',
   './js/ai-bridge.js',
   './js/ai-page.js',
   /* Icons */
@@ -65,7 +66,9 @@ const CDN_ORIGINS = [
 
 /* ── API / data origins — always network, never cache ── */
 const NETWORK_ONLY_ORIGINS = [
-  'https://wetbugzzchkghpzmowod.supabase.co',  /* Supabase data API */
+  'https://wetbugzzchkghpzmowod.supabase.co',  /* Supabase data API          */
+  'https://api.anthropic.com',                  /* Anthropic AI API            */
+  'https://api.groq.com',                       /* Groq AI API                 */
   'https://www.googleapis.com',
   'https://accounts.google.com',
   'https://oauth2.googleapis.com',
