@@ -7,6 +7,44 @@ const DRIVE_FOLDER_ID = '1qDSFSlrcUA7EoaMx43bG3mxkpS1ESHGn'; // your existing Dr
 let _driveTokenClient = null;
 let _driveAccessToken = '';
 
+// ── Persist the Drive access token across page refreshes ──────────────
+// Google access tokens are short-lived (~1hr), but there's no reason to
+// force a fresh sign-in/consent on every reload within that window.
+// sessionStorage (not localStorage) is used deliberately: it survives
+// refreshes but clears when the tab/browser closes, so we never hold on
+// to a token longer than the session it was issued for.
+const DRIVE_TOKEN_K = 'bt_drive_token_cache';
+function _driveSaveToken(token, expiresInSec) {
+  if (!token) return;
+  const exp = Date.now() + (Math.max(60, (expiresInSec||3300)) * 1000) - 60000; // 1min safety margin
+  try { sessionStorage.setItem(DRIVE_TOKEN_K, JSON.stringify({ token, exp })); } catch(e) {}
+}
+function _driveLoadCachedToken() {
+  try {
+    const raw = sessionStorage.getItem(DRIVE_TOKEN_K);
+    if (!raw) return null;
+    const { token, exp } = JSON.parse(raw);
+    if (token && exp > Date.now()) return token;
+    sessionStorage.removeItem(DRIVE_TOKEN_K);
+  } catch(e) {}
+  return null;
+}
+// Restore a still-valid token immediately on script load, before any
+// silent-reauth network round-trip is even attempted.
+(function(){
+  const cached = _driveLoadCachedToken();
+  if (cached) {
+    _driveAccessToken = cached;
+    // Badge element may not exist yet if Tools page hasn't been opened —
+    // _driveUpdateBadge() already no-ops safely via its own null check.
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => _driveUpdateBadge('ok'));
+    } else {
+      _driveUpdateBadge('ok');
+    }
+  }
+})();
+
 function driveLog(msg, cls) {
   const el = document.getElementById('drive-log');
   if (!el) return;

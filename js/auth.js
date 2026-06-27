@@ -168,7 +168,11 @@ function gauthSetSession(payload) {
   localStorage.setItem(GAUTH_SESS_K, JSON.stringify(s));
   return s;
 }
-function gauthClearSession() { localStorage.removeItem(GAUTH_SESS_K); }
+function gauthClearSession() {
+  localStorage.removeItem(GAUTH_SESS_K);
+  _driveAccessToken = '';
+  try { sessionStorage.removeItem('bt_drive_token_cache'); } catch(e) {}
+}
 
 function gauthAllowedEmails() {
   const raw = localStorage.getItem(GAUTH_MAIL_K)||'';
@@ -273,6 +277,7 @@ async function _gauthHandleRedirectToken() {
     }
     // Reuse the Drive-scoped token so Drive backup works without a separate authorize step
     _driveAccessToken = token;
+    if (typeof _driveSaveToken === 'function') _driveSaveToken(token, Number(params.get('expires_in')));
     _driveUpdateBadge('ok'); // reflect Drive-ready state immediately in Tools
     gauthSetSession({ email:info.email, name:info.name||info.email, picture:info.picture||'' });
     unlockApp();
@@ -344,6 +349,7 @@ function _driveSilentReauth(timeoutMs = 4000) {
             callback: resp => {
               if (resp && resp.access_token) {
                 _driveAccessToken = resp.access_token;
+                if (typeof _driveSaveToken === 'function') _driveSaveToken(resp.access_token, resp.expires_in);
                 if (typeof _driveUpdateBadge === 'function') _driveUpdateBadge('ok');
                 finish(resp.access_token);
               } else finish(null);
@@ -369,7 +375,13 @@ function _gauthCheckSession() {
   }
   // Valid session → auto-unlock immediately, no button click required
   unlockApp();
-  // Restore the Drive token silently in the background so Drive backup/restore
+  // If a still-valid Drive token survived this refresh (sessionStorage cache),
+  // there's nothing to do — Drive is already ready, no network call needed.
+  if (_driveAccessToken) {
+    if (typeof driveLog === 'function') driveLog('✓ Drive session restored from this browser session', 'ok');
+    return;
+  }
+  // Otherwise, restore the Drive token silently in the background so Drive backup/restore
   // work right away without forcing the user through a full redirect again.
   _driveSilentReauth().then(token => {
     if (token && typeof driveLog === 'function') driveLog('✓ Drive session restored silently', 'ok');
