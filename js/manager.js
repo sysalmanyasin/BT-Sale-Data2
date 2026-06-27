@@ -69,6 +69,7 @@ function switchMgrTab(tab) {
   const sec = document.getElementById('mgr-' + tab);
   if (sec) sec.style.display = '';
   if (tab === 'staff') renderStaffRegistry();
+  if (tab === 'jazzcash' && typeof renderJazzCash === 'function') renderJazzCash();
 }
 
 function loadManagerPage() {

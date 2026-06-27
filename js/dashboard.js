@@ -242,6 +242,17 @@ function buildCreditSection(lat) {
     const total = rows.reduce((s,r) => s + (parseFloat(r.amount)||0), 0);
     return { name: (sec.emoji||'📋') + ' ' + sec.name, net: total };
   }).filter(r => r.net !== 0);
+
+  // ── 3b. Jazz Cash Ledger — inject live balance, replace any old manual row ──
+  if (typeof _jcCurrentBalance === 'function') {
+    const jcBal = _jcCurrentBalance();
+    // Remove any existing custom-section "Jazz Cash" row to avoid double-counting
+    const dupIdx = otherRows.findIndex(r => r.name.toLowerCase().includes('jazz cash'));
+    if (dupIdx >= 0) otherRows.splice(dupIdx, 1);
+    // Always show the ledger row (even if zero, so it's visible)
+    otherRows.unshift({ name: '💚 Salman Jazz Cash', net: jcBal, isJcLedger: true });
+  }
+
   const otherTotal = otherRows.reduce((s,r) => s + r.net, 0);
 
   // ── Grand total ────────────────────────────────────────────────
@@ -251,11 +262,17 @@ function buildCreditSection(lat) {
   const fmtAmt = v => (v < 0 ? '−' : '') + '₨' + _fc2(Math.abs(v));
   const amtColor = v => v > 0 ? 'var(--green)' : v < 0 ? 'var(--red)' : 'var(--muted)';
 
-  const detailRows = rows => rows.map(r => `
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border)">
-      <span style="font-size:11px;color:var(--t2)">${r.name}</span>
-      <span style="font-size:11px;font-family:var(--mono);font-weight:600;color:${amtColor(r.net)}">${fmtAmt(r.net)}</span>
-    </div>`).join('') || `<div style="font-size:11px;color:var(--muted);padding:4px 0">No data for ${my}</div>`;
+  const detailRows = rows => rows.map(r => {
+    const isJc = r.isJcLedger;
+    return `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);${isJc?'background:#f0fdf4;margin:0 -16px;padding:6px 16px;':''}">
+      <span style="font-size:11px;color:${isJc?'#166534':'var(--t2)'};font-weight:${isJc?'700':'400'}">
+        ${r.name}
+        ${isJc?`<span onclick="navigateTo('manager');setTimeout(()=>{switchMgrTab('jazzcash');},200)" style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:4px;margin-left:6px;cursor:pointer;font-weight:700">LIVE ↗</span>`:''}
+      </span>
+      <span style="font-size:11px;font-family:var(--mono);font-weight:${isJc?'800':'600'};color:${isJc?(r.net<0?'var(--red)':'#15803d'):amtColor(r.net)}">${fmtAmt(r.net)}</span>
+    </div>`;
+  }).join('') || `<div style="font-size:11px;color:var(--muted);padding:4px 0">No data for ${my}</div>`;
 
   const sectionCard = (icon, title, rows, total, accent) => `
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:14px 16px;box-shadow:var(--sh)">
