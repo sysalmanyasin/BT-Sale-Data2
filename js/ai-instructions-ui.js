@@ -422,64 +422,119 @@ function ainExportUI() {
 }
 
 // ── Import ────────────────────────────────────────────────────────────
+
 function ainImportUI() {
-  // Show an inner modal for import
   var wrap = document.getElementById('ain-io-wrap');
   if (wrap) wrap.remove();
-
   var div = document.createElement('div');
   div.id  = 'ain-io-wrap';
   div.style.cssText = 'position:fixed;inset:0;z-index:21000;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px';
-  div.innerHTML = '<div class="ain-io-modal">' +
-    '<div class="ain-io-modal-title">⬆ Import Instructions</div>' +
-    '<div style="font-size:12.5px;color:#64748b;margin-bottom:12px">' +
-      'Import a previously exported <code>.json</code> file. ' +
-      'Choose how to handle duplicates:' +
-    '</div>' +
-    '<div style="display:flex;gap:8px;margin-bottom:14px">' +
-      '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">' +
-        '<input type="radio" name="ain-import-mode" value="merge" checked> Merge (keep existing)' +
-      '</label>' +
-      '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">' +
-        '<input type="radio" name="ain-import-mode" value="replace"> Replace all' +
-      '</label>' +
-    '</div>' +
-    '<input type="file" id="ain-import-file" accept=".json" style="display:block;margin-bottom:14px">' +
-    '<div style="display:flex;gap:8px;justify-content:flex-end">' +
-      '<button class="ain-btn ain-btn-ghost" onclick="document.getElementById(\'ain-io-wrap\').remove()">Cancel</button>' +
-      '<button class="ain-btn ain-btn-primary" onclick="ainDoImport()">Import</button>' +
-    '</div>' +
-  '</div>';
+  div.innerHTML =
+    '<div class="ain-io-modal" style="max-width:480px;width:100%">' +
+      '<div class="ain-io-modal-title">\u2B06 Import Instructions</div>' +
+      '<div style="font-size:12.5px;color:#64748b;margin-bottom:12px">' +
+        'Import from a <code>.json</code> file <strong>or</strong> paste JSON directly (e.g. from the AI Instructions guide).' +
+      '</div>' +
+      // Merge / Replace radio
+      '<div style="display:flex;gap:12px;margin-bottom:14px">' +
+        '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">' +
+          '<input type="radio" name="ain-import-mode" value="merge" checked> Merge (keep existing)' +
+        '</label>' +
+        '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">' +
+          '<input type="radio" name="ain-import-mode" value="replace"> Replace all' +
+        '</label>' +
+      '</div>' +
+      // Tabs: File vs Paste
+      '<div style="display:flex;border-bottom:2px solid #e2e8f0;margin-bottom:14px;gap:0">' +
+        '<button id="ain-tab-file"  onclick="ainImportTabSwitch(\'file\')"  style="flex:1;padding:8px 0;font-size:12.5px;font-weight:700;background:none;border:none;border-bottom:3px solid #2563eb;margin-bottom:-2px;color:#2563eb;cursor:pointer;font-family:inherit">\uD83D\uDCC1 From File</button>' +
+        '<button id="ain-tab-paste" onclick="ainImportTabSwitch(\'paste\')" style="flex:1;padding:8px 0;font-size:12.5px;font-weight:600;background:none;border:none;border-bottom:3px solid transparent;margin-bottom:-2px;color:#94a3b8;cursor:pointer;font-family:inherit">\uD83D\uDCCB Paste JSON</button>' +
+      '</div>' +
+      // File tab
+      '<div id="ain-pane-file">' +
+        '<input type="file" id="ain-import-file" accept=".json" style="display:block;margin-bottom:14px;width:100%">' +
+      '</div>' +
+      // Paste tab (hidden by default)
+      '<div id="ain-pane-paste" style="display:none">' +
+        '<textarea id="ain-import-paste" rows="7" placeholder=\'Paste the JSON array here, e.g.:\n[{"category":"business_profile","text":"Currency = PKR","active":true},...]\'' +
+          ' style="width:100%;font-size:12px;font-family:monospace;border:1.5px solid #e2e8f0;border-radius:8px;padding:8px 10px;resize:vertical;outline:none;line-height:1.5"></textarea>' +
+        '<div style="font-size:11px;color:#94a3b8;margin-top:5px">Paste the JSON block from the BT-Sales-AI-Instructions.md guide, then click Import.</div>' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">' +
+        '<button class="ain-btn ain-btn-ghost" onclick="document.getElementById(\'ain-io-wrap\').remove()">Cancel</button>' +
+        '<button class="ain-btn ain-btn-primary" onclick="ainDoImport()">\u2B06 Import</button>' +
+      '</div>' +
+    '</div>';
   div.addEventListener('click', function(e){ if (e.target === div) div.remove(); });
   document.body.appendChild(div);
 }
 
-function ainDoImport() {
-  var fileInp = document.getElementById('ain-import-file');
-  if (!fileInp || !fileInp.files.length) {
-    if (typeof toast === 'function') toast('⚠ Please select a JSON file.', 'w'); return;
+function ainImportTabSwitch(tab) {
+  var filePane  = document.getElementById('ain-pane-file');
+  var pastePane = document.getElementById('ain-pane-paste');
+  var fileTab   = document.getElementById('ain-tab-file');
+  var pasteTab  = document.getElementById('ain-tab-paste');
+  if (!filePane) return;
+  if (tab === 'file') {
+    filePane.style.display  = 'block';
+    pastePane.style.display = 'none';
+    fileTab.style.color     = '#2563eb'; fileTab.style.borderBottomColor  = '#2563eb'; fileTab.style.fontWeight = '700';
+    pasteTab.style.color    = '#94a3b8'; pasteTab.style.borderBottomColor = 'transparent'; pasteTab.style.fontWeight = '600';
+  } else {
+    filePane.style.display  = 'none';
+    pastePane.style.display = 'block';
+    pasteTab.style.color    = '#2563eb'; pasteTab.style.borderBottomColor  = '#2563eb'; pasteTab.style.fontWeight = '700';
+    fileTab.style.color     = '#94a3b8'; fileTab.style.borderBottomColor  = 'transparent'; fileTab.style.fontWeight = '600';
+    setTimeout(function(){ var t = document.getElementById('ain-import-paste'); if(t) t.focus(); }, 50);
   }
+}
+
+function ainDoImport() {
   var modeRadio = document.querySelector('input[name="ain-import-mode"]:checked');
   var mode = modeRadio ? modeRadio.value : 'merge';
 
+  // Determine source: file or paste
+  var pastePane = document.getElementById('ain-pane-paste');
+  var isPaste   = pastePane && pastePane.style.display !== 'none';
+
+  if (isPaste) {
+    var textarea = document.getElementById('ain-import-paste');
+    var raw = textarea ? textarea.value.trim() : '';
+    if (!raw) { if (typeof toast === 'function') toast('\u26a0 Please paste JSON first.', 'w'); return; }
+    // Strip markdown fences if user copied the whole code block
+    raw = raw.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'').trim();
+    var result = AIInstructions.importJSON(raw, mode);
+    var wrap = document.getElementById('ain-io-wrap');
+    if (wrap) wrap.remove();
+    if (!result.ok) { if (typeof toast === 'function') toast('\u26a0 Import failed: ' + result.error, 'w'); return; }
+    var msg = mode === 'replace'
+      ? '\u2705 Imported ' + result.count + ' instructions (replaced existing).'
+      : '\u2705 Merged ' + result.count + ' new instruction' + (result.count !== 1 ? 's' : '') + '.';
+    if (typeof toast === 'function') toast(msg);
+    renderAiInstructionsPanel();
+    return;
+  }
+
+  // File source
+  var fileInp = document.getElementById('ain-import-file');
+  if (!fileInp || !fileInp.files.length) {
+    if (typeof toast === 'function') toast('\u26a0 Please select a JSON file.', 'w'); return;
+  }
   var reader = new FileReader();
   reader.onload = function(e) {
     var result = AIInstructions.importJSON(e.target.result, mode);
     var wrap = document.getElementById('ain-io-wrap');
     if (wrap) wrap.remove();
-    if (!result.ok) {
-      if (typeof toast === 'function') toast('⚠ Import failed: ' + result.error, 'w'); return;
-    }
+    if (!result.ok) { if (typeof toast === 'function') toast('\u26a0 Import failed: ' + result.error, 'w'); return; }
     var msg = mode === 'replace'
-      ? '✅ Imported ' + result.count + ' instructions (replaced existing).'
-      : '✅ Merged ' + result.count + ' new instruction' + (result.count !== 1 ? 's' : '') + '.';
+      ? '\u2705 Imported ' + result.count + ' instructions (replaced existing).'
+      : '\u2705 Merged ' + result.count + ' new instruction' + (result.count !== 1 ? 's' : '') + '.';
     if (typeof toast === 'function') toast(msg);
     renderAiInstructionsPanel();
   };
   reader.readAsText(fileInp.files[0]);
 }
 
-// ── Cloud sync ────────────────────────────────────────────────────────
+
 function ainSyncToCloud() {
   if (typeof toast === 'function') toast('☁ Syncing to cloud…');
   AIInstructions.syncToSupabase().then(function(r) {

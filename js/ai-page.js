@@ -760,19 +760,141 @@ async function aipHandleScanFile(file) {
   if (!file) return;
   var modal = document.getElementById('aip-scan-modal');
   if (!modal) return;
-  modal.innerHTML = '<div class="ai-modal-backdrop"><div class="ai-modal-card"><div style="text-align:center;padding:20px"><div class="ai-typing"><span></span><span></span><span></span></div><div style="margin-top:10px;font-size:13px;color:#64748b">Reading image\u2026</div></div></div></div>';
+  modal.innerHTML = '<div class="ai-modal-backdrop"><div class="ai-modal-card"><div style="text-align:center;padding:24px"><div class="ai-typing"><span></span><span></span><span></span></div><div style="margin-top:12px;font-size:13px;color:#64748b">Analysing image\u2026</div></div></div></div>';
   try {
     var reader = new FileReader();
     var dataUrl = await new Promise(function(res, rej) { reader.onload = function(e){ res(e.target.result); }; reader.onerror = rej; reader.readAsDataURL(file); });
-    var entries = await (typeof _callGroqVision === 'function' ? _callGroqVision(dataUrl, '') : Promise.reject(new Error('Vision not available')));
-    if (!entries.length) { modal.innerHTML = ''; if (typeof toast === 'function') toast('\u26a0 No entries found in image.', 'w'); return; }
-    _aipShowScanResults(entries, modal);
+    var result = await (typeof _callGroqVision === 'function' ? _callGroqVision(dataUrl, '') : Promise.reject(new Error('Vision not available')));
+    // Sale Report mode returns an object with _isSaleReport flag
+    if (result && result._isSaleReport) {
+      _aipShowSaleReportResults(result, modal);
+    } else {
+      // Generic entries array
+      var entries = Array.isArray(result) ? result : [];
+      if (!entries.length) { modal.innerHTML = ''; if (typeof toast === 'function') toast('\u26a0 No entries found in image.', 'w'); return; }
+      _aipShowScanResults(entries, modal);
+    }
   } catch(e) {
     modal.innerHTML = '';
     if (typeof toast === 'function') toast('\u26a0 Scan failed: ' + e.message, 'w');
   }
 }
 
+// ── SALE REPORT: structured preview + Daily Entry import ─────────────
+function _aipShowSaleReportResults(result, modal) {
+  var fields  = result.fields  || {};
+  var expenses = result.expenses || [];
+  var petty   = result.petty   || [];
+  var date    = result.date;  // YYYY-MM-DD or null
+
+  // Format date nicely for display
+  var dateLabel = date ? date : 'Today (date not detected)';
+  var fieldCount = Object.keys(fields).length;
+  var extraCount = expenses.length + petty.length;
+
+  // Build field rows display
+  var fieldNames = {
+    Cash_Sale:'Cash Sale', Cash_Returns:'Cash Returns', Meezan_Bank:'Meezan Bank',
+    Alfala_Bank:'Bank Alfalah', Bank_Al_Habib:'Bank Al Habib', HBL:'HBL', MCB:'MCB',
+    PSO:'PSO', PSO_Returns:'PSO Returns', NESPAK:'NESPAK', NESPAK_Returns:'NESPAK Returns',
+    PARCO:'PARCO', PARCO_Returns:'PARCO Returns', TEPA:'TEPA', TEPA_Returns:'TEPA Returns',
+    LDA:'LDA', LDA_Returns:'LDA Returns', Askari_Bank:'Askari', Askari_Bank_Returns:'Askari Returns',
+    F_Issue:'Free Issue', Customers:'Customers', FDPP:'FDPP POS', FDPP_Con:'FDPP Consumer',
+    Load_Sale:'Load Sale', Amount_Received:'Amount Received', Cash_to_Deposit:'Cash to Deposit',
+    COMP_SALE:'Comp Sale',
+  };
+
+  var rows = Object.keys(fields).map(function(fid) {
+    var val = fields[fid];
+    var label = fieldNames[fid] || fid.replace(/_/g,' ');
+    var isNeg = val < 0;
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #f1f5f9;font-size:12.5px">' +
+      '<span style="color:#475569">' + label + '</span>' +
+      '<span style="font-family:monospace;font-weight:700;color:' + (isNeg?'#dc2626':'#1e293b') + '">' + (isNeg?'-':'') + '\u20a8' + Math.abs(Math.round(val)).toLocaleString('en-PK') + '</span>' +
+    '</div>';
+  }).join('');
+
+  var extraRows = '';
+  if (expenses.length) extraRows += expenses.map(function(e){ return '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f1f5f9;font-size:12px"><span style="color:#d97706">\u26a0 ' + e.name + ' (Expense)</span><span style="font-family:monospace;font-weight:700">\u20a8' + Math.round(e.amount).toLocaleString('en-PK') + '</span></div>'; }).join('');
+  if (petty.length)    extraRows += petty.map(function(e){    return '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f1f5f9;font-size:12px"><span style="color:#16a34a">\u26a0 ' + e.name + ' (Petty Cash)</span><span style="font-family:monospace;font-weight:700">\u20a8' + Math.round(e.amount).toLocaleString('en-PK') + '</span></div>'; }).join('');
+
+  var safeResult = JSON.stringify(result).replace(/"/g,'&quot;');
+
+  modal.innerHTML =
+    '<div class="ai-modal-backdrop" onclick="if(event.target===this){document.getElementById(\'aip-scan-modal\').innerHTML=\'\'}">' +
+    '<div class="ai-modal-card" style="max-width:480px">' +
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">' +
+        '<span style="font-size:22px">📊</span>' +
+        '<div>' +
+          '<div class="ai-modal-title" style="margin-bottom:0">Sale Report Detected</div>' +
+          '<div style="font-size:11.5px;color:#64748b">Date: <strong>' + dateLabel + '</strong> &nbsp;·&nbsp; ' + fieldCount + ' fields extracted' + (extraCount?' + '+extraCount+' extras':'') + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="max-height:320px;overflow-y:auto;margin:12px 0;padding:0 2px">' + rows + extraRows + '</div>' +
+      (extraCount ? '<div style="font-size:11.5px;color:#d97706;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 10px;margin-bottom:10px">' +
+        '\u26a0 Till Short / Patty Cash detected — use the buttons below to also send those to Expenses or Petty Cash.' +
+      '</div>' : '') +
+      '<div style="font-size:12px;color:#64748b;margin-bottom:10px">Tap <strong>\u2192 Daily Entry</strong> to fill the entry form for ' + dateLabel + '. You can also save extras separately.</div>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">' +
+        '<button class="ai-chip-dim" onclick="document.getElementById(\'aip-scan-modal\').innerHTML=\'\'">Cancel</button>' +
+        (expenses.length ? '<button class="ai-chip" style="background:#fffbeb;color:#d97706;border:1px solid #fde68a" onclick="_aipImportSaleReportExtras(' + safeResult + ',\'expense\')">+ Expenses</button>' : '') +
+        (petty.length    ? '<button class="ai-chip" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0" onclick="_aipImportSaleReportExtras(' + safeResult + ',\'petty\')">+ Petty Cash</button>' : '') +
+        '<button class="ai-chip ai-chip-green" style="font-size:13px;padding:9px 18px" onclick="_aipImportSaleReport(' + safeResult + ')">\u2192 Daily Entry</button>' +
+      '</div>' +
+    '</div>' +
+    '</div>';
+}
+
+function _aipImportSaleReport(result) {
+  var modal = document.getElementById('aip-scan-modal');
+  if (modal) modal.innerHTML = '';
+  if (!result || !result.fields || !Object.keys(result.fields).length) {
+    if (typeof toast === 'function') toast('\u26a0 No fields to import.', 'w'); return;
+  }
+  // Convert YYYY-MM-DD to the app's date format (DD-Mon-YYYY)
+  var isoDate = result.date;
+  var entryDate = isoDate;
+  if (isoDate) {
+    var M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var parts = isoDate.split('-');
+    if (parts.length === 3) entryDate = parts[2]+'-'+M[parseInt(parts[1],10)-1]+'-'+parts[0];
+  }
+  if (!entryDate) {
+    var d = new Date();
+    var M2 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    entryDate = String(d.getDate()).padStart(2,'0')+'-'+M2[d.getMonth()]+'-'+d.getFullYear();
+  }
+  if (typeof _aiSaveNewDailyEntry === 'function') {
+    _aiSaveNewDailyEntry(entryDate, result.fields);
+    var count = Object.keys(result.fields).length;
+    if (typeof toast === 'function') toast('\u2705 ' + count + ' fields imported to Daily Entry for ' + entryDate + '.');
+    _aipHistory.push({ role:'bot', text:'\u2705 Sale report imported: <b>' + count + ' fields</b> filled in Daily Entry for <b>' + entryDate + '</b>.' +
+      (result.expenses.length||result.petty.length ? '<br><span style="color:#d97706">\u26a0 Also save Till Short / Patty Cash separately using the import buttons.</span>' : '') });
+    _aipRender();
+    setTimeout(_aipRenderInsights, 600);
+  } else {
+    if (typeof toast === 'function') toast('\u26a0 Daily entry function not available.', 'w');
+  }
+}
+
+function _aipImportSaleReportExtras(result, dest) {
+  var items = dest === 'expense' ? (result.expenses||[]) : (result.petty||[]);
+  if (!items.length) return;
+  var M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var d = new Date(); var today = String(d.getDate()).padStart(2,'0')+'-'+M[d.getMonth()]+'-'+d.getFullYear();
+  items.forEach(function(e) {
+    if (dest === 'expense' && typeof _aiAddExpenseRow === 'function') {
+      _aiAddExpenseRow(today, e.description||e.name||'Sale report expense', 0,0,0,0, Math.round(e.amount), 0);
+    } else if (dest === 'petty' && typeof _aiAddPettyItem === 'function') {
+      _aiAddPettyItem(e.description||e.name||'Sale report petty', Math.round(e.amount), '');
+    }
+  });
+  if (typeof toast === 'function') toast('\u2705 ' + items.length + ' item(s) added to ' + dest + '.');
+  _aipHistory.push({ role:'bot', text:'\u2705 <b>'+items.length+'</b> extra item(s) saved to <b>'+dest+'</b> from sale report.' });
+  _aipRender();
+}
+
+// ── GENERIC SCAN: original entries display ────────────────────────────
 function _aipShowScanResults(entries, modal) {
   var rows = entries.map(function(e, i) {
     var typeColor = { credit:'#eff6ff', expense:'#fef3c7', petty:'#f0fdf4', cash:'#f5f3ff', other:'#f8fafc' };
@@ -794,9 +916,9 @@ function _aipShowScanResults(entries, modal) {
       '<div style="font-size:12px;color:#64748b;margin-bottom:12px">Select entries to import, then choose a destination.</div>' +
       '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">' +
         '<button class="ai-chip-dim" onclick="document.getElementById(\'aip-scan-modal\').innerHTML=\'\'">Cancel</button>' +
-        '<button class="ai-chip ai-chip-green" onclick="_aipImportScanEntries(' + JSON.stringify(entries).replace(/"/g,'&quot;') + ',\'credit\')">→ Credit Ledger</button>' +
-        '<button class="ai-chip ai-chip-green" onclick="_aipImportScanEntries(' + JSON.stringify(entries).replace(/"/g,'&quot;') + ',\'expense\')">→ Expenses</button>' +
-        '<button class="ai-chip ai-chip-green" onclick="_aipImportScanEntries(' + JSON.stringify(entries).replace(/"/g,'&quot;') + ',\'petty\')">→ Petty Cash</button>' +
+        '<button class="ai-chip ai-chip-green" onclick="_aipImportScanEntries(' + JSON.stringify(entries).replace(/"/g,'&quot;') + ',\'credit\')">&#8594; Credit Ledger</button>' +
+        '<button class="ai-chip ai-chip-green" onclick="_aipImportScanEntries(' + JSON.stringify(entries).replace(/"/g,'&quot;') + ',\'expense\')">&#8594; Expenses</button>' +
+        '<button class="ai-chip ai-chip-green" onclick="_aipImportScanEntries(' + JSON.stringify(entries).replace(/"/g,'&quot;') + ',\'petty\')">&#8594; Petty Cash</button>' +
       '</div>' +
     '</div>' +
   '</div>';
@@ -807,27 +929,24 @@ function _aipImportScanEntries(entries, dest) {
   var checked = entries.filter(function(e, i) { var cb = document.getElementById('sc-r-'+i); return cb && cb.checked; });
   if (!checked.length) { if (typeof toast === 'function') toast('\u26a0 No entries selected.', 'w'); return; }
   if (modal) modal.innerHTML = '';
-
   var M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var d = new Date(); var today = String(d.getDate()).padStart(2,'0')+'-'+M[d.getMonth()]+'-'+d.getFullYear();
-
   checked.forEach(function(e) {
     if (dest === 'credit' && typeof _aiAddCreditEntry === 'function') {
       _aiAddCreditEntry(e.name || 'Unknown', e.amount, e.description, today);
     } else if (dest === 'expense' && typeof _aiAddExpenseRow === 'function') {
-      _aiAddExpenseRow(today, e.description || e.name || 'Scanned expense', 0, 0, 0, 0, Math.round(e.amount), 0);
+      _aiAddExpenseRow(today, e.description || e.name || 'Scanned expense', 0,0,0,0, Math.round(e.amount), 0);
     } else if (dest === 'petty' && typeof _aiAddPettyItem === 'function') {
       _aiAddPettyItem(e.description || e.name || 'Scanned item', Math.round(e.amount), '');
     }
   });
-
   if (typeof toast === 'function') toast('\u2705 ' + checked.length + ' entr' + (checked.length===1?'y':'ies') + ' imported to ' + dest + '.');
-  _aipHistory.push({ role: 'bot', text: '\u2705 <b>' + checked.length + '</b> scanned entr' + (checked.length===1?'y':'ies') + ' imported to <b>' + dest + '</b>.' });
+  _aipHistory.push({ role:'bot', text:'\u2705 <b>' + checked.length + '</b> scanned entr' + (checked.length===1?'y':'ies') + ' imported to <b>' + dest + '</b>.' });
   _aipRender();
   setTimeout(_aipRenderInsights, 500);
 }
 
-// ══════════════════════════════════════════════════════════════════════
+
 // AI PAGE NAV RAIL — aipNavSelect + attach picker
 // ══════════════════════════════════════════════════════════════════════
 

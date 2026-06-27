@@ -831,66 +831,175 @@ async function _callGroq(question) {
 
 // ══════════════════════════════════════════════════════════════════════
 // GROQ VISION CALLER
+
 // ══════════════════════════════════════════════════════════════════════
+// GROQ VISION CALLER — dual-mode: Sale Report + Generic
+// ══════════════════════════════════════════════════════════════════════
+// ── Field-name → entry form ID mapping for daily sale reports ──────────
+var _SALE_REPORT_FIELD_MAP = {
+  'cash sale': 'Cash_Sale',
+  'cash sale (sales only)': 'Cash_Sale',
+  'cash returns': 'Cash_Returns',
+  'cash returns (returns only)': 'Cash_Returns',
+  'meezan bank': 'Meezan_Bank',
+  'meezan': 'Meezan_Bank',
+  'bank alfalah': 'Alfala_Bank',
+  'alfalah': 'Alfala_Bank',
+  'bank al habib': 'Bank_Al_Habib',
+  'al habib': 'Bank_Al_Habib',
+  'hbl': 'HBL',
+  'mcb': 'MCB',
+  'pso': 'PSO',
+  'pso (sales only)': 'PSO',
+  'nespak': 'NESPAK',
+  'nespak (sales only)': 'NESPAK',
+  'parco': 'PARCO',
+  'parco (sales only)': 'PARCO',
+  'askari': 'Askari_Bank',
+  'askari bank': 'Askari_Bank',
+  'lda': 'LDA',
+  'lda (sales only)': 'LDA',
+  'tepa': 'TEPA',
+  'tepa (sales only)': 'TEPA',
+  'free issue': 'F_Issue',
+  'f/issue': 'F_Issue',
+  'credit return pso': 'PSO_Returns',
+  'credit return nespak': 'NESPAK_Returns',
+  'credit return parco': 'PARCO_Returns',
+  'credit return tepa': 'TEPA_Returns',
+  'credit return lda': 'LDA_Returns',
+  'askari returns': 'Askari_Bank_Returns',
+  'customers': 'Customers',
+  'fdpp pos sale': 'FDPP',
+  'fdpp pos': 'FDPP',
+  'fdpp': 'FDPP',
+  'fdpp consumer pos sale': 'FDPP_Con',
+  'fdpp consumer pos': 'FDPP_Con',
+  'fdpp consumer': 'FDPP_Con',
+  'fdpp con': 'FDPP_Con',
+  'load sale': 'Load_Sale',
+  'till short': '_till_short',
+  'patty cash': '_patty_cash',
+  'petty cash': '_patty_cash',
+  'amount received': 'Amount_Received',
+  'cash to deposit': 'Cash_to_Deposit',
+  'cash to be deposited': 'Cash_to_Deposit',
+  'comp sale': 'COMP_SALE',
+};
+
+var _SALE_REPORT_SKIP = { 'net cash sale': 1, 'net credit sale': 1, 'grand total': 1, 'total': 1 };
+
 async function _callGroqVision(base64DataUrl, extraNote) {
   const apiKey = getAiSettings().apiKey;
-  if (!apiKey) throw new Error('No Groq API key set. Tap the ⚙ gear in the AI page to add yours.');
+  if (!apiKey) throw new Error('No Groq API key set. Tap the gear in the AI page to add yours.');
 
-  const sysPrompt = [
-    'You read photos of handwritten/printed closing sheets, credit registers, receipts, or WhatsApp chat screenshots',
-    'for a petrol station / retail business, and extract every distinct entry you can find.',
-    '',
-    'Return ONLY a JSON object, no markdown, no commentary, in this exact shape:',
-    '{"entries":[{"name":"person or client name (or empty)","amount":1234,"description":"short description / item / context","type":"credit|expense|petty|cash|other"}]}',
-    '',
-    '• "amount" must be a plain number (no commas, no currency symbol).',
-    '• "type":"credit" for money owed by/lent to a person or client.',
-    '• "type":"expense" for money spent (electricity, repairs, salary, etc).',
-    '• "type":"petty" for small day-to-day petty-cash items.',
-    '• "type":"cash" for a plain cash/sale figure with no clear person/category.',
-    '• If unsure, use "other".',
-    '• Skip totals/subtotal lines — only list individual entries.',
-    '• If a line has no amount, skip it.',
-    extraNote ? ('• Extra context from user: ' + extraNote) : null,
-  ].filter(Boolean).join('\n');
-
-  const res = await fetch(_GROQ_ENDPOINT, {
+  // STEP 1: detect report type
+  const detectRes = await fetch(_GROQ_ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
     body: JSON.stringify({
       model: _GROQ_VISION_MODEL,
-      messages: [
-        { role: 'system', content: sysPrompt },
-        { role: 'user', content: [
-            { type: 'text', text: 'Extract all entries from this image as JSON.' },
-            { type: 'image_url', image_url: { url: base64DataUrl } },
-          ] },
-      ],
-      max_tokens: 1500,
-      temperature: 0.1,
+      messages: [{ role: 'user', content: [
+        { type: 'text', text: 'Is this a structured Bahria Town Sale Report with rows like Cash Sale, Net Cash Sale, Grand Total, credit clients? Reply ONLY: SALE_REPORT or OTHER.' },
+        { type: 'image_url', image_url: { url: base64DataUrl } },
+      ]}],
+      max_tokens: 10, temperature: 0,
     }),
   });
-  if (!res.ok) {
-    const e = await res.json().catch(() => ({}));
-    throw new Error('Groq ' + res.status + ': ' + ((e.error && e.error.message) || res.statusText));
+  if (!detectRes.ok) { const e = await detectRes.json().catch(()=>({})); throw new Error('Groq ' + detectRes.status + ': ' + ((e.error && e.error.message) || detectRes.statusText)); }
+  const detectAnswer = ((await detectRes.json()).choices?.[0]?.message?.content || '').trim().toUpperCase();
+  const isSaleReport = detectAnswer.includes('SALE_REPORT');
+
+  // STEP 2a: SALE REPORT — extract structured rows
+  if (isSaleReport) {
+    const saleRes = await fetch(_GROQ_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      body: JSON.stringify({
+        model: _GROQ_VISION_MODEL,
+        messages: [
+          { role: 'system', content: [
+            'Extract every labelled row from this daily sale report.',
+            'Return ONLY JSON, no markdown:',
+            '{"report_type":"daily_sale","date":"YYYY-MM-DD","rows":[{"label":"exact label text","amount":12345}]}',
+            '"date": ISO date shown on report, or null if not visible.',
+            '"label": exact text from left column.',
+            '"amount": plain number, negative for returns. Include rows with 0.',
+            'Do NOT include Net Cash Sale, Net Credit Sale, Grand Total — those are calculated.',
+            'DO include: Customers, FDPP, Till Short, Patty Cash, all bank rows, all credit client rows.',
+            extraNote ? ('Extra context: ' + extraNote) : '',
+          ].filter(Boolean).join('\n') },
+          { role: 'user', content: [
+            { type: 'text', text: 'Extract all rows as JSON.' },
+            { type: 'image_url', image_url: { url: base64DataUrl } },
+          ]},
+        ],
+        max_tokens: 2000, temperature: 0.1,
+      }),
+    });
+    if (!saleRes.ok) { const e = await saleRes.json().catch(()=>({})); throw new Error('Groq ' + saleRes.status + ': ' + ((e.error && e.error.message) || saleRes.statusText)); }
+    const raw = (await saleRes.json()).choices?.[0]?.message?.content;
+    if (!raw) throw new Error('Groq returned an empty response.');
+    let parsed;
+    try { parsed = JSON.parse(raw.trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'')); }
+    catch(_) { throw new Error('Could not parse sale report. Try a clearer photo.'); }
+
+    const rows = Array.isArray(parsed.rows) ? parsed.rows : [];
+    const fields = {}, expenses = [], petty = [];
+
+    rows.forEach(function(row) {
+      var lk = (row.label || '').toLowerCase().trim();
+      if (_SALE_REPORT_SKIP[lk]) return;
+      var amount = parseFloat(String(row.amount||'0').replace(/,/g,'')) || 0;
+      var fid = _SALE_REPORT_FIELD_MAP[lk];
+      if (!fid) {
+        var keys = Object.keys(_SALE_REPORT_FIELD_MAP);
+        for (var k=0; k<keys.length; k++) {
+          if (lk.indexOf(keys[k])!==-1 || keys[k].indexOf(lk)!==-1) { fid=_SALE_REPORT_FIELD_MAP[keys[k]]; break; }
+        }
+      }
+      if (fid === '_till_short') {
+        if (amount) expenses.push({ name:'Till Short', amount:Math.abs(amount), description:'Till Short from sale report', type:'expense' });
+      } else if (fid === '_patty_cash') {
+        if (amount) petty.push({ name:'Patty Cash', amount:Math.abs(amount), description:'Patty Cash from sale report', type:'petty' });
+      } else if (fid) {
+        fields[fid] = amount;
+      }
+    });
+
+    return { _isSaleReport:true, date:(parsed.date && parsed.date!=='null' ? parsed.date : null), fields:fields, expenses:expenses, petty:petty, rawRows:rows };
   }
-  const data = await res.json();
-  const raw  = data.choices?.[0]?.message?.content;
-  if (!raw) throw new Error('Groq returned an empty response.');
-  const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-  let parsed;
-  try { parsed = JSON.parse(cleaned); } catch (_) { throw new Error('Could not parse AI response. Try a clearer photo.'); }
-  const entries = Array.isArray(parsed.entries) ? parsed.entries : [];
-  return entries
-    .map(function (e) {
-      return {
-        name: (e.name || '').toString().trim(),
-        amount: parseFloat(String(e.amount || '0').replace(/,/g, '')) || 0,
-        description: (e.description || '').toString().trim(),
-        type: ['credit','expense','petty','cash','other'].includes(e.type) ? e.type : 'other',
-      };
-    })
-    .filter(function (e) { return e.amount > 0; });
+
+  // STEP 2b: GENERIC — receipts, credit registers, etc.
+  const sysPrompt = [
+    'You read photos of handwritten/printed closing sheets, credit registers, receipts, or WhatsApp chat screenshots for a petrol station / retail business, and extract every distinct entry you can find.',
+    'Return ONLY a JSON object, no markdown, no commentary, in this exact shape:',
+    '{"entries":[{"name":"person or client name (or empty)","amount":1234,"description":"short description / item / context","type":"credit|expense|petty|cash|other"}]}',
+    '* "amount" must be a plain number (no commas, no currency symbol).',
+    '* "type":"credit" for money owed by/lent to a person or client.',
+    '* "type":"expense" for money spent (electricity, repairs, salary, etc).',
+    '* "type":"petty" for small day-to-day petty-cash items.',
+    '* "type":"cash" for a plain cash/sale figure with no clear person/category.',
+    '* If unsure, use "other". Skip totals/subtotal lines. Skip lines with no amount.',
+    extraNote ? ('* Extra context: ' + extraNote) : null,
+  ].filter(Boolean).join('\n');
+
+  const res = await fetch(_GROQ_ENDPOINT, {
+    method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
+    body: JSON.stringify({ model:_GROQ_VISION_MODEL, messages:[
+      { role:'system', content:sysPrompt },
+      { role:'user', content:[{ type:'text',text:'Extract all entries from this image as JSON.' },{ type:'image_url',image_url:{url:base64DataUrl} }] },
+    ], max_tokens:1500, temperature:0.1 }),
+  });
+  if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error('Groq ' + res.status + ': ' + ((e.error && e.error.message) || res.statusText)); }
+  const raw2 = (await res.json()).choices?.[0]?.message?.content;
+  if (!raw2) throw new Error('Groq returned an empty response.');
+  let parsed2;
+  try { parsed2 = JSON.parse(raw2.trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'')); }
+  catch(_) { throw new Error('Could not parse AI response. Try a clearer photo.'); }
+  return (Array.isArray(parsed2.entries)?parsed2.entries:[])
+    .map(function(e){ return { name:(e.name||'').toString().trim(), amount:parseFloat(String(e.amount||'0').replace(/,/g,''))||0, description:(e.description||'').toString().trim(), type:['credit','expense','petty','cash','other'].includes(e.type)?e.type:'other' }; })
+    .filter(function(e){ return e.amount>0; });
 }
 
 function _parseLlmResponse(raw) {
