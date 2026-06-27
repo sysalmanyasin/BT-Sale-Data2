@@ -909,6 +909,7 @@ if ('serviceWorker' in navigator) {
         <button class="btn mgr-tab" data-mtab="staff" onclick="switchMgrTab('staff')" style="background:var(--green,#059669);color:#fff">👤 Staff Registry</button>
         <button class="btn mgr-tab" data-mtab="credit" onclick="switchMgrTab('credit')">👥 A. Staff Credits</button>
         <button class="btn mgr-tab" data-mtab="expense" onclick="switchMgrTab('expense')">🧾 B. Patty/Expenses</button>
+        <button class="btn mgr-tab" data-mtab="jazzcash" onclick="switchMgrTab('jazzcash')" style="background:#16a34a;color:#fff;font-weight:700">💚 Jazz Cash</button>
         <button class="btn mgr-tab" data-mtab="custom" onclick="switchMgrTab('custom')" id="mgr-tab-custom" style="background:var(--s2);border:2px dashed var(--border);color:var(--muted)">＋ C. New Sections</button>
       </div>
     </div>
@@ -945,6 +946,13 @@ if ('serviceWorker' in navigator) {
     <div id="staff-list"></div>
     <div style="margin-top:14px;padding:12px 16px;background:var(--s2);border-radius:8px;font-size:11px;color:var(--muted);line-height:1.7">
       💡 <strong>How it works:</strong> Saving the staff list here automatically updates Salary Sheet, Generic Working, and Staff Credit for the current month. Inactive employees are hidden from new months but their historical data stays intact. Changes sync to Supabase automatically.
+    </div>
+  </div>
+
+  <!-- ═══ JAZZ CASH LEDGER ═══ -->
+  <div id="mgr-jazzcash" class="mgr-section" style="display:none">
+    <div id="jc-container">
+      <div style="text-align:center;padding:40px 20px;color:var(--muted)">Loading Jazz Cash ledger…</div>
     </div>
   </div>
 
@@ -1250,6 +1258,9 @@ if ('serviceWorker' in navigator) {
 
 <!-- 13. Custom spreadsheet sections (manager add-on) -->
 <script src="js/custom-sections.js"></script>
+
+<!-- 13b. Jazz Cash Ledger — AI-powered daily ledger -->
+<script src="js/jazz-cash.js"></script>
 
 <!-- 14. Field manager modal -->
 <script src="js/fields.js"></script>
