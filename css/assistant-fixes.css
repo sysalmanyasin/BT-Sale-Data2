@@ -10,8 +10,11 @@
   padding: 0 !important;
   height: calc(100vh - 56px); /* exact nav height */
   overflow: hidden;
-  display: flex;
+  display: none;
   flex-direction: column;
+}
+#page-ai.on {
+  display: flex;
 }
 
 .aip-layout {
@@ -90,8 +93,11 @@
   #page-ai {
     /* Recalculate: 56px top nav + bnav 78px + safe area */
     height: calc(100dvh - 56px);  /* dvh = dynamic viewport height (no address bar) */
-    display: flex;
+    display: none;
     flex-direction: column;
+  }
+  #page-ai.on {
+    display: flex;
   }
 
   /* Mobile nav scrolls at top, fixed height */
