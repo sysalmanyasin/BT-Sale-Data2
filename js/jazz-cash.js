@@ -6,11 +6,11 @@
 const JC_KEY     = 'bt_jazzcash_v2';
 const JC_SHIFTS  = ['Morning', 'Evening', 'Night', 'Both', 'Off'];
 const JC_TYPES   = [
-  { id:'credit',     label:'Received (+)',   sign:+1, color:'var(--green)',  icon:'⬆' },
-  { id:'debit',      label:'Paid Out (−)',   sign:-1, color:'var(--red)',    icon:'⬇' },
-  { id:'withdrawal', label:'Withdrawal (−)', sign:-1, color:'var(--amber)',  icon:'💸' },
-  { id:'commission', label:'Commission (+)', sign:+1, color:'var(--purple)', icon:'🏅' },
-  { id:'transfer',   label:'Transfer (−)',   sign:-1, color:'var(--muted)',  icon:'↔'  },
+  { id:'credit',     label:'Received (+)',          sign:+1, color:'var(--green)',  icon:'⬆' },
+  { id:'debit',      label:'Patty Incentive (−)',   sign:-1, color:'var(--red)',    icon:'⬇' },
+  { id:'withdrawal', label:'Generic Incentive (−)', sign:-1, color:'var(--amber)',  icon:'💸' },
+  { id:'commission', label:'Strips / Adjustments (−)', sign:-1, color:'var(--purple)', icon:'🏅' },
+  { id:'transfer',   label:'Transfer (−)',          sign:-1, color:'var(--muted)',  icon:'↔'  },
 ];
 
 // ─── TALLY constants ─────────────────────────────────────────────
@@ -159,7 +159,7 @@ function _renderLedger() {
     <!-- Balance Card -->
     <div style="background:linear-gradient(135deg,#16a34a 0%,#15803d 100%);border-radius:16px;padding:20px 20px 16px;margin-bottom:16px;color:#fff;position:relative;overflow:hidden">
       <div style="position:absolute;right:-20px;top:-20px;width:100px;height:100px;background:rgba(255,255,255,.08);border-radius:50%"></div>
-      <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.8;margin-bottom:4px">💚 Jazz Cash — Ledger Balance</div>
+      <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.8;margin-bottom:4px">📒 Jazz Cash — Ledger Balance</div>
       <div style="font-size:36px;font-weight:800;font-family:var(--mono);letter-spacing:-1px">${currentBal<0?'−':''}₨${_jcFmt(currentBal)}</div>
       <div style="display:flex;gap:20px;margin-top:12px;font-size:12px;opacity:.9">
         <div><span style="opacity:.7">Today</span><br><span style="font-weight:700;font-family:var(--mono)">${todayNet>=0?'+':'−'}₨${_jcFmt(todayNet)}</span></div>
@@ -175,26 +175,6 @@ function _renderLedger() {
       <div class="kpi" style="text-align:center"><div class="klbl">In (+)</div><div class="kval" style="color:var(--green);font-size:15px">₨${_jcFmt(monthCredits)}</div></div>
       <div class="kpi" style="text-align:center"><div class="klbl">Out (−)</div><div class="kval" style="color:var(--red);font-size:15px">₨${_jcFmt(monthDebits)}</div></div>
       <div class="kpi" style="text-align:center"><div class="klbl">Net</div><div class="kval" style="color:${(monthCredits-monthDebits)>=0?'var(--green)':'var(--red)'};font-size:15px">${(monthCredits-monthDebits)>=0?'+':'−'}₨${_jcFmt(Math.abs(monthCredits-monthDebits))}</div></div>
-    </div>
-
-    <!-- AI Command Bar -->
-    <div style="background:linear-gradient(135deg,#eff6ff,#f0fdf4);border:1.5px solid #bfdbfe;border-radius:12px;padding:14px 16px;margin-bottom:16px">
-      <div style="font-size:11px;font-weight:700;color:var(--accent);margin-bottom:8px;display:flex;align-items:center;gap:6px">
-        🤖 AI Command <span style="font-weight:400;color:var(--muted)">— type naturally</span>
-        <span id="jc-ai-spinner" style="display:none;margin-left:4px">⏳</span>
-      </div>
-      <div style="display:flex;gap:8px">
-        <input id="jc-ai-inp" type="text" placeholder='e.g. "Add 3500 morning shift today" or "Paid 1200 evening 24 June"'
-          style="flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:#fff;color:var(--text);outline:none;font-family:var(--sans)"
-          onkeydown="if(event.key==='Enter')jcAiCommand()">
-        <button onclick="jcAiCommand()" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer">Ask AI</button>
-      </div>
-      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
-        ${['Add 5000 morning today','Paid 2000 HO evening','Commission 500 morning','Withdrawal 10000 today'].map(c=>
-          `<button onclick="document.getElementById('jc-ai-inp').value='${c}'" style="background:#fff;border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;color:var(--t2)">${c}</button>`
-        ).join('')}
-      </div>
-      <div id="jc-ai-result" style="display:none;margin-top:10px;padding:10px 12px;background:#fff;border-radius:8px;border:1px solid var(--border);font-size:12px;line-height:1.6"></div>
     </div>
 
     <!-- Quick Add Form -->
@@ -428,8 +408,8 @@ function _renderTally() {
   _jcTallyData=_tallyLoad();
   if (!_jcTallyDate) _jcTallyDate=_jcTodayStr();
 
-  // Pull live Jazz Cash ledger balance for the locked row
-  const jcBal=_jcCurrentBalance();
+  // Pull live Jazz Cash ledger balance for the locked row (sign reversed: negative ledger = positive tally)
+  const jcBal=0-_jcCurrentBalance();
 
   // Load snapshot for selected date if exists, else use accounts template
   const snap=_jcTallyData.snapshots?.find(s=>s.date===_jcTallyDate);
@@ -541,7 +521,7 @@ function _tallyAccountsHtml(accounts,jcBal) {
   return accounts.map((a,i)=>`
     <div class="tally-acc-row" data-acid="${a.id}" style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);${a.id==='jc_balance'?'background:#f0fdf4':''}">
       <div style="font-size:13px;font-weight:${a.id==='jc_balance'?'700':'500'};color:${a.id==='jc_balance'?'var(--green)':'var(--text)'}">
-        ${a.id==='jc_balance'?'💚 ':''}${a.name}
+        ${a.id==='jc_balance'?'📒 ':''}${a.name}
         ${a.id==='jc_balance'?'<span style="font-size:10px;font-weight:400;color:var(--muted);margin-left:4px">(auto from ledger)</span>':''}
       </div>
       <input type="number" value="${a.id==='jc_balance'?jcBal:(a.amount||'')}"
