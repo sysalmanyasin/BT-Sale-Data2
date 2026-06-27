@@ -35,6 +35,7 @@ const APP_SHELL = [
   './js/auth.js',
   './js/storage.js',
   './js/ui.js',
+  './js/jazz-cash.js',
   './js/supabase.js',
   './js/targets.js',
   './js/dashboard.js',
