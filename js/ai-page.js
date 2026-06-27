@@ -10,6 +10,21 @@ var _aipMicRec    = null;
 
 // ── Entry point called by showPage('ai') ─────────────────────────────
 function loadAiPage() {
+  // ── Auto-load data if arrays are empty ─────────────────────────
+  var _hasData = (typeof window.MONTHLY !== 'undefined' && window.MONTHLY && window.MONTHLY.length > 0);
+  if (!_hasData && typeof pullFromSupabase === 'function') {
+    var _sb = document.getElementById('aip-sidebar');
+    if (_sb) _sb.innerHTML = '<div class="aip-no-data"><div style="font-size:36px;margin-bottom:10px">\u23F3</div><div style="font-weight:700;font-size:14px;color:#1e293b;margin-bottom:6px">Loading your data\u2026</div><div style="color:#64748b;font-size:12px">Pulling from Supabase</div></div>';
+    pullFromSupabase(true).then(function() {
+      setTimeout(function() {
+        _aipRenderInsights();
+        if (window.MONTHLY && window.MONTHLY.length > 0) {
+          _aipHistory.push({ role: 'bot', text: '\u2705 <b>Data loaded!</b> ' + window.MONTHLY.length + ' months \u00b7 ' + window.DAILY.length + ' daily records ready.<br>Ask me anything about your sales.' });
+          _aipRender();
+        }
+      }, 700);
+    }).catch(function() { _aipRenderInsights(); });
+  }
   _aipRenderChips();
   _aipRenderInsights();
   var badge = document.getElementById('aip-live-badge');
@@ -23,13 +38,14 @@ function loadAiPage() {
     _aipHistory.push({
       role: 'bot',
       text: hasKey ?
-        ('\uD83D\uDC4B <b>Hello!</b> I am your Groq AI assistant, fully loaded with your sales data.' +
-            '<br><br>I know everything about your petrol station:' +
-            '<br>\u2022 Every day\u2019s sale, cash, credit, load sale, DIFF' +
-            '<br>\u2022 Monthly totals and year-over-year trends' +
-            '<br>\u2022 Staff, credits, expenses, petty cash' +
-            '<br>\u2022 Jazz Cash and custom sections in Manager' +
-            '<br><br><b>Just ask me anything\u2014 in English, Urdu, or both.</b>') :
+        ('\uD83D\uDC4B <b>Hello!</b> I\'m your full personal assistant for Bahria Town Sales IC.' +
+            '<br><br>I can <b>read, write, and act</b> on everything in the app:' +
+            '<br>\u2022 \uD83D\uDCCA Daily entries, edits, analytics' +
+            '<br>\u2022 \uD83D\uDC65 Staff \u2014 add, edit, activate/deactivate' +
+            '<br>\u2022 \uD83D\uDCB0 Salary, Generic, Expense, Credit, Petty Cash' +
+            '<br>\u2022 \uD83C\uDFAF Targets, Custom Sections, Sync &amp; Backup' +
+            '<br><br><b>Just tell me what to do \u2014 in English, Urdu, or both.</b>' +
+            '<br><span style="font-size:11px;color:var(--muted)">\u26a0\ufe0f Destructive actions (delete, overwrite) will always ask for confirmation first.</span>') :
         ('\u26a0\ufe0f <b>No API key set.</b> Tap the \u2699\ufe0f gear icon above to add your free Groq API key ' +
             '(get one at <b>console.groq.com/keys</b>) before chatting or scanning images.'),
     });
@@ -244,7 +260,16 @@ function _aipRenderInsights() {
 function _aipRenderChips() {
   var chips = document.getElementById('aip-chips');
   if (!chips) return;
-  var opts = ['Jazz Cash 5000', 'Credit 2500 for Kashif', 'Highest sale day?', 'Yearly totals', 'Average daily?', 'Open June report'];
+  var opts = [
+    'Jazz Cash 5000',
+    'Credit 2500 for Kashif',
+    'Add expense fuel 800',
+    'Set target June 2026 50 lakh',
+    'Add staff Muhammad Usman',
+    'Highest sale day?',
+    'Compare last two months',
+    'Push to Supabase',
+  ];
   chips.innerHTML = opts.map(function(o) {
     return '<button class="ai-chip" onclick="aiPageAsk(\'' + o.replace(/'/g, "\\'") + '\')">' + o + '</button>';
   }).join('');
@@ -275,10 +300,13 @@ async function aiPageSend() {
 
     var displayText = result.text;
     if (result.intent) {
-      var label = _aipIntentLabel(result.intent);
+      var label      = _aipIntentLabel(result.intent);
+      var isDestruct = !!result.requiresConfirm;
+      var btnClass   = isDestruct ? 'ai-chip ai-chip-red' : 'ai-chip ai-chip-green';
+      var btnLabel   = isDestruct ? ('⚠️ ' + label) : ('✅ ' + label);
       displayText += '<div class="ai-intent-row">' +
-        '<button class="ai-chip ai-chip-green" onclick="aiBridgeExecuteIntent(JSON.parse(this.dataset.i));this.parentNode.remove()" data-i="' + JSON.stringify(result.intent).replace(/"/g,'&quot;') + '">' + label + '</button>' +
-        '<button class="ai-chip-dim" onclick="this.parentNode.remove()">No thanks</button>' +
+        '<button class="' + btnClass + '" onclick="aiBridgeExecuteIntent(JSON.parse(this.dataset.i));this.parentNode.remove()" data-i="' + JSON.stringify(result.intent).replace(/"/g,'&quot;') + '">' + btnLabel + '</button>' +
+        '<button class="ai-chip-dim" onclick="this.parentNode.remove()">Cancel</button>' +
         '</div>';
     }
     _aipHistory.push({ role: 'bot', text: displayText });
@@ -322,12 +350,80 @@ function _aipEsc(s) {
 
 function _aipIntentLabel(intent) {
   var labels = {
-    showPage:'→ Open page', openDayModal:'📋 Open day report',
-    openMonthModal:'📋 Open month report', printMonthReport:'🖨️ Print',
-    printYearlyReport:'🖨️ Print year', switchMgrTab:'→ Switch tab',
-    addCredit:'✅ Yes, add credit', addExpense:'✅ Yes, add expense',
-    addPettyItem:'✅ Yes, add petty', setDailyField:'✅ Yes, fill field',
-    addCustomSectionRow:'✅ Yes, add to section',
+    // Navigation
+    showPage:              'Open page',
+    switchMgrTab:          'Switch tab',
+    openStaffCard:         'Open staff card',
+    openFieldManager:      'Open field manager',
+    switchMonth:           'Switch month',
+    // Reports
+    openDayModal:          'Open day report',
+    openMonthModal:        'Open month report',
+    printMonthReport:      'Print month',
+    printYearlyReport:     'Print year',
+    printMgrReport:        'Print report',
+    printDayReport:        'Print day',
+    printIncentiveReport:  'Print incentive',
+    // Daily entry
+    setDailyField:         'Fill field',
+    saveNewDailyEntry:     'Save daily entry',
+    editDailyEntry:        'Edit entry',
+    deleteDailyEntry:      'DELETE entry',
+    clearEntryForm:        'Clear form',
+    // Staff
+    addStaff:              'Add staff',
+    editStaffField:        'Edit staff field',
+    deactivateStaff:       'DEACTIVATE staff',
+    reactivateStaff:       'Reactivate staff',
+    deleteStaff:           'DELETE staff',
+    // Salary
+    addSalaryRow:          'Add salary row',
+    editSalaryRow:         'Edit salary row',
+    setSalaryField:        'Set salary field',
+    deleteSalaryRow:       'DELETE salary row',
+    autoFillSalary:        'Auto-fill salary',
+    // Generic
+    addGenericRow:         'Add generic row',
+    editGenericRow:        'Edit generic row',
+    setGenericSale:        'Set generic sale',
+    deleteGenericRow:      'DELETE generic row',
+    // Expense
+    addExpense:            'Add expense',
+    editExpenseRow:        'Edit expense row',
+    deleteExpenseRow:      'DELETE expense row',
+    // Credit
+    addCredit:             'Add credit',
+    addCreditEmployee:     'Add to credit ledger',
+    editCreditEntry:       'Edit credit entry',
+    deleteCreditEntry:     'DELETE credit entry',
+    deleteCreditEmployee:  'DELETE credit employee',
+    setCreditEmpField:     'Set credit field',
+    copyToNextMonth:       'COPY to next month',
+    copyManagerToNextMonth:'COPY to next month',
+    // Petty
+    addPettyItem:          'Add petty item',
+    addPettyGroup:         'Add petty group',
+    editPettyRow:          'Edit petty row',
+    deletePettyRow:        'DELETE petty row',
+    deletePettyGroup:      'DELETE petty group',
+    // Targets
+    setMonthTarget:        'Set target',
+    deleteMonthTarget:     'DELETE target',
+    // Custom sections
+    addCustomSectionRow:   'Add to section',
+    createCustomSection:   'Create section',
+    deleteCustomSectionRow:'DELETE section row',
+    deleteCustomSection:   'DELETE section',
+    // Field manager
+    toggleFieldVisibility: 'Toggle field',
+    addCustomField:        'Add custom field',
+    resetAllFields:        'RESET all fields',
+    // Incentive
+    recalcIncentive:       'Recalculate incentive',
+    // Sync
+    pushToSupabase:        'Push to Supabase',
+    pullFromSupabase:      'PULL from Supabase',
+    backupToDrive:         'Backup to Drive',
   };
   return labels[intent.action] || intent.action;
 }
