@@ -44,6 +44,9 @@
 <link rel="stylesheet" href="css/pages.css">
 <link rel="stylesheet" href="css/mobile.css">
 <link rel="stylesheet" href="css/assistant.css">
+  <link rel="stylesheet" href="css/intent-groups.css">
+  <link rel="stylesheet" href="css/ai-instructions.css">
+  <link rel="stylesheet" href="css/ai-context.css">
 
 <!-- Service Worker registration -->
 <script>
@@ -243,34 +246,91 @@ if ('serviceWorker' in navigator) {
 
 <!-- AI PAGE -->
 <div class="page" id="page-ai">
+
+  <!-- ── Mobile horizontal nav (hidden on desktop) ── -->
+  <div class="aip-mobile-nav" id="aip-mobile-nav">
+    <button class="aip-mob-btn active" id="aip-mob-chat"         onclick="aipNavSelect('chat')">        💬 Chat</button>
+    <button class="aip-mob-btn"        id="aip-mob-context"      onclick="aipNavSelect('context')">     🗺 Context</button>
+    <button class="aip-mob-btn"        id="aip-mob-instructions" onclick="aipNavSelect('instructions')">🤖 Instructions</button>
+    <button class="aip-mob-btn"        id="aip-mob-memory"       onclick="aipNavSelect('memory')">      🧠 Memory</button>
+    <button class="aip-mob-btn"        id="aip-mob-scan"         onclick="aipNavSelect('scan')">        📷 Scan</button>
+    <button class="aip-mob-btn"        id="aip-mob-settings"     onclick="aipNavSelect('settings')">    ⚙️ Settings</button>
+  </div>
+
   <div class="aip-layout">
-    <!-- Left: Insight Cards -->
-    <div class="aip-sidebar" id="aip-sidebar">
-      <!-- rendered by ai-page.js -->
+
+    <!-- ── Left column: nav rail + insight cards ── -->
+    <div class="aip-sidebar-col">
+
+      <!-- Desktop nav rail -->
+      <nav class="aip-nav-rail" aria-label="AI Tools">
+        <button class="aip-nav-btn active" id="aip-nav-chat"         onclick="aipNavSelect('chat')">
+          <span class="aip-nav-icon">💬</span><span class="aip-nav-label">Chat</span>
+        </button>
+        <button class="aip-nav-btn" id="aip-nav-context"      onclick="aipNavSelect('context')">
+          <span class="aip-nav-icon">🗺</span><span class="aip-nav-label">Context</span>
+        </button>
+        <button class="aip-nav-btn" id="aip-nav-instructions" onclick="aipNavSelect('instructions')">
+          <span class="aip-nav-icon">🤖</span><span class="aip-nav-label">Instructions</span>
+        </button>
+        <button class="aip-nav-btn" id="aip-nav-memory"       onclick="aipNavSelect('memory')">
+          <span class="aip-nav-icon">🧠</span><span class="aip-nav-label">Memory</span>
+        </button>
+        <button class="aip-nav-btn" id="aip-nav-scan"         onclick="aipNavSelect('scan')">
+          <span class="aip-nav-icon">📷</span><span class="aip-nav-label">Scan &amp; Attach</span>
+        </button>
+        <button class="aip-nav-btn" id="aip-nav-settings"     onclick="aipNavSelect('settings')">
+          <span class="aip-nav-icon">⚙️</span><span class="aip-nav-label">Settings</span>
+        </button>
+      </nav>
+
+      <!-- Insight cards rendered by ai-page.js -->
+      <div class="aip-sidebar" id="aip-sidebar"></div>
     </div>
-    <!-- Right: Full Chat -->
+
+    <!-- ── Right column: chat ── -->
     <div class="aip-chat">
-      <div class="aip-chat-header">
-        <div class="aip-chat-title"><span style="font-size:22px">🤖</span> Groq AI Assistant <span class="ai-head-badge" id="aip-live-badge">LIVE</span></div>
-        <div style="display:flex;align-items:center;gap:6px">
-          <button class="aip-clear-btn" onclick="aimOpenPanel()" title="AI Memory, Rules &amp; Training">🧠 Memory</button>
-          <button class="aip-clear-btn" onclick="aipOpenScan()" title="Scan a photo / screenshot for entries">📷 Scan</button>
-          <button class="aip-clear-btn" onclick="aiPageClear()" title="Clear chat">Clear</button>
-          <button class="aip-clear-btn" onclick="aipOpenSettings()" title="AI Settings — API key">⚙️</button>
+
+      <!-- Simplified header -->
+      <div class="aip-chat-header-v2">
+        <div class="aip-chat-title-v2">
+          <span style="font-size:24px;line-height:1">🤖</span>
+          <div>
+            <div>Groq AI Assistant</div>
+            <div style="font-size:10px;font-weight:600;opacity:.75;margin-top:1px">BT Sales IC · Powered by Groq</div>
+          </div>
+          <span class="ai-head-badge" id="aip-live-badge" style="margin-left:4px">LIVE</span>
+        </div>
+        <div class="aip-hdr-right">
+          <button class="aip-hdr-pill" onclick="aiPageClear()" title="Clear chat history">🗑 Clear</button>
         </div>
       </div>
+
+      <!-- Context strip -->
+      <div id="actx-strip" class="actx-strip"><span class="actx-strip-empty">No active context — open a staff member or section to start</span></div>
+
+      <!-- Messages -->
       <div class="ai-msgs" id="aip-msgs" style="flex:1;overflow-y:auto;padding:16px;background:#f8fafc;"></div>
+
+      <!-- Quick chips -->
       <div class="ai-quick" id="aip-chips" style="flex-shrink:0;padding:8px 14px;background:#fff;border-top:1px solid #f1f5f9;"></div>
-      <div class="ai-input-row" style="padding:12px 14px;background:#fff;border-top:1.5px solid #f1f5f9;">
+
+      <!-- Input row with attach + mic + text + send -->
+      <div class="ai-input-row-v2">
+        <button class="ai-attach-btn" onclick="aipOpenAttach()" title="Attach image / scan document">📎</button>
         <button class="ai-mic-btn" id="aip-mic" onclick="aiPageToggleMic()" title="Voice input">🎤</button>
         <input id="aip-input" type="text"
-          placeholder='Ask: "highest sale day?", "Jazz Cash 5000", "compare months"…'
+          placeholder='Ask: "Jazz Cash 5000 for Kashif", "highest day?", "compare months"…'
           onkeydown="if(event.key==='Enter')aiPageSend()">
         <button class="ai-send-btn" onclick="aiPageSend()">&#10148;</button>
       </div>
+
     </div>
   </div>
+
+  <!-- Hidden file input for scan -->
   <input type="file" id="aip-scan-file" accept="image/*" capture="environment" style="display:none" onchange="aipHandleScanFile(this.files[0])">
+  <!-- Modal containers -->
   <div id="aip-scan-modal"></div>
   <div id="aip-settings-modal"></div>
   <div id="aim-panel-modal"></div>
@@ -1208,6 +1268,18 @@ if ('serviceWorker' in navigator) {
 <script src="js/ai-memory.js"></script>
 
 <!-- AI Bridge — powers the dedicated AI page only (no floating widget) -->
+<!-- AI Instructions System -->
+<script src="js/ai-instructions.js"></script>
+<script src="js/ai-instructions-ui.js"></script>
+
+<!-- Context Engine — Phase 3 -->
+<script src="js/ai-context.js"></script>
+<script src="js/ai-context-ui.js"></script>
+
+<!-- Intent Group Registry — must load before ai-bridge -->
+<script src="js/intent-groups.js"></script>
+
+<!-- AI Bridge -->
 <script src="js/ai-bridge.js"></script>
 
 <!-- Staff Card Popup Modal -->

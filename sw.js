@@ -1,16 +1,16 @@
 /* ═══════════════════════════════════════════════════════════════
-   BT Sales IC — Service Worker  v4.6
+   BT Sales IC — Service Worker  v5.0
    Strategy: Cache-first for all app shell assets.
-   Data (Supabase / Drive / Anthropic API calls) always go to network.
+   Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v4.7';
+const CACHE_NAME = 'bt-sales-v5.0';
 
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.json',
-  /* CSS */
+  /* ── CSS ── */
   './css/variables.css',
   './css/auth.css',
   './css/nav.css',
@@ -19,13 +19,17 @@ const APP_SHELL = [
   './css/pages.css',
   './css/mobile.css',
   './css/assistant.css',
-  /* JS — shared service layer (must precede config.js) */
+  /* Phase 1-3 CSS */
+  './css/intent-groups.css',
+  './css/ai-instructions.css',
+  './css/ai-context.css',
+  /* ── JS — shared service layer (load before config.js) ── */
   './js/bt-format.js',
   './js/bt-date.js',
   './js/bt-calc.js',
   './js/bt-search.js',
   './js/app-context.js',
-  /* JS — application modules */
+  /* ── JS — application modules ── */
   './js/data-base.js',
   './js/config.js',
   './js/auth.js',
@@ -44,11 +48,20 @@ const APP_SHELL = [
   './js/custom-sections.js',
   './js/fields.js',
   './js/drive.js',
-  /* JS — AI assistant */
+  /* ── JS — AI assistant ── */
   './js/ai-memory.js',
+  /* Phase 1: Intent Groups */
+  './js/intent-groups.js',
+  /* Phase 2: AI Instructions */
+  './js/ai-instructions.js',
+  './js/ai-instructions-ui.js',
+  /* Phase 3: Context Engine */
+  './js/ai-context.js',
+  './js/ai-context-ui.js',
+  /* Core bridge & page */
   './js/ai-bridge.js',
   './js/ai-page.js',
-  /* Icons */
+  /* ── Icons ── */
   './icons/icon.svg',
   './icons/icon-192.png',
   './icons/icon-512.png',
@@ -61,14 +74,14 @@ const CDN_ORIGINS = [
   'https://cdnjs.cloudflare.com',
   'https://fonts.googleapis.com',
   'https://fonts.gstatic.com',
-  'https://cdn.jsdelivr.net',   /* Supabase JS library — cache it so app loads offline */
+  'https://cdn.jsdelivr.net',
 ];
 
 /* ── API / data origins — always network, never cache ── */
 const NETWORK_ONLY_ORIGINS = [
-  'https://wetbugzzchkghpzmowod.supabase.co',  /* Supabase data API          */
-  'https://api.anthropic.com',                  /* Anthropic AI API            */
-  'https://api.groq.com',                       /* Groq AI API                 */
+  'https://wetbugzzchkghpzmowod.supabase.co',
+  'https://api.anthropic.com',
+  'https://api.groq.com',
   'https://www.googleapis.com',
   'https://accounts.google.com',
   'https://oauth2.googleapis.com',
@@ -92,10 +105,7 @@ self.addEventListener('install', event => {
 });
 
 /* ────────────────────────────────────────────────
-   ACTIVATE — delete old caches, then self-heal:
-   re-fetch any app-shell file that's missing from
-   the new cache (e.g. failed silently during install
-   due to a transient network blip).
+   ACTIVATE — delete old caches, then self-heal
    ──────────────────────────────────────────────── */
 self.addEventListener('activate', event => {
   event.waitUntil(
@@ -130,34 +140,25 @@ self.addEventListener('fetch', event => {
   const { request } = event;
   const url = new URL(request.url);
 
-  /* 1. Non-GET requests: always network */
   if (request.method !== 'GET') return;
-
-  /* 2. Network-only API origins: skip SW entirely */
   if (NETWORK_ONLY_ORIGINS.some(o => request.url.startsWith(o))) return;
 
-  /* 3. CDN resources: stale-while-revalidate */
   if (CDN_ORIGINS.some(o => request.url.startsWith(o))) {
     event.respondWith(staleWhileRevalidate(request));
     return;
   }
 
-  /* 4. App shell (same origin): network-first, cache fallback */
   if (url.origin === self.location.origin) {
     event.respondWith(networkFirst(request));
     return;
   }
 
-  /* 5. Everything else: network with cache fallback */
   event.respondWith(networkWithCacheFallback(request));
 });
 
 /* ── Strategy helpers ── */
-
 const NETWORK_TIMEOUT_MS = 6000;
 
-/* Race a fetch against a timeout so flaky/slow connections fail fast
-   instead of leaving the page hanging before falling back to cache. */
 function fetchWithTimeout(request, options, timeoutMs = NETWORK_TIMEOUT_MS) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -207,9 +208,6 @@ async function staleWhileRevalidate(request) {
 async function networkWithCacheFallback(request) {
   try {
     const response = await fetchWithTimeout(request);
-    /* Cache successful GETs so the fallback below actually has something
-       to serve next time — previously this path never wrote to cache,
-       so any later failure fell back to an always-empty cache. */
     if (response.ok) {
       const cache = await caches.open(CACHE_NAME);
       cache.put(request, response.clone());
@@ -225,10 +223,8 @@ async function networkWithCacheFallback(request) {
    MESSAGE — commands from the client page
    ──────────────────────────────────────────────── */
 self.addEventListener('message', event => {
-  /* Legacy force-update trigger */
   if (event.data === 'SKIP_WAITING') self.skipWaiting();
 
-  /* Manual hard-refresh: wipe cache, keep localStorage */
   if (event.data === 'CACHE_CLEAR') {
     caches.keys().then(keys =>
       Promise.all(keys.map(k => caches.delete(k)))
@@ -237,9 +233,6 @@ self.addEventListener('message', event => {
     });
   }
 
-  /* ── AUTO-REFRESH: real-time data change via Supabase channel ──
-     1. Wipe all SW caches
-     2. Broadcast RELOAD to every open tab/window of this app         */
   if (event.data === 'DATA_CHANGED_RELOAD') {
     caches.keys().then(keys =>
       Promise.all(keys.map(k => caches.delete(k)))
