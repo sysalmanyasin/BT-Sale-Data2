@@ -210,15 +210,18 @@ if ('serviceWorker' in navigator) {
     <div><div class="nbrand-text">Bahria Town Sales IC</div><div class="nbrand-sub">Intelligence Centre</div></div>
   </div>
   <div class="ntabs">
-    <button class="ntab ntab-ai" data-page="ai">🤖 AI</button>
-    <button class="ntab" data-page="dashboard">Dashboard</button>
-    <button class="ntab" data-page="index">Index</button>
-    <button class="ntab" data-page="data">Daily Data</button>
-    <button class="ntab" data-page="entry">Add Entry</button>
-    <button class="ntab" data-page="report">Sale Report</button>
-    <button class="ntab" data-page="diff">DIFF Report</button>
-    <button class="ntab" data-page="tools">Tools</button>
-    <button class="ntab" data-page="manager">👔 Manager</button>
+    <button class="ntab ntab-ai" data-page="commandhub" data-group="commandhub">🧭 CommandHub</button>
+    <button class="ntab" data-page="dashboard" data-group="dashboard">Dashboard</button>
+    <button class="ntab" data-page="index" data-group="saledata">Sale Data</button>
+    <button class="ntab" data-page="manager" data-group="manager">👔 Manager</button>
+    <button class="ntab" data-page="tools" data-group="tools">Tools</button>
+  </div>
+  <div class="ntabs subnav" id="saledata-subnav" style="display:none">
+    <button class="ntab sub" data-page="index">Index</button>
+    <button class="ntab sub" data-page="data">Daily Data</button>
+    <button class="ntab sub" data-page="entry">Add Entry</button>
+    <button class="ntab sub" data-page="report">Sale Report</button>
+    <button class="ntab sub" data-page="diff">DIFF Report</button>
   </div>
   <div class="nright">
     <div class="syncbadge" id="synci" onclick="showPage('tools')" title="Supabase sync">
@@ -231,103 +234,74 @@ if ('serviceWorker' in navigator) {
 
 <!-- ══ BOTTOM TAB BAR (mobile) ══ -->
 <div class="bnav no-print" id="bnav" role="navigation" aria-label="Page navigation">
-  <button class="bnav-item bnav-ai" data-page="ai"><span class="bicon">🤖</span><span class="blabel">AI</span></button>
-  <button class="bnav-item" data-page="dashboard"><span class="bicon">📊</span><span class="blabel">Home</span></button>
-  <button class="bnav-item" data-page="index"><span class="bicon">🗂️</span><span class="blabel">Index</span></button>
-  <button class="bnav-item" data-page="data"><span class="bicon">📋</span><span class="blabel">Data</span></button>
-  <button class="bnav-item" data-page="entry"><span class="bicon">➕</span><span class="blabel">Entry</span></button>
-  <button class="bnav-item" data-page="report"><span class="bicon">🧾</span><span class="blabel">Report</span></button>
-  <button class="bnav-item" data-page="diff"><span class="bicon">📉</span><span class="blabel">DIFF</span></button>
-  <button class="bnav-item" data-page="tools"><span class="bicon">⚙️</span><span class="blabel">Tools</span></button>
-  <button class="bnav-item" data-page="manager"><span class="bicon">👔</span><span class="blabel">Manager</span></button>
+  <button class="bnav-item bnav-ai" data-page="commandhub" data-group="commandhub"><span class="bicon">🧭</span><span class="blabel">Hub</span></button>
+  <button class="bnav-item" data-page="dashboard" data-group="dashboard"><span class="bicon">📊</span><span class="blabel">Home</span></button>
+  <button class="bnav-item" data-page="index" data-group="saledata"><span class="bicon">🗂️</span><span class="blabel">Sale Data</span></button>
+  <button class="bnav-item" data-page="manager" data-group="manager"><span class="bicon">👔</span><span class="blabel">Manager</span></button>
+  <button class="bnav-item" data-page="tools" data-group="tools"><span class="bicon">⚙️</span><span class="blabel">Tools</span></button>
+</div>
+<!-- Sale Data sub-nav (mobile) -->
+<div class="bnav-sub no-print" id="bnav-saledata-sub" style="display:none">
+  <button class="bnav-sub-item" data-page="index">Index</button>
+  <button class="bnav-sub-item" data-page="data">Daily Data</button>
+  <button class="bnav-sub-item" data-page="entry">Add Entry</button>
+  <button class="bnav-sub-item" data-page="report">Report</button>
+  <button class="bnav-sub-item" data-page="diff">DIFF</button>
 </div>
 
 <!-- ====== PAGES ====== -->
 <!-- ══ PAGES ══ -->
 
-<!-- AI PAGE -->
-<div class="page" id="page-ai">
+<!-- COMMANDHUB PAGE -->
+<div class="page" id="page-commandhub">
+  <div class="chp-layout">
 
-  <!-- ── Mobile horizontal nav (hidden on desktop) ── -->
-  <div class="aip-mobile-nav" id="aip-mobile-nav">
-    <button class="aip-mob-btn active" id="aip-mob-chat"      onclick="aipNavSelect('chat')">     💬 Chat</button>
-    <button class="aip-mob-btn"        id="aip-mob-context"   onclick="aipNavSelect('context')">  🗺 Context</button>
-    <button class="aip-mob-btn"        id="aip-mob-knowledge" onclick="aipNavSelect('knowledge')">📚 Knowledge</button>
-    <button class="aip-mob-btn"        id="aip-mob-settings"  onclick="aipNavSelect('settings')"> ⚙️ Settings</button>
-  </div>
+    <!-- ── Live state banner ── -->
+    <div class="chp-live-banner" id="chp-live-banner" style="padding:10px 12px 0"></div>
 
-  <div class="aip-layout">
+    <!-- ── Context strip (Phase 5 — migrated from page-ai) ── -->
+    <div id="actx-strip" class="actx-strip" style="flex-shrink:0;padding:0 12px"><span class="actx-strip-empty" onclick="actxOpen()" title="Tap to set active context">🗺 No context — tap to set</span></div>
 
-    <!-- ── Left column: nav rail + insight cards ── -->
-    <div class="aip-sidebar-col">
+    <!-- ── Conversation thread ── -->
+    <div class="chp-thread" id="chp-thread" data-placeholder="Ask anything about your sales, staff, or finances…"></div>
 
-      <!-- Desktop nav rail -->
-      <nav class="aip-nav-rail" aria-label="AI Tools">
-        <button class="aip-nav-btn active" id="aip-nav-chat"      onclick="aipNavSelect('chat')">
-          <span class="aip-nav-icon">💬</span><span class="aip-nav-label">Chat</span>
-        </button>
-        <button class="aip-nav-btn" id="aip-nav-context"   onclick="aipNavSelect('context')">
-          <span class="aip-nav-icon">🗺</span><span class="aip-nav-label">Context</span>
-        </button>
-        <button class="aip-nav-btn" id="aip-nav-knowledge" onclick="aipNavSelect('knowledge')">
-          <span class="aip-nav-icon">📚</span><span class="aip-nav-label">Knowledge</span>
-        </button>
-        <button class="aip-nav-btn" id="aip-nav-settings"  onclick="aipNavSelect('settings')">
-          <span class="aip-nav-icon">⚙️</span><span class="aip-nav-label">Settings</span>
-        </button>
-      </nav>
+    <!-- ── Quick action chips ── -->
+    <div class="chp-chips-wrap" id="chp-chips-wrap" style="padding:6px 12px 0"></div>
 
-      <!-- Insight cards rendered by ai-page.js -->
-      <div class="aip-sidebar" id="aip-sidebar"></div>
+    <!-- ── Sticky input bar ── -->
+    <div class="chp-inputbar">
+      <button class="chp-icon-btn" onclick="chpOpenScan()" title="Scan image / receipt">📎</button>
+      <input id="chp-input" type="text"
+        placeholder='Ask or command… "Jazz Cash 5000 for Ali", "today total?"'
+        onkeydown="if(event.key==='Enter')chpSend()">
+      <button class="chp-icon-btn" id="chp-mic" onclick="chpToggleMic()" title="Voice input">🎤</button>
+      <button class="chp-send-btn" id="chp-send-btn" onclick="chpSend()" title="Send">&#10148;</button>
     </div>
 
-    <!-- ── Right column: chat ── -->
-    <div class="aip-chat">
-
-      <!-- Simplified header -->
-      <div class="aip-chat-header-v2">
-        <div class="aip-chat-title-v2">
-          <span style="font-size:24px;line-height:1">🤖</span>
-          <div>
-            <div>Groq AI Assistant</div>
-            <div style="font-size:10px;font-weight:600;opacity:.75;margin-top:1px">BT Sales IC · Powered by Groq</div>
-          </div>
-          <span class="ai-head-badge" id="aip-live-badge" style="margin-left:4px">LIVE</span>
-        </div>
-        <div class="aip-hdr-right">
-          <button class="aip-hdr-pill" onclick="aiPageClear()" title="Clear chat history">🗑 Clear</button>
-        </div>
-      </div>
-
-      <!-- Context strip -->
-      <div id="actx-strip" class="actx-strip"><span class="actx-strip-empty" onclick="actxOpen()" title="Tap to set active context">🗺 No context — tap to set who/what you're talking about</span></div>
-
-      <!-- Messages -->
-      <div class="ai-msgs" id="aip-msgs" style="flex:1;overflow-y:auto;padding:16px;background:#f8fafc;"></div>
-
-      <!-- Quick chips -->
-      <div class="ai-quick" id="aip-chips" style="flex-shrink:0;padding:8px 14px;background:#fff;border-top:1px solid #f1f5f9;"></div>
-
-      <!-- Input row with attach + mic + text + send -->
-      <div class="ai-input-row-v2">
-        <button class="ai-attach-btn" onclick="aipOpenAttach()" title="Attach image / scan document">📎</button>
-        <button class="ai-mic-btn" id="aip-mic" onclick="aiPageToggleMic()" title="Voice input">🎤</button>
-        <input id="aip-input" type="text"
-          placeholder='Ask: "Jazz Cash 5000 for Kashif", "highest day?", "compare months"…'
-          onkeydown="if(event.key==='Enter')aiPageSend()">
-        <button class="ai-send-btn" onclick="aiPageSend()">&#10148;</button>
-      </div>
-
+    <!-- ── Toolbar row: Ctrl+K search + clear + settings ── -->
+    <div style="display:flex;gap:8px;padding:4px 12px 8px;flex-shrink:0">
+      <button style="flex:1;padding:6px;border-radius:8px;border:1.5px solid var(--border,#e2e8f0);background:var(--s2,#f8fafc);font-size:12px;color:var(--muted,#64748b);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px"
+        onclick="if(typeof CommandHub!=='undefined')CommandHub.open()">
+        🔍 <span>Search &amp; Navigate</span>
+        <kbd style="font-size:10px;background:#e2e8f0;padding:1px 5px;border-radius:4px;font-family:monospace">Ctrl+K</kbd>
+      </button>
+      <button id="chp-settings-btn" style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--border,#e2e8f0);background:var(--s2,#f8fafc);font-size:12px;color:var(--muted,#64748b);cursor:pointer;display:flex;align-items:center;gap:4px"
+        onclick="chpOpenSettings()" title="AI Settings (Groq API key)">⚙ AI</button>
+      <button style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--border,#e2e8f0);background:var(--s2,#f8fafc);font-size:12px;color:var(--muted,#64748b);cursor:pointer"
+        onclick="kshOpen()" title="Knowledge Base (Instructions &amp; Memory)">📚</button>
+      <button style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--border,#e2e8f0);background:var(--s2,#f8fafc);font-size:12px;color:var(--muted,#64748b);cursor:pointer"
+        onclick="chpClear()">🗑 Clear</button>
     </div>
-  </div>
 
-  <!-- Hidden file input for scan -->
-  <input type="file" id="aip-scan-file" accept="image/*" capture="environment" style="display:none" onchange="aipHandleScanFile(this.files[0])">
-  <!-- Modal containers -->
-  <div id="aip-scan-modal"></div>
-  <div id="aip-settings-modal"></div>
-  <div id="aim-panel-modal"></div>
+    <!-- ── Settings modal (Phase 4) ── -->
+    <div id="chp-settings-modal" style="display:none"></div>
+
+    <!-- ── Hidden file input for scan ── -->
+    <input type="file" id="chp-scan-file" accept="image/*" capture="environment"
+      style="display:none" onchange="chpHandleScanFile(this.files[0])">
+  </div>
 </div>
+
 
 <!-- DASHBOARD -->
 <div class="page" id="page-dashboard">
@@ -372,6 +346,7 @@ if ('serviceWorker' in navigator) {
     </select>
     <button class="btn btn-s" style="padding:5px 10px;font-size:11px" onclick="manualSync()">↻ Sync</button>
     <button class="btn btn-s" style="padding:5px 10px;font-size:11px" onclick="window.print()">🖨 Print</button>
+    <button class="btn btn-s" style="padding:5px 10px;font-size:11px;background:var(--accent,#2563eb);color:#fff;border-color:var(--accent,#2563eb)" onclick="exportManagerSummary()">📋 Export Summary</button>
   </div>
   <div id="dash-top10" style="margin-bottom:14px"></div>
   <div id="dash-dow" style="margin-bottom:14px"></div>
@@ -593,12 +568,102 @@ if ('serviceWorker' in navigator) {
   <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px;padding:14px 16px;background:var(--s1);border:1px solid var(--border);border-radius:12px">
     <div style="flex:1;min-width:160px">
       <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px">⚡ Quick Actions</div>
-      <div style="font-size:11px;color:var(--muted)">Last poll: <span id="ar-last-poll">—</span> &nbsp;·&nbsp; <span id="ar-status" style="color:var(--green)">Active</span></div>
+      <div style="font-size:11px;color:var(--muted)">Last poll: <span id="ar-last-poll">—</span> &nbsp;·&nbsp; <span id="ar-status" style="color:var(--green)">Active</span> &nbsp;·&nbsp; <span id="sc-status-pill" style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(245,158,11,.15);color:var(--amber,#f59e0b)">◐ PASSIVE</span></div>
     </div>
     <button class="btn btn-s" style="white-space:nowrap" onclick="pullFromSupabase()">↓ Pull</button>
     <button class="btn btn-g" style="white-space:nowrap" onclick="pushToSupabase()">↑ Push</button>
     <button class="btn" style="white-space:nowrap;background:var(--red,#dc2626);color:#fff;font-weight:700" onclick="hardRefreshCache()">⚡ Hard Refresh</button>
     <button id="view-mode-btn" class="btn" style="white-space:nowrap;background:var(--s2);border:1px solid var(--border);font-weight:600" onclick="toggleViewMode()" title="Switch between Mobile and Desktop view">🖥️ Desktop View</button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <!-- SYNC CENTER — Device Session Management                           -->
+  <!-- ══════════════════════════════════════════════════════════════════ -->
+  <div class="tcard open" id="tc-sync-center" style="border:1.5px solid rgba(99,102,241,.35)">
+    <div class="tcard-hdr" onclick="toggleTcard('tc-sync-center')">
+      <div class="ttitle" style="display:flex;align-items:center;gap:8px">
+        🖥 Sync Center
+        <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:rgba(99,102,241,.15);color:var(--accent)">v1</span>
+      </div>
+      <span class="tcard-chevron" style="transform:rotate(90deg)">▶</span>
+    </div>
+    <div class="tcard-body" style="max-height:none;padding-top:12px">
+
+      <!-- Sub-tab nav -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+        <button class="sc-tab btn" data-tab="session"  onclick="scSwitchTab('session')"
+          style="font-size:11px;padding:5px 12px;background:var(--accent);color:#fff;font-weight:700;border-radius:20px">
+          📊 Session
+        </button>
+        <button class="sc-tab btn" data-tab="devices"  onclick="scSwitchTab('devices')"
+          style="font-size:11px;padding:5px 12px;background:var(--s3);color:var(--muted);border-radius:20px">
+          📱 Devices
+        </button>
+        <button class="sc-tab btn" data-tab="controls" onclick="scSwitchTab('controls')"
+          style="font-size:11px;padding:5px 12px;background:var(--s3);color:var(--muted);border-radius:20px">
+          ⚔ Controls
+        </button>
+        <button class="sc-tab btn" data-tab="health"   onclick="scSwitchTab('health')"
+          style="font-size:11px;padding:5px 12px;background:var(--s3);color:var(--muted);border-radius:20px">
+          💚 Health
+        </button>
+        <button class="sc-tab btn" data-tab="logs"     onclick="scSwitchTab('logs')"
+          style="font-size:11px;padding:5px 12px;background:var(--s3);color:var(--muted);border-radius:20px">
+          📋 Logs
+        </button>
+        <button class="sc-tab btn" data-tab="settings" onclick="scSwitchTab('settings');_sc_renderSettings()"
+          style="font-size:11px;padding:5px 12px;background:var(--s3);color:var(--muted);border-radius:20px">
+          ⚙ Settings
+        </button>
+      </div>
+
+      <!-- ── Session Panel ── -->
+      <div class="sc-panel" data-panel="session" style="display:block">
+        <div id="sc-session-panel" style="line-height:1.4">
+          <div style="color:var(--muted);font-size:11px">Initializing…</div>
+        </div>
+      </div>
+
+      <!-- ── Devices Panel ── -->
+      <div class="sc-panel" data-panel="devices" style="display:none">
+        <div id="sc-devices-panel">
+          <div style="color:var(--muted);font-size:11px">Loading devices…</div>
+        </div>
+      </div>
+
+      <!-- ── Controls Panel ── -->
+      <div class="sc-panel" data-panel="controls" style="display:none">
+        <div id="sc-controls-panel">
+          <div style="color:var(--muted);font-size:11px">Loading controls…</div>
+        </div>
+      </div>
+
+      <!-- ── Health Panel ── -->
+      <div class="sc-panel" data-panel="health" style="display:none">
+        <div id="sc-health-panel" style="line-height:1.4">
+          <div style="color:var(--muted);font-size:11px">Loading health…</div>
+        </div>
+      </div>
+
+      <!-- ── Logs Panel ── -->
+      <div class="sc-panel" data-panel="logs" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-size:11px;font-weight:700;color:var(--text)">Sync Center Logs <span style="color:var(--muted);font-weight:400">(last 100 events)</span></div>
+          <button class="btn" onclick="scClearLogs()" style="font-size:10px;padding:3px 8px;background:var(--s3);border:1px solid var(--border)">Clear</button>
+        </div>
+        <div id="sc-logs-panel" style="max-height:280px;overflow-y:auto;padding:4px 0">
+          <div style="color:var(--muted);font-size:11px">No logs yet.</div>
+        </div>
+      </div>
+
+      <!-- ── Settings Panel ── -->
+      <div class="sc-panel" data-panel="settings" style="display:none">
+        <div id="sc-settings-panel">
+          <div style="color:var(--muted);font-size:11px">Loading settings…</div>
+        </div>
+      </div>
+
+    </div>
   </div>
 
   <div class="tcard" id="tc-github">
@@ -911,6 +976,7 @@ if ('serviceWorker' in navigator) {
         <button class="btn mgr-tab" data-mtab="expense" onclick="switchMgrTab('expense')">🧾 B. Patty/Expenses</button>
         <button class="btn mgr-tab" data-mtab="jazzcash" onclick="switchMgrTab('jazzcash')">📒 Jazz Cash</button>
         <button class="btn mgr-tab" data-mtab="custom" onclick="switchMgrTab('custom')" id="mgr-tab-custom" style="background:var(--s2);border:2px dashed var(--border);color:var(--muted)">＋ C. New Sections</button>
+        <button class="btn mgr-tab" data-mtab="sheets" onclick="switchMgrTab('sheets')" id="mgr-tab-sheets">📑 D. Notes &amp; Sheets</button>
       </div>
     </div>
     <!-- ── Group: Working ──────────────────────────── -->
@@ -970,6 +1036,14 @@ if ('serviceWorker' in navigator) {
       💡 Create any number of custom spreadsheet-like sections (e.g. Fuel Log, Maintenance, Stock). Each section is a live table with description, amount and notes columns. Data is saved per-month and synced with Supabase.
     </div>
     <div id="csec-container"></div>
+  </div>
+
+  <!-- ═══ NOTES & SHEETS — rendered by notes-sheets.js ═══ -->
+  <div id="mgr-sheets" class="mgr-section" style="display:none">
+    <div style="text-align:center;padding:40px 20px;color:var(--muted)" id="mgr-sheets-loading">
+      <div style="font-size:22px;margin-bottom:8px">📑</div>
+      <div style="font-size:12px">Loading Notes &amp; Sheets…</div>
+    </div>
   </div>
 
   <!-- ═══ SALARY ═══ -->
@@ -1231,6 +1305,7 @@ if ('serviceWorker' in navigator) {
 
 <!-- 6. Supabase: real-time sync -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/sync-center.js"></script>
 <script src="js/supabase.js"></script>
 
 <!-- 7. Targets: monthly target management -->
@@ -1238,6 +1313,9 @@ if ('serviceWorker' in navigator) {
 
 <!-- 8. Dashboard: KPI cards, charts, credit section -->
 <script src="js/dashboard.js"></script>
+
+<!-- 8b. Dashboard Insights: briefing card, target pace, rotating insight strip, diff badge (Phase 3) -->
+<script src="js/dashboard-insights.js"></script>
 
 <!-- 9. Index page: year/month grid rendering -->
 <script src="js/index-page.js"></script>
@@ -1248,10 +1326,20 @@ if ('serviceWorker' in navigator) {
 <!-- 11. Data page: daily table + entry form -->
 <script src="js/data-page.js"></script>
 <script src="js/diff-report.js"></script>
+<script src="js/commandhub-page.js"></script>
 <script src="js/commandhub.js"></script>
 
 <!-- 11b. Reports print helpers (extracted from manager.js — Step 8) -->
 <script src="js/reports-print.js"></script>
+
+<!-- 11c. Manager Summary Export (Phase 5) -->
+<script src="js/manager-export.js"></script>
+
+<!-- 11d. AI Helpers: scan/OCR pipeline extracted from ai-page.js (Phase 6) -->
+<script src="js/ai-helpers.js"></script>
+
+<!-- 11e. Notes & Sheets workspace (Phase 6) -->
+<script src="js/notes-sheets.js"></script>
 
 <!-- 12. Manager: salary, generic, expense, credit, petty, incentive -->
 <script src="js/manager.js"></script>
@@ -1275,6 +1363,9 @@ if ('serviceWorker' in navigator) {
 <!-- AI Instructions System -->
 <script src="js/ai-instructions.js"></script>
 <script src="js/ai-instructions-ui.js"></script>
+
+<!-- 11f. Knowledge Base sheet — ported from retired ai-page.js (Phase 7) -->
+<script src="js/knowledge-sheet.js"></script>
 
 <!-- Context Engine — Phase 3 -->
 <script src="js/ai-context.js"></script>
@@ -1375,6 +1466,8 @@ if ('serviceWorker' in navigator) {
   </div>
 </div>
 
-<script src="js/ai-page.js"></script>
+<!-- ai-page.js retired in Phase 5, deleted in Phase 7 — its only still-useful
+     piece (Knowledge Base sheet) now lives in knowledge-sheet.js.
+     CommandHub is the sole AI interface. -->
 </body>
 </html>

@@ -1,10 +1,10 @@
 /* ═══════════════════════════════════════════════════════════════
-   BT Sales IC — Service Worker  v5.0
+   BT Sales IC — Service Worker  v6.0
    Strategy: Cache-first for all app shell assets.
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v5.2';
+const CACHE_NAME = 'bt-sales-v6.0';
 
 const APP_SHELL = [
   './',
@@ -19,6 +19,7 @@ const APP_SHELL = [
   './css/pages.css',
   './css/mobile.css',
   './css/assistant.css',
+  './css/assistant-fixes.css',
   /* Phase 1-3 CSS */
   './css/intent-groups.css',
   './css/ai-instructions.css',
@@ -35,15 +36,23 @@ const APP_SHELL = [
   './js/auth.js',
   './js/storage.js',
   './js/ui.js',
+  /* Phase Sync Center (load before supabase.js) */
+  './js/sync-center.js',
   './js/supabase.js',
   './js/targets.js',
   './js/dashboard.js',
+  /* Phase 3: Dashboard Insights */
+  './js/dashboard-insights.js',
   './js/index-page.js',
   './js/reports.js',
   './js/data-page.js',
   './js/diff-report.js',
+  /* Phase 2: CommandHub embedded page */
+  './js/commandhub-page.js',
   './js/commandhub.js',
   './js/reports-print.js',
+  /* Phase 5: Manager Summary Export */
+  './js/manager-export.js',
   './js/manager.js',
   './js/custom-sections.js',
   './js/fields.js',
@@ -58,9 +67,14 @@ const APP_SHELL = [
   /* Phase 3: Context Engine */
   './js/ai-context.js',
   './js/ai-context-ui.js',
-  /* Core bridge & page */
+  /* Core bridge */
   './js/ai-bridge.js',
-  './js/ai-page.js',
+  /* Phase 6: Notes & Sheets + OCR upgrade */
+  './js/notes-sheets.js',
+  './js/ai-helpers.js',
+  /* Phase 7: Knowledge Sheet (ported from retired ai-page.js) */
+  './js/knowledge-sheet.js',
+  /* ai-page.js was deleted in Phase 7 — do NOT list it here */
   /* ── Icons ── */
   './icons/icon.svg',
   './icons/icon-192.png',
