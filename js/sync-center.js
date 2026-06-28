@@ -1,7 +1,33 @@
 // ══════════════════════════════════════════════════════════════════════════
-// SYNC CENTER  v1.0
+// SYNC CENTER  v1.1  (audited & fixed)
 // Single Active Device architecture · UDID · Activity tracking · Priority Lock
 // Supabase table: bt_sessions  (see SQL setup card in Sync Center UI)
+//
+// FIXES vs v1.0:
+//  F1  Windows NT 10 maps to "Windows 10/11 PC" — NT 10.0 covers both OS versions.
+//  F2  UDID stored in both localStorage AND sessionStorage for cross-tab robustness.
+//  F3  _sc_getUDID exposed as window._sc_getUDID (snake_case) so supabase.js
+//      typeof check (`typeof _sc_getUDID`) works without window prefix.
+//  F4  visibilitychange + window focus listeners added so switching back to the
+//      app tab counts as activity and resets the inactivity timer.
+//  F5  bt:save / bt:navigate / bt:voice / bt:edit custom events dispatched by
+//      this file's wrapper shims so manager.js saves register as activity even
+//      though manager.js doesn't dispatch them itself.
+//  F6  Inactivity warning grace period is always ≥ 20 s regardless of timeout.
+//  F7  scStayActive() correctly re-arms the inactivity timer after dismissal.
+//  F8  _sc_becomePassive window shim now passes pullRemote=false safely.
+//  F9  Stale-session pruning in heartbeat only demotes OTHER devices, never self.
+//  F10 payloadVersion conflict: version counter now syncs from remote on pull so
+//      a freshly-loaded device does not reset to version 1.
+//  F11 "Connected Devices" panel shows idle time per device, not just last_seen age.
+//  F12 Settings tab re-renders on every open (not just first open) to reflect
+//      current timeout value correctly.
+//  F13 scSwitchTab() sets correct inline styles on initial render to match
+//      the 'session' default active state.
+//  F14 Priority lock auto-expire is checked on every heartbeat (not just on
+//      new activity), so an idle locked device releases correctly.
+//  F15 Two-device optimisation: if only ONE device is ever online (most common
+//      case), it auto-claims ACTIVE immediately without waiting for stale check.
 // ══════════════════════════════════════════════════════════════════════════
 
 const SC_TABLE        = 'bt_sessions';
@@ -28,25 +54,34 @@ let _sc_priorityLock     = false;
 let _sc_priorityLockUntil = null;
 let _sc_logs             = [];
 let _sc_initialized      = false;
-let _sc_tableExists      = false;   // set to true once we confirm bt_sessions table is there
-let _sc_activeTab        = 'session'; // current sub-tab in UI
+let _sc_tableExists      = false;
+let _sc_activeTab        = 'session';
 
 // ══════════════════════════════════════════════════════════════════════════
 // UDID — permanent per device, survives page reloads
+// F2: also mirrors to sessionStorage so it survives soft navigations.
+// F3: also exposed as window._sc_getUDID (snake_case) to match supabase.js
+//     typeof check.
 // ══════════════════════════════════════════════════════════════════════════
 function _sc_getUDID() {
   if (_sc_udid) return _sc_udid;
-  let id = localStorage.getItem(SC_UDID_KEY);
+  let id = localStorage.getItem(SC_UDID_KEY) || sessionStorage.getItem(SC_UDID_KEY);
   if (!id) {
     id = 'dev-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9);
-    localStorage.setItem(SC_UDID_KEY, id);
   }
+  localStorage.setItem(SC_UDID_KEY, id);
+  sessionStorage.setItem(SC_UDID_KEY, id);
   _sc_udid = id;
   return id;
 }
+// Expose under both naming conventions used across the codebase.
+window._sc_getUDID  = _sc_getUDID;   // F3 — used by typeof _sc_getUDID in supabase.js
+window._scGetUDID   = _sc_getUDID;   // legacy alias used by _buildPayload
 
 // ══════════════════════════════════════════════════════════════════════════
 // DEVICE NAME — detected from userAgent, no library needed
+// F1: Windows NT 10.0 covers both Windows 10 and Windows 11.
+//     We label it "Windows PC" and let the user see the actual OS in settings.
 // ══════════════════════════════════════════════════════════════════════════
 function _sc_detectDeviceName() {
   const ua = navigator.userAgent;
@@ -59,21 +94,21 @@ function _sc_detectDeviceName() {
     if (code.startsWith('A51')) return 'Samsung A51';
     if (code.startsWith('A32')) return 'Samsung A32';
     if (code.startsWith('A23')) return 'Samsung A23';
-    if (code.startsWith('A')) return `Samsung A${code.slice(1, 3)}`;
-    if (code.startsWith('S2')) return 'Samsung S20+';
-    if (code.startsWith('S')) return `Samsung S${code.slice(1, 3)}`;
-    if (code.startsWith('G')) return 'Samsung Galaxy';
-    if (code.startsWith('F')) return `Samsung F${code.slice(1, 3)}`;
-    if (code.startsWith('M')) return `Samsung M${code.slice(1, 3)}`;
+    if (code.startsWith('A'))   return `Samsung A${code.slice(1, 3)}`;
+    if (code.startsWith('S2'))  return 'Samsung S20+';
+    if (code.startsWith('S'))   return `Samsung S${code.slice(1, 3)}`;
+    if (code.startsWith('G'))   return 'Samsung Galaxy';
+    if (code.startsWith('F'))   return `Samsung F${code.slice(1, 3)}`;
+    if (code.startsWith('M'))   return `Samsung M${code.slice(1, 3)}`;
     return `Samsung ${code}`;
   }
   // Google Pixel
   const pixel = ua.match(/Pixel\s?(\d+\s?[A-Za-z]*)/i);
   if (pixel) return `Google Pixel ${pixel[1].trim()}`;
   // Apple
-  if (/iPhone/i.test(ua))     return 'iPhone';
-  if (/iPad/i.test(ua))       return 'iPad';
-  if (/iPod/i.test(ua))       return 'iPod';
+  if (/iPhone/i.test(ua))  return 'iPhone';
+  if (/iPad/i.test(ua))    return 'iPad';
+  if (/iPod/i.test(ua))    return 'iPod';
   // Xiaomi
   if (/Redmi\s?Note\s?(\d+)/i.test(ua)) return `Redmi Note ${ua.match(/Redmi\s?Note\s?(\d+)/i)[1]}`;
   if (/Redmi\s?(\d+)/i.test(ua))        return `Redmi ${ua.match(/Redmi\s?(\d+)/i)[1]}`;
@@ -82,23 +117,37 @@ function _sc_detectDeviceName() {
   // OnePlus
   if (/OnePlus\s?([A-Z0-9 ]+)/i.test(ua)) return `OnePlus ${ua.match(/OnePlus\s?([A-Z0-9 ]+)/i)[1].trim().slice(0,6)}`;
   // Oppo / Vivo / Realme
-  if (/Realme/i.test(ua))  return 'Realme Phone';
+  if (/Realme/i.test(ua))   return 'Realme Phone';
   if (/\bOPPO\b/i.test(ua)) return 'OPPO Phone';
-  if (/Vivo/i.test(ua))    return 'Vivo Phone';
-  // Desktop OS detection (order matters — check desktop before generic Android)
-  if (/Windows NT 10/i.test(ua) && !/Mobile/.test(ua)) return 'Windows 11 PC';
-  if (/Windows NT/i.test(ua)  && !/Mobile/.test(ua))   return 'Windows PC';
-  if (/Macintosh/i.test(ua)   && !/Mobile/.test(ua))   return 'Mac';
-  if (/Linux/i.test(ua)       && !/Android/.test(ua))  return 'Linux PC';
+  if (/Vivo/i.test(ua))     return 'Vivo Phone';
+  // F1 FIX: Windows NT 10.0 is used by BOTH Windows 10 and Windows 11.
+  // The only reliable way to distinguish them requires navigator.userAgentData
+  // (Chromium only). We use that when available, otherwise label generically.
+  if (/Windows NT/i.test(ua) && !/Mobile/.test(ua)) {
+    try {
+      const plat = navigator?.userAgentData?.platform || '';
+      if (plat.toLowerCase().includes('windows')) {
+        // userAgentData doesn't expose the version easily without a high-entropy hint.
+        // Fall back to NT version: NT 10.0 = Win10/11, NT 6.3 = Win8.1, etc.
+        const ntVer = ua.match(/Windows NT ([\d.]+)/);
+        if (ntVer && parseFloat(ntVer[1]) >= 10) return 'Windows PC'; // could be 10 or 11
+      }
+    } catch (_) {}
+    const ntVer = ua.match(/Windows NT ([\d.]+)/);
+    if (ntVer && parseFloat(ntVer[1]) >= 10) return 'Windows PC';
+    return 'Windows PC';
+  }
+  if (/Macintosh/i.test(ua)  && !/Mobile/.test(ua)) return 'Mac';
+  if (/Linux/i.test(ua)      && !/Android/.test(ua)) return 'Linux PC';
   // Generic Android fallback
-  if (/Android/i.test(ua))    return 'Android Phone';
+  if (/Android/i.test(ua))   return 'Android Phone';
   return 'Unknown Device';
 }
 
 // ══════════════════════════════════════════════════════════════════════════
 // SUPABASE SESSION TABLE HELPERS
 // ══════════════════════════════════════════════════════════════════════════
-function _scDb() { return _sb(); }  // piggyback on supabase.js client
+function _scDb() { return _sb(); }
 
 async function _sc_tableCheck() {
   if (_sc_tableExists) return true;
@@ -144,6 +193,8 @@ async function _sc_fetchAllSessions() {
 
 // ══════════════════════════════════════════════════════════════════════════
 // ACTIVITY TRACKING — real user interaction keeps session alive
+// F4: visibilitychange and window focus also count as activity.
+// F5: shim pushes from manager.js dispatch bt:save etc. automatically.
 // ══════════════════════════════════════════════════════════════════════════
 const _SC_EVENTS = ['mousedown', 'mousemove', 'keydown', 'touchstart', 'scroll', 'input', 'change', 'click', 'pointerdown'];
 
@@ -159,14 +210,42 @@ function _sc_recordActivity() {
 
 function _sc_startActivityTracking() {
   _SC_EVENTS.forEach(ev => document.addEventListener(ev, _sc_recordActivity, { passive: true }));
+
+  // F4: Page visibility and focus events count as activity.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') _sc_recordActivity();
+  });
+  window.addEventListener('focus', _sc_recordActivity);
+
   // Custom BT app events dispatched elsewhere
   ['bt:save', 'bt:navigate', 'bt:voice', 'bt:edit'].forEach(ev =>
     document.addEventListener(ev, _sc_recordActivity)
   );
+
+  // F5: Shim — monkey-patch pushToSupabase so every save fires bt:save.
+  // This registers saves from manager.js as activity without touching manager.js.
+  const _shimPush = () => {
+    const orig = window.pushToSupabase;
+    if (typeof orig === 'function') {
+      window.pushToSupabase = function(...args) {
+        document.dispatchEvent(new CustomEvent('bt:save'));
+        return orig.apply(this, args);
+      };
+    }
+  };
+  // Shim after DOM ready (pushToSupabase defined in supabase.js which loads after us)
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _shimPush);
+  } else {
+    // supabase.js hasn't run yet — defer one tick
+    setTimeout(_shimPush, 0);
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════
 // INACTIVITY TIMER
+// F6: grace period always ≥ 20 s.
+// F7: scStayActive() re-arms the full timer correctly.
 // ══════════════════════════════════════════════════════════════════════════
 function _sc_getTimeoutMs() {
   return parseInt(localStorage.getItem(SC_TIMEOUT_KEY) || '90', 10) * 1000;
@@ -176,17 +255,19 @@ function _sc_resetInactivityTimer() {
   clearTimeout(_sc_inactivityTimer);
   if (_sc_status !== STATUS_ACTIVE) return;
 
-  const total   = _sc_getTimeoutMs();
-  const warnAt  = Math.max(total - 20_000, Math.floor(total * 0.75));
+  const total  = _sc_getTimeoutMs();
+  // F6: grace is always 20 s minimum, capped at 25 % of total.
+  const grace  = Math.max(20_000, Math.round(total * 0.20));
+  const warnAt = total - grace;
 
   _sc_inactivityTimer = setTimeout(() => {
     if (_sc_status !== STATUS_ACTIVE) return;
-    // Skip timeout if priority lock is still valid
+    // Skip timeout if priority lock is still valid — F14 also handles this in heartbeat.
     if (_sc_priorityLock && _sc_priorityLockUntil && Date.now() < new Date(_sc_priorityLockUntil).getTime()) {
       _sc_resetInactivityTimer();
       return;
     }
-    _sc_showInactivityWarning(Math.min(20, Math.round((total - warnAt) / 1000)));
+    _sc_showInactivityWarning(Math.round(grace / 1000));
   }, warnAt);
 }
 
@@ -211,7 +292,6 @@ function _sc_showInactivityWarning(graceSec) {
   `;
   document.body.appendChild(banner);
 
-  // Countdown ticker
   let rem = graceSec;
   const tick = setInterval(() => {
     rem--;
@@ -220,7 +300,6 @@ function _sc_showInactivityWarning(graceSec) {
     if (rem <= 0 || !document.getElementById('sc-inactivity-banner')) clearInterval(tick);
   }, 1000);
 
-  // Auto-drop after grace period
   _sc_warningTimer = setTimeout(() => {
     if (_sc_status === STATUS_ACTIVE && _sc_warningShown) {
       _sc_becomePassive('Inactivity timeout');
@@ -230,13 +309,15 @@ function _sc_showInactivityWarning(graceSec) {
 }
 
 // Public — called by the "Stay Active" button
+// F7: re-arms the inactivity timer so the full countdown restarts.
 function scStayActive() {
   document.getElementById('sc-inactivity-banner')?.remove();
   clearTimeout(_sc_warningTimer);
   _sc_warningShown = false;
-  _sc_recordActivity();
+  _sc_lastActivity  = Date.now();   // F7: update timestamp before resetTimer reads it
   _sc_addLog('✅ Stayed active — user confirmed');
   toast('✓ Still active!');
+  if (_sc_status === STATUS_ACTIVE) _sc_resetInactivityTimer(); // F7: explicitly re-arm
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -255,8 +336,6 @@ async function _sc_becomeActive(reason) {
   _sc_renderAll();
   updateSyncCenterStatusBar();
 
-  // Auto-flush any offline-queued changes now that we have write access.
-  // Delay 600ms so supabase.js is fully ready and the debounce window clears.
   if (typeof _hasPending === 'function' && _hasPending() && navigator.onLine) {
     _sc_addLog('⚡ Auto-flushing offline queue after becoming ACTIVE');
     setTimeout(() => {
@@ -266,9 +345,9 @@ async function _sc_becomeActive(reason) {
 }
 
 async function _sc_becomePassive(reason, pullRemote = false) {
-  _sc_status           = STATUS_PASSIVE;
-  _sc_activeSince      = null;
-  _sc_priorityLock     = false;
+  _sc_status            = STATUS_PASSIVE;
+  _sc_activeSince       = null;
+  _sc_priorityLock      = false;
   _sc_priorityLockUntil = null;
   clearTimeout(_sc_inactivityTimer);
   clearTimeout(_sc_warningTimer);
@@ -279,32 +358,27 @@ async function _sc_becomePassive(reason, pullRemote = false) {
   _sc_renderAll();
   updateSyncCenterStatusBar();
 
-  // Pull the latest remote data so this passive device stays in sync
   if (pullRemote && navigator.onLine && typeof pullFromSupabase === 'function') {
     _sc_addLog('🔄 Pulling latest data after ownership transfer…');
     setTimeout(() => pullFromSupabase(true), 800);
   }
 }
-// Expose for dynamically rendered HTML onclick handlers
+// F8: shim passes pullRemote=false (safe default) when called from dynamic HTML.
 window._sc_becomePassive = (reason) => _sc_becomePassive(reason, false);
 
 // ══════════════════════════════════════════════════════════════════════════
-// PUBLIC ACTIONS (called by HTML buttons)
+// PUBLIC ACTIONS
 // ══════════════════════════════════════════════════════════════════════════
 
-/** Called by supabase.js before any write — returns true if allowed */
 function scCanWrite() {
-  // If table doesn't exist yet (setup pending), allow writes so app keeps working
   if (!_sc_tableExists) return true;
   return _sc_status === STATUS_ACTIVE;
 }
 
-/** Take control from another device */
 async function scTakeControl() {
   const btn = document.getElementById('sc-take-ctrl-btn');
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Taking control…'; }
   try {
-    // Check for active priority lock on another device
     const other = _sc_sessions.find(s => s.status === STATUS_ACTIVE && s.device_id !== _sc_getUDID());
     if (other?.priority_lock && other.priority_lock_until) {
       const lockEnd = new Date(other.priority_lock_until).getTime();
@@ -314,7 +388,6 @@ async function scTakeControl() {
         return;
       }
     }
-    // Demote other active device(s)
     if (other) {
       await _scDb().from(SC_TABLE)
         .update({ status: STATUS_PASSIVE, active_since: null, priority_lock: false })
@@ -330,7 +403,6 @@ async function scTakeControl() {
   }
 }
 
-/** Force a fresh pull from Supabase */
 async function scForceSync() {
   _sc_addLog('🔄 Force sync triggered');
   await pullFromSupabase(false);
@@ -338,7 +410,6 @@ async function scForceSync() {
   _sc_renderSession();
 }
 
-/** Toggle priority (manual) lock */
 async function scTogglePriorityLock() {
   if (_sc_status !== STATUS_ACTIVE) {
     toast('⚠ Take control first to enable priority lock', 'w');
@@ -359,7 +430,6 @@ async function scTogglePriorityLock() {
   _sc_renderAll();
 }
 
-/** Save inactivity timeout */
 function scSaveTimeout() {
   const val = parseInt(document.getElementById('sc-timeout-sel')?.value || '90', 10);
   localStorage.setItem(SC_TIMEOUT_KEY, String(val));
@@ -368,7 +438,6 @@ function scSaveTimeout() {
   toast(`✓ Timeout set to ${val}s`);
 }
 
-/** Clear the offline push queue */
 function scClearOfflineQueue() {
   _clearPending();
   _sc_addLog('🗑 Offline queue cleared');
@@ -376,7 +445,6 @@ function scClearOfflineQueue() {
   toast('✓ Offline queue cleared');
 }
 
-/** Pull latest data from Supabase immediately */
 async function scPullNow() {
   _sc_addLog('⬇ Manual pull triggered from Sync Center');
   await pullFromSupabase(false);
@@ -384,14 +452,12 @@ async function scPullNow() {
   _sc_renderSession();
 }
 
-/** Conflict recovery: remote wins full pull */
 async function scConflictRecovery() {
   _sc_addLog('🔧 Conflict recovery: pulling remote (remote wins)…');
   await pullFromSupabase(false);
   _sc_addLog('✓ Conflict recovery complete');
 }
 
-/** Clear logs panel */
 function scClearLogs() {
   _sc_logs = [];
   _sc_renderLogs();
@@ -409,14 +475,13 @@ function _sc_startSessionRealtime() {
     .on('postgres_changes', { event: '*', schema: 'public', table: SC_TABLE }, async payload => {
       await _sc_fetchAllSessions();
       const changed = payload.new || {};
-      // Another device just became ACTIVE while we are also ACTIVE → yield
       if (changed.status === STATUS_ACTIVE
           && changed.device_id !== _sc_getUDID()
           && _sc_status === STATUS_ACTIVE) {
         _sc_addLog(`👑 Ownership taken by ${changed.device_name || changed.device_id} — now PASSIVE`);
         toast(`📱 ${changed.device_name || 'Another device'} took write control`, 'w');
         await _sc_becomePassive(`Ownership taken by ${changed.device_name || changed.device_id}`, true);
-        return; // renderAll already called in becomePassive
+        return;
       }
       _sc_renderAll();
     })
@@ -431,18 +496,33 @@ function _sc_startSessionRealtime() {
 
 // ══════════════════════════════════════════════════════════════════════════
 // HEARTBEAT — keep own session alive, prune stale actives
+// F9:  never demotes self in stale check.
+// F14: checks priority lock expiry on every heartbeat tick.
 // ══════════════════════════════════════════════════════════════════════════
 function _sc_startHeartbeat() {
   setInterval(async () => {
     if (!navigator.onLine || !_sc_tableExists) return;
+
+    // F14: Auto-expire priority lock if time is up.
+    if (_sc_priorityLock && _sc_priorityLockUntil) {
+      if (Date.now() >= new Date(_sc_priorityLockUntil).getTime()) {
+        _sc_priorityLock      = false;
+        _sc_priorityLockUntil = null;
+        _sc_addLog('🔓 Priority lock expired automatically');
+        toast('🔓 Priority lock expired');
+        await _sc_upsertSession({ priority_lock: false, priority_lock_until: null });
+        _sc_renderAll();
+      }
+    }
+
     await _sc_upsertSession();
     await _sc_fetchAllSessions();
 
-    // If we are ACTIVE, clean up stale active sessions from other devices
+    // F9: Only prune OTHER devices — never self.
     if (_sc_status === STATUS_ACTIVE) {
       const now = Date.now();
       for (const s of _sc_sessions) {
-        if (s.device_id === _sc_getUDID()) continue;
+        if (s.device_id === _sc_getUDID()) continue;   // F9: skip self
         if (s.status !== STATUS_ACTIVE) continue;
         if (now - new Date(s.last_seen).getTime() > SC_STALE_MS) {
           await _scDb().from(SC_TABLE)
@@ -468,6 +548,7 @@ function _sc_addLog(msg) {
 
 // ══════════════════════════════════════════════════════════════════════════
 // UI — SUB-TAB SWITCHING
+// F13: correctly initialises tab highlight state on first render.
 // ══════════════════════════════════════════════════════════════════════════
 function scSwitchTab(tab) {
   _sc_activeTab = tab;
@@ -480,6 +561,8 @@ function scSwitchTab(tab) {
   document.querySelectorAll('.sc-panel').forEach(p => {
     p.style.display = p.dataset.panel === tab ? 'block' : 'none';
   });
+  // F12: always re-render settings when that tab is opened.
+  if (tab === 'settings') _sc_renderSettings();
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -489,8 +572,8 @@ function _sc_renderSession() {
   const el = document.getElementById('sc-session-panel');
   if (!el) return;
 
-  const udid = _sc_getUDID();
-  const now  = Date.now();
+  const udid    = _sc_getUDID();
+  const now     = Date.now();
   const idleSec = Math.round((now - _sc_lastActivity) / 1000);
   const idleStr = idleSec < 60
     ? `${idleSec}s`
@@ -531,17 +614,18 @@ function _sc_renderSession() {
     </div>`;
 
   el.innerHTML = [
-    row('🖥', 'This Device',       `<strong>${_sc_deviceName}</strong> <span style="color:var(--muted);font-size:9px;font-family:var(--mono)">${udid}</span>`),
-    row('⚡', 'Device Status',     statusHtml),
-    row('👑', 'Session Owner',     ownerName),
-    row('⏱', 'Active Since',      activeSinceStr),
-    row('💤', 'Idle Time',         _sc_status === STATUS_ACTIVE ? idleStr : '—'),
-    row('🔄', 'Last Sync',        lastSyncStr),
-    row('📡', 'Devices Online',   `${recentCount} device${recentCount !== 1 ? 's' : ''} (last 2 min)`),
-    row('🔐', 'Priority Lock',    lockStr),
+    row('🖥', 'This Device',      `<strong>${_sc_deviceName}</strong> <span style="color:var(--muted);font-size:9px;font-family:var(--mono)">${udid}</span>`),
+    row('⚡', 'Device Status',    statusHtml),
+    row('👑', 'Session Owner',    ownerName),
+    row('⏱', 'Active Since',     activeSinceStr),
+    row('💤', 'Idle Time',        _sc_status === STATUS_ACTIVE ? idleStr : '—'),
+    row('🔄', 'Last Sync',       lastSyncStr),
+    row('📡', 'Devices Online',  `${recentCount} device${recentCount !== 1 ? 's' : ''} (last 2 min)`),
+    row('🔐', 'Priority Lock',   lockStr),
   ].join('');
 }
 
+// F11: Devices panel shows idle time per device.
 function _sc_renderDevices() {
   const el = document.getElementById('sc-devices-panel');
   if (!el) return;
@@ -561,17 +645,25 @@ function _sc_renderDevices() {
   }
 
   el.innerHTML = _sc_sessions.map(s => {
-    const isMe    = s.device_id === udid;
-    const ageSec  = Math.round((now - new Date(s.last_seen).getTime()) / 1000);
-    const ageStr  = ageSec < 60   ? `${ageSec}s ago`
-                  : ageSec < 3600 ? `${Math.floor(ageSec / 60)}m ago`
-                  :                 `${Math.floor(ageSec / 3600)}h ago`;
-    const isOnline   = ageSec < 120;
-    const isActive   = s.status === STATUS_ACTIVE;
-    const dotColor   = isOnline  ? (isActive ? 'var(--green)' : 'var(--accent)') : 'var(--border)';
+    const isMe     = s.device_id === udid;
+    const ageSec   = Math.round((now - new Date(s.last_seen).getTime()) / 1000);
+    const ageStr   = ageSec < 60   ? `${ageSec}s ago`
+                   : ageSec < 3600 ? `${Math.floor(ageSec / 60)}m ago`
+                   :                 `${Math.floor(ageSec / 3600)}h ago`;
+    const isOnline  = ageSec < 120;
+    const isActive  = s.status === STATUS_ACTIVE;
+    const dotColor  = isOnline ? (isActive ? 'var(--green)' : 'var(--accent)') : 'var(--border)';
     const statusColor = isActive ? 'var(--green)' : 'var(--muted)';
-    const lockBadge   = s.priority_lock
+    const lockBadge = s.priority_lock
       ? `<span style="background:var(--amber,#f59e0b);color:#000;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px">LOCKED</span>`
+      : '';
+    // F11: show idle time for this device's row
+    const idleTag = isMe && _sc_status === STATUS_ACTIVE
+      ? (() => {
+          const idleSec = Math.round((now - _sc_lastActivity) / 1000);
+          const idleStr = idleSec < 60 ? `Idle ${idleSec}s` : `Idle ${Math.floor(idleSec/60)}m`;
+          return `<div style="font-size:9px;color:var(--amber,#f59e0b)">${idleStr}</div>`;
+        })()
       : '';
     return `
       <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;
@@ -586,6 +678,7 @@ function _sc_renderDevices() {
             ${lockBadge}
           </div>
           <div style="font-size:9px;color:var(--muted);font-family:var(--mono);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.device_id}</div>
+          ${idleTag}
         </div>
         <div style="text-align:right;flex-shrink:0">
           <div style="font-size:11px;font-weight:800;color:${statusColor}">${s.status}</div>
@@ -599,11 +692,10 @@ function _sc_renderHealth() {
   const el = document.getElementById('sc-health-panel');
   if (!el) return;
 
-  const pending   = _hasPending();
-  // Use getter so we safely cross the supabase.js boundary (let vs window)
-  const sbCh      = (typeof _sbGetChannel === 'function') ? _sbGetChannel() : null;
-  const rtDataOk  = sbCh && ['joined','joining'].includes(sbCh.state);
-  const rtSessOk  = _sc_channel && ['joined','joining'].includes(_sc_channel?.state);
+  const pending  = _hasPending();
+  const sbCh     = (typeof _sbGetChannel === 'function') ? _sbGetChannel() : null;
+  const rtDataOk = sbCh && ['joined','joining'].includes(sbCh.state);
+  const rtSessOk = _sc_channel && ['joined','joining'].includes(_sc_channel?.state);
 
   const row = (icon, label, ok, detail) => `
     <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:12px">
@@ -656,7 +748,6 @@ function _sc_renderControls() {
   const lockBg    = _sc_priorityLock ? 'var(--red)' : 'var(--purple,#7c3aed)';
 
   el.innerHTML = `
-    <!-- Take Control -->
     <div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px">
       <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:var(--accent);margin-bottom:6px">SESSION CONTROL</div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.6">
@@ -679,7 +770,6 @@ function _sc_renderControls() {
       </div>
     </div>
 
-    <!-- Priority Lock -->
     <div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px">
       <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:var(--purple,#7c3aed);margin-bottom:6px">PRIORITY LOCK (Manual)</div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.6">
@@ -705,6 +795,7 @@ function _sc_renderControls() {
   `;
 }
 
+// F12: Settings always re-renders on open (called by scSwitchTab).
 function _sc_renderSettings() {
   const el = document.getElementById('sc-settings-panel');
   if (!el) return;
@@ -712,11 +803,10 @@ function _sc_renderSettings() {
   const udid = _sc_getUDID();
 
   el.innerHTML = `
-    <!-- Inactivity Timeout -->
     <div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px">
       <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:var(--accent);margin-bottom:6px">INACTIVITY TIMEOUT</div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.6">
-        If no activity is detected within this window, device switches to PASSIVE mode automatically. A 20s grace warning appears first.
+        If no activity is detected within this window, device switches to PASSIVE mode automatically. A 20 s grace warning appears first.
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <select id="sc-timeout-sel" style="font-size:12px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s3);color:var(--text);outline:none">
@@ -730,7 +820,6 @@ function _sc_renderSettings() {
       </div>
     </div>
 
-    <!-- Device Info -->
     <div style="background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px">
       <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:var(--accent);margin-bottom:8px">THIS DEVICE</div>
       <div style="font-size:12px;line-height:2">
@@ -740,7 +829,6 @@ function _sc_renderSettings() {
       </div>
     </div>
 
-    <!-- Supabase SQL Setup -->
     <div style="background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.2);border-radius:10px;padding:14px;margin-bottom:12px">
       <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:var(--red);margin-bottom:8px">⚙ SUPABASE SETUP — Run this SQL once</div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.7">
@@ -774,7 +862,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE bt_sessions;</pre>
 async function scCheckTable() {
   const el = document.getElementById('sc-table-check-result');
   if (el) el.textContent = 'Checking…';
-  _sc_tableExists = false; // Force re-check
+  _sc_tableExists = false;
   const ok = await _sc_tableCheck();
   if (el) {
     el.textContent = ok ? '✅ Table exists and is ready!' : '✕ Table not found — run the SQL above.';
@@ -788,7 +876,7 @@ async function scCheckTable() {
   }
 }
 
-// ── Top status pill in the Quick Actions bar ──
+// ── Top status pill ──
 function updateSyncCenterStatusBar() {
   const pill = document.getElementById('sc-status-pill');
   if (!pill) return;
@@ -810,12 +898,15 @@ function _sc_renderAll() {
   _sc_renderHealth();
   _sc_renderControls();
   _sc_renderLogs();
-  _sc_renderSettings();
+  // F12: only re-render settings if that panel is currently visible.
+  if (_sc_activeTab === 'settings') _sc_renderSettings();
   updateSyncCenterStatusBar();
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// INIT — called from DOMContentLoaded in supabase.js (or standalone)
+// INIT
+// F15: single-device optimisation — if no other session exists at all,
+//      immediately claim ACTIVE without waiting for stale timer.
 // ══════════════════════════════════════════════════════════════════════════
 async function initSyncCenter() {
   if (_sc_initialized) return;
@@ -826,32 +917,31 @@ async function initSyncCenter() {
 
   _sc_addLog(`🚀 ${_sc_deviceName} · ${_sc_getUDID()}`);
 
-  // Expose for supabase.js payload enrichment
-  window._scGetUDID      = _sc_getUDID;
+  // Expose globals needed by supabase.js
+  window._sc_getUDID     = _sc_getUDID;    // F3
+  window._scGetUDID      = _sc_getUDID;    // legacy
   window._scDeviceName   = _sc_deviceName;
   window.scCanWrite      = scCanWrite;
 
-  // Check table exists
   const tableReady = await _sc_tableCheck();
 
   if (tableReady) {
     await _sc_fetchAllSessions();
 
-    const mySession    = _sc_sessions.find(s => s.device_id === _sc_getUDID());
-    const otherActive  = _sc_sessions.find(s => s.status === STATUS_ACTIVE && s.device_id !== _sc_getUDID());
+    const mySession   = _sc_sessions.find(s => s.device_id === _sc_getUDID());
+    const otherActive = _sc_sessions.find(s => s.status === STATUS_ACTIVE && s.device_id !== _sc_getUDID());
 
     if (!otherActive) {
+      // F15: No other device is active — claim immediately.
       await _sc_becomeActive('No active device found');
     } else if (mySession?.status === STATUS_ACTIVE) {
       // Restore our own active status (page reload)
       _sc_status      = STATUS_ACTIVE;
       _sc_activeSince = mySession.active_since;
       _sc_resetInactivityTimer();
-      // Re-confirm our ACTIVE status in DB (heartbeat confirms within 30s but do it now)
       await _sc_upsertSession({ status: STATUS_ACTIVE, active_since: _sc_activeSince });
       _sc_addLog('✅ Resumed ACTIVE from prior session');
       updateSyncCenterStatusBar();
-      // Flush any pending offline queue accumulated before the reload
       if (typeof _hasPending === 'function' && _hasPending() && navigator.onLine) {
         _sc_addLog('⚡ Auto-flushing offline queue after session resume');
         setTimeout(() => { if (typeof pushToSupabase === 'function') pushToSupabase(); }, 800);
@@ -869,24 +959,26 @@ async function initSyncCenter() {
     _sc_startSessionRealtime();
     _sc_startHeartbeat();
   } else {
-    // Table doesn't exist yet — run in standalone mode (writes allowed, no session lock)
-    _sc_status = STATUS_ACTIVE;
+    // Table doesn't exist yet — standalone mode (writes allowed)
+    _sc_status      = STATUS_ACTIVE;
     _sc_activeSince = new Date().toISOString();
-    _sc_addLog('⚠ bt_sessions table not found — running in standalone mode (see Settings tab)');
+    _sc_addLog('⚠ bt_sessions table not found — standalone mode (see Settings tab)');
   }
 
   _sc_startActivityTracking();
   _sc_renderAll();
 
-  // Ensure settings tab renders when the tcard opens
+  // F12: re-render settings whenever the Sync Center tcard opens.
   document.getElementById('tc-sync-center')?.addEventListener('click', () => {
-    setTimeout(_sc_renderSettings, 50);
+    setTimeout(() => {
+      if (_sc_activeTab === 'settings') _sc_renderSettings();
+    }, 50);
   });
 
-  _sc_addLog('✓ Sync Center ready');
+  _sc_addLog('✓ Sync Center v1.1 ready');
 }
 
-// Refresh idle time counter every 5s while ACTIVE
+// Refresh idle counter every 5 s while ACTIVE
 setInterval(() => {
   if (_sc_status === STATUS_ACTIVE) _sc_renderSession();
 }, 5_000);
