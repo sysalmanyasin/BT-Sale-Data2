@@ -202,6 +202,17 @@ if ('serviceWorker' in navigator) {
 })();
 </script>
 
+<!-- ====== STATUS STRIP — always visible, very slim, top of screen ====== -->
+<div id="qa-strip" class="no-print" style="position:fixed;top:0;left:0;right:0;z-index:9000;display:flex;align-items:center;gap:6px;padding:2px 10px;background:var(--s1);border-bottom:1px solid var(--border);font-size:9.5px;color:var(--muted);white-space:nowrap;height:22px;overflow:hidden">
+  <span style="font-size:9px;opacity:.5">⚡</span>
+  <span>Poll: <span id="ar-last-poll" style="color:var(--text)">—</span></span>
+  <span style="opacity:.4">·</span>
+  <span id="ar-status" style="color:var(--green);font-weight:600">RT Active</span>
+  <span style="opacity:.4">·</span>
+  <span id="sc-status-pill" style="font-size:9px;font-weight:700;padding:0px 6px;border-radius:20px;background:rgba(245,158,11,.15);color:var(--amber,#f59e0b)">◐ PASSIVE</span>
+</div>
+<div style="height:22px" class="no-print"></div>
+
 <!-- ====== NAV ====== -->
 <!-- ══ NAV ══ -->
 <nav id="nav" style="display:none" class="no-print">
@@ -564,30 +575,20 @@ if ('serviceWorker' in navigator) {
 <div class="page" id="page-tools">
   <div class="hero"><div class="hlabel">Tools</div><div class="htitle">Settings &amp; Data Management</div><div class="hsub">Tap any card to expand it.</div></div>
 
-  <!-- ── Quick Actions — always visible, no card to open ── -->
-  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px;padding:14px 16px;background:var(--s1);border:1px solid var(--border);border-radius:12px">
-    <div style="flex:1;min-width:160px">
-      <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px">⚡ Quick Actions</div>
-      <div style="font-size:11px;color:var(--muted)">Last poll: <span id="ar-last-poll">—</span> &nbsp;·&nbsp; <span id="ar-status" style="color:var(--green)">Active</span> &nbsp;·&nbsp; <span id="sc-status-pill" style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(245,158,11,.15);color:var(--amber,#f59e0b)">◐ PASSIVE</span></div>
-    </div>
-    <button class="btn btn-s" style="white-space:nowrap" onclick="pullFromSupabase()">↓ Pull</button>
-    <button class="btn btn-g" style="white-space:nowrap" onclick="pushToSupabase()">↑ Push</button>
-    <button class="btn" style="white-space:nowrap;background:var(--red,#dc2626);color:#fff;font-weight:700" onclick="hardRefreshCache()">⚡ Hard Refresh</button>
-    <button id="view-mode-btn" class="btn" style="white-space:nowrap;background:var(--s2);border:1px solid var(--border);font-weight:600" onclick="toggleViewMode()" title="Switch between Mobile and Desktop view">🖥️ Desktop View</button>
-  </div>
+  <!-- Quick Actions moved to the always-visible top status strip (#qa-strip) -->
 
   <!-- ══════════════════════════════════════════════════════════════════ -->
   <!-- SYNC CENTER — Device Session Management                           -->
   <!-- ══════════════════════════════════════════════════════════════════ -->
-  <div class="tcard open" id="tc-sync-center" style="border:1.5px solid rgba(99,102,241,.35)">
+  <div class="tcard" id="tc-sync-center" style="border:1.5px solid rgba(99,102,241,.35)">
     <div class="tcard-hdr" onclick="toggleTcard('tc-sync-center')">
       <div class="ttitle" style="display:flex;align-items:center;gap:8px">
         🖥 Sync Center
-        <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:rgba(99,102,241,.15);color:var(--accent)">v1</span>
+        <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:rgba(99,102,241,.15);color:var(--accent)">v1.1</span>
       </div>
-      <span class="tcard-chevron" style="transform:rotate(90deg)">▶</span>
+      <span class="tcard-chevron">▶</span>
     </div>
-    <div class="tcard-body" style="max-height:none;padding-top:12px">
+    <div class="tcard-body">
 
       <!-- Sub-tab nav -->
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
@@ -1163,7 +1164,8 @@ if ('serviceWorker' in navigator) {
       <button class="btn btn-p" style="margin-top:16px" onclick="addCreditEmployee()">+ Add Employee</button>
       <button class="btn btn-g" style="margin-top:16px" onclick="saveCreditData()">💾 Save</button>
       <button class="btn" style="margin-top:16px;background:var(--amber);color:#fff" onclick="copyToNextMonth()" title="Save this month, then open next month with each employee's net as their new opening balance">📋 Copy → Next Month</button>
-      <button class="btn" style="margin-top:16px;background:var(--purple);color:#fff" onclick="printCreditReport()">🖨 Print</button>
+      <button class="btn" style="margin-top:16px;background:var(--indigo,#4f46e5);color:#fff" onclick="printCreditSummaryReport()">🖨 Print Summary</button>
+      <button class="btn" style="margin-top:16px;background:var(--purple);color:#fff" onclick="printCreditReport()">🖨 Print Detailed</button>
     </div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.7">
       💡 Each employee row shows their previous balance, daily credits/deductions, and the net carried to next month. Positive = money owed to employee, Negative = deducted next month. When the month ends, click <strong>📋 Copy → Next Month</strong> — it saves current data and opens the next month with each person's net as their new opening balance.
@@ -1349,6 +1351,9 @@ if ('serviceWorker' in navigator) {
 
 <!-- 13b. Jazz Cash Ledger — AI-powered daily ledger -->
 <script src="js/jazz-cash.js"></script>
+
+<!-- 13c. Hub Quick Actions — headless print/report triggers for CommandHub chips -->
+<script src="js/hub-actions.js"></script>
 
 <!-- 14. Field manager modal -->
 <script src="js/fields.js"></script>
