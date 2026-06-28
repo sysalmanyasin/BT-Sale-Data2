@@ -16,6 +16,8 @@ let _sbChannel     = null;
 let _pushInFlight  = false;   // prevents concurrent pushes
 let _pushQueued    = false;   // a second push was requested while one was running
 let _pushDebounce  = null;    // debounce timer so rapid saves coalesce into one push
+let _pullInFlight  = false;   // FIX 3: prevents concurrent pulls (mirrors push guard)
+let _lastPullTime  = 0;       // FIX 3: timestamp of most recent pull start
 
 function _sb() {
   if (!_sbClient) _sbClient = supabase.createClient(SB_URL, SB_KEY);
@@ -388,8 +390,22 @@ async function _doPush() {
 
 // ══════════════════════════════════════════════════════════════════
 // PULL FROM SUPABASE
+// FIX 3: pull-in-flight guard + 2s minimum gap between pulls
 // ══════════════════════════════════════════════════════════════════
 async function pullFromSupabase(silent = false) {
+  // Guard: skip if a pull is already running
+  if (_pullInFlight) {
+    if (!silent) sbLog('⏭ Pull skipped — already in progress', 'info');
+    return;
+  }
+  // Guard: enforce a 2s minimum gap between pulls to prevent rapid-fire duplicates
+  const now = Date.now();
+  if (now - _lastPullTime < 2000) {
+    if (!silent) sbLog('⏭ Pull skipped — too soon after last pull', 'info');
+    return;
+  }
+  _pullInFlight = true;
+  _lastPullTime = now;
   setSyncBadge('syncing');
   if (!silent) sbLog('Fetching from Supabase…');
   try {
@@ -423,22 +439,32 @@ async function pullFromSupabase(silent = false) {
     setSyncBadge('err');
     _recordHistory({ type: 'pull', status: 'err', msg: e.message.slice(0, 60) });
     if (!silent) toast('✕ Pull failed: ' + e.message.slice(0, 50), 'e');
+  } finally {
+    _pullInFlight = false;   // FIX 3: always release the lock, even on early returns above
   }
 }
 
 
 // ══════════════════════════════════════════════════════════════════
 // REAL-TIME SUBSCRIPTION
-// Handles subscribe errors, logs state, and exposes channel health
-// to the Test Connection checker.
+// FIX 1: skip pull when the event was caused by THIS device's own push
 // ══════════════════════════════════════════════════════════════════
 function _startRealtime() {
   const db = _sb();
   if (_sbChannel) { try { db.removeChannel(_sbChannel); } catch(_) {} }
   _sbChannel = db
     .channel('bt-sync')
-    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: SB_TABLE }, () => {
-      sbLog('⚡ Remote update — syncing…', 'info');
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: SB_TABLE }, (payload) => {
+      // FIX 1: Ignore events that were triggered by our own push.
+      // The payload row stores device_id inside the JSON payload column.
+      const remoteDeviceId = payload?.new?.payload?.device_id;
+      const ownUDID = (typeof _sc_getUDID === 'function') ? _sc_getUDID()
+                    : localStorage.getItem('bt_device_udid');
+      if (remoteDeviceId && ownUDID && remoteDeviceId === ownUDID) {
+        sbLog('⏭ Real-time: own push — skipping self-pull', 'info');
+        return;
+      }
+      sbLog('⚡ Remote update from another device — syncing…', 'info');
       pullFromSupabase(true).then(() => {
         toast('⚡ Synced from another device');
         _recordHistory({ type: 'realtime', status: 'ok', msg: 'Received update from another device' });
@@ -449,9 +475,8 @@ function _startRealtime() {
       if (status === 'SUBSCRIBED') {
         _updateRealtimeStatus(true);
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-        sbLog('⚠ Real-time channel ' + status + (err ? ': ' + err.message : '') + ' — will reconnect on next event', 'err');
+        sbLog('⚠ Real-time channel ' + status + (err ? ': ' + err.message : '') + ' — reconnecting in 5s', 'err');
         _updateRealtimeStatus(false);
-        // Auto-reconnect after 5 seconds
         setTimeout(_startRealtime, 5000);
       }
     });
@@ -473,6 +498,9 @@ function _updateLastPollDisplay() {
 
 // ══════════════════════════════════════════════════════════════════
 // OFFLINE ↔ ONLINE
+// FIX 5: delay the direct pull so RT has time to reconnect first;
+// if RT fires within that window the _pullInFlight guard blocks the
+// redundant second pull automatically.
 // ══════════════════════════════════════════════════════════════════
 window.addEventListener('online', () => {
   sbLog('↑ Back online' + (_hasPending() ? ' — flushing queue…' : ''), 'info');
@@ -485,7 +513,9 @@ window.addEventListener('online', () => {
     _recordHistory({ type: 'offline', status: 'ok', msg: 'Back online — flushing queued changes' });
     pushToSupabase();
   } else {
-    pullFromSupabase(true);
+    // FIX 5: wait 3s for RT to re-establish and possibly fire its own pull.
+    // The _pullInFlight guard will suppress this one if RT already ran.
+    setTimeout(() => pullFromSupabase(true), 3000);
   }
 });
 window.addEventListener('offline', () => {
@@ -495,19 +525,21 @@ window.addEventListener('offline', () => {
 });
 
 // ── PWA / mobile: reconnect real-time when tab becomes visible again ──
-// Phones kill WebSocket connections when the screen sleeps or the app
-// is backgrounded. Reconnect and do a silent pull on wakeup.
+// FIX 2: Only pull on foreground if the RT channel actually dropped.
+// If RT is live it will deliver any missed updates itself — an extra
+// unconditional pull creates the double-sync the plan prohibits.
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) return;
   const chState = _sbChannel ? _sbChannel.state : '';
-  if (!_sbChannel || (chState !== 'joined' && chState !== 'joining')) {
-    sbLog('↩ App foregrounded — reconnecting real-time…', 'info');
+  const rtDropped = !_sbChannel || (chState !== 'joined' && chState !== 'joining');
+  if (rtDropped) {
+    sbLog('↩ App foregrounded — RT dropped, reconnecting…', 'info');
     _startRealtime();
+    // RT was down — pull once so we catch anything we missed while backgrounded.
+    // Delay slightly so the new channel subscribe completes first.
+    if (navigator.onLine) setTimeout(() => pullFromSupabase(true).catch(() => {}), 1500);
   }
-  // Always do a silent pull on wake so stale data is refreshed
-  if (navigator.onLine) {
-    pullFromSupabase(true).catch(() => {});
-  }
+  // RT is alive — no pull needed; real-time events carry all updates.
 });
 
 // ══════════════════════════════════════════════════════════════════
@@ -652,13 +684,20 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Initialize Sync Center (device sessions + write-lock architecture) ──
   if (typeof initSyncCenter === 'function') initSyncCenter();
 
-  // Auto-load on unlock
-  if (localStorage.getItem('bt_auto_load') === '1') pullFromSupabase(true);
+  // FIX 4: Per plan point 3 — always perform one full pull on startup,
+  // then real-time takes over. This is NOT a user toggle; it is mandatory.
+  // The bt_auto_load key is kept only for the UI checkbox display but no
+  // longer gates the startup pull.
+  if (navigator.onLine) {
+    sbLog('🔄 Startup pull — loading latest data…', 'info');
+    pullFromSupabase(true);
+  }
 
   // Flush any offline queue from a previous session
+  // (runs after startup pull because pushToSupabase is debounced 300ms)
   if (_hasPending() && navigator.onLine) {
     sbLog('⚡ Offline changes pending — syncing…', 'info');
-    pushToSupabase();
+    setTimeout(() => pushToSupabase(), 400);
   }
 });
 
