@@ -1052,9 +1052,11 @@ function printExpenseReport() {
   </div>`);
 }
 
-function printCreditReport() {
-  const my = document.getElementById('crd-month-sel').value;
-  const emps = _crdData_cur;
+function printCreditReport(myArg) {
+  const sel = document.getElementById('crd-month-sel');
+  const my = myArg || (sel ? sel.value : '') || (typeof BTDate !== 'undefined' ? BTDate.currentMonthYear() : '');
+  // Use the on-screen working copy only if it matches the requested month; otherwise load fresh from storage (headless-safe).
+  const emps = (sel && sel.value === my && _crdData_cur) ? _crdData_cur : _crdData(my);
   const today = new Date().toLocaleDateString('en-PK',{day:'2-digit',month:'short',year:'numeric'});
   const empBlocks = emps.map(emp => {
     const net = _crdNet(emp);
@@ -1076,10 +1078,50 @@ function printCreditReport() {
   }).join('');
   _mgrPrint(`<div style="max-width:680px;margin:0 auto;font-family:Arial,sans-serif">
     <div style="background:#0f172a;color:#fff;padding:14px 20px;border-radius:8px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
-      <div><h2 style="margin:0;font-size:16px">STAFF CREDIT LEDGER — ${my}</h2></div>
+      <div><h2 style="margin:0;font-size:16px">STAFF CREDIT LEDGER (DETAILED) — ${my}</h2></div>
       <div style="font-size:11px;opacity:.7">Printed: ${today}</div>
     </div>
     ${empBlocks}
+  </div>`);
+}
+
+// Compact one-row-per-employee balance summary — headless-safe (works from
+// anywhere, e.g. the CommandHub "Credit Balance" quick action, without the
+// Staff Credit tab having ever been opened on screen).
+function printCreditSummaryReport(myArg) {
+  const sel = document.getElementById('crd-month-sel');
+  const my = myArg || (sel ? sel.value : '') || (typeof BTDate !== 'undefined' ? BTDate.currentMonthYear() : '');
+  const emps = (sel && sel.value === my && _crdData_cur) ? _crdData_cur : _crdData(my);
+  const today = new Date().toLocaleDateString('en-PK',{day:'2-digit',month:'short',year:'numeric'});
+  const rows = emps.map(emp => {
+    const net = _crdNet(emp);
+    const color = net > 0 ? '#059669' : net < 0 ? '#dc2626' : '#64748b';
+    return `<tr>
+      <td style="padding:6px 10px;border-bottom:1px solid #eee;font-weight:600">${emp.name}</td>
+      <td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${_fc2(emp.prevBal)}</td>
+      <td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">${emp.entries.length}</td>
+      <td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:right;font-family:monospace;font-weight:700;color:${color}">₨${_fc2(net)}</td>
+    </tr>`;
+  }).join('');
+  const totNet = emps.reduce((s,e) => s + _crdNet(e), 0);
+  _mgrPrint(`<div style="max-width:560px;margin:0 auto;font-family:Arial,sans-serif">
+    <div style="background:#0f172a;color:#fff;padding:14px 20px;border-radius:8px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+      <div><h2 style="margin:0;font-size:16px">STAFF CREDIT — SUMMARY</h2><p style="margin:4px 0 0;font-size:11px;opacity:.7">${my}</p></div>
+      <div style="font-size:11px;opacity:.7">Printed: ${today}</div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr style="background:#f8fafc">
+        <th style="padding:7px 10px;text-align:left;border-bottom:2px solid #000;font-size:10px">Employee</th>
+        <th style="padding:7px 10px;text-align:right;border-bottom:2px solid #000;font-size:10px">Prev Balance</th>
+        <th style="padding:7px 10px;text-align:right;border-bottom:2px solid #000;font-size:10px">Entries</th>
+        <th style="padding:7px 10px;text-align:right;border-bottom:2px solid #000;font-size:10px">Net Balance</th>
+      </tr></thead>
+      <tbody>${rows || '<tr><td colspan="4" style="padding:10px;text-align:center;color:#94a3b8">No staff credit data for this month</td></tr>'}</tbody>
+      <tfoot><tr style="background:#eff6ff">
+        <td colspan="3" style="padding:7px 10px;font-weight:700;font-size:11px">TOTAL NET</td>
+        <td style="padding:7px 10px;text-align:right;font-weight:700;font-family:monospace;color:#1e40af">₨${_fc2(totNet)}</td>
+      </tr></tfoot>
+    </table>
   </div>`);
 }
 

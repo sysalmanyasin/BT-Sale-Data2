@@ -221,16 +221,15 @@ var CHP_RECENT_MAX = 12;
    QUICK ACTIONS
 ══════════════════════════════════════════════════════════════════════ */
 var _chQuickActions = [
-  { label: '📊 Today\'s total',         cmd: 'what is today\'s total sale?' },
-  { label: '💳 Credit balances',        cmd: 'show all credit balances' },
-  { label: '💰 Jazz Cash balance',      cmd: 'what is the jazz cash balance?' },
-  { label: '🎯 Pace check',             cmd: 'am I on pace for this month?' },
-  { label: '📋 Expense summary',        cmd: 'show expense summary this month' },
-  { label: '📅 Month summary',          cmd: 'summarize this month' },
+  { label: '📊 Today\'s total',         fn: 'hubPrintTodayReport()' },
+  { label: '💳 Credit balance',         fn: 'hubPrintCreditSummary()' },
+  { label: '🎯 Pace check',             fn: 'hubPrintPaceReport()' },
+  { label: '📋 Expense summary',        fn: 'hubPrintExpenseSummary()' },
+  { label: '📅 Month summary',          fn: 'hubPrintMonthSummary()' },
   { label: '📄 Export summary',         cmd: 'export manager summary' },
   { label: '➕ Add today\'s entry',     cmd: null, nav: 'entry' },
   { label: '👔 Staff registry',         cmd: null, nav: 'manager', tab: 'staff' },
-  { label: '🏦 Jazz Cash ledger',       cmd: null, nav: 'manager', tab: 'jazz' },
+  { label: '🏦 Jazz Cash ledger',       fn: 'hubShowJazzCashBalance()' },
   { label: '💸 Petty expenses',         cmd: null, nav: 'manager', tab: 'petty' },
 ];
 
@@ -285,15 +284,15 @@ function _chGetLiveState() {
   var hour  = now.getHours();
   var today = _chTodayStr();
 
-  // ── 1. Unfilled entry after 8 PM ──────────────────────────────────
-  if (hour >= 20 && typeof DAILY !== 'undefined') {
+  // ── 1. Unfilled entry after 11 AM ─────────────────────────────────
+  if (hour >= 11 && typeof DAILY !== 'undefined') {
     var hasEntry = DAILY.some(function (d) {
       return d.Date === today && (Number(d['TOTAL'] || d['Total'] || 0) > 0);
     });
     if (!hasEntry) {
       return {
         type: 'warn',
-        html: '⚠️ <strong>No entry for today yet</strong> — it\'s past 8 PM.' +
+        html: '⚠️ <strong>No entry for today yet</strong> — it\'s past 11 AM.' +
               ' <button class="chp-state-btn" onclick="showPage(\'entry\')">Fill Now →</button>'
       };
     }
@@ -354,7 +353,9 @@ function _chRenderChips() {
   rows.push('<div class="chp-thread-label" style="text-align:left;padding-left:2px;margin:' + (_chRecent.length ? '8px' : '0') + ' 0 5px">⚡ Quick</div>');
   rows.push('<div class="chp-chips-row">');
   _chQuickActions.forEach(function (a, i) {
-    if (a.cmd) {
+    if (a.fn) {
+      rows.push('<button class="chp-chip" onclick="' + a.fn + '">' + a.label + '</button>');
+    } else if (a.cmd) {
       rows.push('<button class="chp-chip" onclick="chpAsk(' + JSON.stringify(a.cmd) + ')">' + a.label + '</button>');
     } else {
       var onclick = 'showPage(\'' + a.nav + '\')';

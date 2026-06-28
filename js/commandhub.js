@@ -1187,19 +1187,11 @@
           </div>
         </div>
       </div>
-
-      <button id="cmdhub-fab" class="cmdhub-fab no-print"
-              title="Search &amp; Commands (Ctrl+K)" aria-label="Open command palette">
-        <svg width="22" height="22" fill="none" viewBox="0 0 24 24"
-             stroke="white" stroke-width="2.2" aria-hidden="true">
-          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-        </svg>
-      </button>
     `;
 
     // Grab by ID — immune to whitespace/comment nodes
     document.body.appendChild(wrapper.querySelector('#cmdhub-overlay'));
-    document.body.appendChild(wrapper.querySelector('#cmdhub-fab'));
+    // Floating search FAB removed per user request (Ctrl+K / toolbar link still open the palette)
 
     // ── Events ──────────────────────────────────────────────────
     document.addEventListener('keydown', handleKey);
@@ -1207,7 +1199,7 @@
     const input    = el('cmdhub-input');
     const clearBtn = el('cmdhub-clear');
     const overlay  = el('cmdhub-overlay');
-    const fab      = el('cmdhub-fab');
+    const fab      = null;
 
     input.addEventListener('input', () => {
       const q = input.value;
