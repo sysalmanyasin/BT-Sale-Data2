@@ -917,6 +917,24 @@ async function initSyncCenter() {
 
   _sc_addLog(`🚀 ${_sc_deviceName} · ${_sc_getUDID()}`);
 
+  // Safety net: if anything throws unexpectedly, still render the UI
+  // so the panel never gets stuck on "Initializing…".
+  try {
+    await _initSyncCenterCore();
+  } catch (err) {
+    console.error('[SC] initSyncCenter error:', err);
+    _sc_addLog(`✕ Init error: ${err.message} — running in standalone mode`);
+    // Fall back to standalone (write-enabled) so the app keeps working.
+    _sc_status      = STATUS_ACTIVE;
+    _sc_activeSince = new Date().toISOString();
+    _sc_startActivityTracking();
+  }
+  _sc_renderAll();
+  _sc_addLog('✓ Sync Center v1.1 ready');
+}
+
+async function _initSyncCenterCore() {
+
   // Expose globals needed by supabase.js
   window._sc_getUDID     = _sc_getUDID;    // F3
   window._scGetUDID      = _sc_getUDID;    // legacy
@@ -966,7 +984,6 @@ async function initSyncCenter() {
   }
 
   _sc_startActivityTracking();
-  _sc_renderAll();
 
   // F12: re-render settings whenever the Sync Center tcard opens.
   document.getElementById('tc-sync-center')?.addEventListener('click', () => {
@@ -974,9 +991,7 @@ async function initSyncCenter() {
       if (_sc_activeTab === 'settings') _sc_renderSettings();
     }, 50);
   });
-
-  _sc_addLog('✓ Sync Center v1.1 ready');
-}
+}  // end _initSyncCenterCore
 
 // Refresh idle counter every 5 s while ACTIVE
 setInterval(() => {

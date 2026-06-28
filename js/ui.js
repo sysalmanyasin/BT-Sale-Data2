@@ -1,3 +1,14 @@
+// ── Safe guard: updateGhBadge may be called before supabase.js loads ──
+// ui.js and manager.js both reference updateGhBadge(); supabase.js defines it.
+// Since ui.js loads first, we define a no-op placeholder here that supabase.js
+// will overwrite with the real implementation when it loads.
+if (typeof updateGhBadge === 'undefined') {
+  window.updateGhBadge = function() {
+    // Will be replaced by the real function in supabase.js once it loads.
+    // Safe to call before supabase.js is ready — just does nothing.
+  };
+}
+
 function showPage(id) {
   try {
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
