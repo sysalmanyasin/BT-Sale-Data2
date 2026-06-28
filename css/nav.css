@@ -19,3 +19,63 @@ nav{position:sticky;top:0;z-index:200;background:rgba(255,255,255,.96);backdrop-
 .lockbtn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--s2);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;color:var(--muted);transition:all .15s;}
 .lockbtn:hover{border-color:var(--accent);color:var(--accent);}
 
+
+/* ── Sale Data sub-nav (Phase 1 reshape) ── */
+.ntabs.subnav {
+  border-top: 1px solid var(--border);
+  padding-top: 6px;
+  margin-top: 2px;
+}
+.ntab.sub {
+  font-size: 12px;
+  opacity: 0.85;
+}
+.bnav-sub {
+  display: flex;
+  justify-content: space-around;
+  background: var(--s1, #fff);
+  border-top: 1px solid var(--border);
+  padding: 6px 4px;
+  position: sticky;
+  bottom: 56px;
+  z-index: 40;
+}
+.bnav-sub-item {
+  border: none;
+  background: none;
+  font-size: 11px;
+  color: var(--muted);
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.bnav-sub-item.active {
+  background: var(--brand, #2563eb);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ── CommandHub page integration (Phase 2) ── */
+#page-commandhub {
+  overflow: hidden;
+}
+/* Make sure the page fills the full viewport height below the nav */
+.page.on#page-commandhub {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Override default .page.on for CommandHub — needs flex, not block */
+.page.on#page-commandhub {
+  display: flex !important;
+  flex-direction: column;
+  padding: 0 !important;
+  height: calc(100vh - 56px);  /* fill below desktop nav */
+  max-height: calc(100vh - 56px);
+  overflow: hidden;
+}
+@media (max-width: 700px) {
+  .page.on#page-commandhub {
+    height: calc(100vh - 56px - 60px); /* subtract mobile bottom nav too */
+    max-height: calc(100vh - 56px - 60px);
+  }
+}
