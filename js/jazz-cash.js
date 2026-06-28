@@ -350,6 +350,8 @@ async function jcAiCommand() {
   if (!inp||!resEl) return;
   const text=inp.value.trim(); if (!text){toast('⚠ Type a command','w');return;}
   if (_jcAiLoading) return;
+  const apiKey=(typeof getAiSettings==='function')?getAiSettings().apiKey:'';
+  if (!apiKey){toast('⚠ No Groq API key — add it in the AI ⚙ settings','w');return;}
   _jcAiLoading=true; if(sp)sp.style.display='inline'; resEl.style.display='none';
   _jcData=jcLoad();
   const sorted=(_jcData.entries||[]).slice().sort((a,b)=>a.date.localeCompare(b.date));
@@ -359,18 +361,20 @@ async function jcAiCommand() {
   const today=_jcTodayStr(); const nd=new Date();
   const M=['January','February','March','April','May','June','July','August','September','October','November','December'];
   try {
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-      model:'claude-sonnet-4-6',max_tokens:1000,
-      system:`You are a Jazz Cash ledger assistant for Salman in Pakistan. Today: ${today} (${M[nd.getMonth()]} ${nd.getDate()}, ${nd.getFullYear()}).
+    const resp=await fetch(_GROQ_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:JSON.stringify({
+      model:_GROQ_MODEL,max_tokens:1000,temperature:0.1,
+      messages:[
+        {role:'system',content:`You are a Jazz Cash ledger assistant for Salman in Pakistan. Today: ${today} (${M[nd.getMonth()]} ${nd.getDate()}, ${nd.getFullYear()}).
 Current balance: ₨${_jcFmt(bal)}. Recent entries:\n${recent||'(none)'}
 Shifts: Morning,Evening,Night,Both,Off. Types: credit(+),debit(-),withdrawal(-),commission(+),transfer(-).
 Return ONLY valid JSON, no markdown.
 For add entry: {"action":"add","date":"YYYY-MM-DD","shift":"Morning","type":"credit","amount":5000,"desc":"description","explanation":"..."}
 For question: {"action":"info","message":"..."}
-Parse amounts: 5k=5000, 1.5k=1500. Default shift=Morning, default date=today.`,
-      messages:[{role:'user',content:text}]})});
+Parse amounts: 5k=5000, 1.5k=1500. Default shift=Morning, default date=today.`},
+        {role:'user',content:text}]})});
+    if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error('Groq '+resp.status+': '+((e.error&&e.error.message)||resp.statusText));}
     const data=await resp.json();
-    const raw=(data.content||[]).map(b=>b.text||'').join('').trim();
+    const raw=(data.choices?.[0]?.message?.content||'').trim();
     const parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());
     if (parsed.action==='add') {
       resEl.style.display='block';

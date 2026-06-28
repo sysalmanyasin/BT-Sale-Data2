@@ -70,6 +70,7 @@ function switchMgrTab(tab) {
   if (sec) sec.style.display = '';
   if (tab === 'staff') renderStaffRegistry();
   if (tab === 'jazzcash' && typeof renderJazzCash === 'function') renderJazzCash();
+  if (tab === 'sheets' && typeof renderNotesSheets === 'function') renderNotesSheets();
 }
 
 function loadManagerPage() {
