@@ -1,10 +1,10 @@
 /* ═══════════════════════════════════════════════════════════════
-   BT Sales IC — Service Worker  v6.0
+   BT Sales IC — Service Worker  v6.2
    Strategy: Cache-first for all app shell assets.
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v6.1';
+const CACHE_NAME = 'bt-sales-v6.2';
 
 const APP_SHELL = [
   './',
