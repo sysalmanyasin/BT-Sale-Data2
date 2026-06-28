@@ -1,10 +1,10 @@
 /* ═══════════════════════════════════════════════════════════════
-   BT Sales IC — Service Worker  v6.2
+   BT Sales IC — Service Worker  v6.0
    Strategy: Cache-first for all app shell assets.
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v6.2';
+const CACHE_NAME = 'bt-sales-v6.0';
 
 const APP_SHELL = [
   './',
@@ -56,6 +56,8 @@ const APP_SHELL = [
   './js/manager.js',
   './js/custom-sections.js',
   './js/fields.js',
+  /* Phase 4: Jazz Cash Ledger */
+  './js/jazz-cash.js',
   './js/drive.js',
   /* ── JS — AI assistant ── */
   './js/ai-memory.js',
