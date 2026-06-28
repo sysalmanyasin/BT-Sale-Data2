@@ -687,7 +687,7 @@ function startAutoInterval() { /* replaced by real-time subscription */ }
 // ══════════════════════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   updateGhBadge();
 
   const synci = document.getElementById('synci');
