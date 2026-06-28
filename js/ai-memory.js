@@ -71,7 +71,9 @@ function aimFactTouch(id) {
 function aimFactsPromptBlock() {
   const list = aimFactList();
   if (!list.length) return '';
-  list.forEach(f => aimFactTouch(f.id));
+  // Removed: list.forEach(f => aimFactTouch(f.id))
+  // aimFactTouch wrote every fact back to localStorage on every Groq call — N writes per query.
+  // usedCount is purely display-only; no logic branches on it, so deferring is safe.
   return '\nREMEMBERED FACTS ABOUT THIS BUSINESS (told to you by the owner — always honor these):\n' +
     list.map(f => '• ' + f.fact).join('\n');
 }
@@ -203,6 +205,11 @@ function aimRulesCheckAll() {
   const D = (typeof DAILY !== 'undefined' && DAILY)   ? DAILY   : [];
   const n = v => isNaN(parseFloat(v)) ? 0 : parseFloat(v);
 
+  // Snapshot BEFORE the loop so the conditional write check isn't fooled by the
+  // mutations about to happen inside the loop (r.lastChecked = _aimNow() sets
+  // lastChecked on every rule, making rules.some(!lastChecked) always false afterward).
+  const hadUnchecked = rules.some(function(r){ return !r.lastChecked; });
+
   rules.forEach(r => {
     r.lastChecked = _aimNow();
     const c = r.condition;
@@ -252,7 +259,12 @@ function aimRulesCheckAll() {
       }
     } catch (_) { /* never let one bad rule break the rest */ }
   });
-  _aimSet(AIMEM_K_RULES, rules); // persist lastChecked
+  // Only write back when something changed — avoids a localStorage write on every page open
+  // when all rules already have a lastChecked and nothing fired.
+  // hadUnchecked was captured BEFORE the loop so it isn't corrupted by the loop's own mutations.
+  if (fired.length > 0 || hadUnchecked) {
+    _aimSet(AIMEM_K_RULES, rules);
+  }
   return fired;
 }
 

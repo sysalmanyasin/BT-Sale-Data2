@@ -225,6 +225,15 @@
   let _debounce  = null;
   let _touchStartY = 0;
 
+  // buildCommands() result cached per palette open — the static command list never
+  // changes at runtime, so rebuilding it on every keystroke is wasteful.
+  let _cachedCommands = null;
+
+  function getCachedCommands() {
+    if (!_cachedCommands) _cachedCommands = buildCommands();
+    return _cachedCommands;
+  }
+
   /* ═══════════════════════════════════════════════════════════════════════
      RECENT ITEMS  (localStorage: bt_cmdhub_recent)
   ═══════════════════════════════════════════════════════════════════════ */
@@ -341,6 +350,8 @@
     const go = page => () => {
       closePalette();
       if (typeof global.showPage === 'function') global.showPage(page);
+      // Keep AIContext aware of the navigation so follow-up chat messages resolve correctly
+      if (typeof AIContext !== 'undefined') AIContext.setPage(page);
     };
 
     // Navigate to manager and switch sub-tab.
@@ -348,6 +359,11 @@
     const mgrTab = tab => () => {
       closePalette();
       if (typeof global.showPage === 'function') global.showPage('manager');
+      // Tell AIContext which section the user is now in — palette nav is a context signal
+      if (typeof AIContext !== 'undefined') {
+        AIContext.setPage('manager');
+        AIContext.setSection(tab, tab, 'palette');
+      }
       setTimeout(() => {
         if (typeof global.loadManagerPage === 'function') global.loadManagerPage();
         if (typeof global.switchMgrTab === 'function') global.switchMgrTab(tab);
@@ -918,7 +934,7 @@
 
     // ── Suggested commands ────────────────────────────────────────
     const CMD_SUGGESTIONS = ['nav-dashboard','nav-entry','nav-report','mgr-salary','exp-csv-daily'];
-    const allCmds = buildCommands();
+    const allCmds = getCachedCommands();
     const suggestedCmds = CMD_SUGGESTIONS
       .map(id => allCmds.find(c => c.id === id)).filter(Boolean);
 
@@ -943,7 +959,7 @@
   function runSearch(q) {
     if (!q.trim()) { renderGroups(buildSuggestions()); return; }
 
-    const allCmds = buildCommands();
+    const allCmds = getCachedCommands();
     const cmdMatches = allCmds
       .map(c => ({ c, sc: Math.max(score(c.title, q), score(c.sub, q), score(c.tags.join(' '), q)) }))
       .filter(x => x.sc > 0)
@@ -1108,6 +1124,7 @@
     const input   = el('cmdhub-input');
     if (!overlay || !input) return;
 
+    _cachedCommands = null; // reset so commands are always fresh on each open
     _isOpen = true;
     overlay.classList.add('cmdhub-open');
     document.body.style.overflow = 'hidden'; // lock background scroll on mobile

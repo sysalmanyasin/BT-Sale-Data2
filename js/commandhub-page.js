@@ -214,7 +214,7 @@ var _chMicRec    = null;
 var _chInited    = false;
 var _chDismissed = false;        // live banner dismiss state (session)
 
-var CHP_RECENT_KEY = 'bt_chp_recent';
+var CHP_RECENT_KEY = 'bt_chp_recent'; // chat-page commands (strings)
 var CHP_RECENT_MAX = 12;
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -615,7 +615,24 @@ function chpClear() {
    RECENT COMMANDS
 ══════════════════════════════════════════════════════════════════════ */
 function _chpLoadRecent() {
-  try { return JSON.parse(localStorage.getItem(CHP_RECENT_KEY) || '[]'); } catch (e) { return []; }
+  try {
+    // Merge chat recents (strings) with palette recents (objects) so the chips panel
+    // shows commands from BOTH surfaces — fixes the split-history problem.
+    var chatRaw    = JSON.parse(localStorage.getItem(CHP_RECENT_KEY) || '[]');
+    var paletteRaw = JSON.parse(localStorage.getItem('bt_cmdhub_recent') || '[]');
+    // Chat stores plain strings; palette stores {id, title, ...} objects.
+    var chatStrings    = chatRaw.filter(function(r){ return typeof r === 'string'; });
+    var paletteTitles  = paletteRaw.map(function(r){
+      return (typeof r === 'string') ? r : (r.title || '');
+    }).filter(Boolean);
+    // Deduplicate: chat strings first (most recent typed commands), then palette
+    var seen = new Set();
+    var merged = [];
+    chatStrings.concat(paletteTitles).forEach(function(s) {
+      if (!seen.has(s)) { seen.add(s); merged.push(s); }
+    });
+    return merged;
+  } catch (e) { return []; }
 }
 
 function _chSaveRecent(cmd) {

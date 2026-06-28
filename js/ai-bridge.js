@@ -28,6 +28,37 @@ function clearAiSettings() {
 }
 function aiHasKey() { return !!getAiSettings().apiKey; }
 
+// ── Prompt cache — rebuilt only when staff count or current month changes ──
+// Avoids re-reading localStorage + rebuilding staff/section strings on every Groq call.
+var _promptCache = { staffList: null, customSections: null, cacheKey: '' };
+
+function _buildStaticPromptParts() {
+  var staffLen = 0;
+  try { staffLen = (typeof STAFF !== 'undefined' && STAFF) ? STAFF.length : 0; } catch (_) {}
+  var cacheKey = staffLen + '|' + _aiCurrentMonthYear();
+  if (_promptCache.cacheKey === cacheKey) {
+    return { staffList: _promptCache.staffList, customSections: _promptCache.customSections };
+  }
+  var staffList = '';
+  try {
+    if (typeof STAFF !== 'undefined' && STAFF.length) {
+      var names = STAFF.filter(function(s){ return s.active !== false; })
+                       .map(function(s){ return s.name; }).filter(Boolean);
+      if (names.length) staffList = '\nACTIVE STAFF: ' + names.join(', ');
+    }
+  } catch (_) {}
+  var customSections = '';
+  try {
+    var _csAll = JSON.parse(localStorage.getItem('mw_custom_sections_v1') || '{}');
+    var _csSecs = Object.entries(_csAll).map(function(e){
+      return e[1].emoji + ' ' + e[1].name + ' (id:' + e[0] + ')';
+    }).join(', ');
+    if (_csSecs) customSections = '\nCUSTOM SECTIONS IN MANAGER: ' + _csSecs;
+  } catch (_) {}
+  _promptCache = { staffList: staffList, customSections: customSections, cacheKey: cacheKey };
+  return { staffList: staffList, customSections: customSections };
+}
+
 // ── Safe intent whitelist (ALL intents) ───────────────────────────────
 const AI_SAFE_INTENTS = new Set([
   // Navigation
@@ -847,31 +878,20 @@ function _buildLlmPrompt(question) {
   const today    = _aiTodayStr();
   const curMonth = _aiCurrentMonthYear();
 
-  let staffList = '';
-  try {
-    if (typeof STAFF !== 'undefined' && STAFF.length) {
-      const names = STAFF.filter(function(s){ return s.active !== false; }).map(function(s){ return s.name; }).filter(Boolean);
-      if (names.length) staffList = '\nACTIVE STAFF: ' + names.join(', ');
-    }
-  } catch (_) {}
-
-  let customSections = '';
-  try {
-    const all  = JSON.parse(localStorage.getItem('mw_custom_sections_v1') || '{}');
-    const secs = Object.entries(all).map(function(e){ return e[1].emoji + ' ' + e[1].name + ' (id:' + e[0] + ')'; }).join(', ');
-    if (secs) customSections = '\nCUSTOM SECTIONS IN MANAGER: ' + secs;
-  } catch (_) {}
+  // Use cached staff list + custom sections (rebuilt only when staff count or month changes)
+  const _static = _buildStaticPromptParts();
+  const staffList      = _static.staffList;
+  const customSections = _static.customSections;
 
   let ctx = '';
   try {
-    // If DAILY/MONTHLY are empty, attempt a silent Supabase pull first
+    // Do NOT fire a silent Supabase pull here — that hides a network call inside a
+    // string-building function and can cause race conditions. If data isn't loaded,
+    // tell the LLM plainly; the user can trigger a manual sync.
     const _hasDat = (typeof MONTHLY !== 'undefined' && MONTHLY && MONTHLY.length > 0);
-    if (!_hasDat && typeof pullFromSupabase === 'function') {
-      pullFromSupabase(true).catch(function(){});
-    }
     const snap = (typeof getAppContextSummary === 'function') ? getAppContextSummary({ fullMonths: 'all' }) : null;
     if (snap) ctx = '\nDATA SNAPSHOT:\n' + snap;
-    else if (!_hasDat) ctx = '\nDATA SNAPSHOT: No data loaded yet. Supabase pull triggered — user should retry in a moment.';
+    else if (!_hasDat) ctx = '\nDATA SNAPSHOT: No sales data loaded yet. Ask the user to sync from Supabase (Tools page) before querying totals.';
   } catch (_) {}
 
   let entryCtx = '';
@@ -1084,7 +1104,8 @@ function _buildLlmPrompt(question) {
     '',
     'USER INPUT: ' + question,
   ];
-  return lines.filter(function(l){ return l !== null && l !== undefined; }).join('\n');
+  // Filter out null, undefined, AND empty strings — empty entries waste tokens
+  return lines.filter(function(l){ return l !== null && l !== undefined && l !== ''; }).join('\n');
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -1326,10 +1347,10 @@ async function aiBridgeAnswer(text) {
           return fu;
         }
       }
-      // Enrich short ambiguous messages before LLM so it understands context
-      if (AIContext.isFollowUp(text)) {
-        text = AIContext.enrichText(text);
-      }
+      // NOTE: enrichText is intentionally NOT called here.
+      // It used to prepend "[Context: ...]" before local parsers ran, which broke
+      // regex patterns (e.g. "add 500 expense for tea" → "[Context:...] add 500 ...").
+      // enrichText is now applied only just before the Groq call, below.
     }
 
     // Persistent memory / custom rules / correction-training commands — instant, no Groq.
@@ -1357,7 +1378,13 @@ async function aiBridgeAnswer(text) {
     const analytics  = _aiDeepSalesAnalysis(text);      if (analytics)  return { text: analytics, intent: null };
 
     try {
-      const result = await _callGroq(text);
+      // Enrich short context-dependent messages NOW — after all local parsers had a chance
+      // to run on clean text. Only the LLM sees the enriched version.
+      var _llmText = text;
+      if (typeof AIContext !== 'undefined' && AIContext.isFollowUp(text)) {
+        _llmText = AIContext.enrichText(text);
+      }
+      const result = await _callGroq(_llmText);
       if (result && result.intent) window._aiLastIntent = result.intent;
       return result;
     } catch (llmErr) {
