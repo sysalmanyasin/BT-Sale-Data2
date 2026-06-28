@@ -19,6 +19,11 @@ let _pushDebounce  = null;    // debounce timer so rapid saves coalesce into one
 let _pullInFlight  = false;   // FIX 3: prevents concurrent pulls (mirrors push guard)
 let _lastPullTime  = 0;       // FIX 3: timestamp of most recent pull start
 
+// Expose a safe getter so sync-center.js can read the channel state
+// (let variables don't become window properties, getter bridges the gap)
+function _sbGetChannel() { return _sbChannel; }
+window._sbGetChannel = _sbGetChannel;
+
 function _sb() {
   if (!_sbClient) _sbClient = supabase.createClient(SB_URL, SB_KEY);
   return _sbClient;
@@ -101,6 +106,17 @@ function _clearPending() { localStorage.removeItem(SB_PENDING); }
 function _hasPending()   { return !!localStorage.getItem(SB_PENDING); }
 
 // ══════════════════════════════════════════════════════════════════
+// PAYLOAD VERSION — monotonically incrementing counter so receivers
+// can detect which push is newer when two devices conflict.
+// ══════════════════════════════════════════════════════════════════
+const SB_VERSION_KEY = 'bt_payload_version';
+function _nextPayloadVersion() {
+  const v = parseInt(localStorage.getItem(SB_VERSION_KEY) || '0', 10) + 1;
+  localStorage.setItem(SB_VERSION_KEY, String(v));
+  return v;
+}
+
+// ══════════════════════════════════════════════════════════════════
 // BUILD PAYLOAD  (every section the app owns)
 // ══════════════════════════════════════════════════════════════════
 function _buildPayload() {
@@ -128,7 +144,8 @@ function _buildPayload() {
       hidden: JSON.parse(localStorage.getItem('bt_col_config')  || '[]'),
       custom: JSON.parse(localStorage.getItem('bt_custom_cols') || '[]')
     },
-    pushedAt:   new Date().toISOString(),
+    pushedAt:    new Date().toISOString(),
+    payloadVersion: _nextPayloadVersion(),
     device_id:   (typeof _scGetUDID   === 'function') ? _scGetUDID()   : 'unknown',
     device_name: (typeof _scDeviceName !== 'undefined') ? _scDeviceName : 'unknown'
   };
@@ -539,6 +556,14 @@ document.addEventListener('visibilitychange', () => {
     // Delay slightly so the new channel subscribe completes first.
     if (navigator.onLine) setTimeout(() => pullFromSupabase(true).catch(() => {}), 1500);
   }
+  // Also reconnect sessions channel if it dropped
+  if (typeof _sc_startSessionRealtime === 'function') {
+    const sessState = (typeof _sc_channel !== 'undefined' && _sc_channel) ? _sc_channel.state : '';
+    const sessDropped = !_sc_channel || (sessState !== 'joined' && sessState !== 'joining');
+    if (sessDropped) {
+      _sc_startSessionRealtime();
+    }
+  }
   // RT is alive — no pull needed; real-time events carry all updates.
 });
 
@@ -682,22 +707,22 @@ document.addEventListener('DOMContentLoaded', () => {
   _startRealtime();
 
   // ── Initialize Sync Center (device sessions + write-lock architecture) ──
-  if (typeof initSyncCenter === 'function') initSyncCenter();
+  // Await it so the ACTIVE/PASSIVE status is set before the startup push below.
+  if (typeof initSyncCenter === 'function') await initSyncCenter();
 
   // FIX 4: Per plan point 3 — always perform one full pull on startup,
   // then real-time takes over. This is NOT a user toggle; it is mandatory.
-  // The bt_auto_load key is kept only for the UI checkbox display but no
-  // longer gates the startup pull.
   if (navigator.onLine) {
     sbLog('🔄 Startup pull — loading latest data…', 'info');
     pullFromSupabase(true);
   }
 
-  // Flush any offline queue from a previous session
-  // (runs after startup pull because pushToSupabase is debounced 300ms)
+  // Flush any offline queue from a previous session.
+  // Use 1 200ms delay (vs old 400ms) to ensure SC init and the startup pull
+  // have both started so _sc_status is correctly set before the write-lock check.
   if (_hasPending() && navigator.onLine) {
     sbLog('⚡ Offline changes pending — syncing…', 'info');
-    setTimeout(() => pushToSupabase(), 400);
+    setTimeout(() => pushToSupabase(), 1200);
   }
 });
 

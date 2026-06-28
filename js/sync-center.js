@@ -254,9 +254,18 @@ async function _sc_becomeActive(reason) {
   _sc_addLog(`✅ ACTIVE — ${reason}`);
   _sc_renderAll();
   updateSyncCenterStatusBar();
+
+  // Auto-flush any offline-queued changes now that we have write access.
+  // Delay 600ms so supabase.js is fully ready and the debounce window clears.
+  if (typeof _hasPending === 'function' && _hasPending() && navigator.onLine) {
+    _sc_addLog('⚡ Auto-flushing offline queue after becoming ACTIVE');
+    setTimeout(() => {
+      if (typeof pushToSupabase === 'function') pushToSupabase();
+    }, 600);
+  }
 }
 
-async function _sc_becomePassive(reason) {
+async function _sc_becomePassive(reason, pullRemote = false) {
   _sc_status           = STATUS_PASSIVE;
   _sc_activeSince      = null;
   _sc_priorityLock     = false;
@@ -269,7 +278,15 @@ async function _sc_becomePassive(reason) {
   _sc_addLog(`🔒 PASSIVE — ${reason}`);
   _sc_renderAll();
   updateSyncCenterStatusBar();
+
+  // Pull the latest remote data so this passive device stays in sync
+  if (pullRemote && navigator.onLine && typeof pullFromSupabase === 'function') {
+    _sc_addLog('🔄 Pulling latest data after ownership transfer…');
+    setTimeout(() => pullFromSupabase(true), 800);
+  }
 }
+// Expose for dynamically rendered HTML onclick handlers
+window._sc_becomePassive = (reason) => _sc_becomePassive(reason, false);
 
 // ══════════════════════════════════════════════════════════════════════════
 // PUBLIC ACTIONS (called by HTML buttons)
@@ -359,6 +376,14 @@ function scClearOfflineQueue() {
   toast('✓ Offline queue cleared');
 }
 
+/** Pull latest data from Supabase immediately */
+async function scPullNow() {
+  _sc_addLog('⬇ Manual pull triggered from Sync Center');
+  await pullFromSupabase(false);
+  _sc_lastSyncTime = new Date();
+  _sc_renderSession();
+}
+
 /** Conflict recovery: remote wins full pull */
 async function scConflictRecovery() {
   _sc_addLog('🔧 Conflict recovery: pulling remote (remote wins)…');
@@ -388,11 +413,10 @@ function _sc_startSessionRealtime() {
       if (changed.status === STATUS_ACTIVE
           && changed.device_id !== _sc_getUDID()
           && _sc_status === STATUS_ACTIVE) {
-        _sc_status      = STATUS_PASSIVE;
-        _sc_activeSince = null;
-        clearTimeout(_sc_inactivityTimer);
         _sc_addLog(`👑 Ownership taken by ${changed.device_name || changed.device_id} — now PASSIVE`);
         toast(`📱 ${changed.device_name || 'Another device'} took write control`, 'w');
+        await _sc_becomePassive(`Ownership taken by ${changed.device_name || changed.device_id}`, true);
+        return; // renderAll already called in becomePassive
       }
       _sc_renderAll();
     })
@@ -576,8 +600,9 @@ function _sc_renderHealth() {
   if (!el) return;
 
   const pending   = _hasPending();
-  const rtData    = typeof _sbChannel !== 'undefined' && _sbChannel;
-  const rtDataOk  = rtData && ['joined','joining'].includes(_sbChannel?.state);
+  // Use getter so we safely cross the supabase.js boundary (let vs window)
+  const sbCh      = (typeof _sbGetChannel === 'function') ? _sbGetChannel() : null;
+  const rtDataOk  = sbCh && ['joined','joining'].includes(sbCh.state);
   const rtSessOk  = _sc_channel && ['joined','joining'].includes(_sc_channel?.state);
 
   const row = (icon, label, ok, detail) => `
@@ -598,9 +623,15 @@ function _sc_renderHealth() {
   ].join('') + `
     <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn btn-s" onclick="scForceSync()" style="font-size:11px">🔄 Force Sync</button>
+      <button class="btn btn-s" onclick="scPullNow()" style="font-size:11px;background:var(--s3);border:1px solid var(--border)">⬇ Pull Now</button>
       <button class="btn" onclick="scClearOfflineQueue()" style="font-size:11px;background:var(--s3);border:1px solid var(--border)">🗑 Clear Queue</button>
       <button class="btn" onclick="scConflictRecovery()" style="font-size:11px;background:var(--red);color:#fff">🔧 Conflict Recovery</button>
-    </div>`;
+    </div>${pending ? `
+    <div style="margin-top:8px;padding:8px 10px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:8px;font-size:11px;color:var(--amber,#f59e0b)">
+      ⚠ Offline changes are queued. ${_sc_status === STATUS_ACTIVE
+        ? 'Click <strong>Force Sync</strong> to push them now.'
+        : 'Take Control first (Controls tab), then Force Sync.'}
+    </div>` : ''}`;
 }
 
 function _sc_renderLogs() {
@@ -816,7 +847,15 @@ async function initSyncCenter() {
       _sc_status      = STATUS_ACTIVE;
       _sc_activeSince = mySession.active_since;
       _sc_resetInactivityTimer();
+      // Re-confirm our ACTIVE status in DB (heartbeat confirms within 30s but do it now)
+      await _sc_upsertSession({ status: STATUS_ACTIVE, active_since: _sc_activeSince });
       _sc_addLog('✅ Resumed ACTIVE from prior session');
+      updateSyncCenterStatusBar();
+      // Flush any pending offline queue accumulated before the reload
+      if (typeof _hasPending === 'function' && _hasPending() && navigator.onLine) {
+        _sc_addLog('⚡ Auto-flushing offline queue after session resume');
+        setTimeout(() => { if (typeof pushToSupabase === 'function') pushToSupabase(); }, 800);
+      }
     } else {
       const stale = Date.now() - new Date(otherActive.last_seen).getTime() > SC_STALE_MS;
       if (stale) {
