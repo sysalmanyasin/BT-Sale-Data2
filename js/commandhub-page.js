@@ -28,8 +28,11 @@
   el.textContent = `
 /* ── Layout ── */
 #page-commandhub {
-  display: flex; flex-direction: column; height: 100%; overflow: hidden;
+  flex-direction: column; height: 100%; overflow: hidden;
   background: var(--bg, #f8fafc);
+}
+.page.on#page-commandhub {
+  display: flex;
 }
 .chp-layout {
   display: flex; flex-direction: column; height: 100%; overflow: hidden;
