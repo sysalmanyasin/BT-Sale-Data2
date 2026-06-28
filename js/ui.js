@@ -1,11 +1,24 @@
 function showPage(id) {
   try {
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
-    document.querySelectorAll('.ntab,.bnav-item').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.ntab,.bnav-item,.bnav-sub-item').forEach(t=>t.classList.remove('active'));
     const pg = document.getElementById('page-'+id);
     if(pg) pg.classList.add('on');
-    document.querySelectorAll('.ntab[data-page="'+id+'"],.bnav-item[data-page="'+id+'"]').forEach(t=>t.classList.add('active'));
+    document.querySelectorAll('.ntab[data-page="'+id+'"],.bnav-item[data-page="'+id+'"],.bnav-sub-item[data-page="'+id+'"]').forEach(t=>t.classList.add('active'));
+    const _saleDataPages = ['index','data','entry','report','diff'];
+    const _inSaleData = _saleDataPages.indexOf(id) !== -1;
+    const _subnav = document.getElementById('saledata-subnav');
+    if (_subnav) _subnav.style.display = _inSaleData ? '' : 'none';
+    const _bnavSub = document.getElementById('bnav-saledata-sub');
+    if (_bnavSub) _bnavSub.style.display = _inSaleData ? '' : 'none';
+    if (_inSaleData) {
+      document.querySelectorAll('.ntab[data-group="saledata"],.bnav-item[data-group="saledata"]').forEach(t=>t.classList.add('active'));
+    }
+    if (id==='commandhub') {
+      document.querySelectorAll('.ntab[data-group="commandhub"],.bnav-item[data-group="commandhub"]').forEach(t=>t.classList.add('active'));
+    }
     _curPage = id;
+    if(id==='commandhub') { if(typeof loadCommandHubPage==='function') loadCommandHubPage(); }
     if(id==='ai')     { if(typeof loadAiPage==='function') loadAiPage(); }
     if(id==='tools') { loadToolsPage(); }
     if(id==='manager') { loadManagerPage(); }
@@ -35,7 +48,9 @@ function showPage(id) {
   }
 }
 
-document.querySelectorAll('.ntab,.bnav-item').forEach(t=>t.addEventListener('click',()=>showPage(t.dataset.page)));
+document.querySelectorAll('.ntab,.bnav-item,.bnav-sub-item').forEach(t=>{
+  if (t.dataset.page) t.addEventListener('click',()=>showPage(t.dataset.page));
+});
 
 // Handle ?page= shortcuts from PWA manifest shortcuts (long-press icon)
 (function() {

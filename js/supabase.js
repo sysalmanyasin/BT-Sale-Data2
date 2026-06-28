@@ -121,11 +121,14 @@ function _buildPayload() {
     assistant: (typeof aimBuildAssistantPayload === 'function') ? aimBuildAssistantPayload() : null,
     jazzcash: JSON.parse(localStorage.getItem(JC_KEY)       || 'null'),
     jcTally:  JSON.parse(localStorage.getItem(JC_TALLY_KEY) || 'null'),
+    notes:    JSON.parse(localStorage.getItem('bt_notes_v1') || '[]'),
     colConfig: {
       hidden: JSON.parse(localStorage.getItem('bt_col_config')  || '[]'),
       custom: JSON.parse(localStorage.getItem('bt_custom_cols') || '[]')
     },
-    pushedAt: new Date().toISOString()
+    pushedAt:   new Date().toISOString(),
+    device_id:   (typeof _scGetUDID   === 'function') ? _scGetUDID()   : 'unknown',
+    device_name: (typeof _scDeviceName !== 'undefined') ? _scDeviceName : 'unknown'
   };
 }
 
@@ -293,6 +296,23 @@ function mergeIncomingData(data, isPull = false) {
     }
   }
 
+  // ── Notes (Notes & Sheets workspace) — merged by id, same convention
+  // as JazzCash entries. Re-renders the panel live if it's open during a pull. ──
+  if (data.notes && data.notes.length) {
+    const local = JSON.parse(localStorage.getItem('bt_notes_v1') || '[]');
+    const byId  = {};
+    local.forEach(n => { if (n && n.id) byId[n.id] = n; });
+    data.notes.forEach(n => {
+      if (!n || !n.id) return;
+      if (isPull) byId[n.id] = n;              // remote wins on pull
+      else if (!byId[n.id]) byId[n.id] = n;     // local wins on push — fill gaps only
+    });
+    localStorage.setItem('bt_notes_v1', JSON.stringify(Object.values(byId)));
+    if (isPull && typeof renderNotesSheets === 'function' && document.getElementById('mgr-sheets')) {
+      renderNotesSheets();
+    }
+  }
+
   return { mN, dN, mU, dU };
 }
 
@@ -309,6 +329,14 @@ function pushToSupabase() {
 }
 
 async function _doPush() {
+  // ── Write-lock check: only ACTIVE device may push ───────────────────────
+  if (typeof scCanWrite === 'function' && !scCanWrite()) {
+    sbLog('⚠ Push blocked — this device is PASSIVE. Take control in Sync Center first.', 'err');
+    toast('⚠ Read-only mode — open Sync Center → Take Control', 'w');
+    setSyncBadge('err');
+    return;
+  }
+
   // Lock: if a push is already in flight, note that another is wanted
   if (_pushInFlight) { _pushQueued = true; return; }
   _pushInFlight = true;
@@ -339,6 +367,7 @@ async function _doPush() {
     toast('✓ Saved to Supabase');
     _recordHistory({ type: 'push', status: 'ok', monthly: MONTHLY.length, daily: DAILY.length, msg: 'Push complete' });
     _updateLastPollDisplay();
+    document.dispatchEvent(new CustomEvent('bt:synced', { detail: { type: 'push' } }));
   } catch (e) {
     sbLog('✕ Push failed: ' + e.message, 'err');
     _markPending();
@@ -388,6 +417,7 @@ async function pullFromSupabase(silent = false) {
     setSyncBadge('ok');
     _recordHistory({ type: 'pull', status: 'ok', monthly: mN + mU, daily: dN + dU, msg: silent ? 'Auto-pull on unlock' : 'Manual pull' });
     _updateLastPollDisplay();
+    document.dispatchEvent(new CustomEvent('bt:synced', { detail: { type: 'pull' } }));
   } catch (e) {
     sbLog('✕ Pull failed: ' + e.message, 'err');
     setSyncBadge('err');
@@ -618,6 +648,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Start real-time listener
   _startRealtime();
+
+  // ── Initialize Sync Center (device sessions + write-lock architecture) ──
+  if (typeof initSyncCenter === 'function') initSyncCenter();
 
   // Auto-load on unlock
   if (localStorage.getItem('bt_auto_load') === '1') pullFromSupabase(true);

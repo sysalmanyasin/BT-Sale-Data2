@@ -1,5 +1,8 @@
 // ══════════════════════════════════════════
 function buildDashboard() {
+  // Phase 3: briefing card, target pace, rotating insight strip, diff badge
+  if (typeof buildDashboardInsights === 'function') buildDashboardInsights();
+
   const yr = document.getElementById('dash-year')?.value;
   const data = yr ? MONTHLY.filter(m=>m.Month_Year.endsWith(yr)) : MONTHLY;
 
