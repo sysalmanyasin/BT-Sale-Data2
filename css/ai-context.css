@@ -190,6 +190,40 @@
   text-align: right;
 }
 
+/* ── Pin Context Groups ──────────────────────────────────────────────── */
+.actx-pin-groups {
+  padding: 12px 18px 4px;
+  flex-shrink: 0;
+}
+.actx-pin-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted, #64748b);
+  margin-bottom: 8px;
+}
+.actx-pin-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.actx-pin-chip {
+  background: var(--s2, #f8fafc);
+  border: 1.5px solid var(--border, #e2e8f0);
+  border-radius: 20px;
+  padding: 6px 13px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text, #334155);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.actx-pin-chip:hover { background: #eff6ff; border-color: #93c5fd; }
+.actx-pin-chip.active {
+  background: #0e7490;
+  border-color: #0e7490;
+  color: #fff;
+}
+
 /* ── Content ─────────────────────────────────────────────────────────── */
 .actx-content {
   flex: 1;
