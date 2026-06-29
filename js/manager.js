@@ -922,10 +922,7 @@ function copyToNextMonth() {
 // MANAGER PRINT FUNCTIONS
 // ══════════════════════════════
 function _mgrPrint(html) {
-  const pa = document.getElementById('print-area');
-  pa.innerHTML = html; pa.style.display = 'block';
-  window.print();
-  setTimeout(() => { pa.style.display = 'none'; }, 1200);
+  btPrint(html);
 }
 
 function printSalaryReport() {

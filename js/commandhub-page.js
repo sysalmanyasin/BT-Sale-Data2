@@ -257,10 +257,9 @@ var _chQuickGroups = [
     items: [
       { label: '📊 Today\'s total',         fn: 'hubPrintTodayReport()' },
       { label: '🎯 Pace check',             fn: 'hubPrintPaceReport()' },
-      { label: '📅 Month summary',          fn: 'hubPrintMonthSummary()' },
-      { label: '📄 Print Today\'s Report',  cmd: 'print today report' },
-      { label: '🗓 Print This Month',       cmd: 'print this month report' },
-      { label: '📆 Print This Year',        cmd: 'print yearly report' },
+      { label: '💳 Credit balance',         fn: 'hubPrintCreditSummary()' },
+      { label: '📅 Print This Month',       fn: 'hubPrintMonthSummary()' },
+      { label: '📆 Print This Year',        fn: 'hubPrintYearReport()' },
       { label: '📄 Export summary',         cmd: 'export manager summary' },
       { label: '➕ Add today\'s entry',     cmd: null, nav: 'entry' },
     ],

@@ -175,10 +175,7 @@ function printMonthReport(my) {
   if (!my) { toast('⚠ No month selected', 'w'); return; }
   const html = buildMonthlyPrintHTML(my);
   if (!html) { toast('⚠ No data for ' + my, 'e'); return; }
-  const pa = document.getElementById('print-area');
-  pa.innerHTML = html; pa.style.display = 'block';
-  window.print();
-  setTimeout(() => { pa.style.display = 'none'; }, 1200);
+  btPrint(html);
 }
 
 // ── Yearly print ──────────────────────────────────────────────────────────────
@@ -257,10 +254,7 @@ function printYearlyReport(yr) {
   if (!yr) { toast('⚠ Select a year', 'w'); return; }
   const html = buildYearlyPrintHTML(yr);
   if (!html) { toast('⚠ No data for ' + yr, 'e'); return; }
-  const pa = document.getElementById('print-area');
-  pa.innerHTML = html; pa.style.display = 'block';
-  window.print();
-  setTimeout(() => { pa.style.display = 'none'; }, 1200);
+  btPrint(html);
 }
 
 // ── Tools card helpers ────────────────────────────────────────────────────────
@@ -276,10 +270,7 @@ function printDailyFromTools() {
   const patty = n(document.getElementById('pr-daily-patty').value);
   const html = buildPrintHTML(dateStr, rec.Month_Year, till, patty);
   if (!html) { toast('⚠ Record not found', 'e'); return; }
-  const pa = document.getElementById('print-area');
-  pa.innerHTML = html; pa.style.display = 'flex';
-  window.print();
-  setTimeout(() => { pa.style.display = 'none'; }, 1200);
+  btPrint(html);
 }
 
 function printMonthFromTools() {

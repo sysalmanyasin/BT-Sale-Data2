@@ -322,21 +322,15 @@ function printDayReport() {
   const patty=n(document.getElementById('rpt-patty')?.value);
   const html=buildPrintHTML(_selDate,_selMy,till,patty);
   if(!html){ toast('⚠ Record not found','e'); return; }
-  document.getElementById('print-area').innerHTML=html;
-  document.getElementById('print-area').style.display='flex';
-  window.print();
-  setTimeout(()=>{ document.getElementById('print-area').style.display='none'; },1000);
+  btPrint(html);
 }
 
 function printCurrentDay() {
   if(!_printDay){ toast('⚠ No day open','w'); return; }
   const html=buildPrintHTML(_printDay.date,_printDay.my,0,0);
   if(!html){ toast('⚠ Record not found','e'); return; }
-  document.getElementById('print-area').innerHTML=html;
-  document.getElementById('print-area').style.display='flex';
   closeDay();
-  window.print();
-  setTimeout(()=>{ document.getElementById('print-area').style.display='none'; },1000);
+  btPrint(html);
 }
 
 function copyReportText() {

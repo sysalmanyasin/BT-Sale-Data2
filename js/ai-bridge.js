@@ -1199,12 +1199,13 @@ function _aiParseDateReport(text) {
     }
   }
 
-  // ── 6. Standalone year  "2022 report" / "yearly 2023"
+  // ── 6. Standalone year  "2022 report" / "yearly 2023" / "yearly report" (no year → current year)
   const yrM = text.match(/\b(20\d{2})\b/);
-  if (yrM && /year|annual|saal|yearly/.test(t)) {
+  if (/year|annual|saal|yearly/.test(t)) {
+    const yr = yrM ? yrM[1] : String(new Date().getFullYear());
     return {
-      text: '🖨️ Printing yearly report: <b>' + yrM[1] + '</b>',
-      intent: { action: 'printYearlyReport', params: [yrM[1]] },
+      text: '🖨️ Printing yearly report: <b>' + yr + '</b>',
+      intent: { action: 'printYearlyReport', params: [yr] },
     };
   }
 
