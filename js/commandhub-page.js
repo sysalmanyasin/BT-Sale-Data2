@@ -245,8 +245,8 @@ var _chQuickActions = [
   { label: '📝 Today\'s Notes',         cmd: 'show today notes' },
   { label: '➕ Add Note',               cmd: 'add note' },
   { label: '📌 Pinned Notes',           cmd: 'show pinned notes' },
-  { label: '📊 Open Sheets',            cmd: null, nav: 'notes-sheets' },
-  { label: '🗂 Manage Sheets',          cmd: null, nav: 'notes-sheets', tab: 'manage' },
+  { label: '📊 Open Sheets',            cmd: null, nav: 'manager', tab: 'sheets' },
+  { label: '🗂 Manage Sheets',          fn: "showPage('manager');setTimeout(function(){switchMgrTab('sheets');setTimeout(function(){if(typeof _nsSetPanel==='function')_nsSetPanel('manage')},300)},250)" },
   { label: '🔍 Search Notes',           cmd: 'search notes' },
   // ── Memory ────────────────────────────────────────────────────────────
   { label: '🧠 Memory Panel',           fn: 'if(typeof aimOpenPanel===\'function\')aimOpenPanel()' },
