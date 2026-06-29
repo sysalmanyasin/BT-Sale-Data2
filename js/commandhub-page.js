@@ -226,11 +226,31 @@ var _chQuickActions = [
   { label: '🎯 Pace check',             fn: 'hubPrintPaceReport()' },
   { label: '📋 Expense summary',        fn: 'hubPrintExpenseSummary()' },
   { label: '📅 Month summary',          fn: 'hubPrintMonthSummary()' },
+  { label: '📄 Print Today\'s Report',  cmd: 'print today report' },
+  { label: '🗓 Print This Month',       cmd: 'print this month report' },
+  { label: '📆 Print This Year',        cmd: 'print yearly report' },
   { label: '📄 Export summary',         cmd: 'export manager summary' },
   { label: '➕ Add today\'s entry',     cmd: null, nav: 'entry' },
   { label: '👔 Staff registry',         cmd: null, nav: 'manager', tab: 'staff' },
-  { label: '🏦 Jazz Cash ledger',       fn: 'hubShowJazzCashBalance()' },
+  // ── Jazz Cash ────────────────────────────────────────────────────────
+  { label: '🏦 JC Balance',            fn: 'hubShowJazzCashBalance()' },
+  { label: '➕ Add JC Credit',          cmd: 'jazz cash received' },
+  { label: '↔️ JC Transfer',            cmd: 'jazz cash transfer' },
+  { label: '⬇ Patty Incentive',        cmd: 'jazz cash patty incentive' },
+  { label: '💸 Generic Incentive',     cmd: 'jazz cash generic incentive' },
+  { label: '📒 Open JC Ledger',        cmd: null, nav: 'manager', tab: 'jazzcash' },
+  // ── Other ─────────────────────────────────────────────────────────────
   { label: '💸 Petty expenses',         cmd: null, nav: 'manager', tab: 'petty' },
+  // ── Notes & Sheets ────────────────────────────────────────────────────
+  { label: '📝 Today\'s Notes',         cmd: 'show today notes' },
+  { label: '➕ Add Note',               cmd: 'add note' },
+  { label: '📌 Pinned Notes',           cmd: 'show pinned notes' },
+  { label: '📊 Open Sheets',            cmd: null, nav: 'notes-sheets' },
+  { label: '🗂 Manage Sheets',          cmd: null, nav: 'notes-sheets', tab: 'manage' },
+  { label: '🔍 Search Notes',           cmd: 'search notes' },
+  // ── Memory ────────────────────────────────────────────────────────────
+  { label: '🧠 Memory Panel',           fn: 'if(typeof aimOpenPanel===\'function\')aimOpenPanel()' },
+  { label: '📋 Daily Briefing',         fn: 'chpShowBriefing()' },
 ];
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -243,11 +263,38 @@ function loadCommandHubPage() {
   _chRenderChips();
   if (!_chInited) {
     _chInited = true;
-    // First-open greeting
-    _chHistory = [{
+
+    // ── Phase 5: Memory briefing + rule alerts on first open ──────────
+    var msgs = [];
+
+    // 1. Daily briefing from ai-memory.js
+    if (typeof aimBriefingGenerate === 'function') {
+      try {
+        var briefing = aimBriefingGenerate();
+        if (briefing) {
+          msgs.push({ role: 'bot', text: '📋 <strong>Daily Briefing</strong><br>' + briefing.replace(/</g, '&lt;').replace(/&lt;br&gt;/g, '<br>') });
+        }
+      } catch (_) {}
+    }
+
+    // 2. Rule alerts
+    if (typeof aimRulesCheckAll === 'function') {
+      try {
+        var fired = aimRulesCheckAll();
+        if (fired && fired.length) {
+          var alertHtml = fired.map(function (f) { return f.msg; }).join('<br>');
+          msgs.push({ role: 'bot', text: '<div style="border-left:3px solid #f59e0b;padding-left:8px">' + alertHtml + '</div>' });
+        }
+      } catch (_) {}
+    }
+
+    // 3. Default greeting (always last)
+    msgs.push({
       role: 'bot',
       text: '👋 <strong>CommandHub ready.</strong> Type a command or question — I\'ll use local parsers first (instant, no API call) and fall back to Groq AI when needed.<br><small style="color:#94a3b8">Try: "jazz cash 3000 for Ali", "today\'s total?", "compare this month vs last"</small>'
-    }];
+    });
+
+    _chHistory = msgs;
     _chRenderThread();
   }
   // Focus input after paint
@@ -255,6 +302,25 @@ function loadCommandHubPage() {
     var inp = document.getElementById('chp-input');
     if (inp && document.activeElement !== inp) inp.focus();
   });
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   MEMORY HELPERS  (Phase 5)
+══════════════════════════════════════════════════════════════════════ */
+function chpShowBriefing() {
+  if (typeof aimBriefingGenerate !== 'function') {
+    _chHistory.push({ role: 'bot', text: '⚠ Briefing engine not loaded yet. Try again in a moment.' });
+    _chRenderThread();
+    return;
+  }
+  var briefing = aimBriefingGenerate(true); // force=true → always regenerate
+  if (!briefing) {
+    _chHistory.push({ role: 'bot', text: 'ℹ No briefing data available — enter at least one daily record first.' });
+    _chRenderThread();
+    return;
+  }
+  _chHistory.push({ role: 'bot', text: '📋 <strong>Daily Briefing</strong><br>' + briefing.replace(/</g, '&lt;') });
+  _chRenderThread();
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -359,7 +425,11 @@ function _chRenderChips() {
       rows.push('<button class="chp-chip" onclick="chpAsk(' + JSON.stringify(a.cmd) + ')">' + a.label + '</button>');
     } else {
       var onclick = 'showPage(\'' + a.nav + '\')';
-      if (a.tab) onclick += ';setTimeout(function(){switchMgrTab(\'' + a.tab + '\')},250)';
+      if (a.tab && a.nav === 'notes-sheets') {
+        onclick += ';setTimeout(function(){if(typeof _nsSetPanel===\'function\')_nsSetPanel(\'' + a.tab + '\');},300)';
+      } else if (a.tab) {
+        onclick += ';setTimeout(function(){switchMgrTab(\'' + a.tab + '\')},250)';
+      }
       rows.push('<button class="chp-chip" onclick="' + onclick + '">' + a.label + '</button>');
     }
   });
@@ -655,12 +725,19 @@ function _chFmt(n) {
   return Number(n || 0).toLocaleString('en-PK');
 }
 function _chTodayStr() {
-  return new Date().toISOString().slice(0, 10);
+  // Use BTDate.today() → "29/Jun/2026" — matches DAILY[].Date format exactly.
+  // Fallback in case BTDate isn't loaded yet (should never happen in normal flow).
+  if (typeof BTDate !== 'undefined' && BTDate.today) return BTDate.today();
+  var d = new Date();
+  var M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return String(d.getDate()).padStart(2,'0') + '/' + M[d.getMonth()] + '/' + d.getFullYear();
 }
 function _chCurrentMonthYear() {
+  // Use BTDate.currentMonthYear() → "June 2026" — matches MONTHLY[].Month_Year exactly.
+  if (typeof BTDate !== 'undefined' && BTDate.currentMonthYear) return BTDate.currentMonthYear();
   var d = new Date();
-  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return months[d.getMonth()] + ' ' + d.getFullYear();
+  var M = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return M[d.getMonth()] + ' ' + d.getFullYear();
 }
 
 function _chIntentLabel(intent) {

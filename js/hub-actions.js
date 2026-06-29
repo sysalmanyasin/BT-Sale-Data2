@@ -141,5 +141,5 @@ function hubShowJazzCashBalance() {
   const fmt = Math.round(Math.abs(bal)).toLocaleString('en-PK');
   const sign = bal < 0 ? '−' : '';
   _hubPost('🏦 <strong>Jazz Cash current balance:</strong> ' + sign + '₨' + fmt +
-    ' <button class="chp-state-btn" onclick="showPage(\'manager\');setTimeout(function(){switchMgrTab(\'jazz\')},250)">Open Ledger →</button>');
+    ' <button class="chp-state-btn" onclick="showPage(\'manager\');setTimeout(function(){switchMgrTab(\'jazzcash\')},250)">Open Ledger →</button>');
 }

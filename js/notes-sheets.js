@@ -272,6 +272,60 @@
 .ns-sfm-btn.danger  { color: #dc2626; border-color: #fca5a5; background: #fff5f5; }
 .ns-sfm-empty { text-align: center; padding: 40px 20px; color: var(--muted); }
 
+/* ─── Manage Sheets Panel (full section) ─────────────────────────── */
+.ns-mgs { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.ns-mgs-toolbar {
+  display: flex; gap: 6px; padding: 10px 12px; flex-wrap: wrap; align-items: center;
+  background: var(--s1,#fff); border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.ns-mgs-select {
+  padding: 7px 10px; border-radius: 8px; border: 1.5px solid var(--border);
+  background: var(--s2); color: var(--text); font-size: 12px; font-weight: 600; outline: none;
+}
+.ns-mgs-stats { font-size: 11px; color: var(--muted); padding: 4px 12px 0; flex-shrink: 0; }
+.ns-mgs-body { flex: 1; overflow-y: auto; padding: 10px 12px; }
+.ns-mgs-group { margin-bottom: 14px; }
+.ns-mgs-group-head {
+  display: flex; align-items: center; gap: 8px; padding: 6px 4px; cursor: pointer;
+  font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em;
+}
+.ns-mgs-group-head .chev { transition: transform .15s; font-size: 10px; }
+.ns-mgs-group-head.collapsed .chev { transform: rotate(-90deg); }
+.ns-mgs-group-count {
+  background: var(--s2); border-radius: 10px; padding: 1px 8px; font-size: 10.5px; color: var(--text);
+}
+.ns-mgs-grid {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.ns-mgs-card {
+  background: var(--s1,#fff); border: 1.5px solid var(--border); border-radius: 10px;
+  padding: 12px 14px; display: flex; align-items: center; gap: 12px; transition: border-color .15s, box-shadow .15s;
+}
+.ns-mgs-card:hover { border-color: #1a73e8; box-shadow: 0 2px 12px rgba(37,99,235,.08); }
+.ns-mgs-card.ns-mgs-card-active { border-color: #16a34a; background: #f0fdf4; }
+.ns-mgs-card-icon { font-size: 24px; flex-shrink: 0; }
+.ns-mgs-card-body { flex: 1; min-width: 0; }
+.ns-mgs-card-name { font-size: 13.5px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ns-mgs-card-meta { font-size: 11px; color: var(--muted); margin-top: 3px; }
+.ns-mgs-card-tag {
+  display: inline-block; font-size: 9.5px; font-weight: 700; padding: 1px 7px;
+  border-radius: 10px; background: #eff6ff; color: #1d4ed8;
+}
+.ns-mgs-card-actions { display: flex; gap: 6px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+.ns-mgs-btn {
+  padding: 5px 11px; border-radius: 7px; border: 1.5px solid var(--border);
+  background: var(--s2,#f8fafc); font-size: 11px; font-weight: 600;
+  color: var(--text); cursor: pointer; white-space: nowrap;
+}
+.ns-mgs-btn:hover { background: var(--border); }
+.ns-mgs-btn.primary { background: #1a73e8; color: #fff; border-color: #1a73e8; }
+.ns-mgs-btn.danger  { color: #dc2626; border-color: #fca5a5; background: #fff5f5; }
+.ns-mgs-search {
+  flex: 1; min-width: 140px; padding: 7px 10px; border-radius: 8px;
+  border: 1.5px solid var(--border); font-size: 13px; background: var(--s2); color: var(--text); outline: none;
+}
+.ns-mgs-search:focus { border-color: var(--accent); }
+
 /* Context menu */
 .ns-ctx {
   position: fixed; z-index: 20000; background: #fff;
@@ -331,8 +385,22 @@ function _nsUid()        { return 'n' + Date.now().toString(36) + Math.random().
 
 /* Sheet File storage */
 const NS_SHEET_FILES_KEY = 'bt_sheet_files_v1';
-function _nsSFLoad() { try { return JSON.parse(localStorage.getItem(NS_SHEET_FILES_KEY) || '[]'); } catch(_){ return []; } }
+function _nsSFLoad() {
+  let arr = [];
+  try { arr = JSON.parse(localStorage.getItem(NS_SHEET_FILES_KEY) || '[]'); } catch(_){ arr = []; }
+  // Migrate older files that don't have a category yet
+  let changed = false;
+  arr.forEach(f => { if (!f.category) { f.category = f.sheetName || 'General'; changed = true; } });
+  if (changed) { try { localStorage.setItem(NS_SHEET_FILES_KEY, JSON.stringify(arr)); } catch(_){} }
+  return arr;
+}
 function _nsSFSave(a){ try { localStorage.setItem(NS_SHEET_FILES_KEY, JSON.stringify(a)); } catch(_){} }
+
+// Manage Sheets panel state
+var _nsMgsSort   = (localStorage.getItem('bt_mgs_sort')  || 'created_desc');
+var _nsMgsGroup  = (localStorage.getItem('bt_mgs_group') || 'category');
+var _nsMgsSearch = '';
+var _nsMgsCollapsed = {};
 function _nsEsc(s)       { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 function _nsDefaultGrid(name) {
@@ -386,9 +454,10 @@ function renderNotesSheets() {
   host.innerHTML = `
     <div class="ns-shell">
       <div class="ns-nav">
-        <button class="ns-pill ${_nsActivePanel==='notes'?'active':''}" onclick="_nsSetPanel('notes')">📝 Notes</button>
-        <button class="ns-pill ${_nsActivePanel==='sheets'?'active':''}" onclick="_nsSetPanel('sheets')">📊 Sheets</button>
-        <button class="ns-pill ${_nsActivePanel==='data'?'active':''}" onclick="_nsSetPanel('data')">🔗 Live Data</button>
+        <button class="ns-pill ${_nsActivePanel==='notes'?'active':''}" data-panel="notes" onclick="_nsSetPanel('notes')">📝 Notes</button>
+        <button class="ns-pill ${_nsActivePanel==='sheets'?'active':''}" data-panel="sheets" onclick="_nsSetPanel('sheets')">📊 Sheets</button>
+        <button class="ns-pill ${_nsActivePanel==='manage'?'active':''}" data-panel="manage" onclick="_nsSetPanel('manage')">🗂 Manage Sheets</button>
+        <button class="ns-pill ${_nsActivePanel==='data'?'active':''}" data-panel="data" onclick="_nsSetPanel('data')">🔗 Live Data</button>
       </div>
       <div class="ns-panel" id="ns-panel-host"></div>
     </div>`;
@@ -398,7 +467,7 @@ function renderNotesSheets() {
 function _nsSetPanel(name) {
   _nsActivePanel = name;
   document.querySelectorAll('.ns-pill').forEach(p => {
-    p.classList.toggle('active', p.textContent.trim().toLowerCase().includes(name === 'data' ? 'live' : name));
+    p.classList.toggle('active', p.getAttribute('data-panel') === name);
   });
   _nsRenderPanel();
 }
@@ -408,6 +477,7 @@ function _nsRenderPanel() {
   if (!host) return;
   if (_nsActivePanel === 'notes')  _nsRenderNotes(host);
   if (_nsActivePanel === 'sheets') _nsSpBuild(host);
+  if (_nsActivePanel === 'manage') _nsRenderManage(host);
   if (_nsActivePanel === 'data')   _nsRenderData(host);
 }
 
@@ -1627,29 +1697,10 @@ function _nsSpDoSort() {
 }
 
 /* ─── Export / Print ─────────────────────────────────────────────── */
-function _nsSpExportCSV() {
+function _nsSpExportXLSX() {
   const grid = _nsSpGetGrid();
   if (!grid) return;
-  const nRows = grid.numRows||100, nCols = grid.numCols||26;
-  const lines = [];
-  for (let r=0;r<nRows;r++) {
-    const row = [];
-    let hasData = false;
-    for (let c=0;c<nCols;c++) {
-      const v = _nsSpEvalCell(grid, r, c);
-      if (v) hasData = true;
-      row.push('"' + String(v||'').replace(/"/g, '""') + '"');
-    }
-    if (hasData || r === 0) lines.push(row.join(','));
-  }
-  // Trim trailing empty rows
-  while (lines.length > 1 && lines[lines.length-1].replace(/[",\s]/g,'') === '') lines.pop();
-  const csv = lines.join('\n');
-  const a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-  a.download = (grid.name || 'sheet') + '.csv';
-  a.click();
-  if (typeof toast === 'function') toast('✅ CSV downloaded');
+  _nsExportGridToXLSX(grid, grid.name || 'sheet');
 }
 
 function _nsSpPrint() {
@@ -1700,7 +1751,7 @@ function _nsSpRenderRibbonTabs() {
   // Extra: Save / File options always visible
   el.innerHTML += `
     <div style="margin-left:auto;display:flex;gap:4px;align-items:center;padding-right:6px">
-      <button class="ns-rtab" onclick="_nsSpExportCSV()" title="Export CSV">⬇ CSV</button>
+      <button class="ns-rtab" onclick="_nsSpExportXLSX()" title="Export XLSX">⬇ XLSX</button>
       <button class="ns-rtab" onclick="_nsSpPrint()" title="Print">🖨 Print</button>
     </div>`;
 }
@@ -1820,8 +1871,8 @@ function _nsSpRibbonHTML(tab) {
       <div class="ns-rb-sep"></div>
       <button class="ns-rb-btn" onclick="_nsSpFreezeFirstRow()" title="Freeze / unfreeze first row">🧊 Freeze Row 1</button>
       <div class="ns-rb-sep"></div>
-      <button class="ns-rb-btn" onclick="_nsSpExportCSV()">⬇ Export CSV</button>
-      <button class="ns-rb-btn" onclick="_nsSpImportCSV()">⬆ Import CSV</button>
+      <button class="ns-rb-btn" onclick="_nsSpExportXLSX()">⬇ Export XLSX</button>
+      <button class="ns-rb-btn" onclick="_nsSpImportXLSX()">⬆ Import XLSX</button>
       <div class="ns-rb-sep"></div>
       <button class="ns-rb-btn" onclick="_nsSpClearAll()" style="color:#c00">🗑 Clear Sheet</button>`;
   }
@@ -1843,6 +1894,7 @@ function _nsSpRibbonHTML(tab) {
       <button class="ns-rb-btn" onclick="_nsSFOverwrite()" title="Overwrite last saved version of this sheet">⬆ Save (Overwrite)</button>
       <div class="ns-rb-sep"></div>
       <button class="ns-rb-btn" onclick="_nsSFOpenManager()">📁 Open File… <span style="background:#1a73e8;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:2px">${files.length}</span></button>
+      <button class="ns-rb-btn" onclick="_nsSetPanel('manage')" title="Full sheet management — sort, group, export">🗂 Manage Sheets</button>
     `;
   }
   return '';
@@ -1915,30 +1967,31 @@ function _nsSpFreezeFirstRow() {
   if (typeof toast === 'function') toast('ℹ Row 1 is already sticky (column headers always visible)');
 }
 
-function _nsSpImportCSV() {
+function _nsSpImportXLSX() {
+  if (typeof XLSX === 'undefined') { if (typeof toast === 'function') toast('⚠ Excel import library failed to load.', 'w'); return; }
   const inp = document.createElement('input');
-  inp.type = 'file'; inp.accept = '.csv,text/csv';
+  inp.type = 'file'; inp.accept = '.xlsx,.xls';
   inp.addEventListener('change', e => {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = ev => {
-      const lines = ev.target.result.split('\n');
+      const wb = XLSX.read(new Uint8Array(ev.target.result), { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
       const s = _nsGetSheets();
       const g = s.grids[_spState.activeSheet];
       if (!g) return;
       g.cells = {};
-      lines.forEach((line, r) => {
-        if (!line.trim()) return;
-        const cols = line.split(',').map(v => v.replace(/^"|"$/g,'').replace(/""/g,'"'));
-        cols.forEach((v, c) => { if (v) g.cells[_nsSpCellKey(r,c)] = { v }; });
+      rows.forEach((row, r) => {
+        (row||[]).forEach((v, c) => { if (v !== '' && v !== undefined && v !== null) g.cells[_nsSpCellKey(r,c)] = { v: String(v) }; });
       });
-      g.numRows = Math.max(g.numRows||100, lines.length + 10);
+      g.numRows = Math.max(g.numRows||100, rows.length + 10);
       _nsSheetsSave(s);
       _nsSpRenderGrid();
-      if (typeof toast === 'function') toast('✅ CSV imported: ' + lines.length + ' rows');
+      if (typeof toast === 'function') toast('✅ XLSX imported: ' + rows.length + ' rows');
     };
-    reader.readAsText(file);
+    reader.readAsArrayBuffer(file);
   });
   inp.click();
 }
@@ -2078,15 +2131,22 @@ function _nsSFCountCells(cells) {
   return Object.values(cells || {}).filter(c => c.v !== undefined && c.v !== '').length;
 }
 
+function _nsSFRefreshOpenViews() {
+  if (document.getElementById('ns-sfm-overlay')) _nsSFOpenManager();
+  if (_nsActivePanel === 'manage') _nsRenderManage(document.getElementById('ns-panel-host'));
+}
+
 function _nsSFSaveAs() {
   const grid = _nsSpGetGrid();
   if (!grid) return;
   const defaultName = grid.name + ' — ' + new Date().toLocaleDateString('en-PK', { day:'2-digit', month:'short', year:'numeric' });
   const name = prompt('Save sheet as:', defaultName);
   if (!name) return;
+  const category = prompt('Category (used to group sheets in Manage Sheets):', grid.name || 'General') || (grid.name || 'General');
   const snapshot = {
     id: _nsUid(),
     name,
+    category,
     sheetName: grid.name,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -2100,6 +2160,7 @@ function _nsSFSaveAs() {
   _nsSFSave(files);
   _nsCurrentFileId = snapshot.id;
   _nsSpRenderRibbon();
+  _nsSFRefreshOpenViews();
   if (typeof toast === 'function') toast('💾 Saved as "' + name + '"');
 }
 
@@ -2115,9 +2176,12 @@ function _nsSFOverwrite() {
   existing.colWidths = Object.assign({}, grid.colWidths || {});
   existing.updatedAt = new Date().toISOString();
   _nsSFSave(files);
+  _nsSFRefreshOpenViews();
   if (typeof toast === 'function') toast('✅ Saved — "' + existing.name + '"');
 }
 
+// Quick-access modal (still available from the ribbon for fast Open); the
+// full management experience lives in the "Manage Sheets" nav panel.
 function _nsSFOpenManager() {
   _nsSFCloseManager();
   const files = _nsSFLoad();
@@ -2157,6 +2221,7 @@ function _nsSFOpenManager() {
         <span style="font-size:20px">📁</span>
         <span class="ns-sfm-title">Sheet Files</span>
         <button class="ns-sfm-btn" onclick="_nsSFSaveAs();_nsSFCloseManager();" style="background:#1a73e8;color:#fff;border-color:#1a73e8">💾 Save As…</button>
+        <button class="ns-sfm-btn" onclick="_nsSFCloseManager();_nsSetPanel('manage');" title="Open the full Manage Sheets section">🗂 Manage All</button>
         <button class="ns-sfm-btn" onclick="_nsSFCloseManager()">✕</button>
       </div>
       <div class="ns-sfm-list">${cards}</div>
@@ -2185,6 +2250,7 @@ function _nsSFLoad_(id) {
   _nsSheetsSave(s);
   _nsCurrentFileId = id;
   _nsSFCloseManager();
+  _nsSetPanel('sheets');
   _nsSpRenderGrid();
   _nsSpRenderRibbon();
   if (typeof toast === 'function') toast('✅ Loaded "' + f.name + '"');
@@ -2198,7 +2264,34 @@ function _nsSFRename(id) {
   if (!name || name === f.name) return;
   f.name = name;
   _nsSFSave(files);
-  _nsSFOpenManager(); // refresh the panel
+  _nsSFRefreshOpenViews();
+}
+
+function _nsSFEditCategory(id) {
+  const files = _nsSFLoad();
+  const f = files.find(x => x.id === id);
+  if (!f) return;
+  const category = prompt('Set category / group for "' + f.name + '":', f.category || f.sheetName || 'General');
+  if (!category || category === f.category) return;
+  f.category = category;
+  _nsSFSave(files);
+  _nsSFRefreshOpenViews();
+  if (typeof toast === 'function') toast('✅ Category updated');
+}
+
+function _nsSFDuplicate(id) {
+  const files = _nsSFLoad();
+  const f = files.find(x => x.id === id);
+  if (!f) return;
+  const copy = JSON.parse(JSON.stringify(f));
+  copy.id = _nsUid();
+  copy.name = f.name + ' (Copy)';
+  copy.createdAt = new Date().toISOString();
+  copy.updatedAt = copy.createdAt;
+  files.unshift(copy);
+  _nsSFSave(files);
+  _nsSFRefreshOpenViews();
+  if (typeof toast === 'function') toast('📄 Duplicated "' + f.name + '"');
 }
 
 function _nsSFDelete(id) {
@@ -2209,8 +2302,211 @@ function _nsSFDelete(id) {
   const updated = files.filter(x => x.id !== id);
   _nsSFSave(updated);
   if (_nsCurrentFileId === id) _nsCurrentFileId = null;
-  _nsSFOpenManager(); // refresh
+  _nsSFRefreshOpenViews();
   if (typeof toast === 'function') toast('🗑 Deleted "' + f.name + '"');
+}
+
+// Export a single saved sheet file straight to .xlsx — no dialogs, no CSV.
+function _nsSFExportXLSX(id) {
+  const files = _nsSFLoad();
+  const f = files.find(x => x.id === id);
+  if (!f) return;
+  _nsExportGridToXLSX({ name: f.sheetName, numRows: f.numRows, numCols: f.numCols, cells: f.cells }, f.name);
+}
+
+/* ── Shared XLSX helper: builds a workbook from a {cells} grid and saves
+   it directly to disk via SheetJS — single click, no browser confirm. ── */
+function _nsExportGridToXLSX(grid, filename) {
+  if (typeof XLSX === 'undefined') { if (typeof toast === 'function') toast('⚠ Excel export library failed to load.', 'w'); return; }
+  const nRows = grid.numRows || 100, nCols = grid.numCols || 26;
+  const aoa = [];
+  let lastDataRow = -1;
+  for (let r = 0; r < nRows; r++) {
+    const row = [];
+    let hasData = false;
+    for (let c = 0; c < nCols; c++) {
+      const cell = (grid.cells || {})[r + ',' + c] || {};
+      const v = _nsSpEvalCellRaw(grid, cell);
+      if (v !== '' && v !== undefined && v !== null) hasData = true;
+      row.push(v === undefined ? '' : v);
+    }
+    aoa.push(row);
+    if (hasData) lastDataRow = r;
+  }
+  const trimmed = aoa.slice(0, Math.max(1, lastDataRow + 1));
+  const ws = XLSX.utils.aoa_to_sheet(trimmed);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, (grid.name || 'Sheet').slice(0, 31));
+  XLSX.writeFile(wb, (filename || grid.name || 'sheet') + '.xlsx');
+  if (typeof toast === 'function') toast('✅ XLSX downloaded');
+}
+
+// Evaluate a single cell's display value when we only have a raw cells map
+// (used for exporting saved snapshots that aren't the live active grid).
+function _nsSpEvalCellRaw(grid, cell) {
+  const raw = cell.v !== undefined ? String(cell.v) : '';
+  if (!raw.startsWith('=')) return _nsSpFormatValue(raw, cell.numFmt);
+  const getCR = (ri, ci) => {
+    const rc = (grid.cells || {})[ri + ',' + ci] || {};
+    return rc.v !== undefined ? String(rc.v) : '';
+  };
+  const result = _nsEvalFormula(raw, getCR);
+  const resultStr = (result === null || result === undefined) ? '' : String(result);
+  return _nsSpFormatValue(resultStr, cell.numFmt);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   MANAGE SHEETS  —  full dedicated section for all saved sheet files
+   Sortable by date · Groupable by category · Open / Rename / Duplicate /
+   Export to XLSX / Delete, all from one screen.
+══════════════════════════════════════════════════════════════════════ */
+function _nsRenderManage(host) {
+  if (!host) return;
+  const all = _nsSFLoad();
+  const q = _nsMgsSearch.trim().toLowerCase();
+  let files = all.filter(f => !q ||
+    (f.name||'').toLowerCase().includes(q) ||
+    (f.sheetName||'').toLowerCase().includes(q) ||
+    (f.category||'').toLowerCase().includes(q));
+
+  // Sort
+  files = files.slice().sort((a, b) => {
+    switch (_nsMgsSort) {
+      case 'created_asc':  return new Date(a.createdAt) - new Date(b.createdAt);
+      case 'created_desc': return new Date(b.createdAt) - new Date(a.createdAt);
+      case 'updated_asc':  return new Date(a.updatedAt||a.createdAt) - new Date(b.updatedAt||b.createdAt);
+      case 'updated_desc': return new Date(b.updatedAt||b.createdAt) - new Date(a.updatedAt||a.createdAt);
+      case 'name_asc':     return (a.name||'').localeCompare(b.name||'');
+      case 'name_desc':    return (b.name||'').localeCompare(a.name||'');
+      default: return 0;
+    }
+  });
+
+  const totalCells = all.reduce((s,f) => s + _nsSFCountCells(f.cells), 0);
+
+  host.innerHTML = `
+    <div class="ns-mgs">
+      <div class="ns-mgs-toolbar">
+        <input class="ns-mgs-search" placeholder="🔍 Search sheets by name, type or category…"
+          value="${_nsEsc(_nsMgsSearch)}" oninput="_nsMgsSearch=this.value;_nsRenderManage(document.getElementById('ns-panel-host'))">
+        <select class="ns-mgs-select" onchange="_nsMgsSort=this.value;localStorage.setItem('bt_mgs_sort',this.value);_nsRenderManage(document.getElementById('ns-panel-host'))">
+          <option value="created_desc" ${_nsMgsSort==='created_desc'?'selected':''}>🕓 Newest Created</option>
+          <option value="created_asc"  ${_nsMgsSort==='created_asc' ?'selected':''}>🕓 Oldest Created</option>
+          <option value="updated_desc" ${_nsMgsSort==='updated_desc'?'selected':''}>✏ Recently Updated</option>
+          <option value="updated_asc"  ${_nsMgsSort==='updated_asc' ?'selected':''}>✏ Least Recently Updated</option>
+          <option value="name_asc"     ${_nsMgsSort==='name_asc'    ?'selected':''}>🔤 Name A–Z</option>
+          <option value="name_desc"    ${_nsMgsSort==='name_desc'   ?'selected':''}>🔤 Name Z–A</option>
+        </select>
+        <select class="ns-mgs-select" onchange="_nsMgsGroup=this.value;localStorage.setItem('bt_mgs_group',this.value);_nsRenderManage(document.getElementById('ns-panel-host'))">
+          <option value="category" ${_nsMgsGroup==='category'?'selected':''}>🗂 Group by Type</option>
+          <option value="none"     ${_nsMgsGroup==='none'    ?'selected':''}>📋 No Grouping</option>
+        </select>
+        <button class="ns-btn primary" onclick="_nsSetPanel('sheets');setTimeout(_nsSFSaveAs,50)">💾 Save Current Sheet</button>
+      </div>
+      <div class="ns-mgs-stats">${all.length} sheet${all.length!==1?'s':''} saved &nbsp;·&nbsp; ${totalCells.toLocaleString('en-PK')} total cells${q?` &nbsp;·&nbsp; ${files.length} match${files.length!==1?'es':''}`:''}</div>
+      <div class="ns-mgs-body" id="ns-mgs-body"></div>
+    </div>`;
+  _nsRenderManageList(files);
+}
+
+function _nsRenderManageList(files) {
+  const body = document.getElementById('ns-mgs-body');
+  if (!body) return;
+
+  if (!files.length) {
+    body.innerHTML = `<div class="ns-empty">
+      <div class="ns-empty-icon">🗂</div>
+      <div class="ns-empty-title">No saved sheets yet</div>
+      <div class="ns-empty-sub">Open a sheet in the <strong>Sheets</strong> tab and use <strong>Save As…</strong> to create your first saved file. It will show up here, fully manageable.</div>
+    </div>`;
+    return;
+  }
+
+  if (_nsMgsGroup === 'none') {
+    body.innerHTML = `<div class="ns-mgs-grid">${files.map(_nsMgsCardHTML).join('')}</div>`;
+    return;
+  }
+
+  // Group by category
+  const groups = {};
+  files.forEach(f => {
+    const key = f.category || f.sheetName || 'General';
+    (groups[key] = groups[key] || []).push(f);
+  });
+  const groupNames = Object.keys(groups).sort((a,b) => a.localeCompare(b));
+
+  body.innerHTML = groupNames.map(name => {
+    const collapsed = !!_nsMgsCollapsed[name];
+    return `
+      <div class="ns-mgs-group">
+        <div class="ns-mgs-group-head${collapsed?' collapsed':''}" onclick="_nsMgsToggleGroup('${_nsEscJs(name)}')">
+          <span class="chev">▾</span>
+          <span>${_nsEsc(name)}</span>
+          <span class="ns-mgs-group-count">${groups[name].length}</span>
+        </div>
+        ${collapsed ? '' : `<div class="ns-mgs-grid">${groups[name].map(_nsMgsCardHTML).join('')}</div>`}
+      </div>`;
+  }).join('');
+}
+
+function _nsEscJs(s) { return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+
+function _nsMgsToggleGroup(name) {
+  _nsMgsCollapsed[name] = !_nsMgsCollapsed[name];
+  _nsRenderManageList(_nsMgsCurrentFiles());
+}
+
+// Re-derive the currently-filtered/sorted file list (used by group toggling
+// so we don't have to re-render the whole toolbar).
+function _nsMgsCurrentFiles() {
+  const all = _nsSFLoad();
+  const q = _nsMgsSearch.trim().toLowerCase();
+  let files = all.filter(f => !q ||
+    (f.name||'').toLowerCase().includes(q) ||
+    (f.sheetName||'').toLowerCase().includes(q) ||
+    (f.category||'').toLowerCase().includes(q));
+  files = files.slice().sort((a, b) => {
+    switch (_nsMgsSort) {
+      case 'created_asc':  return new Date(a.createdAt) - new Date(b.createdAt);
+      case 'created_desc': return new Date(b.createdAt) - new Date(a.createdAt);
+      case 'updated_asc':  return new Date(a.updatedAt||a.createdAt) - new Date(b.updatedAt||b.createdAt);
+      case 'updated_desc': return new Date(b.updatedAt||b.createdAt) - new Date(a.updatedAt||a.createdAt);
+      case 'name_asc':     return (a.name||'').localeCompare(b.name||'');
+      case 'name_desc':    return (b.name||'').localeCompare(a.name||'');
+      default: return 0;
+    }
+  });
+  return files;
+}
+
+function _nsMgsCardHTML(f) {
+  const created = new Date(f.createdAt);
+  const updated = new Date(f.updatedAt || f.createdAt);
+  const createdStr = created.toLocaleDateString('en-PK', { day:'2-digit', month:'short', year:'numeric' });
+  const updatedStr  = updated.toLocaleDateString('en-PK', { day:'2-digit', month:'short', year:'numeric' }) +
+                       ' ' + updated.toLocaleTimeString('en-PK', { hour:'2-digit', minute:'2-digit' });
+  const cellCount = _nsSFCountCells(f.cells);
+  const isCurrent = f.id === _nsCurrentFileId;
+  return `
+    <div class="ns-mgs-card${isCurrent?' ns-mgs-card-active':''}">
+      <div class="ns-mgs-card-icon">📊</div>
+      <div class="ns-mgs-card-body">
+        <div class="ns-mgs-card-name">
+          ${_nsEsc(f.name)}
+          ${isCurrent?'<span class="ns-mgs-card-tag" style="background:#dcfce7;color:#16a34a">Current</span>':''}
+          <span class="ns-mgs-card-tag">${_nsEsc(f.category || f.sheetName || 'General')}</span>
+        </div>
+        <div class="ns-mgs-card-meta">${cellCount} cell${cellCount!==1?'s':''} &nbsp;·&nbsp; Created ${createdStr} &nbsp;·&nbsp; Updated ${updatedStr}</div>
+      </div>
+      <div class="ns-mgs-card-actions">
+        <button class="ns-mgs-btn primary" onclick="_nsSFLoad_('${f.id}')">📂 Open</button>
+        <button class="ns-mgs-btn" onclick="_nsSFExportXLSX('${f.id}')">⬇ XLSX</button>
+        <button class="ns-mgs-btn" onclick="_nsSFDuplicate('${f.id}')">⧉ Duplicate</button>
+        <button class="ns-mgs-btn" onclick="_nsSFRename('${f.id}')">✏ Rename</button>
+        <button class="ns-mgs-btn" onclick="_nsSFEditCategory('${f.id}')">🗂 Group</button>
+        <button class="ns-mgs-btn danger" onclick="_nsSFDelete('${f.id}')">🗑 Delete</button>
+      </div>
+    </div>`;
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -2231,7 +2527,7 @@ function _nsRenderData(host) {
         <input class="ns-search-box" style="flex:1;min-width:100px" placeholder="Filter…"
           value="${_nsEsc(_nsDataSearch)}"
           oninput="_nsDataSearch=this.value;_nsRenderPanel()">
-        <button class="ns-btn" onclick="_nsExportDataCSV()">⬇ CSV</button>
+        <button class="ns-btn" onclick="_nsExportDataXLSX()">⬇ XLSX</button>
       </div>
       <div class="ns-data-table-wrap" id="ns-data-table-host"></div>
     </div>`;
@@ -2280,7 +2576,7 @@ function _nsRenderDataTable() {
   }
 }
 
-function _nsExportDataCSV() {
+function _nsExportDataXLSX() {
   let data = [], cols = [];
   if (_nsDataSource === 'monthly') {
     data = (typeof MONTHLY !== 'undefined' && MONTHLY) ? MONTHLY.slice().reverse() : [];
@@ -2293,12 +2589,13 @@ function _nsExportDataCSV() {
     cols = ['name','staffId','role','phone','cnic','joinDate'];
   }
   if (!data.length) { if (typeof toast === 'function') toast('⚠ No data to export.','w'); return; }
-  const csv = [cols.join(','), ...data.map(r => cols.map(c => JSON.stringify(r[c]||'')).join(','))].join('\n');
-  const a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-  a.download = _nsDataSource + '-export.csv';
-  a.click();
-  if (typeof toast === 'function') toast('✅ CSV exported.');
+  if (typeof XLSX === 'undefined') { if (typeof toast === 'function') toast('⚠ Excel export library failed to load.', 'w'); return; }
+  const aoa = [cols, ...data.map(r => cols.map(c => r[c] !== undefined ? r[c] : ''))];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, _nsDataSource.slice(0,31));
+  XLSX.writeFile(wb, _nsDataSource + '-export.xlsx');
+  if (typeof toast === 'function') toast('✅ XLSX exported.');
 }
 
 /* ══════════════════════════════════════════════════════════════════════

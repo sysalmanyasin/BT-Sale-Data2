@@ -443,6 +443,38 @@
         tags:['credit','deduction','ledger','balance'],
         action: mgrTab('credit') },
 
+      { id:'mgr-jazz', icon:'🏦', title:'Jazz Cash Ledger',
+        sub:'Jazz Cash daily ledger and balance tally',
+        tags:['jazz','jazz cash','jc','ledger','mobile','wallet','balance','jazzcash'],
+        action: mgrTab('jazzcash') },
+
+      { id:'jc-balance', icon:'💰', title:'Jazz Cash Balance',
+        sub:'Show current Jazz Cash balance in AI chat',
+        tags:['jazz','jc','balance','kitna','baki','check'],
+        action: () => {
+          closePalette();
+          if (typeof hubShowJazzCashBalance === 'function') hubShowJazzCashBalance();
+          if (typeof showPage === 'function') showPage('commandhub');
+        }},
+
+      { id:'jc-add-credit', icon:'⬆', title:'Add Jazz Cash (Received)',
+        sub:'Record incoming Jazz Cash — opens AI with prompt',
+        tags:['jazz','jc','add','credit','received','mila','plus','income'],
+        action: () => {
+          closePalette();
+          if (typeof showPage === 'function') showPage('commandhub');
+          setTimeout(() => { if (typeof chpAsk === 'function') chpAsk('jazz cash received'); }, 200);
+        }},
+
+      { id:'jc-transfer', icon:'↔', title:'Jazz Cash Transfer',
+        sub:'Record outgoing transfer — opens AI with prompt',
+        tags:['jazz','jc','transfer','less','minus','send','out','nikalo'],
+        action: () => {
+          closePalette();
+          if (typeof showPage === 'function') showPage('commandhub');
+          setTimeout(() => { if (typeof chpAsk === 'function') chpAsk('jazz cash transfer'); }, 200);
+        }},
+
       // ── Reports ─────────────────────────────────────────────────
       { id:'rpt-today', icon:'📄', title:"Today's Closing Report",
         sub:"Open today's entry in report view",

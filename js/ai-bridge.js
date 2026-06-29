@@ -96,6 +96,12 @@ const AI_SAFE_INTENTS = new Set([
   'switchMonth', 'copyManagerToNextMonth',
   // AI Memory / Rules / Section AI Config
   'addMemoryFact', 'deleteMemoryFact', 'addRule', 'deleteRule', 'setSectionAiConfig',
+  // Jazz Cash Ledger
+  'addJazzCashEntry', 'editJazzCashEntry', 'deleteJazzCashEntry',
+  // Notes & Sheets
+  'addNote', 'showNotesPanel', 'openSheetFile',
+  // Memory (Phase 5)
+  'openMemoryPanel',
 ]);
 
 // ── Destructive intents — always require confirm chip ──────────────────
@@ -107,13 +113,18 @@ const AI_DESTRUCTIVE_INTENTS = new Set([
   'deleteMonthTarget', 'deleteCustomSectionRow', 'deleteCustomSection',
   'resetAllFields', 'pullFromSupabase', 'copyManagerToNextMonth',
   'autoFillSalary',
+  // Jazz Cash — destructive
+  'deleteJazzCashEntry', 'editJazzCashEntry',
 ]);
 
 // ── Date helpers ──────────────────────────────────────────────────────
 function _aiTodayStr() {
+  // Delegates to BTDate when available — single source of truth.
+  // BTDate.today() → "29/Jun/2026" which matches DAILY[].Date format.
+  if (typeof BTDate !== 'undefined' && BTDate.today) return BTDate.today();
   const d = new Date();
   const M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return String(d.getDate()).padStart(2,'0') + '-' + M[d.getMonth()] + '-' + d.getFullYear();
+  return String(d.getDate()).padStart(2,'0') + '/' + M[d.getMonth()] + '/' + d.getFullYear();
 }
 function _aiCurrentMonthYear() {
   const d = new Date();
@@ -658,6 +669,231 @@ function _aiParseGenericQuery(text) {
   return null;
 }
 
+/* ══════════════════════════════════════════════════════════════════════
+   PHASE 4A — NOTES & SHEETS LOCAL PARSER
+══════════════════════════════════════════════════════════════════════ */
+function _aiParseNotesCommand(text) {
+  const t = text.toLowerCase().trim();
+
+  // ── Navigate to Notes/Sheets page ─────────────────────────────────
+  if (/^(open|go to|show|kholo|jao)\s+(notes|sheets|notes.?(and|&)?.?sheets|notebook)/i.test(t) ||
+      t === 'notes' || t === 'sheets') {
+    return {
+      text: '→ Opening <b>Notes & Sheets</b>.',
+      intent: { action: 'showPage', params: ['notes-sheets'] },
+    };
+  }
+
+  // ── Open Sheets tab specifically ──────────────────────────────────
+  if (/\b(open|show|go to)\s+sheets?\b/.test(t) || t === 'open sheets' || t === 'sheets tab') {
+    return {
+      text: '→ Opening <b>Sheets</b> tab.',
+      intent: { action: 'showNotesPanel', params: ['sheets'] },
+    };
+  }
+
+  // ── Open Manage Sheets ────────────────────────────────────────────
+  if (/\b(manage\s+sheets?|sheet\s+manager|sheet\s+files?|all\s+sheets?)\b/.test(t)) {
+    return {
+      text: '→ Opening <b>Manage Sheets</b>.',
+      intent: { action: 'showNotesPanel', params: ['manage'] },
+    };
+  }
+
+  // ── Show today's notes ────────────────────────────────────────────
+  const todayNoteMatch = /\b(today.?s?\s*notes?|aaj\s*k[ia]\s*notes?|notes?\s*today)\b/.test(t);
+  if (todayNoteMatch) {
+    return _aiQueryTodayNotes();
+  }
+
+  // ── Show all notes ────────────────────────────────────────────────
+  if (/\b(show\s+all\s+notes?|list\s+notes?|all\s+notes?|sab\s+notes?)\b/.test(t)) {
+    return _aiQueryAllNotes();
+  }
+
+  // ── Show pinned notes ─────────────────────────────────────────────
+  if (/\bpinned\s+notes?\b/.test(t) || /\bnotes?\s+pinned\b/.test(t)) {
+    return _aiQueryPinnedNotes();
+  }
+
+  // ── Show sheet groups ─────────────────────────────────────────────
+  if (/\b(sheet\s+groups?|groups?\s+of\s+sheets?|sheet\s+categories)\b/.test(t)) {
+    return _aiQuerySheetGroups();
+  }
+
+  // ── Add note ──────────────────────────────────────────────────────
+  const addNoteMatch = t.match(/^(?:add|create|new|banao|likho)\s+(?:a\s+)?note\s*[:\-]?\s*(.+)$/i);
+  if (addNoteMatch) {
+    const content = addNoteMatch[1].trim();
+    return {
+      text: '→ Opening note editor with your text pre-filled.',
+      intent: { action: 'addNote', params: [content] },
+    };
+  }
+
+  // ── Add note (simple: "note: ...") ───────────────────────────────
+  const noteColonMatch = t.match(/^note\s*[:\-]\s*(.+)$/i);
+  if (noteColonMatch) {
+    const content = noteColonMatch[1].trim();
+    return {
+      text: '→ Opening note editor.',
+      intent: { action: 'addNote', params: [content] },
+    };
+  }
+
+  // ── Search notes ──────────────────────────────────────────────────
+  const searchMatch = t.match(/\bsearch\s+notes?\s+(?:for\s+)?(.+)$/i) ||
+                      t.match(/\bnote\s+(?:about|for|with)\s+(.+)$/i);
+  if (searchMatch) {
+    return _aiSearchNotes(searchMatch[1].trim());
+  }
+
+  // ── Open specific sheet by name ───────────────────────────────────
+  const openSheetMatch = t.match(/\bopen\s+sheet\s+[""']?(.+?)[""']?\s*$/i) ||
+                          t.match(/\bload\s+sheet\s+[""']?(.+?)[""']?\s*$/i);
+  if (openSheetMatch) {
+    return _aiOpenSheetByName(openSheetMatch[1].trim());
+  }
+
+  return null;
+}
+
+// ── Notes query helpers ───────────────────────────────────────────────
+function _aiQueryTodayNotes() {
+  try {
+    const notes = JSON.parse(localStorage.getItem('bt_notes_v1') || '[]');
+    const today = new Date().toISOString().slice(0, 10);
+    const todayNotes = notes.filter(function (n) { return n.updatedAt && n.updatedAt.startsWith(today); });
+    if (!todayNotes.length) {
+      return { text: "📝 No notes updated today yet. <button class='ai-chip' onclick=\"_aiAddNoteFromChat()\">+ New Note</button>", intent: null };
+    }
+    const html = "<b>Today's notes</b> (" + todayNotes.length + "):<br>" +
+      todayNotes.map(function (n) {
+        const preview = (n.body || '').replace(/<[^>]+>/g, '').slice(0, 80);
+        return '📝 <b>' + (n.title || 'Untitled') + '</b>' + (preview ? ' — ' + preview : '');
+      }).join('<br>') +
+      '<br><button class=\'ai-chip\' onclick="showPage(\'notes-sheets\')">Open Notes →</button>';
+    return { text: html, intent: null };
+  } catch (_) {
+    return { text: '⚠ Could not load notes.', intent: null };
+  }
+}
+
+function _aiQueryAllNotes() {
+  try {
+    const notes = JSON.parse(localStorage.getItem('bt_notes_v1') || '[]');
+    if (!notes.length) {
+      return { text: "📝 No notes yet. <button class='ai-chip' onclick=\"_aiAddNoteFromChat()\">+ New Note</button>", intent: null };
+    }
+    const pinned = notes.filter(function (n) { return n.pinned; });
+    const rest   = notes.filter(function (n) { return !n.pinned; });
+    let html = '<b>All notes</b> (' + notes.length + '):<br>';
+    if (pinned.length) {
+      html += '<em>Pinned:</em><br>' + pinned.map(function (n) { return '📌 <b>' + (n.title || 'Untitled') + '</b>' + (n.tags ? ' [' + n.tags + ']' : ''); }).join('<br>') + '<br>';
+    }
+    html += rest.slice(0, 12).map(function (n) { return '📝 ' + (n.title || 'Untitled') + (n.tags ? ' [' + n.tags + ']' : ''); }).join('<br>');
+    if (rest.length > 12) html += '<br><em>…and ' + (rest.length - 12) + ' more</em>';
+    html += '<br><button class=\'ai-chip\' onclick="showPage(\'notes-sheets\')">Open Notes →</button>';
+    return { text: html, intent: null };
+  } catch (_) {
+    return { text: '⚠ Could not load notes.', intent: null };
+  }
+}
+
+function _aiQueryPinnedNotes() {
+  try {
+    const notes = JSON.parse(localStorage.getItem('bt_notes_v1') || '[]');
+    const pinned = notes.filter(function (n) { return n.pinned; });
+    if (!pinned.length) {
+      return { text: '📌 No pinned notes. Pin a note by opening it and tapping 📌 Pin.', intent: null };
+    }
+    const html = '<b>Pinned notes</b> (' + pinned.length + '):<br>' +
+      pinned.map(function (n) {
+        const preview = (n.body || '').replace(/<[^>]+>/g, '').slice(0, 80);
+        return '📌 <b>' + (n.title || 'Untitled') + '</b>' + (preview ? ' — ' + preview : '');
+      }).join('<br>') +
+      '<br><button class=\'ai-chip\' onclick="showPage(\'notes-sheets\')">Open Notes →</button>';
+    return { text: html, intent: null };
+  } catch (_) {
+    return { text: '⚠ Could not load notes.', intent: null };
+  }
+}
+
+function _aiSearchNotes(query) {
+  try {
+    const notes = JSON.parse(localStorage.getItem('bt_notes_v1') || '[]');
+    const q = query.toLowerCase();
+    const matches = notes.filter(function (n) {
+      return (n.title + ' ' + n.body + ' ' + n.tags).toLowerCase().includes(q);
+    });
+    if (!matches.length) {
+      return { text: '🔍 No notes found matching <b>"' + query + '"</b>.', intent: null };
+    }
+    const html = '🔍 <b>Notes matching "' + query + '"</b> (' + matches.length + '):<br>' +
+      matches.slice(0, 8).map(function (n) {
+        const preview = (n.body || '').replace(/<[^>]+>/g, '').slice(0, 60);
+        return '📝 <b>' + (n.title || 'Untitled') + '</b>' + (preview ? ' — ' + preview : '');
+      }).join('<br>') +
+      '<br><button class=\'ai-chip\' onclick="showPage(\'notes-sheets\')">Open Notes →</button>';
+    return { text: html, intent: null };
+  } catch (_) {
+    return { text: '⚠ Could not search notes.', intent: null };
+  }
+}
+
+function _aiQuerySheetGroups() {
+  try {
+    const files = JSON.parse(localStorage.getItem('bt_sheet_files_v1') || '[]');
+    if (!files.length) {
+      return { text: '📊 No saved sheet files yet. Open Sheets and use <b>Save As…</b> to create one.', intent: null };
+    }
+    const groups = {};
+    files.forEach(function (f) {
+      const cat = f.category || f.sheetName || 'General';
+      (groups[cat] = groups[cat] || []).push(f.name);
+    });
+    const html = '<b>Sheet groups</b> (' + files.length + ' files):<br>' +
+      Object.entries(groups).map(function (e) {
+        return '🗂 <b>' + e[0] + '</b>: ' + e[1].join(', ');
+      }).join('<br>') +
+      '<br><button class=\'ai-chip\' onclick="showPage(\'notes-sheets\');setTimeout(function(){if(typeof _nsSetPanel===\'function\')_nsSetPanel(\'manage\');},300)">Manage Sheets →</button>';
+    return { text: html, intent: null };
+  } catch (_) {
+    return { text: '⚠ Could not load sheet files.', intent: null };
+  }
+}
+
+function _aiOpenSheetByName(name) {
+  try {
+    const files = JSON.parse(localStorage.getItem('bt_sheet_files_v1') || '[]');
+    const q = name.toLowerCase();
+    const match = files.find(function (f) {
+      return (f.name || '').toLowerCase().includes(q) ||
+             (f.sheetName || '').toLowerCase().includes(q);
+    });
+    if (!match) {
+      return { text: '📊 No saved sheet matching <b>"' + name + '"</b>. <button class=\'ai-chip\' onclick="showPage(\'notes-sheets\');setTimeout(function(){if(typeof _nsSetPanel===\'function\')_nsSetPanel(\'manage\');},300)">View All Sheets →</button>', intent: null };
+    }
+    return {
+      text: '→ Opening sheet <b>"' + match.name + '"</b>.',
+      intent: { action: 'openSheetFile', params: [match.id] },
+    };
+  } catch (_) {
+    return { text: '⚠ Could not find that sheet.', intent: null };
+  }
+}
+
+// Called from the chat "add note" button / intent
+function _aiAddNoteFromChat() {
+  if (typeof showPage === 'function') showPage('notes-sheets');
+  setTimeout(function () {
+    if (typeof _nsSetPanel === 'function') _nsSetPanel('notes');
+    setTimeout(function () {
+      if (typeof _nsNewNote === 'function') _nsNewNote();
+    }, 200);
+  }, 300);
+}
+
 function _aiParseNavCommand(text) {
   const t = text.toLowerCase().trim();
   const isNavPhrase = /^(open|go to|goto|show|switch to|navigate to|take me to|jao|kholo)\b/.test(t) ||
@@ -673,6 +909,7 @@ function _aiParseNavCommand(text) {
     diff:      ['diff','diff report','difference'],
     tools:     ['tools','settings page','supabase'],
     manager:   ['manager','mgr','management'],
+    'notes-sheets': ['notes-sheets', 'notes sheets', 'notepad', 'spreadsheet'],
   };
   for (const [page, keywords] of Object.entries(pages)) {
     if (keywords.some(kw => t.includes(kw))) {
@@ -726,6 +963,254 @@ function _aiParsePrintCommand(text) {
   return null;
 }
 
+// ── Jazz Cash local parser ────────────────────────────────────────────
+// Handles all Jazz Cash commands without a Groq API call.
+//
+// JC_TYPES reference (must stay in sync with jazz-cash.js):
+//   credit      → Received (+)            money IN
+//   debit       → Patty Incentive (−)
+//   withdrawal  → Generic Incentive (−)
+//   commission  → Strips / Adjustments (−)
+//   transfer    → Transfer (−)
+//
+// JC date format is ISO (YYYY-MM-DD) — handled internally by jcAddEntry
+// which calls _jcTodayStr() when no date is provided.
+function _aiParseJazzCashCommand(text) {
+  const t = text.toLowerCase().trim();
+
+  // Must be Jazz Cash related
+  if (!/jazz\s*cash|jazzcash|\bjc\b/.test(t)) return null;
+
+  // ── Helpers ──────────────────────────────────────────────────────────
+  function extractAmount(str) {
+    // "3000", "rs 3000", "₨3,000", "3k" etc.
+    const kM = str.match(/(\d+(?:\.\d+)?)\s*k\b/i);
+    if (kM) return parseFloat(kM[1]) * 1000;
+    const m = str.match(/(?:rs\.?|₨|pkr)?\s*(\d[\d,]*(?:\.\d+)?)/i);
+    return m ? parseFloat(m[1].replace(/,/g, '')) : 0;
+  }
+
+  function extractDesc(raw) {
+    // Capture "for <name>" / "say <name>" patterns
+    const forM = raw.match(/\bfor\s+([a-zA-Z][a-zA-Z\s]{1,24})(?:\s+(?:ka|ki|ke|ko|shift|morning|evening|night)|$)/i);
+    if (forM) return forM[1].trim();
+    // Strip noise words and numbers to get remaining context
+    const cleaned = raw
+      .replace(/\d[\d,]*/g, '')
+      .replace(/\b(?:add|plus|jazz\s*cash|jazzcash|\bjc\b|received|mila|diya|aaya|credit|debit|transfer|less|minus|nikalo|send|bhejo|patty|petti|generic|incentive|strip|commission|adjustment|rs|pkr|rupees|morning|evening|night|both|off|for|ka|ki|ke|ko|shift|report|balance|balanc|kitna|baki|open|tab|ledger|tally|kholo|dekho)\b/gi, '')
+      .replace(/\s+/g, ' ').trim();
+    return cleaned || '';
+  }
+
+  function extractShift(str) {
+    if (/\bevening\b/i.test(str)) return 'Evening';
+    if (/\bnight\b/i.test(str))   return 'Night';
+    if (/\bboth\b/i.test(str))    return 'Both';
+    if (/\boff\b/i.test(str))     return 'Off';
+    return 'Morning';  // default
+  }
+
+  function fmtAmt(n) { return Math.round(n).toLocaleString('en-PK'); }
+
+  const amount = extractAmount(t);
+  const shift  = extractShift(t);
+
+  // ── 1. Balance query ─────────────────────────────────────────────────
+  if (/\bbalance\b|\bbalanc\b|\bkitna\b|\bbaki\b|\bhow much\b/.test(t) &&
+      !/\badd\b|\bplus\b|\bless\b|\bminus\b|\btransfer\b|\bdeduct\b|\breceived\b|\bmila\b/.test(t)) {
+    const bal = (typeof _jcCurrentBalance === 'function') ? _jcCurrentBalance() : null;
+    if (bal !== null) {
+      const fmt  = fmtAmt(Math.abs(bal));
+      const sign = bal < 0 ? '−' : '';
+      return {
+        text: '🏦 <strong>Jazz Cash balance:</strong> ' + sign + '₨' + fmt +
+              ' <button class="chp-state-btn" onclick="showPage(\'manager\');' +
+              'setTimeout(function(){switchMgrTab(\'jazzcash\')},250)">Open Ledger →</button>',
+        intent: null,
+      };
+    }
+    // Balance function not reachable — just navigate
+    return {
+      text: '🏦 Opening Jazz Cash ledger…',
+      intent: { action: 'switchMgrTab', params: ['jazzcash'] },
+    };
+  }
+
+  // ── 2. Open tab / Balance Tally (no amount) ──────────────────────────
+  if (!amount && /\b(?:open|tab|ledger|tally|kholo|dekho|show)\b/.test(t)) {
+    const goTally = /\btally\b/.test(t);
+    return {
+      text: goTally ? '⚖️ Opening Balance Tally…' : '📒 Opening Jazz Cash Ledger…',
+      intent: { action: 'switchMgrTab', params: ['jazzcash'] },
+    };
+  }
+
+  // ── 3. Amount required for all entry types below ─────────────────────
+  if (!amount || amount <= 0) return null;
+
+  // ── 4. Transfer / Less Jazz Cash (−) ─────────────────────────────────
+  if (/\b(?:transfer|less|minus|nikalo|send|bhejo)\b/.test(t)) {
+    const desc = extractDesc(text) || 'Transfer';
+    return {
+      text: '↔️ <strong>Jazz Cash Transfer</strong> −₨' + fmtAmt(amount) +
+            (desc && desc !== 'Transfer' ? ' — <em>' + desc + '</em>' : '') +
+            ' <span class="chp-badge-local">Local</span>',
+      intent: { action: 'addJazzCashEntry',
+                params: [{ amount, type: 'transfer', desc, shift }] },
+    };
+  }
+
+  // ── 5. Patty Incentive / debit (−) ───────────────────────────────────
+  if (/\b(?:patty|petti|patty\s+incentive)\b/.test(t)) {
+    const desc = extractDesc(text) || 'Patty Incentive';
+    return {
+      text: '⬇ <strong>Patty Incentive</strong> −₨' + fmtAmt(amount) +
+            ' — <em>' + desc + '</em>' +
+            ' <span class="chp-badge-local">Local</span>',
+      intent: { action: 'addJazzCashEntry',
+                params: [{ amount, type: 'debit', desc, shift }] },
+    };
+  }
+
+  // ── 6. Generic Incentive / withdrawal (−) ────────────────────────────
+  if (/\b(?:generic|generic\s+incentive|withdrawal)\b/.test(t)) {
+    const desc = extractDesc(text) || 'Generic Incentive';
+    return {
+      text: '💸 <strong>Generic Incentive</strong> −₨' + fmtAmt(amount) +
+            ' — <em>' + desc + '</em>' +
+            ' <span class="chp-badge-local">Local</span>',
+      intent: { action: 'addJazzCashEntry',
+                params: [{ amount, type: 'withdrawal', desc, shift }] },
+    };
+  }
+
+  // ── 7. Strips / Adjustments / Commission (−) ─────────────────────────
+  if (/\b(?:strip|adjust|commission)\b/.test(t)) {
+    const desc = extractDesc(text) || 'Strip/Adjustment';
+    return {
+      text: '🏅 <strong>Strip/Adjustment</strong> −₨' + fmtAmt(amount) +
+            ' — <em>' + desc + '</em>' +
+            ' <span class="chp-badge-local">Local</span>',
+      intent: { action: 'addJazzCashEntry',
+                params: [{ amount, type: 'commission', desc, shift }] },
+    };
+  }
+
+  // ── 8. Default: Credit / Received (+) ────────────────────────────────
+  const desc = extractDesc(text);
+  return {
+    text: '⬆ <strong>Jazz Cash +₨' + fmtAmt(amount) + '</strong>' +
+          (desc ? ' — <em>' + desc + '</em>' : '') +
+          ' <span class="chp-badge-local">Local</span>',
+    intent: { action: 'addJazzCashEntry',
+              params: [{ amount, type: 'credit', desc: desc || '', shift }] },
+  };
+}
+
+// ── Date-aware report parser ──────────────────────────────────────────
+// Handles: "print 21 Oct 2021", "load October 2021", "today's report",
+// "this month", "last month", "2022 yearly", etc. — all without Groq.
+function _aiParseDateReport(text) {
+  const t = text.toLowerCase().trim();
+
+  // Must have a report/print/load/show intent trigger
+  if (!/print|report|load|open|show|chalao|nikalo|dekhao|dikhao|bata/.test(t)) return null;
+
+  const _SHORT = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+  const _FULL  = ['january','february','march','april','may','june','july','august',
+                  'september','october','november','december'];
+  const _CAPS  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const _FNAME = ['January','February','March','April','May','June','July','August',
+                  'September','October','November','December'];
+
+  const isPrint = /print|nikalo|chalao/.test(t);
+  const label   = isPrint ? 'Printing' : 'Loading';
+  const icon    = isPrint ? '🖨️' : '📅';
+
+  // Helper: index from short OR full month string
+  function monIdx(raw) {
+    const s = raw.toLowerCase();
+    let i = _FULL.indexOf(s);
+    if (i < 0) i = _SHORT.indexOf(s.slice(0, 3));
+    return i;
+  }
+
+  // ── 1. Specific day  "21 Oct 2021" / "21/Oct/2021" / "21 October 2021"
+  const dayM = text.match(/\b(\d{1,2})[\/\-\s]+([a-z]+)[\/\-\s]+(\d{4})\b/i);
+  if (dayM) {
+    const mi = monIdx(dayM[2]);
+    if (mi >= 0) {
+      const dd        = String(parseInt(dayM[1], 10)).padStart(2, '0');
+      const yyyy      = dayM[3];
+      const dateStr   = dd + '/' + _CAPS[mi] + '/' + yyyy;
+      const monthYear = _FNAME[mi] + ' ' + yyyy;
+      return {
+        text: icon + ' ' + label + ' day report: <b>' + dateStr + '</b>',
+        intent: { action: isPrint ? 'printDayReport' : 'openDayModal',
+                  params: [dateStr, monthYear] },
+      };
+    }
+  }
+
+  // ── 2. Today / aaj
+  if (/\btoday\b|\baaj\b|\baj\b/.test(t)) {
+    const dateStr   = (typeof BTDate !== 'undefined') ? BTDate.today()           : _aiTodayStr();
+    const monthYear = (typeof BTDate !== 'undefined') ? BTDate.currentMonthYear(): _aiCurrentMonthYear();
+    return {
+      text: icon + " Today's report: <b>" + dateStr + '</b>',
+      intent: { action: isPrint ? 'printDayReport' : 'openDayModal',
+                params: [dateStr, monthYear] },
+    };
+  }
+
+  // ── 3. "This month" / "is mahine" / "current month"
+  if (/\bthis month\b|\bis mahine\b|\bcurrent month\b/.test(t)) {
+    const monthYear = (typeof BTDate !== 'undefined') ? BTDate.currentMonthYear() : _aiCurrentMonthYear();
+    return {
+      text: icon + ' ' + label + ' this month: <b>' + monthYear + '</b>',
+      intent: { action: isPrint ? 'printMonthReport' : 'openMonthModal',
+                params: [monthYear] },
+    };
+  }
+
+  // ── 4. "Last month" / "pichle mahine"
+  if (/\blast month\b|\bpichle mahine\b|\bpichla mahine\b/.test(t)) {
+    const d    = new Date();
+    const last = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+    const monthYear = _FNAME[last.getMonth()] + ' ' + last.getFullYear();
+    return {
+      text: icon + ' ' + label + ' last month: <b>' + monthYear + '</b>',
+      intent: { action: isPrint ? 'printMonthReport' : 'openMonthModal',
+                params: [monthYear] },
+    };
+  }
+
+  // ── 5. Month + Year  "October 2021" / "Oct 2021"
+  const monYearM = text.match(/\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+(\d{4})\b/i);
+  if (monYearM) {
+    const mi = monIdx(monYearM[1]);
+    if (mi >= 0) {
+      const monthYear = _FNAME[mi] + ' ' + monYearM[2];
+      return {
+        text: icon + ' ' + label + ' report: <b>' + monthYear + '</b>',
+        intent: { action: isPrint ? 'printMonthReport' : 'openMonthModal',
+                  params: [monthYear] },
+      };
+    }
+  }
+
+  // ── 6. Standalone year  "2022 report" / "yearly 2023"
+  const yrM = text.match(/\b(20\d{2})\b/);
+  if (yrM && /year|annual|saal|yearly/.test(t)) {
+    return {
+      text: '🖨️ Printing yearly report: <b>' + yrM[1] + '</b>',
+      intent: { action: 'printYearlyReport', params: [yrM[1]] },
+    };
+  }
+
+  return null;
+}
+
 // ── Target commands ───────────────────────────────────────────────────
 function _aiParseTargetCommand(text) {
   const t = text.toLowerCase().trim();
@@ -756,6 +1241,56 @@ function _aiParseTargetCommand(text) {
 }
 
 // ── Sync commands ─────────────────────────────────────────────────────
+// ── Memory / Briefing chat commands (Phase 5) ─────────────────────────
+function _aiParseMemoryCommand(text) {
+  const t = text.toLowerCase().trim();
+
+  // Open memory panel
+  if (/\b(open|show|view)\s+(memory|mem|facts|rules|training|ai memory)\b/.test(t) ||
+      t === 'memory' || t === 'memories') {
+    return {
+      text: '→ Opening <b>AI Memory Panel</b>.',
+      intent: { action: 'openMemoryPanel', params: [] },
+    };
+  }
+
+  // Show briefing
+  if (/\b(show|get|give me|daily)\s+briefing\b/.test(t) || t === 'briefing') {
+    if (typeof aimBriefingGenerate === 'function') {
+      const brief = aimBriefingGenerate(true);
+      if (brief) return { text: '📋 <strong>Daily Briefing</strong><br>' + brief.replace(/</g, '&lt;'), intent: null };
+      return { text: 'ℹ No briefing data yet — add at least one daily entry first.', intent: null };
+    }
+    return null;
+  }
+
+  // List memory facts inline
+  if (/\bwhat do you remember\b/.test(t) || /\bmy memories\b/.test(t) || /\blist\s+(my\s+)?facts\b/.test(t)) {
+    if (typeof aimFactList === 'function') {
+      const facts = aimFactList();
+      if (!facts.length) return { text: '🧠 No memories stored yet. Tell me to "remember" something!', intent: null };
+      return {
+        text: '🧠 <strong>I remember:</strong><br>' + facts.map(function (f) { return '• ' + f.fact.replace(/</g, '&lt;'); }).join('<br>') +
+              '<br><button class="ai-chip" onclick="if(typeof aimOpenPanel===\'function\')aimOpenPanel()">Memory Panel →</button>',
+        intent: null,
+      };
+    }
+    return null;
+  }
+
+  // Check rules
+  if (/\b(check|run|show)\s+(rules?|alerts?)\b/.test(t) || t === 'check rules') {
+    if (typeof aimRulesCheckAll === 'function') {
+      const fired = aimRulesCheckAll();
+      if (!fired.length) return { text: '✅ No rules triggered right now.', intent: null };
+      return { text: '⚠️ <strong>Rule alerts:</strong><br>' + fired.map(function (f) { return f.msg.replace(/</g, '&lt;'); }).join('<br>'), intent: null };
+    }
+    return null;
+  }
+
+  return null;
+}
+
 function _aiParseSyncCommand(text) {
   const t = text.toLowerCase().trim();
   if (/(?:push|sync|upload|save)\s*(?:to)?\s*(?:supabase|cloud|server|online)/.test(t)) {
@@ -1094,7 +1629,11 @@ function _buildLlmPrompt(question) {
     '1. Fuzzy-match staff names to ACTIVE STAFF list.',
     '2. Fuzzy-match section names to CUSTOM SECTIONS IN MANAGER.',
     '3. Default date = today (' + today + ').',
-    '4. Jazz Cash has a dedicated section in the Manager Tab (tab id: "jazzcash"). For ANY query about Jazz Cash — ledger balance, entries on a date, Patty Incentive, Generic Incentive, Strips/Adjustments, Transfer, or other Jazz Cash transactions — ALWAYS navigate: switchMgrTab("jazzcash"). Never use addCustomSectionRow for Jazz Cash.',
+    '4. Jazz Cash — dedicated tab (id: "jazzcash"). Use addJazzCashEntry for any entry, NOT addCustomSectionRow.',
+    '   addJazzCashEntry → params: [{ amount:NUMBER, type:"credit"|"debit"|"withdrawal"|"commission"|"transfer", desc:"string", shift:"Morning"|"Evening"|"Night"|"Both"|"Off" }]',
+    '   Type guide: credit=Received(+)  debit=Patty Incentive(−)  withdrawal=Generic Incentive(−)  commission=Strips/Adj(−)  transfer=Transfer(−)',
+    '   editJazzCashEntry → params: [entryId]   deleteJazzCashEntry → params: [entryId]  (both requiresConfirm:true)',
+    '   For balance queries or ledger navigation → switchMgrTab("jazzcash").',
     '5. Multi-field day fill → saveNewDailyEntry (not multiple setDailyField calls).',
     '6. Always set requiresConfirm:true for any delete/destructive action.',
     '7. Answer in same language mix as user (English/Urdu mix fine).',
@@ -1359,6 +1898,8 @@ async function aiBridgeAnswer(text) {
       if (memHit) return memHit;
     }
 
+    const jazzCmd    = _aiParseJazzCashCommand(text);   if (jazzCmd)    return jazzCmd;
+    const notesCmd   = _aiParseNotesCommand(text);       if (notesCmd)   return notesCmd;
     const creditCmd  = _aiParseCreditCommand(text);     if (creditCmd)  return creditCmd;
     const creditQry  = _aiParseCreditQuery(text);       if (creditQry)  return creditQry;
     const staffQry   = _aiParseStaffQuery(text);        if (staffQry)   return staffQry;
@@ -1371,9 +1912,11 @@ async function aiBridgeAnswer(text) {
     const fieldCmd   = _aiParseDailyFieldCommand(text); if (fieldCmd)   return fieldCmd;
     const csecCmd    = _aiParseCustomSectionCommand(text); if (csecCmd) return csecCmd;
     const printCmd   = _aiParsePrintCommand(text);      if (printCmd)   return printCmd;
+    const dateRpt    = _aiParseDateReport(text);         if (dateRpt)    return dateRpt;
     const navCmd     = _aiParseNavCommand(text);        if (navCmd)     return navCmd;
     const tgtCmd     = _aiParseTargetCommand(text);     if (tgtCmd)     return tgtCmd;
     const syncCmd    = _aiParseSyncCommand(text);       if (syncCmd)    return syncCmd;
+    const memCmd     = _aiParseMemoryCommand(text);      if (memCmd)     return memCmd;
     const clearCmd   = _aiParseClearCommand(text);      if (clearCmd)   return clearCmd;
     const analytics  = _aiDeepSalesAnalysis(text);      if (analytics)  return { text: analytics, intent: null };
 
@@ -2202,6 +2745,76 @@ function aiBridgeExecuteIntent(intent) {
       case 'addRule':            _aiAddRule(p[0]); break;
       case 'deleteRule':         _aiDeleteRule(p[0]); break;
       case 'setSectionAiConfig': _aiSetSectionAiConfig(p[0], p[1]); break;
+      // Jazz Cash Ledger
+      case 'addJazzCashEntry': {
+        // p[0] may be a full opts object (from Groq) or plain amount (from local parser)
+        const jcOpts = (p[0] && typeof p[0] === 'object')
+          ? p[0]
+          : { amount: Number(p[0]) || 0, description: p[1] || '', type: p[2] || 'Credit' };
+        if (typeof jcAddEntry === 'function') {
+          // Navigate to Jazz Cash tab first, then add
+          if (typeof showPage === 'function') showPage('manager');
+          setTimeout(function () {
+            if (typeof switchMgrTab === 'function') switchMgrTab('jazzcash');
+            setTimeout(function () { jcAddEntry(jcOpts); }, 200);
+          }, 200);
+        }
+        break;
+      }
+      case 'editJazzCashEntry':
+        if (typeof jcEditEntry === 'function') jcEditEntry(p[0]);
+        break;
+      case 'deleteJazzCashEntry':
+        if (typeof jcDeleteEntry === 'function') jcDeleteEntry(p[0]);
+        break;
+      // Notes & Sheets
+      case 'addNote': {
+        // Navigate to Notes page, open editor with pre-filled content
+        if (typeof showPage === 'function') showPage('notes-sheets');
+        setTimeout(function () {
+          if (typeof _nsSetPanel === 'function') _nsSetPanel('notes');
+          setTimeout(function () {
+            if (typeof _nsNewNote === 'function') {
+              _nsNewNote();
+              // Pre-fill body if content was provided
+              if (p[0]) {
+                setTimeout(function () {
+                  const bodyEl = document.getElementById('nse-body');
+                  if (bodyEl) bodyEl.value = p[0];
+                  const titleEl = document.getElementById('nse-title');
+                  // Auto-generate title from first line if no title
+                  if (titleEl && !titleEl.value) {
+                    titleEl.value = p[0].slice(0, 50).split('\n')[0];
+                  }
+                }, 150);
+              }
+            }
+          }, 200);
+        }, 300);
+        break;
+      }
+      case 'showNotesPanel': {
+        if (typeof showPage === 'function') showPage('notes-sheets');
+        const panelTarget = p[0] || 'notes';
+        setTimeout(function () {
+          if (typeof _nsSetPanel === 'function') _nsSetPanel(panelTarget);
+        }, 300);
+        break;
+      }
+      case 'openSheetFile': {
+        if (typeof showPage === 'function') showPage('notes-sheets');
+        setTimeout(function () {
+          if (typeof _nsSetPanel === 'function') _nsSetPanel('sheets');
+          setTimeout(function () {
+            if (typeof _nsSFLoad_ === 'function') _nsSFLoad_(p[0]);
+          }, 200);
+        }, 300);
+        break;
+      }
+      // Memory (Phase 5)
+      case 'openMemoryPanel':
+        if (typeof aimOpenPanel === 'function') aimOpenPanel();
+        break;
     }
     // ── Update working context after every intent ──
     if (typeof AIContext !== 'undefined') {

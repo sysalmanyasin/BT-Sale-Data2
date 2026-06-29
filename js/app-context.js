@@ -263,6 +263,53 @@ function getAppContextSummary(opts) {
     }
   } catch (_) {}
 
+  // ── 8. NOTES — titles, pinned, today's notes ──────────────────────
+  try {
+    const notes = JSON.parse(localStorage.getItem('bt_notes_v1') || '[]');
+    if (notes.length) {
+      const today = new Date().toISOString().slice(0, 10);
+      const pinned = notes.filter(function (n) { return n.pinned; });
+      const todayNotes = notes.filter(function (n) {
+        return n.updatedAt && n.updatedAt.startsWith(today);
+      });
+      lines.push('=== NOTES & SHEETS ===');
+      lines.push('Total notes: ' + notes.length + ' | Pinned: ' + pinned.length + ' | Updated today: ' + todayNotes.length);
+      if (pinned.length) {
+        lines.push('Pinned notes:');
+        pinned.forEach(function (n) {
+          lines.push('  📌 [' + (n.title || 'Untitled') + ']' + (n.tags ? ' tags:' + n.tags : '') + ' — ' + (n.body || '').replace(/<[^>]+>/g,'').slice(0, 80));
+        });
+      }
+      if (todayNotes.length) {
+        lines.push("Today's notes:");
+        todayNotes.forEach(function (n) {
+          lines.push('  📝 [' + (n.title || 'Untitled') + '] — ' + (n.body || '').replace(/<[^>]+>/g,'').slice(0, 120));
+        });
+      }
+      // List all note titles so AI can reference them by name
+      lines.push('All note titles: ' + notes.map(function(n){return '"'+(n.title||'Untitled')+'"';}).join(', '));
+      lines.push('');
+    }
+  } catch (_) {}
+
+  // ── 9. SHEET FILES — saved sheet names and categories ─────────────
+  try {
+    const sheetFiles = JSON.parse(localStorage.getItem('bt_sheet_files_v1') || '[]');
+    if (sheetFiles.length) {
+      lines.push('=== SAVED SHEET FILES ===');
+      const groups = {};
+      sheetFiles.forEach(function (f) {
+        const cat = f.category || f.sheetName || 'General';
+        (groups[cat] = groups[cat] || []).push(f.name);
+      });
+      Object.entries(groups).forEach(function (e) {
+        lines.push('  ' + e[0] + ': ' + e[1].join(', '));
+      });
+      lines.push('Total saved sheets: ' + sheetFiles.length);
+      lines.push('');
+    }
+  } catch (_) {}
+
   if (!lines.length) return 'Data is loading. Please try again in a moment.';
   return lines.join('\n');
 }
