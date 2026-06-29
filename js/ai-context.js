@@ -80,6 +80,11 @@ var AIContext = (function () {
     _save();
   }
 
+  // Pin a context group so it persists until explicitly unpinned/cleared
+  function pinGroup(id, label) {
+    setSection(id, label, 'pinned');
+  }
+
   function setPage(id) {
     var labels = {
       dashboard: 'Dashboard', index: 'Year Overview', data: 'Data Table',
@@ -106,10 +111,11 @@ var AIContext = (function () {
   ────────────────────────────────────────────────────────────────── */
   function get() {
     _ctx = _load();
-    // Expire stale slots
+    // Expire stale slots (pinned sections never auto-expire)
     var now = _now();
     ['employee','section','lastAction'].forEach(function(slot) {
       if (_ctx[slot] && _ctx[slot].setAt && (now - _ctx[slot].setAt) > EXPIRY_MS) {
+        if (slot === 'section' && _ctx[slot].via === 'pinned') return;
         _ctx[slot] = null;
       }
     });
@@ -125,6 +131,7 @@ var AIContext = (function () {
   // 0-100 score based on how recently context was set
   function getConfidence() {
     var c = get();
+    if (c.section && c.section.via === 'pinned') return 100;
     if (!c.employee && !c.lastAction) return 0;
     var anchor = c.lastAction ? c.lastAction.setAt : (c.employee ? c.employee.setAt : 0);
     if (!anchor) return 0;
@@ -495,6 +502,7 @@ var AIContext = (function () {
   return {
     setEmployee:      setEmployee,
     setSection:       setSection,
+    pinGroup:         pinGroup,
     setPage:          setPage,
     setMonth:         setMonth,
     setLastAction:    setLastAction,

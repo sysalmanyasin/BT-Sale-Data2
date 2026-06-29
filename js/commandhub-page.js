@@ -200,6 +200,37 @@
   border-radius: 5px; padding: 1px 6px; margin-left: 6px;
   vertical-align: middle;
 }
+
+/* ── Quick Shortcuts popup ── */
+.chp-quick-trigger {
+  font-weight: 700; background: #eff6ff; border-color: #bfdbfe; color: #1e40af;
+}
+.chp-quick-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 9000;
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.chp-quick-sheet {
+  width: 100%; max-width: 520px; max-height: 78vh; background: var(--s1,#fff);
+  border-radius: 18px 18px 0 0; box-shadow: 0 -4px 32px rgba(0,0,0,.18);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.chp-quick-head {
+  flex-shrink: 0; display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 18px 12px; border-bottom: 1.5px solid var(--border,#e2e8f0);
+}
+.chp-quick-body { flex: 1; overflow-y: auto; padding: 12px 16px 28px; }
+.chp-quick-group { margin-bottom: 16px; }
+.chp-quick-group-title {
+  font-size: 12px; font-weight: 700; letter-spacing: .04em; color: #475569;
+  margin-bottom: 8px;
+}
+.chp-quick-group-grid { display: flex; flex-wrap: wrap; gap: 7px; }
+.chp-quick-item {
+  background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px;
+  padding: 8px 12px; font-size: 12.5px; color: #334155; font-weight: 500;
+  cursor: pointer; transition: all 0.12s; -webkit-tap-highlight-color: transparent;
+}
+.chp-quick-item:hover, .chp-quick-item:active { background: #eff6ff; border-color: #93c5fd; color: #1e40af; }
 `;
   document.head.appendChild(el);
 })();
@@ -220,37 +251,61 @@ var CHP_RECENT_MAX = 12;
 /* ══════════════════════════════════════════════════════════════════════
    QUICK ACTIONS
 ══════════════════════════════════════════════════════════════════════ */
-var _chQuickActions = [
-  { label: '📊 Today\'s total',         fn: 'hubPrintTodayReport()' },
-  { label: '💳 Credit balance',         fn: 'hubPrintCreditSummary()' },
-  { label: '🎯 Pace check',             fn: 'hubPrintPaceReport()' },
-  { label: '📋 Expense summary',        fn: 'hubPrintExpenseSummary()' },
-  { label: '📅 Month summary',          fn: 'hubPrintMonthSummary()' },
-  { label: '📄 Print Today\'s Report',  cmd: 'print today report' },
-  { label: '🗓 Print This Month',       cmd: 'print this month report' },
-  { label: '📆 Print This Year',        cmd: 'print yearly report' },
-  { label: '📄 Export summary',         cmd: 'export manager summary' },
-  { label: '➕ Add today\'s entry',     cmd: null, nav: 'entry' },
-  { label: '👔 Staff registry',         cmd: null, nav: 'manager', tab: 'staff' },
-  // ── Jazz Cash ────────────────────────────────────────────────────────
-  { label: '🏦 JC Balance',            fn: 'hubShowJazzCashBalance()' },
-  { label: '➕ Add JC Credit',          cmd: 'jazz cash received' },
-  { label: '↔️ JC Transfer',            cmd: 'jazz cash transfer' },
-  { label: '⬇ Patty Incentive',        cmd: 'jazz cash patty incentive' },
-  { label: '💸 Generic Incentive',     cmd: 'jazz cash generic incentive' },
-  { label: '📒 Open JC Ledger',        cmd: null, nav: 'manager', tab: 'jazzcash' },
-  // ── Other ─────────────────────────────────────────────────────────────
-  { label: '💸 Petty expenses',         cmd: null, nav: 'manager', tab: 'petty' },
-  // ── Notes & Sheets ────────────────────────────────────────────────────
-  { label: '📝 Today\'s Notes',         cmd: 'show today notes' },
-  { label: '➕ Add Note',               cmd: 'add note' },
-  { label: '📌 Pinned Notes',           cmd: 'show pinned notes' },
-  { label: '📊 Open Sheets',            cmd: null, nav: 'manager', tab: 'sheets' },
-  { label: '🗂 Manage Sheets',          fn: "showPage('manager');setTimeout(function(){switchMgrTab('sheets');setTimeout(function(){if(typeof _nsSetPanel==='function')_nsSetPanel('manage')},300)},250)" },
-  { label: '🔍 Search Notes',           cmd: 'search notes' },
-  // ── Memory ────────────────────────────────────────────────────────────
-  { label: '🧠 Memory Panel',           fn: 'if(typeof aimOpenPanel===\'function\')aimOpenPanel()' },
-  { label: '📋 Daily Briefing',         fn: 'chpShowBriefing()' },
+var _chQuickGroups = [
+  {
+    id: 'sale', icon: '💰', label: 'Sale',
+    items: [
+      { label: '📊 Today\'s total',         fn: 'hubPrintTodayReport()' },
+      { label: '🎯 Pace check',             fn: 'hubPrintPaceReport()' },
+      { label: '📅 Month summary',          fn: 'hubPrintMonthSummary()' },
+      { label: '📄 Print Today\'s Report',  cmd: 'print today report' },
+      { label: '🗓 Print This Month',       cmd: 'print this month report' },
+      { label: '📆 Print This Year',        cmd: 'print yearly report' },
+      { label: '📄 Export summary',         cmd: 'export manager summary' },
+      { label: '➕ Add today\'s entry',     cmd: null, nav: 'entry' },
+    ],
+  },
+  {
+    id: 'staff', icon: '👔', label: 'Staff',
+    items: [
+      { label: '👔 Staff registry',         cmd: null, nav: 'manager', tab: 'staff' },
+      { label: '💵 Salary tab',             cmd: null, nav: 'manager', tab: 'salary' },
+      { label: '🏅 Incentive tab',          cmd: null, nav: 'manager', tab: 'incentive' },
+      { label: '📋 Incentive summary',      fn: 'printIncentiveReport()' },
+    ],
+  },
+  {
+    id: 'expenses', icon: '📋', label: 'Expenses',
+    items: [
+      { label: '📋 Expense summary',        fn: 'hubPrintExpenseSummary()' },
+      { label: '💸 Petty expenses',         cmd: null, nav: 'manager', tab: 'petty' },
+      { label: '➕ Add expense',            cmd: 'add expense' },
+    ],
+  },
+  {
+    id: 'jazzcash', icon: '🏦', label: 'Jazz Cash',
+    items: [
+      { label: '🏦 JC Balance',            fn: 'hubShowJazzCashBalance()' },
+      { label: '➕ Add JC Credit',          cmd: 'jazz cash received' },
+      { label: '↔️ JC Transfer',            cmd: 'jazz cash transfer' },
+      { label: '⬇ Patty Incentive',        cmd: 'jazz cash patty incentive' },
+      { label: '💸 Generic Incentive',     cmd: 'jazz cash generic incentive' },
+      { label: '📒 Open JC Ledger',        cmd: null, nav: 'manager', tab: 'jazzcash' },
+    ],
+  },
+  {
+    id: 'notes', icon: '📝', label: 'Notes & Sheets',
+    items: [
+      { label: '📝 Today\'s Notes',         cmd: 'show today notes' },
+      { label: '➕ Add Note',               cmd: 'add note' },
+      { label: '📌 Pinned Notes',           cmd: 'show pinned notes' },
+      { label: '🔍 Search Notes',           cmd: 'search notes' },
+      { label: '📊 Open Sheets',            cmd: null, nav: 'manager', tab: 'sheets' },
+      { label: '🗂 Manage Sheets',          fn: "showPage('manager');setTimeout(function(){switchMgrTab('sheets');setTimeout(function(){if(typeof _nsSetPanel==='function')_nsSetPanel('manage')},300)},250)" },
+      { label: '🧠 Memory Panel',           fn: 'if(typeof aimOpenPanel===\'function\')aimOpenPanel()' },
+      { label: '📋 Daily Briefing',         fn: 'chpShowBriefing()' },
+    ],
+  },
 ];
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -287,12 +342,6 @@ function loadCommandHubPage() {
         }
       } catch (_) {}
     }
-
-    // 3. Default greeting (always last)
-    msgs.push({
-      role: 'bot',
-      text: '👋 <strong>CommandHub ready.</strong> Type a command or question — I\'ll use local parsers first (instant, no API call) and fall back to Groq AI when needed.<br><small style="color:#94a3b8">Try: "jazz cash 3000 for Ali", "today\'s total?", "compare this month vs last"</small>'
-    });
 
     _chHistory = msgs;
     _chRenderThread();
@@ -402,40 +451,58 @@ function _chGetLiveState() {
 function _chRenderChips() {
   var wrap = document.getElementById('chp-chips-wrap');
   if (!wrap) return;
-  var rows = [];
+  wrap.innerHTML =
+    '<button class="chp-chip chp-quick-trigger" onclick="chpOpenQuick()">⚡ Quick Shortcuts</button>';
+}
 
-  // Recent commands (first, shown as dashed chips)
-  if (_chRecent.length) {
-    rows.push('<div class="chp-thread-label" style="text-align:left;padding-left:2px;margin-bottom:5px">⏱ Recent</div>');
-    rows.push('<div class="chp-chips-row">');
-    var recent = _chRecent.slice(0, 5);
-    recent.forEach(function (cmd) {
-      rows.push('<button class="chp-chip recent" onclick="chpAsk(' + JSON.stringify(cmd) + ')">' + _chEsc(cmd.length > 30 ? cmd.slice(0,28)+'…' : cmd) + '</button>');
-    });
-    rows.push('</div>');
+/* ══════════════════════════════════════════════════════════════════════
+   QUICK SHORTCUTS POPUP  (5 grouped categories)
+══════════════════════════════════════════════════════════════════════ */
+function chpOpenQuick() {
+  var modal = document.getElementById('chp-quick-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'chp-quick-modal';
+    document.body.appendChild(modal);
   }
+  modal.style.display = 'block';
+  modal.innerHTML =
+    '<div class="chp-quick-overlay" onclick="if(event.target===this)chpCloseQuick()">' +
+      '<div class="chp-quick-sheet">' +
+        '<div class="chp-quick-head">' +
+          '<div style="font-size:15px;font-weight:700;color:var(--text,#0f172a)">⚡ Quick Shortcuts</div>' +
+          '<button onclick="chpCloseQuick()" style="background:none;border:none;font-size:20px;color:var(--muted,#64748b);cursor:pointer;line-height:1">✕</button>' +
+        '</div>' +
+        '<div class="chp-quick-body">' +
+          _chQuickGroups.map(function (g) {
+            return '<div class="chp-quick-group">' +
+              '<div class="chp-quick-group-title">' + g.icon + ' ' + _chEsc(g.label) + '</div>' +
+              '<div class="chp-quick-group-grid">' +
+                g.items.map(function (a) { return _chQuickActionBtn(a); }).join('') +
+              '</div>' +
+            '</div>';
+          }).join('') +
+        '</div>' +
+      '</div>' +
+    '</div>';
+}
 
-  // Quick actions
-  rows.push('<div class="chp-thread-label" style="text-align:left;padding-left:2px;margin:' + (_chRecent.length ? '8px' : '0') + ' 0 5px">⚡ Quick</div>');
-  rows.push('<div class="chp-chips-row">');
-  _chQuickActions.forEach(function (a, i) {
-    if (a.fn) {
-      rows.push('<button class="chp-chip" onclick="' + a.fn + '">' + a.label + '</button>');
-    } else if (a.cmd) {
-      rows.push('<button class="chp-chip" onclick="chpAsk(' + JSON.stringify(a.cmd) + ')">' + a.label + '</button>');
-    } else {
-      var onclick = 'showPage(\'' + a.nav + '\')';
-      if (a.tab && a.nav === 'notes-sheets') {
-        onclick += ';setTimeout(function(){if(typeof _nsSetPanel===\'function\')_nsSetPanel(\'' + a.tab + '\');},300)';
-      } else if (a.tab) {
-        onclick += ';setTimeout(function(){switchMgrTab(\'' + a.tab + '\')},250)';
-      }
-      rows.push('<button class="chp-chip" onclick="' + onclick + '">' + a.label + '</button>');
-    }
-  });
-  rows.push('</div>');
+function chpCloseQuick() {
+  var modal = document.getElementById('chp-quick-modal');
+  if (modal) modal.style.display = 'none';
+}
 
-  wrap.innerHTML = rows.join('');
+function _chQuickActionBtn(a) {
+  var onclick;
+  if (a.fn) {
+    onclick = a.fn + ';chpCloseQuick()';
+  } else if (a.cmd) {
+    onclick = 'chpCloseQuick();chpAsk(' + JSON.stringify(a.cmd) + ')';
+  } else {
+    onclick = 'chpCloseQuick();showPage(\'' + a.nav + '\')';
+    if (a.tab) onclick += ';setTimeout(function(){switchMgrTab(\'' + a.tab + '\')},250)';
+  }
+  return '<button class="chp-quick-item" onclick="' + onclick + '">' + a.label + '</button>';
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -909,19 +976,9 @@ function chpClearSettings() {
    PHASE 4 — GREETING UPDATE (show key status on first open)
 ══════════════════════════════════════════════════════════════════════ */
 
-// Patch loadCommandHubPage to also update settings indicator and improve greeting
+// Patch loadCommandHubPage to also update settings indicator (greeting bubble removed per design update)
 var _chLoadOrig = loadCommandHubPage;
 loadCommandHubPage = function() {
   _chLoadOrig();
   _chUpdateSettingsIndicator();
-  // Upgrade greeting to mention key status if not yet set
-  if (_chHistory.length === 1 && _chHistory[0].role === 'bot') {
-    var hasKey = (typeof aiHasKey === 'function') ? aiHasKey() : false;
-    var keyNote = hasKey
-      ? ' <span style="color:#22c55e;font-size:12px">● Groq AI active</span>'
-      : ' <span style="color:#94a3b8;font-size:12px">● Local mode (tap ⚙ AI to add Groq key for full AI)</span>';
-    _chHistory[0].text = '👋 <strong>CommandHub ready.</strong>' + keyNote
-      + '<br><small style="color:#94a3b8">Try: "jazz cash 3000 for Ali", "today\'s total?", "am I on pace?"</small>';
-    _chRenderThread();
-  }
 };

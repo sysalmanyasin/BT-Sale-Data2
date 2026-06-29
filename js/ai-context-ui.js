@@ -43,11 +43,50 @@ function renderAiContextPanel() {
   panel.innerHTML =
     _actxHeader(s, conf) +
     _actxConfBand(conf, confColor) +
+    _actxPinGroups(s) +
     _actxContent(s, conf) +
     _actxFooter(s);
 
   // Also refresh the strip
   actxRenderStrip();
+}
+
+// ── Pin Context Groups (5 main groups) ──────────────────────────────────
+var ACTX_GROUPS = [
+  { id: 'sale',     icon: '💰', label: 'Sale' },
+  { id: 'staff',    icon: '👔', label: 'Staff' },
+  { id: 'expense',  icon: '📋', label: 'Expenses' },
+  { id: 'jazzcash', icon: '🏦', label: 'Jazz Cash' },
+  { id: 'notes',    icon: '📝', label: 'Notes & Sheets' },
+];
+
+function _actxPinGroups(s) {
+  var pinnedId = (s.section && s.section.via === 'pinned') ? s.section.id : null;
+  return '<div class="actx-pin-groups">' +
+    '<div class="actx-pin-title">📌 Pin a context group — all chat will relate to it</div>' +
+    '<div class="actx-pin-grid">' +
+      ACTX_GROUPS.map(function (g) {
+        var active = g.id === pinnedId;
+        return '<button class="actx-pin-chip' + (active ? ' active' : '') + '" ' +
+          'onclick="actxTogglePin(\'' + g.id + '\',' + JSON.stringify(g.label) + ')">' +
+          g.icon + ' ' + _actxEsc(g.label) + (active ? ' ✓' : '') +
+        '</button>';
+      }).join('') +
+    '</div>' +
+  '</div>';
+}
+
+function actxTogglePin(id, label) {
+  var s = AIContext.getSummary();
+  var alreadyPinned = s.section && s.section.via === 'pinned' && s.section.id === id;
+  if (alreadyPinned) {
+    AIContext.clear('section');
+    if (typeof toast === 'function') toast('📌 Unpinned ' + label + ' context.');
+  } else {
+    AIContext.pinGroup(id, label);
+    if (typeof toast === 'function') toast('📌 Pinned context: ' + label + '.');
+  }
+  renderAiContextPanel();
 }
 
 // ── Header ────────────────────────────────────────────────────────────
@@ -247,7 +286,8 @@ function actxRenderStrip() {
     chips += '<span class="actx-chip employee" onclick="actxOpen()" title="Current employee">👤 ' + _actxEsc(s.employee.name) + '</span>';
   }
   if (s.section) {
-    chips += '<span class="actx-chip section" onclick="actxOpen()" title="Current section">📁 ' + _actxEsc(s.section.label) + '</span>';
+    var pinIcon = s.section.via === 'pinned' ? '📌' : '📁';
+    chips += '<span class="actx-chip section" onclick="actxOpen()" title="Current section">' + pinIcon + ' ' + _actxEsc(s.section.label) + '</span>';
   }
   if (s.page) {
     chips += '<span class="actx-chip page" onclick="actxOpen()" title="Current page">📄 ' + _actxEsc(s.page.label) + '</span>';
