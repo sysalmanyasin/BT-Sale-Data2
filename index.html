@@ -34,6 +34,7 @@
 <!-- External Libraries -->
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <!-- CSS Modules — load order matters -->
 <link rel="stylesheet" href="css/variables.css">
@@ -302,10 +303,15 @@ if ('serviceWorker' in navigator) {
         onclick="kshOpen()" title="Knowledge Base (Instructions &amp; Memory)">📚</button>
       <button style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--border,#e2e8f0);background:var(--s2,#f8fafc);font-size:12px;color:var(--muted,#64748b);cursor:pointer"
         onclick="chpClear()">🗑 Clear</button>
+      <button style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--border,#e2e8f0);background:var(--s2,#f8fafc);font-size:12px;color:var(--muted,#64748b);cursor:pointer;font-weight:600"
+        onclick="if(typeof aimOpenPanel==='function')aimOpenPanel()" title="AI Memory, Rules & Training">🧠 Memory</button>
     </div>
 
     <!-- ── Settings modal (Phase 4) ── -->
     <div id="chp-settings-modal" style="display:none"></div>
+
+    <!-- ── AI Memory Panel modal (Phase 5) ── -->
+    <div id="aim-panel-modal"></div>
 
     <!-- ── Hidden file input for scan ── -->
     <input type="file" id="chp-scan-file" accept="image/*" capture="environment"
