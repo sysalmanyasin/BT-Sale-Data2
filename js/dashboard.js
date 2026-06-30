@@ -170,7 +170,7 @@ function managerMonthHasData(my) {
     hasData = hasData || Object.values(csecAll).some(sec => ((sec && sec.months && sec.months[my]) || []).some(r => (parseFloat(r.amount) || 0) !== 0 || r.desc || r.notes));
   } catch(e) {}
   try {
-    const inc = JSON.parse(localStorage.getItem('mw_incentive_' + my) || '{}');
+    const inc = JSON.parse(Repository.getItem('mw_incentive_' + my) || '{}');
     hasData = hasData || Object.values(inc).some(v => _ni(v) !== 0);
   } catch(e) {}
   return hasData;

@@ -205,7 +205,7 @@ function _dbiCurrentMonthYear() {
   return MN[d.getMonth()] + ' ' + d.getFullYear();
 }
 function _dbiTgts() {
-  try { return JSON.parse(localStorage.getItem('bt_targets') || '{}'); } catch(_) { return {}; }
+  try { return JSON.parse(Repository.getItem('bt_targets') || '{}'); } catch(_) { return {}; }
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -213,7 +213,7 @@ function _dbiTgts() {
 ══════════════════════════════════════════════════════════════════════ */
 function _dbiBuildBriefing() {
   // Skip if dismissed today
-  const dismissed = localStorage.getItem(_DBI_BRIEF_KEY);
+  const dismissed = Repository.getItem(_DBI_BRIEF_KEY);
   if (dismissed === _dbiToday()) return '';
 
   const briefText = (typeof aimBriefingGenerate === 'function') ? aimBriefingGenerate() : null;
@@ -228,7 +228,7 @@ function _dbiBuildBriefing() {
 }
 
 function _dbiDismissBriefing() {
-  localStorage.setItem(_DBI_BRIEF_KEY, _dbiToday());
+  Repository.setItem(_DBI_BRIEF_KEY, _dbiToday());
   const el = document.getElementById('dbi-briefing-card');
   if (el) {
     el.style.transition = 'opacity .25s, max-height .3s, margin .3s, padding .3s';
@@ -453,12 +453,12 @@ function _dbiBuildInsightStrip() {
 
   // Restore or advance index (once per day)
   try {
-    const stored = JSON.parse(localStorage.getItem(_DBI_INSIGHT_IDX) || '{}');
+    const stored = JSON.parse(Repository.getItem(_DBI_INSIGHT_IDX) || '{}');
     if (stored.date === _dbiToday()) {
       _dbiInsightIdx = stored.idx % insights.length;
     } else {
       _dbiInsightIdx = ((stored.idx || 0) + 1) % insights.length;
-      localStorage.setItem(_DBI_INSIGHT_IDX, JSON.stringify({ date: _dbiToday(), idx: _dbiInsightIdx }));
+      Repository.setItem(_DBI_INSIGHT_IDX, JSON.stringify({ date: _dbiToday(), idx: _dbiInsightIdx }));
     }
   } catch(_) { _dbiInsightIdx = 0; }
 
@@ -484,7 +484,7 @@ function _dbiGoInsight(idx) {
   const insights = _dbiComputeInsights();
   if (!insights.length) return;
   _dbiInsightIdx = idx % insights.length;
-  try { localStorage.setItem(_DBI_INSIGHT_IDX, JSON.stringify({ date: _dbiToday(), idx: _dbiInsightIdx })); } catch(_) {}
+  try { Repository.setItem(_DBI_INSIGHT_IDX, JSON.stringify({ date: _dbiToday(), idx: _dbiInsightIdx })); } catch(_) {}
   const ins = insights[_dbiInsightIdx];
   const textEl = document.getElementById('dbi-insight-text');
   const dotsEl = document.getElementById('dbi-insight-dots');
@@ -510,7 +510,7 @@ function _dbiBuildDiffBadge() {
 
   let html = '';
   try {
-    const prev = JSON.parse(localStorage.getItem(_DBI_LAST_KEY) || 'null');
+    const prev = JSON.parse(Repository.getItem(_DBI_LAST_KEY) || 'null');
     if (prev && prev.totalMonths === lastMonths) {
       const diff = lastTotal - prev.totalSales;
       if (diff !== 0) {
@@ -529,7 +529,7 @@ function _dbiBuildDiffBadge() {
 
   // Save current state for next visit
   try {
-    localStorage.setItem(_DBI_LAST_KEY, JSON.stringify({
+    Repository.setItem(_DBI_LAST_KEY, JSON.stringify({
       ts: now, totalSales: lastTotal, totalMonths: lastMonths
     }));
   } catch(_) {}

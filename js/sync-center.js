@@ -65,11 +65,11 @@ let _sc_activeTab        = 'session';
 // ══════════════════════════════════════════════════════════════════════════
 function _sc_getUDID() {
   if (_sc_udid) return _sc_udid;
-  let id = localStorage.getItem(SC_UDID_KEY) || sessionStorage.getItem(SC_UDID_KEY);
+  let id = Repository.getItem(SC_UDID_KEY) || sessionStorage.getItem(SC_UDID_KEY);
   if (!id) {
     id = 'dev-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9);
   }
-  localStorage.setItem(SC_UDID_KEY, id);
+  Repository.setItem(SC_UDID_KEY, id);
   sessionStorage.setItem(SC_UDID_KEY, id);
   _sc_udid = id;
   return id;
@@ -248,7 +248,7 @@ function _sc_startActivityTracking() {
 // F7: scStayActive() re-arms the full timer correctly.
 // ══════════════════════════════════════════════════════════════════════════
 function _sc_getTimeoutMs() {
-  return parseInt(localStorage.getItem(SC_TIMEOUT_KEY) || '90', 10) * 1000;
+  return parseInt(Repository.getItem(SC_TIMEOUT_KEY) || '90', 10) * 1000;
 }
 
 function _sc_resetInactivityTimer() {
@@ -432,7 +432,7 @@ async function scTogglePriorityLock() {
 
 function scSaveTimeout() {
   const val = parseInt(document.getElementById('sc-timeout-sel')?.value || '90', 10);
-  localStorage.setItem(SC_TIMEOUT_KEY, String(val));
+  Repository.setItem(SC_TIMEOUT_KEY, String(val));
   _sc_resetInactivityTimer();
   _sc_addLog(`⚙ Inactivity timeout → ${val}s`);
   toast(`✓ Timeout set to ${val}s`);
@@ -799,7 +799,7 @@ function _sc_renderControls() {
 function _sc_renderSettings() {
   const el = document.getElementById('sc-settings-panel');
   if (!el) return;
-  const currentTimeout = parseInt(localStorage.getItem(SC_TIMEOUT_KEY) || '90', 10);
+  const currentTimeout = parseInt(Repository.getItem(SC_TIMEOUT_KEY) || '90', 10);
   const udid = _sc_getUDID();
 
   el.innerHTML = `

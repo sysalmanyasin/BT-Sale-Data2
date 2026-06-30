@@ -55,11 +55,11 @@ var AIContext = (function () {
   var _ctx = _load();
 
   function _load() {
-    try { return JSON.parse(localStorage.getItem(STORE_KEY) || 'null') || _empty(); }
+    try { return JSON.parse(Repository.getItem(STORE_KEY) || 'null') || _empty(); }
     catch (_) { return _empty(); }
   }
   function _save() {
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(_ctx)); } catch (_) {}
+    try { Repository.setItem(STORE_KEY, JSON.stringify(_ctx)); } catch (_) {}
     if (typeof renderAiContextPanel === 'function') {
       try { renderAiContextPanel(); } catch(_) {}
     }

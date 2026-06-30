@@ -163,12 +163,12 @@ var IntentGroupRegistry = (function () {
   var USAGE_KEY = 'bt_igr_usage';
 
   function _loadUsage() {
-    try { return JSON.parse(localStorage.getItem(USAGE_KEY) || '{}'); }
+    try { return JSON.parse(Repository.getItem(USAGE_KEY) || '{}'); }
     catch (_) { return {}; }
   }
 
   function _saveUsage(u) {
-    try { localStorage.setItem(USAGE_KEY, JSON.stringify(u)); } catch (_) {}
+    try { Repository.setItem(USAGE_KEY, JSON.stringify(u)); } catch (_) {}
   }
 
   function trackUsage(groupId) {
@@ -187,7 +187,7 @@ var IntentGroupRegistry = (function () {
   }
 
   function resetUsage() {
-    try { localStorage.removeItem(USAGE_KEY); } catch (_) {}
+    try { Repository.removeItem(USAGE_KEY); } catch (_) {}
   }
 
   /* ──────────────────────────────────────────────────────────────────

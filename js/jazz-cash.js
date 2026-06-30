@@ -60,12 +60,12 @@ function _jcFmtDate(ds) {
 // LEDGER — Persistence
 // ══════════════════════════════════════════════════════════════════
 function jcLoad() {
-  try { const r=localStorage.getItem(JC_KEY); if(r) return JSON.parse(r); } catch(e){}
+  try { const r=Repository.getItem(JC_KEY); if(r) return JSON.parse(r); } catch(e){}
   return { openingBalance:0, entries:[] };
 }
 function jcSave() {
-  localStorage.setItem(JC_KEY, JSON.stringify(_jcData));
-  if (localStorage.getItem('bt_auto_save')==='1' && typeof pushToSupabase==='function') pushToSupabase();
+  Repository.setItem(JC_KEY, JSON.stringify(_jcData));
+  if (Repository.getItem('bt_auto_save')==='1' && typeof pushToSupabase==='function') pushToSupabase();
 }
 function _jcRunningBalances(entries, openingBalance) {
   let bal = openingBalance||0;
@@ -86,12 +86,12 @@ function _jcCurrentBalance() {
 // TALLY — Persistence
 // ══════════════════════════════════════════════════════════════════
 function _tallyLoad() {
-  try { const r=localStorage.getItem(JC_TALLY_KEY); if(r) return JSON.parse(r); } catch(e){}
+  try { const r=Repository.getItem(JC_TALLY_KEY); if(r) return JSON.parse(r); } catch(e){}
   return { accounts: JSON.parse(JSON.stringify(JC_TALLY_DEFAULTS)), snapshots:[] };
 }
 function _tallySave(data) {
-  localStorage.setItem(JC_TALLY_KEY, JSON.stringify(data));
-  if (localStorage.getItem('bt_auto_save')==='1' && typeof pushToSupabase==='function') pushToSupabase();
+  Repository.setItem(JC_TALLY_KEY, JSON.stringify(data));
+  if (Repository.getItem('bt_auto_save')==='1' && typeof pushToSupabase==='function') pushToSupabase();
 }
 
 // ══════════════════════════════════════════════════════════════════

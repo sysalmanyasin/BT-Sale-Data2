@@ -241,7 +241,7 @@
   const MAX_RECENT = 20;
 
   function getRecent() {
-    try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); }
+    try { return JSON.parse(Repository.getItem(RECENT_KEY) || '[]'); }
     catch (_) { return []; }
   }
 
@@ -252,7 +252,7 @@
       list.unshift({ id: item.id, title: item.title, sub: item.sub,
                      icon: item.icon, cat: item.cat, ts: Date.now() });
       if (list.length > MAX_RECENT) list = list.slice(0, MAX_RECENT);
-      localStorage.setItem(RECENT_KEY, JSON.stringify(list));
+      Repository.setItem(RECENT_KEY, JSON.stringify(list));
     } catch (_) {}
   }
 
@@ -575,10 +575,21 @@
         tags:['new','month','add','create'],
         action: () => {
           closePalette();
-          if (typeof global.showPage === 'function') global.showPage('index');
+          // BUG FIX (found during Repository migration audit): this used to
+          // navigate to showPage('index') then call addNewMonth() directly —
+          // but addNewMonth() reads #nm-sel/#nm-year, which live on the
+          // TOOLS page (inside the collapsible "Add New Month" card), not
+          // Index. That made this quick action throw silently every time
+          // and do nothing. Now it goes to the right page and opens the card
+          // so the user can pick month/year, instead of guessing for them.
+          if (typeof global.showPage === 'function') global.showPage('tools');
           setTimeout(() => {
-            if (typeof global.addNewMonth === 'function') global.addNewMonth();
-          }, 100);
+            const card = document.getElementById('tc-newmonth');
+            if (card) {
+              card.classList.add('open');
+              card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }, 150);
         }
       },
 
@@ -1305,7 +1316,7 @@
   global.CommandHub = {
     open:  openPalette,
     close: closePalette,
-    clearRecent: () => { try { localStorage.removeItem(RECENT_KEY); } catch (_) {} },
+    clearRecent: () => { try { Repository.removeItem(RECENT_KEY); } catch (_) {} },
   };
 
 })(window);

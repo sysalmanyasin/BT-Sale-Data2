@@ -99,14 +99,14 @@ async function driveBackupNow() {
     const fname = 'BT-Sales-Backup-' + today + '.json';
     const payload = {
       monthly: MONTHLY, daily: DAILY,
-      manager: JSON.parse(localStorage.getItem(MGR_KEY)||'{}'),
+      manager: JSON.parse(Repository.getItem(MGR_KEY)||'{}'),
       petty:   _driveGetAllPetty(),
-      custom:  JSON.parse(localStorage.getItem(CSEC_KEY)||'{}'),
-      jazzcash: JSON.parse(localStorage.getItem(JC_KEY)       || 'null'),
-      jcTally:  JSON.parse(localStorage.getItem(JC_TALLY_KEY) || 'null'),
+      custom:  JSON.parse(Repository.getItem(CSEC_KEY)||'{}'),
+      jazzcash: JSON.parse(Repository.getItem(JC_KEY)       || 'null'),
+      jcTally:  JSON.parse(Repository.getItem(JC_TALLY_KEY) || 'null'),
       colConfig: {
-        hidden: JSON.parse(localStorage.getItem('bt_col_config')  || '[]'),
-        custom: JSON.parse(localStorage.getItem('bt_custom_cols') || '[]')
+        hidden: JSON.parse(Repository.getItem('bt_col_config')  || '[]'),
+        custom: JSON.parse(Repository.getItem('bt_custom_cols') || '[]')
       },
       backedUpAt: new Date().toISOString()
     };
@@ -129,7 +129,7 @@ async function driveBackupNow() {
     const method = existingId ? 'PATCH' : 'POST';
     const ur = await fetch(url, { method, headers:{Authorization:'Bearer '+_driveAccessToken}, body: form });
     if (!ur.ok) { const e=await ur.json(); throw new Error(e.error?.message||'HTTP '+ur.status); }
-    localStorage.setItem(DRIVE_LAST_K, today);
+    Repository.setItem(DRIVE_LAST_K, today);
     driveLog('✓ Backed up: <a href="https://drive.google.com/drive/folders/1qDSFSlrcUA7EoaMx43bG3mxkpS1ESHGn" target="_blank" style="color:var(--accent)">BT-SALE-DATA</a> → ' + fname,'ok');
     _driveUpdateBadge('ok');
     toast('✓ Drive backup complete');
@@ -145,7 +145,7 @@ function _driveGetAllPetty() {
   const result = {};
   for (let i=0; i<localStorage.length; i++) {
     const k = localStorage.key(i);
-    if (k && k.startsWith('mw_petty_')) result[k] = JSON.parse(localStorage.getItem(k)||'null');
+    if (k && k.startsWith('mw_petty_')) result[k] = JSON.parse(Repository.getItem(k)||'null');
   }
   return result;
 }
@@ -219,57 +219,64 @@ async function _driveRestoreFile(fileId, label) {
     if (!r.ok) throw new Error('HTTP '+r.status);
     const data = await r.json();
     let mN=0, dN=0;
-    // Restore monthly + daily
+    // Restore monthly + daily — fill gaps only, never overwrite an existing
+    // local record (this has always been Drive restore's intent: "add what's
+    // missing", unlike Supabase pull which can overwrite on purpose).
+    // Now routed through Repository instead of touching MONTHLY/DAILY directly.
     if (Array.isArray(data.monthly)) data.monthly.forEach(m => {
-      if (!MONTHLY.find(x=>x.Month_Year===m.Month_Year)) { MONTHLY.push(m); mN++; }
+      if (!Repository.getMonthlyEntry(m.Month_Year)) { Repository.upsertMonthly(m); mN++; }
     });
     if (Array.isArray(data.daily)) data.daily.forEach(d => {
-      if (!DAILY.find(x=>x.Date===d.Date&&x.Month_Year===d.Month_Year)) { DAILY.push(d); dN++; }
+      if (!Repository.getDailyEntry(d.Date, d.Month_Year)) { Repository.upsertDaily(d); dN++; }
     });
-    saveMonthly(); saveDaily();
+    // Persist the restored data — previously called saveMonthly()/saveDaily(),
+    // which don't exist anywhere in the app (leftover from before supabase.js
+    // replaced the old github.js sync). That made every restore throw here and
+    // silently skip everything below (Manager/Petty/Custom/JazzCash/Fields).
+    await idbSaveData();
     // Restore manager
     if (data.manager && typeof data.manager==='object') {
-      const cur = JSON.parse(localStorage.getItem(MGR_KEY)||'{}');
+      const cur = JSON.parse(Repository.getItem(MGR_KEY)||'{}');
       Object.keys(data.manager).forEach(k => { if (!cur[k]) cur[k]=data.manager[k]; });
-      localStorage.setItem(MGR_KEY, JSON.stringify(cur));
+      Repository.setItem(MGR_KEY, JSON.stringify(cur));
     }
     // Restore petty months
     if (data.petty && typeof data.petty==='object') {
       Object.keys(data.petty).forEach(k => {
-        if (k.startsWith('mw_petty_') && !localStorage.getItem(k))
-          localStorage.setItem(k, JSON.stringify(data.petty[k]));
+        if (k.startsWith('mw_petty_') && !Repository.getItem(k))
+          Repository.setItem(k, JSON.stringify(data.petty[k]));
       });
     }
     // Restore custom sections
     if (data.custom && typeof data.custom==='object') {
-      const cur = JSON.parse(localStorage.getItem(CSEC_KEY)||'{}');
+      const cur = JSON.parse(Repository.getItem(CSEC_KEY)||'{}');
       Object.keys(data.custom).forEach(k => { if (!cur[k]) cur[k]=data.custom[k]; });
-      localStorage.setItem(CSEC_KEY, JSON.stringify(cur));
+      Repository.setItem(CSEC_KEY, JSON.stringify(cur));
     }
     // Restore JazzCash ledger (fill gaps by entry id — never drop local entries)
     if (data.jazzcash && typeof data.jazzcash === 'object') {
-      const cur = JSON.parse(localStorage.getItem(JC_KEY)||'null') || { openingBalance:0, entries:[] };
+      const cur = JSON.parse(Repository.getItem(JC_KEY)||'null') || { openingBalance:0, entries:[] };
       const byId = {}; (cur.entries||[]).forEach(e => byId[e.id]=e);
       (data.jazzcash.entries||[]).forEach(e => { if (e && e.id && !byId[e.id]) byId[e.id]=e; });
       if (!cur.entries || !cur.entries.length) cur.openingBalance = data.jazzcash.openingBalance ?? cur.openingBalance ?? 0;
       cur.entries = Object.values(byId);
-      localStorage.setItem(JC_KEY, JSON.stringify(cur));
+      Repository.setItem(JC_KEY, JSON.stringify(cur));
     }
     // Restore JazzCash tally (accounts by id, snapshots by date — fill gaps only)
     if (data.jcTally && typeof data.jcTally === 'object') {
-      const cur = JSON.parse(localStorage.getItem(JC_TALLY_KEY)||'null') || { accounts:[], snapshots:[] };
+      const cur = JSON.parse(Repository.getItem(JC_TALLY_KEY)||'null') || { accounts:[], snapshots:[] };
       const acctById = {}; (cur.accounts||[]).forEach(a => acctById[a.id]=a);
       (data.jcTally.accounts||[]).forEach(a => { if (a && a.id && !acctById[a.id]) acctById[a.id]=a; });
       const snapByDate = {}; (cur.snapshots||[]).forEach(s => snapByDate[s.date]=s);
       (data.jcTally.snapshots||[]).forEach(s => { if (s && s.date && !snapByDate[s.date]) snapByDate[s.date]=s; });
       cur.accounts = Object.values(acctById);
       cur.snapshots = Object.values(snapByDate);
-      localStorage.setItem(JC_TALLY_KEY, JSON.stringify(cur));
+      Repository.setItem(JC_TALLY_KEY, JSON.stringify(cur));
     }
     // Restore column/field config (only if nothing set locally yet)
     if (data.colConfig && typeof data.colConfig === 'object') {
-      if (!localStorage.getItem('bt_col_config')  && Array.isArray(data.colConfig.hidden)) localStorage.setItem('bt_col_config',  JSON.stringify(data.colConfig.hidden));
-      if (!localStorage.getItem('bt_custom_cols') && Array.isArray(data.colConfig.custom)) localStorage.setItem('bt_custom_cols', JSON.stringify(data.colConfig.custom));
+      if (!Repository.getItem('bt_col_config')  && Array.isArray(data.colConfig.hidden)) Repository.setItem('bt_col_config',  JSON.stringify(data.colConfig.hidden));
+      if (!Repository.getItem('bt_custom_cols') && Array.isArray(data.colConfig.custom)) Repository.setItem('bt_custom_cols', JSON.stringify(data.colConfig.custom));
       if (typeof fmLoad === 'function') fmLoad();
     }
     driveLog(`✓ Restored from ${label}: +${mN} months, +${dN} days of sales data. Manager/Petty/Custom/JazzCash/Fields merged.`,'ok');
@@ -282,7 +289,7 @@ async function _driveRestoreFile(fileId, label) {
 }
 
 function _driveAutoBackup() {
-  const last = localStorage.getItem(DRIVE_LAST_K);
+  const last = Repository.getItem(DRIVE_LAST_K);
   const today = new Date().toISOString().slice(0,10);
   if (last !== today && _driveAccessToken) driveBackupNow();
 }

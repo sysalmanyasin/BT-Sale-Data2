@@ -34,17 +34,17 @@ function _sb() {
 // ══════════════════════════════════════════════════════════════════
 function _recordHistory(entry) {
   // entry: { type, status, monthly, daily, msg }
-  const hist = JSON.parse(localStorage.getItem(SB_HISTORY) || '[]');
+  const hist = JSON.parse(Repository.getItem(SB_HISTORY) || '[]');
   hist.unshift({ ...entry, time: new Date().toISOString() });
   if (hist.length > 10) hist.length = 10;
-  localStorage.setItem(SB_HISTORY, JSON.stringify(hist));
+  Repository.setItem(SB_HISTORY, JSON.stringify(hist));
   renderSyncHistory();
 }
 
 function renderSyncHistory() {
   const el = document.getElementById('sync-history-list');
   if (!el) return;
-  const hist = JSON.parse(localStorage.getItem(SB_HISTORY) || '[]');
+  const hist = JSON.parse(Repository.getItem(SB_HISTORY) || '[]');
   if (!hist.length) {
     el.innerHTML = '<div style="color:var(--muted);font-size:11px;padding:8px 0">No sync events yet.</div>';
     return;
@@ -101,9 +101,9 @@ function sbLog(msg, cls = 'info') {
 // ══════════════════════════════════════════════════════════════════
 // OFFLINE QUEUE  (dirty flag — full state pushed on flush)
 // ══════════════════════════════════════════════════════════════════
-function _markPending()  { localStorage.setItem(SB_PENDING, Date.now()); }
-function _clearPending() { localStorage.removeItem(SB_PENDING); }
-function _hasPending()   { return !!localStorage.getItem(SB_PENDING); }
+function _markPending()  { Repository.setItem(SB_PENDING, Date.now()); }
+function _clearPending() { Repository.removeItem(SB_PENDING); }
+function _hasPending()   { return !!Repository.getItem(SB_PENDING); }
 
 // ══════════════════════════════════════════════════════════════════
 // PAYLOAD VERSION — monotonically incrementing counter so receivers
@@ -111,8 +111,8 @@ function _hasPending()   { return !!localStorage.getItem(SB_PENDING); }
 // ══════════════════════════════════════════════════════════════════
 const SB_VERSION_KEY = 'bt_payload_version';
 function _nextPayloadVersion() {
-  const v = parseInt(localStorage.getItem(SB_VERSION_KEY) || '0', 10) + 1;
-  localStorage.setItem(SB_VERSION_KEY, String(v));
+  const v = parseInt(Repository.getItem(SB_VERSION_KEY) || '0', 10) + 1;
+  Repository.setItem(SB_VERSION_KEY, String(v));
   return v;
 }
 
@@ -124,25 +124,25 @@ function _buildPayload() {
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
     if (!k) continue;
-    if (k.startsWith('mw_petty_'))     petty[k]     = JSON.parse(localStorage.getItem(k) || 'null');
-    if (k.startsWith('mw_incentive_')) incentive[k] = JSON.parse(localStorage.getItem(k) || 'null');
+    if (k.startsWith('mw_petty_'))     petty[k]     = JSON.parse(Repository.getItem(k) || 'null');
+    if (k.startsWith('mw_incentive_')) incentive[k] = JSON.parse(Repository.getItem(k) || 'null');
   }
   return {
     monthly:  MONTHLY,
     daily:    DAILY,
     staff:    STAFF,
-    manager:  JSON.parse(localStorage.getItem(MGR_KEY)  || '{}'),
+    manager:  JSON.parse(Repository.getItem(MGR_KEY)  || '{}'),
     petty,
     incentive,
-    custom:   JSON.parse(localStorage.getItem(CSEC_KEY) || '{}'),
-    targets:  JSON.parse(localStorage.getItem(TGT_K)    || '{}'),
+    custom:   JSON.parse(Repository.getItem(CSEC_KEY) || '{}'),
+    targets:  JSON.parse(Repository.getItem(TGT_K)    || '{}'),
     assistant: (typeof aimBuildAssistantPayload === 'function') ? aimBuildAssistantPayload() : null,
-    jazzcash: JSON.parse(localStorage.getItem(JC_KEY)       || 'null'),
-    jcTally:  JSON.parse(localStorage.getItem(JC_TALLY_KEY) || 'null'),
-    notes:    JSON.parse(localStorage.getItem('bt_notes_v1') || '[]'),
+    jazzcash: JSON.parse(Repository.getItem(JC_KEY)       || 'null'),
+    jcTally:  JSON.parse(Repository.getItem(JC_TALLY_KEY) || 'null'),
+    notes:    JSON.parse(Repository.getItem('bt_notes_v1') || '[]'),
     colConfig: {
-      hidden: JSON.parse(localStorage.getItem('bt_col_config')  || '[]'),
-      custom: JSON.parse(localStorage.getItem('bt_custom_cols') || '[]')
+      hidden: JSON.parse(Repository.getItem('bt_col_config')  || '[]'),
+      custom: JSON.parse(Repository.getItem('bt_custom_cols') || '[]')
     },
     pushedAt:    new Date().toISOString(),
     payloadVersion: _nextPayloadVersion(),
@@ -157,20 +157,29 @@ function _buildPayload() {
 function mergeIncomingData(data, isPull = false) {
   let mN = 0, dN = 0, mU = 0, dU = 0;
 
-  if (data.monthly) data.monthly.forEach(m => {
-    const idx = MONTHLY.findIndex(x => x.Month_Year === m.Month_Year);
-    if (idx === -1)  { MONTHLY.push(m); mN++; }
-    else if (isPull) { Object.assign(MONTHLY[idx], m); mU++; }
-  });
-
-  if (data.daily) data.daily.forEach(d => {
-    const idx = DAILY.findIndex(x => x.Date === d.Date && x.Month_Year === d.Month_Year);
-    if (idx === -1)  { DAILY.push(d); dN++; }
-    else if (isPull) { Object.assign(DAILY[idx], d); dU++; }
-  });
+  // Monthly/Daily merge now goes through Repository — this is the same
+  // "local wins on push / remote wins on pull" behavior as before, but
+  // with one addition: if the SAME record was independently edited on
+  // both sides since the last sync, it's queued as a conflict instead of
+  // being silently overwritten (see Repository.isGenuineConflict).
+  if (isPull) {
+    if (data.monthly) { const r = Repository.mergePulledMonthly(data.monthly); mN = r.added; mU = r.updated; }
+    if (data.daily)   { const r = Repository.mergePulledDaily(data.daily);     dN = r.added; dU = r.updated; }
+  } else {
+    // Push direction: local wins, remote only fills gaps — unchanged, this
+    // path doesn't overwrite anything local so it carries no conflict risk.
+    if (data.monthly) data.monthly.forEach(m => {
+      const idx = MONTHLY.findIndex(x => x.Month_Year === m.Month_Year);
+      if (idx === -1) { MONTHLY.push(m); mN++; }
+    });
+    if (data.daily) data.daily.forEach(d => {
+      const idx = DAILY.findIndex(x => x.Date === d.Date && x.Month_Year === d.Month_Year);
+      if (idx === -1) { DAILY.push(d); dN++; }
+    });
+  }
 
   if (data.staff && data.staff.length) {
-    const local  = JSON.parse(localStorage.getItem(STAFF_KEY) || '[]');
+    const local  = JSON.parse(Repository.getItem(STAFF_KEY) || '[]');
     const merged = [...data.staff];
     const norm   = s => (s || '').trim().toLowerCase();
     local.forEach(le => {
@@ -178,11 +187,11 @@ function mergeIncomingData(data, isPull = false) {
         merged.push(le);
     });
     STAFF = merged;
-    localStorage.setItem(STAFF_KEY, JSON.stringify(STAFF));
+    Repository.setItem(STAFF_KEY, JSON.stringify(STAFF));
   }
 
   if (data.manager) {
-    const cur = JSON.parse(localStorage.getItem(MGR_KEY) || '{}');
+    const cur = JSON.parse(Repository.getItem(MGR_KEY) || '{}');
     const merged = JSON.parse(JSON.stringify(cur || {}));
     ['salary', 'generic', 'expense', 'credit'].forEach(sec => {
       if (data.manager[sec] && typeof data.manager[sec] === 'object') {
@@ -197,27 +206,27 @@ function mergeIncomingData(data, isPull = false) {
         });
       }
     });
-    localStorage.setItem(MGR_KEY, JSON.stringify(merged));
+    Repository.setItem(MGR_KEY, JSON.stringify(merged));
   }
 
   if (data.petty) {
     Object.entries(data.petty).forEach(([k, v]) => {
       if (v == null) return;
-      if (isPull)                        localStorage.setItem(k, JSON.stringify(v));
-      else if (!localStorage.getItem(k)) localStorage.setItem(k, JSON.stringify(v));
+      if (isPull)                        Repository.setItem(k, JSON.stringify(v));
+      else if (!Repository.getItem(k)) Repository.setItem(k, JSON.stringify(v));
     });
   }
 
   if (data.incentive) {
     Object.entries(data.incentive).forEach(([k, v]) => {
       if (v == null) return;
-      if (isPull)                        localStorage.setItem(k, JSON.stringify(v));
-      else if (!localStorage.getItem(k)) localStorage.setItem(k, JSON.stringify(v));
+      if (isPull)                        Repository.setItem(k, JSON.stringify(v));
+      else if (!Repository.getItem(k)) Repository.setItem(k, JSON.stringify(v));
     });
   }
 
   if (data.custom) {
-    const local  = JSON.parse(localStorage.getItem(CSEC_KEY) || '{}');
+    const local  = JSON.parse(Repository.getItem(CSEC_KEY) || '{}');
     const merged = JSON.parse(JSON.stringify(local || {}));
     Object.keys(data.custom).forEach(sectionId => {
       const remoteSec = data.custom[sectionId];
@@ -242,17 +251,17 @@ function mergeIncomingData(data, isPull = false) {
         else if (!(month in merged[sectionId].months)) merged[sectionId].months[month] = remoteMonths[month]; // local wins on push — only fill gaps
       });
     });
-    localStorage.setItem(CSEC_KEY, JSON.stringify(merged));
+    Repository.setItem(CSEC_KEY, JSON.stringify(merged));
   }
 
   if (data.targets) {
-    const local  = JSON.parse(localStorage.getItem(TGT_K) || '{}');
+    const local  = JSON.parse(Repository.getItem(TGT_K) || '{}');
     const merged = JSON.parse(JSON.stringify(local || {}));
     Object.keys(data.targets).forEach(month => {
       if (isPull) merged[month] = data.targets[month];          // remote wins on pull
       else if (!(month in merged)) merged[month] = data.targets[month]; // local wins on push — only fill gaps
     });
-    localStorage.setItem(TGT_K, JSON.stringify(merged));
+    Repository.setItem(TGT_K, JSON.stringify(merged));
   }
 
   if (data.assistant && typeof aimMergeAssistantIncoming === 'function') {
@@ -262,7 +271,7 @@ function mergeIncomingData(data, isPull = false) {
   // ── JazzCash ledger — entries merged by id, openingBalance follows the
   // same local-wins-on-push / remote-wins-on-pull convention as the rest ──
   if (data.jazzcash) {
-    const local  = JSON.parse(localStorage.getItem(JC_KEY) || 'null') || { openingBalance: 0, entries: [] };
+    const local  = JSON.parse(Repository.getItem(JC_KEY) || 'null') || { openingBalance: 0, entries: [] };
     const remote = data.jazzcash;
     const byId = {};
     (local.entries || []).forEach(e => { byId[e.id] = e; });
@@ -275,12 +284,12 @@ function mergeIncomingData(data, isPull = false) {
       openingBalance: isPull ? (remote.openingBalance ?? local.openingBalance ?? 0) : (local.openingBalance ?? remote.openingBalance ?? 0),
       entries: Object.values(byId)
     };
-    localStorage.setItem(JC_KEY, JSON.stringify(merged));
+    Repository.setItem(JC_KEY, JSON.stringify(merged));
   }
 
   // ── JazzCash tally — accounts merged by id, snapshots merged by date ──
   if (data.jcTally) {
-    const local  = JSON.parse(localStorage.getItem(JC_TALLY_KEY) || 'null') || { accounts: [], snapshots: [] };
+    const local  = JSON.parse(Repository.getItem(JC_TALLY_KEY) || 'null') || { accounts: [], snapshots: [] };
     const remote = data.jcTally;
     const acctById = {};
     (local.accounts || []).forEach(a => { acctById[a.id] = a; });
@@ -297,7 +306,7 @@ function mergeIncomingData(data, isPull = false) {
       else if (!snapByDate[s.date]) snapByDate[s.date] = s; // local wins on push — fill gaps only
     });
     const merged = { accounts: Object.values(acctById), snapshots: Object.values(snapByDate) };
-    localStorage.setItem(JC_TALLY_KEY, JSON.stringify(merged));
+    Repository.setItem(JC_TALLY_KEY, JSON.stringify(merged));
   }
 
   // ── Column / field manager config — small list, remote wins on pull,
@@ -305,20 +314,20 @@ function mergeIncomingData(data, isPull = false) {
   // worth reconciling beyond "newest edit wins") ──
   if (data.colConfig) {
     if (isPull) {
-      if (Array.isArray(data.colConfig.hidden)) localStorage.setItem('bt_col_config',  JSON.stringify(data.colConfig.hidden));
-      if (Array.isArray(data.colConfig.custom)) localStorage.setItem('bt_custom_cols', JSON.stringify(data.colConfig.custom));
+      if (Array.isArray(data.colConfig.hidden)) Repository.setItem('bt_col_config',  JSON.stringify(data.colConfig.hidden));
+      if (Array.isArray(data.colConfig.custom)) Repository.setItem('bt_custom_cols', JSON.stringify(data.colConfig.custom));
       if (typeof fmLoad === 'function') fmLoad();
     } else {
       // local wins on push — only adopt remote values if nothing exists locally yet
-      if (!localStorage.getItem('bt_col_config')  && Array.isArray(data.colConfig.hidden)) localStorage.setItem('bt_col_config',  JSON.stringify(data.colConfig.hidden));
-      if (!localStorage.getItem('bt_custom_cols') && Array.isArray(data.colConfig.custom)) localStorage.setItem('bt_custom_cols', JSON.stringify(data.colConfig.custom));
+      if (!Repository.getItem('bt_col_config')  && Array.isArray(data.colConfig.hidden)) Repository.setItem('bt_col_config',  JSON.stringify(data.colConfig.hidden));
+      if (!Repository.getItem('bt_custom_cols') && Array.isArray(data.colConfig.custom)) Repository.setItem('bt_custom_cols', JSON.stringify(data.colConfig.custom));
     }
   }
 
   // ── Notes (Notes & Sheets workspace) — merged by id, same convention
   // as JazzCash entries. Re-renders the panel live if it's open during a pull. ──
   if (data.notes && data.notes.length) {
-    const local = JSON.parse(localStorage.getItem('bt_notes_v1') || '[]');
+    const local = JSON.parse(Repository.getItem('bt_notes_v1') || '[]');
     const byId  = {};
     local.forEach(n => { if (n && n.id) byId[n.id] = n; });
     data.notes.forEach(n => {
@@ -326,7 +335,7 @@ function mergeIncomingData(data, isPull = false) {
       if (isPull) byId[n.id] = n;              // remote wins on pull
       else if (!byId[n.id]) byId[n.id] = n;     // local wins on push — fill gaps only
     });
-    localStorage.setItem('bt_notes_v1', JSON.stringify(Object.values(byId)));
+    Repository.setItem('bt_notes_v1', JSON.stringify(Object.values(byId)));
     if (isPull && typeof renderNotesSheets === 'function' && document.getElementById('mgr-sheets')) {
       renderNotesSheets();
     }
@@ -441,11 +450,18 @@ async function pullFromSupabase(silent = false) {
     recomputeAllMonths();
     rebuildAll();
     idbSaveData();
+    Repository.markSynced();
 
-    const summary = `+${mN} new months / ${mU} updated · +${dN} new daily / ${dU} updated`;
+    const pendingConflicts = Repository.getPendingConflicts().length;
+    const summary = `+${mN} new months / ${mU} updated · +${dN} new daily / ${dU} updated`
+      + (pendingConflicts ? ` · ⚠ ${pendingConflicts} conflict(s) need your review` : '');
     if (!silent) {
-      sbLog('✓ Pulled. ' + summary, 'ok');
-      toast('✓ Synced from Supabase');
+      sbLog('✓ Pulled. ' + summary, pendingConflicts ? 'w' : 'ok');
+      toast(pendingConflicts ? `⚠ Synced — ${pendingConflicts} record(s) need your review` : '✓ Synced from Supabase');
+    } else if (pendingConflicts) {
+      // Even on a silent/auto pull, conflicts must not be silent — these are
+      // genuine double-edits where data could be lost if ignored.
+      toast(`⚠ ${pendingConflicts} record(s) edited on two devices — review needed`, 'w');
     }
     setSyncBadge('ok');
     _recordHistory({ type: 'pull', status: 'ok', monthly: mN + mU, daily: dN + dU, msg: silent ? 'Auto-pull on unlock' : 'Manual pull' });
@@ -476,7 +492,7 @@ function _startRealtime() {
       // The payload row stores device_id inside the JSON payload column.
       const remoteDeviceId = payload?.new?.payload?.device_id;
       const ownUDID = (typeof _sc_getUDID === 'function') ? _sc_getUDID()
-                    : localStorage.getItem('bt_device_udid');
+                    : Repository.getItem('bt_device_udid');
       if (remoteDeviceId && ownUDID && remoteDeviceId === ownUDID) {
         sbLog('⏭ Real-time: own push — skipping self-pull', 'info');
         return;
@@ -677,8 +693,8 @@ function updateGhBadge() {
 function saveAutoSettings() {
   const autoLoad = document.getElementById('auto-load')?.checked;
   const autoSave = document.getElementById('auto-save')?.checked;
-  localStorage.setItem('bt_auto_load', autoLoad ? '1' : '0');
-  localStorage.setItem('bt_auto_save', autoSave ? '1' : '0');
+  Repository.setItem('bt_auto_load', autoLoad ? '1' : '0');
+  Repository.setItem('bt_auto_save', autoSave ? '1' : '0');
   toast('✓ Auto-sync settings saved — load:' + (autoLoad?'on':'off') + ' save:' + (autoSave?'on':'off'));
 }
 

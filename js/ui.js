@@ -9,6 +9,13 @@ if (typeof updateGhBadge === 'undefined') {
   };
 }
 
+// navigateTo() — alias for showPage(). Some UI snippets (e.g. dashboard's
+// JazzCash "LIVE" badge) call navigateTo() instead of showPage(); previously
+// this function didn't exist anywhere, so that badge silently did nothing.
+function navigateTo(pageId) {
+  if (typeof showPage === 'function') showPage(pageId);
+}
+
 function showPage(id) {
   try {
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
@@ -153,8 +160,8 @@ function loadToolsPage() {
   // Supabase sync badge
   updateGhBadge();
   // Auto-sync checkboxes
-  const al=document.getElementById('auto-load'); if(al) al.checked=localStorage.getItem('bt_auto_load')==='1';
-  const as=document.getElementById('auto-save'); if(as) as.checked=localStorage.getItem('bt_auto_save')==='1';
+  const al=document.getElementById('auto-load'); if(al) al.checked=Repository.getItem('bt_auto_load')==='1';
+  const as=document.getElementById('auto-save'); if(as) as.checked=Repository.getItem('bt_auto_save')==='1';
   // Targets
   populateTgtSel(); renderTargetList();
   // Summary
@@ -193,11 +200,11 @@ function addNewMonth() {
   const mon=document.getElementById('nm-sel').value;
   const yr=document.getElementById('nm-year').value;
   const key=mon+' '+yr;
-  if(MONTHLY.find(m=>m.Month_Year===key)){ toast('⚠ '+key+' already exists','w'); return; }
+  if(Repository.getMonthlyEntry(key)){ toast('⚠ '+key+' already exists','w'); return; }
   const blank={Month_Year:key,TOTAL:0,Customers:0};
-  MONTHLY.push(blank);
-  const stored=JSON.parse(localStorage.getItem('bt_new_months')||'[]');
-  stored.push(blank); localStorage.setItem('bt_new_months',JSON.stringify(stored));
+  Actions.addOrUpdateMonth(blank);
+  const stored=JSON.parse(Repository.getItem('bt_new_months')||'[]');
+  stored.push(blank); Repository.setItem('bt_new_months',JSON.stringify(stored));
   rebuildAll(); toast('✓ '+key+' created');
 }
 
@@ -226,8 +233,8 @@ function importJSON(e) {
   const r=new FileReader();
   r.onload=ev=>{ try{
     const data=JSON.parse(ev.target.result);
-    if(data.monthly) data.monthly.forEach(m=>{ if(!MONTHLY.find(x=>x.Month_Year===m.Month_Year)) MONTHLY.push(m); });
-    if(data.daily)   data.daily.forEach(d=>{ if(!DAILY.find(x=>x.Date===d.Date&&x.Month_Year===d.Month_Year)) DAILY.push(d); });
+    if(data.monthly) data.monthly.forEach(m=>{ if(!Repository.getMonthlyEntry(m.Month_Year)) Actions.addOrUpdateMonth(m); });
+    if(data.daily)   data.daily.forEach(d=>{ if(!Repository.getDailyEntry(d.Date, d.Month_Year)) Actions.addDailyEntry(d); });
     rebuildAll(); toast('✓ Imported');
   }catch(err){toast('✕ Invalid file','e');}};
   r.readAsText(file); e.target.value='';
@@ -253,16 +260,16 @@ function _applyViewModeBtn(mode) {
 }
 
 function toggleViewMode() {
-  const cur = localStorage.getItem('bt_view_mode') || 'mobile';
+  const cur = Repository.getItem('bt_view_mode') || 'mobile';
   const next = cur === 'desktop' ? 'mobile' : 'desktop';
-  localStorage.setItem('bt_view_mode', next);
+  Repository.setItem('bt_view_mode', next);
   // Viewport meta changes only take effect on reload — save & reload
   window.location.reload();
 }
 
 // Init button label on page load to reflect current saved mode
 (function() {
-  const mode = localStorage.getItem('bt_view_mode') || 'mobile';
+  const mode = Repository.getItem('bt_view_mode') || 'mobile';
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => _applyViewModeBtn(mode));
   } else {

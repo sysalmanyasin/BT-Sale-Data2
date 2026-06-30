@@ -1,6 +1,27 @@
 // ══════════════════════════════════════════
 // DAILY TABLE
 // ══════════════════════════════════════════
+// ══════════════════════════════════════════
+// FLOOR 4 — COMPONENT: Daily Row
+// Pure function: given a record, returns an HTML string. No DOM access,
+// no global state mutation, no business logic beyond formatting. This
+// replaces two near-identical copies of this same row markup that
+// previously lived inline in renderDataTable()'s two branches (single
+// month view vs. grouped-by-month view) — any field change had to be
+// made in both places by hand, and they could silently drift apart.
+// ══════════════════════════════════════════
+function DailyRowComponent(d, extraCol) {
+  const ev = extraCol ? '<td>' + (n(d[extraCol]) ? '&#8360;' + fc(n(d[extraCol])) : '&#8212;') + '</td>' : '';
+  return `<td>${d.Date||''}</td>${ev}<td>${n(d.TOTAL)?'&#8360;'+fc(n(d.TOTAL)):'&#8212;'}</td><td>${n(d.Customers)?fc(n(d.Customers)):'&#8212;'}</td><td class="no-print" style="display:flex;gap:4px"><button onclick="event.stopPropagation();printDayDirectly('${d.Date}','${d.Month_Year}')" title="Print ${d.Date}" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(37,99,235,.25);background:var(--alt);color:var(--accent);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">🖨</button><button onclick="event.stopPropagation();openEditModal('${d.Date}','${d.Month_Year}')" title="Edit ${d.Date}" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(217,119,6,.3);background:var(--alt);color:#d97706;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">✏️</button></td>`;
+}
+
+// ══════════════════════════════════════════
+// FLOOR 5 — PAGE: Daily Table
+// Reads state (via Repository) → builds rows using the Component above →
+// renders. Click handlers call existing page-level functions, which is
+// the established pattern app-wide (openDayModal/openEditModal etc. are
+// themselves thin wrappers, not raw state mutation).
+// ══════════════════════════════════════════
 function renderDataTable() {
   const q=(document.getElementById('data-search')?.value||'').toLowerCase();
   const mon=document.getElementById('data-month')?.value||'';
@@ -9,7 +30,7 @@ function renderDataTable() {
   const titleEl=document.getElementById('data-htitle');
   const subEl=document.getElementById('data-hsub');
 
-  const filtered=DAILY.filter(d=>
+  const filtered=Repository.getDaily().filter(d=>
     (!mon||d.Month_Year===mon)&&
     (!q||(d.Date||'').toLowerCase().includes(q)||(d.Month_Year||'').toLowerCase().includes(q))
   ).filter(d=>n(d.TOTAL)!==0||d['Low Sale Reason']);
@@ -17,8 +38,6 @@ function renderDataTable() {
   if(mon){
     // Single month selected — flat table
     const rows=filtered.slice().sort((a,b)=>_dateVal(b.Date)-_dateVal(a.Date));
-    const tbl=document.createElement('table');
-    tbl.id='tbl-daily';
     const oldEl2=document.getElementById('tbl-daily');
     const tbl2=document.createElement('table');
     tbl2.id='tbl-daily';
@@ -30,8 +49,7 @@ function renderDataTable() {
       const tr=document.createElement('tr');
       tr.className='cl'; tr.title='Click for full breakdown';
       tr.onclick=()=>openDayModal(d.Date,d.Month_Year);
-      const ev=extraCol?'<td>'+(n(d[extraCol])?'&#8360;'+fc(n(d[extraCol])):'&#8212;')+'</td>':'';
-      tr.innerHTML=`<td>${d.Date||''}</td>${ev}<td>${n(d.TOTAL)?'&#8360;'+fc(n(d.TOTAL)):'&#8212;'}</td><td>${n(d.Customers)?fc(n(d.Customers)):'&#8212;'}</td><td class="no-print" style="display:flex;gap:4px"><button onclick="event.stopPropagation();printDayDirectly('${d.Date}','${d.Month_Year}')" title="Print ${d.Date}" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(37,99,235,.25);background:var(--alt);color:var(--accent);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">🖨</button><button onclick="event.stopPropagation();openEditModal('${d.Date}','${d.Month_Year}')" title="Edit ${d.Date}" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(217,119,6,.3);background:var(--alt);color:#d97706;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">✏️</button></td>`;
+      tr.innerHTML=DailyRowComponent(d, extraCol);
       tbody.appendChild(tr);
     });
     if(!rows.length){ const tr=document.createElement('tr'); tr.innerHTML='<td colspan="5" style="text-align:center;padding:24px;color:var(--muted)">No records</td>'; tbody.appendChild(tr); }
@@ -87,8 +105,7 @@ function renderDataTable() {
       const tr=document.createElement('tr');
       tr.className='cl'; tr.title='Click for full breakdown';
       tr.onclick=()=>openDayModal(d.Date,d.Month_Year);
-      const ev=extraCol?`<td>${n(d[extraCol])?'&#8360;'+fc(n(d[extraCol])):'&#8212;'}</td>`:'';
-      tr.innerHTML=`<td>${d.Date||''}</td>${ev}<td>${n(d.TOTAL)?'&#8360;'+fc(n(d.TOTAL)):'&#8212;'}</td><td>${n(d.Customers)?fc(n(d.Customers)):'&#8212;'}</td><td class="no-print" style="display:flex;gap:4px"><button onclick="event.stopPropagation();printDayDirectly('${d.Date}','${d.Month_Year}')" title="Print ${d.Date}" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(37,99,235,.25);background:var(--alt);color:var(--accent);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">🖨</button><button onclick="event.stopPropagation();openEditModal('${d.Date}','${d.Month_Year}')" title="Edit ${d.Date}" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(217,119,6,.3);background:var(--alt);color:#d97706;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">✏️</button></td>`;
+      tr.innerHTML=DailyRowComponent(d, extraCol);
       tbody.appendChild(tr);
     });
     tbl.appendChild(tbody);
@@ -210,19 +227,21 @@ async function saveEntry() {
       entry[f.id] = el.value !== '' ? parseFloat(el.value) : null;
     });
   }
-  // Remove any existing entry for the same date (overwrite)
-  const existDailyIdx=DAILY.findIndex(d=>d.Date===date&&d.Month_Year===month);
-  if(existDailyIdx!==-1) DAILY.splice(existDailyIdx,1);
+  // Overwrite any existing entry for the same date — Repository.upsertDaily
+  // handles the find-or-push logic in one place now, instead of this file
+  // doing its own DAILY.findIndex/splice/push (same pattern that used to be
+  // duplicated across storage.js, supabase.js, manager.js, drive.js, ui.js).
+  Actions.addDailyEntry(entry);
   const existNewIdx=newEntries.findIndex(d=>d.Date===date&&d.Month_Year===month);
   if(existNewIdx!==-1) newEntries.splice(existNewIdx,1);
-  newEntries.push(entry); DAILY.push(entry);
-  localStorage.setItem('bt_entries',JSON.stringify(newEntries));
+  newEntries.push(entry);
+  Repository.setItem('bt_entries',JSON.stringify(newEntries));
   // Auto-compute MONTHLY totals from DAILY so dashboard/index/reports all reflect this entry
   recomputeMonthly(month);
   renderEntryList();
   rebuildAll();
   toast('✓ Entry saved — dashboard & monthly totals updated');
-  if(localStorage.getItem('bt_auto_save')==='1') pushToSupabase();
+  if(Repository.getItem('bt_auto_save')==='1') pushToSupabase();
 }
 
 function renderEntryList() {
@@ -241,13 +260,12 @@ function renderEntryList() {
 function delEntry(i){
   const e=newEntries[i];
   newEntries.splice(i,1);
-  const di=DAILY.findIndex(d=>d.Date===e.Date&&d.Month_Year===e.Month_Year);
-  if(di!==-1) DAILY.splice(di,1);
+  Actions.removeDailyEntry(e.Date, e.Month_Year);
   recomputeMonthly(e.Month_Year);
-  localStorage.setItem('bt_entries',JSON.stringify(newEntries));
+  Repository.setItem('bt_entries',JSON.stringify(newEntries));
   renderEntryList();
   rebuildAll();
-  if(localStorage.getItem('bt_auto_save')==='1') pushToSupabase();
+  if(Repository.getItem('bt_auto_save')==='1') pushToSupabase();
 }
 function clearEntryForm(){ document.querySelectorAll('#page-entry input,#page-entry select').forEach(el=>{ if(el.type!=='submit') el.value=''; }); autoFillEntryDate(); }
 function autoFillEntryDate() {
@@ -445,7 +463,7 @@ function closeEditModal() {
 
 async function saveEditModal() {
   if(!_editDate||!_editMy){ toast('⚠ Nothing to save','w'); return; }
-  const rec = DAILY.find(x=>x.Date===_editDate && x.Month_Year===_editMy);
+  const rec = Repository.getDailyEntry(_editDate, _editMy);
   if(!rec){ toast('⚠ Record not found','e'); return; }
 
   const SUB_KEYS_SET=new Set(['Cash Returns','Askari Bank Returns','PSO Returns','NESPAK Returns','PARCO Returns','TEPA Returns','LDA Returns']);
@@ -494,16 +512,17 @@ async function saveEditModal() {
   // Update DIFF = Total Sale − COMP SALE
   const _editDiff=Math.round(n(rec['TOTAL'])-n(rec['COMP SALE']));
   rec['DIFF']=_editDiff!==0?String(_editDiff):null;
+  Actions.addDailyEntry(rec); // stamps _updatedAt/_source — rec is already in DAILY, this just records the metadata
 
   // Sync to newEntries (for push) — overwrite or add
   const ni=newEntries.findIndex(d=>d.Date===_editDate&&d.Month_Year===_editMy);
   if(ni!==-1) newEntries[ni]=rec; else newEntries.push(rec);
-  localStorage.setItem('bt_entries',JSON.stringify(newEntries));
+  Repository.setItem('bt_entries',JSON.stringify(newEntries));
 
   recomputeMonthly(_editMy);
   renderEntryList();
   rebuildAll();
   closeEditModal();
   toast('✓ Entry updated — dashboard & monthly totals refreshed');
-  if(localStorage.getItem('bt_auto_save')==='1') pushToSupabase();
+  if(Repository.getItem('bt_auto_save')==='1') pushToSupabase();
 }

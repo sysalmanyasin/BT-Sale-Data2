@@ -31,11 +31,11 @@ function _acFc(v) {
   return (typeof BTFormat !== 'undefined') ? BTFormat.plain(v) : Math.round(v).toLocaleString('en-PK');
 }
 function _acMgrLoad() {
-  try { return JSON.parse(localStorage.getItem(MGR_STORAGE_KEY) || '{}'); } catch (_) { return {}; }
+  try { return JSON.parse(Repository.getItem(MGR_STORAGE_KEY) || '{}'); } catch (_) { return {}; }
 }
 function _acPettyTotalForMonth(my) {
   try {
-    const raw = localStorage.getItem('mw_petty_' + my);
+    const raw = Repository.getItem('mw_petty_' + my);
     if (!raw) return { total: 0, count: 0 };
     const data = JSON.parse(raw);
     const groups = data.groups || [];
@@ -239,7 +239,7 @@ function getAppContextSummary(opts) {
 
   // ── 7. CUSTOM SECTIONS in Manager (e.g. Jazz Cash) — all entries ───
   try {
-    const secs = JSON.parse(localStorage.getItem('mw_custom_sections_v1') || '{}');
+    const secs = JSON.parse(Repository.getItem('mw_custom_sections_v1') || '{}');
     const ids = Object.keys(secs);
     if (ids.length) {
       lines.push('=== MANAGER > CUSTOM SECTIONS (all entries) ===');
@@ -265,7 +265,7 @@ function getAppContextSummary(opts) {
 
   // ── 8. NOTES — titles, pinned, today's notes ──────────────────────
   try {
-    const notes = JSON.parse(localStorage.getItem('bt_notes_v1') || '[]');
+    const notes = JSON.parse(Repository.getItem('bt_notes_v1') || '[]');
     if (notes.length) {
       const today = new Date().toISOString().slice(0, 10);
       const pinned = notes.filter(function (n) { return n.pinned; });
@@ -294,7 +294,7 @@ function getAppContextSummary(opts) {
 
   // ── 9. SHEET FILES — saved sheet names and categories ─────────────
   try {
-    const sheetFiles = JSON.parse(localStorage.getItem('bt_sheet_files_v1') || '[]');
+    const sheetFiles = JSON.parse(Repository.getItem('bt_sheet_files_v1') || '[]');
     if (sheetFiles.length) {
       lines.push('=== SAVED SHEET FILES ===');
       const groups = {};

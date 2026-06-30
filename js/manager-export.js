@@ -32,11 +32,11 @@ function _msLatestManagerMonth() {
 }
 
 function _msGetManagerData(mon) {
-  try { return JSON.parse(localStorage.getItem('BT_ManagerWork_v1') || '{}'); } catch(_) { return {}; }
+  try { return JSON.parse(Repository.getItem('BT_ManagerWork_v1') || '{}'); } catch(_) { return {}; }
 }
 
 function _msTgts() {
-  try { return JSON.parse(localStorage.getItem('bt_targets') || '{}'); } catch(_) { return {}; }
+  try { return JSON.parse(Repository.getItem('bt_targets') || '{}'); } catch(_) { return {}; }
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -152,7 +152,7 @@ function _msBuildManagerSummary(mon) {
   // Incentive
   let incNet = null;
   try {
-    const inc = JSON.parse(localStorage.getItem('mw_incentive_' + mon) || '{}');
+    const inc = JSON.parse(Repository.getItem('mw_incentive_' + mon) || '{}');
     if (inc.netInc != null) {
       incNet = inc.netInc;
     } else if (inc.saleVal || inc.genSale) {
@@ -169,7 +169,7 @@ function _msBuildManagerSummary(mon) {
   try {
     const mgrKey = Object.keys(localStorage).find(k => k.startsWith('mw_mgr_') || k === 'mw_manager');
     if (mgrKey) {
-      const mgrData = JSON.parse(localStorage.getItem(mgrKey) || '{}');
+      const mgrData = JSON.parse(Repository.getItem(mgrKey) || '{}');
       const months  = Object.keys(mgrData.credit || {});
       if (months.length) {
         const crd = mgrData.credit[months[months.length - 1]] || [];

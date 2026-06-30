@@ -49,7 +49,7 @@ function _buildStaticPromptParts() {
   } catch (_) {}
   var customSections = '';
   try {
-    var _csAll = JSON.parse(localStorage.getItem('mw_custom_sections_v1') || '{}');
+    var _csAll = JSON.parse(Repository.getItem('mw_custom_sections_v1') || '{}');
     var _csSecs = Object.entries(_csAll).map(function(e){
       return e[1].emoji + ' ' + e[1].name + ' (id:' + e[0] + ')';
     }).join(', ');
@@ -280,7 +280,7 @@ function _aiParseCreditQuery(text) {
 const _AI_CSEC_KEY = 'mw_custom_sections_v1';
 function _aiResolveCustomSection(rawName) {
   let all;
-  try { all = JSON.parse(localStorage.getItem(_AI_CSEC_KEY) || '{}'); } catch(_){ all = {}; }
+  try { all = JSON.parse(Repository.getItem(_AI_CSEC_KEY) || '{}'); } catch(_){ all = {}; }
   const norm = s => (s || '').trim().toLowerCase();
   const t = norm(rawName);
   const sid = Object.keys(all).find(k => {
@@ -433,7 +433,7 @@ function _aiParseCustomSectionCommand(text) {
   if (!amount) return null;
 
   let all;
-  try { all = JSON.parse(localStorage.getItem('mw_custom_sections_v1') || '{}'); } catch (_) { return null; }
+  try { all = JSON.parse(Repository.getItem('mw_custom_sections_v1') || '{}'); } catch (_) { return null; }
   const ids = Object.keys(all);
   if (!ids.length) return null;
 
@@ -553,7 +553,7 @@ function _aiEditCustomSectionRow(sectionName, rowIndex, field, value) {
   const rows = (resolved.all[resolved.sid].months && resolved.all[resolved.sid].months[curMon]) || [];
   if (!rows[rowIndex]) { if (typeof toast === 'function') toast('\u26a0 Row index ' + rowIndex + ' not found.', 'w'); return; }
   rows[rowIndex][field] = (field === 'amount') ? (parseFloat(value) || 0) : value;
-  localStorage.setItem(_AI_CSEC_KEY, JSON.stringify(resolved.all));
+  Repository.setItem(_AI_CSEC_KEY, JSON.stringify(resolved.all));
   if (typeof renderAllCustomSections === 'function') renderAllCustomSections();
   if (typeof toast === 'function') toast('\u2705 ' + resolved.name + ' row ' + rowIndex + ' updated.');
 }
@@ -676,11 +676,15 @@ function _aiParseNotesCommand(text) {
   const t = text.toLowerCase().trim();
 
   // ── Navigate to Notes/Sheets page ─────────────────────────────────
+  // BUG FIX: this used to emit { action:'showPage', params:['notes-sheets'] }
+  // — but there's no page-notes-sheets element, so showPage() hid every
+  // page and showed a blank screen. Now routes through the fixed
+  // 'showNotesPanel' action, which correctly opens Manager > Sheets tab.
   if (/^(open|go to|show|kholo|jao)\s+(notes|sheets|notes.?(and|&)?.?sheets|notebook)/i.test(t) ||
       t === 'notes' || t === 'sheets') {
     return {
       text: '→ Opening <b>Notes & Sheets</b>.',
-      intent: { action: 'showPage', params: ['notes-sheets'] },
+      intent: { action: 'showNotesPanel', params: ['notes'] },
     };
   }
 
@@ -761,7 +765,7 @@ function _aiParseNotesCommand(text) {
 // ── Notes query helpers ───────────────────────────────────────────────
 function _aiQueryTodayNotes() {
   try {
-    const notes = JSON.parse(localStorage.getItem('bt_notes_v1') || '[]');
+    const notes = JSON.parse(Repository.getItem('bt_notes_v1') || '[]');
     const today = new Date().toISOString().slice(0, 10);
     const todayNotes = notes.filter(function (n) { return n.updatedAt && n.updatedAt.startsWith(today); });
     if (!todayNotes.length) {
@@ -772,7 +776,7 @@ function _aiQueryTodayNotes() {
         const preview = (n.body || '').replace(/<[^>]+>/g, '').slice(0, 80);
         return '📝 <b>' + (n.title || 'Untitled') + '</b>' + (preview ? ' — ' + preview : '');
       }).join('<br>') +
-      '<br><button class=\'ai-chip\' onclick="showPage(\'notes-sheets\')">Open Notes →</button>';
+      '<br><button class=\'ai-chip\' onclick="showPage(\'manager\');setTimeout(function(){switchMgrTab(\'sheets\')},250)">Open Notes →</button>';
     return { text: html, intent: null };
   } catch (_) {
     return { text: '⚠ Could not load notes.', intent: null };
@@ -781,7 +785,7 @@ function _aiQueryTodayNotes() {
 
 function _aiQueryAllNotes() {
   try {
-    const notes = JSON.parse(localStorage.getItem('bt_notes_v1') || '[]');
+    const notes = JSON.parse(Repository.getItem('bt_notes_v1') || '[]');
     if (!notes.length) {
       return { text: "📝 No notes yet. <button class='ai-chip' onclick=\"_aiAddNoteFromChat()\">+ New Note</button>", intent: null };
     }
@@ -793,7 +797,7 @@ function _aiQueryAllNotes() {
     }
     html += rest.slice(0, 12).map(function (n) { return '📝 ' + (n.title || 'Untitled') + (n.tags ? ' [' + n.tags + ']' : ''); }).join('<br>');
     if (rest.length > 12) html += '<br><em>…and ' + (rest.length - 12) + ' more</em>';
-    html += '<br><button class=\'ai-chip\' onclick="showPage(\'notes-sheets\')">Open Notes →</button>';
+    html += '<br><button class=\'ai-chip\' onclick="showPage(\'manager\');setTimeout(function(){switchMgrTab(\'sheets\')},250)">Open Notes →</button>';
     return { text: html, intent: null };
   } catch (_) {
     return { text: '⚠ Could not load notes.', intent: null };
@@ -802,7 +806,7 @@ function _aiQueryAllNotes() {
 
 function _aiQueryPinnedNotes() {
   try {
-    const notes = JSON.parse(localStorage.getItem('bt_notes_v1') || '[]');
+    const notes = JSON.parse(Repository.getItem('bt_notes_v1') || '[]');
     const pinned = notes.filter(function (n) { return n.pinned; });
     if (!pinned.length) {
       return { text: '📌 No pinned notes. Pin a note by opening it and tapping 📌 Pin.', intent: null };
@@ -812,7 +816,7 @@ function _aiQueryPinnedNotes() {
         const preview = (n.body || '').replace(/<[^>]+>/g, '').slice(0, 80);
         return '📌 <b>' + (n.title || 'Untitled') + '</b>' + (preview ? ' — ' + preview : '');
       }).join('<br>') +
-      '<br><button class=\'ai-chip\' onclick="showPage(\'notes-sheets\')">Open Notes →</button>';
+      '<br><button class=\'ai-chip\' onclick="showPage(\'manager\');setTimeout(function(){switchMgrTab(\'sheets\')},250)">Open Notes →</button>';
     return { text: html, intent: null };
   } catch (_) {
     return { text: '⚠ Could not load notes.', intent: null };
@@ -821,7 +825,7 @@ function _aiQueryPinnedNotes() {
 
 function _aiSearchNotes(query) {
   try {
-    const notes = JSON.parse(localStorage.getItem('bt_notes_v1') || '[]');
+    const notes = JSON.parse(Repository.getItem('bt_notes_v1') || '[]');
     const q = query.toLowerCase();
     const matches = notes.filter(function (n) {
       return (n.title + ' ' + n.body + ' ' + n.tags).toLowerCase().includes(q);
@@ -834,7 +838,7 @@ function _aiSearchNotes(query) {
         const preview = (n.body || '').replace(/<[^>]+>/g, '').slice(0, 60);
         return '📝 <b>' + (n.title || 'Untitled') + '</b>' + (preview ? ' — ' + preview : '');
       }).join('<br>') +
-      '<br><button class=\'ai-chip\' onclick="showPage(\'notes-sheets\')">Open Notes →</button>';
+      '<br><button class=\'ai-chip\' onclick="showPage(\'manager\');setTimeout(function(){switchMgrTab(\'sheets\')},250)">Open Notes →</button>';
     return { text: html, intent: null };
   } catch (_) {
     return { text: '⚠ Could not search notes.', intent: null };
@@ -843,7 +847,7 @@ function _aiSearchNotes(query) {
 
 function _aiQuerySheetGroups() {
   try {
-    const files = JSON.parse(localStorage.getItem('bt_sheet_files_v1') || '[]');
+    const files = JSON.parse(Repository.getItem('bt_sheet_files_v1') || '[]');
     if (!files.length) {
       return { text: '📊 No saved sheet files yet. Open Sheets and use <b>Save As…</b> to create one.', intent: null };
     }
@@ -856,7 +860,7 @@ function _aiQuerySheetGroups() {
       Object.entries(groups).map(function (e) {
         return '🗂 <b>' + e[0] + '</b>: ' + e[1].join(', ');
       }).join('<br>') +
-      '<br><button class=\'ai-chip\' onclick="showPage(\'notes-sheets\');setTimeout(function(){if(typeof _nsSetPanel===\'function\')_nsSetPanel(\'manage\');},300)">Manage Sheets →</button>';
+      '<br><button class=\'ai-chip\' onclick="showPage(\'manager\');setTimeout(function(){switchMgrTab(\'sheets\');setTimeout(function(){if(typeof _nsSetPanel===\'function\')_nsSetPanel(\'manage\');},200)},250)">Manage Sheets →</button>';
     return { text: html, intent: null };
   } catch (_) {
     return { text: '⚠ Could not load sheet files.', intent: null };
@@ -865,14 +869,14 @@ function _aiQuerySheetGroups() {
 
 function _aiOpenSheetByName(name) {
   try {
-    const files = JSON.parse(localStorage.getItem('bt_sheet_files_v1') || '[]');
+    const files = JSON.parse(Repository.getItem('bt_sheet_files_v1') || '[]');
     const q = name.toLowerCase();
     const match = files.find(function (f) {
       return (f.name || '').toLowerCase().includes(q) ||
              (f.sheetName || '').toLowerCase().includes(q);
     });
     if (!match) {
-      return { text: '📊 No saved sheet matching <b>"' + name + '"</b>. <button class=\'ai-chip\' onclick="showPage(\'notes-sheets\');setTimeout(function(){if(typeof _nsSetPanel===\'function\')_nsSetPanel(\'manage\');},300)">View All Sheets →</button>', intent: null };
+      return { text: '📊 No saved sheet matching <b>"' + name + '"</b>. <button class=\'ai-chip\' onclick="showPage(\'manager\');setTimeout(function(){switchMgrTab(\'sheets\');setTimeout(function(){if(typeof _nsSetPanel===\'function\')_nsSetPanel(\'manage\');},200)},250)">View All Sheets →</button>', intent: null };
     }
     return {
       text: '→ Opening sheet <b>"' + match.name + '"</b>.',
@@ -885,13 +889,16 @@ function _aiOpenSheetByName(name) {
 
 // Called from the chat "add note" button / intent
 function _aiAddNoteFromChat() {
-  if (typeof showPage === 'function') showPage('notes-sheets');
+  if (typeof showPage === 'function') showPage('manager');
   setTimeout(function () {
-    if (typeof _nsSetPanel === 'function') _nsSetPanel('notes');
+    if (typeof switchMgrTab === 'function') switchMgrTab('sheets');
     setTimeout(function () {
-      if (typeof _nsNewNote === 'function') _nsNewNote();
-    }, 200);
-  }, 300);
+      if (typeof _nsSetPanel === 'function') _nsSetPanel('notes');
+      setTimeout(function () {
+        if (typeof _nsNewNote === 'function') _nsNewNote();
+      }, 200);
+    }, 250);
+  }, 250);
 }
 
 function _aiParseNavCommand(text) {
@@ -909,7 +916,6 @@ function _aiParseNavCommand(text) {
     diff:      ['diff','diff report','difference'],
     tools:     ['tools','settings page','supabase'],
     manager:   ['manager','mgr','management'],
-    'notes-sheets': ['notes-sheets', 'notes sheets', 'notepad', 'spreadsheet'],
   };
   for (const [page, keywords] of Object.entries(pages)) {
     if (keywords.some(kw => t.includes(kw))) {
@@ -927,6 +933,11 @@ function _aiParseNavCommand(text) {
     petty:     ['petty detail','petty cash detail'],
     incentive: ['incentive','incentive calculator'],
     staff:     ['staff','employees','staff list','staff registry'],
+    // BUG FIX: 'notes-sheets' used to be in the `pages` table above, which
+    // emitted showPage('notes-sheets') — but that page doesn't exist, so
+    // saying "spreadsheet" or "notepad" to the AI would blank the whole
+    // screen. Notes/Sheets is a Manager tab, so it belongs here instead.
+    sheets:    ['notes-sheets', 'notes sheets', 'notepad', 'spreadsheet', 'notes', 'sheets'],
   };
   for (const [tab, keywords] of Object.entries(tabs)) {
     if (keywords.some(kw => t.includes(kw))) {
@@ -1453,7 +1464,7 @@ function _buildLlmPrompt(question) {
   try {
     const mgrKey = Object.keys(localStorage).find(function(k){ return k.startsWith('mw_mgr_') || k === 'mw_manager'; });
     if (mgrKey) {
-      const mgr  = JSON.parse(localStorage.getItem(mgrKey) || '{}');
+      const mgr  = JSON.parse(Repository.getItem(mgrKey) || '{}');
       const curM = curMonth;
       const parts = [];
       if (mgr.expense && mgr.expense[curM]) {
@@ -2065,7 +2076,7 @@ function _aiAddCustomSectionRow(sectionName, desc, amount, notes) {
   const norm = s => (s || '').trim().toLowerCase();
   const t    = norm(sectionName);
   let all;
-  try { all = JSON.parse(localStorage.getItem(CSEC_KEY) || '{}'); } catch(_){ all={}; }
+  try { all = JSON.parse(Repository.getItem(CSEC_KEY) || '{}'); } catch(_){ all={}; }
 
   const sid = Object.keys(all).find(k => {
     const n = norm(all[k].name);
@@ -2096,7 +2107,7 @@ function _aiAddCustomSectionRow(sectionName, desc, amount, notes) {
         amount: parseFloat(amount) || 0,
         notes:  notes  || '',
       });
-      localStorage.setItem(CSEC_KEY, JSON.stringify(all));
+      Repository.setItem(CSEC_KEY, JSON.stringify(all));
 
       if (typeof renderAllCustomSections === 'function') renderAllCustomSections();
 
@@ -2164,14 +2175,14 @@ function _aiEditDailyEntry(date, monthYear, fieldId, newValue) {
 
 function _aiDeleteDailyEntry(date, monthYear) {
   try {
-    if (typeof DAILY === 'undefined' || !DAILY) { if (typeof toast === 'function') toast('\u26a0 Data not loaded.', 'w'); return; }
-    const di = DAILY.findIndex(function(d){ return d.Date === date && d.Month_Year === monthYear; });
-    if (di === -1) { if (typeof toast === 'function') toast('\u26a0 Entry not found: ' + date, 'w'); return; }
-    DAILY.splice(di, 1);
+    if (typeof Repository === 'undefined') { if (typeof toast === 'function') toast('\u26a0 Data not loaded.', 'w'); return; }
+    const existed = Repository.getDailyEntry(date, monthYear);
+    if (!existed) { if (typeof toast === 'function') toast('\u26a0 Entry not found: ' + date, 'w'); return; }
+    Actions.removeDailyEntry(date, monthYear);
     if (typeof newEntries !== 'undefined') {
       const ni = newEntries.findIndex(function(d){ return d.Date === date && d.Month_Year === monthYear; });
       if (ni !== -1) newEntries.splice(ni, 1);
-      localStorage.setItem('bt_entries', JSON.stringify(newEntries));
+      Repository.setItem('bt_entries', JSON.stringify(newEntries));
     }
     if (typeof recomputeMonthly === 'function') recomputeMonthly(monthYear);
     if (typeof renderEntryList === 'function') renderEntryList();
@@ -2507,9 +2518,9 @@ function _aiDeletePettyGroup(groupIndex) {
 function _aiSetMonthTarget(monthYear, amount) {
   try {
     const TGT_K = 'bt_targets';
-    const t = (function(){ try{return JSON.parse(localStorage.getItem(TGT_K)||'{}')}catch{return{}} })();
+    const t = (function(){ try{return JSON.parse(Repository.getItem(TGT_K)||'{}')}catch{return{}} })();
     t[monthYear] = Math.round(Number(amount) || 0);
-    localStorage.setItem(TGT_K, JSON.stringify(t));
+    Repository.setItem(TGT_K, JSON.stringify(t));
     if (typeof renderTargetList === 'function') renderTargetList();
     if (typeof buildDashboard === 'function') buildDashboard();
     if (typeof renderIndex === 'function') renderIndex();
@@ -2520,9 +2531,9 @@ function _aiSetMonthTarget(monthYear, amount) {
 function _aiDeleteMonthTarget(monthYear) {
   try {
     const TGT_K = 'bt_targets';
-    const t = (function(){ try{return JSON.parse(localStorage.getItem(TGT_K)||'{}')}catch{return{}} })();
+    const t = (function(){ try{return JSON.parse(Repository.getItem(TGT_K)||'{}')}catch{return{}} })();
     delete t[monthYear];
-    localStorage.setItem(TGT_K, JSON.stringify(t));
+    Repository.setItem(TGT_K, JSON.stringify(t));
     if (typeof renderTargetList === 'function') renderTargetList();
     if (typeof buildDashboard === 'function') buildDashboard();
     if (typeof renderIndex === 'function') renderIndex();
@@ -2534,16 +2545,19 @@ function _aiCreateCustomSection(name, emoji) {
   try {
     const CSEC_KEY = 'mw_custom_sections_v1';
     let all;
-    try { all = JSON.parse(localStorage.getItem(CSEC_KEY) || '{}'); } catch(_){ all={}; }
+    try { all = JSON.parse(Repository.getItem(CSEC_KEY) || '{}'); } catch(_){ all={}; }
     const sid = 'csec_' + Date.now();
     all[sid] = { name: name || 'New Section', emoji: emoji || '📋', months: {} };
-    localStorage.setItem(CSEC_KEY, JSON.stringify(all));
+    Repository.setItem(CSEC_KEY, JSON.stringify(all));
     if (typeof showPage === 'function') showPage('manager');
     setTimeout(function(){
-      document.querySelectorAll('button,[data-tab]').forEach(function(el){
-        const txt = (el.textContent||'').trim();
-        if (txt.includes('New Section')||txt.includes('Custom')||(el.dataset&&el.dataset.tab==='csec')) el.click();
-      });
+      // BUG FIX: this used to search the DOM for a button containing the
+      // text "New Section" or "Custom" and simulate a click on it — but no
+      // such button exists anywhere in the rendered Manager page HTML, so
+      // the section was created and saved correctly, but the user was
+      // never actually shown it. switchMgrTab('custom') is the same,
+      // reliable mechanism every other Manager tab already uses.
+      if (typeof switchMgrTab === 'function') switchMgrTab('custom');
       setTimeout(function(){ if (typeof renderAllCustomSections === 'function') renderAllCustomSections(); }, 200);
     }, 300);
     if (typeof toast === 'function') toast('\u2705 Custom section "' + (emoji||'📋') + ' ' + name + '" created.');
@@ -2553,7 +2567,7 @@ function _aiCreateCustomSection(name, emoji) {
 function _aiDeleteCustomSectionRow(sectionName, rowIndex) {
   const CSEC_KEY = 'mw_custom_sections_v1';
   let all;
-  try { all = JSON.parse(localStorage.getItem(CSEC_KEY) || '{}'); } catch(_){ all={}; }
+  try { all = JSON.parse(Repository.getItem(CSEC_KEY) || '{}'); } catch(_){ all={}; }
   const norm = s => (s||'').trim().toLowerCase();
   const t    = norm(sectionName);
   const sid  = Object.keys(all).find(k => { const n=norm(all[k].name); return n===t||n.includes(t)||t.includes(n); });
@@ -2564,7 +2578,7 @@ function _aiDeleteCustomSectionRow(sectionName, rowIndex) {
   if (!rows[rowIndex]) { if (typeof toast === 'function') toast('\u26a0 Row index ' + rowIndex + ' not found.', 'w'); return; }
   const desc = rows[rowIndex].desc;
   rows.splice(rowIndex, 1);
-  localStorage.setItem(CSEC_KEY, JSON.stringify(all));
+  Repository.setItem(CSEC_KEY, JSON.stringify(all));
   if (typeof renderAllCustomSections === 'function') renderAllCustomSections();
   if (typeof toast === 'function') toast('\u2705 Row deleted from ' + all[sid].name + ': ' + desc);
 }
@@ -2572,14 +2586,14 @@ function _aiDeleteCustomSectionRow(sectionName, rowIndex) {
 function _aiDeleteCustomSection(sectionName) {
   const CSEC_KEY = 'mw_custom_sections_v1';
   let all;
-  try { all = JSON.parse(localStorage.getItem(CSEC_KEY) || '{}'); } catch(_){ all={}; }
+  try { all = JSON.parse(Repository.getItem(CSEC_KEY) || '{}'); } catch(_){ all={}; }
   const norm = s => (s||'').trim().toLowerCase();
   const t    = norm(sectionName);
   const sid  = Object.keys(all).find(k => { const n=norm(all[k].name); return n===t||n.includes(t)||t.includes(n); });
   if (!sid) { if (typeof toast === 'function') toast('\u26a0 Section "' + sectionName + '" not found.', 'w'); return; }
   const name = all[sid].name;
   delete all[sid];
-  localStorage.setItem(CSEC_KEY, JSON.stringify(all));
+  Repository.setItem(CSEC_KEY, JSON.stringify(all));
   if (typeof renderAllCustomSections === 'function') renderAllCustomSections();
   if (typeof toast === 'function') toast('\u2705 Custom section "' + name + '" deleted.');
 }
@@ -2769,47 +2783,63 @@ function aiBridgeExecuteIntent(intent) {
         if (typeof jcDeleteEntry === 'function') jcDeleteEntry(p[0]);
         break;
       // Notes & Sheets
+      // BUG FIX (found during Repository migration audit): all three cases
+      // below used to call showPage('notes-sheets') — but there is no
+      // page-notes-sheets element anywhere in index.html. showPage() hides
+      // EVERY page first, then fails to find the target and shows nothing —
+      // leaving the user looking at a completely blank screen. Notes/Sheets
+      // actually lives inside the Manager page's "sheets" tab, same as the
+      // Command Hub's own "Open Sheets" quick action correctly does it.
       case 'addNote': {
-        // Navigate to Notes page, open editor with pre-filled content
-        if (typeof showPage === 'function') showPage('notes-sheets');
+        // Navigate to Manager > Sheets tab, open editor with pre-filled content
+        if (typeof showPage === 'function') showPage('manager');
         setTimeout(function () {
-          if (typeof _nsSetPanel === 'function') _nsSetPanel('notes');
+          if (typeof switchMgrTab === 'function') switchMgrTab('sheets');
           setTimeout(function () {
-            if (typeof _nsNewNote === 'function') {
-              _nsNewNote();
-              // Pre-fill body if content was provided
-              if (p[0]) {
-                setTimeout(function () {
-                  const bodyEl = document.getElementById('nse-body');
-                  if (bodyEl) bodyEl.value = p[0];
-                  const titleEl = document.getElementById('nse-title');
-                  // Auto-generate title from first line if no title
-                  if (titleEl && !titleEl.value) {
-                    titleEl.value = p[0].slice(0, 50).split('\n')[0];
-                  }
-                }, 150);
+            if (typeof _nsSetPanel === 'function') _nsSetPanel('notes');
+            setTimeout(function () {
+              if (typeof _nsNewNote === 'function') {
+                _nsNewNote();
+                // Pre-fill body if content was provided
+                if (p[0]) {
+                  setTimeout(function () {
+                    const bodyEl = document.getElementById('nse-body');
+                    if (bodyEl) bodyEl.value = p[0];
+                    const titleEl = document.getElementById('nse-title');
+                    // Auto-generate title from first line if no title
+                    if (titleEl && !titleEl.value) {
+                      titleEl.value = p[0].slice(0, 50).split('\n')[0];
+                    }
+                  }, 150);
+                }
               }
-            }
-          }, 200);
-        }, 300);
+            }, 200);
+          }, 250);
+        }, 250);
         break;
       }
       case 'showNotesPanel': {
-        if (typeof showPage === 'function') showPage('notes-sheets');
+        if (typeof showPage === 'function') showPage('manager');
         const panelTarget = p[0] || 'notes';
         setTimeout(function () {
-          if (typeof _nsSetPanel === 'function') _nsSetPanel(panelTarget);
-        }, 300);
+          if (typeof switchMgrTab === 'function') switchMgrTab('sheets');
+          setTimeout(function () {
+            if (typeof _nsSetPanel === 'function') _nsSetPanel(panelTarget);
+          }, 200);
+        }, 250);
         break;
       }
       case 'openSheetFile': {
-        if (typeof showPage === 'function') showPage('notes-sheets');
+        if (typeof showPage === 'function') showPage('manager');
         setTimeout(function () {
-          if (typeof _nsSetPanel === 'function') _nsSetPanel('sheets');
+          if (typeof switchMgrTab === 'function') switchMgrTab('sheets');
           setTimeout(function () {
-            if (typeof _nsSFLoad_ === 'function') _nsSFLoad_(p[0]);
+            if (typeof _nsSetPanel === 'function') _nsSetPanel('sheets');
+            setTimeout(function () {
+              if (typeof _nsSFLoad_ === 'function') _nsSFLoad_(p[0]);
+            }, 200);
           }, 200);
-        }, 300);
+        }, 250);
         break;
       }
       // Memory (Phase 5)

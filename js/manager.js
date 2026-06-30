@@ -4,10 +4,15 @@
 
 const MGR_KEY = 'BT_ManagerWork_v1';
 
+// Routed through Repository (Floor 1) instead of calling localStorage
+// directly — closes the gap where drive.js and supabase.js were
+// independently reading/writing this same key with their own raw
+// localStorage calls (the same "many doors" pattern fixed for sales
+// data, now closed for Manager Work too).
 function mgrLoad() {
-  try { return JSON.parse(localStorage.getItem(MGR_KEY)) || {}; } catch(e) { return {}; }
+  try { return JSON.parse(Repository.getItem(MGR_KEY)) || {}; } catch(e) { return {}; }
 }
-function mgrSave(data) { localStorage.setItem(MGR_KEY, JSON.stringify(data)); }
+function mgrSave(data) { Actions.saveFeatureData(MGR_KEY, JSON.stringify(data)); }
 
 // Returns a continuous newest-first month list, so blank months do not disappear.
 function mgrMonths() {
@@ -36,7 +41,7 @@ function mgrMonths() {
     }
   } catch(e) {}
   try {
-    const all = typeof _csecLoad === 'function' ? _csecLoad() : JSON.parse(localStorage.getItem('mw_custom_sections_v1') || '{}');
+    const all = typeof _csecLoad === 'function' ? _csecLoad() : JSON.parse(Repository.getItem('mw_custom_sections_v1') || '{}');
     Object.values(all || {}).forEach(sec => Object.keys((sec && sec.months) || {}).forEach(m => seen.add(m)));
   } catch(e) {}
 
@@ -114,7 +119,7 @@ function _inp(type, val, cls, oninput, ph) {
 
 function staffLoad() {
   try {
-    const raw = localStorage.getItem(STAFF_KEY);
+    const raw = Repository.getItem(STAFF_KEY);
     if (raw) { STAFF = JSON.parse(raw); return; }
   } catch(e) {}
   // Fresh install — start empty, no seeding
@@ -122,7 +127,7 @@ function staffLoad() {
 }
 
 function staffSave() {
-  localStorage.setItem(STAFF_KEY, JSON.stringify(STAFF));
+  Repository.setItem(STAFF_KEY, JSON.stringify(STAFF));
 }
 
 function activeStaff() {
@@ -423,7 +428,7 @@ function saveSalaryData() {
   data.salary[my] = _salRows_cur.map(r => ({...r}));
   mgrSave(data);
   toast('✓ Salary saved for ' + my);
-  if (localStorage.getItem('bt_auto_save')==='1') pushToSupabase();
+  if (Repository.getItem('bt_auto_save')==='1') pushToSupabase();
 }
 
 // ── Auto-fill Advance from Credit sheet & Generic from Generic Working ──────
@@ -571,7 +576,7 @@ function saveGenericData() {
   data.generic[my] = _genRows_cur.map(r => ({...r}));
   mgrSave(data);
   toast('✓ Generic Working saved for ' + my);
-  if (localStorage.getItem('bt_auto_save')==='1') pushToSupabase();
+  if (Repository.getItem('bt_auto_save')==='1') pushToSupabase();
 }
 
 // ══════════════════════════════
@@ -666,7 +671,7 @@ function saveExpenseData() {
   data.expense[my] = { opening: _expOpening_cur, rows: _expRows_cur.map(r => ({...r})) };
   mgrSave(data);
   toast('✓ Expense data saved for ' + my);
-  if (localStorage.getItem('bt_auto_save')==='1') pushToSupabase();
+  if (Repository.getItem('bt_auto_save')==='1') pushToSupabase();
 }
 
 // ══════════════════════════════
@@ -857,7 +862,7 @@ function saveCreditData() {
   data.credit[my] = _crdData_cur.map(e => ({...e, entries:[...e.entries]}));
   mgrSave(data);
   toast('✓ Staff Credit saved for ' + my);
-  if (localStorage.getItem('bt_auto_save')==='1') pushToSupabase();
+  if (Repository.getItem('bt_auto_save')==='1') pushToSupabase();
 }
 
 function copyToNextMonth() {
@@ -915,7 +920,7 @@ function copyToNextMonth() {
   loadCreditMonth(nextMy);
 
   toast('✓ Copied to ' + nextMy + ' — net balances set as opening balances');
-  if (localStorage.getItem('bt_auto_save')==='1') pushToSupabase();
+  if (Repository.getItem('bt_auto_save')==='1') pushToSupabase();
 }
 
 // ══════════════════════════════
@@ -1135,7 +1140,7 @@ function _pettyKey(my) { return PETTY_PFX + my; }
 function loadPettyMonth(my) {
   _pettyMonth = my;
   try {
-    const raw = localStorage.getItem(_pettyKey(my));
+    const raw = Repository.getItem(_pettyKey(my));
     _pettyData = raw ? JSON.parse(raw) : { groups: [] };
   } catch(e) { _pettyData = { groups: [] }; }
   if (!_pettyData.groups) _pettyData.groups = [];
@@ -1144,14 +1149,14 @@ function loadPettyMonth(my) {
 
 function savePettyData() {
   if (!_pettyMonth) { toast('⚠ Select a month first','w'); return; }
-  localStorage.setItem(_pettyKey(_pettyMonth), JSON.stringify(_pettyData));
+  Repository.setItem(_pettyKey(_pettyMonth), JSON.stringify(_pettyData));
   toast('✓ Petty Detail saved');
-  if (localStorage.getItem('bt_auto_save')==='1') pushToSupabase();
+  if (Repository.getItem('bt_auto_save')==='1') pushToSupabase();
 }
 
 function _pettyTotalForMonth(my) {
   try {
-    const raw = localStorage.getItem(_pettyKey(my));
+    const raw = Repository.getItem(_pettyKey(my));
     const data = raw ? JSON.parse(raw) : null;
     const groups = data && Array.isArray(data.groups) ? data.groups : [];
     return groups.reduce((s, g) => s + (Array.isArray(g.rows) ? g.rows.reduce((a, r) => a + _ni(r.amount), 0) : 0), 0);
@@ -1328,7 +1333,7 @@ function _incKey(my) { return INCEN_PFX + my; }
 function loadIncentiveMonth(my) {
   _incMonth = my;
   try {
-    const raw = localStorage.getItem(_incKey(my));
+    const raw = Repository.getItem(_incKey(my));
     _incData = raw ? JSON.parse(raw) : {};
   } catch(e) { _incData = {}; }
   // Populate inputs
@@ -1345,9 +1350,9 @@ function saveIncentiveData() {
     const el = document.getElementById('inc-' + f);
     if (el) _incData[f] = _ni(el.value);
   });
-  localStorage.setItem(_incKey(_incMonth), JSON.stringify(_incData));
+  Repository.setItem(_incKey(_incMonth), JSON.stringify(_incData));
   toast('✓ Incentive data saved');
-  if (localStorage.getItem('bt_auto_save')==='1') pushToSupabase();
+  if (Repository.getItem('bt_auto_save')==='1') pushToSupabase();
 }
 
 function recalcIncentive() {
@@ -1463,7 +1468,7 @@ function populateDashWorking(mon) {
   if (!wEl) return;
   if (!mon) { wEl.style.display = 'none'; return; }
   wEl.style.display = '';
-  const mgr = JSON.parse(localStorage.getItem('BT_ManagerWork_v1') || '{}');
+  const mgr = JSON.parse(Repository.getItem('BT_ManagerWork_v1') || '{}');
   const salaryRows = (mgr.salary && mgr.salary[mon]) || [];
   const genericRows = (mgr.generic && mgr.generic[mon]) || [];
   const salaryTotal = salaryRows.reduce((s, r) => s + (_ni(r.hoSal) - _ni(r.advance) + _ni(r.generic)), 0);
@@ -1475,7 +1480,7 @@ function populateDashWorking(mon) {
   if (el('dw-generic'))   el('dw-generic').textContent   = fmt(genericTotal);
   if (el('dw-petty'))     el('dw-petty').textContent     = fmt(pettyTotal);
   if (el('dw-incentive')) {
-    const inc = JSON.parse(localStorage.getItem('mw_incentive_' + mon) || '{}');
+    const inc = JSON.parse(Repository.getItem('mw_incentive_' + mon) || '{}');
     let incNet = inc.netInc;
     if (incNet == null) {
       const saleComm = Math.round(_ni(inc.saleVal) * 0.005);
@@ -1608,12 +1613,16 @@ function renderStaffCreditHistory(empName) {
 }
 
 function initApp() {
-  // Restore session entries
+  // Restore session entries — this device's own unsynced local additions,
+  // saved to localStorage by data-page.js's saveEntry(). Gap-fill only:
+  // never overwrites a record that's already in DAILY/MONTHLY (e.g. one
+  // that arrived via a Supabase pull since this device was last open).
+  // Now routed through Repository instead of touching DAILY/MONTHLY directly.
   try {
-    const se=localStorage.getItem('bt_entries');
-    if(se){ newEntries=JSON.parse(se); newEntries.forEach(e=>{ if(!DAILY.find(d=>d.Date===e.Date&&d.Month_Year===e.Month_Year)) DAILY.push(e); }); }
-    const sm=localStorage.getItem('bt_new_months');
-    if(sm){ JSON.parse(sm).forEach(m=>{ if(!MONTHLY.find(x=>x.Month_Year===m.Month_Year)) MONTHLY.push(m); }); }
+    const se=Repository.getItem('bt_entries');
+    if(se){ newEntries=JSON.parse(se); newEntries.forEach(e=>{ if(!Repository.getDailyEntry(e.Date, e.Month_Year)) Repository.upsertDaily(e); }); }
+    const sm=Repository.getItem('bt_new_months');
+    if(sm){ JSON.parse(sm).forEach(m=>{ if(!Repository.getMonthlyEntry(m.Month_Year)) Repository.upsertMonthly(m); }); }
   } catch(e){}
   rebuildDropdowns();
   // Default dashboard to latest year

@@ -79,16 +79,11 @@ async function idbLoadData() {
     if (Date.now() - (at||0) > 86400000) return false;
     const mArr = JSON.parse(ms);
     const dArr = JSON.parse(ds);
-    mArr.forEach(m => {
-      const idx = MONTHLY.findIndex(x => x.Month_Year === m.Month_Year);
-      if (idx === -1) MONTHLY.push(m);
-      else Object.assign(MONTHLY[idx], m);
-    });
-    dArr.forEach(d => {
-      const idx = DAILY.findIndex(x => x.Date === d.Date && x.Month_Year === d.Month_Year);
-      if (idx === -1) DAILY.push(d);
-      else Object.assign(DAILY[idx], d);
-    });
+    // Routed through Repository for consistency with the Supabase pull path —
+    // this runs at app boot (before the user has made any edits this session),
+    // so genuine conflicts here should be rare, but the same safety net applies.
+    Repository.mergePulledMonthly(mArr);
+    Repository.mergePulledDaily(dArr);
     return true;
   } catch(e) { return false; }
 }

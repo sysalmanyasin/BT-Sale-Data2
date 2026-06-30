@@ -6,9 +6,15 @@ const GAUTH_CID_K  = 'bt_gauth_cid';        // Google OAuth Client ID
 const GAUTH_MAIL_K = 'bt_gauth_emails';      // comma-separated allowed emails
 const GAUTH_SESS_K = 'bt_gauth_session';     // {email,name,picture,exp}
 // ── Baked-in Client ID (no manual setup required) ─────────────
+// NOTE: stays on direct localStorage, not Repository — this IIFE runs at
+// script-parse time, and auth.js loads BEFORE repository.js. Routing it
+// through Repository here would throw "Repository is not defined" and
+// crash the entire app's startup. (Caught during the Floor-1 storage
+// migration, before it shipped.)
 (function(){var _k='bt_gauth_cid',_v='36704237826-6lg0o3u0voqhdkvdj3kd331jsft62uun.apps.googleusercontent.com';if(!localStorage.getItem(_k))localStorage.setItem(_k,_v);})();
 // ── Baked-in allowed emails (same list on every device, every load) ──
 // Editing who can sign in means editing this list in the source and redeploying.
+// Same load-order constraint as above — must stay on direct localStorage.
 (function(){
   var _k='bt_gauth_emails';
   var _v='sy.salmanyasin@gmail.com,sy.salmanmughal@gmail.com,bahria.cat@fdpp.pk';
@@ -119,7 +125,7 @@ function pwResetSubmit() {
 
 // ── Google reset-verification button ─────────────────────────────
 function _gauthRenderResetBtn() {
-  const clientId = localStorage.getItem(GAUTH_CID_K);
+  const clientId = Repository.getItem(GAUTH_CID_K);
   const wrap = document.getElementById('google-reset-btn-wrap');
   if(!clientId||!window.google){
     if(wrap) wrap.innerHTML='<div style="color:rgba(255,255,255,.4);font-size:12px;text-align:center">Google Sign-in not configured.<br>Contact the administrator.</div>';
@@ -160,22 +166,22 @@ function _gauthResetCallback(response) {
 
 // ── Google Auth helpers ───────────────────────────────────────────
 function gauthGetSession() {
-  try { const s=JSON.parse(localStorage.getItem(GAUTH_SESS_K)); if(s&&s.exp>Date.now()) return s; } catch(e){}
+  try { const s=JSON.parse(Repository.getItem(GAUTH_SESS_K)); if(s&&s.exp>Date.now()) return s; } catch(e){}
   return null;
 }
 function gauthSetSession(payload) {
   const s={email:payload.email, name:payload.name, picture:payload.picture, exp:Date.now()+31536000000}; // 1 year
-  localStorage.setItem(GAUTH_SESS_K, JSON.stringify(s));
+  Repository.setItem(GAUTH_SESS_K, JSON.stringify(s));
   return s;
 }
 function gauthClearSession() {
-  localStorage.removeItem(GAUTH_SESS_K);
+  Repository.removeItem(GAUTH_SESS_K);
   _driveAccessToken = '';
   try { sessionStorage.removeItem('bt_drive_token_cache'); } catch(e) {}
 }
 
 function gauthAllowedEmails() {
-  const raw = localStorage.getItem(GAUTH_MAIL_K)||'';
+  const raw = Repository.getItem(GAUTH_MAIL_K)||'';
   return raw.split(/[\n,]+/).map(e=>e.trim().toLowerCase()).filter(Boolean);
 }
 function gauthIsAllowed(email) {
@@ -403,7 +409,7 @@ function gauthSaveClientId() {
     errEl.textContent='⚠ Please enter a valid Client ID (must end with .apps.googleusercontent.com)';
     errEl.style.display='block'; return;
   }
-  localStorage.setItem(GAUTH_CID_K, id);
+  Repository.setItem(GAUTH_CID_K, id);
   errEl.style.display='none';
   gauthShowMain();
   setTimeout(_gauthRenderBtn, 400);
@@ -413,7 +419,7 @@ function gauthSaveClientId() {
 function initAuthGate() {
   // Always enforce the baked-in Client ID
   const BAKED_CID = '36704237826-6lg0o3u0voqhdkvdj3kd331jsft62uun.apps.googleusercontent.com';
-  localStorage.setItem(GAUTH_CID_K, BAKED_CID);
+  Repository.setItem(GAUTH_CID_K, BAKED_CID);
   gauthShowMain();
   _gauthRenderBtn();
   // 1. Check if Google just redirected back with an access token in the URL hash
@@ -431,24 +437,24 @@ function tcSaveGAuthSettings() {
   const emails = document.getElementById('tc-allowed-emails').value.trim();
   if(cid) {
     if(!cid.includes('.apps.googleusercontent.com')){ toast('⚠ Invalid Client ID format','w'); return; }
-    localStorage.setItem(GAUTH_CID_K, cid);
+    Repository.setItem(GAUTH_CID_K, cid);
   }
-  if(emails!==null) localStorage.setItem(GAUTH_MAIL_K, emails.split(/\n/).map(e=>e.trim()).filter(Boolean).join(','));
+  if(emails!==null) Repository.setItem(GAUTH_MAIL_K, emails.split(/\n/).map(e=>e.trim()).filter(Boolean).join(','));
   toast('✓ Google auth settings saved');
   _tcLoadGAuthStatus();
 }
 function tcClearGAuthSession() { gauthClearSession(); toast('✓ Google session cleared — you will need to sign in again next visit'); }
 function tcClearGAuthAll() {
   if(!confirm('Remove Google configuration? You will need to re-enter your Client ID to use Google Sign-In again.')) return;
-  localStorage.setItem(GAUTH_CID_K, '36704237826-6lg0o3u0voqhdkvdj3kd331jsft62uun.apps.googleusercontent.com'); // keep baked-in CID
-  localStorage.removeItem(GAUTH_MAIL_K);
+  Repository.setItem(GAUTH_CID_K, '36704237826-6lg0o3u0voqhdkvdj3kd331jsft62uun.apps.googleusercontent.com'); // keep baked-in CID
+  Repository.removeItem(GAUTH_MAIL_K);
   gauthClearSession();
   toast('✓ Google config removed');
   _tcLoadGAuthStatus();
 }
 function _tcLoadGAuthStatus() {
-  const cid = localStorage.getItem(GAUTH_CID_K);
-  const emails = localStorage.getItem(GAUTH_MAIL_K)||'';
+  const cid = Repository.getItem(GAUTH_CID_K);
+  const emails = Repository.getItem(GAUTH_MAIL_K)||'';
   const sess = gauthGetSession();
   const statusEl = document.getElementById('tc-gauth-status');
   if(statusEl) {
@@ -476,11 +482,11 @@ function unlockApp() {
   // Load cached data from IndexedDB first for instant startup, then sync if configured
   idbLoadData().then(loaded => {
     if (loaded) { rebuildAll(); }
-    if(ghCfg()&&localStorage.getItem('bt_auto_load')==='1') manualSync(true);
+    if(ghCfg()&&Repository.getItem('bt_auto_load')==='1') manualSync(true);
     startAutoInterval();
     initAutoRefresh(); // ← start SHA poller + SW_RELOAD listener
   }).catch(() => {
-    if(ghCfg()&&localStorage.getItem('bt_auto_load')==='1') manualSync(true);
+    if(ghCfg()&&Repository.getItem('bt_auto_load')==='1') manualSync(true);
     startAutoInterval();
     initAutoRefresh(); // ← start SHA poller + SW_RELOAD listener
   });
@@ -496,4 +502,43 @@ function lockApp() {
   if(_autoHandle) clearInterval(_autoHandle);
   // Re-init the auth gate so the correct panel shows
   setTimeout(initAuthGate, 50);
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// AUTO-REFRESH ON DEPLOY  (was called above in unlockApp() but never
+// defined anywhere — found during the Repository migration audit.
+// Without this, a new version pushed to GitHub mid-session only gets
+// picked up if the user manually closes/reopens the tab or hits Hard
+// Refresh; the SW update-check in index.html only fires on page load,
+// not while a tab stays open.)
+//
+// What it does: every 15 minutes while the app is open, ask the browser
+// to check sw.js for a new version. If one is found, the existing
+// listener in index.html (controllerchange) takes over and reloads
+// automatically — no new reload logic needed here, just triggering the
+// check periodically and on tab-refocus.
+// ══════════════════════════════════════════════════════════════════════
+function initAutoRefresh() {
+  if (!('serviceWorker' in navigator)) return;
+  // Guard: unlockApp() can run multiple times per session (PIN unlock,
+  // Google sign-in callback, lock/unlock cycles for privacy). Without this
+  // guard, every unlock would stack another 15-min interval on top of the
+  // last, piling up redundant checks for the rest of the session.
+  if (window._autoRefreshStarted) return;
+  window._autoRefreshStarted = true;
+  const CHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
+  setInterval(() => {
+    navigator.serviceWorker.getRegistration().then(reg => {
+      if (reg) reg.update().catch(() => {}); // triggers 'updatefound' in index.html if a new sw.js exists
+    });
+  }, CHECK_INTERVAL_MS);
+  // Also check immediately whenever the tab regains focus — covers
+  // "left it open overnight, came back in the morning" cases.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      navigator.serviceWorker.getRegistration().then(reg => {
+        if (reg) reg.update().catch(() => {});
+      });
+    }
+  });
 }

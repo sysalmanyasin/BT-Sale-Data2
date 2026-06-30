@@ -1,5 +1,33 @@
-let MONTHLY = [...MONTHLY_BASE];
-let DAILY   = [...DAILY_BASE];
+// ══════════════════════════════════════════════════════════════════════
+// FLOOR 2 — PROTECTED STATE STORE
+//
+// MONTHLY/DAILY are wrapped in a Proxy. This doesn't make them read-only
+// (that would break supabase.js's intentional direct gap-fill push, kept
+// from Step 3) — it means EVERY mutation, from ANY file, automatically
+// fires the Repository event bus and gets logged if it didn't go through
+// Repository. This gives real visibility into the "5 doors" problem even
+// for code we haven't migrated yet, instead of silent, untracked writes.
+// ══════════════════════════════════════════════════════════════════════
+function _protectArray(arr, label) {
+  return new Proxy(arr, {
+    set(target, prop, value) {
+      const ok = Reflect.set(target, prop, value);
+      if (prop !== 'length' && ok && typeof Repository !== 'undefined') {
+        Repository._noteRawMutation && Repository._noteRawMutation(label);
+      }
+      return ok;
+    },
+    deleteProperty(target, prop) {
+      const ok = Reflect.deleteProperty(target, prop);
+      if (ok && typeof Repository !== 'undefined') {
+        Repository._noteRawMutation && Repository._noteRawMutation(label);
+      }
+      return ok;
+    }
+  });
+}
+let MONTHLY = _protectArray([...MONTHLY_BASE], 'MONTHLY');
+let DAILY   = _protectArray([...DAILY_BASE],   'DAILY');
 let newEntries = [];
 const STAFF_KEY = 'BT_Staff_v1';
 let STAFF = [];   // [{id, name, designation, active}] — loaded from localStorage / Supabase
@@ -70,7 +98,7 @@ function recomputeMonthly(monthYear) {
   let rec = MONTHLY.find(x => x.Month_Year === monthYear);
   if (!rec) {
     rec = { Month_Year: monthYear };
-    MONTHLY.push(rec);
+    Repository.upsertMonthly(rec); // pushes into MONTHLY + stamps _updatedAt/_source
     // Keep MONTHLY sorted chronologically
     const MO = ['January','February','March','April','May','June','July','August','September','October','November','December'];
     MONTHLY.sort((a, b) => {

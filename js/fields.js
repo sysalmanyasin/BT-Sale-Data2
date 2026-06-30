@@ -52,21 +52,21 @@ let _fmTabSec  = 'Cash';
 
 function fmLoad() {
   try {
-    const h = localStorage.getItem('bt_col_config');
+    const h = Repository.getItem('bt_col_config');
     _fmHidden = h ? JSON.parse(h) : [];
   } catch(e) { _fmHidden = []; }
   try {
-    const c = localStorage.getItem('bt_custom_cols');
+    const c = Repository.getItem('bt_custom_cols');
     _fmCustom = c ? JSON.parse(c) : [];
   } catch(e) { _fmCustom = []; }
 }
 
 function fmSave() {
-  localStorage.setItem('bt_col_config', JSON.stringify(_fmHidden));
-  localStorage.setItem('bt_custom_cols', JSON.stringify(_fmCustom));
+  Repository.setItem('bt_col_config', JSON.stringify(_fmHidden));
+  Repository.setItem('bt_custom_cols', JSON.stringify(_fmCustom));
   // If auto-save is enabled, trigger a sync
   try {
-    const autoSave = localStorage.getItem('bt_auto_save') === '1'
+    const autoSave = Repository.getItem('bt_auto_save') === '1'
                   || document.getElementById('auto-save')?.checked;
     if (autoSave && typeof pushToSupabase === 'function') pushToSupabase();
   } catch(e) {}

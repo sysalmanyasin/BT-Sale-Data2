@@ -4,7 +4,7 @@
 function pettyNextMonth() {
   if (!_pettyMonth) { toast('⚠ Select a month first','w'); return; }
   // 1. Save current month first
-  localStorage.setItem(_pettyKey(_pettyMonth), JSON.stringify(_pettyData));
+  Repository.setItem(_pettyKey(_pettyMonth), JSON.stringify(_pettyData));
   // 2. Compute the next month label (same "Month Year" format as mgrMonths)
   const MNAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const parts = _pettyMonth.split(' ');  // ["April", "2026"]
@@ -14,12 +14,12 @@ function pettyNextMonth() {
   if (nIdx > 11) { nIdx = 0; nYr++; }
   const nextMon = MNAMES[nIdx] + ' ' + nYr;
   // 3. Clone current data (all groups + amounts carried forward)
-  const existingRaw = localStorage.getItem(_pettyKey(nextMon));
+  const existingRaw = Repository.getItem(_pettyKey(nextMon));
   if (existingRaw) {
     if (!confirm(`${nextMon} already has petty data. Overwrite it with a copy of ${_pettyMonth}?`)) return;
   }
   const clone = JSON.parse(JSON.stringify(_pettyData));
-  localStorage.setItem(_pettyKey(nextMon), JSON.stringify(clone));
+  Repository.setItem(_pettyKey(nextMon), JSON.stringify(clone));
   // 4. Switch selector to next month (add if not present)
   const sel = document.getElementById('petty-month-sel');
   if (sel) {
@@ -43,9 +43,9 @@ let _csecMonth = '';
 let _csecData  = {};   // { sectionId: { name, emoji, rows: [{desc,amount,notes},...] } }
 
 function _csecLoad() {
-  try { return JSON.parse(localStorage.getItem(CSEC_KEY)) || {}; } catch(e) { return {}; }
+  try { return JSON.parse(Repository.getItem(CSEC_KEY)) || {}; } catch(e) { return {}; }
 }
-function _csecSave(data) { localStorage.setItem(CSEC_KEY, JSON.stringify(data)); }
+function _csecSave(data) { Repository.setItem(CSEC_KEY, JSON.stringify(data)); }
 
 function loadCustomSections(mon) {
   _csecMonth = mon;
@@ -76,7 +76,7 @@ function saveAllCustomSections() {
   });
   _csecSave(all);
   toast('✓ Custom sections saved');
-  if (localStorage.getItem('bt_auto_save') === '1') pushToSupabase();
+  if (Repository.getItem('bt_auto_save') === '1') pushToSupabase();
 }
 
 function promptAddCustomSection() {

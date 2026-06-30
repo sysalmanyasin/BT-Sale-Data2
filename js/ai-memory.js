@@ -27,11 +27,11 @@ function _aimToday() {
 }
 
 function _aimGet(key, fallback) {
-  try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
+  try { return JSON.parse(Repository.getItem(key) || JSON.stringify(fallback)); }
   catch (_) { return fallback; }
 }
 function _aimSet(key, val, markDirty = true) {
-  try { localStorage.setItem(key, JSON.stringify(val)); } catch (_) {}
+  try { Repository.setItem(key, JSON.stringify(val)); } catch (_) {}
   if (markDirty && typeof _markPending === 'function') _markPending(); // queue for Supabase push
 }
 
@@ -218,7 +218,7 @@ function aimRulesCheckAll() {
       if (c.type === 'creditAbove') {
         const mgrKey = Object.keys(localStorage).find(k => k.startsWith('mw_mgr_') || k === 'mw_manager');
         if (!mgrKey) return;
-        const mgr = JSON.parse(localStorage.getItem(mgrKey) || '{}');
+        const mgr = JSON.parse(Repository.getItem(mgrKey) || '{}');
         const months = Object.keys(mgr.credit || {});
         if (!months.length) return;
         const crd = mgr.credit[months[months.length - 1]] || [];
@@ -445,7 +445,7 @@ function aimBriefingGenerate(force) {
   try {
     const mgrKey = Object.keys(localStorage).find(k => k.startsWith('mw_mgr_') || k === 'mw_manager');
     if (mgrKey) {
-      const mgr = JSON.parse(localStorage.getItem(mgrKey) || '{}');
+      const mgr = JSON.parse(Repository.getItem(mgrKey) || '{}');
       const months = Object.keys(mgr.credit || {});
       if (months.length) {
         const crd = mgr.credit[months[months.length - 1]] || [];
@@ -550,7 +550,7 @@ function aimMergeAssistantIncoming(assistant, isPull) {
   if (Array.isArray(assistant.instructions)) {
     mergeListById('bt_ai_instructions_v1', assistant.instructions);
     // Stamp the sync time so the Instructions panel shows "Synced X ago"
-    try { localStorage.setItem('bt_ai_instructions_synced', _aimNow()); } catch(_) {}
+    try { Repository.setItem('bt_ai_instructions_synced', _aimNow()); } catch(_) {}
     // Refresh the open Instructions panel if visible
     if (typeof renderAiInstructionsPanel === 'function') {
       try { renderAiInstructionsPanel(); } catch(_) {}

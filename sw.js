@@ -4,7 +4,7 @@
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v7.3';
+const CACHE_NAME = 'bt-sales-v8.0'; // v8.0: Repository/Actions/Event-Bus restructuring (Floors 1-5)
 
 const APP_SHELL = [
   './',
@@ -38,6 +38,8 @@ const APP_SHELL = [
   './js/ui.js',
   /* Phase Sync Center (load before supabase.js) */
   './js/sync-center.js',
+  /* Repository/Actions/Event-Bus restructuring (Floors 1-5, v8.0) */
+  './js/repository.js',
   './js/supabase.js',
   './js/targets.js',
   './js/dashboard.js',
@@ -76,6 +78,8 @@ const APP_SHELL = [
   './js/ai-helpers.js',
   /* Phase 7: Knowledge Sheet (ported from retired ai-page.js) */
   './js/knowledge-sheet.js',
+  /* Hub quick-action handlers — found missing from precache during v8.0 audit */
+  './js/hub-actions.js',
   /* ai-page.js was deleted in Phase 7 — do NOT list it here */
   /* ── Icons ── */
   './icons/icon.svg',

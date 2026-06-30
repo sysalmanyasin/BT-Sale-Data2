@@ -415,7 +415,7 @@ function _chGetLiveState() {
   // ── 2. Target pace ─────────────────────────────────────────────────
   if (typeof MONTHLY !== 'undefined' && MONTHLY.length) {
     var my   = _chCurrentMonthYear();
-    var tgts = (function () { try { return JSON.parse(localStorage.getItem('bt_targets') || '{}'); } catch (e) { return {}; } })();
+    var tgts = (function () { try { return JSON.parse(Repository.getItem('bt_targets') || '{}'); } catch (e) { return {}; } })();
     var tgt  = Number(tgts[my] || 0);
     if (tgt > 0) {
       var daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
@@ -754,8 +754,8 @@ function _chpLoadRecent() {
   try {
     // Merge chat recents (strings) with palette recents (objects) so the chips panel
     // shows commands from BOTH surfaces — fixes the split-history problem.
-    var chatRaw    = JSON.parse(localStorage.getItem(CHP_RECENT_KEY) || '[]');
-    var paletteRaw = JSON.parse(localStorage.getItem('bt_cmdhub_recent') || '[]');
+    var chatRaw    = JSON.parse(Repository.getItem(CHP_RECENT_KEY) || '[]');
+    var paletteRaw = JSON.parse(Repository.getItem('bt_cmdhub_recent') || '[]');
     // Chat stores plain strings; palette stores {id, title, ...} objects.
     var chatStrings    = chatRaw.filter(function(r){ return typeof r === 'string'; });
     var paletteTitles  = paletteRaw.map(function(r){
@@ -775,7 +775,7 @@ function _chSaveRecent(cmd) {
   _chRecent = _chRecent.filter(function (c) { return c !== cmd; });
   _chRecent.unshift(cmd);
   if (_chRecent.length > CHP_RECENT_MAX) _chRecent = _chRecent.slice(0, CHP_RECENT_MAX);
-  try { localStorage.setItem(CHP_RECENT_KEY, JSON.stringify(_chRecent)); } catch (e) {}
+  try { Repository.setItem(CHP_RECENT_KEY, JSON.stringify(_chRecent)); } catch (e) {}
 }
 
 /* ══════════════════════════════════════════════════════════════════════

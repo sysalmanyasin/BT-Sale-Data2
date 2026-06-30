@@ -2,7 +2,7 @@
 // TARGETS
 // ══════════════════════════════════════════
 const TGT_K = 'bt_targets';
-function getTgts() { try{return JSON.parse(localStorage.getItem(TGT_K)||'{}')}catch{return{}} }
+function getTgts() { try{return JSON.parse(Repository.getItem(TGT_K)||'{}')}catch{return{}} }
 
 function saveTarget() {
   const mon=document.getElementById('tgt-sel').value;
@@ -10,14 +10,14 @@ function saveTarget() {
   if(!mon){ toast('⚠ Select a month','w'); return; }
   if(!amt||isNaN(amt)){ toast('⚠ Enter a valid amount','w'); return; }
   const t=getTgts(); t[mon]=amt;
-  localStorage.setItem(TGT_K,JSON.stringify(t));
+  Repository.setItem(TGT_K,JSON.stringify(t));
   renderTargetList(); buildDashboard(); renderIndex();
   toast('✓ Target saved for '+mon);
 }
 
 function delTarget(mon) {
   const t=getTgts(); delete t[mon];
-  localStorage.setItem(TGT_K,JSON.stringify(t));
+  Repository.setItem(TGT_K,JSON.stringify(t));
   renderTargetList(); buildDashboard(); renderIndex();
 }
 
