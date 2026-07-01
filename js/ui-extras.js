@@ -179,7 +179,108 @@
   }
 
   // ─────────────────────────────────────────────────────────────────────
-  // 3. ADD NEW MONTH → ALSO CREATE TARGET ENTRY
+  // 3a. SELF-HEAL: auto-create targets for every month that's missing one
+  // ─────────────────────────────────────────────────────────────────────
+  // Called on load (and again when Tools tab opens).  Reads window.MONTHLY
+  // (the global sales data array — loaded by data-base.js) and compares
+  // every Month_Year entry against bt_targets.  Any month that exists in
+  // the data but has no target gets one created, carrying the nearest
+  // chronologically-previous target forward (or 0 if none exists yet).
+  // ─────────────────────────────────────────────────────────────────────
+
+  // Month sort helper — converts "July 2026" → numeric 202607
+  var _MON_IDX = { January:1,February:2,March:3,April:4,May:5,June:6,
+                   July:7,August:8,September:9,October:10,November:11,December:12 };
+  function _mySort(my) {
+    var p = (my || '').split(' ');
+    return parseInt(p[1] || '0', 10) * 100 + (_MON_IDX[p[0]] || 0);
+  }
+
+  function _loadTgts() {
+    var raw = '';
+    try {
+      raw = (window.Actions && typeof Actions.loadFeatureData === 'function')
+        ? (Actions.loadFeatureData('bt_targets') || '')
+        : (localStorage.getItem('bt_targets') || '');
+    } catch (e) {}
+    try { return raw ? JSON.parse(raw) : {}; } catch (e) { return {}; }
+  }
+
+  function _saveTgts(tgts) {
+    var json = JSON.stringify(tgts);
+    try {
+      if (window.Actions && typeof Actions.saveTargets === 'function') {
+        Actions.saveTargets(json);
+      } else {
+        localStorage.setItem('bt_targets', json);
+      }
+    } catch (e) {}
+  }
+
+  function _refreshTargetUI() {
+    var fn = window.renderTargetList || window.loadTargetList  ||
+             window.initTargets      || window.buildTargetList ||
+             window.refreshTargets   || window.reloadTargets;
+    if (typeof fn === 'function') { try { fn(); } catch (e) {} }
+  }
+
+  function _autoHealTargets(silent) {
+    // Need MONTHLY to exist and be a non-empty array
+    if (!window.MONTHLY || !Array.isArray(MONTHLY) || !MONTHLY.length) return 0;
+
+    var tgts  = _loadTgts();
+    var added = 0;
+
+    // Build a chronologically-sorted list of all known Month_Year strings
+    var allMY = MONTHLY
+      .map(function (m) { return (m.Month_Year || '').trim(); })
+      .filter(function (my) { return my.length > 0; });
+
+    // Deduplicate
+    allMY = allMY.filter(function (v, i, a) { return a.indexOf(v) === i; });
+
+    // Sort oldest → newest so carry-forward works correctly
+    allMY.sort(function (a, b) { return _mySort(a) - _mySort(b); });
+
+    var runningTarget = 0; // carry-forward accumulator
+
+    allMY.forEach(function (my) {
+      if (my in tgts) {
+        // Already has a target — update carry-forward value
+        runningTarget = tgts[my] || runningTarget;
+      } else {
+        // Missing — create it using the running carry-forward
+        tgts[my] = runningTarget;
+        added++;
+      }
+    });
+
+    if (added > 0) {
+      _saveTgts(tgts);
+      _refreshTargetUI();
+
+      // Also add any missing months to the tgt-sel dropdown
+      var tgtSel = document.getElementById('tgt-sel');
+      if (tgtSel) {
+        allMY.forEach(function (my) {
+          if (!Array.from(tgtSel.options).some(function (o) { return o.value === my; })) {
+            var opt = document.createElement('option');
+            opt.value = opt.textContent = my;
+            tgtSel.appendChild(opt);
+          }
+        });
+      }
+
+      if (!silent && typeof toast === 'function') {
+        toast('🔧 Auto-created targets for ' + added + ' missing month' + (added > 1 ? 's' : ''), 'i');
+      }
+    }
+
+    return added;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // 3b. ADD NEW MONTH → ALSO CREATE TARGET ENTRY
   // ─────────────────────────────────────────────────────────────────────
   // The "Create Month" button calls addNewMonth() from targets.js.
   // That function creates a MONTHLY sales row but leaves the target
@@ -194,66 +295,28 @@
     window.addNewMonth = function () {
       var result = orig.apply(this, arguments);
 
-      // Give targets.js ~400 ms to finish its own work
+      // Wait for targets.js to finish, then run the full self-heal scan.
+      // This covers the new month AND any other gaps that may exist.
       setTimeout(function () {
-        var monEl  = document.getElementById('nm-sel');
-        var yrEl   = document.getElementById('nm-year');
-        if (!monEl || !yrEl) return;
+        var monEl = document.getElementById('nm-sel');
+        var yrEl  = document.getElementById('nm-year');
+        var mon   = monEl ? (monEl.value || '').trim() : '';
+        var yr    = yrEl  ? (yrEl.value  || '').trim() : '';
+        var newMY = mon && yr ? mon + ' ' + yr : '';
 
-        var mon = (monEl.value || '').trim();
-        var yr  = (yrEl.value  || '').trim();
-        if (!mon || !yr) return;
+        // Run the full heal — it will create the new month entry + any others
+        var healed = _autoHealTargets(true); // silent=true, we toast manually below
 
-        var monthYear = mon + ' ' + yr;
-
-        // Read current targets (try Actions first, fall back to raw localStorage)
-        var raw = '';
-        try {
-          raw = (window.Actions && typeof Actions.loadFeatureData === 'function')
-            ? (Actions.loadFeatureData('bt_targets') || '')
-            : (localStorage.getItem('bt_targets') || '');
-        } catch (e) {}
-
-        var tgts = {};
-        try { tgts = raw ? JSON.parse(raw) : {}; } catch (e) {}
-
-        if (monthYear in tgts) return; // already has a target — nothing to do
-
-        // Carry forward the most-recent existing target value (or 0)
-        var entries  = Object.entries(tgts);
-        var carryVal = entries.length ? (entries[entries.length - 1][1] || 0) : 0;
-
-        tgts[monthYear] = carryVal;
-        var json = JSON.stringify(tgts);
-
-        try {
-          if (window.Actions && typeof Actions.saveTargets === 'function') {
-            Actions.saveTargets(json);
-          } else {
-            localStorage.setItem('bt_targets', json);
-          }
-        } catch (e) {}
-
-        // Refresh the targets UI (try several possible function names)
-        var refresh = window.renderTargetList || window.loadTargetList  ||
-                      window.initTargets      || window.buildTargetList ||
-                      window.refreshTargets   || window.reloadTargets;
-        if (typeof refresh === 'function') { try { refresh(); } catch (e) {} }
-
-        // Populate the target month selector if it exists
-        var tgtSel = document.getElementById('tgt-sel');
-        if (tgtSel && !Array.from(tgtSel.options).some(function (o) { return o.value === monthYear; })) {
-          var opt = document.createElement('option');
-          opt.value = opt.textContent = monthYear;
-          tgtSel.appendChild(opt);
-        }
-
-        if (typeof toast === 'function') {
+        if (newMY && typeof toast === 'function') {
+          var tgts   = _loadTgts();
+          var carryVal = tgts[newMY] || 0;
           toast(
-            '🎯 Target for ' + monthYear + ' created' +
+            '🎯 Target for ' + newMY + ' created' +
             (carryVal ? ' (₨' + Number(carryVal).toLocaleString() + ' carried forward)' : ' — set it in Monthly Targets'),
             'i'
           );
+        } else if (healed > 0 && typeof toast === 'function') {
+          toast('🔧 Auto-created targets for ' + healed + ' missing month' + (healed > 1 ? 's' : ''), 'i');
         }
       }, 400);
 
@@ -297,6 +360,10 @@
     window.showPage = function (page) {
       var r = orig.apply(this, arguments);
       _updateStrip(page);
+      // Self-heal targets silently whenever the Tools tab opens
+      if (page === 'tools') {
+        setTimeout(function () { _autoHealTargets(true); }, 600);
+      }
       return r;
     };
   }
@@ -384,6 +451,10 @@
     } else {
       _updateStrip('dashboard'); // sensible default
     }
+
+    // Self-heal on startup: silently fill any months that are missing targets.
+    // Delayed 2 s so MONTHLY data and Actions are fully settled before we read them.
+    setTimeout(function () { _autoHealTargets(true); }, 2000);
   }
 
   if (document.readyState === 'loading') {
