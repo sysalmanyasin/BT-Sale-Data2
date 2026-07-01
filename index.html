@@ -1083,6 +1083,7 @@ if ('serviceWorker' in navigator) {
       <button class="btn btn-p" style="margin-top:16px" onclick="addSalaryRow()">+ Add Employee</button>
       <button class="btn" style="margin-top:16px;background:#0891b2;color:#fff" onclick="autoFillSalaryFromSheets()" title="Pull Advance from Credit sheet & Generic from Generic Working for this month">⚡ Auto-Fill</button>
       <button class="btn btn-g" style="margin-top:16px" onclick="saveSalaryData()">💾 Save</button>
+      <button class="btn" style="margin-top:16px;background:var(--amber,#f59e0b);color:#fff" onclick="salaryNextMonth()" title="Carry employee names & HO Salary to next month (Days, Advance, Generic reset to 0)">📋 Copy → Next Month</button>
       <button class="btn" style="margin-top:16px;background:var(--purple);color:#fff" onclick="printSalaryReport()">🖨 Print</button>
     </div>
     <div style="overflow-x:auto">

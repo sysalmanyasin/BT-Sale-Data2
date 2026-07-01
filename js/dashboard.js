@@ -6,6 +6,48 @@
 // buildDashboard() only maps their output to DOM — no business logic
 // lives here. This closes audit finding CF-03.
 // ══════════════════════════════════════════
+
+// Tracks user's chosen month for the dashboard credit section.
+// Empty string = auto-select (latest with manager data / latest sales month).
+// Set via the inline <select> rendered inside buildCreditSection().
+let _dashCreditMonthOverride = '';
+
+// Called by the month <select> inside the credit section on the dashboard.
+// Re-renders the credit block and the Working Summary for the chosen month.
+function dashSetCreditMonth(my) {
+  _dashCreditMonthOverride = my;
+  const kd = Analytics.getDashboardKPIs();
+  const lat = kd ? kd.lat : null;
+  const resolved = my
+    || Analytics.latestManagerMonth()
+    || (lat ? Analytics.latestSalesMonth(lat) : '');
+  buildCreditSection(resolved);
+  if (typeof populateDashWorking === 'function') populateDashWorking(resolved || '');
+}
+
+// Returns a sorted list of the last N month-year strings that have either
+// sales data or manager data — used to populate the dashboard month picker.
+function _dashCreditMonthOptions(n_) {
+  const MONTH_NAMES = ['January','February','March','April','May','June','July',
+                       'August','September','October','November','December'];
+  const sortVal = my => {
+    const p = String(my || '').split(' ');
+    const i = MONTH_NAMES.indexOf(p[0]);
+    const y = parseInt(p[1], 10);
+    return i >= 0 && !isNaN(y) ? y * 12 + i : -1;
+  };
+  const now = new Date();
+  const curVal = now.getFullYear() * 12 + now.getMonth();
+  const candidates = new Set();
+  // Include MONTHLY entries (sales data)
+  MONTHLY.forEach(m => { if (sortVal(m.Month_Year) <= curVal) candidates.add(m.Month_Year); });
+  // Include current calendar month even if no sales yet (for manager-only months)
+  candidates.add(MONTH_NAMES[now.getMonth()] + ' ' + now.getFullYear());
+  return Array.from(candidates)
+    .sort((a, b) => sortVal(b) - sortVal(a))
+    .slice(0, n_ || 6);
+}
+
 function buildDashboard() {
   if (typeof buildDashboardInsights === 'function') buildDashboardInsights();
   if (!MONTHLY.length || MONTHLY.length < 2) return;
@@ -35,11 +77,17 @@ function buildDashboard() {
 
   const kpis = [
     ...(latTgt ? [{
-      label: '🎯 Forecast vs Target — ' + lat.Month_Year,
+      label: isLive
+        ? ('🎯 Forecast vs Target — ' + lat.Month_Year)
+        : ('🎯 Final vs Target — ' + lat.Month_Year),
       value: Math.min(100, Math.round(forecastTotal / latTgt * 100)) + '% of ₨' + ff(latTgt),
-      sub:   'Projected ₨' + fc(forecastTotal) + ' · Day ' + latDays + '/' + daysInMon,
+      sub: isLive
+        ? ('Projected ₨' + fc(forecastTotal) + ' · Day ' + latDays + '/' + daysInMon)
+        : ('Closed · ' + latDays + ' sale days · ' + daysInMon + '-day month'),
       bar:   { pct: Math.min(100, Math.round(forecastTotal / latTgt * 100)), cls: forecastTotal / latTgt >= 1 ? 'g' : forecastTotal / latTgt >= .75 ? 'a' : 'r' },
-      extra: 'Remaining ₨' + fc(Math.max(0, latTgt - latAct)),
+      extra: isLive
+        ? ('Remaining ₨' + fc(Math.max(0, latTgt - latAct)))
+        : (latAct >= latTgt ? '✓ Target achieved' : 'Shortfall ₨' + fc(latTgt - latAct)),
       borderColor: forecastTotal / latTgt >= 1 ? 'var(--green)' : forecastTotal / latTgt >= .75 ? 'var(--amber)' : 'var(--red)',
     }] : []),
     { label: 'Latest Month' + (isLive ? ' (day 1–' + D + ')' : ''), value: '₨ ' + ff(n(lat.TOTAL)), delta: pct(n(lat.TOTAL), prvTotal) + ' ' + vsLabel, up: n(lat.TOTAL) >= prvTotal },
@@ -78,8 +126,12 @@ function buildDashboard() {
   buildDayOfWeek();
   buildBestWorstPerYear();
 
-  // Manager month: resolved entirely in Analytics (Floor 3)
-  const managerMonth = Analytics.latestManagerMonth() || Analytics.latestSalesMonth(lat);
+  // Manager month: use user override if set, otherwise auto-detect.
+  // _dashCreditMonthOverride is set by dashSetCreditMonth() when the user
+  // picks a month from the picker inside the credit section.
+  const managerMonth = _dashCreditMonthOverride
+    || Analytics.latestManagerMonth()
+    || Analytics.latestSalesMonth(lat);
   buildCreditSection(managerMonth);
   if (typeof populateDashWorking === 'function') populateDashWorking(managerMonth || '');
 }
@@ -133,9 +185,20 @@ function buildCreditSection(lat) {
       <div style="border-top:1px solid var(--border);padding-top:8px">${detailRows(rows)}</div>
     </div>`;
 
+  // Build month picker options — sorted newest-first, limited to 6 months
+  const monthOpts = _dashCreditMonthOptions(6);
+  const monthPickerOpts = monthOpts.map(m =>
+    `<option value="${m}"${m === my ? ' selected' : ''}>${m}</option>`
+  ).join('');
+
   el.innerHTML = `
-    <div style="margin-bottom:8px;display:flex;align-items:center;gap:8px">
-      <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">💳 Credit Details — ${my}</span>
+    <div style="margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">💳 Credit Details</span>
+      <select onchange="dashSetCreditMonth(this.value)"
+        style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--s2);color:var(--text);outline:none;cursor:pointer"
+        title="Pick which month to view on the dashboard credit section">
+        ${monthPickerOpts}
+      </select>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:10px">
       ${sectionCard('👥', 'Staff Credit',     d.staffRows,  d.staffTotal)}

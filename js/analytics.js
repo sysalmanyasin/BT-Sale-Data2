@@ -246,9 +246,19 @@ const Analytics = (function () {
     const latTgt      = tgts[lat.Month_Year];
     const latAct      = n(lat.TOTAL);
     const latDays     = DAILY.filter(d => d.Month_Year === lat.Month_Year && n(d.TOTAL) > 0).length;
-    const daysInMon   = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    // Use the ACTUAL month from lat (not the current calendar month) so that
+    // a closed month like June (30 days) is never shown as 31 days just because
+    // the current month (July) has 31. This also fixes the forecast for a
+    // closed month — for a closed month the forecast IS the actual total.
+    const [_latMonName, _latYrStr] = lat.Month_Year.split(' ');
+    const _latMonIdx = _MN.indexOf(_latMonName);
+    const _latYrNum  = parseInt(_latYrStr, 10);
+    const daysInMon  = (_latMonIdx >= 0 && !isNaN(_latYrNum))
+      ? new Date(_latYrNum, _latMonIdx + 1, 0).getDate()
+      : new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     const dailyAvg    = latDays ? latAct / latDays : 0;
-    const forecastTotal = dailyAvg * daysInMon;
+    // For a closed month there is no more runway — the final total IS the result.
+    const forecastTotal = isLive ? dailyAvg * daysInMon : latAct;
     const avgBill     = n(lat.Customers) ? latAct / n(lat.Customers) : 0;
     const pAvgBill    = prvCustomers ? prvTotal / prvCustomers : 0;
 
