@@ -167,7 +167,7 @@ function _msBuildManagerSummary(mon) {
   // Credit outstanding (top 3)
   let creditRows = [];
   try {
-    const mgrKey = Object.keys(localStorage).find(k => k.startsWith('mw_mgr_') || k === 'mw_manager');
+    const mgrKey = Repository.getKeysByPrefix('mw_mgr_').concat(Repository.getItem('mw_manager') ? ['mw_manager'] : [])[0] || null;
     if (mgrKey) {
       const mgrData = JSON.parse(Repository.getItem(mgrKey) || '{}');
       const months  = Object.keys(mgrData.credit || {});

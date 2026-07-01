@@ -143,10 +143,10 @@ async function _driveFindOrCreateFolder() {
 
 function _driveGetAllPetty() {
   const result = {};
-  for (let i=0; i<localStorage.length; i++) {
-    const k = localStorage.key(i);
-    if (k && k.startsWith('mw_petty_')) result[k] = JSON.parse(Repository.getItem(k)||'null');
-  }
+  // Route through Repository.getKeysByPrefix — no direct localStorage enumeration
+  Repository.getKeysByPrefix('mw_petty_').forEach(k => {
+    result[k] = JSON.parse(Repository.getItem(k) || 'null');
+  });
   return result;
 }
 
@@ -222,13 +222,12 @@ async function _driveRestoreFile(fileId, label) {
     // Restore monthly + daily — fill gaps only, never overwrite an existing
     // local record (this has always been Drive restore's intent: "add what's
     // missing", unlike Supabase pull which can overwrite on purpose).
-    // Now routed through Repository instead of touching MONTHLY/DAILY directly.
-    if (Array.isArray(data.monthly)) data.monthly.forEach(m => {
-      if (!Repository.getMonthlyEntry(m.Month_Year)) { Repository.upsertMonthly(m); mN++; }
-    });
-    if (Array.isArray(data.daily)) data.daily.forEach(d => {
-      if (!Repository.getDailyEntry(d.Date, d.Month_Year)) { Repository.upsertDaily(d); dN++; }
-    });
+    // Uses Repository.gapFillMonthly/gapFillDaily — the same named
+    // gap-fill operation supabase.js's push path uses — instead of a
+    // manual loop calling Repository.upsert* directly (closes the
+    // remaining Actions-bypass in drive.js).
+    if (Array.isArray(data.monthly)) { const r = Repository.gapFillMonthly(data.monthly); mN = r.added; }
+    if (Array.isArray(data.daily))   { const r = Repository.gapFillDaily(data.daily);     dN = r.added; }
     // Persist the restored data — previously called saveMonthly()/saveDaily(),
     // which don't exist anywhere in the app (leftover from before supabase.js
     // replaced the old github.js sync). That made every restore throw here and

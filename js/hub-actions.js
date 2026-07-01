@@ -17,7 +17,7 @@ function hubPrintTodayReport() {
     (function () { const d = new Date(), dd = String(d.getDate()).padStart(2,'0'),
       MS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
       return dd + '/' + MS[d.getMonth()] + '/' + d.getFullYear(); })();
-  const rec = (typeof DAILY !== 'undefined' ? DAILY : []).find(x => x.Date === dateStr);
+  const rec = (typeof Repository !== 'undefined') ? Repository.findDailyByDate(dateStr) : null;
   if (!rec) {
     _hubPost('⚠️ No sale entry found for today (' + dateStr + ') yet. <button class="chp-state-btn" onclick="showPage(\'entry\')">Add Entry →</button>');
     return;
@@ -46,7 +46,7 @@ function hubPrintPaceReport() {
   const now = new Date();
   const tgts = (typeof getTgts === 'function') ? getTgts() : {};
   const tgt  = Number(tgts[my] || 0);
-  const monthRec = (typeof MONTHLY !== 'undefined' ? MONTHLY : []).find(m => m.Month_Year === my);
+  const monthRec = (typeof Repository !== 'undefined') ? Repository.getMonthlyEntry(my) : null;
   const soFar = Number((monthRec && monthRec.TOTAL) || 0);
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const daysElapsed = now.getDate();

@@ -1462,7 +1462,7 @@ function _buildLlmPrompt(question) {
 
   let mgrCtx = '';
   try {
-    const mgrKey = Object.keys(localStorage).find(function(k){ return k.startsWith('mw_mgr_') || k === 'mw_manager'; });
+    const mgrKey = Repository.getKeysByPrefix('mw_mgr_').concat(Repository.getItem('mw_manager') ? ['mw_manager'] : [])[0] || null;
     if (mgrKey) {
       const mgr  = JSON.parse(Repository.getItem(mgrKey) || '{}');
       const curM = curMonth;
@@ -2179,12 +2179,8 @@ function _aiDeleteDailyEntry(date, monthYear) {
     const existed = Repository.getDailyEntry(date, monthYear);
     if (!existed) { if (typeof toast === 'function') toast('\u26a0 Entry not found: ' + date, 'w'); return; }
     Actions.removeDailyEntry(date, monthYear);
-    if (typeof newEntries !== 'undefined') {
-      const ni = newEntries.findIndex(function(d){ return d.Date === date && d.Month_Year === monthYear; });
-      if (ni !== -1) newEntries.splice(ni, 1);
-      Repository.setItem('bt_entries', JSON.stringify(newEntries));
-    }
-    if (typeof recomputeMonthly === 'function') recomputeMonthly(monthYear);
+    Actions.forgetPendingEntry(date, monthYear);
+    Actions.recomputeMonth(monthYear);
     if (typeof renderEntryList === 'function') renderEntryList();
     if (typeof rebuildAll === 'function') rebuildAll();
     if (typeof toast === 'function') toast('\u2705 Entry for ' + date + ' deleted.');
@@ -2197,23 +2193,11 @@ function _aiAddStaff(name, designation) {
     if (typeof switchMgrTab === 'function') switchMgrTab('staff');
     setTimeout(function () {
       if (typeof STAFF === 'undefined') { if (typeof toast === 'function') toast('\u26a0 Staff data not loaded.', 'w'); return; }
-      const num = STAFF.length + 1;
-      const sid = 'EMP-' + String(num).padStart(3, '0');
-      const maxSr = STAFF.reduce(function(m, e){ return Math.max(m, Number(e.srNum) || 0); }, 0);
-      STAFF.push({
-        id: 'emp_' + Date.now(),
-        staffId: sid,
-        srNum: maxSr + 1,
-        name: name || '',
-        designation: designation || 'Salesman',
-        fatherName: '', cnic: '', phone: '', address: '', bloodGroup: '',
-        doj: new Date().toISOString().split('T')[0],
-        active: true,
-      });
+      const newEmp = Actions.addEmployee({ name: name || '', designation: designation || 'Salesman' });
       if (typeof renderStaffRegistry === 'function') renderStaffRegistry();
       if (typeof saveStaffRegistry === 'function') saveStaffRegistry();
-      if (name) setTimeout(function(){ if (typeof openStaffCard === 'function') openStaffCard(STAFF.length - 1); }, 200);
-      if (typeof toast === 'function') toast('\u2705 Staff added: ' + (name || 'New Employee') + ' \u2014 ID: ' + sid);
+      if (name) setTimeout(function(){ if (typeof openStaffCard === 'function') openStaffCard(Repository.getStaff().length - 1); }, 200);
+      if (typeof toast === 'function') toast('\u2705 Staff added: ' + (newEmp.name || 'New Employee') + ' \u2014 ID: ' + newEmp.staffId);
     }, 280);
   }, 280);
 }
@@ -2224,11 +2208,12 @@ function _aiDeactivateStaff(nameOrIndex) {
     if (typeof switchMgrTab === 'function') switchMgrTab('staff');
     setTimeout(function () {
       const i = typeof nameOrIndex === 'number' ? nameOrIndex : _aiFuzzyStaffIndex(nameOrIndex);
-      if (i === -1 || !STAFF[i]) { if (typeof toast === 'function') toast('\u26a0 Staff "' + nameOrIndex + '" not found.', 'w'); return; }
-      STAFF[i].active = false;
+      const staff = Repository.getStaff();
+      if (i === -1 || !staff[i]) { if (typeof toast === 'function') toast('\u26a0 Staff "' + nameOrIndex + '" not found.', 'w'); return; }
+      const updated = Actions.updateEmployee(i, { active: false });
       if (typeof renderStaffRegistry === 'function') renderStaffRegistry();
       if (typeof saveStaffRegistry === 'function') saveStaffRegistry();
-      if (typeof toast === 'function') toast('\u2705 ' + STAFF[i].name + ' deactivated \u2014 they won\'t appear in new months.');
+      if (typeof toast === 'function') toast('\u2705 ' + updated.name + ' deactivated \u2014 they won\'t appear in new months.');
     }, 280);
   }, 280);
 }
@@ -2239,27 +2224,28 @@ function _aiReactivateStaff(nameOrIndex) {
     if (typeof switchMgrTab === 'function') switchMgrTab('staff');
     setTimeout(function () {
       const i = typeof nameOrIndex === 'number' ? nameOrIndex : _aiFuzzyStaffIndex(nameOrIndex);
-      if (i === -1 || !STAFF[i]) { if (typeof toast === 'function') toast('\u26a0 Staff not found.', 'w'); return; }
-      STAFF[i].active = true;
+      const staff = Repository.getStaff();
+      if (i === -1 || !staff[i]) { if (typeof toast === 'function') toast('\u26a0 Staff not found.', 'w'); return; }
+      const updated = Actions.updateEmployee(i, { active: true });
       if (typeof renderStaffRegistry === 'function') renderStaffRegistry();
       if (typeof saveStaffRegistry === 'function') saveStaffRegistry();
-      if (typeof toast === 'function') toast('\u2705 ' + STAFF[i].name + ' reactivated.');
+      if (typeof toast === 'function') toast('\u2705 ' + updated.name + ' reactivated.');
     }, 280);
   }, 280);
 }
 
 function _aiDeleteStaff(nameOrIndex) {
+  const staff = Repository.getStaff();
   const i = typeof nameOrIndex === 'number' ? nameOrIndex : _aiFuzzyStaffIndex(nameOrIndex);
-  if (i === -1 || !STAFF[i]) { if (typeof toast === 'function') toast('\u26a0 Staff not found.', 'w'); return; }
-  const name = STAFF[i].name;
-  STAFF.splice(i, 1);
+  if (i === -1 || !staff[i]) { if (typeof toast === 'function') toast('\u26a0 Staff not found.', 'w'); return; }
+  const removed = Actions.removeEmployee(i);
   if (typeof showPage === 'function') showPage('manager');
   setTimeout(function () {
     if (typeof switchMgrTab === 'function') switchMgrTab('staff');
     setTimeout(function () {
       if (typeof renderStaffRegistry === 'function') renderStaffRegistry();
       if (typeof saveStaffRegistry === 'function') saveStaffRegistry();
-      if (typeof toast === 'function') toast('\u2705 ' + name + ' removed from staff list.');
+      if (typeof toast === 'function') toast('\u2705 ' + removed.name + ' removed from staff list.');
     }, 280);
   }, 280);
 }

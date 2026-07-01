@@ -84,7 +84,7 @@ function buildDayHTML(r) {
 }
 
 function openDayModal(date, my) {
-  const d=DAILY.find(x=>x.Date===date&&x.Month_Year===my);
+  const d=Repository.getDailyEntry(date, my);
   if(!d){ toast('Record not found for '+date,'w'); return; }
   _printDay={d,date,my};
   const r=dayData(d);
@@ -147,7 +147,7 @@ function openDayFromMonth(date, my) {
 
 // Direct print from table row — no modal needed, reliable on all devices
 function printDayDirectly(date, my) {
-  const d=DAILY.find(x=>x.Date===date&&x.Month_Year===my);
+  const d=Repository.getDailyEntry(date, my);
   if(!d){ toast('Record not found for '+date,'w'); return; }
   _printDay={d,date,my};
   printCurrentDay();
@@ -224,7 +224,7 @@ function showRptTarget(my) {
 
 function renderReport() {
   if(!_selDate||!_selMy){ return; }
-  const d=DAILY.find(x=>x.Date===_selDate&&x.Month_Year===_selMy);
+  const d=Repository.getDailyEntry(_selDate, _selMy);
   if(!d){ document.getElementById('rpt-card').innerHTML='<div style="color:var(--red);padding:20px">Record not found</div>'; return; }
   const r=dayData(d);
   const till=n(document.getElementById('rpt-till')?.value);
@@ -277,7 +277,7 @@ function renderReport() {
 // PRINT
 // ══════════════════════════════════════════
 function buildPrintHTML(date, my, till, patty) {
-  const d=DAILY.find(x=>x.Date===date&&x.Month_Year===my);
+  const d=Repository.getDailyEntry(date, my);
   if(!d) return null;
   const r=dayData(d);
   const row=(lbl,val)=>`<tr><td style="padding:5px 12px;font-size:13px;border-bottom:1px solid #eee">${lbl}</td><td style="padding:5px 12px;font-size:13px;text-align:right;font-family:monospace;border-bottom:1px solid #eee">${fv(val)}</td></tr>`;
@@ -335,7 +335,7 @@ function printCurrentDay() {
 
 function copyReportText() {
   if(!_selDate){ toast('⚠ Select a date first','w'); return; }
-  const d=DAILY.find(x=>x.Date===_selDate&&x.Month_Year===_selMy);
+  const d=Repository.getDailyEntry(_selDate, _selMy);
   if(!d){ toast('⚠ Record not found','e'); return; }
   const r=dayData(d);
   const till=n(document.getElementById('rpt-till')?.value);

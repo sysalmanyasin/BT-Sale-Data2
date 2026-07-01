@@ -264,7 +264,7 @@ function printDailyFromTools() {
   const d = new Date(dateInput + 'T00:00:00');
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const dateStr = String(d.getDate()).padStart(2,'0') + '/' + months[d.getMonth()] + '/' + d.getFullYear();
-  const rec = DAILY.find(x => x.Date === dateStr);
+  const rec = Repository.findDailyByDate(dateStr);
   if (!rec) { toast('⚠ No data for ' + dateStr, 'e'); return; }
   const till = n(document.getElementById('pr-daily-till').value);
   const patty = n(document.getElementById('pr-daily-patty').value);

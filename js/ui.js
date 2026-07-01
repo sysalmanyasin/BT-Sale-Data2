@@ -36,8 +36,10 @@ function showPage(id) {
       document.querySelectorAll('.ntab[data-group="commandhub"],.bnav-item[data-group="commandhub"]').forEach(t=>t.classList.add('active'));
     }
     _curPage = id;
+    // Announce navigation through EventBus so any subscriber can react
+    // (closes MF-03 — _curPage was previously a silent bare `let`).
+    if (typeof EventBus !== 'undefined') EventBus.notify('nav:changed', { page: id });
     if(id==='commandhub') { if(typeof loadCommandHubPage==='function') loadCommandHubPage(); }
-    if(id==='ai')     { if(typeof loadAiPage==='function') loadAiPage(); }
     if(id==='tools') { loadToolsPage(); }
     if(id==='manager') { loadManagerPage(); }
     if(id==='report') { dsInit(); }
@@ -70,23 +72,12 @@ document.querySelectorAll('.ntab,.bnav-item,.bnav-sub-item').forEach(t=>{
   if (t.dataset.page) t.addEventListener('click',()=>showPage(t.dataset.page));
 });
 
-// Handle ?page= shortcuts from PWA manifest shortcuts (long-press icon)
+// Handle ?page= shortcuts from PWA manifest (survives OAuth redirect via sessionStorage)
 (function() {
   const p = new URLSearchParams(window.location.search).get('page');
-  if (p) {
-    // Clean the URL without reload, then navigate once app is ready
-    history.replaceState(null, '', window.location.pathname);
-    const _tryNav = () => {
-      if (typeof showPage === 'function' && document.getElementById('page-'+p)) {
-        showPage(p);
-      }
-    };
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => setTimeout(_tryNav, 800));
-    } else {
-      setTimeout(_tryNav, 800);
-    }
-  }
+  if (!p) return;
+  try { sessionStorage.setItem('bt_nav_target', p); } catch (_) {}
+  history.replaceState(null, '', window.location.pathname);
 })();
 
 // ══════════════════════════════════════════
@@ -171,7 +162,7 @@ function loadToolsPage() {
     <div><strong>Daily records:</strong> ${DAILY.filter(d=>n(d.TOTAL)>0).length}</div>
     <div><strong>Years covered:</strong> ${years().join(', ')}</div>
     <div><strong>Cumulative total:</strong> ₨${fc(MONTHLY.reduce((s,m)=>s+n(m.TOTAL),0))}</div>
-    <div><strong>Session entries:</strong> ${newEntries.length}</div>
+    <div><strong>Session entries:</strong> ${Repository.getPendingEntries().length}</div>
     <div><strong>Sync:</strong> Supabase (real-time)</div>`;
 }
 

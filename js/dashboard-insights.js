@@ -241,35 +241,27 @@ function _dbiDismissBriefing() {
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   2. TARGET PACE CARD
+   2. TARGET PACE CARD  —  Floor 5 pure renderer
+   Computation lives in Analytics.getTargetPaceForMonth() (Floor 3).
 ══════════════════════════════════════════════════════════════════════ */
 function _dbiBuildTargetPace() {
   const M = (typeof MONTHLY !== 'undefined' && MONTHLY) ? MONTHLY : [];
   if (!M.length) return '';
 
-  const now         = new Date();
-  const my          = _dbiCurrentMonthYear();
-  const tgts        = _dbiTgts();
-  const tgt         = _dbiN(tgts[my]);
-  if (!tgt) return '';
-
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const daysElapsed = now.getDate();
-  const daysLeft    = daysInMonth - daysElapsed;
-  const monthRec    = M.find(m => m.Month_Year === my);
-  const soFar       = _dbiN((monthRec && monthRec.TOTAL) || 0);
-  const pct         = tgt > 0 ? Math.min(100, Math.round(soFar / tgt * 100)) : 0;
-  const remaining   = tgt - soFar;
+  const my   = _dbiCurrentMonthYear();
+  const tgts = _dbiTgts();
+  const p    = Analytics.getTargetPaceForMonth(my, tgts);
+  if (!p) return '';
 
   // Already hit
-  if (remaining <= 0) {
+  if (p.achieved) {
     return `
       <div class="dbi-pace-card achieved">
         <div class="dbi-pace-icon">🏆</div>
         <div class="dbi-pace-body">
           <div class="dbi-pace-title">Target — ${my}</div>
-          <div class="dbi-pace-value" style="color:#16a34a">Achieved! ₨${_dbiFF(soFar)}</div>
-          <div class="dbi-pace-sub">Goal was ₨${_dbiFF(tgt)} · Exceeded by ₨${_dbiFF(-remaining)}</div>
+          <div class="dbi-pace-value" style="color:#16a34a">Achieved! ₨${_dbiFF(p.soFar)}</div>
+          <div class="dbi-pace-sub">Goal was ₨${_dbiFF(p.tgt)} · Exceeded by ₨${_dbiFF(-p.remaining)}</div>
         </div>
         <div class="dbi-pace-bar-wrap">
           <div class="dbi-pace-bar">
@@ -280,171 +272,101 @@ function _dbiBuildTargetPace() {
       </div>`;
   }
 
-  // Calculate pace
-  const idealPerDay  = tgt / daysInMonth;
-  const actualPerDay = daysElapsed > 0 ? soFar / daysElapsed : 0;
-  const neededPerDay = daysLeft > 0 ? Math.ceil(remaining / daysLeft) : 0;
-  const paceRatio    = idealPerDay > 0 ? actualPerDay / idealPerDay : 0;
-
   let cardClass, icon, statusText;
-  if (paceRatio >= 1) {
+  if (p.paceRatio >= 1) {
     cardClass = 'on-pace'; icon = '✅';
-    statusText = `On pace — running <b>₨${_dbiFF(actualPerDay)}/day</b> vs ideal ₨${_dbiFF(idealPerDay)}/day`;
-  } else if (paceRatio >= 0.8) {
+    statusText = `On pace — running <b>₨${_dbiFF(p.actualPerDay)}/day</b> vs ideal ₨${_dbiFF(p.idealPerDay)}/day`;
+  } else if (p.paceRatio >= 0.8) {
     cardClass = 'behind'; icon = '🎯';
-    statusText = `Slightly behind — need <b>₨${_dbiFF(neededPerDay)}/day</b> over ${daysLeft} days left`;
+    statusText = `Slightly behind — need <b>₨${_dbiFF(p.neededPerDay)}/day</b> over ${p.daysLeft} days left`;
   } else {
     cardClass = 'at-risk'; icon = '⚠️';
-    statusText = `At risk — need <b>₨${_dbiFF(neededPerDay)}/day</b> over ${daysLeft} days left`;
+    statusText = `At risk — need <b>₨${_dbiFF(p.neededPerDay)}/day</b> over ${p.daysLeft} days left`;
   }
 
-  const fillColor = paceRatio >= 1 ? '#22c55e' : paceRatio >= 0.8 ? '#2563eb' : '#f59e0b';
+  const fillColor = p.paceRatio >= 1 ? '#22c55e' : p.paceRatio >= 0.8 ? '#2563eb' : '#f59e0b';
 
   return `
     <div class="dbi-pace-card ${cardClass}">
       <div class="dbi-pace-icon">${icon}</div>
       <div class="dbi-pace-body">
         <div class="dbi-pace-title">Target Pace — ${my}</div>
-        <div class="dbi-pace-value">₨${_dbiFF(neededPerDay)}<span style="font-size:12px;font-weight:500;color:var(--muted)">/day needed</span></div>
+        <div class="dbi-pace-value">₨${_dbiFF(p.neededPerDay)}<span style="font-size:12px;font-weight:500;color:var(--muted)">/day needed</span></div>
         <div class="dbi-pace-sub">${statusText.replace(/<b>/g,'').replace(/<\/b>/g,'')}</div>
-        <div class="dbi-pace-sub" style="margin-top:2px">So far ₨${_dbiFF(soFar)} of ₨${_dbiFF(tgt)} target</div>
+        <div class="dbi-pace-sub" style="margin-top:2px">So far ₨${_dbiFF(p.soFar)} of ₨${_dbiFF(p.tgt)} target</div>
       </div>
       <div class="dbi-pace-bar-wrap">
         <div class="dbi-pace-bar">
-          <div class="dbi-pace-fill" style="height:${pct}%;background:${fillColor}"></div>
+          <div class="dbi-pace-fill" style="height:${p.pct}%;background:${fillColor}"></div>
         </div>
-        <div class="dbi-pace-pct">${pct}%</div>
+        <div class="dbi-pace-pct">${p.pct}%</div>
       </div>
     </div>`;
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   3. ROTATING INSIGHT STRIP
+   3. ROTATING INSIGHT STRIP  —  Floor 5 pure formatter
+   Fact computation lives in Analytics.computeInsightCandidates() (Floor 3).
+   This function only turns each candidate fact into icon/title/HTML text.
 ══════════════════════════════════════════════════════════════════════ */
 let _dbiInsightIdx = 0;
 
+const _DBI_DOW_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
 function _dbiComputeInsights() {
-  const M = (typeof MONTHLY !== 'undefined' && MONTHLY) ? MONTHLY : [];
-  const D = (typeof DAILY !== 'undefined' && DAILY)   ? DAILY   : [];
-  if (M.length < 2 || !D.length) return [];
-
-  const n  = _dbiN;
-  const ff = _dbiFF;
-  const insights = [];
-  const now = new Date();
-  const curMY = _dbiCurrentMonthYear();
-
-  // ── A. Target pace insight (only if target set & current month live)
   const tgts = _dbiTgts();
-  const tgt  = n(tgts[curMY]);
-  if (tgt > 0) {
-    const daysInMonth  = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    const daysElapsed  = now.getDate();
-    const daysLeft     = daysInMonth - daysElapsed;
-    const monthRec     = M.find(m => m.Month_Year === curMY);
-    const soFar        = n((monthRec && monthRec.TOTAL) || 0);
-    const pct          = tgt > 0 ? Math.round(soFar / tgt * 100) : 0;
-    const neededPerDay = daysLeft > 0 ? Math.ceil((tgt - soFar) / daysLeft) : 0;
-    if (soFar < tgt) {
-      insights.push({
-        icon: '🎯', title: 'Target Pace',
-        text: `You've hit <b>${pct}%</b> of your ${curMY} target. Need ₨${ff(neededPerDay)}/day for ${daysLeft} days remaining.`,
-        cta: null
-      });
+  const candidates = (typeof Analytics !== 'undefined') ? Analytics.computeInsightCandidates(tgts) : [];
+  const ff = _dbiFF;
+
+  return candidates.map(c => {
+    switch (c.type) {
+      case 'targetPace':
+        return {
+          icon: '🎯', title: 'Target Pace',
+          text: `You've hit <b>${c.pct}%</b> of your ${c.curMY} target. Need ₨${ff(c.neededPerDay)}/day for ${c.daysLeft} days remaining.`,
+          cta: null
+        };
+      case 'weekday': {
+        const dir = c.diffPct >= 0 ? 'above' : 'below';
+        const color = c.diffPct >= 0 ? '#16a34a' : '#dc2626';
+        return {
+          icon: '📅', title: `${_DBI_DOW_NAMES[c.dow]} Pattern`,
+          text: `Last ${_DBI_DOW_NAMES[c.dow]} (${c.latestSameDay.Date}): ₨${ff(c.latestVal)} — <b style="color:${color}">${Math.abs(c.diffPct)}% ${dir}</b> your typical ${_DBI_DOW_NAMES[c.dow]} average of ₨${ff(c.sameDayAvg)}.`,
+          cta: null
+        };
+      }
+      case 'momSwing': {
+        const dir   = c.swingPct >= 0 ? 'up' : 'down';
+        const icon  = c.swingPct >= 0 ? '📈' : '📉';
+        const color = c.swingPct >= 0 ? '#16a34a' : '#dc2626';
+        return {
+          icon, title: 'Month-on-Month',
+          text: `${c.last.Month_Year} vs ${c.prev.Month_Year}: <b style="color:${color}">₨${ff(Math.abs(c.lastT-c.prevT))} ${dir} (${Math.abs(c.swingPct)}%)</b>. From ₨${ff(c.prevT)} → ₨${ff(c.lastT)}.`,
+          cta: null
+        };
+      }
+      case 'bestDay': {
+        const dir   = c.diffPct >= 0 ? 'better' : 'lower';
+        const color = c.diffPct >= 0 ? '#16a34a' : '#dc2626';
+        return {
+          icon: '🔥', title: 'Best Day Comparison',
+          text: `Best day this month (${c.curBest.Date}): ₨${ff(n(c.curBest.TOTAL))} — <b style="color:${color}">${Math.abs(c.diffPct)}% ${dir}</b> than ${c.prvMon}'s best (₨${ff(n(c.prvBest.TOTAL))} on ${c.prvBest.Date}).`,
+          cta: null
+        };
+      }
+      case 'avgBill': {
+        const dir   = c.diffPct >= 0 ? 'up' : 'down';
+        const color = c.diffPct >= 0 ? '#16a34a' : '#dc2626';
+        return {
+          icon: '🧾', title: 'Avg Bill Size',
+          text: `Average bill in ${c.last.Month_Year}: ₨${ff(c.avgLast)} — <b style="color:${color}">${Math.abs(c.diffPct)}% ${dir}</b> vs ${c.prev.Month_Year} (₨${ff(c.avgPrev)}).`,
+          cta: null
+        };
+      }
+      default:
+        return null;
     }
-  }
-
-  // ── B. Weekday comparison (today vs same weekday 4-week avg)
-  const dow     = now.getDay(); // 0=Sun
-  const dowNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  // Sort DAILY by date
-  const sortedD = D.slice().sort((a, b) => {
-    const pa = a.Date || '', pb = b.Date || '';
-    return pa < pb ? -1 : pa > pb ? 1 : 0;
-  });
-  // Last 5 occurrences of same weekday
-  const sameDay = sortedD.filter(d => {
-    try {
-      // Date format: "20/Jun/2026"
-      const parts = (d.Date || '').split('/');
-      if (parts.length < 3) return false;
-      const months = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
-      const dt = new Date(parseInt(parts[2]), months[parts[1]] || 0, parseInt(parts[0]));
-      return dt.getDay() === dow;
-    } catch(_) { return false; }
-  }).slice(-5);
-
-  if (sameDay.length >= 3) {
-    const sameDayAvg = sameDay.slice(0,-1).reduce((s,d)=>s+n(d.TOTAL),0) / (sameDay.length - 1);
-    const latestSameDay = sameDay[sameDay.length - 1];
-    const latestVal     = n(latestSameDay.TOTAL);
-    if (sameDayAvg > 0 && latestVal > 0) {
-      const diffPct = Math.round((latestVal - sameDayAvg) / sameDayAvg * 100);
-      const dir = diffPct >= 0 ? 'above' : 'below';
-      const color = diffPct >= 0 ? '#16a34a' : '#dc2626';
-      insights.push({
-        icon: '📅', title: `${dowNames[dow]} Pattern`,
-        text: `Last ${dowNames[dow]} (${latestSameDay.Date}): ₨${ff(latestVal)} — <b style="color:${color}">${Math.abs(diffPct)}% ${dir}</b> your typical ${dowNames[dow]} average of ₨${ff(sameDayAvg)}.`,
-        cta: null
-      });
-    }
-  }
-
-  // ── C. Biggest MoM swing (last 2 months)
-  if (M.length >= 2) {
-    const last = M[M.length - 1], prev = M[M.length - 2];
-    const lastT = n(last.TOTAL), prevT = n(prev.TOTAL);
-    if (prevT > 0) {
-      const swingPct = Math.round((lastT - prevT) / prevT * 100);
-      const dir      = swingPct >= 0 ? 'up' : 'down';
-      const icon     = swingPct >= 0 ? '📈' : '📉';
-      const color    = swingPct >= 0 ? '#16a34a' : '#dc2626';
-      insights.push({
-        icon, title: 'Month-on-Month',
-        text: `${last.Month_Year} vs ${prev.Month_Year}: <b style="color:${color}">₨${ff(Math.abs(lastT-prevT))} ${dir} (${Math.abs(swingPct)}%)</b>. From ₨${ff(prevT)} → ₨${ff(lastT)}.`,
-        cta: null
-      });
-    }
-  }
-
-  // ── D. Best day this month vs last month's best day
-  if (M.length >= 2 && D.length) {
-    const curMon = M[M.length - 1].Month_Year;
-    const prvMon = M[M.length - 2].Month_Year;
-    const curDays = D.filter(d => d.Month_Year === curMon && n(d.TOTAL) > 0);
-    const prvDays = D.filter(d => d.Month_Year === prvMon && n(d.TOTAL) > 0);
-    if (curDays.length && prvDays.length) {
-      const curBest = curDays.reduce((a,b)=>n(b.TOTAL)>n(a.TOTAL)?b:a, curDays[0]);
-      const prvBest = prvDays.reduce((a,b)=>n(b.TOTAL)>n(a.TOTAL)?b:a, prvDays[0]);
-      const diffPct = n(prvBest.TOTAL) > 0 ? Math.round((n(curBest.TOTAL) - n(prvBest.TOTAL)) / n(prvBest.TOTAL) * 100) : 0;
-      const dir     = diffPct >= 0 ? 'better' : 'lower';
-      const color   = diffPct >= 0 ? '#16a34a' : '#dc2626';
-      insights.push({
-        icon: '🔥', title: 'Best Day Comparison',
-        text: `Best day this month (${curBest.Date}): ₨${ff(n(curBest.TOTAL))} — <b style="color:${color}">${Math.abs(diffPct)}% ${dir}</b> than ${prvMon}'s best (₨${ff(n(prvBest.TOTAL))} on ${prvBest.Date}).`,
-        cta: null
-      });
-    }
-  }
-
-  // ── E. Avg bill size trend
-  if (M.length >= 2) {
-    const last = M[M.length - 1], prev = M[M.length - 2];
-    const avgLast = n(last.Customers) > 0 ? n(last.TOTAL) / n(last.Customers) : 0;
-    const avgPrev = n(prev.Customers) > 0 ? n(prev.TOTAL) / n(prev.Customers) : 0;
-    if (avgLast > 0 && avgPrev > 0) {
-      const diffPct = Math.round((avgLast - avgPrev) / avgPrev * 100);
-      const dir     = diffPct >= 0 ? 'up' : 'down';
-      const color   = diffPct >= 0 ? '#16a34a' : '#dc2626';
-      insights.push({
-        icon: '🧾', title: 'Avg Bill Size',
-        text: `Average bill in ${last.Month_Year}: ₨${ff(avgLast)} — <b style="color:${color}">${Math.abs(diffPct)}% ${dir}</b> vs ${prev.Month_Year} (₨${ff(avgPrev)}).`,
-        cta: null
-      });
-    }
-  }
-
-  return insights;
+  }).filter(Boolean);
 }
 
 function _dbiBuildInsightStrip() {
@@ -498,39 +420,39 @@ function _dbiGoInsight(idx) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   4. "SINCE YOU LAST LOOKED" DIFF BADGE
+   4. "SINCE YOU LAST LOOKED" DIFF BADGE  —  Floor 5 renderer
+   Diff math lives in Analytics.getSalesDiffSinceLastLook() (Floor 3).
+   Reading/writing the previous-session snapshot through Repository stays
+   here — that's UI-state persistence (what did I last see), not business
+   data, so it's an appropriate Floor 5 use of the one storage door.
 ══════════════════════════════════════════════════════════════════════ */
 function _dbiBuildDiffBadge() {
   const M = (typeof MONTHLY !== 'undefined' && MONTHLY) ? MONTHLY : [];
   if (!M.length) return '';
 
-  const now        = Date.now();
-  const lastTotal  = M.reduce((s,m)=>s+_dbiN(m.TOTAL),0);
-  const lastMonths = M.length;
-
+  const now = Date.now();
   let html = '';
-  try {
-    const prev = JSON.parse(Repository.getItem(_DBI_LAST_KEY) || 'null');
-    if (prev && prev.totalMonths === lastMonths) {
-      const diff = lastTotal - prev.totalSales;
-      if (diff !== 0) {
-        const sign  = diff > 0 ? '+' : '';
-        const color = diff > 0 ? '#16a34a' : '#dc2626';
-        const ago   = _dbiTimeAgo(prev.ts);
-        html = `
-          <div class="dbi-diff-badge">
-            <span>🕐</span>
-            <span>Since you last looked: <strong style="color:${color}">${sign}₨${_dbiFF(Math.abs(diff))}</strong></span>
-            <span class="dbi-diff-ago">${ago}</span>
-          </div>`;
-      }
-    }
-  } catch(_) {}
+  let prev = null;
+  try { prev = JSON.parse(Repository.getItem(_DBI_LAST_KEY) || 'null'); } catch(_) {}
+
+  const result = Analytics.getSalesDiffSinceLastLook(prev);
+
+  if (result.diff !== null && result.diff !== 0) {
+    const sign  = result.diff > 0 ? '+' : '';
+    const color = result.diff > 0 ? '#16a34a' : '#dc2626';
+    const ago   = _dbiTimeAgo(prev.ts);
+    html = `
+      <div class="dbi-diff-badge">
+        <span>🕐</span>
+        <span>Since you last looked: <strong style="color:${color}">${sign}₨${_dbiFF(Math.abs(result.diff))}</strong></span>
+        <span class="dbi-diff-ago">${ago}</span>
+      </div>`;
+  }
 
   // Save current state for next visit
   try {
     Repository.setItem(_DBI_LAST_KEY, JSON.stringify({
-      ts: now, totalSales: lastTotal, totalMonths: lastMonths
+      ts: now, totalSales: result.lastTotal, totalMonths: result.lastMonths
     }));
   } catch(_) {}
 

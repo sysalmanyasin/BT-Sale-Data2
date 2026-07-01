@@ -121,12 +121,13 @@ function _nextPayloadVersion() {
 // ══════════════════════════════════════════════════════════════════
 function _buildPayload() {
   const petty = {}, incentive = {};
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i);
-    if (!k) continue;
-    if (k.startsWith('mw_petty_'))     petty[k]     = JSON.parse(Repository.getItem(k) || 'null');
-    if (k.startsWith('mw_incentive_')) incentive[k] = JSON.parse(Repository.getItem(k) || 'null');
-  }
+  // Route through Repository.getKeysByPrefix so we never touch localStorage directly
+  Repository.getKeysByPrefix('mw_petty_').forEach(k => {
+    petty[k] = JSON.parse(Repository.getItem(k) || 'null');
+  });
+  Repository.getKeysByPrefix('mw_incentive_').forEach(k => {
+    incentive[k] = JSON.parse(Repository.getItem(k) || 'null');
+  });
   return {
     monthly:  MONTHLY,
     daily:    DAILY,
@@ -166,28 +167,25 @@ function mergeIncomingData(data, isPull = false) {
     if (data.monthly) { const r = Repository.mergePulledMonthly(data.monthly); mN = r.added; mU = r.updated; }
     if (data.daily)   { const r = Repository.mergePulledDaily(data.daily);     dN = r.added; dU = r.updated; }
   } else {
-    // Push direction: local wins, remote only fills gaps — unchanged, this
-    // path doesn't overwrite anything local so it carries no conflict risk.
-    if (data.monthly) data.monthly.forEach(m => {
-      const idx = MONTHLY.findIndex(x => x.Month_Year === m.Month_Year);
-      if (idx === -1) { MONTHLY.push(m); mN++; }
-    });
-    if (data.daily) data.daily.forEach(d => {
-      const idx = DAILY.findIndex(x => x.Date === d.Date && x.Month_Year === d.Month_Year);
-      if (idx === -1) { DAILY.push(d); dN++; }
-    });
+    // Push direction: local wins, remote only fills gaps.
+    // Now routed through Repository.gapFill* (closes CF-01 / last two
+    // direct MONTHLY/DAILY writes that lived outside Repository).
+    if (data.monthly) { const r = Repository.gapFillMonthly(data.monthly); mN = r.added; }
+    if (data.daily)   { const r = Repository.gapFillDaily(data.daily);     dN = r.added; }
   }
 
   if (data.staff && data.staff.length) {
-    const local  = JSON.parse(Repository.getItem(STAFF_KEY) || '[]');
+    // Merge remote staff into local, preferring the incoming list on pull.
+    // Route through Repository.setStaff so STAFF is never directly assigned
+    // (closes CF-02 / the one remaining STAFF bypass in the codebase).
+    const local  = Repository.getStaff();
     const merged = [...data.staff];
     const norm   = s => (s || '').trim().toLowerCase();
     local.forEach(le => {
       if (!merged.find(r => r.id === le.id) && !merged.find(r => norm(r.name) === norm(le.name)))
         merged.push(le);
     });
-    STAFF = merged;
-    Repository.setItem(STAFF_KEY, JSON.stringify(STAFF));
+    Actions.setStaff(merged);
   }
 
   if (data.manager) {
@@ -536,6 +534,7 @@ function _updateLastPollDisplay() {
 // redundant second pull automatically.
 // ══════════════════════════════════════════════════════════════════
 window.addEventListener('online', () => {
+  if (!window._appInited) return;
   sbLog('↑ Back online' + (_hasPending() ? ' — flushing queue…' : ''), 'info');
   // Reconnect real-time channel if it dropped while offline
   const chState = _sbChannel ? _sbChannel.state : '';
@@ -562,7 +561,7 @@ window.addEventListener('offline', () => {
 // If RT is live it will deliver any missed updates itself — an extra
 // unconditional pull creates the double-sync the plan prohibits.
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) return;
+  if (document.hidden || !window._appInited) return;
   const chState = _sbChannel ? _sbChannel.state : '';
   const rtDropped = !_sbChannel || (chState !== 'joined' && chState !== 'joining');
   if (rtDropped) {
@@ -701,9 +700,36 @@ function saveAutoSettings() {
 function startAutoInterval() { /* replaced by real-time subscription */ }
 
 // ══════════════════════════════════════════════════════════════════
-// INIT
+// INIT — UI shell on load; sync starts only after auth unlock
 // ══════════════════════════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', async () => {
+let _supabaseStarted = false;
+
+function resetSupabaseSync() {
+  _supabaseStarted = false;
+}
+
+async function startSupabaseSync() {
+  if (_supabaseStarted) return;
+  _supabaseStarted = true;
+
+  _updateRealtimeStatus(false);
+  _updateLastPollDisplay();
+  _startRealtime();
+
+  if (typeof initSyncCenter === 'function') await initSyncCenter();
+
+  if (navigator.onLine) {
+    sbLog('🔄 Startup pull — loading latest data…', 'info');
+    pullFromSupabase(true);
+  }
+
+  if (_hasPending() && navigator.onLine) {
+    sbLog('⚡ Offline changes pending — syncing…', 'info');
+    setTimeout(() => pushToSupabase(), 1200);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
   updateGhBadge();
 
   const synci = document.getElementById('synci');
@@ -712,34 +738,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const logEl = document.getElementById('ghlog');
   if (logEl) logEl.innerHTML = '<div style="color:var(--t2)">Supabase sync ready…</div>';
 
-  // Render history immediately from localStorage
   renderSyncHistory();
-
-  // Initialize status display
-  _updateRealtimeStatus(false); // will flip to true when channel subscribes
+  _updateRealtimeStatus(false);
   _updateLastPollDisplay();
-
-  // Start real-time listener
-  _startRealtime();
-
-  // ── Initialize Sync Center (device sessions + write-lock architecture) ──
-  // Await it so the ACTIVE/PASSIVE status is set before the startup push below.
-  if (typeof initSyncCenter === 'function') await initSyncCenter();
-
-  // FIX 4: Per plan point 3 — always perform one full pull on startup,
-  // then real-time takes over. This is NOT a user toggle; it is mandatory.
-  if (navigator.onLine) {
-    sbLog('🔄 Startup pull — loading latest data…', 'info');
-    pullFromSupabase(true);
-  }
-
-  // Flush any offline queue from a previous session.
-  // Use 1 200ms delay (vs old 400ms) to ensure SC init and the startup pull
-  // have both started so _sc_status is correctly set before the write-lock check.
-  if (_hasPending() && navigator.onLine) {
-    sbLog('⚡ Offline changes pending — syncing…', 'info');
-    setTimeout(() => pushToSupabase(), 1200);
-  }
 });
 
 // ══════════════════════════════════════════════════════════════════

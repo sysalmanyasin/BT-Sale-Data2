@@ -376,11 +376,11 @@ const NS_SHEETS_KEY = 'bt_sheets_v2';  // v2 = new format with cell formatting
 
 function _nsNotesLoad()  { try { return JSON.parse(Repository.getItem(NS_NOTES_KEY) || '[]'); } catch(_){ return []; } }
 function _nsNotesSave(a) {
-  try { Repository.setItem(NS_NOTES_KEY, JSON.stringify(a)); } catch(_){}
+  try { Actions.saveNotes(JSON.stringify(a)); } catch(_){}
   if (Repository.getItem('bt_auto_save') === '1' && typeof pushToSupabase === 'function') pushToSupabase();
 }
 function _nsSheetsLoad() { try { return JSON.parse(Repository.getItem(NS_SHEETS_KEY) || '{}'); } catch(_){ return {}; } }
-function _nsSheetsSave(o){ try { Repository.setItem(NS_SHEETS_KEY, JSON.stringify(o)); } catch(_){} }
+function _nsSheetsSave(o){ try { Actions.saveSheets(JSON.stringify(o)); } catch(_){} }
 function _nsUid()        { return 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
 
 /* Sheet File storage */
@@ -394,7 +394,7 @@ function _nsSFLoad() {
   if (changed) { try { Repository.setItem(NS_SHEET_FILES_KEY, JSON.stringify(arr)); } catch(_){} }
   return arr;
 }
-function _nsSFSave(a){ try { Repository.setItem(NS_SHEET_FILES_KEY, JSON.stringify(a)); } catch(_){} }
+function _nsSFSave(a){ try { Actions.saveSheetFiles(JSON.stringify(a)); } catch(_){} }
 
 // Manage Sheets panel state
 var _nsMgsSort   = (Repository.getItem('bt_mgs_sort')  || 'created_desc');

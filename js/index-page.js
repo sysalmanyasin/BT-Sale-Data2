@@ -1,53 +1,38 @@
 // ══════════════════════════════════════════
-// INDEX
+// INDEX  —  Floor 5 pure renderer
+//
+// All filtering/sorting/grouping/aggregation now lives in
+// Analytics.buildIndexViewModel() (Floor 3). This function only maps
+// the resulting view-model to HTML (closes the last CF-03-style gap).
 // ══════════════════════════════════════════
 function renderIndex() {
-  const q=(document.getElementById('idx-search')?.value||'').toLowerCase();
+  const q=(document.getElementById('idx-search')?.value||'');
   const yr=document.getElementById('idx-year')?.value||'';
   const sort=document.getElementById('idx-sort')?.value||'date';
-  let data=MONTHLY.filter(m=>(!q||m.Month_Year.toLowerCase().includes(q))&&(!yr||m.Month_Year.endsWith(yr)));
-  if(sort==='total-d') data.sort((a,b)=>n(b.TOTAL)-n(a.TOTAL));
-  else if(sort==='total-a') data.sort((a,b)=>n(a.TOTAL)-n(b.TOTAL));
-  const maxT=Math.max(...MONTHLY.map(m=>n(m.TOTAL)));
-  const tgts=getTgts();
   const container=document.getElementById('idx-container');
 
-  if(sort==='date'){
-    // Group by year
-    const byYr={};
-    data.forEach(m=>{ const y=m.Month_Year.split(' ').pop(); (byYr[y]=byYr[y]||[]).push(m); });
-    // Sort years descending, months within each year descending (latest first)
-    const MONTH_ORDER=['January','February','March','April','May','June','July','August','September','October','November','December'];
-    const sortedYrs=Object.keys(byYr).sort((a,b)=>b-a);
-    container.innerHTML=sortedYrs.map((y,yi)=>{
-      const mons=byYr[y].sort((a,b)=>{
-        const ai=MONTH_ORDER.indexOf(a.Month_Year.split(' ')[0]);
-        const bi=MONTH_ORDER.indexOf(b.Month_Year.split(' ')[0]);
-        return bi-ai;
-      });
-      const yrTotal=mons.reduce((s,m)=>s+n(m.TOTAL),0);
-      const yrCust=mons.reduce((s,m)=>s+n(m.Customers),0);
-      const isLatest=yi===0; // latest year open by default
-      return `<div class="yr-group">
+  const vm = Analytics.buildIndexViewModel(q, yr, sort);
+
+  if (vm.mode === 'grouped') {
+    container.innerHTML = vm.groups.map(g => `<div class="yr-group">
         <div class="yr-hdr" onclick="toggleYrGroup(this)">
           <div class="yr-hdr-left">
-            <span class="yr-chevron${isLatest?' open':''}">▶</span>
-            <span class="yr-hdr-label">${y}</span>
-            <span class="yr-hdr-meta">${mons.length} months</span>
+            <span class="yr-chevron${g.isLatest?' open':''}">▶</span>
+            <span class="yr-hdr-label">${g.year}</span>
+            <span class="yr-hdr-meta">${g.months.length} months</span>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
-            <span class="yr-hdr-total">₨ ${ff(yrTotal)}</span>
-            <span class="yr-hdr-meta">👥 ${fc(yrCust)}</span>
-            <button onclick="event.stopPropagation();printYearlyReport('${y}')" title="Print ${y} Report" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(37,99,235,.25);background:var(--alt);color:var(--accent);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">🖨</button>
+            <span class="yr-hdr-total">₨ ${ff(g.yrTotal)}</span>
+            <span class="yr-hdr-meta">👥 ${fc(g.yrCust)}</span>
+            <button onclick="event.stopPropagation();printYearlyReport('${g.year}')" title="Print ${g.year} Report" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(37,99,235,.25);background:var(--alt);color:var(--accent);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">🖨</button>
           </div>
         </div>
-        <div class="yr-body${isLatest?' open':''}">
-          <div class="yr-grid">${mons.map(m=>iCard(m,maxT,tgts)).join('')}</div>
+        <div class="yr-body${g.isLatest?' open':''}">
+          <div class="yr-grid">${g.months.map(m=>iCard(m,vm.maxT,vm.tgts)).join('')}</div>
         </div>
-      </div>`;
-    }).join('');
+      </div>`).join('');
   } else {
-    container.innerHTML='<div class="igrid">'+data.map(m=>iCard(m,maxT,tgts)).join('')+'</div>';
+    container.innerHTML='<div class="igrid">'+vm.months.map(m=>iCard(m,vm.maxT,vm.tgts)).join('')+'</div>';
   }
   // Store in render cache
   _rc.index = { key: _rcKey('index'), html: container.innerHTML };

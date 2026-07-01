@@ -232,12 +232,9 @@ async function saveEntry() {
   // doing its own DAILY.findIndex/splice/push (same pattern that used to be
   // duplicated across storage.js, supabase.js, manager.js, drive.js, ui.js).
   Actions.addDailyEntry(entry);
-  const existNewIdx=newEntries.findIndex(d=>d.Date===date&&d.Month_Year===month);
-  if(existNewIdx!==-1) newEntries.splice(existNewIdx,1);
-  newEntries.push(entry);
-  Repository.setItem('bt_entries',JSON.stringify(newEntries));
+  Actions.recordPendingEntry(entry);
   // Auto-compute MONTHLY totals from DAILY so dashboard/index/reports all reflect this entry
-  recomputeMonthly(month);
+  Actions.recomputeMonth(month);
   renderEntryList();
   rebuildAll();
   toast('✓ Entry saved — dashboard & monthly totals updated');
@@ -246,8 +243,9 @@ async function saveEntry() {
 
 function renderEntryList() {
   const el=document.getElementById('entry-list');
-  if(!newEntries.length){ el.textContent='No entries this session.'; return; }
-  el.innerHTML=newEntries.map((e,i)=>`
+  const entries=Repository.getPendingEntries();
+  if(!entries.length){ el.textContent='No entries this session.'; return; }
+  el.innerHTML=entries.map((e,i)=>`
     <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">
       <span class="badge bg-blue">${e.Date}</span>
       <span style="font-size:12px">${e.Month_Year}</span>
@@ -258,11 +256,12 @@ function renderEntryList() {
 }
 
 function delEntry(i){
-  const e=newEntries[i];
-  newEntries.splice(i,1);
+  const entries=Repository.getPendingEntries();
+  const e=entries[i];
+  if(!e) return;
   Actions.removeDailyEntry(e.Date, e.Month_Year);
-  recomputeMonthly(e.Month_Year);
-  Repository.setItem('bt_entries',JSON.stringify(newEntries));
+  Actions.recomputeMonth(e.Month_Year);
+  Actions.forgetPendingEntry(e.Date, e.Month_Year);
   renderEntryList();
   rebuildAll();
   if(Repository.getItem('bt_auto_save')==='1') pushToSupabase();
@@ -271,7 +270,7 @@ function clearEntryForm(){ document.querySelectorAll('#page-entry input,#page-en
 function autoFillEntryDate() {
   // Find the latest date that does NOT yet have an entry in DAILY
   // Collect all recorded dates from DAILY (base + new entries)
-  const recorded=new Set(DAILY.map(d=>d.Date));
+  const recorded=new Set(Repository.getDaily().map(d=>d.Date));
   // Walk backwards from today until we find an unrecorded weekday (or just today)
   const today=new Date();
   let target=today;
@@ -366,7 +365,7 @@ const EDIT_FIELDS=[
 ];
 
 function openEditModal(date, my) {
-  const rec = DAILY.find(x=>x.Date===date && x.Month_Year===my);
+  const rec = Repository.getDailyEntry(date, my);
   if(!rec){ toast('⚠ Record not found','e'); return; }
   _editDate=date; _editMy=my;
 
@@ -514,12 +513,10 @@ async function saveEditModal() {
   rec['DIFF']=_editDiff!==0?String(_editDiff):null;
   Actions.addDailyEntry(rec); // stamps _updatedAt/_source — rec is already in DAILY, this just records the metadata
 
-  // Sync to newEntries (for push) — overwrite or add
-  const ni=newEntries.findIndex(d=>d.Date===_editDate&&d.Month_Year===_editMy);
-  if(ni!==-1) newEntries[ni]=rec; else newEntries.push(rec);
-  Repository.setItem('bt_entries',JSON.stringify(newEntries));
+  // Sync to the pending-entries session log (for push) — overwrite or add
+  Actions.recordPendingEntry(rec);
 
-  recomputeMonthly(_editMy);
+  Actions.recomputeMonth(_editMy);
   renderEntryList();
   rebuildAll();
   closeEditModal();

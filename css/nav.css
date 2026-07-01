@@ -1,6 +1,6 @@
 /* ── Navigation ── */
 /* NAV */
-nav{position:sticky;top:0;z-index:200;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:env(safe-area-inset-top) 20px 0;height:56px;box-sizing:content-box;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+nav{position:sticky;top:22px;z-index:200;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:env(safe-area-inset-top) 20px 0;height:56px;box-sizing:content-box;box-shadow:0 1px 3px rgba(0,0,0,.06);}
 .nbrand{display:flex;align-items:center;gap:10px;}
 .nlogo{width:32px;height:32px;border-radius:8px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;}
 .nbrand-text{font-weight:600;font-size:13px;}
@@ -69,13 +69,13 @@ nav{position:sticky;top:0;z-index:200;background:rgba(255,255,255,.96);backdrop-
   display: flex !important;
   flex-direction: column;
   padding: 0 !important;
-  height: calc(100vh - 56px);  /* fill below desktop nav */
-  max-height: calc(100vh - 56px);
+  height: calc(100vh - 22px - 56px);  /* status strip + desktop nav */
+  max-height: calc(100vh - 22px - 56px);
   overflow: hidden;
 }
 @media (max-width: 700px) {
   .page.on#page-commandhub {
-    height: calc(100vh - 56px - 60px); /* subtract mobile bottom nav too */
-    max-height: calc(100vh - 56px - 60px);
+    height: calc(100vh - 22px - 56px - 60px); /* status strip + nav + mobile bottom nav */
+    max-height: calc(100vh - 22px - 56px - 60px);
   }
 }

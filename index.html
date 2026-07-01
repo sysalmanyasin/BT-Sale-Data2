@@ -806,15 +806,16 @@ if ('serviceWorker' in navigator) {
           autocomplete="off" spellcheck="false">
       </div>
       <div class="fg" style="margin-bottom:12px">
-        <label>Authorised Gmail Addresses (one per line)</label>
-        <textarea id="tc-allowed-emails" rows="4" placeholder="yourname@gmail.com&#10;colleague@gmail.com"
-          style="font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s2);width:100%;font-family:var(--sans);color:var(--text);outline:none;resize:vertical;box-sizing:border-box"></textarea>
-        <div style="font-size:10px;color:var(--muted);margin-top:4px">Only these exact addresses can sign in — anyone else is blocked, even if this box is empty. Case-insensitive.</div>
+        <label>Authorised Gmail Addresses (read-only)</label>
+        <textarea id="tc-allowed-emails" rows="4" readonly
+          style="font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s3,#f1f5f9);width:100%;font-family:var(--sans);color:var(--muted);outline:none;resize:vertical;box-sizing:border-box;cursor:default"
+          placeholder="yourname@gmail.com&#10;colleague@gmail.com"></textarea>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px">Fixed in app source for security — edit <code>auth.js</code> and redeploy to change who can sign in.</div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
-        <button class="btn btn-p" onclick="tcSaveGAuthSettings()">💾 Save Google Settings</button>
+        <button class="btn btn-p" onclick="tcSaveGAuthSettings()">💾 Save Client ID</button>
         <button class="btn btn-s" onclick="tcClearGAuthSession()">🔓 Sign Out Google Session</button>
-        <button class="btn" style="background:var(--rlt,#fee2e2);color:var(--red);border:1px solid var(--red)" onclick="tcClearGAuthAll()">🗑 Remove Google Config</button>
+        <button class="btn" style="background:var(--rlt,#fee2e2);color:var(--red);border:1px solid var(--red)" onclick="tcClearGAuthAll()">↺ Reset Google Settings</button>
       </div>
       <div style="font-size:11px;color:var(--muted);border-top:1px solid var(--border);padding-top:16px">
         🔒 Offline password sign-in has been disabled. Access is restricted to the three authorised Google accounts above — no other sign-in method is available.
@@ -1286,6 +1287,40 @@ if ('serviceWorker' in navigator) {
 <!-- PRINT AREA (hidden, shown only during print) -->
 <div id="print-area"></div>
 
+<!-- ══════════════════════════════════════════════════════════════════
+     CONFLICT RESOLUTION MODAL (Phase 7 / audit step 7)
+     Shown when Repository detects a genuine double-edit (same record
+     changed on both devices since the last sync). Replaces the old
+     window.confirm fallback in reviewConflicts().
+     ═════════════════════════════════════════════════════════════════ -->
+<div id="conflict-modal-bg" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:var(--surface,#fff);border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.22);max-width:480px;width:90%;padding:24px 24px 20px;position:relative">
+    <div style="font-size:15px;font-weight:700;color:var(--text,#1e293b);margin-bottom:4px">⚠️ Sync Conflict Detected</div>
+    <div id="conflict-label" style="font-size:12px;color:var(--muted,#64748b);margin-bottom:16px"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
+      <div style="border:1.5px solid var(--border,#e2e8f0);border-radius:10px;padding:12px">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted,#64748b);margin-bottom:6px">💻 This Device</div>
+        <div id="conflict-local" style="font-size:12px;color:var(--text,#1e293b);white-space:pre-wrap;word-break:break-word"></div>
+      </div>
+      <div style="border:1.5px solid var(--border,#e2e8f0);border-radius:10px;padding:12px">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted,#64748b);margin-bottom:6px">☁️ Cloud (Other Device)</div>
+        <div id="conflict-incoming" style="font-size:12px;color:var(--text,#1e293b);white-space:pre-wrap;word-break:break-word"></div>
+      </div>
+    </div>
+    <div id="conflict-remaining" style="font-size:11px;color:var(--muted,#64748b);margin-bottom:14px;text-align:center"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button onclick="_conflictChoose('local')"
+        style="background:var(--accent,#2563eb);color:#fff;border:none;border-radius:8px;padding:8px 20px;font-size:13px;font-weight:600;cursor:pointer">
+        Keep This Device
+      </button>
+      <button onclick="_conflictChoose('incoming')"
+        style="background:var(--s2,#f1f5f9);color:var(--text,#1e293b);border:1px solid var(--border,#e2e8f0);border-radius:8px;padding:8px 20px;font-size:13px;font-weight:600;cursor:pointer">
+        Keep Cloud Version
+      </button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 
@@ -1311,35 +1346,49 @@ if ('serviceWorker' in navigator) {
 <!-- 1. Base data arrays (MONTHLY_BASE + DAILY_BASE — large file) -->
 <script src="js/data-base.js"></script>
 
-<!-- 1b. Shared service layer (Steps 1-4, 10 extraction) — must come before config.js -->
+<!-- 1b. Shared service layer -->
 <script src="js/bt-format.js"></script>
 <script src="js/bt-date.js"></script>
 <script src="js/bt-calc.js"></script>
 <script src="js/bt-search.js"></script>
 <script src="js/app-context.js"></script>
 
-<!-- 2. Config: state vars, utils, column constants -->
+<!-- 2. Config: Floor 2 state store — protected MONTHLY/DAILY/STAFF + utils -->
 <script src="js/config.js"></script>
 
-<!-- 3. Auth: Google Sign-In + PIN password fallback -->
+<!-- 3. Auth: Google Sign-In -->
 <script src="js/auth.js"></script>
 
-<!-- 4. Storage: IndexedDB + render cache -->
+<!-- 4. Storage: IndexedDB + render cache + nav state -->
 <script src="js/storage.js"></script>
 
 <!-- 5. UI: showPage, toast, clock, rebuild, dropdowns -->
 <script src="js/ui.js"></script>
 
-<!-- 6. Supabase: real-time sync -->
+<!-- 6. Floor 3: event bus MUST load before repository.js uses it -->
+<script src="js/event-bus.js"></script>
+
+<!-- 6b. Supabase client lib + sync center (needs EventBus) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="js/sync-center.js"></script>
+
+<!-- 6c. Repository (Floor 1) then Actions (Floor 3) — strict order -->
 <script src="js/repository.js"></script>
+<script src="js/actions.js"></script>
+
+<!-- 6c2. Conflict UI (Floor 4/5) — DOM code that reacts to Repository/Actions -->
+<script src="js/conflict-ui.js"></script>
+
+<!-- 6d. Supabase sync (Floor 1 extension — needs Repository + Actions) -->
 <script src="js/supabase.js"></script>
 
 <!-- 7. Targets: monthly target management -->
 <script src="js/targets.js"></script>
 
-<!-- 8. Dashboard: KPI cards, charts, credit section -->
+<!-- 8. Analytics: Floor 3 KPI computation — must load before dashboard.js -->
+<script src="js/analytics.js"></script>
+
+<!-- 8b. Dashboard: Floor 5 pure renderer -->
 <script src="js/dashboard.js"></script>
 
 <!-- 8b. Dashboard Insights: briefing card, target pace, rotating insight strip, diff badge (Phase 3) -->

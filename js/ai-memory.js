@@ -216,7 +216,7 @@ function aimRulesCheckAll() {
     if (!c) return; // unstructured rules just sit there informing the AI's prompt; not auto-fired
     try {
       if (c.type === 'creditAbove') {
-        const mgrKey = Object.keys(localStorage).find(k => k.startsWith('mw_mgr_') || k === 'mw_manager');
+        const mgrKey = Repository.getKeysByPrefix('mw_mgr_').concat(Repository.getItem('mw_manager') ? ['mw_manager'] : [])[0] || null;
         if (!mgrKey) return;
         const mgr = JSON.parse(Repository.getItem(mgrKey) || '{}');
         const months = Object.keys(mgr.credit || {});
@@ -443,7 +443,7 @@ function aimBriefingGenerate(force) {
 
   // Credit due reminder (from memory facts mentioning "due" + staff names, lightweight)
   try {
-    const mgrKey = Object.keys(localStorage).find(k => k.startsWith('mw_mgr_') || k === 'mw_manager');
+    const mgrKey = Repository.getKeysByPrefix('mw_mgr_').concat(Repository.getItem('mw_manager') ? ['mw_manager'] : [])[0] || null;
     if (mgrKey) {
       const mgr = JSON.parse(Repository.getItem(mgrKey) || '{}');
       const months = Object.keys(mgr.credit || {});

@@ -34,11 +34,8 @@ function mgrMonths() {
     ['salary','generic','expense','credit'].forEach(k => Object.keys(mgr[k] || {}).forEach(m => seen.add(m)));
   } catch(e) {}
   try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && k.startsWith('mw_petty_')) seen.add(k.slice('mw_petty_'.length));
-      if (k && k.startsWith('mw_incentive_')) seen.add(k.slice('mw_incentive_'.length));
-    }
+    Repository.getKeysByPrefix('mw_petty_').forEach(k => seen.add(k.slice('mw_petty_'.length)));
+    Repository.getKeysByPrefix('mw_incentive_').forEach(k => seen.add(k.slice('mw_incentive_'.length)));
   } catch(e) {}
   try {
     const all = typeof _csecLoad === 'function' ? _csecLoad() : JSON.parse(Repository.getItem('mw_custom_sections_v1') || '{}');
@@ -76,6 +73,10 @@ function switchMgrTab(tab) {
   if (tab === 'staff') renderStaffRegistry();
   if (tab === 'jazzcash' && typeof renderJazzCash === 'function') renderJazzCash();
   if (tab === 'sheets' && typeof renderNotesSheets === 'function') renderNotesSheets();
+  if (tab === 'custom' && typeof loadCustomSections === 'function') {
+    const cur = document.getElementById('csec-month-sel')?.value || mgrMonths()[0] || '';
+    loadCustomSections(cur);
+  }
 }
 
 function loadManagerPage() {
@@ -118,16 +119,11 @@ function _inp(type, val, cls, oninput, ph) {
 // (if configured) or add employees manually via + Add Employee.
 
 function staffLoad() {
-  try {
-    const raw = Repository.getItem(STAFF_KEY);
-    if (raw) { STAFF = JSON.parse(raw); return; }
-  } catch(e) {}
-  // Fresh install — start empty, no seeding
-  STAFF = [];
+  Repository.loadStaff();
 }
 
 function staffSave() {
-  Repository.setItem(STAFF_KEY, JSON.stringify(STAFF));
+  Repository.saveStaff();
 }
 
 function activeStaff() {
@@ -222,50 +218,41 @@ function renderStaffRegistry() {
   </div>`;}
 
 function staffFieldChange(i, field, val) {
-  STAFF[i][field] = val;
+  Actions.updateEmployee(i, { [field]: val });
 }
 function staffSrNumChange(i, val) {
-  STAFF[i].srNum = Number(val) || 1;
+  Actions.updateEmployee(i, { srNum: Number(val) || 1 });
   // Re-render the table so the sort order updates live
   renderStaffRegistry();
 }
 
 function staffToggleActive(i, active) {
-  STAFF[i].active = active;
+  Actions.updateEmployee(i, { active });
   renderStaffRegistry();
 }
 
 function staffDelete(i) {
-  if (!confirm('Remove ' + (STAFF[i].name||'this employee') + ' from the staff list?\n\nHistorical data will be kept — they just won\'t appear in new months.')) return;
-  STAFF.splice(i, 1);
+  const staff = Repository.getStaff();
+  const name = (staff[i] && staff[i].name) ? staff[i].name : 'this employee';
+  if (!confirm('Remove ' + name + ' from the staff list?\n\nHistorical data will be kept — they just won\'t appear in new months.')) return;
+  Actions.removeEmployee(i);
   renderStaffRegistry();
 }
 
 function addStaffEmployee() {
-  const num = STAFF.length + 1;
-  const sid = 'EMP-' + String(num).padStart(3, '0');
-  const maxSr = STAFF.reduce((m, e) => Math.max(m, Number(e.srNum) || 0), 0);
-  STAFF.push({
-    id: 'emp_' + Date.now(),
-    staffId: sid,
-    srNum: maxSr + 1,
-    name: '',
-    designation: 'Salesman',
-    fatherName: '',
-    cnic: '',
-    phone: '',
-    address: '',
-    bloodGroup: '',
-    doj: new Date().toISOString().split('T')[0],
-    active: true
-  });
+  const newEmp = Actions.addEmployee();
   renderStaffRegistry();
-  setTimeout(() => openStaffCard(STAFF.length - 1), 100);
+  setTimeout(() => openStaffCard(Repository.getStaff().length - 1), 100);
 }
 
 function saveStaffRegistry() {
-  // Migrate: assign srNum to any staff missing it
-  STAFF.forEach((emp, i) => { if (emp.srNum == null || emp.srNum === '') emp.srNum = i + 1; });
+  // Migrate: assign srNum to any staff missing it — goes through Actions
+  // so the Proxy does not flag it as a bypass.
+  const staff = Repository.getStaff();
+  staff.forEach((emp, i) => {
+    if (emp.srNum == null || emp.srNum === '') Actions.updateEmployee(i, { srNum: i + 1 });
+  });
+  // staffSave() persists the array; _propagateStaffToSheets rebuilds sheets.
   staffSave();
   _propagateStaffToSheets();
   toast('✓ Staff list saved — syncing to Supabase…');
@@ -1530,23 +1517,27 @@ function closeStaffCard() {
 
 function saveStaffCard() {
   const i = parseInt(document.getElementById('sc-idx').value);
-  if (isNaN(i) || i < 0 || i >= STAFF.length) return;
+  const staff = Repository.getStaff();
+  if (isNaN(i) || i < 0 || i >= staff.length) return;
   const get = id => { const el = document.getElementById(id); return el ? el.value : ''; };
-  STAFF[i].staffId     = get('sc-f-staffId');
-  STAFF[i].srNum       = Number(get('sc-f-srNum')) || STAFF[i].srNum;
-  STAFF[i].name        = get('sc-f-name');
-  STAFF[i].designation = get('sc-f-designation');
-  STAFF[i].fatherName  = get('sc-f-fatherName');
-  STAFF[i].cnic        = get('sc-f-cnic');
-  STAFF[i].bloodGroup  = get('sc-f-bloodGroup');
-  STAFF[i].phone       = get('sc-f-phone');
-  STAFF[i].doj         = get('sc-f-doj');
-  STAFF[i].address     = get('sc-f-address');
   const activeEl = document.getElementById('sc-f-active');
-  if (activeEl) STAFF[i].active = activeEl.checked;
+  const changes = {
+    staffId:     get('sc-f-staffId'),
+    srNum:       Number(get('sc-f-srNum')) || staff[i].srNum,
+    name:        get('sc-f-name'),
+    designation: get('sc-f-designation'),
+    fatherName:  get('sc-f-fatherName'),
+    cnic:        get('sc-f-cnic'),
+    bloodGroup:  get('sc-f-bloodGroup'),
+    phone:       get('sc-f-phone'),
+    doj:         get('sc-f-doj'),
+    address:     get('sc-f-address'),
+  };
+  if (activeEl) changes.active = activeEl.checked;
+  const updated = Actions.updateEmployee(i, changes);
   // Update header live
-  document.getElementById('sc-title-id').textContent   = STAFF[i].staffId || '';
-  document.getElementById('sc-title-name').textContent  = STAFF[i].name || '(unnamed)';
+  document.getElementById('sc-title-id').textContent   = updated.staffId || '';
+  document.getElementById('sc-title-name').textContent  = updated.name || '(unnamed)';
   renderStaffRegistry();
   toast('✓ Staff details saved — click 💾 Save Staff List to persist');
 }
@@ -1617,12 +1608,16 @@ function initApp() {
   // saved to localStorage by data-page.js's saveEntry(). Gap-fill only:
   // never overwrites a record that's already in DAILY/MONTHLY (e.g. one
   // that arrived via a Supabase pull since this device was last open).
-  // Now routed through Repository instead of touching DAILY/MONTHLY directly.
+  // Routed entirely through Repository — loadPendingEntries() owns the
+  // `newEntries` array now (closes the ghost-state gap), and
+  // gapFillDaily/gapFillMonthly own the "add what's missing" restore
+  // (same named operation drive.js and supabase.js's push path use).
   try {
-    const se=Repository.getItem('bt_entries');
-    if(se){ newEntries=JSON.parse(se); newEntries.forEach(e=>{ if(!Repository.getDailyEntry(e.Date, e.Month_Year)) Repository.upsertDaily(e); }); }
-    const sm=Repository.getItem('bt_new_months');
-    if(sm){ JSON.parse(sm).forEach(m=>{ if(!Repository.getMonthlyEntry(m.Month_Year)) Repository.upsertMonthly(m); }); }
+    Repository.loadPendingEntries();
+    const pending = Repository.getPendingEntries();
+    if (pending.length) Repository.gapFillDaily(pending);
+    const sm = Repository.getItem('bt_new_months');
+    if (sm) Repository.gapFillMonthly(JSON.parse(sm));
   } catch(e){}
   rebuildDropdowns();
   // Default dashboard to latest year
@@ -1631,9 +1626,114 @@ function initApp() {
     const yrsArr = years();
     if (yrsArr.length) dashYrSel.value = yrsArr[yrsArr.length - 1];
   }
-  showPage('dashboard');
+
+  // ── EventBus subscribers (MF-02 fix) ────────────────────────────
+  // Wire the Floor 3 → Floor 5 path. Each subscriber reacts only to
+  // its own relevant events and only when its page is currently active,
+  // keeping re-renders cheap and targeted.
+  //
+  // Registered once here in initApp(). initApp() is guarded elsewhere
+  // against running twice per session (the _autoRefreshStarted pattern),
+  // so subscribers won't stack. Events that should always refresh
+  // regardless of the current page call rebuildAll() directly.
+  _initEventBusSubscribers();
+
+  let target = 'dashboard';
+  try {
+    const saved = sessionStorage.getItem('bt_nav_target');
+    if (saved && document.getElementById('page-' + saved)) target = saved;
+    sessionStorage.removeItem('bt_nav_target');
+  } catch (_) {}
+  showPage(target);
   renderEntryList();
   updateGhBadge();
+}
+
+// ── EventBus subscriber registration ─────────────────────────────────
+// One function, called once from initApp(). Kept separate so it is easy
+// to read, test, and extend without touching initApp() itself.
+function _initEventBusSubscribers() {
+  // Guard: only register once per page session
+  if (window._ebSubscribersRegistered) return;
+  window._ebSubscribersRegistered = true;
+
+  EventBus.onChange(function(eventName, payload) {
+    // ── DAILY / MONTHLY writes ─────────────────────────────────
+    // Any write to the sales data should rebuild the full app so all
+    // pages stay in sync (dashboard KPIs, data table, reports, diff).
+    const isSalesWrite = (
+      eventName === 'daily:added'    || eventName === 'daily:updated'   ||
+      eventName === 'daily:deleted'  || eventName === 'daily:pulled'    ||
+      eventName === 'daily:gapfilled'||
+      eventName === 'monthly:added'  || eventName === 'monthly:updated' ||
+      eventName === 'monthly:deleted'|| eventName === 'monthly:pulled'  ||
+      eventName === 'monthly:gapfilled'
+    );
+    if (isSalesWrite) {
+      // Debounce: if many records arrive together (e.g. bulk pull),
+      // collapse into one rebuild 300ms after the last event.
+      clearTimeout(window._ebRebuildTimer);
+      window._ebRebuildTimer = setTimeout(function() {
+        if (typeof rebuildAll === 'function') rebuildAll();
+      }, 300);
+      return;
+    }
+
+    // ── STAFF changes ──────────────────────────────────────────
+    // Re-render the staff registry only when the manager page is visible.
+    if (eventName === 'staff:changed' || eventName === 'staff:added' ||
+        eventName === 'staff:updated' || eventName === 'staff:removed') {
+      if (typeof _curPage !== 'undefined' && _curPage === 'manager') {
+        if (typeof renderStaffRegistry === 'function') renderStaffRegistry();
+      }
+      return;
+    }
+
+    // ── Navigation change ──────────────────────────────────────
+    // When the user switches to the dashboard, rebuild to pick up any
+    // data that arrived while another page was shown.
+    if (eventName === 'nav:changed' && payload && payload.page === 'dashboard') {
+      if (typeof buildDashboard === 'function') buildDashboard();
+      return;
+    }
+
+    // ── Data-page while open ───────────────────────────────────
+    if (eventName === 'nav:changed' && payload && payload.page === 'data') {
+      if (typeof renderDataTable === 'function') renderDataTable();
+      return;
+    }
+
+    // ── Index page while open ──────────────────────────────────
+    if (eventName === 'nav:changed' && payload && payload.page === 'index') {
+      if (typeof renderIndex === 'function') renderIndex();
+      return;
+    }
+
+    // ── Conflict queued ────────────────────────────────────────
+    // (Already handled in conflict-ui.js — this is intentionally a
+    //  no-op here so there's no double-open of the conflict modal.)
+
+    // ── Generic feature-data changes (item:changed) ─────────────
+    // Repository.setItem() fires this for every key/value write —
+    // notes, sheets, targets, custom sections, jazz cash, petty cash,
+    // etc. We don't know here which page needs to redraw for a given
+    // key, so we only refresh the *currently visible* page's own
+    // render function if it happens to depend on this data. This is
+    // deliberately conservative — a full generic key→renderer map
+    // would need per-feature registration, which is out of scope for
+    // this pass. The important architectural point (closes MF-02 /
+    // Rule 7) is that the event exists and pages CAN subscribe to it;
+    // targeted re-renders can be added feature-by-feature over time.
+    if (eventName === 'item:changed' && payload && payload.key) {
+      if (typeof _curPage !== 'undefined' && _curPage === 'dashboard' &&
+          (payload.key === 'bt_targets' || payload.key.indexOf('mw_petty_') === 0)) {
+        clearTimeout(window._ebFeatureRebuildTimer);
+        window._ebFeatureRebuildTimer = setTimeout(function() {
+          if (typeof buildDashboard === 'function') buildDashboard();
+        }, 300);
+      }
+    }
+  });
 }
 
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeMon(); closeDay(); }});

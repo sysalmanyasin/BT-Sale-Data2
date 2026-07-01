@@ -62,8 +62,8 @@ function fmLoad() {
 }
 
 function fmSave() {
-  Repository.setItem('bt_col_config', JSON.stringify(_fmHidden));
-  Repository.setItem('bt_custom_cols', JSON.stringify(_fmCustom));
+  Actions.saveFieldConfig('bt_col_config', JSON.stringify(_fmHidden));
+  Actions.saveFieldConfig('bt_custom_cols', JSON.stringify(_fmCustom));
   // If auto-save is enabled, trigger a sync
   try {
     const autoSave = Repository.getItem('bt_auto_save') === '1'

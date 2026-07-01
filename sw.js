@@ -1,16 +1,19 @@
 /* ═══════════════════════════════════════════════════════════════
-   BT Sales IC — Service Worker  v7.0
-   Strategy: Cache-first for all app shell assets.
+   BT Sales IC — Service Worker  v8.2
+   Strategy: Network-first for same-origin app shell (fresh on connect,
+   cached fallback offline). CDN libs use stale-while-revalidate.
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v8.0'; // v8.0: Repository/Actions/Event-Bus restructuring (Floors 1-5)
+const CACHE_NAME = 'bt-sales-v8.2'; // v8.2: PNG icons + post-auth sync + layout fixes
 
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.json',
-  /* ── CSS ── */
+  './sw.js',
+
+  /* ── CSS (index.html load order) ── */
   './css/variables.css',
   './css/auth.css',
   './css/nav.css',
@@ -20,76 +23,78 @@ const APP_SHELL = [
   './css/mobile.css',
   './css/assistant.css',
   './css/assistant-fixes.css',
-  /* Phase 1-3 CSS */
   './css/intent-groups.css',
   './css/ai-instructions.css',
   './css/ai-context.css',
-  /* ── JS — shared service layer (load before config.js) ── */
+
+  /* ── JS — shared service layer ── */
+  './js/data-base.js',
   './js/bt-format.js',
   './js/bt-date.js',
   './js/bt-calc.js',
   './js/bt-search.js',
   './js/app-context.js',
-  /* ── JS — application modules ── */
-  './js/data-base.js',
+
+  /* ── JS — core app ── */
   './js/config.js',
   './js/auth.js',
   './js/storage.js',
   './js/ui.js',
-  /* Phase Sync Center (load before supabase.js) */
+
+  /* ── JS — sync / repository / actions (strict load order) ── */
+  './js/event-bus.js',
   './js/sync-center.js',
-  /* Repository/Actions/Event-Bus restructuring (Floors 1-5, v8.0) */
   './js/repository.js',
+  './js/actions.js',
+  './js/conflict-ui.js',
   './js/supabase.js',
+
+  /* ── JS — features ── */
   './js/targets.js',
+  './js/analytics.js',
   './js/dashboard.js',
-  /* Phase 3: Dashboard Insights */
   './js/dashboard-insights.js',
   './js/index-page.js',
   './js/reports.js',
   './js/data-page.js',
   './js/diff-report.js',
-  /* Phase 2: CommandHub embedded page */
   './js/commandhub-page.js',
   './js/commandhub.js',
   './js/reports-print.js',
-  /* Phase 5: Manager Summary Export */
   './js/manager-export.js',
+  './js/ai-helpers.js',
+  './js/notes-sheets.js',
   './js/manager.js',
   './js/custom-sections.js',
-  './js/fields.js',
-  /* Phase 4: Jazz Cash Ledger */
   './js/jazz-cash.js',
+  './js/hub-actions.js',
+  './js/fields.js',
   './js/drive.js',
+
   /* ── JS — AI assistant ── */
   './js/ai-memory.js',
-  /* Phase 1: Intent Groups */
-  './js/intent-groups.js',
-  /* Phase 2: AI Instructions */
   './js/ai-instructions.js',
   './js/ai-instructions-ui.js',
-  /* Phase 3: Context Engine */
+  './js/knowledge-sheet.js',
   './js/ai-context.js',
   './js/ai-context-ui.js',
-  /* Core bridge */
+  './js/intent-groups.js',
   './js/ai-bridge.js',
-  /* Phase 6: Notes & Sheets + OCR upgrade */
-  './js/notes-sheets.js',
-  './js/ai-helpers.js',
-  /* Phase 7: Knowledge Sheet (ported from retired ai-page.js) */
-  './js/knowledge-sheet.js',
-  /* Hub quick-action handlers — found missing from precache during v8.0 audit */
-  './js/hub-actions.js',
-  /* ai-page.js was deleted in Phase 7 — do NOT list it here */
+
   /* ── Icons ── */
   './icons/icon.svg',
+  './icons/favicon-32.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/apple-touch-icon.png',
-  './icons/favicon-32.png',
+
+  /* ── External CDN — precached for offline Chart / Excel / Supabase client ── */
+  'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js',
 ];
 
-/* ── External CDN resources — cached on first use (stale-while-revalidate) ── */
+/* ── External CDN origins — cached on first use (stale-while-revalidate) ── */
 const CDN_ORIGINS = [
   'https://cdnjs.cloudflare.com',
   'https://fonts.googleapis.com',

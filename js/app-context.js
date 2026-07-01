@@ -222,10 +222,9 @@ function getAppContextSummary(opts) {
     lines.push('');
   }
 
-  // ── 6. PETTY CASH (every month, scanning localStorage) ─────────────
+  // ── 6. PETTY CASH (every month, scanning via Repository) ─────────────
   try {
-    const pettyMonths = Object.keys(localStorage)
-      .filter(function (k) { return k.indexOf('mw_petty_') === 0; })
+    const pettyMonths = Repository.getKeysByPrefix('mw_petty_')
       .map(function (k) { return k.replace('mw_petty_', ''); });
     if (pettyMonths.length) {
       lines.push('=== MANAGER > PETTY CASH (every month) ===');

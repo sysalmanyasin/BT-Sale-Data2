@@ -252,7 +252,7 @@
       list.unshift({ id: item.id, title: item.title, sub: item.sub,
                      icon: item.icon, cat: item.cat, ts: Date.now() });
       if (list.length > MAX_RECENT) list = list.slice(0, MAX_RECENT);
-      Repository.setItem(RECENT_KEY, JSON.stringify(list));
+      Actions.saveCommandHubRecents(JSON.stringify(list));
     } catch (_) {}
   }
 

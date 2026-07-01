@@ -1,116 +1,75 @@
 // ══════════════════════════════════════════
+// FLOOR 5 — buildDashboard (pure renderer)
+//
+// All computation is now done by Analytics.getDashboardKPIs() and
+// Analytics.getCreditSectionData() (Floor 3 / analytics.js).
+// buildDashboard() only maps their output to DOM — no business logic
+// lives here. This closes audit finding CF-03.
+// ══════════════════════════════════════════
 function buildDashboard() {
-  // Phase 3: briefing card, target pace, rotating insight strip, diff badge
   if (typeof buildDashboardInsights === 'function') buildDashboardInsights();
+  if (!MONTHLY.length || MONTHLY.length < 2) return;
 
-  const yr = document.getElementById('dash-year')?.value;
-  const data = yr ? MONTHLY.filter(m=>m.Month_Year.endsWith(yr)) : MONTHLY;
+  // ── Get all KPI data from Analytics (Floor 3) ──────────────────
+  const kd = Analytics.getDashboardKPIs();
+  if (!kd) return;
 
-  // Grand total
-  const gTotal = MONTHLY.reduce((s,m)=>s+n(m.TOTAL),0);
+  const {
+    lat, prv, isLive, D, vsLabel, ytdVsLabel,
+    gTotal, dailyRecordCount,
+    prvTotal, prvCash, prvCredit, prvCustomers,
+    ytd, pYtd, curY,
+    latTgt, latAct, latDays, daysInMon, dailyAvg, forecastTotal,
+    avgBill, pAvgBill,
+    cagr, bScore, cumDiff,
+  } = kd;
+
+  // ── Hero numbers ───────────────────────────────────────────────
   document.getElementById('grand-total').textContent = fc(gTotal);
   document.getElementById('hero-sub').textContent =
-    MONTHLY.length+' months · '+DAILY.filter(d=>n(d.TOTAL)>0).length+' records · Latest: '+MONTHLY[MONTHLY.length-1].Month_Year;
+    MONTHLY.length + ' months · ' + dailyRecordCount + ' records · Latest: ' + lat.Month_Year;
 
-  // KPIs
-  const lat=MONTHLY[MONTHLY.length-1], prv=MONTHLY[MONTHLY.length-2];
-  const _now=new Date();
-  const curY=_now.getFullYear();
+  // ── Build KPI card array (pure data → template strings) ────────
+  const yr   = document.getElementById('dash-year')?.value;
+  const data = yr ? MONTHLY.filter(m => m.Month_Year.endsWith(yr)) : MONTHLY;
 
-  // ── Same-Period (MTD) helpers ───────────────────────────────────
-  // Parse day number from DAILY Date field ('20/Jun/2026' → 20)
-  function _dayOf(dateStr){ return parseInt((dateStr||'').split('/')[0],10)||0; }
-
-  // Check if a Month_Year string equals the current running month
-  const _MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-  const _curMonthYear=_MN[_now.getMonth()]+' '+curY;
-  const _isLive = lat.Month_Year === _curMonthYear;
-
-  // Last day with actual filled data in current month (NOT calendar today)
-  // e.g. if data entered up to June 23, use 23 — not 24
-  const _lastFilledDay = _isLive
-    ? Math.max(0, ...DAILY.filter(d=>d.Month_Year===lat.Month_Year && n(d.TOTAL)>0).map(d=>_dayOf(d.Date)))
-    : 0;
-
-  // Sum DAILY totals for a given Month_Year, only up to dayLimit
-  function _dailyMTD(monthYear, dayLimit){
-    return DAILY.filter(d=>d.Month_Year===monthYear && _dayOf(d.Date)<=dayLimit)
-                .reduce((s,d)=>s+n(d.TOTAL),0);
-  }
-  // Same for any numeric field
-  function _dailyMTDField(monthYear, dayLimit, field){
-    return DAILY.filter(d=>d.Month_Year===monthYear && _dayOf(d.Date)<=dayLimit)
-                .reduce((s,d)=>s+n(d[field]),0);
-  }
-
-  // Previous month comparison values:
-  //   If current month is live → compare vs same last-filled day in prev month
-  //   If latest month is already complete → compare full months as before
-  const _D=_lastFilledDay;
-  const _prvTotal     = _isLive ? _dailyMTD(prv.Month_Year,_D) : n(prv.TOTAL);
-  const _prvCash      = _isLive ? (['Cash Sale','HBL','MCB','Alfala Bank','Bank Al Habib','Meezan Bank (Paysa)']
-                          .reduce((s,f)=>s+_dailyMTDField(prv.Month_Year,_D,f),0)
-                          - Math.abs(_dailyMTDField(prv.Month_Year,_D,'Cash Returns'))) : cashSales(prv);
-  const _prvCredit    = _isLive ? CLIENT_COLS.reduce((s,c)=>s+_dailyMTDField(prv.Month_Year,_D,c),0) : creditSales(prv);
-  const _prvCustomers = _isLive ? _dailyMTDField(prv.Month_Year,_D,'Customers') : n(prv.Customers);
-  const _vsLabel      = _isLive ? 'vs prev (day 1–'+_D+')' : 'vs prev';
-
-  // YTD — compare current year vs same period last year (up to last filled day)
-  const _curMonthIdx=_now.getMonth(); // 0-based
-  // Current YTD: all months of curY (lat already holds partial total for live month)
-  const ytd=MONTHLY.filter(m=>{ const p=m.Month_Year.split(' '); return parseInt(p[1])===curY; }).reduce((s,m)=>s+n(m.TOTAL),0);
-  // Prev year same period: complete months Jan to (curMonth-1) + same last-filled day of curMonth last year
-  const _prevSameMonthYear=_MN[_curMonthIdx]+' '+(curY-1);
-  const pYtd=MONTHLY.filter(m=>{ const p=m.Month_Year.split(' '); return parseInt(p[1])===(curY-1) && _MN.indexOf(p[0])<_curMonthIdx; }).reduce((s,m)=>s+n(m.TOTAL),0)
-             + (_isLive ? _dailyMTD(_prevSameMonthYear,_D) : 0);
-  const _ytdVsLabel=_isLive ? 'vs '+(curY-1)+' (1–'+_D+' '+_MN[_curMonthIdx]+')' : 'vs '+(curY-1);
-
-  const tgts=getTgts(), latTgt=tgts[lat.Month_Year];
-  const latAct=n(lat.TOTAL);
-  const latDays=DAILY.filter(d=>d.Month_Year===lat.Month_Year&&n(d.TOTAL)>0).length;
-  const daysInMon=new Date(new Date().getFullYear(),new Date().getMonth()+1,0).getDate();
-  const dailyAvg=latDays?latAct/latDays:0;
-  const forecastTotal=dailyAvg*daysInMon;
-  const avgBill=n(lat.Customers)?latAct/n(lat.Customers):0;
-  const pAvgBill=_prvCustomers?_prvTotal/_prvCustomers:0;
-  const cagr=yearlyCAGR();
-  const bScore=branchScore(lat,prv,latTgt,latAct);
-
-  const kpis=[
-    ...(latTgt?[{label:'🎯 Forecast vs Target — '+lat.Month_Year,value:Math.min(100,Math.round(forecastTotal/latTgt*100))+'% of ₨'+ff(latTgt),
-      sub:'Projected ₨'+fc(forecastTotal)+' · Day '+latDays+'/'+daysInMon,
-      bar:{pct:Math.min(100,Math.round(forecastTotal/latTgt*100)),cls:forecastTotal/latTgt>=1?'g':forecastTotal/latTgt>=.75?'a':'r'},
-      extra:'Remaining ₨'+fc(Math.max(0,latTgt-latAct)),
-      borderColor:forecastTotal/latTgt>=1?'var(--green)':forecastTotal/latTgt>=.75?'var(--amber)':'var(--red)'}]:[]),
-    {label:'Latest Month'+(_isLive?' (day 1–'+_D+')':''),value:'₨ '+ff(n(lat.TOTAL)),delta:pct(n(lat.TOTAL),_prvTotal)+' '+_vsLabel,up:n(lat.TOTAL)>=_prvTotal},
-    {label:'Cash Sales (Cash+Bank)',value:'₨ '+ff(cashSales(lat)),delta:pct(cashSales(lat),_prvCash)+' '+_vsLabel,up:cashSales(lat)>=_prvCash},
-    {label:'Credit Sales',value:'₨ '+ff(creditSales(lat)),delta:pct(creditSales(lat),_prvCredit)+' '+_vsLabel,up:creditSales(lat)>=_prvCredit},
-    {label:'Avg Bill Size',value:'₨ '+ff(avgBill),delta:pct(avgBill,pAvgBill)+' vs prev',up:avgBill>=pAvgBill},
-    {label:'Customers (Latest)',value:fc(n(lat.Customers)),delta:pct(n(lat.Customers),_prvCustomers)+' '+_vsLabel,up:n(lat.Customers)>=_prvCustomers},
-    {label:'YTD '+curY,value:'₨ '+ff(ytd),delta:pct(ytd,pYtd)+' '+_ytdVsLabel,up:ytd>=pYtd},
-    ...(cagr!=null?[{label:'CAGR Since 2020',value:cagr.toFixed(1)+'%',sub:'TTM vs first 12 months'}]:[]),
-    ...(bScore!=null?[{label:'Branch Performance Score',value:bScore+'/100',
-      bar:{pct:bScore,cls:bScore>=75?'g':bScore>=50?'a':'r'},
-      borderColor:bScore>=75?'var(--green)':bScore>=50?'var(--amber)':'var(--red)'}]:[]),
-    // Cumulative DIFF KPI
+  const kpis = [
+    ...(latTgt ? [{
+      label: '🎯 Forecast vs Target — ' + lat.Month_Year,
+      value: Math.min(100, Math.round(forecastTotal / latTgt * 100)) + '% of ₨' + ff(latTgt),
+      sub:   'Projected ₨' + fc(forecastTotal) + ' · Day ' + latDays + '/' + daysInMon,
+      bar:   { pct: Math.min(100, Math.round(forecastTotal / latTgt * 100)), cls: forecastTotal / latTgt >= 1 ? 'g' : forecastTotal / latTgt >= .75 ? 'a' : 'r' },
+      extra: 'Remaining ₨' + fc(Math.max(0, latTgt - latAct)),
+      borderColor: forecastTotal / latTgt >= 1 ? 'var(--green)' : forecastTotal / latTgt >= .75 ? 'var(--amber)' : 'var(--red)',
+    }] : []),
+    { label: 'Latest Month' + (isLive ? ' (day 1–' + D + ')' : ''), value: '₨ ' + ff(n(lat.TOTAL)), delta: pct(n(lat.TOTAL), prvTotal) + ' ' + vsLabel, up: n(lat.TOTAL) >= prvTotal },
+    { label: 'Cash Sales (Cash+Bank)',  value: '₨ ' + ff(cashSales(lat)),   delta: pct(cashSales(lat),   prvCash)      + ' ' + vsLabel, up: cashSales(lat)   >= prvCash },
+    { label: 'Credit Sales',            value: '₨ ' + ff(creditSales(lat)), delta: pct(creditSales(lat), prvCredit)    + ' ' + vsLabel, up: creditSales(lat) >= prvCredit },
+    { label: 'Avg Bill Size',           value: '₨ ' + ff(avgBill),          delta: pct(avgBill, pAvgBill) + ' vs prev',                 up: avgBill          >= pAvgBill },
+    { label: 'Customers (Latest)',       value: fc(n(lat.Customers)),        delta: pct(n(lat.Customers), prvCustomers) + ' ' + vsLabel, up: n(lat.Customers) >= prvCustomers },
+    { label: 'YTD ' + curY,             value: '₨ ' + ff(ytd),             delta: pct(ytd, pYtd) + ' ' + ytdVsLabel,                  up: ytd              >= pYtd },
+    ...(cagr != null ? [{ label: 'CAGR Since 2020', value: cagr.toFixed(1) + '%', sub: 'TTM vs first 12 months' }] : []),
+    ...(bScore != null ? [{
+      label: 'Branch Performance Score', value: bScore + '/100',
+      bar: { pct: bScore, cls: bScore >= 75 ? 'g' : bScore >= 50 ? 'a' : 'r' },
+      borderColor: bScore >= 75 ? 'var(--green)' : bScore >= 50 ? 'var(--amber)' : 'var(--red)',
+    }] : []),
     (()=>{
-      const cumDiff=MONTHLY.reduce((s,m)=>s+Math.round(n(m.TOTAL)-n(m['COMP SALE'])),0);
-      const sign=cumDiff>=0?'+':'';
-      const col=cumDiff>0?'var(--green)':cumDiff<0?'var(--red)':'var(--muted)';
-      const lbl=cumDiff>0?'Physical ahead of system':'System ahead of physical';
-      return {label:'📉 CC Difference',value:sign+'₨ '+ff(cumDiff),
-        sub:lbl+' · '+MONTHLY.length+' months',borderColor:col};
+      const sign = cumDiff >= 0 ? '+' : '';
+      const col  = cumDiff > 0 ? 'var(--green)' : cumDiff < 0 ? 'var(--red)' : 'var(--muted)';
+      const lbl  = cumDiff > 0 ? 'Physical ahead of system' : 'System ahead of physical';
+      return { label: '📉 CC Difference', value: sign + '₨ ' + ff(cumDiff), sub: lbl + ' · ' + MONTHLY.length + ' months', borderColor: col };
     })(),
   ];
 
-  document.getElementById('krow').innerHTML=kpis.map(k=>`
-    <div class="kpi" style="${k.borderColor?'border-color:'+k.borderColor:''}">
+  document.getElementById('krow').innerHTML = kpis.map(k => `
+    <div class="kpi" style="${k.borderColor ? 'border-color:' + k.borderColor : ''}">
       <div class="klabel">${k.label}</div>
       <div class="kvalue">${k.value}</div>
-      ${k.bar?'<div class="kpbar"><div class="kpfill '+k.bar.cls+'" style="width:'+k.bar.pct+'%"></div></div>':
-       (k.delta?'<div class="kdelta '+(k.up?'up':'dn')+'">'+(k.up?'▲':'▼')+' '+k.delta+'</div>':'')}
-      ${k.sub?'<div style="font-size:10px;color:var(--muted);margin-top:4px">'+k.sub+'</div>':''}
-      ${k.extra?'<div style="font-size:10px;color:var(--muted);margin-top:2px">'+k.extra+'</div>':''}
+      ${k.bar ? '<div class="kpbar"><div class="kpfill ' + k.bar.cls + '" style="width:' + k.bar.pct + '%"></div></div>'
+              : (k.delta ? '<div class="kdelta ' + (k.up ? 'up' : 'dn') + '">' + (k.up ? '▲' : '▼') + ' ' + k.delta + '</div>' : '')}
+      ${k.sub   ? '<div style="font-size:10px;color:var(--muted);margin-top:4px">'  + k.sub   + '</div>' : ''}
+      ${k.extra ? '<div style="font-size:10px;color:var(--muted);margin-top:2px">' + k.extra + '</div>' : ''}
     </div>`).join('');
 
   buildCharts(data);
@@ -118,166 +77,54 @@ function buildDashboard() {
   buildTop10Days();
   buildDayOfWeek();
   buildBestWorstPerYear();
-  const managerMonth = latestManagerMonth() || latestSalesMonthForDashboard(lat);
-  buildCreditSection(managerMonth);
 
-  // populate Working summary for the latest manager month
+  // Manager month: resolved entirely in Analytics (Floor 3)
+  const managerMonth = Analytics.latestManagerMonth() || Analytics.latestSalesMonth(lat);
+  buildCreditSection(managerMonth);
   if (typeof populateDashWorking === 'function') populateDashWorking(managerMonth || '');
 }
 
 // ══════════════════════════════════════════
 // DASHBOARD CREDIT DETAILS SECTION
 // ══════════════════════════════════════════
-function _monthSortVal(my) {
-  const MN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  const parts = String(my || '').split(' ');
-  const idx = MN.indexOf(parts[0]);
-  const yr = parseInt(parts[1], 10);
-  return idx >= 0 && !isNaN(yr) ? yr * 12 + idx : -1;
-}
+// ── Delegators to Analytics (Floor 3) — dashboard.js no longer owns ──
+// these computations. They are kept as named wrappers so any other code
+// in this file that called them by their old names still works.
+function _monthSortVal(my)            { return Analytics._monthSortVal(my); }
+function _currentMonthVal()           { return Analytics._currentMonthVal(); }
+function managerMonthHasData(my)      { return Analytics.managerMonthHasData(my); }
+function latestManagerMonth()         { return Analytics.latestManagerMonth(); }
+function latestSalesMonthForDashboard(lat) { return Analytics.latestSalesMonth(lat); }
 
-function _currentMonthVal() {
-  const d = new Date();
-  return d.getFullYear() * 12 + d.getMonth();
-}
-
-function latestSalesMonthForDashboard(lat) {
-  const current = _currentMonthVal();
-  if (lat && _monthSortVal(lat.Month_Year) <= current) return lat.Month_Year;
-  const latest = [...MONTHLY].reverse().find(m => _monthSortVal(m.Month_Year) <= current);
-  return latest ? latest.Month_Year : '';
-}
-
-function managerMonthHasData(my) {
-  let hasData = false;
-  try {
-    const mgr = mgrLoad();
-    const salary = (mgr.salary && mgr.salary[my]) || [];
-    const generic = (mgr.generic && mgr.generic[my]) || [];
-    const expense = mgr.expense && mgr.expense[my];
-    const credit = (mgr.credit && mgr.credit[my]) || [];
-    hasData = hasData
-      || salary.some(r => _ni(r.hoSal) || _ni(r.advance) || _ni(r.generic))
-      || generic.some(r => _ni(r.genericSale) || _ni(r.extra))
-      || !!(expense && (_ni(expense.opening) || (expense.rows || []).some(r => _ni(r.bill) || _ni(r.fuel) || _ni(r.soap) || _ni(r.refresh) || _ni(r.extra) || _ni(r.pattyHO))))
-      || credit.some(emp => _ni(emp.prevBal) || _ni(emp.salary) || _ni(emp.lessGeneric) || (emp.entries || []).some(e => _ni(e.amount) || e.desc || e.date));
-  } catch(e) {}
-  try {
-    hasData = hasData || (typeof _pettyTotalForMonth === 'function' && _pettyTotalForMonth(my) !== 0);
-  } catch(e) {}
-  try {
-    const csecAll = typeof _csecLoad === 'function' ? _csecLoad() : {};
-    hasData = hasData || Object.values(csecAll).some(sec => ((sec && sec.months && sec.months[my]) || []).some(r => (parseFloat(r.amount) || 0) !== 0 || r.desc || r.notes));
-  } catch(e) {}
-  try {
-    const inc = JSON.parse(Repository.getItem('mw_incentive_' + my) || '{}');
-    hasData = hasData || Object.values(inc).some(v => _ni(v) !== 0);
-  } catch(e) {}
-  return hasData;
-}
-
-function latestManagerMonth() {
-  const found = new Set();
-  try {
-    const mgr = mgrLoad();
-    ['salary','generic','expense','credit'].forEach(k => {
-      Object.keys(mgr[k] || {}).forEach(m => found.add(m));
-    });
-  } catch(e) {}
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && k.startsWith('mw_petty_')) found.add(k.slice('mw_petty_'.length));
-    }
-  } catch(e) {}
-  try {
-    const csecAll = typeof _csecLoad === 'function' ? _csecLoad() : {};
-    Object.values(csecAll).forEach(sec => Object.keys((sec && sec.months) || {}).forEach(m => found.add(m)));
-  } catch(e) {}
-  const current = _currentMonthVal();
-  return Array.from(found)
-    .filter(m => _monthSortVal(m) <= current && managerMonthHasData(m))
-    .sort((a, b) => _monthSortVal(b) - _monthSortVal(a))[0] || '';
-}
-
+// ── FLOOR 5 renderer — buildCreditSection ────────────────────────────
+// Data fetching fully delegated to Analytics.getCreditSectionData()
+// (Floor 3). This function only maps the result to HTML (closes CF-04).
 function buildCreditSection(lat) {
   const el = document.getElementById('dash-credit-section');
   if (!el || !lat) return;
 
   const my = typeof lat === 'string' ? lat : lat.Month_Year;
-  const mgrData = mgrLoad();
 
-  // ── 1. Staff Credit: net balance per employee ──────────────────
-  const crdRows = (mgrData.credit && mgrData.credit[my]) || [];
-  const staffCreditRows = crdRows.map(emp => {
-    const entriesTotal = (emp.entries||[]).reduce((s,e) => s + _ni(e.amount), 0);
-    const net = _ni(emp.prevBal) + entriesTotal - _ni(emp.salary) - _ni(emp.lessGeneric);
-    return { name: emp.name, net };
-  }).filter(r => r.net !== 0);
-  const staffCreditTotal = staffCreditRows.reduce((s,r) => s + r.net, 0);
+  // All data aggregation lives in Analytics (Floor 3)
+  const d = Analytics.getCreditSectionData(my);
 
-  // ── 2. Patty / Expense balance ─────────────────────────────────
-  const expData = mgrData.expense && mgrData.expense[my];
-  let pattyTotal = 0;
-  let pattyRows = [];
-  if (expData) {
-    const rows = expData.rows || [];
-    const opening   = _ni(expData.opening);
-    const totHO     = rows.reduce((s,r) => s + _ni(r.pattyHO), 0);
-    const totBill   = rows.reduce((s,r) => s + _ni(r.bill), 0);
-    const totFuel   = rows.reduce((s,r) => s + _ni(r.fuel), 0);
-    const totSoap   = rows.reduce((s,r) => s + _ni(r.soap), 0);
-    const totRef    = rows.reduce((s,r) => s + _ni(r.refresh), 0);
-    const totExt    = rows.reduce((s,r) => s + _ni(r.extra), 0);
-    const totalExp  = totBill + totFuel + totSoap + totRef + totExt;
-    pattyTotal = opening + totHO - totalExp;
-    pattyRows = [
-      { name: 'Opening Patty',    net:  opening  },
-      { name: 'HO Received',      net:  totHO    },
-      { name: 'Total Expenses',   net: -totalExp  },
-    ].filter(r => r.net !== 0);
-  }
-
-  // ── 3. Other Credits: Custom Sections totals for this month ────
-  const csecAll = _csecLoad();
-  const otherRows = Object.values(csecAll).map(sec => {
-    const rows = (sec.months && sec.months[my]) || [];
-    const total = rows.reduce((s,r) => s + (parseFloat(r.amount)||0), 0);
-    return { name: (sec.emoji||'📋') + ' ' + sec.name, net: total };
-  }).filter(r => r.net !== 0);
-
-  // ── 3b. Jazz Cash Ledger — inject live balance, replace any old manual row ──
-  if (typeof _jcCurrentBalance === 'function') {
-    const jcBal = _jcCurrentBalance();
-    // Remove any existing custom-section "Jazz Cash" row to avoid double-counting
-    const dupIdx = otherRows.findIndex(r => r.name.toLowerCase().includes('jazz cash'));
-    if (dupIdx >= 0) otherRows.splice(dupIdx, 1);
-    // Always show the ledger row (even if zero, so it's visible)
-    otherRows.unshift({ name: '💚 Salman Jazz Cash', net: jcBal, isJcLedger: true });
-  }
-
-  const otherTotal = otherRows.reduce((s,r) => s + r.net, 0);
-
-  // ── Grand total ────────────────────────────────────────────────
-  const grandCredit = staffCreditTotal + pattyTotal + otherTotal;
-
-  // ── Helpers ────────────────────────────────────────────────────
-  const fmtAmt = v => (v < 0 ? '−' : '') + '₨' + _fc2(Math.abs(v));
+  // ── Pure render helpers ────────────────────────────────────────
+  const fmtAmt  = v => (v < 0 ? '−' : '') + '₨' + _fc2(Math.abs(v));
   const amtColor = v => v > 0 ? 'var(--green)' : v < 0 ? 'var(--red)' : 'var(--muted)';
 
   const detailRows = rows => rows.map(r => {
     const isJc = r.isJcLedger;
     return `
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);${isJc?'background:#f0fdf4;margin:0 -16px;padding:6px 16px;':''}">
-      <span style="font-size:11px;color:${isJc?'#166534':'var(--t2)'};font-weight:${isJc?'700':'400'}">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);${isJc ? 'background:#f0fdf4;margin:0 -16px;padding:6px 16px;' : ''}">
+      <span style="font-size:11px;color:${isJc ? '#166534' : 'var(--t2)'};font-weight:${isJc ? '700' : '400'}">
         ${r.name}
-        ${isJc?`<span onclick="navigateTo('manager');setTimeout(()=>{switchMgrTab('jazzcash');},200)" style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:4px;margin-left:6px;cursor:pointer;font-weight:700">LIVE ↗</span>`:''}
+        ${isJc ? `<span onclick="navigateTo('manager');setTimeout(()=>{switchMgrTab('jazzcash');},200)" style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:4px;margin-left:6px;cursor:pointer;font-weight:700">LIVE ↗</span>` : ''}
       </span>
-      <span style="font-size:11px;font-family:var(--mono);font-weight:${isJc?'800':'600'};color:${isJc?(r.net<0?'var(--red)':'#15803d'):amtColor(r.net)}">${fmtAmt(r.net)}</span>
+      <span style="font-size:11px;font-family:var(--mono);font-weight:${isJc ? '800' : '600'};color:${isJc ? (r.net < 0 ? 'var(--red)' : '#15803d') : amtColor(r.net)}">${fmtAmt(r.net)}</span>
     </div>`;
   }).join('') || `<div style="font-size:11px;color:var(--muted);padding:4px 0">No data for ${my}</div>`;
 
-  const sectionCard = (icon, title, rows, total, accent) => `
+  const sectionCard = (icon, title, rows, total) => `
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:14px 16px;box-shadow:var(--sh)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <div style="font-size:12px;font-weight:700;color:var(--t2)">${icon} ${title}</div>
@@ -291,16 +138,16 @@ function buildCreditSection(lat) {
       <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">💳 Credit Details — ${my}</span>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:10px">
-      ${sectionCard('👥', 'Staff Credit', staffCreditRows, staffCreditTotal, 'var(--accent)')}
-      ${sectionCard('🧾', 'Patty / Expenses', pattyRows, pattyTotal, 'var(--amber)')}
-      ${sectionCard('📋', 'Other Credits', otherRows, otherTotal, 'var(--purple)')}
+      ${sectionCard('👥', 'Staff Credit',     d.staffRows,  d.staffTotal)}
+      ${sectionCard('🧾', 'Patty / Expenses', d.pattyRows,  d.pattyTotal)}
+      ${sectionCard('📋', 'Other Credits',    d.otherRows,  d.otherTotal)}
     </div>
     <div style="background:linear-gradient(135deg,#0f172a,#1e3a5f);border-radius:11px;padding:14px 20px;display:flex;align-items:center;justify-content:space-between">
       <div>
         <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:3px">Total Outstanding Credits — ${my}</div>
         <div style="font-size:10px;color:rgba(255,255,255,.4)">Staff + Patty + Other</div>
       </div>
-      <div style="font-size:24px;font-weight:700;font-family:var(--mono);color:${grandCredit >= 0 ? '#4ade80' : '#f87171'}">${fmtAmt(grandCredit)}</div>
+      <div style="font-size:24px;font-weight:700;font-family:var(--mono);color:${d.grandTotal >= 0 ? '#4ade80' : '#f87171'}">${fmtAmt(d.grandTotal)}</div>
     </div>`;
 }
 

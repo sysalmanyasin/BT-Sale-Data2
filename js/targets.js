@@ -10,14 +10,14 @@ function saveTarget() {
   if(!mon){ toast('⚠ Select a month','w'); return; }
   if(!amt||isNaN(amt)){ toast('⚠ Enter a valid amount','w'); return; }
   const t=getTgts(); t[mon]=amt;
-  Repository.setItem(TGT_K,JSON.stringify(t));
+  Actions.saveTargets(JSON.stringify(t));
   renderTargetList(); buildDashboard(); renderIndex();
   toast('✓ Target saved for '+mon);
 }
 
 function delTarget(mon) {
   const t=getTgts(); delete t[mon];
-  Repository.setItem(TGT_K,JSON.stringify(t));
+  Actions.saveTargets(JSON.stringify(t));
   renderTargetList(); buildDashboard(); renderIndex();
 }
 

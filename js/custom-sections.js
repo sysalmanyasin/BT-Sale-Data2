@@ -4,7 +4,7 @@
 function pettyNextMonth() {
   if (!_pettyMonth) { toast('⚠ Select a month first','w'); return; }
   // 1. Save current month first
-  Repository.setItem(_pettyKey(_pettyMonth), JSON.stringify(_pettyData));
+  Actions.saveFeatureData(_pettyKey(_pettyMonth), JSON.stringify(_pettyData));
   // 2. Compute the next month label (same "Month Year" format as mgrMonths)
   const MNAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   const parts = _pettyMonth.split(' ');  // ["April", "2026"]
@@ -19,7 +19,7 @@ function pettyNextMonth() {
     if (!confirm(`${nextMon} already has petty data. Overwrite it with a copy of ${_pettyMonth}?`)) return;
   }
   const clone = JSON.parse(JSON.stringify(_pettyData));
-  Repository.setItem(_pettyKey(nextMon), JSON.stringify(clone));
+  Actions.saveFeatureData(_pettyKey(nextMon), JSON.stringify(clone));
   // 4. Switch selector to next month (add if not present)
   const sel = document.getElementById('petty-month-sel');
   if (sel) {
@@ -45,7 +45,7 @@ let _csecData  = {};   // { sectionId: { name, emoji, rows: [{desc,amount,notes}
 function _csecLoad() {
   try { return JSON.parse(Repository.getItem(CSEC_KEY)) || {}; } catch(e) { return {}; }
 }
-function _csecSave(data) { Repository.setItem(CSEC_KEY, JSON.stringify(data)); }
+function _csecSave(data) { Actions.saveCustomSections(JSON.stringify(data)); }
 
 function loadCustomSections(mon) {
   _csecMonth = mon;

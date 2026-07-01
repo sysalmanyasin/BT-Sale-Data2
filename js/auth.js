@@ -434,22 +434,19 @@ function initAuthGate() {
 // ── Tool card helpers ──────────────────────────────────────────────
 function tcSaveGAuthSettings() {
   const cid = document.getElementById('tc-client-id').value.trim();
-  const emails = document.getElementById('tc-allowed-emails').value.trim();
   if(cid) {
     if(!cid.includes('.apps.googleusercontent.com')){ toast('⚠ Invalid Client ID format','w'); return; }
     Repository.setItem(GAUTH_CID_K, cid);
   }
-  if(emails!==null) Repository.setItem(GAUTH_MAIL_K, emails.split(/\n/).map(e=>e.trim()).filter(Boolean).join(','));
-  toast('✓ Google auth settings saved');
+  toast('✓ Google Client ID saved (authorised emails are fixed in app source)');
   _tcLoadGAuthStatus();
 }
 function tcClearGAuthSession() { gauthClearSession(); toast('✓ Google session cleared — you will need to sign in again next visit'); }
 function tcClearGAuthAll() {
-  if(!confirm('Remove Google configuration? You will need to re-enter your Client ID to use Google Sign-In again.')) return;
-  Repository.setItem(GAUTH_CID_K, '36704237826-6lg0o3u0voqhdkvdj3kd331jsft62uun.apps.googleusercontent.com'); // keep baked-in CID
-  Repository.removeItem(GAUTH_MAIL_K);
+  if(!confirm('Reset Google Client ID to the built-in default and sign out?')) return;
+  Repository.setItem(GAUTH_CID_K, '36704237826-6lg0o3u0voqhdkvdj3kd331jsft62uun.apps.googleusercontent.com');
   gauthClearSession();
-  toast('✓ Google config removed');
+  toast('✓ Google settings reset to default');
   _tcLoadGAuthStatus();
 }
 function _tcLoadGAuthStatus() {
@@ -465,7 +462,10 @@ function _tcLoadGAuthStatus() {
   const cidEl = document.getElementById('tc-client-id');
   if(cidEl) cidEl.value = cid||'';
   const emailEl = document.getElementById('tc-allowed-emails');
-  if(emailEl) emailEl.value = emails.split(',').filter(Boolean).join('\n');
+  if(emailEl) {
+    emailEl.value = emails.split(',').filter(Boolean).join('\n');
+    emailEl.readOnly = true;
+  }
 }
 
 // Boot the auth gate on page load
@@ -478,29 +478,32 @@ if (document.readyState === 'loading') {
 function unlockApp() {
   document.getElementById('pin-gate').style.display='none';
   document.getElementById('nav').style.display='flex';
+  if (window._appInited) return;
+  window._appInited = true;
   initApp();
-  // Load cached data from IndexedDB first for instant startup, then sync if configured
+  if (typeof startSupabaseSync === 'function') startSupabaseSync();
   idbLoadData().then(loaded => {
     if (loaded) { rebuildAll(); }
     if(ghCfg()&&Repository.getItem('bt_auto_load')==='1') manualSync(true);
     startAutoInterval();
-    initAutoRefresh(); // ← start SHA poller + SW_RELOAD listener
+    initAutoRefresh();
   }).catch(() => {
     if(ghCfg()&&Repository.getItem('bt_auto_load')==='1') manualSync(true);
     startAutoInterval();
-    initAutoRefresh(); // ← start SHA poller + SW_RELOAD listener
+    initAutoRefresh();
   });
 }
 
 function lockApp() {
   _pinBuf=''; pinDots();
   const pmsg = document.getElementById('pmsg'); if(pmsg) pmsg.textContent='';
-  gauthClearSession(); // clear Google session on explicit lock
+  gauthClearSession();
+  window._appInited = false;
+  if (typeof resetSupabaseSync === 'function') resetSupabaseSync();
   document.getElementById('pin-gate').style.display='flex';
   document.getElementById('nav').style.display='none';
   document.querySelectorAll('.page').forEach(p=>{ p.classList.remove('on'); p.style.display=''; });
   if(_autoHandle) clearInterval(_autoHandle);
-  // Re-init the auth gate so the correct panel shows
   setTimeout(initAuthGate, 50);
 }
 
@@ -520,13 +523,33 @@ function lockApp() {
 // ══════════════════════════════════════════════════════════════════════
 function initAutoRefresh() {
   if (!('serviceWorker' in navigator)) return;
-  // Guard: unlockApp() can run multiple times per session (PIN unlock,
-  // Google sign-in callback, lock/unlock cycles for privacy). Without this
-  // guard, every unlock would stack another 15-min interval on top of the
-  // last, piling up redundant checks for the rest of the session.
   if (window._autoRefreshStarted) return;
   window._autoRefreshStarted = true;
-  const CHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
+
+  const safeReloadFromSw = () => {
+    const isTyping = () => {
+      const el = document.activeElement;
+      return el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+    };
+    if (!isTyping()) {
+      window.location.reload();
+      return;
+    }
+    if (typeof toast === 'function') toast('⬆ Update ready — will apply once you finish this entry', 'info');
+    const safeReload = () => { window.location.reload(); };
+    document.addEventListener('focusout', function onBlur() {
+      document.removeEventListener('focusout', onBlur);
+      setTimeout(() => { if (!isTyping()) safeReload(); }, 300);
+    });
+    setTimeout(safeReload, 5 * 60 * 1000);
+  };
+
+  navigator.serviceWorker.addEventListener('message', event => {
+    if (event.data === 'SW_RELOAD') safeReloadFromSw();
+    if (event.data === 'CACHE_CLEARED' && typeof toast === 'function') toast('✓ App cache cleared', 'info');
+  });
+
+  const CHECK_INTERVAL_MS = 15 * 60 * 1000;
   setInterval(() => {
     navigator.serviceWorker.getRegistration().then(reg => {
       if (reg) reg.update().catch(() => {}); // triggers 'updatefound' in index.html if a new sw.js exists
