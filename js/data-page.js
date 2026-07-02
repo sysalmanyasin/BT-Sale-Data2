@@ -436,13 +436,13 @@ function openEditFromDay() {
 }
 
 function editCalcTotal() {
-  const ADD_KEYS=['Cash Sale','Meezan Bank (Paysa)','Alfala Bank','Bank Al Habib','HBL','MCB',
-    'Askari Bank','PSO','NESPAK','PARCO','TEPA','LDA','Gourmet','Wapda Hospital','BTH','Berger Paints',
-    'Ecolean PK','Style Textile','Syed Babar Ali Foundation','Rahnuma NGO','Health Pass','Nisar Spinning Mills','Food Panda','F/Issue'];
-  const SUB_KEYS=['Cash Returns','Askari Bank Returns','PSO Returns','NESPAK Returns','PARCO Returns','TEPA Returns','LDA Returns'];
+  // Live UI preview only — reads raw form inputs, writes nothing to
+  // state. Uses the same DAILY_ADD_KEYS/DAILY_SUB_KEYS as the actual
+  // save path (config.js) so the preview can never drift from what
+  // gets persisted.
   let t=0;
-  ADD_KEYS.forEach(k=>{ const el=document.getElementById('em-'+k.replace(/[^a-z0-9]/gi,'_')); if(el) t+=Math.abs(parseFloat(el.value)||0); });
-  SUB_KEYS.forEach(k=>{ const el=document.getElementById('em-'+k.replace(/[^a-z0-9]/gi,'_')); if(el) t-=Math.abs(parseFloat(el.value)||0); });
+  DAILY_ADD_KEYS.forEach(k=>{ const el=document.getElementById('em-'+k.replace(/[^a-z0-9]/gi,'_')); if(el) t+=Math.abs(parseFloat(el.value)||0); });
+  DAILY_SUB_KEYS.forEach(k=>{ const el=document.getElementById('em-'+k.replace(/[^a-z0-9]/gi,'_')); if(el) t-=Math.abs(parseFloat(el.value)||0); });
   if (typeof _fmCustom !== 'undefined') {
     _fmCustom.forEach(f=>{
       if (f.calcType==='none') return;
@@ -462,15 +462,18 @@ function closeEditModal() {
 
 async function saveEditModal() {
   if(!_editDate||!_editMy){ toast('⚠ Nothing to save','w'); return; }
-  const rec = Repository.getDailyEntry(_editDate, _editMy);
-  if(!rec){ toast('⚠ Record not found','e'); return; }
 
-  const SUB_KEYS_SET=new Set(['Cash Returns','Askari Bank Returns','PSO Returns','NESPAK Returns','PARCO Returns','TEPA Returns','LDA Returns']);
+  // Pages only collect raw field values here — they never touch the
+  // live DAILY record or compute TOTAL/DIFF. That belongs to Actions
+  // (Actions.editDailyEntry → config.js computeDailyTotals), the one
+  // door for data changes, per the blueprint.
+  const changes = {};
+  const SUB_KEYS_SET = new Set(DAILY_SUB_KEYS);
 
   EDIT_FIELDS.forEach(f=>{
     const el=document.getElementById('em-'+f.key.replace(/[^a-z0-9]/gi,'_'));
     if(!el) return;
-    if(f.text){ rec[f.key]=el.value||null; }
+    if(f.text){ changes[f.key]=el.value||null; }
     else {
       const v=parseFloat(el.value)||0;
       // Returns must always reduce the total, so they're always stored as
@@ -478,7 +481,7 @@ async function saveEditModal() {
       // forced Math.abs(), i.e. always positive, which is what caused
       // edited returns to silently flip sign and get added instead of
       // subtracted from the monthly total.)
-      rec[f.key]=v===0?null:(SUB_KEYS_SET.has(f.key)?negR(v):v);
+      changes[f.key]=v===0?null:(SUB_KEYS_SET.has(f.key)?negR(v):v);
     }
   });
 
@@ -488,30 +491,16 @@ async function saveEditModal() {
     _fmCustom.forEach(f=>{
       const el=document.getElementById('em-'+f.id.replace(/[^a-z0-9]/gi,'_'));
       if(!el) return;
-      rec[f.id]=el.value!==''?(parseFloat(el.value)||0):null;
+      changes[f.id]=el.value!==''?(parseFloat(el.value)||0):null;
     });
   }
 
-  // Recompute TOTAL
-  const ADD_KEYS=['Cash Sale','Meezan Bank (Paysa)','Alfala Bank','Bank Al Habib','HBL','MCB',
-    'Askari Bank','PSO','NESPAK','PARCO','TEPA','LDA','Gourmet','Wapda Hospital','BTH','Berger Paints',
-    'Ecolean PK','Style Textile','Syed Babar Ali Foundation','Rahnuma NGO','Health Pass','Nisar Spinning Mills','Food Panda','F/Issue'];
-  const SUB_KEYS=['Cash Returns','Askari Bank Returns','PSO Returns','NESPAK Returns','PARCO Returns','TEPA Returns','LDA Returns'];
-  let t=0;
-  ADD_KEYS.forEach(k=>{ t+=Math.abs(n(rec[k])); });
-  SUB_KEYS.forEach(k=>{ t-=Math.abs(n(rec[k])); });
-  if (typeof _fmCustom !== 'undefined') {
-    _fmCustom.forEach(f=>{
-      if (f.calcType==='none') return;
-      const v=Math.abs(n(rec[f.id]));
-      if (f.calcType==='add') t+=v; else if (f.calcType==='sub') t-=v;
-    });
+  let rec;
+  try {
+    rec = Actions.editDailyEntry(_editDate, _editMy, changes); // merges changes + recomputes TOTAL/DIFF + persists + notifies
+  } catch(e) {
+    toast('⚠ Record not found','e'); return;
   }
-  rec['TOTAL']=String(Math.round(t));
-  // Update DIFF = Total Sale − COMP SALE
-  const _editDiff=Math.round(n(rec['TOTAL'])-n(rec['COMP SALE']));
-  rec['DIFF']=_editDiff!==0?String(_editDiff):null;
-  Actions.addDailyEntry(rec); // stamps _updatedAt/_source — rec is already in DAILY, this just records the metadata
 
   // Sync to the pending-entries session log (for push) — overwrite or add
   Actions.recordPendingEntry(rec);

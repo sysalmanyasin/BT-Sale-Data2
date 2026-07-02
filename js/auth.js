@@ -22,13 +22,6 @@ const GAUTH_SESS_K = 'bt_gauth_session';     // {email,name,picture,exp}
 })();
 let _pinBuf = '', _pinBusy = false;
 
-// ── PIN helpers (kept for fallback) ──────────────────────────────
-function hashPIN(pin) {
-  const s = 'BT_SALT_2025_' + pin;
-  let h1=0x811c9dc5, h2=5381;
-  for(let i=0;i<s.length;i++){ const c=s.charCodeAt(i); h1^=c; h1=Math.imul(h1,0x01000193); h2=Math.imul(h2,33)^c; }
-  return ((h1>>>0).toString(16).padStart(8,'0')+(h2>>>0).toString(16).padStart(8,'0')).repeat(2);
-}
 // ── Password strength helpers ─────────────────────────────────────
 const _PW_LEVELS = [
   {label:'',            color:'transparent'},
@@ -70,12 +63,6 @@ function pwSubmit() {
   if(msg) msg.textContent='Password sign-in is disabled. Please use Google Sign-In.';
   gauthShowMain();
 }
-// Legacy stubs — kept to avoid reference errors
-function pk(k){}
-function pb(){}
-function ps(){}
-function pinDots(){}
-
 // ── Forgot-password / reset flow ─────────────────────────────────
 let _resetVerifiedEmail = '';
 
@@ -171,11 +158,11 @@ function gauthGetSession() {
 }
 function gauthSetSession(payload) {
   const s={email:payload.email, name:payload.name, picture:payload.picture, exp:Date.now()+31536000000}; // 1 year
-  Repository.setItem(GAUTH_SESS_K, JSON.stringify(s));
+  Actions.saveFeatureData(GAUTH_SESS_K, JSON.stringify(s));
   return s;
 }
 function gauthClearSession() {
-  Repository.removeItem(GAUTH_SESS_K);
+  Actions.clearFeatureData(GAUTH_SESS_K);
   _driveAccessToken = '';
   try { sessionStorage.removeItem('bt_drive_token_cache'); } catch(e) {}
 }
@@ -192,20 +179,11 @@ function gauthIsAllowed(email) {
 }
 
 // ── Panel routing ─────────────────────────────────────────────────
-function gauthShowSetup() {
-  gauthShowMain(); // setup screen removed — go directly to sign-in
-}
 function gauthShowMain() {
   document.getElementById('gauth-setup').style.display='none';
   document.getElementById('gauth-main').style.display='';
   document.getElementById('gauth-pin').style.display='none';
   _gauthRenderBtn();
-}
-function gauthShowPin() {
-  // PIN/password offline fallback has been removed. Always route back to
-  // the Google Sign-In panel — this function is kept only so any stray
-  // references in older cached code don't throw errors.
-  gauthShowMain();
 }
 
 // ── Render the Google Sign-In button ─────────────────────────────
@@ -304,25 +282,6 @@ function _gauthShowError(msg){
 }
 
 // ── Callback from Google Sign-In ──────────────────────────────────
-function _gauthCallback(response) {
-  try {
-    const payload = JSON.parse(atob(response.credential.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
-    const email   = payload.email;
-    const errEl   = document.getElementById('gauth-error');
-
-    if(!gauthIsAllowed(email)) {
-      errEl.textContent='⛔ ' + email + ' is not authorised to access this app. Contact the administrator.';
-      errEl.style.display='block';
-      return;
-    }
-    gauthSetSession(payload);
-    unlockApp();
-  } catch(e) {
-    const errEl = document.getElementById('gauth-error');
-    if(errEl){ errEl.textContent='❌ Sign-in failed: ' + e.message; errEl.style.display='block'; }
-  }
-}
-
 // ── Silent Drive token renewal (GIS) ──────────────────────────────
 // The 1-year app session (GAUTH_SESS_K) only remembers *who* is signed in —
 // it was never able to carry a live Drive access token across reloads,
@@ -401,25 +360,11 @@ function gauthSignOut() {
   document.getElementById('gauth-error').style.display='none';
 }
 
-// ── Save Client ID from setup panel ──────────────────────────────
-function gauthSaveClientId() {
-  const id = document.getElementById('setup-client-id').value.trim();
-  const errEl = document.getElementById('setup-error');
-  if(!id||!id.includes('.apps.googleusercontent.com')) {
-    errEl.textContent='⚠ Please enter a valid Client ID (must end with .apps.googleusercontent.com)';
-    errEl.style.display='block'; return;
-  }
-  Repository.setItem(GAUTH_CID_K, id);
-  errEl.style.display='none';
-  gauthShowMain();
-  setTimeout(_gauthRenderBtn, 400);
-}
-
 // ── Main gate init ────────────────────────────────────────────────
 function initAuthGate() {
   // Always enforce the baked-in Client ID
   const BAKED_CID = '36704237826-6lg0o3u0voqhdkvdj3kd331jsft62uun.apps.googleusercontent.com';
-  Repository.setItem(GAUTH_CID_K, BAKED_CID);
+  Actions.saveFeatureData(GAUTH_CID_K, BAKED_CID);
   gauthShowMain();
   _gauthRenderBtn();
   // 1. Check if Google just redirected back with an access token in the URL hash
@@ -436,7 +381,7 @@ function tcSaveGAuthSettings() {
   const cid = document.getElementById('tc-client-id').value.trim();
   if(cid) {
     if(!cid.includes('.apps.googleusercontent.com')){ toast('⚠ Invalid Client ID format','w'); return; }
-    Repository.setItem(GAUTH_CID_K, cid);
+    Actions.saveFeatureData(GAUTH_CID_K, cid);
   }
   toast('✓ Google Client ID saved (authorised emails are fixed in app source)');
   _tcLoadGAuthStatus();
@@ -444,7 +389,7 @@ function tcSaveGAuthSettings() {
 function tcClearGAuthSession() { gauthClearSession(); toast('✓ Google session cleared — you will need to sign in again next visit'); }
 function tcClearGAuthAll() {
   if(!confirm('Reset Google Client ID to the built-in default and sign out?')) return;
-  Repository.setItem(GAUTH_CID_K, '36704237826-6lg0o3u0voqhdkvdj3kd331jsft62uun.apps.googleusercontent.com');
+  Actions.saveFeatureData(GAUTH_CID_K, '36704237826-6lg0o3u0voqhdkvdj3kd331jsft62uun.apps.googleusercontent.com');
   gauthClearSession();
   toast('✓ Google settings reset to default');
   _tcLoadGAuthStatus();
@@ -495,7 +440,7 @@ function unlockApp() {
 }
 
 function lockApp() {
-  _pinBuf=''; pinDots();
+  _pinBuf='';
   const pmsg = document.getElementById('pmsg'); if(pmsg) pmsg.textContent='';
   gauthClearSession();
   window._appInited = false;

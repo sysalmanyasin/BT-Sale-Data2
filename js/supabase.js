@@ -37,7 +37,7 @@ function _recordHistory(entry) {
   const hist = JSON.parse(Repository.getItem(SB_HISTORY) || '[]');
   hist.unshift({ ...entry, time: new Date().toISOString() });
   if (hist.length > 10) hist.length = 10;
-  Repository.setItem(SB_HISTORY, JSON.stringify(hist));
+  Actions.saveFeatureData(SB_HISTORY, JSON.stringify(hist));
   renderSyncHistory();
 }
 
@@ -101,8 +101,8 @@ function sbLog(msg, cls = 'info') {
 // ══════════════════════════════════════════════════════════════════
 // OFFLINE QUEUE  (dirty flag — full state pushed on flush)
 // ══════════════════════════════════════════════════════════════════
-function _markPending()  { Repository.setItem(SB_PENDING, Date.now()); }
-function _clearPending() { Repository.removeItem(SB_PENDING); }
+function _markPending()  { Actions.saveFeatureData(SB_PENDING, Date.now()); }
+function _clearPending() { Actions.clearFeatureData(SB_PENDING); }
 function _hasPending()   { return !!Repository.getItem(SB_PENDING); }
 
 // ══════════════════════════════════════════════════════════════════
@@ -112,7 +112,7 @@ function _hasPending()   { return !!Repository.getItem(SB_PENDING); }
 const SB_VERSION_KEY = 'bt_payload_version';
 function _nextPayloadVersion() {
   const v = parseInt(Repository.getItem(SB_VERSION_KEY) || '0', 10) + 1;
-  Repository.setItem(SB_VERSION_KEY, String(v));
+  Actions.saveFeatureData(SB_VERSION_KEY, String(v));
   return v;
 }
 
@@ -204,22 +204,22 @@ function mergeIncomingData(data, isPull = false) {
         });
       }
     });
-    Repository.setItem(MGR_KEY, JSON.stringify(merged));
+    Actions.saveFeatureData(MGR_KEY, JSON.stringify(merged));
   }
 
   if (data.petty) {
     Object.entries(data.petty).forEach(([k, v]) => {
       if (v == null) return;
-      if (isPull)                        Repository.setItem(k, JSON.stringify(v));
-      else if (!Repository.getItem(k)) Repository.setItem(k, JSON.stringify(v));
+      if (isPull)                        Actions.saveFeatureData(k, JSON.stringify(v));
+      else if (!Repository.getItem(k)) Actions.saveFeatureData(k, JSON.stringify(v));
     });
   }
 
   if (data.incentive) {
     Object.entries(data.incentive).forEach(([k, v]) => {
       if (v == null) return;
-      if (isPull)                        Repository.setItem(k, JSON.stringify(v));
-      else if (!Repository.getItem(k)) Repository.setItem(k, JSON.stringify(v));
+      if (isPull)                        Actions.saveFeatureData(k, JSON.stringify(v));
+      else if (!Repository.getItem(k)) Actions.saveFeatureData(k, JSON.stringify(v));
     });
   }
 
@@ -249,7 +249,7 @@ function mergeIncomingData(data, isPull = false) {
         else if (!(month in merged[sectionId].months)) merged[sectionId].months[month] = remoteMonths[month]; // local wins on push — only fill gaps
       });
     });
-    Repository.setItem(CSEC_KEY, JSON.stringify(merged));
+    Actions.saveFeatureData(CSEC_KEY, JSON.stringify(merged));
   }
 
   if (data.targets) {
@@ -259,7 +259,7 @@ function mergeIncomingData(data, isPull = false) {
       if (isPull) merged[month] = data.targets[month];          // remote wins on pull
       else if (!(month in merged)) merged[month] = data.targets[month]; // local wins on push — only fill gaps
     });
-    Repository.setItem(TGT_K, JSON.stringify(merged));
+    Actions.saveFeatureData(TGT_K, JSON.stringify(merged));
   }
 
   if (data.assistant && typeof aimMergeAssistantIncoming === 'function') {
@@ -282,7 +282,7 @@ function mergeIncomingData(data, isPull = false) {
       openingBalance: isPull ? (remote.openingBalance ?? local.openingBalance ?? 0) : (local.openingBalance ?? remote.openingBalance ?? 0),
       entries: Object.values(byId)
     };
-    Repository.setItem(JC_KEY, JSON.stringify(merged));
+    Actions.saveFeatureData(JC_KEY, JSON.stringify(merged));
   }
 
   // ── JazzCash tally — accounts merged by id, snapshots merged by date ──
@@ -304,7 +304,7 @@ function mergeIncomingData(data, isPull = false) {
       else if (!snapByDate[s.date]) snapByDate[s.date] = s; // local wins on push — fill gaps only
     });
     const merged = { accounts: Object.values(acctById), snapshots: Object.values(snapByDate) };
-    Repository.setItem(JC_TALLY_KEY, JSON.stringify(merged));
+    Actions.saveFeatureData(JC_TALLY_KEY, JSON.stringify(merged));
   }
 
   // ── Column / field manager config — small list, remote wins on pull,
@@ -312,13 +312,13 @@ function mergeIncomingData(data, isPull = false) {
   // worth reconciling beyond "newest edit wins") ──
   if (data.colConfig) {
     if (isPull) {
-      if (Array.isArray(data.colConfig.hidden)) Repository.setItem('bt_col_config',  JSON.stringify(data.colConfig.hidden));
-      if (Array.isArray(data.colConfig.custom)) Repository.setItem('bt_custom_cols', JSON.stringify(data.colConfig.custom));
+      if (Array.isArray(data.colConfig.hidden)) Actions.saveFeatureData('bt_col_config',  JSON.stringify(data.colConfig.hidden));
+      if (Array.isArray(data.colConfig.custom)) Actions.saveFeatureData('bt_custom_cols', JSON.stringify(data.colConfig.custom));
       if (typeof fmLoad === 'function') fmLoad();
     } else {
       // local wins on push — only adopt remote values if nothing exists locally yet
-      if (!Repository.getItem('bt_col_config')  && Array.isArray(data.colConfig.hidden)) Repository.setItem('bt_col_config',  JSON.stringify(data.colConfig.hidden));
-      if (!Repository.getItem('bt_custom_cols') && Array.isArray(data.colConfig.custom)) Repository.setItem('bt_custom_cols', JSON.stringify(data.colConfig.custom));
+      if (!Repository.getItem('bt_col_config')  && Array.isArray(data.colConfig.hidden)) Actions.saveFeatureData('bt_col_config',  JSON.stringify(data.colConfig.hidden));
+      if (!Repository.getItem('bt_custom_cols') && Array.isArray(data.colConfig.custom)) Actions.saveFeatureData('bt_custom_cols', JSON.stringify(data.colConfig.custom));
     }
   }
 
@@ -333,7 +333,7 @@ function mergeIncomingData(data, isPull = false) {
       if (isPull) byId[n.id] = n;              // remote wins on pull
       else if (!byId[n.id]) byId[n.id] = n;     // local wins on push — fill gaps only
     });
-    Repository.setItem('bt_notes_v1', JSON.stringify(Object.values(byId)));
+    Actions.saveFeatureData('bt_notes_v1', JSON.stringify(Object.values(byId)));
     if (isPull && typeof renderNotesSheets === 'function' && document.getElementById('mgr-sheets')) {
       renderNotesSheets();
     }
@@ -678,9 +678,6 @@ const pushToGitHub = pushToSupabase;
 const manualSync   = (silent = false) => pullFromSupabase(silent);
 const ghCfg        = () => true;
 
-function saveGhConfig()  {}
-function clearGhConfig() {}
-
 function updateGhBadge() {
   const b = document.getElementById('gh-badge');
   if (b) { b.className = 'badge bg-green'; b.textContent = 'Connected ✓'; }
@@ -692,8 +689,8 @@ function updateGhBadge() {
 function saveAutoSettings() {
   const autoLoad = document.getElementById('auto-load')?.checked;
   const autoSave = document.getElementById('auto-save')?.checked;
-  Repository.setItem('bt_auto_load', autoLoad ? '1' : '0');
-  Repository.setItem('bt_auto_save', autoSave ? '1' : '0');
+  Actions.saveFeatureData('bt_auto_load', autoLoad ? '1' : '0');
+  Actions.saveFeatureData('bt_auto_save', autoSave ? '1' : '0');
   toast('✓ Auto-sync settings saved — load:' + (autoLoad?'on':'off') + ' save:' + (autoSave?'on':'off'));
 }
 

@@ -122,7 +122,7 @@ var AIInstructions = (function () {
     catch (_) { return []; }
   }
   function _save(list) {
-    try { Repository.setItem(STORE_KEY, JSON.stringify(list)); } catch (_) {}
+    try { Actions.saveFeatureData(STORE_KEY, JSON.stringify(list)); } catch (_) {}
     // Signal Supabase to sync (same mechanism as ai-memory.js)
     if (typeof _markPending === 'function') _markPending();
   }
@@ -245,7 +245,7 @@ var AIInstructions = (function () {
     // pushToSupabase() now includes instructions via aimBuildAssistantPayload()
     if (typeof pushToSupabase === 'function') {
       return pushToSupabase().then(function() {
-        try { Repository.setItem(SYNC_KEY, _now()); } catch(_) {}
+        try { Actions.saveFeatureData(SYNC_KEY, _now()); } catch(_) {}
         return { ok: true, count: _load().length };
       }).catch(function(e) {
         return { ok: false, error: e.message };
@@ -262,7 +262,7 @@ var AIInstructions = (function () {
       return pullFromSupabase(true).then(function() {
         var afterCount = _load().length;
         // Ensure SYNC_KEY is stamped even if aimMergeAssistantIncoming didn't run
-        try { Repository.setItem(SYNC_KEY, _now()); } catch(_) {}
+        try { Actions.saveFeatureData(SYNC_KEY, _now()); } catch(_) {}
         return { ok: true, count: afterCount, added: Math.max(0, afterCount - beforeCount) };
       }).catch(function(e) {
         return { ok: false, error: e.message };

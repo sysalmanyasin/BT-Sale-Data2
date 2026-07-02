@@ -12,7 +12,8 @@
  * ║    loadCommandHubPage()  — init/refresh when page opens             ║
  * ║    chpSend()             — process current input                    ║
  * ║    chpToggleMic()        — start/stop voice recognition             ║
- * ║    chpOpenScan()         — open file picker for image scan          ║
+ * ║    chpOpenScan()         — open image-attach sheet (overridden by   ║
+ * ║                             ai-helpers.js with the richer UI)        ║
  * ║    chpHandleScanFile(f)  — process a scan image                     ║
  * ║    chpAsk(text)          — programmatic "type + send"               ║
  * ╚══════════════════════════════════════════════════════════════════════╝
@@ -695,13 +696,10 @@ function _chSetMicUI(active) {
 
 /* ══════════════════════════════════════════════════════════════════════
    IMAGE SCAN
-══════════════════════════════════════════════════════════════════════ */
-function chpOpenScan() {
-  var fi = document.getElementById('chp-scan-file');
-  if (fi) fi.click();
-}
-
-async function chpHandleScanFile(file) {
+   chpOpenScan() itself now lives in ai-helpers.js (the richer
+   camera/gallery/file attach-sheet). This file still owns the actual
+   file-handling once a scan comes in.
+══════════════════════════════════════════════════════════════════════ */async function chpHandleScanFile(file) {
   if (!file) return;
   // Reset input so same file can be selected again
   var fi = document.getElementById('chp-scan-file');
@@ -775,7 +773,7 @@ function _chSaveRecent(cmd) {
   _chRecent = _chRecent.filter(function (c) { return c !== cmd; });
   _chRecent.unshift(cmd);
   if (_chRecent.length > CHP_RECENT_MAX) _chRecent = _chRecent.slice(0, CHP_RECENT_MAX);
-  try { Repository.setItem(CHP_RECENT_KEY, JSON.stringify(_chRecent)); } catch (e) {}
+  try { Actions.saveFeatureData(CHP_RECENT_KEY, JSON.stringify(_chRecent)); } catch (e) {}
 }
 
 /* ══════════════════════════════════════════════════════════════════════

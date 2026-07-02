@@ -69,7 +69,7 @@ function _sc_getUDID() {
   if (!id) {
     id = 'dev-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9);
   }
-  Repository.setItem(SC_UDID_KEY, id);
+  Actions.saveFeatureData(SC_UDID_KEY, id);
   sessionStorage.setItem(SC_UDID_KEY, id);
   _sc_udid = id;
   return id;
@@ -432,7 +432,7 @@ async function scTogglePriorityLock() {
 
 function scSaveTimeout() {
   const val = parseInt(document.getElementById('sc-timeout-sel')?.value || '90', 10);
-  Repository.setItem(SC_TIMEOUT_KEY, String(val));
+  Actions.saveFeatureData(SC_TIMEOUT_KEY, String(val));
   _sc_resetInactivityTimer();
   _sc_addLog(`⚙ Inactivity timeout → ${val}s`);
   toast(`✓ Timeout set to ${val}s`);

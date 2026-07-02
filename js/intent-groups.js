@@ -168,7 +168,7 @@ var IntentGroupRegistry = (function () {
   }
 
   function _saveUsage(u) {
-    try { Repository.setItem(USAGE_KEY, JSON.stringify(u)); } catch (_) {}
+    try { Actions.saveFeatureData(USAGE_KEY, JSON.stringify(u)); } catch (_) {}
   }
 
   function trackUsage(groupId) {
@@ -187,7 +187,7 @@ var IntentGroupRegistry = (function () {
   }
 
   function resetUsage() {
-    try { Repository.removeItem(USAGE_KEY); } catch (_) {}
+    try { Actions.clearFeatureData(USAGE_KEY); } catch (_) {}
   }
 
   /* ──────────────────────────────────────────────────────────────────

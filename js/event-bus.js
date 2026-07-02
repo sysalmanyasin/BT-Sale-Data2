@@ -24,3 +24,9 @@ const EventBus = (function () {
 
   return { notify, onChange };
 })();
+
+// Bridge onto window: repository.js is now an ES module, and const/let
+// globals (unlike var/function) never auto-attach to window even in a
+// classic script — so without this, repository.js can no longer see
+// EventBus at all once converted.
+window.EventBus = EventBus;

@@ -196,7 +196,6 @@ const _DBI_BRIEF_KEY    = 'bt_dbi_brief_dismissed'; // date string when dismisse
 const _DBI_LAST_KEY     = 'bt_dbi_last_session';    // { date, totalMonths, lastMonthTotal }
 const _DBI_INSIGHT_IDX  = 'bt_dbi_insight_idx';     // current rotating insight index
 
-function _dbiN(v) { return isNaN(parseFloat(v)) ? 0 : parseFloat(v); }
 function _dbiFF(v) { return Math.round(v).toLocaleString('en-PK'); }
 function _dbiToday() { return new Date().toDateString(); }
 function _dbiCurrentMonthYear() {
@@ -228,7 +227,7 @@ function _dbiBuildBriefing() {
 }
 
 function _dbiDismissBriefing() {
-  Repository.setItem(_DBI_BRIEF_KEY, _dbiToday());
+  Actions.saveFeatureData(_DBI_BRIEF_KEY, _dbiToday());
   const el = document.getElementById('dbi-briefing-card');
   if (el) {
     el.style.transition = 'opacity .25s, max-height .3s, margin .3s, padding .3s';
@@ -380,7 +379,7 @@ function _dbiBuildInsightStrip() {
       _dbiInsightIdx = stored.idx % insights.length;
     } else {
       _dbiInsightIdx = ((stored.idx || 0) + 1) % insights.length;
-      Repository.setItem(_DBI_INSIGHT_IDX, JSON.stringify({ date: _dbiToday(), idx: _dbiInsightIdx }));
+      Actions.saveFeatureData(_DBI_INSIGHT_IDX, JSON.stringify({ date: _dbiToday(), idx: _dbiInsightIdx }));
     }
   } catch(_) { _dbiInsightIdx = 0; }
 
@@ -406,7 +405,7 @@ function _dbiGoInsight(idx) {
   const insights = _dbiComputeInsights();
   if (!insights.length) return;
   _dbiInsightIdx = idx % insights.length;
-  try { Repository.setItem(_DBI_INSIGHT_IDX, JSON.stringify({ date: _dbiToday(), idx: _dbiInsightIdx })); } catch(_) {}
+  try { Actions.saveFeatureData(_DBI_INSIGHT_IDX, JSON.stringify({ date: _dbiToday(), idx: _dbiInsightIdx })); } catch(_) {}
   const ins = insights[_dbiInsightIdx];
   const textEl = document.getElementById('dbi-insight-text');
   const dotsEl = document.getElementById('dbi-insight-dots');
@@ -451,7 +450,7 @@ function _dbiBuildDiffBadge() {
 
   // Save current state for next visit
   try {
-    Repository.setItem(_DBI_LAST_KEY, JSON.stringify({
+    Actions.saveFeatureData(_DBI_LAST_KEY, JSON.stringify({
       ts: now, totalSales: result.lastTotal, totalMonths: result.lastMonths
     }));
   } catch(_) {}

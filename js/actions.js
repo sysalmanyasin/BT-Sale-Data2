@@ -8,7 +8,17 @@
 // Load order requirement: repository.js → actions.js → all pages/features
 // ══════════════════════════════════════════════════════════════════════
 
-const Actions = (function () {
+import { Repository } from './repository.js';
+import { computeDailyTotals } from './config.js';
+// NOTE: EventBus is NOT imported here on purpose. event-bus.js is still a
+// classic script (not yet converted to a module), so it has no `export`
+// statement — importing from it would make the browser fetch/parse it a
+// SECOND time as a separate module instance, creating two different
+// EventBus objects. Until event-bus.js is converted, this file relies on
+// the bare `EventBus` reference below, resolved via the window.EventBus
+// bridge in event-bus.js. Revisit this the moment event-bus.js converts.
+
+export const Actions = (function () {
 
   // ── DAILY ────────────────────────────────────────────────────────────
 
@@ -20,6 +30,7 @@ const Actions = (function () {
     const existing = Repository.getDailyEntry(date, monthYear);
     if (!existing) throw new Error('Actions.editDailyEntry: no entry found for ' + date + '/' + monthYear);
     Object.assign(existing, changes);
+    computeDailyTotals(existing); // single source of truth (config.js) — Pages no longer compute this
     return Repository.upsertDaily(existing);
   }
 
@@ -68,8 +79,7 @@ const Actions = (function () {
       doj:         new Date().toISOString().split('T')[0],
       active:      true,
     }, empObj || {});
-    staff.push(newEmp);
-    Repository.saveStaff();
+    Repository.addStaffMember(newEmp);
     EventBus.notify('staff:added', newEmp);
     return newEmp;
   }
@@ -78,20 +88,13 @@ const Actions = (function () {
   // i is the current position in Repository.getStaff() — caller is
   // responsible for passing a valid, current index.
   function updateEmployee(i, changes) {
-    const staff = Repository.getStaff();
-    if (i < 0 || i >= staff.length) throw new Error('Actions.updateEmployee: index ' + i + ' out of range');
-    Object.assign(staff[i], changes);
-    Repository.saveStaff();
-    EventBus.notify('staff:updated', staff[i]);
-    return staff[i];
+    const updated = Repository.updateStaffMember(i, changes);
+    EventBus.notify('staff:updated', updated);
+    return updated;
   }
 
   function removeEmployee(i) {
-    const staff = Repository.getStaff();
-    if (i < 0 || i >= staff.length) throw new Error('Actions.removeEmployee: index ' + i + ' out of range');
-    const removed = staff[i];
-    staff.splice(i, 1);
-    Repository.saveStaff();
+    const removed = Repository.removeStaffMember(i);
     EventBus.notify('staff:removed', { index: i, employee: removed });
     return removed;
   }
@@ -178,6 +181,9 @@ const Actions = (function () {
   };
 
 })();
+
+// Bridge onto window — remove once every consumer imports Actions directly.
+window.Actions = Actions;
 
 // ══════════════════════════════════════════════════════════════════════
 // NOTE ON CONFLICT UI:

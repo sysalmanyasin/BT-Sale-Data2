@@ -10,7 +10,9 @@
 // `_beginInternalWrite`/`_endInternalWrite` below.
 // ══════════════════════════════════════════════════════════════════════════
 
-const Repository = (function () {
+import { MONTHLY, DAILY, STAFF, newEntries, STAFF_KEY } from './config.js';
+
+export const Repository = (function () {
 
   // ── Floor 2 enforcement hook ────────────────────────────────────────
   // Every mutation Repository makes to MONTHLY/DAILY/STAFF wraps itself
@@ -332,6 +334,41 @@ const Repository = (function () {
     });
   }
 
+  // Add/update/remove a single staff member. These wrap the array
+  // mutation itself (not just the persist step) in _withInternalWrite,
+  // so the STAFF Proxy never flags them as a raw/unauthorized mutation
+  // — closing the gap where Actions used to push/splice on the raw
+  // array before calling saveStaff() (i.e. the mutation happened
+  // outside the guard, only the persist step was inside it).
+  function addStaffMember(emp) {
+    return _withInternalWrite(() => {
+      STAFF.push(emp);
+      localStorage.setItem(STAFF_KEY, JSON.stringify(STAFF));
+      _notify('staff:changed', { staff: STAFF });
+      return emp;
+    });
+  }
+
+  function updateStaffMember(i, changes) {
+    if (i < 0 || i >= STAFF.length) throw new Error('Repository.updateStaffMember: index ' + i + ' out of range');
+    return _withInternalWrite(() => {
+      Object.assign(STAFF[i], changes);
+      localStorage.setItem(STAFF_KEY, JSON.stringify(STAFF));
+      _notify('staff:changed', { staff: STAFF });
+      return STAFF[i];
+    });
+  }
+
+  function removeStaffMember(i) {
+    if (i < 0 || i >= STAFF.length) throw new Error('Repository.removeStaffMember: index ' + i + ' out of range');
+    return _withInternalWrite(() => {
+      const removed = STAFF.splice(i, 1)[0];
+      localStorage.setItem(STAFF_KEY, JSON.stringify(STAFF));
+      _notify('staff:changed', { staff: STAFF });
+      return removed;
+    });
+  }
+
   function loadStaff() {
     return _withInternalWrite(() => {
       let arr = [];
@@ -446,6 +483,7 @@ const Repository = (function () {
     markSynced, getLastSyncedAt,
     // staff
     getStaff, setStaff, saveStaff, loadStaff,
+    addStaffMember, updateStaffMember, removeStaffMember,
     // pending entries (session log, gated push, ghost-state fix)
     getPendingEntries, loadPendingEntries, upsertPendingEntry, removePendingEntry,
     // generic key/value
@@ -458,3 +496,10 @@ const Repository = (function () {
   };
 
 })();
+
+// ══════════════════════════════════════════════════════════════════════
+// TEMPORARY WINDOW BRIDGE — same reasoning as config.js. Remove once
+// every consuming file has been converted to
+// `import { Repository } from './repository.js'`.
+// ══════════════════════════════════════════════════════════════════════
+window.Repository = Repository;

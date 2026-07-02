@@ -64,7 +64,7 @@ function jcLoad() {
   return { openingBalance:0, entries:[] };
 }
 function jcSave() {
-  Repository.setItem(JC_KEY, JSON.stringify(_jcData));
+  Actions.saveFeatureData(JC_KEY, JSON.stringify(_jcData));
   if (Repository.getItem('bt_auto_save')==='1' && typeof pushToSupabase==='function') pushToSupabase();
 }
 function _jcRunningBalances(entries, openingBalance) {
@@ -90,7 +90,7 @@ function _tallyLoad() {
   return { accounts: JSON.parse(JSON.stringify(JC_TALLY_DEFAULTS)), snapshots:[] };
 }
 function _tallySave(data) {
-  Repository.setItem(JC_TALLY_KEY, JSON.stringify(data));
+  Actions.saveFeatureData(JC_TALLY_KEY, JSON.stringify(data));
   if (Repository.getItem('bt_auto_save')==='1' && typeof pushToSupabase==='function') pushToSupabase();
 }
 

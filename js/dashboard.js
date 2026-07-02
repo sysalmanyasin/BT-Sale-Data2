@@ -146,7 +146,6 @@ function _monthSortVal(my)            { return Analytics._monthSortVal(my); }
 function _currentMonthVal()           { return Analytics._currentMonthVal(); }
 function managerMonthHasData(my)      { return Analytics.managerMonthHasData(my); }
 function latestManagerMonth()         { return Analytics.latestManagerMonth(); }
-function latestSalesMonthForDashboard(lat) { return Analytics.latestSalesMonth(lat); }
 
 // ── FLOOR 5 renderer — buildCreditSection ────────────────────────────
 // Data fetching fully delegated to Analytics.getCreditSectionData()

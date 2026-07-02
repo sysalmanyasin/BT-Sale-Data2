@@ -171,22 +171,6 @@ function populateTgtSel() {
   sel.innerHTML='<option value="">Select month…</option>'+[...MONTHLY].reverse().map(m=>`<option value="${m.Month_Year}">${m.Month_Year}</option>`).join('');
 }
 
-function tcPwStrength(inp) {
-  const score = _pwStrengthScore(inp.value);
-  const wrap  = document.getElementById('tc-pw-strength-wrap');
-  const bar   = document.getElementById('tc-pw-bar');
-  const label = document.getElementById('tc-pw-label');
-  if(!wrap) return;
-  wrap.style.display = inp.value ? '' : 'none';
-  if(bar){ bar.style.width=(score/5*100)+'%'; bar.style.background=_PW_LEVELS[score].color; }
-  if(label){ label.textContent=_PW_LEVELS[score].label||''; label.style.color=_PW_LEVELS[score].color; }
-}
-
-function changePIN() {
-  // Offline password fallback removed — nothing to update.
-  toast('⚠ Password sign-in has been disabled','w');
-}
-
 function addNewMonth() {
   const mon=document.getElementById('nm-sel').value;
   const yr=document.getElementById('nm-year').value;
@@ -195,7 +179,7 @@ function addNewMonth() {
   const blank={Month_Year:key,TOTAL:0,Customers:0};
   Actions.addOrUpdateMonth(blank);
   const stored=JSON.parse(Repository.getItem('bt_new_months')||'[]');
-  stored.push(blank); Repository.setItem('bt_new_months',JSON.stringify(stored));
+  stored.push(blank); Actions.saveFeatureData('bt_new_months',JSON.stringify(stored));
   rebuildAll(); toast('✓ '+key+' created');
 }
 
@@ -253,7 +237,7 @@ function _applyViewModeBtn(mode) {
 function toggleViewMode() {
   const cur = Repository.getItem('bt_view_mode') || 'mobile';
   const next = cur === 'desktop' ? 'mobile' : 'desktop';
-  Repository.setItem('bt_view_mode', next);
+  Actions.saveFeatureData('bt_view_mode', next);
   // Viewport meta changes only take effect on reload — save & reload
   window.location.reload();
 }

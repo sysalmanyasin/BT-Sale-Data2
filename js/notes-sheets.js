@@ -391,7 +391,7 @@ function _nsSFLoad() {
   // Migrate older files that don't have a category yet
   let changed = false;
   arr.forEach(f => { if (!f.category) { f.category = f.sheetName || 'General'; changed = true; } });
-  if (changed) { try { Repository.setItem(NS_SHEET_FILES_KEY, JSON.stringify(arr)); } catch(_){} }
+  if (changed) { try { Actions.saveFeatureData(NS_SHEET_FILES_KEY, JSON.stringify(arr)); } catch(_){} }
   return arr;
 }
 function _nsSFSave(a){ try { Actions.saveSheetFiles(JSON.stringify(a)); } catch(_){} }
@@ -2397,7 +2397,7 @@ function _nsRenderManage(host) {
       <div class="ns-mgs-toolbar">
         <input class="ns-mgs-search" placeholder="🔍 Search sheets by name, type or category…"
           value="${_nsEsc(_nsMgsSearch)}" oninput="_nsMgsSearch=this.value;_nsRenderManage(document.getElementById('ns-panel-host'))">
-        <select class="ns-mgs-select" onchange="_nsMgsSort=this.value;Repository.setItem('bt_mgs_sort',this.value);_nsRenderManage(document.getElementById('ns-panel-host'))">
+        <select class="ns-mgs-select" onchange="_nsMgsSort=this.value;Actions.saveFeatureData('bt_mgs_sort',this.value);_nsRenderManage(document.getElementById('ns-panel-host'))">
           <option value="created_desc" ${_nsMgsSort==='created_desc'?'selected':''}>🕓 Newest Created</option>
           <option value="created_asc"  ${_nsMgsSort==='created_asc' ?'selected':''}>🕓 Oldest Created</option>
           <option value="updated_desc" ${_nsMgsSort==='updated_desc'?'selected':''}>✏ Recently Updated</option>
@@ -2405,7 +2405,7 @@ function _nsRenderManage(host) {
           <option value="name_asc"     ${_nsMgsSort==='name_asc'    ?'selected':''}>🔤 Name A–Z</option>
           <option value="name_desc"    ${_nsMgsSort==='name_desc'   ?'selected':''}>🔤 Name Z–A</option>
         </select>
-        <select class="ns-mgs-select" onchange="_nsMgsGroup=this.value;Repository.setItem('bt_mgs_group',this.value);_nsRenderManage(document.getElementById('ns-panel-host'))">
+        <select class="ns-mgs-select" onchange="_nsMgsGroup=this.value;Actions.saveFeatureData('bt_mgs_group',this.value);_nsRenderManage(document.getElementById('ns-panel-host'))">
           <option value="category" ${_nsMgsGroup==='category'?'selected':''}>🗂 Group by Type</option>
           <option value="none"     ${_nsMgsGroup==='none'    ?'selected':''}>📋 No Grouping</option>
         </select>

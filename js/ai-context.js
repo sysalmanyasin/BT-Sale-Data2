@@ -59,7 +59,7 @@ var AIContext = (function () {
     catch (_) { return _empty(); }
   }
   function _save() {
-    try { Repository.setItem(STORE_KEY, JSON.stringify(_ctx)); } catch (_) {}
+    try { Actions.saveFeatureData(STORE_KEY, JSON.stringify(_ctx)); } catch (_) {}
     if (typeof renderAiContextPanel === 'function') {
       try { renderAiContextPanel(); } catch(_) {}
     }

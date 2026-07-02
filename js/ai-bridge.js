@@ -219,10 +219,6 @@ const _AI_FIELD_ALIASES = {
   'amount received':  'Amount_Received',
   'comp sale':        'COMP_SALE',
 };
-function _aiResolveField(rawField) {
-  const k = (rawField || '').trim().toLowerCase();
-  return _AI_FIELD_ALIASES[k] || rawField;
-}
 
 // ══════════════════════════════════════════════════════════════════════
 // RULE-BASED PARSERS (instant — no API call needed)
@@ -553,7 +549,7 @@ function _aiEditCustomSectionRow(sectionName, rowIndex, field, value) {
   const rows = (resolved.all[resolved.sid].months && resolved.all[resolved.sid].months[curMon]) || [];
   if (!rows[rowIndex]) { if (typeof toast === 'function') toast('\u26a0 Row index ' + rowIndex + ' not found.', 'w'); return; }
   rows[rowIndex][field] = (field === 'amount') ? (parseFloat(value) || 0) : value;
-  Repository.setItem(_AI_CSEC_KEY, JSON.stringify(resolved.all));
+  Actions.saveFeatureData(_AI_CSEC_KEY, JSON.stringify(resolved.all));
   if (typeof renderAllCustomSections === 'function') renderAllCustomSections();
   if (typeof toast === 'function') toast('\u2705 ' + resolved.name + ' row ' + rowIndex + ' updated.');
 }
@@ -2107,7 +2103,7 @@ function _aiAddCustomSectionRow(sectionName, desc, amount, notes) {
         amount: parseFloat(amount) || 0,
         notes:  notes  || '',
       });
-      Repository.setItem(CSEC_KEY, JSON.stringify(all));
+      Actions.saveFeatureData(CSEC_KEY, JSON.stringify(all));
 
       if (typeof renderAllCustomSections === 'function') renderAllCustomSections();
 
@@ -2506,7 +2502,7 @@ function _aiSetMonthTarget(monthYear, amount) {
     const TGT_K = 'bt_targets';
     const t = (function(){ try{return JSON.parse(Repository.getItem(TGT_K)||'{}')}catch{return{}} })();
     t[monthYear] = Math.round(Number(amount) || 0);
-    Repository.setItem(TGT_K, JSON.stringify(t));
+    Actions.saveFeatureData(TGT_K, JSON.stringify(t));
     if (typeof renderTargetList === 'function') renderTargetList();
     if (typeof buildDashboard === 'function') buildDashboard();
     if (typeof renderIndex === 'function') renderIndex();
@@ -2519,7 +2515,7 @@ function _aiDeleteMonthTarget(monthYear) {
     const TGT_K = 'bt_targets';
     const t = (function(){ try{return JSON.parse(Repository.getItem(TGT_K)||'{}')}catch{return{}} })();
     delete t[monthYear];
-    Repository.setItem(TGT_K, JSON.stringify(t));
+    Actions.saveFeatureData(TGT_K, JSON.stringify(t));
     if (typeof renderTargetList === 'function') renderTargetList();
     if (typeof buildDashboard === 'function') buildDashboard();
     if (typeof renderIndex === 'function') renderIndex();
@@ -2534,7 +2530,7 @@ function _aiCreateCustomSection(name, emoji) {
     try { all = JSON.parse(Repository.getItem(CSEC_KEY) || '{}'); } catch(_){ all={}; }
     const sid = 'csec_' + Date.now();
     all[sid] = { name: name || 'New Section', emoji: emoji || '📋', months: {} };
-    Repository.setItem(CSEC_KEY, JSON.stringify(all));
+    Actions.saveFeatureData(CSEC_KEY, JSON.stringify(all));
     if (typeof showPage === 'function') showPage('manager');
     setTimeout(function(){
       // BUG FIX: this used to search the DOM for a button containing the
@@ -2564,7 +2560,7 @@ function _aiDeleteCustomSectionRow(sectionName, rowIndex) {
   if (!rows[rowIndex]) { if (typeof toast === 'function') toast('\u26a0 Row index ' + rowIndex + ' not found.', 'w'); return; }
   const desc = rows[rowIndex].desc;
   rows.splice(rowIndex, 1);
-  Repository.setItem(CSEC_KEY, JSON.stringify(all));
+  Actions.saveFeatureData(CSEC_KEY, JSON.stringify(all));
   if (typeof renderAllCustomSections === 'function') renderAllCustomSections();
   if (typeof toast === 'function') toast('\u2705 Row deleted from ' + all[sid].name + ': ' + desc);
 }
@@ -2579,7 +2575,7 @@ function _aiDeleteCustomSection(sectionName) {
   if (!sid) { if (typeof toast === 'function') toast('\u26a0 Section "' + sectionName + '" not found.', 'w'); return; }
   const name = all[sid].name;
   delete all[sid];
-  Repository.setItem(CSEC_KEY, JSON.stringify(all));
+  Actions.saveFeatureData(CSEC_KEY, JSON.stringify(all));
   if (typeof renderAllCustomSections === 'function') renderAllCustomSections();
   if (typeof toast === 'function') toast('\u2705 Custom section "' + name + '" deleted.');
 }

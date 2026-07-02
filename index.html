@@ -1342,127 +1342,134 @@ if ('serviceWorker' in navigator) {
   </div>
 </div>
 
-<!-- ====== JS MODULES — load order is critical ====== -->
-
-<!-- 1. Base data arrays (MONTHLY_BASE + DAILY_BASE — large file) -->
-<script src="js/data-base.js"></script>
+<!-- ====== JS MODULES — load order is critical ======
+     config.js is now type="module" (real ES module, real `export`).
+     Every other script below has `defer` added so they all execute in
+     the same relative document order as before, just after HTML
+     parsing finishes instead of during it (harmless here since these
+     tags already sit at the very end of <body>, after all DOM content).
+     config.js still bridges its exports onto `window` so none of these
+     still-classic files needed to change — see the bridge block at the
+     bottom of config.js. Convert files to `type="module"` one at a time
+     going forward; each new module file needs explicit `import`.
+-->
 
 <!-- 1b. Shared service layer -->
-<script src="js/bt-format.js"></script>
-<script src="js/bt-date.js"></script>
-<script src="js/bt-calc.js"></script>
-<script src="js/bt-search.js"></script>
-<script src="js/app-context.js"></script>
+<script defer src="js/bt-format.js"></script>
+<script defer src="js/bt-date.js"></script>
+<script defer src="js/bt-calc.js"></script>
+<script defer src="js/bt-search.js"></script>
+<script defer src="js/app-context.js"></script>
 
 <!-- 2. Config: Floor 2 state store — protected MONTHLY/DAILY/STAFF + utils -->
-<script src="js/config.js"></script>
+<script type="module" src="js/config.js"></script>
 
 <!-- 3. Auth: Google Sign-In -->
-<script src="js/auth.js"></script>
+<script defer src="js/auth.js"></script>
 
 <!-- 4. Storage: IndexedDB + render cache + nav state -->
-<script src="js/storage.js"></script>
+<script defer src="js/storage.js"></script>
 
 <!-- 5. UI: showPage, toast, clock, rebuild, dropdowns -->
-<script src="js/ui.js"></script>
+<script defer src="js/ui.js"></script>
 
 <!-- 6. Floor 3: event bus MUST load before repository.js uses it -->
-<script src="js/event-bus.js"></script>
+<script defer src="js/event-bus.js"></script>
 
 <!-- 6b. Supabase client lib + sync center (needs EventBus) -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script src="js/sync-center.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script defer src="js/sync-center.js"></script>
 
 <!-- 6c. Repository (Floor 1) then Actions (Floor 3) — strict order -->
-<script src="js/repository.js"></script>
-<script src="js/actions.js"></script>
+<script type="module" src="js/repository.js"></script>
+<script type="module" src="js/actions.js"></script>
 
 <!-- 6c2. Conflict UI (Floor 4/5) — DOM code that reacts to Repository/Actions -->
-<script src="js/conflict-ui.js"></script>
+<script defer src="js/conflict-ui.js"></script>
 
 <!-- 6d. Supabase sync (Floor 1 extension — needs Repository + Actions) -->
-<script src="js/supabase.js"></script>
+<script defer src="js/supabase.js"></script>
 
 <!-- 7. Targets: monthly target management -->
-<script src="js/targets.js"></script>
+<script defer src="js/targets.js"></script>
 
 <!-- 8. Analytics: Floor 3 KPI computation — must load before dashboard.js -->
-<script src="js/analytics.js"></script>
+<script defer src="js/analytics.js"></script>
 
 <!-- 8b. Dashboard: Floor 5 pure renderer -->
-<script src="js/dashboard.js"></script>
+<script defer src="js/dashboard.js"></script>
 
 <!-- 8b. Dashboard Insights: briefing card, target pace, rotating insight strip, diff badge (Phase 3) -->
-<script src="js/dashboard-insights.js"></script>
+<script defer src="js/dashboard-insights.js"></script>
 
 <!-- 9. Index page: year/month grid rendering -->
-<script src="js/index-page.js"></script>
+<script defer src="js/index-page.js"></script>
 
 <!-- 10. Reports: day modal, month modal, all print helpers -->
-<script src="js/reports.js"></script>
+<script defer src="js/reports.js"></script>
 
 <!-- 11. Data page: daily table + entry form -->
-<script src="js/data-page.js"></script>
-<script src="js/diff-report.js"></script>
-<script src="js/commandhub-page.js"></script>
-<script src="js/commandhub.js"></script>
+<script defer src="js/data-page.js"></script>
+<script defer src="js/diff-report.js"></script>
+<script defer src="js/commandhub-page.js"></script>
+<script defer src="js/commandhub.js"></script>
 
 <!-- 11b. Reports print helpers (extracted from manager.js — Step 8) -->
-<script src="js/reports-print.js"></script>
+<script defer src="js/reports-print.js"></script>
 
 <!-- 11c. Manager Summary Export (Phase 5) -->
-<script src="js/manager-export.js"></script>
+<script defer src="js/manager-export.js"></script>
 
 <!-- 11d. AI Helpers: scan/OCR pipeline extracted from ai-page.js (Phase 6) -->
-<script src="js/ai-helpers.js"></script>
+<script defer src="js/ai-helpers.js"></script>
 
 <!-- 11e. Notes & Sheets workspace (Phase 6) -->
-<script src="js/notes-sheets.js"></script>
+<script defer src="js/notes-sheets.js"></script>
 
 <!-- 11e-patch. Sheets enhancements: copy/paste, File menu, Supabase sync -->
-<script src="js/sheets-patch.js"></script>
+<script defer src="js/sheets-patch.js"></script>
 
 <!-- 12. Manager: salary, generic, expense, credit, petty, incentive -->
-<script src="js/manager.js"></script>
+<script defer src="js/manager.js"></script>
 
 <!-- 13. Custom spreadsheet sections (manager add-on) -->
-<script src="js/custom-sections.js"></script>
+<script defer src="js/custom-sections.js"></script>
 
 <!-- 13b. Jazz Cash Ledger — AI-powered daily ledger -->
-<script src="js/jazz-cash.js"></script>
+<script defer src="js/jazz-cash.js"></script>
 
 <!-- 13c. Hub Quick Actions — headless print/report triggers for CommandHub chips -->
-<script src="js/hub-actions.js"></script>
+<script defer src="js/hub-actions.js"></script>
 
 <!-- UI extras: left-edge tab strip, floating Dashboard FAB, month→target patch -->
-<script src="js/ui-extras.js"></script>
+<script defer src="js/ui-extras.js"></script>
 
 <!-- 14. Field manager modal -->
-<script src="js/fields.js"></script>
+<script defer src="js/fields.js"></script>
 
 <!-- 15. Google Drive backup / restore -->
-<script src="js/drive.js"></script>
+<script defer src="js/drive.js"></script>
 
 <!-- AI Memory — persistent memory, custom rules, training, section AI config -->
-<script src="js/ai-memory.js"></script>
+<script defer src="js/ai-memory.js"></script>
 
 <!-- AI Bridge — powers the dedicated AI page only (no floating widget) -->
 <!-- AI Instructions System -->
-<script src="js/ai-instructions.js"></script>
-<script src="js/ai-instructions-ui.js"></script>
+<script defer src="js/ai-instructions.js"></script>
+<script defer src="js/ai-instructions-ui.js"></script>
 
 <!-- 11f. Knowledge Base sheet — ported from retired ai-page.js (Phase 7) -->
-<script src="js/knowledge-sheet.js"></script>
+<script defer src="js/knowledge-sheet.js"></script>
 
 <!-- Context Engine — Phase 3 -->
-<script src="js/ai-context.js"></script>
-<script src="js/ai-context-ui.js"></script>
+<script defer src="js/ai-context.js"></script>
+<script defer src="js/ai-context-ui.js"></script>
 
 <!-- Intent Group Registry — must load before ai-bridge -->
-<script src="js/intent-groups.js"></script>
+<script defer src="js/intent-groups.js"></script>
 
 <!-- AI Bridge -->
-<script src="js/ai-bridge.js"></script>
+<script defer src="js/ai-bridge.js"></script>
 
 <!-- Staff Card Popup Modal -->
 <div class="sc-bg" id="sc-bg" onclick="if(event.target===this)closeStaffCard()">

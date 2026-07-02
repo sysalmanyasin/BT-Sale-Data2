@@ -129,7 +129,7 @@ async function driveBackupNow() {
     const method = existingId ? 'PATCH' : 'POST';
     const ur = await fetch(url, { method, headers:{Authorization:'Bearer '+_driveAccessToken}, body: form });
     if (!ur.ok) { const e=await ur.json(); throw new Error(e.error?.message||'HTTP '+ur.status); }
-    Repository.setItem(DRIVE_LAST_K, today);
+    Actions.saveFeatureData(DRIVE_LAST_K, today);
     driveLog('✓ Backed up: <a href="https://drive.google.com/drive/folders/1qDSFSlrcUA7EoaMx43bG3mxkpS1ESHGn" target="_blank" style="color:var(--accent)">BT-SALE-DATA</a> → ' + fname,'ok');
     _driveUpdateBadge('ok');
     toast('✓ Drive backup complete');
@@ -237,20 +237,20 @@ async function _driveRestoreFile(fileId, label) {
     if (data.manager && typeof data.manager==='object') {
       const cur = JSON.parse(Repository.getItem(MGR_KEY)||'{}');
       Object.keys(data.manager).forEach(k => { if (!cur[k]) cur[k]=data.manager[k]; });
-      Repository.setItem(MGR_KEY, JSON.stringify(cur));
+      Actions.saveFeatureData(MGR_KEY, JSON.stringify(cur));
     }
     // Restore petty months
     if (data.petty && typeof data.petty==='object') {
       Object.keys(data.petty).forEach(k => {
         if (k.startsWith('mw_petty_') && !Repository.getItem(k))
-          Repository.setItem(k, JSON.stringify(data.petty[k]));
+          Actions.saveFeatureData(k, JSON.stringify(data.petty[k]));
       });
     }
     // Restore custom sections
     if (data.custom && typeof data.custom==='object') {
       const cur = JSON.parse(Repository.getItem(CSEC_KEY)||'{}');
       Object.keys(data.custom).forEach(k => { if (!cur[k]) cur[k]=data.custom[k]; });
-      Repository.setItem(CSEC_KEY, JSON.stringify(cur));
+      Actions.saveFeatureData(CSEC_KEY, JSON.stringify(cur));
     }
     // Restore JazzCash ledger (fill gaps by entry id — never drop local entries)
     if (data.jazzcash && typeof data.jazzcash === 'object') {
@@ -259,7 +259,7 @@ async function _driveRestoreFile(fileId, label) {
       (data.jazzcash.entries||[]).forEach(e => { if (e && e.id && !byId[e.id]) byId[e.id]=e; });
       if (!cur.entries || !cur.entries.length) cur.openingBalance = data.jazzcash.openingBalance ?? cur.openingBalance ?? 0;
       cur.entries = Object.values(byId);
-      Repository.setItem(JC_KEY, JSON.stringify(cur));
+      Actions.saveFeatureData(JC_KEY, JSON.stringify(cur));
     }
     // Restore JazzCash tally (accounts by id, snapshots by date — fill gaps only)
     if (data.jcTally && typeof data.jcTally === 'object') {
@@ -270,12 +270,12 @@ async function _driveRestoreFile(fileId, label) {
       (data.jcTally.snapshots||[]).forEach(s => { if (s && s.date && !snapByDate[s.date]) snapByDate[s.date]=s; });
       cur.accounts = Object.values(acctById);
       cur.snapshots = Object.values(snapByDate);
-      Repository.setItem(JC_TALLY_KEY, JSON.stringify(cur));
+      Actions.saveFeatureData(JC_TALLY_KEY, JSON.stringify(cur));
     }
     // Restore column/field config (only if nothing set locally yet)
     if (data.colConfig && typeof data.colConfig === 'object') {
-      if (!Repository.getItem('bt_col_config')  && Array.isArray(data.colConfig.hidden)) Repository.setItem('bt_col_config',  JSON.stringify(data.colConfig.hidden));
-      if (!Repository.getItem('bt_custom_cols') && Array.isArray(data.colConfig.custom)) Repository.setItem('bt_custom_cols', JSON.stringify(data.colConfig.custom));
+      if (!Repository.getItem('bt_col_config')  && Array.isArray(data.colConfig.hidden)) Actions.saveFeatureData('bt_col_config',  JSON.stringify(data.colConfig.hidden));
+      if (!Repository.getItem('bt_custom_cols') && Array.isArray(data.colConfig.custom)) Actions.saveFeatureData('bt_custom_cols', JSON.stringify(data.colConfig.custom));
       if (typeof fmLoad === 'function') fmLoad();
     }
     driveLog(`✓ Restored from ${label}: +${mN} months, +${dN} days of sales data. Manager/Petty/Custom/JazzCash/Fields merged.`,'ok');

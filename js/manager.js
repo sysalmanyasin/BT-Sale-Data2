@@ -774,38 +774,6 @@ function loadCreditMonth(my) {
   renderCreditLedger(_crdData_cur);
 }
 
-// Auto-focus: scroll to an employee's credit card and add an entry if they have none
-function focusCreditEmployee(ei) {
-  // Switch to credit tab if not already there
-  switchMgrTab('credit');
-  // Sync month selector
-  const salMon = document.getElementById('sal-month-sel')?.value;
-  const crdSel = document.getElementById('crd-month-sel');
-  if (salMon && crdSel && crdSel.value !== salMon) {
-    crdSel.value = salMon;
-    loadCreditMonth(salMon);
-  }
-  setTimeout(() => {
-    const el = document.getElementById('crd-emp-' + ei);
-    if (!el) return;
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    // Flash highlight
-    el.style.transition = 'box-shadow 0.3s';
-    el.style.boxShadow = '0 0 0 3px var(--accent)';
-    setTimeout(() => { el.style.boxShadow = ''; }, 1800);
-    // Auto-add an entry and focus amount field if no entries yet
-    if (_crdData_cur[ei] && _crdData_cur[ei].entries.length === 0) {
-      addCrdEntry(ei);
-    } else {
-      // Focus last amount input in this employee's tbody
-      const tbody = document.getElementById('crd-tbody-' + ei);
-      if (tbody) {
-        const inputs = tbody.querySelectorAll('input[type="number"]');
-        if (inputs.length) inputs[inputs.length - 1].focus();
-      }
-    }
-  }, 150);
-}
 function crdEmpField(ei, field, val) { _crdData_cur[ei][field] = _ni(val); }
 function crdEntryChange(ei, eni, field, val) {
   _crdData_cur[ei].entries[eni][field] = field === 'amount' ? _ni(val) : val;
@@ -1136,7 +1104,7 @@ function loadPettyMonth(my) {
 
 function savePettyData() {
   if (!_pettyMonth) { toast('⚠ Select a month first','w'); return; }
-  Repository.setItem(_pettyKey(_pettyMonth), JSON.stringify(_pettyData));
+  Actions.saveFeatureData(_pettyKey(_pettyMonth), JSON.stringify(_pettyData));
   toast('✓ Petty Detail saved');
   if (Repository.getItem('bt_auto_save')==='1') pushToSupabase();
 }
@@ -1174,11 +1142,6 @@ function addPettyRow(gi) {
 function deletePettyRow(gi, ri) {
   _pettyData.groups[gi].rows.splice(ri, 1);
   renderPettyGroups();
-}
-
-function pettyChange(gi, field, val) {
-  _pettyData.groups[gi][field] = field === 'period' ? val : _ni(val);
-  recalcPettyKpis();
 }
 
 function pettyRowChange(gi, ri, field, val) {
@@ -1337,7 +1300,7 @@ function saveIncentiveData() {
     const el = document.getElementById('inc-' + f);
     if (el) _incData[f] = _ni(el.value);
   });
-  Repository.setItem(_incKey(_incMonth), JSON.stringify(_incData));
+  Actions.saveFeatureData(_incKey(_incMonth), JSON.stringify(_incData));
   toast('✓ Incentive data saved');
   if (Repository.getItem('bt_auto_save')==='1') pushToSupabase();
 }
@@ -1714,7 +1677,7 @@ function _initEventBusSubscribers() {
     //  no-op here so there's no double-open of the conflict modal.)
 
     // ── Generic feature-data changes (item:changed) ─────────────
-    // Repository.setItem() fires this for every key/value write —
+    // Actions.saveFeatureData() fires this for every key/value write —
     // notes, sheets, targets, custom sections, jazz cash, petty cash,
     // etc. We don't know here which page needs to redraw for a given
     // key, so we only refresh the *currently visible* page's own

@@ -1316,7 +1316,7 @@
   global.CommandHub = {
     open:  openPalette,
     close: closePalette,
-    clearRecent: () => { try { Repository.removeItem(RECENT_KEY); } catch (_) {} },
+    clearRecent: () => { try { Actions.clearFeatureData(RECENT_KEY); } catch (_) {} },
   };
 
 })(window);
