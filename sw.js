@@ -5,7 +5,7 @@
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v8.5'; // v8.6: PNG icons + post-auth sync + layout fixes
+const CACHE_NAME = 'bt-sales-v8.6'; // v8.6: PNG icons + post-auth sync + layout fixes
 
 const APP_SHELL = [
   './',
