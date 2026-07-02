@@ -1304,11 +1304,8 @@
   /* ═══════════════════════════════════════════════════════════════════════
      AUTO-INIT
   ═══════════════════════════════════════════════════════════════════════ */
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init(); // DOM already ready (script is after all other scripts)
-  }
+  // Always defer/module now — readyState is never 'loading' here.
+  document.addEventListener('DOMContentLoaded', init);
 
   /* ═══════════════════════════════════════════════════════════════════════
      PUBLIC API

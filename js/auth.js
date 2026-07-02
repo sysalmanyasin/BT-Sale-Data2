@@ -413,12 +413,13 @@ function _tcLoadGAuthStatus() {
   }
 }
 
-// Boot the auth gate on page load
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initAuthGate);
-} else {
-  initAuthGate();
-}
+// Boot the auth gate on page load.
+// NOTE: this file is now `defer`, which is guaranteed by spec to execute
+// BEFORE DOMContentLoaded fires — so document.readyState is never
+// 'loading' here anymore, and the old immediate-call fallback would
+// always run too early (before actions.js/repository.js have executed).
+// Always registering the listener is now unconditionally correct.
+document.addEventListener('DOMContentLoaded', initAuthGate);
 
 function unlockApp() {
   document.getElementById('pin-gate').style.display='none';

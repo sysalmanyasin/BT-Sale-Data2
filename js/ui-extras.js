@@ -457,11 +457,8 @@
     setTimeout(function () { _autoHealTargets(true); }, 2000);
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', _init);
-  } else {
-    _init();
-  }
+  // Always defer/module now — readyState is never 'loading' here.
+  document.addEventListener('DOMContentLoaded', _init);
 
   // Final safety-net: re-apply patches after all scripts have settled
   window.addEventListener('load', function () {

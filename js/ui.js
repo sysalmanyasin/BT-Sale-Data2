@@ -245,9 +245,7 @@ function toggleViewMode() {
 // Init button label on page load to reflect current saved mode
 (function() {
   const mode = Repository.getItem('bt_view_mode') || 'mobile';
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => _applyViewModeBtn(mode));
-  } else {
-    _applyViewModeBtn(mode);
-  }
+  // Always defer/module now — see note in auth.js. readyState is never
+  // 'loading' here anymore, so always register the listener.
+  document.addEventListener('DOMContentLoaded', () => _applyViewModeBtn(mode));
 })();

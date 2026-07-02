@@ -61,6 +61,7 @@ originally uploaded zip, not estimated.*
 | Files converted to real ES modules | 0 of 46 | **3 of 46** | `config.js`, `repository.js`, `actions.js` |
 | Global symbols behind a module export | 0 of ~850 | **37 of ~850** | `config.js` (35) + `Repository` + `Actions` — still bridged to `window` until consumers migrate |
 | Files still 100% bare-global classic scripts | 46 | **42** | `event-bus.js` bridged (still classic) so modules can see it |
+| Real bugs found via device testing | — | **1** (8 call sites) | `readyState==='loading'` anti-pattern broken by `defer`, fixed in all 8 files |
 
 ### Architecture violations fixed this pass
 1. **Invisible Page-layer state bypass** — `data-page.js: saveEditModal()` mutated the live `DAILY` record directly instead of going through Actions. Fixed via `Actions.editDailyEntry()` + a new single-source-of-truth `computeDailyTotals()` in `config.js`.
@@ -84,6 +85,39 @@ script, this is purely additive). Verified this pass with an actual
 Node.js execution of the converted files (with a minimal
 `window`/`localStorage` shim) rather than syntax-checking alone, which
 is what caught the `EventBus` gap before it could reach production.
+
+### 🐛 Real bug found via device testing (caught by you, not by me)
+Adding `defer` to all 45 classic scripts broke a pattern that existed in
+**8 files** (`auth.js`, `ui.js`, `commandhub.js`, `drive.js`,
+`sheets-patch.js`, `sync-center.js`, `ai-context-ui.js`, `ui-extras.js`):
+
+```js
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', fn);
+} else {
+  fn(); // ← this ran immediately, before Actions/Repository existed
+}
+```
+
+This pattern assumed the script might still be *mid-parse* when it ran
+(true for a plain classic script). Once `defer`'d, the browser
+guarantees the script only runs *after* parsing finishes — so
+`readyState` is never `'loading'` at that point anymore, and the `else`
+branch (immediate call) always fired instead, before `actions.js`/
+`repository.js` (later in the document) had executed. Console showed
+`ReferenceError: Actions is not defined` / `Repository is not defined`.
+
+**Fix:** since defer/module scripts are guaranteed by spec to complete
+before `DOMContentLoaded` fires, the readyState check is no longer
+needed at all — unconditionally registering the listener is now always
+correct. All 8 occurrences fixed the same way.
+
+**Process gap this exposed:** my Node.js runtime testing (with a
+`window`/`localStorage` shim) verified the *modules* work correctly in
+isolation, but didn't simulate the actual `defer`/parse-timing behavior
+of a real browser loading `index.html` — that's exactly the class of
+bug device-testing catches and my test harness can't. Real-browser
+testing after each script-loading change stays mandatory, not optional.
 
 ### Lessons learned converting `actions.js`
 1. **Never `import` from a file that isn't itself a module yet.** Almost

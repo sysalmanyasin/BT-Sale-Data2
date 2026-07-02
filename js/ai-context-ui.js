@@ -395,9 +395,6 @@ function _actxEsc(s) {
     if (strip) { actxRenderStrip(); return; }
     setTimeout(_tryInit, 500);
   }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', _tryInit);
-  } else {
-    setTimeout(_tryInit, 200);
-  }
+  // Always defer/module now — readyState is never 'loading' here.
+  document.addEventListener('DOMContentLoaded', _tryInit);
 }());

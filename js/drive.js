@@ -37,11 +37,8 @@ function _driveLoadCachedToken() {
     _driveAccessToken = cached;
     // Badge element may not exist yet if Tools page hasn't been opened —
     // _driveUpdateBadge() already no-ops safely via its own null check.
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => _driveUpdateBadge('ok'));
-    } else {
-      _driveUpdateBadge('ok');
-    }
+    // Always defer/module now — readyState is never 'loading' here.
+    document.addEventListener('DOMContentLoaded', () => _driveUpdateBadge('ok'));
   }
 })();
 

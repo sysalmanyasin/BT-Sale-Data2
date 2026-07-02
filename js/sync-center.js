@@ -233,13 +233,10 @@ function _sc_startActivityTracking() {
       };
     }
   };
-  // Shim after DOM ready (pushToSupabase defined in supabase.js which loads after us)
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', _shimPush);
-  } else {
-    // supabase.js hasn't run yet — defer one tick
-    setTimeout(_shimPush, 0);
-  }
+  // Always defer/module now — readyState is never 'loading' here, and
+  // DOMContentLoaded is guaranteed to fire only after supabase.js (also
+  // in the same ordered defer/module queue) has already run.
+  document.addEventListener('DOMContentLoaded', _shimPush);
 }
 
 // ══════════════════════════════════════════════════════════════════════════

@@ -558,10 +558,7 @@
     obs.observe(container, { childList: true, subtree: true });
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', _init);
-  } else {
-    _init();
-  }
+  // Always defer/module now — readyState is never 'loading' here.
+  document.addEventListener('DOMContentLoaded', _init);
 
 })();
