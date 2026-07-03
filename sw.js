@@ -1,11 +1,11 @@
 /* ═══════════════════════════════════════════════════════════════
-   BT Sales IC — Service Worker  v8.6
+   BT Sales IC — Service Worker  v8.3
    Strategy: Network-first for same-origin app shell (fresh on connect,
    cached fallback offline). CDN libs use stale-while-revalidate.
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v8.7'; // v8.6: PNG icons + post-auth sync + layout fixes
+const CACHE_NAME = 'bt-sales-v8.6'; // v8.6: ES module migration (config/repository/actions) + script reorder + notify-loop fix
 
 const APP_SHELL = [
   './',
@@ -28,7 +28,6 @@ const APP_SHELL = [
   './css/ai-context.css',
 
   /* ── JS — shared service layer ── */
-  './js/data-base.js',
   './js/bt-format.js',
   './js/bt-date.js',
   './js/bt-calc.js',

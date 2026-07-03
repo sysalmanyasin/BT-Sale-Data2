@@ -244,8 +244,15 @@ function toggleViewMode() {
 
 // Init button label on page load to reflect current saved mode
 (function() {
-  const mode = Repository.getItem('bt_view_mode') || 'mobile';
   // Always defer/module now — see note in auth.js. readyState is never
-  // 'loading' here anymore, so always register the listener.
-  document.addEventListener('DOMContentLoaded', () => _applyViewModeBtn(mode));
+  // 'loading' here anymore. Also: the Repository.getItem call itself
+  // must be inside the deferred callback too, not just the DOM update —
+  // ui.js loads BEFORE repository.js in the document, so calling
+  // Repository immediately here (even just to compute `mode`) throws
+  // "Repository is not defined". Only code that runs after
+  // DOMContentLoaded is guaranteed Repository/Actions are ready.
+  document.addEventListener('DOMContentLoaded', () => {
+    const mode = Repository.getItem('bt_view_mode') || 'mobile';
+    _applyViewModeBtn(mode);
+  });
 })();

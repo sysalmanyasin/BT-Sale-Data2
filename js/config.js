@@ -147,24 +147,36 @@ export function recomputeMonthly(monthYear) {
   const days = DAILY.filter(d => d.Month_Year === monthYear);
   if (!days.length) return;
 
-  const isNew = !MONTHLY.find(x => x.Month_Year === monthYear);
-  let rec = isNew ? { Month_Year: monthYear } : MONTHLY.find(x => x.Month_Year === monthYear);
+  const existing = MONTHLY.find(x => x.Month_Year === monthYear);
+  const isNew = !existing;
 
+  // Compute into a fresh candidate object first — do NOT touch the live
+  // `existing` record yet. This lets us compare old vs. new values below
+  // and skip the notify entirely when nothing actually changed, instead
+  // of always overwriting rec in place and only then "comparing" (which
+  // would always show a change, since rec IS the live object).
+  const candidate = isNew ? { Month_Year: monthYear } : {};
   MONTHLY_SUM_FIELDS.forEach(field => {
     const pick = RETURN_FIELDS.has(field) ? negR : n;
     const sum = days.reduce((s, d) => s + pick(d[field]), 0);
-    rec[field] = sum || null;
+    candidate[field] = sum || null;
   });
-  rec['TOTAL'] = String(days.reduce((s, d) => s + n(d['TOTAL']), 0));
-  rec['Sale Plus'] = null;
-  const _diffVal = Math.round(n(rec['TOTAL']) - n(rec['COMP SALE']));
-  rec['DIFF'] = _diffVal !== 0 ? String(_diffVal) : null;
+  candidate['TOTAL'] = String(days.reduce((s, d) => s + n(d['TOTAL']), 0));
+  candidate['Sale Plus'] = null;
+  const _diffVal = Math.round(n(candidate['TOTAL']) - n(candidate['COMP SALE']));
+  candidate['DIFF'] = _diffVal !== 0 ? String(_diffVal) : null;
+
+  const changed = isNew || Object.keys(candidate).some(k => candidate[k] !== existing[k]);
+  if (!changed) return; // nothing to do — avoids re-notifying subscribers
+                          // (like manager.js's rebuildAll listener) with
+                          // no actual change, which was causing a ~300ms
+                          // notify → rebuildAll → recompute → notify loop.
+
+  const rec = isNew ? candidate : Object.assign(existing, candidate);
 
   // Always go through Repository.upsertMonthly — this is the one door
   // that stamps metadata AND notifies EventBus, whether this is a brand
-  // new month record or an update to an existing one (previously only
-  // the "new month" branch notified; updates — the common case — did
-  // not, so Pages subscribed to monthly:updated silently missed them).
+  // new month record or a genuine update to an existing one.
   Repository.upsertMonthly(rec);
   if (isNew) Repository.sortMonthlyChronological();
 }

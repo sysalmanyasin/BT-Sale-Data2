@@ -86,7 +86,60 @@ Node.js execution of the converted files (with a minimal
 `window`/`localStorage` shim) rather than syntax-checking alone, which
 is what caught the `EventBus` gap before it could reach production.
 
-### 🐛 Real bug found via device testing (caught by you, not by me)
+### 🐛🐛 Second round of device-testing bugs (this was the big one)
+
+**1. The dashboard-reload / dropdown-closing / month-collapsing bug —
+a regression I introduced two sessions ago.** Root cause: my earlier
+fix made `recomputeMonthly()` notify EventBus on *every* call, including
+when nothing actually changed. `manager.js` subscribes to
+`monthly:updated` and calls `rebuildAll()` (debounced 300ms) — which
+calls `recomputeAllMonths()` — which calls `recomputeMonthly()` for
+every month — which (with my old fix) always notified again — which
+triggered `rebuildAll()` again. A perpetual ~300ms re-render loop,
+which looked exactly like what you saw: cards constantly reloading, any
+open `<select>` or expanded row getting wiped out from under you.
+**Fix:** `recomputeMonthly()` now computes into a temporary candidate
+object, compares it against the existing record, and only calls
+`Repository.upsertMonthly()` (which notifies) when something actually
+changed or the month is brand new. Verified with an actual notify-count
+test: 2nd call with no data change → 0 notifications; a call after a
+real data change → 1 notification, as it should be.
+
+**2. `ui.js` still threw `Repository is not defined` after my first
+fix.** My earlier fix only deferred *when the DOM got updated* — but
+`const mode = Repository.getItem(...)` itself still ran immediately,
+outside the deferred callback. Moved that line inside the callback too.
+
+**3. Structural root cause: `auth.js`, `storage.js`, `ui.js` were
+positioned in the HTML *before* `event-bus.js`/`repository.js`/
+`actions.js`.** This is what made bug #2 possible at all, and made
+individually auditing every file for "immediate execution" risk
+fragile — proven by the fact that I missed it myself once already.
+**Real fix:** reordered `index.html` so `config.js` → `event-bus.js` →
+`repository.js` → `actions.js` load as a single foundation block,
+before *anything* else. This removes the whole bug class at the root
+instead of requiring perfect per-file auditing forever.
+
+**4. Sign-out crash: `_autoHandle is not defined`.** Confirmed via the
+original uploaded zip that this one **predates all of this session's
+changes** — leftover dead code referencing a variable that was never
+declared, from a since-removed auto-refresh feature. Fixed while we
+were in there (deleted the dead guard line).
+
+**5. `sw.js` still precached the deleted `data-base.js`.** Cleanup miss
+from when that file was deleted earlier — removed the stale reference
+and bumped `CACHE_NAME` to `v8.6` so the browser doesn't keep serving
+anything cached from before this round of fixes.
+
+**Process note:** bug #1 (the notify loop) is the one that should
+reshape how I verify future changes here — it wasn't caught by syntax
+checks or even by running the code, because the code was *individually*
+correct; it only became a bug in combination with a subscriber
+elsewhere in the app. From now on, any change to what EventBus notifies
+gets a check for "what listens for this, and could that listener
+trigger the same code path again" — not just "does this function work
+in isolation."
+
 Adding `defer` to all 45 classic scripts broke a pattern that existed in
 **8 files** (`auth.js`, `ui.js`, `commandhub.js`, `drive.js`,
 `sheets-patch.js`, `sync-center.js`, `ai-context-ui.js`, `ui-extras.js`):
@@ -146,3 +199,9 @@ Reasoning: dead-code sweep and the 5 architecture-violation fixes are done and a
 Reasoning: this scale includes full modularization (45 files still to go), `ai-memory.js` being genuinely fixed, and no further audit findings on a second deep pass. We're early on the part of the work that actually moves this number — most of a "perfect app" score is the modularization + the eventual removal of every `window` bridge, which is many sessions away at a careful pace.
 
 These two numbers will be updated at the end of each session so we can watch them move.
+
+---
+
+## 📋 Backlog (deferred by request)
+- **Manager tab credit summary card** — same collapsed-by-default summary card with month dropdown that exists on the Dashboard, placed above "Credit Details" / below "Save All & Sync" on the Manager tab. Explicitly deferred by request until the improvement score reaches 100.
+

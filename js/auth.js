@@ -449,7 +449,6 @@ function lockApp() {
   document.getElementById('pin-gate').style.display='flex';
   document.getElementById('nav').style.display='none';
   document.querySelectorAll('.page').forEach(p=>{ p.classList.remove('on'); p.style.display=''; });
-  if(_autoHandle) clearInterval(_autoHandle);
   setTimeout(initAuthGate, 50);
 }
 

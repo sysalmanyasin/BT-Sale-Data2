@@ -1364,6 +1364,15 @@ if ('serviceWorker' in navigator) {
 <!-- 2. Config: Floor 2 state store — protected MONTHLY/DAILY/STAFF + utils -->
 <script type="module" src="js/config.js"></script>
 
+<!-- 2b. Floor 3: event bus, then Repository (Floor 1), then Actions (Floor 3)
+     — strict order, and ALL FOUR of these must load before anything else,
+     because auth.js/storage.js/ui.js/sync-center.js reference
+     Repository/Actions/EventBus immediately (not just inside deferred
+     event-listener callbacks), so they need these already executed. -->
+<script defer src="js/event-bus.js"></script>
+<script type="module" src="js/repository.js"></script>
+<script type="module" src="js/actions.js"></script>
+
 <!-- 3. Auth: Google Sign-In -->
 <script defer src="js/auth.js"></script>
 
@@ -1373,16 +1382,9 @@ if ('serviceWorker' in navigator) {
 <!-- 5. UI: showPage, toast, clock, rebuild, dropdowns -->
 <script defer src="js/ui.js"></script>
 
-<!-- 6. Floor 3: event bus MUST load before repository.js uses it -->
-<script defer src="js/event-bus.js"></script>
-
 <!-- 6b. Supabase client lib + sync center (needs EventBus) -->
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script defer src="js/sync-center.js"></script>
-
-<!-- 6c. Repository (Floor 1) then Actions (Floor 3) — strict order -->
-<script type="module" src="js/repository.js"></script>
-<script type="module" src="js/actions.js"></script>
 
 <!-- 6c2. Conflict UI (Floor 4/5) — DOM code that reacts to Repository/Actions -->
 <script defer src="js/conflict-ui.js"></script>
