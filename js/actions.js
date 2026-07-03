@@ -10,13 +10,7 @@
 
 import { Repository } from './repository.js';
 import { computeDailyTotals } from './config.js';
-// NOTE: EventBus is NOT imported here on purpose. event-bus.js is still a
-// classic script (not yet converted to a module), so it has no `export`
-// statement — importing from it would make the browser fetch/parse it a
-// SECOND time as a separate module instance, creating two different
-// EventBus objects. Until event-bus.js is converted, this file relies on
-// the bare `EventBus` reference below, resolved via the window.EventBus
-// bridge in event-bus.js. Revisit this the moment event-bus.js converts.
+import { EventBus } from './event-bus.js';
 
 export const Actions = (function () {
 

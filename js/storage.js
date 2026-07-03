@@ -1,8 +1,15 @@
 // ══════════════════════════════════════════
 // NAV
 // ══════════════════════════════════════════
+// NOTE: _curPage stays a true bare global (not wrapped below) because
+// ui.js reassigns it directly (`_curPage = id`), not just reads it —
+// wrapping it would silently desync ui.js's writes from this file's
+// copy, since a bare reassignment elsewhere would just create a new,
+// disconnected window property instead of updating the real binding.
 let _curPage = '';
 
+(function() {
+'use strict';
 
 // ══════════════════════════════════════════
 // RENDER CACHE (instant tab switching)
@@ -87,3 +94,15 @@ async function idbLoadData() {
     return true;
   } catch(e) { return false; }
 }
+
+// Bridge only what's actually used elsewhere. IDB_NAME/IDB_VER/IDB_STORE,
+// idbOpen, idbSet, and idbGet are all genuinely private — only
+// idbSaveData (drive.js, supabase.js) and idbLoadData (auth.js) are
+// consumed externally, alongside the render-cache helpers.
+window._rc = _rc;
+window._rcKey = _rcKey;
+window.invalidateRenderCache = invalidateRenderCache;
+window.idbSaveData = idbSaveData;
+window.idbLoadData = idbLoadData;
+
+})();

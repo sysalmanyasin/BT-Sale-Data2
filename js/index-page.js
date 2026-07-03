@@ -1,4 +1,6 @@
 // ══════════════════════════════════════════
+(function() {
+'use strict';
 // INDEX  —  Floor 5 pure renderer
 //
 // All filtering/sorting/grouping/aggregation now lives in
@@ -61,3 +63,15 @@ function iCard(m,maxT,tgts) {
   </div>`;
 }
 
+
+// renderIndex is consumed externally (ai-bridge.js, ui.js, targets.js,
+// manager.js, index.html). toggleYrGroup is called via a generated
+// onclick="toggleYrGroup(this)" attribute in the HTML this file builds —
+// onclick handlers always resolve against the global scope, so this MUST
+// stay on window even though no other .js file references it directly.
+// iCard is only ever called from within this file's own JS, so it's the
+// one genuinely private helper here.
+window.renderIndex = renderIndex;
+window.toggleYrGroup = toggleYrGroup;
+
+})();

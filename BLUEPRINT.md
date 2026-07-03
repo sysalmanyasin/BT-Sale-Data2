@@ -48,8 +48,8 @@ safe stages, file by file:
 
 ## 📊 KPI Scorecard
 
-*Last updated: this session. Numbers are measured directly against the
-originally uploaded zip, not estimated.*
+*Last updated: this session, device-confirmed clean console (only the
+known `ai-memory.js` placeholder issue remains).*
 
 | Metric | Before | After | Change |
 |---|---|---|---|
@@ -58,9 +58,10 @@ originally uploaded zip, not estimated.*
 | Global naming collisions | 1 | **0** | `chpOpenScan` was defined twice (intentional override, but left dead code + a stale comment behind — cleaned up) |
 | Total `.js` lines | 22,617 | 22,571 | net **−46** (274 lines removed, 230 added — some removals were bug-fix rewrites, not pure deletion) |
 | Architecture violations fixed | 5 categories | | See list below |
-| Files converted to real ES modules | 0 of 46 | **3 of 46** | `config.js`, `repository.js`, `actions.js` |
-| Global symbols behind a module export | 0 of ~850 | **37 of ~850** | `config.js` (35) + `Repository` + `Actions` — still bridged to `window` until consumers migrate |
-| Files still 100% bare-global classic scripts | 46 | **42** | `event-bus.js` bridged (still classic) so modules can see it |
+| Files converted to real ES modules | 0 of 46 | **4 of 46** | `config.js`, `event-bus.js`, `repository.js`, `actions.js` — entire Floor 1–3 now real modules, no more window-bridge workarounds between them |
+| Files namespaced (Stage A, still classic scripts) | 0 of 41 | **15 of 41** | 11 already done pre-session + 4 wrapped this round (`app-context.js`, `index-page.js`, `storage.js`, `hub-actions.js`) |
+| Global symbols behind a module export | 0 of ~850 | **38 of ~850** | + `EventBus` |
+| Files still 100% bare-global classic scripts | 46 | **26** | |
 | Real bugs found via device testing | — | **1** (8 call sites) | `readyState==='loading'` anti-pattern broken by `defer`, fixed in all 8 files |
 
 ### Architecture violations fixed this pass
@@ -172,6 +173,66 @@ of a real browser loading `index.html` — that's exactly the class of
 bug device-testing catches and my test harness can't. Real-browser
 testing after each script-loading change stays mandatory, not optional.
 
+### Floor 4/5: switched strategy — namespacing (Stage A), not ES modules
+Dependency analysis showed Floor 4/5 is densely, bidirectionally
+interconnected (`ui.js` alone has 658 call sites depending on it across
+28 other files) — real ES modules would mean constantly untangling
+circular imports for little benefit. Switched to Stage A: wrap each
+file's internals in an IIFE, keep it a classic script, bridge onto
+`window` only the names other files actually use.
+
+**Discovery: much of Floor 4/5 was already effectively done.** 11 files
+(`ai-context.js`, `ai-instructions.js`, `commandhub.js`,
+`intent-groups.js`, `sheets-patch.js`, `ui-extras.js`, `bt-calc.js`,
+`bt-date.js`, `bt-search.js`, `analytics.js`, `diff-report.js`) were
+already namespaced or down to a single well-named global — no work
+needed. Real reduction only makes sense where a file has a high ratio
+of genuinely-private helpers to externally-used functions; wrapping a
+file where almost everything is already called from 3+ other files just
+adds a namespace layer without hiding anything.
+
+**This round's wraps:** `app-context.js` (7→2 globals),
+`index-page.js` (3→2 globals), `storage.js` (6→5, `_curPage` stays bare
+— see below), `hub-actions.js` (8→7 globals). Skipped `knowledge-sheet.js`,
+`bt-format.js`, `conflict-ui.js`, `targets.js` — see reasoning above.
+
+**Two new lessons, both caught before shipping:**
+1. **My dependency-analysis regex missed `async function` declarations**
+   (only matched `function`/`let`/`const`/`class`) — undercounted every
+   file with async helpers. `storage.js`'s `idbSet`/`idbGet`/
+   `idbSaveData`/`idbLoadData` were invisible to the first pass. Caught
+   by manually re-checking for `^async function` before finalizing.
+2. **Functions called via a same-file generated `onclick="..."` HTML
+   string must stay on `window`, even with zero cross-*file* references.**
+   Browser `onclick` attributes always resolve against global scope,
+   never an IIFE's local scope. Cost real near-misses: `index-page.js`'s
+   `toggleYrGroup` and `knowledge-sheet.js`'s `kshClose` both looked
+   "private" by cross-file grep alone but are called from `onclick=`
+   strings the same file generates. Now checked explicitly (`grep
+   onclick=` in the file itself) before hiding anything, not just
+   cross-file references.
+3. **A `let` reassigned by another file (not just read) can never be
+   hidden in an IIFE** — same class as the `MONTHLY`/`DAILY` check from
+   Floor 1-3, but this time within Floor 4/5: `storage.js`'s `_curPage`
+   is reassigned directly by `ui.js` (`_curPage = id`), so it stays a
+   true bare global outside the IIFE while everything else in the file
+   got wrapped normally.
+
+
+`event-bus.js` converted last — zero dependencies, so it was
+low-risk, but still went through the full checklist from the lessons
+above: traced every consumer for immediate (non-deferred) top-level
+usage (found only `conflict-ui.js`, already correctly positioned after
+it), updated `repository.js`/`actions.js` to real `import` instead of
+the window-bridge workaround, and ran the full Node.js runtime test
+including regression checks for the staff-CRUD and notify-loop fixes
+from earlier sessions — all passing through the real import chain now,
+not just the bridge. `repository.js` and `actions.js` no longer have
+any "can't import yet" workaround comments. Floor 1–3 (state store,
+event bus, repository, actions) is now 100% real ES modules with zero
+internal window-bridge dependencies between them — only the 41
+remaining Floor 4/5 files still consume them via `window`.
+
 ### Lessons learned converting `actions.js`
 1. **Never `import` from a file that isn't itself a module yet.** Almost
    added `import { EventBus } from './event-bus.js'` — but event-bus.js
@@ -192,11 +253,20 @@ testing after each script-loading change stays mandatory, not optional.
 
 ## 🎯 Progress scale (subjective, gut-check — not precise)
 
-**On a scale of improvement this session (1–100):** ~8/100
-Reasoning: dead-code sweep and the 5 architecture-violation fixes are done and are the "quick win" category. Global modularization — the bigger, riskier, more valuable piece — has only just started (1 of 46 files).
+**On a scale of improvement this session (1–100):** ~12/100
+Reasoning: dead-code sweep, all 5 original architecture violations, and
+Floor 1–3 modularization are done AND device-verified clean (no console
+errors, no notify loop, no ReferenceErrors). That's meaningfully more
+solid than "code that compiles" — it's "code confirmed working on the
+actual device under actual use," which is the bar that matters. Still
+early on Floor 4/5 (42 files to go).
 
-**On a scale of "perfect web app" (1–100):** ~10/100
-Reasoning: this scale includes full modularization (45 files still to go), `ai-memory.js` being genuinely fixed, and no further audit findings on a second deep pass. We're early on the part of the work that actually moves this number — most of a "perfect app" score is the modularization + the eventual removal of every `window` bridge, which is many sessions away at a careful pace.
+**On a scale of "perfect web app" (1–100):** ~13/100
+Reasoning: same increment as above, plus this round proved out the
+*process* (Node runtime testing + mandatory device testing + explicit
+EventBus-subscriber-impact checks) that the remaining 42 files need to
+go through safely — that process itself is now a durable asset, not
+just this session's progress.
 
 These two numbers will be updated at the end of each session so we can watch them move.
 

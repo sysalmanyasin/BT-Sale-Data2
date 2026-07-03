@@ -1,4 +1,6 @@
 // ══════════════════════════════════════════════════════════════════════
+(function() {
+'use strict';
 // HUB QUICK ACTIONS — headless print/report triggers for the CommandHub
 // page's "⚡ Quick" chips. Each function works standalone (no other page
 // needs to be open first) and either prints a report or posts a reply
@@ -141,3 +143,15 @@ function hubShowJazzCashBalance() {
   _hubPost('🏦 <strong>Jazz Cash current balance:</strong> ' + sign + '₨' + fmt +
     ' <button class="chp-state-btn" onclick="showPage(\'manager\');setTimeout(function(){switchMgrTab(\'jazzcash\')},250)">Open Ledger →</button>');
 }
+
+// _hubPost is genuinely private (only used within this file). Everything
+// else is consumed by commandhub-page.js and/or commandhub.js.
+window.hubPrintTodayReport     = hubPrintTodayReport;
+window.hubPrintCreditSummary   = hubPrintCreditSummary;
+window.hubPrintYearReport      = hubPrintYearReport;
+window.hubPrintPaceReport      = hubPrintPaceReport;
+window.hubPrintExpenseSummary  = hubPrintExpenseSummary;
+window.hubPrintMonthSummary    = hubPrintMonthSummary;
+window.hubShowJazzCashBalance  = hubShowJazzCashBalance;
+
+})();

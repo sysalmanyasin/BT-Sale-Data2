@@ -1369,7 +1369,7 @@ if ('serviceWorker' in navigator) {
      because auth.js/storage.js/ui.js/sync-center.js reference
      Repository/Actions/EventBus immediately (not just inside deferred
      event-listener callbacks), so they need these already executed. -->
-<script defer src="js/event-bus.js"></script>
+<script type="module" src="js/event-bus.js"></script>
 <script type="module" src="js/repository.js"></script>
 <script type="module" src="js/actions.js"></script>
 

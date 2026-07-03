@@ -5,7 +5,7 @@
 // itself here; Pages subscribe here to know when to re-render.
 // Load order requirement: event-bus.js → repository.js → actions.js
 // ══════════════════════════════════════════════════════════════════════
-const EventBus = (function () {
+export const EventBus = (function () {
   const _listeners = [];
 
   function notify(eventName, payload) {
@@ -25,8 +25,8 @@ const EventBus = (function () {
   return { notify, onChange };
 })();
 
-// Bridge onto window: repository.js is now an ES module, and const/let
-// globals (unlike var/function) never auto-attach to window even in a
-// classic script — so without this, repository.js can no longer see
-// EventBus at all once converted.
+// Bridge onto window — remove once every consumer imports EventBus
+// directly. conflict-ui.js in particular calls EventBus.onChange(...)
+// immediately at its own top level (not inside any deferred callback),
+// so it needs this bridge until it's converted to a module itself.
 window.EventBus = EventBus;

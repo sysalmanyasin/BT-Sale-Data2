@@ -1,4 +1,6 @@
 // ══════════════════════════════════════════════════════════════════════
+(function() {
+'use strict';
 // AppContext — Unified read-only snapshot of application state
 // Consumed by: AI Bridge, Command Hub, Assistant Engine
 // Gives the AI full visibility into EVERY page: Dashboard, Index, Data,
@@ -312,3 +314,12 @@ function getAppContextSummary(opts) {
   if (!lines.length) return 'Data is loading. Please try again in a moment.';
   return lines.join('\n');
 }
+
+// Only these two are consumed by other files (ai-bridge.js, commandhub.js) —
+// everything else above (MGR_STORAGE_KEY, _acNum, _acFc, _acMgrLoad,
+// _acPettyTotalForMonth) is now properly private to this file instead of
+// sitting on window like the public API.
+window.getAppContext = getAppContext;
+window.getAppContextSummary = getAppContextSummary;
+
+})();
