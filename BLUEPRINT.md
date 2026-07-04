@@ -59,9 +59,9 @@ known `ai-memory.js` placeholder issue remains).*
 | Total `.js` lines | 22,617 | 22,571 | net **−46** (274 lines removed, 230 added — some removals were bug-fix rewrites, not pure deletion) |
 | Architecture violations fixed | 5 categories | | See list below |
 | Files converted to real ES modules | 0 of 46 | **4 of 46** | `config.js`, `event-bus.js`, `repository.js`, `actions.js` — entire Floor 1–3 now real modules, no more window-bridge workarounds between them |
-| Files namespaced (Stage A, still classic scripts) | 0 of 41 | **15 of 41** | 11 already done pre-session + 4 wrapped this round (`app-context.js`, `index-page.js`, `storage.js`, `hub-actions.js`) |
+| Files namespaced (Stage A, still classic scripts) | 0 of 41 | **26 of 41** | + `ai-instructions-ui.js`, `auth.js` this round |
 | Global symbols behind a module export | 0 of ~850 | **38 of ~850** | + `EventBus` |
-| Files still 100% bare-global classic scripts | 46 | **26** | |
+| Files still 100% bare-global classic scripts | 46 | **15** | |
 | Real bugs found via device testing | — | **1** (8 call sites) | `readyState==='loading'` anti-pattern broken by `defer`, fixed in all 8 files |
 
 ### Architecture violations fixed this pass
@@ -173,7 +173,46 @@ of a real browser loading `index.html` — that's exactly the class of
 bug device-testing catches and my test harness can't. Real-browser
 testing after each script-loading change stays mandatory, not optional.
 
-### Floor 4/5: switched strategy — namespacing (Stage A), not ES modules
+### 🐛🐛🐛 Third round — two pre-existing bugs, confirmed via diff, not caused by any session's changes
+
+**1. Months/years collapsing when trying to expand (Sale Data + Index
+pages).** Confirmed via `diff` against the original uploaded zip that
+`toggleMonGroup`/`renderDataTable` (data-page.js) and the equivalent
+index-page.js logic were **byte-for-byte unchanged** — this predates
+all of this session's work. Root cause: `manager.js`'s EventBus
+subscriber triggers a full `rebuildAll()` on *any* sales write
+(`daily:added`, `daily:pulled`, `daily:gapfilled`, etc. — all
+legitimate, correctly-guarded notifications, not a repeat of the
+earlier notify-loop bug). Each rebuild fully replaces the DOM and
+defaulted every month/year back to "only the latest one open," wiping
+out whatever the user had manually expanded — and with a live periodic
+sync poll running, this could happen often enough to feel like
+"continuously collapsing." **Fix:** both `renderDataTable()` and
+`renderIndex()` now capture which months/years are open *before*
+rebuilding and restore that exact state after, falling back to
+"latest open" only on the very first render when nothing has been
+opened yet. Verified with a real jsdom-based DOM test (capture → open
+state correctly detected → correctly restored across a simulated
+rebuild).
+
+**2. Print producing a blank page.** Also confirmed via `diff` — `
+bt-format.js`, `reports.js`, `reports-print.js` were all completely
+unchanged from the original zip. The print CSS (`@media print` in
+`pages.css`) is solid and already has a documented history of one prior
+fix for mobile "Save as PDF" pagination. But the screenshot showed
+printing to a **physical HP LaserJet driver** on desktop Chrome — a
+different combination than what was previously fixed, and possibly a
+printer-driver rendering quirk rather than something fixable in the web
+app. Made one safe, defensive improvement regardless: `btPrint()` now
+waits two animation frames (double-rAF) before calling `window.print()`
+instead of one frame + a fixed 60ms guess — a more robust way to ensure
+a large report has actually finished laying out before the print
+snapshot is taken. **Open question for the user:** does this happen
+with "Save as PDF" too, or only the physical printer? That distinguishes
+a real web-app bug from a printer-driver limitation outside this
+codebase's control.
+
+
 Dependency analysis showed Floor 4/5 is densely, bidirectionally
 interconnected (`ui.js` alone has 658 call sites depending on it across
 28 other files) — real ES modules would mean constantly untangling
@@ -233,7 +272,74 @@ event bus, repository, actions) is now 100% real ES modules with zero
 internal window-bridge dependencies between them — only the 41
 remaining Floor 4/5 files still consume them via `window`.
 
+### Fourth batch (while user was offline overnight)
+Wrapped 9 more files: `ai-helpers.js`, `manager-export.js`, `drive.js`,
+`custom-sections.js`, `dashboard.js`, `ai-context-ui.js`,
+`dashboard-insights.js`, `fields.js`, `commandhub-page.js`. Skipped
+`reports-print.js` deliberately — it's implicated in the print bug
+currently being tested, didn't want to touch it mid-diagnosis.
+
+**Broadened the same-file-reference check** from `onclick=` only to
+also cover `onchange=`, `oninput=`, `onkeyup=`, `onkeydown=`, `onblur=`,
+`onfocus=`, `onsubmit=` — this caught `dashboard.js`'s
+`dashSetCreditMonth` (a dropdown `onchange` handler), which the
+onclick-only check had wrongly marked "private."
+
+**Found two more externally-*reassigned* variables** needing the same
+`_curPage` treatment (kept as true bare globals, declared before the
+IIFE, not wrapped): `drive.js`'s `_driveAccessToken` (reassigned by
+`auth.js` in 3 places) and `fields.js`'s `_fmCustom` (reassigned
+*internally* by fields.js itself in 3 places, and read externally by
+`config.js`/`data-page.js` as a bare identifier — same risk even though
+the reassignment isn't from another file, since a one-time bridge would
+go stale the moment fields.js replaced the array).
+
+**Caught and fixed a wrapping mistake before it shipped:** the first
+mechanical wrap (`manager-export.js`) inserted the IIFE opener right
+after literal line 1 — which was the *opening* of a multi-line `/**`
+JSDoc comment block, trapping `(function() { 'use strict';` as comment
+text instead of real code, leaving the final `})();` with nothing to
+close. `node -c` caught it immediately. Rewrote the wrapping approach
+to properly detect and skip past all leading comments (both `//` and
+`/** */` blocks) before inserting, and verified the new approach against
+every subsequent file in this batch.
+
+**Final verification, done programmatically rather than by eye:** (1)
+confirmed every expected bridge (`window.X = X`) is actually present in
+each file, (2) confirmed every name intended to stay private has zero
+references anywhere else in the codebase or `index.html`. Zero leaks
+found on either check.
+
+### Fifth batch — `ai-instructions-ui.js` and the `auth.js` monkey-patch
+Wrapped `ai-instructions-ui.js` cleanly (21 bridges, 14 hidden, zero
+issues). `auth.js` surfaced the most structurally interesting case yet:
+
+**`drive.js` monkey-patches `unlockApp`** — captures the original
+function, then reassigns `unlockApp = function(){...}` to add
+auto-backup-after-unlock. `auth.js` itself calls `unlockApp()`
+internally in several places. If `unlockApp` had been wrapped in the
+IIFE like everything else, drive.js's patch would only ever have
+affected a `window`-level copy, while every internal call inside
+auth.js would keep calling the original, unpatched version forever —
+silently breaking the auto-backup feature with no error anywhere.
+
+`unlockApp` also calls `initAutoRefresh()` internally, which had no
+other external dependents (would otherwise have been wrapped/hidden) —
+had to travel with it, kept bare for the same reason. Traced the full
+call chain first to confirm nothing else `unlockApp` needs is
+internal-to-auth.js (everything else — `initApp`, `startSupabaseSync`,
+`rebuildAll`, `manualSync`, etc. — lives in other files and is
+unaffected either way).
+
+Verified the actual monkey-patch scenario end-to-end in Node: captured
+the bare `unlockApp`, patched it exactly like drive.js does, called it
+bare (simulating an internal auth.js call) — confirmed the patched
+version runs, not the stale original. Then the usual programmatic
+sweep: all 18 expected bridges present, zero leaks from the 22 names
+kept private.
+
 ### Lessons learned converting `actions.js`
+
 1. **Never `import` from a file that isn't itself a module yet.** Almost
    added `import { EventBus } from './event-bus.js'` — but event-bus.js
    is still a classic script with no `export`, so that import would have
