@@ -5,6 +5,9 @@
 // ══════════════════════════════════════════════════════════════════════
 
 // ── State ─────────────────────────────────────────────────────────────
+(function() {
+'use strict';
+
 var _ainState = {
   activeTab:  'all',          // category id or "all"
   searchQ:    '',
@@ -580,3 +583,31 @@ function _ainRelTime(iso) {
     return Math.round(diff/86400) + 'd ago';
   } catch(_) { return ''; }
 }
+
+// Bridge what's used externally (knowledge-sheet.js, ai-instructions.js)
+// or referenced via a same-file event attribute.
+window.ainOpen = ainOpen;
+window.ainClose = ainClose;
+window.renderAiInstructionsPanel = renderAiInstructionsPanel;
+window.ainSwitchTab = ainSwitchTab;
+window.ainOnSearch = ainOnSearch;
+window.ainShowAddForm = ainShowAddForm;
+window.ainHideAddForm = ainHideAddForm;
+window.ainFormCatChange = ainFormCatChange;
+window.ainFillExample = ainFillExample;
+window.ainSubmitAdd = ainSubmitAdd;
+window.ainStartEdit = ainStartEdit;
+window.ainCancelEdit = ainCancelEdit;
+window.ainSaveEdit = ainSaveEdit;
+window.ainToggle = ainToggle;
+window.ainDeletePrompt = ainDeletePrompt;
+window.ainConfirmDelete = ainConfirmDelete;
+window.ainExportUI = ainExportUI;
+window.ainImportUI = ainImportUI;
+window.ainImportTabSwitch = ainImportTabSwitch;
+window.ainDoImport = ainDoImport;
+window.ainSyncToCloud = ainSyncToCloud;
+window.ainSyncFromCloud = ainSyncFromCloud;
+window.ainClearAllPrompt = ainClearAllPrompt;
+
+})();

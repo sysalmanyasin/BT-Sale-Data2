@@ -13,13 +13,27 @@ function renderIndex() {
   const sort=document.getElementById('idx-sort')?.value||'date';
   const container=document.getElementById('idx-container');
 
+  // Remember which year groups are currently expanded — a rebuild can be
+  // triggered by a background sync event at any time, not just user
+  // navigation, and shouldn't silently collapse what the user had open.
+  const openYears = new Set();
+  if (container) {
+    container.querySelectorAll('.yr-group').forEach(g => {
+      const label = g.querySelector('.yr-hdr-label');
+      const body = g.querySelector('.yr-body');
+      if (label && body && body.classList.contains('open')) openYears.add(label.textContent);
+    });
+  }
+
   const vm = Analytics.buildIndexViewModel(q, yr, sort);
 
   if (vm.mode === 'grouped') {
-    container.innerHTML = vm.groups.map(g => `<div class="yr-group">
+    container.innerHTML = vm.groups.map(g => {
+      const isOpen = openYears.size ? openYears.has(String(g.year)) : g.isLatest;
+      return `<div class="yr-group">
         <div class="yr-hdr" onclick="toggleYrGroup(this)">
           <div class="yr-hdr-left">
-            <span class="yr-chevron${g.isLatest?' open':''}">▶</span>
+            <span class="yr-chevron${isOpen?' open':''}">▶</span>
             <span class="yr-hdr-label">${g.year}</span>
             <span class="yr-hdr-meta">${g.months.length} months</span>
           </div>
@@ -29,10 +43,11 @@ function renderIndex() {
             <button onclick="event.stopPropagation();printYearlyReport('${g.year}')" title="Print ${g.year} Report" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(37,99,235,.25);background:var(--alt);color:var(--accent);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">🖨</button>
           </div>
         </div>
-        <div class="yr-body${g.isLatest?' open':''}">
+        <div class="yr-body${isOpen?' open':''}">
           <div class="yr-grid">${g.months.map(m=>iCard(m,vm.maxT,vm.tgts)).join('')}</div>
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   } else {
     container.innerHTML='<div class="igrid">'+vm.months.map(m=>iCard(m,vm.maxT,vm.tgts)).join('')+'</div>';
   }

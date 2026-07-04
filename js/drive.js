@@ -1,11 +1,19 @@
 // ══════════════════════════════════════════════════════════════════
 // GOOGLE DRIVE DAILY BACKUP
 // ══════════════════════════════════════════════════════════════════
+// NOTE: _driveAccessToken stays a true bare global (not wrapped below)
+// because auth.js reassigns it directly in 3 places — wrapping it would
+// silently desync auth.js's writes from this file's copy, same as
+// storage.js's _curPage.
+let _driveAccessToken = '';
+
+(function() {
+'use strict';
+
 const DRIVE_LAST_K = 'bt_drive_last_backup';
 const DRIVE_FOLDER = 'BT-SALE-DATA';
 const DRIVE_FOLDER_ID = '1qDSFSlrcUA7EoaMx43bG3mxkpS1ESHGn'; // your existing Drive folder
 let _driveTokenClient = null;
-let _driveAccessToken = '';
 
 // ── Persist the Drive access token across page refreshes ──────────────
 // Google access tokens are short-lived (~1hr), but there's no reason to
@@ -289,4 +297,16 @@ function _driveAutoBackup() {
   const today = new Date().toISOString().slice(0,10);
   if (last !== today && _driveAccessToken) driveBackupNow();
 }
+
+// Bridge only what's used externally or via same-file/HTML onclick.
+window._driveSaveToken = _driveSaveToken;
+window.driveLog = driveLog;
+window._driveUpdateBadge = _driveUpdateBadge;
+window.driveAuthorize = driveAuthorize;
+window.driveBackupNow = driveBackupNow;
+window.driveOpenRestoreModal = driveOpenRestoreModal;
+window.driveCloseRestoreModal = driveCloseRestoreModal;
+window._driveRestoreFile = _driveRestoreFile;
+
+})();
 

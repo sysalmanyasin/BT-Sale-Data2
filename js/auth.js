@@ -1,6 +1,98 @@
 // ══════════════════════════════════════════
 // AUTH GATE — Google Sign-In + PIN fallback
 // ══════════════════════════════════════════
+
+// NOTE: unlockApp and initAutoRefresh (below) stay TRUE bare globals,
+// declared outside the IIFE that wraps the rest of this file. drive.js
+// monkey-patches unlockApp (captures the original, then reassigns
+// `unlockApp = function(){...}` to add auto-backup-after-unlock) and
+// this file itself calls unlockApp() internally in several places —
+// if unlockApp were IIFE-scoped, drive.js's patch would only ever
+// affect a window-level copy, while every internal call here would
+// keep calling the ORIGINAL, unpatched version. initAutoRefresh has to
+// travel with it since unlockApp calls it directly and it has no other
+// external dependents that would need it kept private/wrapped.
+function unlockApp() {
+  document.getElementById('pin-gate').style.display='none';
+  document.getElementById('nav').style.display='flex';
+  if (window._appInited) return;
+  window._appInited = true;
+  initApp();
+  if (typeof startSupabaseSync === 'function') startSupabaseSync();
+  idbLoadData().then(loaded => {
+    if (loaded) { rebuildAll(); }
+    if(ghCfg()&&Repository.getItem('bt_auto_load')==='1') manualSync(true);
+    startAutoInterval();
+    initAutoRefresh();
+  }).catch(() => {
+    if(ghCfg()&&Repository.getItem('bt_auto_load')==='1') manualSync(true);
+    startAutoInterval();
+    initAutoRefresh();
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// AUTO-REFRESH ON DEPLOY  (was called above in unlockApp() but never
+// defined anywhere — found during the Repository migration audit.
+// Without this, a new version pushed to GitHub mid-session only gets
+// picked up if the user manually closes/reopens the tab or hits Hard
+// Refresh; the SW update-check in index.html only fires on page load,
+// not while a tab stays open.)
+//
+// What it does: every 15 minutes while the app is open, ask the browser
+// to check sw.js for a new version. If one is found, the existing
+// listener in index.html (controllerchange) takes over and reloads
+// automatically — no new reload logic needed here, just triggering the
+// check periodically and on tab-refocus.
+// ══════════════════════════════════════════════════════════════════════
+function initAutoRefresh() {
+  if (!('serviceWorker' in navigator)) return;
+  if (window._autoRefreshStarted) return;
+  window._autoRefreshStarted = true;
+
+  const safeReloadFromSw = () => {
+    const isTyping = () => {
+      const el = document.activeElement;
+      return el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+    };
+    if (!isTyping()) {
+      window.location.reload();
+      return;
+    }
+    if (typeof toast === 'function') toast('⬆ Update ready — will apply once you finish this entry', 'info');
+    const safeReload = () => { window.location.reload(); };
+    document.addEventListener('focusout', function onBlur() {
+      document.removeEventListener('focusout', onBlur);
+      setTimeout(() => { if (!isTyping()) safeReload(); }, 300);
+    });
+    setTimeout(safeReload, 5 * 60 * 1000);
+  };
+
+  navigator.serviceWorker.addEventListener('message', event => {
+    if (event.data === 'SW_RELOAD') safeReloadFromSw();
+    if (event.data === 'CACHE_CLEARED' && typeof toast === 'function') toast('✓ App cache cleared', 'info');
+  });
+
+  const CHECK_INTERVAL_MS = 15 * 60 * 1000;
+  setInterval(() => {
+    navigator.serviceWorker.getRegistration().then(reg => {
+      if (reg) reg.update().catch(() => {}); // triggers 'updatefound' in index.html if a new sw.js exists
+    });
+  }, CHECK_INTERVAL_MS);
+  // Also check immediately whenever the tab regains focus — covers
+  // "left it open overnight, came back in the morning" cases.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      navigator.serviceWorker.getRegistration().then(reg => {
+        if (reg) reg.update().catch(() => {});
+      });
+    }
+  });
+}
+
+(function() {
+'use strict';
+
 const PIN_K        = 'bt_pin_hash';
 const GAUTH_CID_K  = 'bt_gauth_cid';        // Google OAuth Client ID
 const GAUTH_MAIL_K = 'bt_gauth_emails';      // comma-separated allowed emails
@@ -421,25 +513,6 @@ function _tcLoadGAuthStatus() {
 // Always registering the listener is now unconditionally correct.
 document.addEventListener('DOMContentLoaded', initAuthGate);
 
-function unlockApp() {
-  document.getElementById('pin-gate').style.display='none';
-  document.getElementById('nav').style.display='flex';
-  if (window._appInited) return;
-  window._appInited = true;
-  initApp();
-  if (typeof startSupabaseSync === 'function') startSupabaseSync();
-  idbLoadData().then(loaded => {
-    if (loaded) { rebuildAll(); }
-    if(ghCfg()&&Repository.getItem('bt_auto_load')==='1') manualSync(true);
-    startAutoInterval();
-    initAutoRefresh();
-  }).catch(() => {
-    if(ghCfg()&&Repository.getItem('bt_auto_load')==='1') manualSync(true);
-    startAutoInterval();
-    initAutoRefresh();
-  });
-}
-
 function lockApp() {
   _pinBuf='';
   const pmsg = document.getElementById('pmsg'); if(pmsg) pmsg.textContent='';
@@ -452,61 +525,26 @@ function lockApp() {
   setTimeout(initAuthGate, 50);
 }
 
-// ══════════════════════════════════════════════════════════════════════
-// AUTO-REFRESH ON DEPLOY  (was called above in unlockApp() but never
-// defined anywhere — found during the Repository migration audit.
-// Without this, a new version pushed to GitHub mid-session only gets
-// picked up if the user manually closes/reopens the tab or hits Hard
-// Refresh; the SW update-check in index.html only fires on page load,
-// not while a tab stays open.)
-//
-// What it does: every 15 minutes while the app is open, ask the browser
-// to check sw.js for a new version. If one is found, the existing
-// listener in index.html (controllerchange) takes over and reloads
-// automatically — no new reload logic needed here, just triggering the
-// check periodically and on tab-refocus.
-// ══════════════════════════════════════════════════════════════════════
-function initAutoRefresh() {
-  if (!('serviceWorker' in navigator)) return;
-  if (window._autoRefreshStarted) return;
-  window._autoRefreshStarted = true;
+// Bridge what's used externally, from index.html, or via a same-file
+// event attribute. unlockApp/initAutoRefresh are NOT here — they stay
+// bare globals declared before this IIFE (see note above).
+window.pwStrengthUpdate = pwStrengthUpdate;
+window.pwToggleShow = pwToggleShow;
+window.pwSubmit = pwSubmit;
+window.pwShowEnter = pwShowEnter;
+window.pwShowForgot = pwShowForgot;
+window.pwResetStrength = pwResetStrength;
+window.pwResetToggle = pwResetToggle;
+window.pwResetSubmit = pwResetSubmit;
+window.gauthShowMain = gauthShowMain;
+window._gauthOAuthSignIn = _gauthOAuthSignIn;
+window._driveSilentReauth = _driveSilentReauth;
+window.gauthConfirmUser = gauthConfirmUser;
+window.gauthSignOut = gauthSignOut;
+window.tcSaveGAuthSettings = tcSaveGAuthSettings;
+window.tcClearGAuthSession = tcClearGAuthSession;
+window.tcClearGAuthAll = tcClearGAuthAll;
+window._tcLoadGAuthStatus = _tcLoadGAuthStatus;
+window.lockApp = lockApp;
 
-  const safeReloadFromSw = () => {
-    const isTyping = () => {
-      const el = document.activeElement;
-      return el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
-    };
-    if (!isTyping()) {
-      window.location.reload();
-      return;
-    }
-    if (typeof toast === 'function') toast('⬆ Update ready — will apply once you finish this entry', 'info');
-    const safeReload = () => { window.location.reload(); };
-    document.addEventListener('focusout', function onBlur() {
-      document.removeEventListener('focusout', onBlur);
-      setTimeout(() => { if (!isTyping()) safeReload(); }, 300);
-    });
-    setTimeout(safeReload, 5 * 60 * 1000);
-  };
-
-  navigator.serviceWorker.addEventListener('message', event => {
-    if (event.data === 'SW_RELOAD') safeReloadFromSw();
-    if (event.data === 'CACHE_CLEARED' && typeof toast === 'function') toast('✓ App cache cleared', 'info');
-  });
-
-  const CHECK_INTERVAL_MS = 15 * 60 * 1000;
-  setInterval(() => {
-    navigator.serviceWorker.getRegistration().then(reg => {
-      if (reg) reg.update().catch(() => {}); // triggers 'updatefound' in index.html if a new sw.js exists
-    });
-  }, CHECK_INTERVAL_MS);
-  // Also check immediately whenever the tab regains focus — covers
-  // "left it open overnight, came back in the morning" cases.
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      navigator.serviceWorker.getRegistration().then(reg => {
-        if (reg) reg.update().catch(() => {});
-      });
-    }
-  });
-}
+})();

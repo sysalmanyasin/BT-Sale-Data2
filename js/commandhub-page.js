@@ -22,6 +22,9 @@
 /* ══════════════════════════════════════════════════════════════════════
    STYLES
 ══════════════════════════════════════════════════════════════════════ */
+(function() {
+'use strict';
+
 (function _chpInjectStyles() {
   if (document.getElementById('chp-styles')) return;
   const el = document.createElement('style');
@@ -979,3 +982,21 @@ loadCommandHubPage = function() {
   _chLoadOrig();
   _chUpdateSettingsIndicator();
 };
+
+// Bridge what's used externally, from index.html, or via a same-file
+// onclick attribute.
+window.loadCommandHubPage = loadCommandHubPage;
+window._chRenderThread = _chRenderThread;
+window.chpSend = chpSend;
+window.chpAsk = chpAsk;
+window.chpToggleMic = chpToggleMic;
+window.chpClear = chpClear;
+window.chpOpenSettings = chpOpenSettings;
+window._chDismissBanner = _chDismissBanner;
+window.chpOpenQuick = chpOpenQuick;
+window.chpCloseQuick = chpCloseQuick;
+window.chpCloseSettings = chpCloseSettings;
+window.chpSaveSettings = chpSaveSettings;
+window.chpClearSettings = chpClearSettings;
+
+})();

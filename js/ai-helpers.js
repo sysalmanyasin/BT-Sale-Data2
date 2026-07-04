@@ -16,6 +16,9 @@
 /* ══════════════════════════════════════════════════════════════════════
    SHARED FIELD MAP (sale report column names → display labels)
 ══════════════════════════════════════════════════════════════════════ */
+(function() {
+'use strict';
+
 var AIH_FIELD_NAMES = {
   Cash_Sale:'Cash Sale', Cash_Returns:'Cash Returns', Meezan_Bank:'Meezan Bank',
   Alfala_Bank:'Bank Alfalah', Bank_Al_Habib:'Bank Al Habib', HBL:'HBL', MCB:'MCB',
@@ -387,3 +390,17 @@ function _chpAttachPick(source) {
   }
   setTimeout(function() { inp.click(); }, 120);
 }
+
+// Bridge only what's used externally or referenced via a same-file
+// onclick/onchange attribute (which always resolves against window,
+// never an IIFE's local scope).
+window.aihScanFile = aihScanFile;
+window.chpOpenScan = chpOpenScan;
+window._aihCloseModal = _aihCloseModal;
+window._aihImportSaleReport = _aihImportSaleReport;
+window._aihImportExtras = _aihImportExtras;
+window._aihImportChecked = _aihImportChecked;
+window._chpCloseAttach = _chpCloseAttach;
+window._chpAttachPick = _chpAttachPick;
+
+})();

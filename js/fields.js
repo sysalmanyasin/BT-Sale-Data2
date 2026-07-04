@@ -1,3 +1,15 @@
+// NOTE: _fmCustom stays a true bare global (declared here, before the
+// IIFE below) because it's reassigned internally in this file 3 times
+// (not just mutated) AND read externally by config.js/data-page.js as a
+// bare identifier — wrapping it would mean those external reads only
+// ever see the very first array this file happened to have, not later
+// reassignments (fmLoad() replacing it entirely, fmResetAll() clearing
+// it, etc.).
+let _fmCustom  = [];   // [{id, label, section, calcType}]
+
+(function() {
+'use strict';
+
 // ── Built-in field definitions ───────────────────────────────────────────────
 const FM_BUILTIN = [
   // Cash
@@ -47,7 +59,6 @@ const FM_BUILTIN = [
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let _fmHidden  = [];   // array of field IDs that are hidden
-let _fmCustom  = [];   // [{id, label, section, calcType}]
 let _fmTabSec  = 'Cash';
 
 function fmLoad() {
@@ -327,4 +338,20 @@ window.addEventListener('load', function() {
   // handled directly in data-page.js, not via a patch here)
   _patchCalcTotal();
 });
+
+// Bridge what's used externally, from index.html, or via a same-file
+// onclick/onchange attribute.
+window.fmLoad = fmLoad;
+window.fmApply = fmApply;
+window.openFieldManager = openFieldManager;
+window.closeFieldManager = closeFieldManager;
+window.fmApplyAndClose = fmApplyAndClose;
+window.fmResetAll = fmResetAll;
+window.fmSwitchTab = fmSwitchTab;
+window.fmToggleField = fmToggleField;
+window.fmAddCustom = fmAddCustom;
+window.fmDeleteCustom = fmDeleteCustom;
+window.toggleTcard = toggleTcard;
+
+})();
 

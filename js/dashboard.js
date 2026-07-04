@@ -10,6 +10,9 @@
 // Tracks user's chosen month for the dashboard credit section.
 // Empty string = auto-select (latest with manager data / latest sales month).
 // Set via the inline <select> rendered inside buildCreditSection().
+(function() {
+'use strict';
+
 let _dashCreditMonthOverride = '';
 
 // Called by the month <select> inside the credit section on the dashboard.
@@ -502,3 +505,18 @@ function buildBestWorstPerYear() {
       ${yearCards}
     </div>`;
 }
+
+// Bridge what's used externally or referenced via a same-file onchange
+// attribute (dashSetCreditMonth is the credit-month dropdown handler).
+window.buildDashboard = buildDashboard;
+window._monthSortVal = _monthSortVal;
+window._currentMonthVal = _currentMonthVal;
+window.managerMonthHasData = managerMonthHasData;
+window.latestManagerMonth = latestManagerMonth;
+window.buildCreditSection = buildCreditSection;
+window.dc = dc;
+window.buildTop10Days = buildTop10Days;
+window.buildBestWorstPerYear = buildBestWorstPerYear;
+window.dashSetCreditMonth = dashSetCreditMonth;
+
+})();

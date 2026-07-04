@@ -5,6 +5,9 @@
 // ══════════════════════════════════════════════════════════════════════
 
 // ── Open / Close ──────────────────────────────────────────────────────
+(function() {
+'use strict';
+
 function actxOpen() {
   var overlay = document.getElementById('actx-overlay');
   if (!overlay) { _actxCreateOverlay(); overlay = document.getElementById('actx-overlay'); }
@@ -398,3 +401,14 @@ function _actxEsc(s) {
   // Always defer/module now — readyState is never 'loading' here.
   document.addEventListener('DOMContentLoaded', _tryInit);
 }());
+
+// Bridge what's referenced from index.html or a same-file onclick.
+window.actxOpen = actxOpen;
+window.actxClose = actxClose;
+window.renderAiContextPanel = renderAiContextPanel;
+window.actxTogglePin = actxTogglePin;
+window.actxClearSlot = actxClearSlot;
+window.actxClearAll = actxClearAll;
+window.actxSendFollowUp = actxSendFollowUp;
+
+})();

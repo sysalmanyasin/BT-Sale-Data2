@@ -18,6 +18,9 @@
 /* ══════════════════════════════════════════════════════════════════════
    STYLES (injected once)
 ══════════════════════════════════════════════════════════════════════ */
+(function() {
+'use strict';
+
 (function _dbiInjectStyles() {
   if (document.getElementById('dbi-styles')) return;
   const el = document.createElement('style');
@@ -509,3 +512,12 @@ function buildDashboardInsights() {
     _dbiBuildRuleAlerts(),
   ].filter(Boolean).join('');
 }
+
+// Bridge what's used externally or via a same-file onclick.
+window._dbiDismissBriefing = _dbiDismissBriefing;
+window._dbiBuildTargetPace = _dbiBuildTargetPace;
+window._dbiComputeInsights = _dbiComputeInsights;
+window._dbiGoInsight = _dbiGoInsight;
+window.buildDashboardInsights = buildDashboardInsights;
+
+})();

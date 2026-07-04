@@ -4,6 +4,9 @@
 // month. Clears Advance and Generic (they vary each month) so the
 // user fills them fresh. Days is reset to 0 as well.
 // ══════════════════════════════════════════════════════════════════
+(function() {
+'use strict';
+
 function salaryNextMonth() {
   const sel = document.getElementById('sal-month-sel');
   const curMon = sel ? sel.value : '';
@@ -256,3 +259,19 @@ window.addEventListener('load', function() {
     else renderAllCustomSections();
   };
 });
+
+// Bridge what's used externally, referenced from index.html, or called
+// via a same-file onclick/onchange attribute.
+window.salaryNextMonth = salaryNextMonth;
+window.pettyNextMonth = pettyNextMonth;
+window.CSEC_KEY = CSEC_KEY;
+window._csecLoad = _csecLoad;
+window.loadCustomSections = loadCustomSections;
+window.saveAllCustomSections = saveAllCustomSections;
+window.promptAddCustomSection = promptAddCustomSection;
+window.deleteCustomSection = deleteCustomSection;
+window.renderAllCustomSections = renderAllCustomSections;
+window.csecAddRow = csecAddRow;
+window.csecDelRow = csecDelRow;
+
+})();

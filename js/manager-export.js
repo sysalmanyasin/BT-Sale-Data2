@@ -13,6 +13,9 @@
  * ╚══════════════════════════════════════════════════════════════════════╝
  */
 
+(function() {
+'use strict';
+
 /* ══════════════════════════════════════════════════════════════════════
    HELPERS
 ══════════════════════════════════════════════════════════════════════ */
@@ -337,3 +340,10 @@ function exportManagerSummary(mon) {
   setTimeout(doPrint, 600);
   return true;
 }
+
+// Only exportManagerSummary is consumed externally (commandhub-page.js,
+// index.html). Everything else is private helper logic for building the
+// manager summary text/HTML.
+window.exportManagerSummary = exportManagerSummary;
+
+})();

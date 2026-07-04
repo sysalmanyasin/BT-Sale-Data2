@@ -30,6 +30,17 @@ function renderDataTable() {
   const titleEl=document.getElementById('data-htitle');
   const subEl=document.getElementById('data-hsub');
 
+  // Remember which months are currently expanded so a rebuild (which can
+  // be triggered at any time by a background sync event — daily:added,
+  // daily:pulled, daily:gapfilled, etc. — not just user navigation)
+  // doesn't silently collapse whatever the user had open.
+  const openMonths = new Set();
+  document.querySelectorAll('#tbl-daily .mon-group').forEach(g => {
+    const label = g.querySelector('.mon-hdr-label');
+    const body = g.querySelector('.mon-body');
+    if (label && body && body.classList.contains('open')) openMonths.add(label.textContent);
+  });
+
   const filtered=Repository.getDaily().filter(d=>
     (!mon||d.Month_Year===mon)&&
     (!q||(d.Date||'').toLowerCase().includes(q)||(d.Month_Year||'').toLowerCase().includes(q))
@@ -81,18 +92,21 @@ function renderDataTable() {
     totalRecords+=rows.length;
     const monTotal=rows.reduce((s,d)=>s+n(d.TOTAL),0);
     const monCust=rows.reduce((s,d)=>s+n(d.Customers),0);
-    const isLatest=mi===0;
+    // Keep whatever was open before this rebuild; only fall back to
+    // "latest month open by default" on the very first render (when
+    // nothing was open yet, i.e. openMonths is empty).
+    const shouldBeOpen = openMonths.size ? openMonths.has(monKey) : mi===0;
 
     const grp=document.createElement('div');
     grp.className='mon-group';
 
     const hdr=document.createElement('div');
     hdr.className='mon-hdr';
-    hdr.innerHTML=`<div class="mon-hdr-left"><span class="mon-chevron${isLatest?' open':''}">&#9654;</span><span class="mon-hdr-label">${monKey}</span><span class="mon-hdr-meta">${rows.length} days</span></div><div style="display:flex;align-items:center;gap:12px"><span class="mon-hdr-total">&#8360; ${ff(monTotal)}</span><span class="mon-hdr-meta">&#128101; ${fc(monCust)}</span></div>`;
+    hdr.innerHTML=`<div class="mon-hdr-left"><span class="mon-chevron${shouldBeOpen?' open':''}">&#9654;</span><span class="mon-hdr-label">${monKey}</span><span class="mon-hdr-meta">${rows.length} days</span></div><div style="display:flex;align-items:center;gap:12px"><span class="mon-hdr-total">&#8360; ${ff(monTotal)}</span><span class="mon-hdr-meta">&#128101; ${fc(monCust)}</span></div>`;
     hdr.onclick=()=>toggleMonGroup(hdr);
 
     const body=document.createElement('div');
-    body.className='mon-body'+(isLatest?' open':'');
+    body.className='mon-body'+(shouldBeOpen?' open':'');
 
     const tblWrap=document.createElement('div');
     tblWrap.className='mon-tbl-wrap';

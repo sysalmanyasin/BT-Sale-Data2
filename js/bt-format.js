@@ -77,10 +77,16 @@ function btPrint(html, opts) {
 
   // Wait one paint frame (+ a tick) so the new report HTML is fully
   // laid out before the print snapshot is taken.
+  // Wait for layout to actually settle before snapshotting for print.
+  // Double-rAF (wait two paint frames, not just one + a fixed guess) is
+  // a more robust way to ensure the browser has genuinely finished
+  // laying out the injected report HTML — a fixed 60ms guess may not be
+  // enough for a large report (e.g. a full yearly breakdown) on a
+  // loaded system.
   requestAnimationFrame(function () {
-    setTimeout(function () {
+    requestAnimationFrame(function () {
       window.print();
-    }, 60);
+    });
   });
   return true;
 }
