@@ -1,6 +1,9 @@
 // PRINT REPORTS — Monthly & Yearly
 // ══════════════════════════════════════════
 
+(function() {
+'use strict';
+
 function _prRow(lbl, val, opts='') {
   const v = Math.round(n(val));
   const s = v === 0 ? '—' : '₨ ' + Math.abs(v).toLocaleString('en-PK');
@@ -298,3 +301,13 @@ function _populatePrintSelectors() {
   if (di && !di.value) { di.value = new Date().toISOString().split('T')[0]; }
 }
 
+
+// Bridge what's used externally or from index.html.
+window.printMonthReport = printMonthReport;
+window.printYearlyReport = printYearlyReport;
+window.printDailyFromTools = printDailyFromTools;
+window.printMonthFromTools = printMonthFromTools;
+window.printYearFromTools = printYearFromTools;
+window._populatePrintSelectors = _populatePrintSelectors;
+
+})();

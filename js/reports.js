@@ -2,6 +2,9 @@
 // DAY DETAIL MODAL
 // ══════════════════════════════════════════
 // Helper: returns are always stored as positive but must deduct — normalise to negative
+(function() {
+'use strict';
+
 function _neg(v) { const x=n(v); return x>0?-x:x; }
 
 function dayData(d) {
@@ -359,3 +362,21 @@ function copyReportText() {
 }
 
 // ══════════════════════════════════════════
+
+// Bridge what's used externally or from index.html.
+window.openDayModal = openDayModal;
+window.closeDay = closeDay;
+window.openMonthModal = openMonthModal;
+window.printDayDirectly = printDayDirectly;
+window.closeMon = closeMon;
+window._dateVal = _dateVal;
+window.buildDateList = buildDateList;
+window.dsInit = dsInit;
+window.dsDateChange = dsDateChange;
+window.renderReport = renderReport;
+window.buildPrintHTML = buildPrintHTML;
+window.printDayReport = printDayReport;
+window.printCurrentDay = printCurrentDay;
+window.copyReportText = copyReportText;
+
+})();

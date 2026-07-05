@@ -7,6 +7,9 @@
 // ══════════════════════════════════════════════════════════════════════
 
 // ── Groq Configuration ────────────────────────────────────────────────
+(function() {
+'use strict';
+
 const _AI_KEY_STORAGE = 'BT_Groq_Key_v1';
 const _GROQ_MODEL     = 'llama-3.3-70b-versatile';
 const _GROQ_VISION_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
@@ -2837,3 +2840,25 @@ function aiBridgeExecuteIntent(intent) {
     if (typeof toast === 'function') toast('\u26a0 Action failed: ' + e.message, 'w');
   }
 }
+
+// Bridge what's used externally (jazz-cash.js, commandhub-page.js,
+// ai-context.js, ai-helpers.js) or via a same-file onclick attribute.
+window._GROQ_MODEL = _GROQ_MODEL;
+window._GROQ_ENDPOINT = _GROQ_ENDPOINT;
+window.getAiSettings = getAiSettings;
+window.saveAiSettings = saveAiSettings;
+window.clearAiSettings = clearAiSettings;
+window.aiHasKey = aiHasKey;
+window.AI_DESTRUCTIVE_INTENTS = AI_DESTRUCTIVE_INTENTS;
+window._aiTodayStr = _aiTodayStr;
+window._aiReadCreditBalance = _aiReadCreditBalance;
+window._aiAddNoteFromChat = _aiAddNoteFromChat;
+window._callGroqVision = _callGroqVision;
+window.aiBridgeAnswer = aiBridgeAnswer;
+window._aiAddCreditEntry = _aiAddCreditEntry;
+window._aiAddExpenseRow = _aiAddExpenseRow;
+window._aiAddPettyItem = _aiAddPettyItem;
+window._aiSaveNewDailyEntry = _aiSaveNewDailyEntry;
+window.aiBridgeExecuteIntent = aiBridgeExecuteIntent;
+
+})();

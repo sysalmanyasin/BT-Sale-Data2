@@ -2,6 +2,60 @@
 // MANAGER WORK — Salary, Generic Working, Expense/Patty, Staff Credit
 // ══════════════════════════════════════════════════════════════════
 
+// NOTE: switchMgrTab, loadManagerPage, and staffLoad stay TRUE bare
+// globals, declared outside the IIFE that wraps the rest of this file.
+// Three different files monkey-patch these two entry points:
+// custom-sections.js and jazz-cash.js both reassign loadManagerPage
+// (jazz-cash.js captures the original first, then wraps it to also
+// call renderJazzCash()); notes-sheets.js reassigns switchMgrTab the
+// same way. If these were IIFE-scoped, each patch would only ever
+// affect a window-level copy while every internal call in this file
+// kept calling the original, unpatched version — same risk as
+// auth.js's unlockApp. staffLoad has to travel with them since
+// loadManagerPage calls it directly and it has no other external
+// dependents that would otherwise keep it out of the IIFE.
+
+function switchMgrTab(tab) {
+  document.querySelectorAll('.mgr-tab').forEach(b => b.classList.toggle('active', b.dataset.mtab === tab));
+  document.querySelectorAll('.mgr-section').forEach(s => s.style.display = 'none');
+  const sec = document.getElementById('mgr-' + tab);
+  if (sec) sec.style.display = '';
+  if (tab === 'staff') renderStaffRegistry();
+  if (tab === 'jazzcash' && typeof renderJazzCash === 'function') renderJazzCash();
+  if (tab === 'sheets' && typeof renderNotesSheets === 'function') renderNotesSheets();
+  if (tab === 'custom' && typeof loadCustomSections === 'function') {
+    const cur = document.getElementById('csec-month-sel')?.value || mgrMonths()[0] || '';
+    loadCustomSections(cur);
+  }
+}
+
+function loadManagerPage() {
+  staffLoad();
+  renderStaffRegistry();
+  const mons = mgrMonths();
+  const cur = mons[0] || '';
+  _mgrPopSel('sal-month-sel', cur);
+  _mgrPopSel('gen-month-sel', cur);
+  _mgrPopSel('exp-month-sel', cur);
+  _mgrPopSel('crd-month-sel', cur);
+  _mgrPopSel('petty-month-sel', cur);
+  _mgrPopSel('inc-month-sel', cur);
+  _mgrPopSel('csec-month-sel', cur);
+  loadSalaryMonth(cur);
+  loadGenericMonth(cur);
+  loadExpenseMonth(cur);
+  loadCreditMonth(cur);
+  loadPettyMonth(cur);
+  loadIncentiveMonth(cur);
+}
+
+function staffLoad() {
+  Repository.loadStaff();
+}
+
+(function() {
+'use strict';
+
 const MGR_KEY = 'BT_ManagerWork_v1';
 
 // Routed through Repository (Floor 1) instead of calling localStorage
@@ -65,39 +119,7 @@ function _mgrPopSel(selId, current) {
   el.innerHTML = mons.map(m => `<option value="${m}"${m === current ? ' selected' : ''}>${m}</option>`).join('');
 }
 
-function switchMgrTab(tab) {
-  document.querySelectorAll('.mgr-tab').forEach(b => b.classList.toggle('active', b.dataset.mtab === tab));
-  document.querySelectorAll('.mgr-section').forEach(s => s.style.display = 'none');
-  const sec = document.getElementById('mgr-' + tab);
-  if (sec) sec.style.display = '';
-  if (tab === 'staff') renderStaffRegistry();
-  if (tab === 'jazzcash' && typeof renderJazzCash === 'function') renderJazzCash();
-  if (tab === 'sheets' && typeof renderNotesSheets === 'function') renderNotesSheets();
-  if (tab === 'custom' && typeof loadCustomSections === 'function') {
-    const cur = document.getElementById('csec-month-sel')?.value || mgrMonths()[0] || '';
-    loadCustomSections(cur);
-  }
-}
 
-function loadManagerPage() {
-  staffLoad();
-  renderStaffRegistry();
-  const mons = mgrMonths();
-  const cur = mons[0] || '';
-  _mgrPopSel('sal-month-sel', cur);
-  _mgrPopSel('gen-month-sel', cur);
-  _mgrPopSel('exp-month-sel', cur);
-  _mgrPopSel('crd-month-sel', cur);
-  _mgrPopSel('petty-month-sel', cur);
-  _mgrPopSel('inc-month-sel', cur);
-  _mgrPopSel('csec-month-sel', cur);
-  loadSalaryMonth(cur);
-  loadGenericMonth(cur);
-  loadExpenseMonth(cur);
-  loadCreditMonth(cur);
-  loadPettyMonth(cur);
-  loadIncentiveMonth(cur);
-}
 
 // ─── helpers ───────────────────────────────────────────────────────
 function _ni(v) { return Math.round(Number(v) || 0); }
@@ -118,9 +140,6 @@ function _inp(type, val, cls, oninput, ph) {
 // On a fresh install: staff list starts empty. Either pull from Supabase
 // (if configured) or add employees manually via + Add Employee.
 
-function staffLoad() {
-  Repository.loadStaff();
-}
 
 function staffSave() {
   Repository.saveStaff();
@@ -1700,3 +1719,87 @@ function _initEventBusSubscribers() {
 }
 
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeMon(); closeDay(); }});
+
+// Bridge what's used externally, from index.html, or via a same-file
+// event attribute. switchMgrTab/loadManagerPage/staffLoad are NOT here
+// — they stay bare globals declared before this IIFE (see note above).
+window.MGR_KEY = MGR_KEY;
+window.mgrLoad = mgrLoad;
+window.mgrMonths = mgrMonths;
+window._mgrPopSel = _mgrPopSel;
+window._ni = _ni;
+window._fc2 = _fc2;
+window.activeStaff = activeStaff;
+window.renderStaffRegistry = renderStaffRegistry;
+window.staffFieldChange = staffFieldChange;
+window.staffSrNumChange = staffSrNumChange;
+window.staffToggleActive = staffToggleActive;
+window.staffDelete = staffDelete;
+window.addStaffEmployee = addStaffEmployee;
+window.saveStaffRegistry = saveStaffRegistry;
+window.renderSalaryTable = renderSalaryTable;
+window._salRows_cur = _salRows_cur;
+window.loadSalaryMonth = loadSalaryMonth;
+window.salRowChange = salRowChange;
+window.addSalaryRow = addSalaryRow;
+window.deleteSalRow = deleteSalRow;
+window.saveSalaryData = saveSalaryData;
+window.autoFillSalaryFromSheets = autoFillSalaryFromSheets;
+window._genRows_cur = _genRows_cur;
+window.renderGenericTable = renderGenericTable;
+window.loadGenericMonth = loadGenericMonth;
+window.addGenericRow = addGenericRow;
+window.deleteGenRow = deleteGenRow;
+window.saveGenericData = saveGenericData;
+window._expRows_cur = _expRows_cur;
+window.renderExpenseTable = renderExpenseTable;
+window.loadExpenseMonth = loadExpenseMonth;
+window.recalcExpense = recalcExpense;
+window.addExpenseRow = addExpenseRow;
+window.deleteExpRow = deleteExpRow;
+window.saveExpenseData = saveExpenseData;
+window._crdData_cur = _crdData_cur;
+window.renderCreditLedger = renderCreditLedger;
+window._toggleCrdEmpBody = _toggleCrdEmpBody;
+window.addCrdEntryFocused = addCrdEntryFocused;
+window.loadCreditMonth = loadCreditMonth;
+window.crdEmpField = crdEmpField;
+window.crdEntryChange = crdEntryChange;
+window.deleteCrdEntry = deleteCrdEntry;
+window.addCreditEmployee = addCreditEmployee;
+window.deleteCrdEmp = deleteCrdEmp;
+window.saveCreditData = saveCreditData;
+window.copyToNextMonth = copyToNextMonth;
+window.printSalaryReport = printSalaryReport;
+window.printGenericReport = printGenericReport;
+window.printExpenseReport = printExpenseReport;
+window.printCreditReport = printCreditReport;
+window.printCreditSummaryReport = printCreditSummaryReport;
+window._pettyData = _pettyData;
+window._pettyMonth = _pettyMonth;
+window._pettyKey = _pettyKey;
+window.loadPettyMonth = loadPettyMonth;
+window.savePettyData = savePettyData;
+window._pettyTotalForMonth = _pettyTotalForMonth;
+window.addPettyGroup = addPettyGroup;
+window.deletePettyGroup = deletePettyGroup;
+window.addPettyRow = addPettyRow;
+window.deletePettyRow = deletePettyRow;
+window.pettyRowChange = pettyRowChange;
+window.renderPettyGroups = renderPettyGroups;
+window.pettyRowChange_period = pettyRowChange_period;
+window.printPettyReport = printPettyReport;
+window.loadIncentiveMonth = loadIncentiveMonth;
+window.saveIncentiveData = saveIncentiveData;
+window.recalcIncentive = recalcIncentive;
+window.printIncentiveReport = printIncentiveReport;
+window.saveAllManagerSections = saveAllManagerSections;
+window.populateDashWorking = populateDashWorking;
+window.openStaffCard = openStaffCard;
+window.closeStaffCard = closeStaffCard;
+window.saveStaffCard = saveStaffCard;
+window.switchStaffCardTab = switchStaffCardTab;
+window.initApp = initApp;
+
+})();
+

@@ -10,6 +10,9 @@
 // month view vs. grouped-by-month view) — any field change had to be
 // made in both places by hand, and they could silently drift apart.
 // ══════════════════════════════════════════
+(function() {
+'use strict';
+
 function DailyRowComponent(d, extraCol) {
   const ev = extraCol ? '<td>' + (n(d[extraCol]) ? '&#8360;' + fc(n(d[extraCol])) : '&#8212;') + '</td>' : '';
   return `<td>${d.Date||''}</td>${ev}<td>${n(d.TOTAL)?'&#8360;'+fc(n(d.TOTAL)):'&#8212;'}</td><td>${n(d.Customers)?fc(n(d.Customers)):'&#8212;'}</td><td class="no-print" style="display:flex;gap:4px"><button onclick="event.stopPropagation();printDayDirectly('${d.Date}','${d.Month_Year}')" title="Print ${d.Date}" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(37,99,235,.25);background:var(--alt);color:var(--accent);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">🖨</button><button onclick="event.stopPropagation();openEditModal('${d.Date}','${d.Month_Year}')" title="Edit ${d.Date}" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(217,119,6,.3);background:var(--alt);color:#d97706;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">✏️</button></td>`;
@@ -526,3 +529,25 @@ async function saveEditModal() {
   toast('✓ Entry updated — dashboard & monthly totals refreshed');
   if(Repository.getItem('bt_auto_save')==='1') pushToSupabase();
 }
+
+// Bridge what's used externally, from index.html, or via a same-file
+// onclick attribute. calcTotal is bridged normally here too — fields.js
+// monkey-patches window.calcTotal directly, but nothing inside this
+// file calls calcTotal() internally, so there's no stale-internal-call
+// risk (unlike auth.js's unlockApp / manager.js's loadManagerPage /
+// ui.js's showPage, which all DO call themselves internally).
+window.renderDataTable = renderDataTable;
+window.calcTotal = calcTotal;
+window.syncEntryMonthFromDate = syncEntryMonthFromDate;
+window.saveEntry = saveEntry;
+window.renderEntryList = renderEntryList;
+window.delEntry = delEntry;
+window.clearEntryForm = clearEntryForm;
+window.autoFillEntryDate = autoFillEntryDate;
+window.openEditModal = openEditModal;
+window.openEditFromDay = openEditFromDay;
+window.editCalcTotal = editCalcTotal;
+window.closeEditModal = closeEditModal;
+window.saveEditModal = saveEditModal;
+
+})();

@@ -1,20 +1,16 @@
-// ── Safe guard: updateGhBadge may be called before supabase.js loads ──
-// ui.js and manager.js both reference updateGhBadge(); supabase.js defines it.
-// Since ui.js loads first, we define a no-op placeholder here that supabase.js
-// will overwrite with the real implementation when it loads.
-if (typeof updateGhBadge === 'undefined') {
-  window.updateGhBadge = function() {
-    // Will be replaced by the real function in supabase.js once it loads.
-    // Safe to call before supabase.js is ready — just does nothing.
-  };
-}
-
-// navigateTo() — alias for showPage(). Some UI snippets (e.g. dashboard's
-// JazzCash "LIVE" badge) call navigateTo() instead of showPage(); previously
-// this function didn't exist anywhere, so that badge silently did nothing.
-function navigateTo(pageId) {
-  if (typeof showPage === 'function') showPage(pageId);
-}
+// NOTE: showPage, loadToolsPage, and populateTgtSel stay TRUE bare
+// globals, declared outside the IIFE that wraps the rest of this file.
+// ui-extras.js monkey-patches showPage directly on window
+// (window.showPage = function(page){...}) to add extra behavior. This
+// file itself calls showPage() internally (navigateTo(), the nav-tab
+// click wiring). If showPage were IIFE-scoped, ui-extras.js's patch
+// would only ever affect a window-level copy while every internal call
+// here kept calling the original, unpatched version — same risk as
+// auth.js's unlockApp and manager.js's loadManagerPage/switchMgrTab.
+// loadToolsPage and populateTgtSel have to travel with it: showPage
+// calls loadToolsPage directly, which calls populateTgtSel directly,
+// and neither has any other external dependent that would otherwise
+// keep it out of the IIFE.
 
 function showPage(id) {
   try {
@@ -67,6 +63,54 @@ function showPage(id) {
     console.error('[showPage] error for page "' + id + '":', err);
   }
 }
+
+function loadToolsPage() {
+  _populatePrintSelectors();
+  _tcLoadGAuthStatus();
+  // Supabase sync badge
+  updateGhBadge();
+  // Auto-sync checkboxes
+  const al=document.getElementById('auto-load'); if(al) al.checked=Repository.getItem('bt_auto_load')==='1';
+  const as=document.getElementById('auto-save'); if(as) as.checked=Repository.getItem('bt_auto_save')==='1';
+  // Targets
+  populateTgtSel(); renderTargetList();
+  // Summary
+  const ds=document.getElementById('data-summary');
+  if(ds) ds.innerHTML=`
+    <div><strong>Total months:</strong> ${MONTHLY.length}</div>
+    <div><strong>Daily records:</strong> ${DAILY.filter(d=>n(d.TOTAL)>0).length}</div>
+    <div><strong>Years covered:</strong> ${years().join(', ')}</div>
+    <div><strong>Cumulative total:</strong> ₨${fc(MONTHLY.reduce((s,m)=>s+n(m.TOTAL),0))}</div>
+    <div><strong>Session entries:</strong> ${Repository.getPendingEntries().length}</div>
+    <div><strong>Sync:</strong> Supabase (real-time)</div>`;
+}
+
+function populateTgtSel() {
+  const sel=document.getElementById('tgt-sel'); if(!sel) return;
+  sel.innerHTML='<option value="">Select month…</option>'+[...MONTHLY].reverse().map(m=>`<option value="${m.Month_Year}">${m.Month_Year}</option>`).join('');
+}
+
+(function() {
+'use strict';
+
+// ── Safe guard: updateGhBadge may be called before supabase.js loads ──
+// ui.js and manager.js both reference updateGhBadge(); supabase.js defines it.
+// Since ui.js loads first, we define a no-op placeholder here that supabase.js
+// will overwrite with the real implementation when it loads.
+if (typeof updateGhBadge === 'undefined') {
+  window.updateGhBadge = function() {
+    // Will be replaced by the real function in supabase.js once it loads.
+    // Safe to call before supabase.js is ready — just does nothing.
+  };
+}
+
+// navigateTo() — alias for showPage(). Some UI snippets (e.g. dashboard's
+// JazzCash "LIVE" badge) call navigateTo() instead of showPage(); previously
+// this function didn't exist anywhere, so that badge silently did nothing.
+function navigateTo(pageId) {
+  if (typeof showPage === 'function') showPage(pageId);
+}
+
 
 document.querySelectorAll('.ntab,.bnav-item,.bnav-sub-item').forEach(t=>{
   if (t.dataset.page) t.addEventListener('click',()=>showPage(t.dataset.page));
@@ -145,31 +189,7 @@ function rebuildAll() {
 // ══════════════════════════════════════════
 // TOOLS PAGE
 // ══════════════════════════════════════════
-function loadToolsPage() {
-  _populatePrintSelectors();
-  _tcLoadGAuthStatus();
-  // Supabase sync badge
-  updateGhBadge();
-  // Auto-sync checkboxes
-  const al=document.getElementById('auto-load'); if(al) al.checked=Repository.getItem('bt_auto_load')==='1';
-  const as=document.getElementById('auto-save'); if(as) as.checked=Repository.getItem('bt_auto_save')==='1';
-  // Targets
-  populateTgtSel(); renderTargetList();
-  // Summary
-  const ds=document.getElementById('data-summary');
-  if(ds) ds.innerHTML=`
-    <div><strong>Total months:</strong> ${MONTHLY.length}</div>
-    <div><strong>Daily records:</strong> ${DAILY.filter(d=>n(d.TOTAL)>0).length}</div>
-    <div><strong>Years covered:</strong> ${years().join(', ')}</div>
-    <div><strong>Cumulative total:</strong> ₨${fc(MONTHLY.reduce((s,m)=>s+n(m.TOTAL),0))}</div>
-    <div><strong>Session entries:</strong> ${Repository.getPendingEntries().length}</div>
-    <div><strong>Sync:</strong> Supabase (real-time)</div>`;
-}
 
-function populateTgtSel() {
-  const sel=document.getElementById('tgt-sel'); if(!sel) return;
-  sel.innerHTML='<option value="">Select month…</option>'+[...MONTHLY].reverse().map(m=>`<option value="${m.Month_Year}">${m.Month_Year}</option>`).join('');
-}
 
 function addNewMonth() {
   const mon=document.getElementById('nm-sel').value;
@@ -255,4 +275,18 @@ function toggleViewMode() {
     const mode = Repository.getItem('bt_view_mode') || 'mobile';
     _applyViewModeBtn(mode);
   });
+})();
+
+// Bridge what's used externally or from index.html. showPage/
+// loadToolsPage/populateTgtSel are NOT here — they stay bare globals
+// declared before this IIFE (see note above).
+window.navigateTo = navigateTo;
+window.rebuildDropdowns = rebuildDropdowns;
+window.rebuildAll = rebuildAll;
+window.addNewMonth = addNewMonth;
+window.exportCSV = exportCSV;
+window.exportJSON = exportJSON;
+window.importJSON = importJSON;
+window.toast = toast;
+
 })();
