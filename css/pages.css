@@ -28,7 +28,29 @@
 /* PRINT */
 @page { size: letter portrait; margin: 12mm 10mm; }
 @page pr-landscape { size: letter landscape; margin: 10mm 8mm; }
+
+/* Default (screen) state: #print-area is empty and hidden until
+   btPrint() populates it. Kept directly next to the @media print block
+   below (which forces it back to display:block!important) so the two
+   rules that govern this element's visibility are readable together,
+   instead of relying on !important alone to make the relationship
+   correct from two different, disconnected places in the file. */
+#print-area{display:none;}
+
 @media print{
+  /* Without this, browsers omit background colors/gradients from print
+     output by default (to save ink) — but this report's header and
+     table column headers use WHITE TEXT ON COLORED BACKGROUNDS
+     (.pr-header, .pr-tbl th). Without forcing backgrounds to print,
+     that text is literally invisible (white on the page's white
+     background) even though the content genuinely rendered and
+     paginated correctly — which matches the "blank-looking page, but
+     correct page count" symptom exactly. */
+  *{
+    -webkit-print-color-adjust:exact!important;
+    print-color-adjust:exact!important;
+    color-adjust:exact!important;
+  }
   /* Hide everything except the print area by removing it from layout
      entirely (display:none), instead of visibility:hidden. The old
      visibility-based approach kept hidden elements occupying space and
@@ -76,7 +98,6 @@
 .pr-landscape .pr-tbl th,.pr-landscape .pr-tbl td{padding:4px 6px;white-space:nowrap;}
 .pr-landscape .pr-tbl td.l{white-space:normal;}
 .pr-land-title{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#64748b;margin:0 0 6px;}
-#print-area{display:none;}
 /* Manager Work */
 .inc-sec-hd{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin:10px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border);}
 .inc-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid rgba(0,0,0,.04);font-size:12px;}
