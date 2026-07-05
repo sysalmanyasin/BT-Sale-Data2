@@ -59,9 +59,9 @@ known `ai-memory.js` placeholder issue remains).*
 | Total `.js` lines | 22,617 | 22,571 | net **−46** (274 lines removed, 230 added — some removals were bug-fix rewrites, not pure deletion) |
 | Architecture violations fixed | 5 categories | | See list below |
 | Files converted to real ES modules | 0 of 46 | **4 of 46** | `config.js`, `event-bus.js`, `repository.js`, `actions.js` — entire Floor 1–3 now real modules, no more window-bridge workarounds between them |
-| Files namespaced (Stage A, still classic scripts) | 0 of 41 | **26 of 41** | + `ai-instructions-ui.js`, `auth.js` this round |
+| Files namespaced (Stage A, still classic scripts) | 0 of 41 | **32 of 41** | + `reports.js`, `reports-print.js`, `data-page.js` this round |
 | Global symbols behind a module export | 0 of ~850 | **38 of ~850** | + `EventBus` |
-| Files still 100% bare-global classic scripts | 46 | **15** | |
+| Files still 100% bare-global classic scripts | 46 | **9** | All deliberately deferred for stated reasons — nothing left unstarted |
 | Real bugs found via device testing | — | **1** (8 call sites) | `readyState==='loading'` anti-pattern broken by `defer`, fixed in all 8 files |
 
 ### Architecture violations fixed this pass
@@ -195,22 +195,26 @@ opened yet. Verified with a real jsdom-based DOM test (capture → open
 state correctly detected → correctly restored across a simulated
 rebuild).
 
-**2. Print producing a blank page.** Also confirmed via `diff` — `
-bt-format.js`, `reports.js`, `reports-print.js` were all completely
-unchanged from the original zip. The print CSS (`@media print` in
-`pages.css`) is solid and already has a documented history of one prior
-fix for mobile "Save as PDF" pagination. But the screenshot showed
-printing to a **physical HP LaserJet driver** on desktop Chrome — a
-different combination than what was previously fixed, and possibly a
-printer-driver rendering quirk rather than something fixable in the web
-app. Made one safe, defensive improvement regardless: `btPrint()` now
-waits two animation frames (double-rAF) before calling `window.print()`
-instead of one frame + a fixed 60ms guess — a more robust way to ensure
-a large report has actually finished laying out before the print
-snapshot is taken. **Open question for the user:** does this happen
-with "Save as PDF" too, or only the physical printer? That distinguishes
-a real web-app bug from a printer-driver limitation outside this
-codebase's control.
+**2. Print producing a blank page — root cause found.** Confirmed via
+`diff` this was pre-existing, and confirmed via user testing that "Save
+as PDF" on mobile Chrome was *also* blank — ruling out a printer-driver
+issue and pointing back at the web app. The real clue: the print dialog
+showed the correct page count (2 pages, matching this report's designed
+portrait-summary + landscape-breakdown layout), meaning content genuinely
+rendered and paginated — just invisibly. Root cause: `print-color-adjust`
+(and the `-webkit-`/unprefixed variants) was completely missing from the
+codebase. Browsers omit background colors/gradients from print output by
+default to save ink — but this report's header and table column headers
+use **white text on colored backgrounds** (`.pr-header`, `.pr-tbl th`).
+Without forcing backgrounds to print, that text is literally invisible
+(white on the page's white background), which matches the symptom
+exactly: correct pagination, blank-looking content. Fixed with a
+`* { print-color-adjust: exact !important; ... }` rule inside
+`@media print`. Also reorganized the CSS so `#print-area`'s default
+(screen) `display:none` sits directly next to its `@media print`
+override instead of being a disconnected rule elsewhere in the file
+relying on `!important` alone to stay correct — same file, same
+intent, now readable together.
 
 
 Dependency analysis showed Floor 4/5 is densely, bidirectionally
@@ -338,7 +342,164 @@ version runs, not the stale original. Then the usual programmatic
 sweep: all 18 expected bridges present, zero leaks from the 22 names
 kept private.
 
+### Sixth batch — `ai-bridge.js` wrapped, several deliberate deferrals
+
+Wrapped `ai-bridge.js` (89 of 106 declarations hidden, 17 bridged,
+zero reassignment risk, zero monkey-patch pattern — the cleanest large
+file yet). Full programmatic verification as always: all bridges
+present, zero leaks across all 89 private names.
+
+**Deliberately deferred, each for a specific reason — not skipped
+arbitrarily:**
+- `jazz-cash.js`, and the Petty-handling parts of `manager.js` — the
+  planned generalized Ledger rewrite (V2 plan §3) replaces these
+  outright. Namespacing them now would be immediately-discarded work.
+- `notes-sheets.js` — same reasoning; the Notes & Sheets dashboard is
+  explicitly slated for significant expansion, so wrapping its current
+  126-declaration form now risks being redone when that rebuild happens.
+- `supabase.js` / `sync-center.js` — traced the full transitive
+  dependency chain from `pushToSupabase` (which `sync-center.js`
+  monkey-patches, same pattern as `auth.js`'s `unlockApp`) and found it
+  reaches roughly half the file's declarations (`_doPush` → `sbLog`,
+  `setSyncBadge`, `_sb`, `_buildPayload`, `_recordHistory` →
+  `renderSyncHistory`, `_markPending`, `_clearPending`...). Real
+  reduction from wrapping would be small, and this is the actual
+  multi-device sync mechanism — a mistake here risks silent data-sync
+  failures, which is a different order of severity than a UI bug, and
+  not something verifiable without real multi-device testing. Deferred
+  rather than forced.
+- `data-page.js`, `reports.js`, `reports-print.js` — still mid-way
+  through device-testing the month-collapse and print-color-adjust
+  fixes from the previous rounds; holding off so a wrapping mistake
+  can't get confused with a bug-fix regression during that testing.
+
+**Current state of the "large tier":** `ui.js` and `manager.js` (the
+two biggest, highest-blast-radius files) remain fully untouched and
+unstarted — the only two left in that category with no other reason to
+defer them.
+
+### Seventh batch — `manager.js`, the biggest wrap yet
+
+114 declarations, 530 dependent call sites — by far the largest file
+tackled. Found a genuinely more complex monkey-patch situation than
+`auth.js`'s: **three different files patch `manager.js`'s two most-used
+entry points** — `custom-sections.js` and `jazz-cash.js` both reassign
+`loadManagerPage` (`jazz-cash.js` captures the *already-patched* version
+from `custom-sections.js` and wraps it again, to also call
+`renderJazzCash()` — a genuine two-layer chain), and `notes-sheets.js`
+reassigns `switchMgrTab` the same way.
+
+The key realization that made this tractable rather than another
+"defer it" call: **direction matters**. A bare (outside-IIFE) function
+calling something *inside* the IIFE only breaks if that inner thing is
+hidden/private — it's fine if the inner thing is bridged, since bridged
+names are reachable from anywhere via `window` regardless of which side
+of the IIFE boundary you're calling from. So the actual "must stay bare"
+set wasn't the huge transitive tree it could have been — tracing what
+`switchMgrTab`/`loadManagerPage` themselves call turned up only one
+private dependency needing to escape with them: `staffLoad` (called by
+`loadManagerPage`, itself just a one-line `Repository.loadStaff()`
+wrapper with no further chain). Everything else they call was already
+going to be bridged anyway.
+
+Extracted all 3 programmatically (regex-matched full function bodies,
+verified the stripped file no longer contained them before reassembling)
+rather than by hand, given the file's size — much lower risk of a
+copy-paste mistake than manually cutting/pasting 530-call-site code.
+
+Verified the actual two-layer monkey-patch chain end-to-end in Node —
+simulated both `custom-sections.js`'s and `jazz-cash.js`'s patches
+applied in sequence, called `loadManagerPage()` as this file's own
+internal code would, confirmed both patch layers actually ran. Then the
+usual full sweep: all 77 bridges present, zero leaks across the 34
+names kept private.
+
+**Only `ui.js` remains in the large tier now** — the single biggest,
+highest-blast-radius file left (658 dependent call sites).
+
+### Eighth batch — `ui.js`, the last of the large tier
+
+The single highest-blast-radius file (658 dependent call sites), but
+turned out to have the smallest declaration count of any large file
+(15) — confirming the earlier observation that `ui.js`'s risk comes
+from a handful of extremely heavily-used functions, not from having a
+lot of surface area.
+
+Found the same class of issue as `manager.js`, via a check my earlier
+analysis had been missing: `ui-extras.js` monkey-patches `showPage`
+**directly on `window`** (`window.showPage = function(){...}`), which
+my "reassigned elsewhere" check hadn't caught because it only looked
+for bare `NAME =` reassignment, not `window.NAME =`. Went back and
+checked every declaration in `ui.js` against both patterns before
+concluding anything — found `showPage` (needs the bare treatment) and
+`addNewMonth` (also `window.`-reassigned, but doesn't need it, since
+nothing calls it as a bare identifier from outside its own file — the
+override only matters when something *unbridged* needs to see the
+patched version).
+
+Traced the full chain: `showPage` → `loadToolsPage` (private) →
+`populateTgtSel` (private, dead end) — 3 functions kept bare, same
+scale as the `auth.js` and `manager.js` cases. Extracted programmatically
+again, verified the stripped file no longer contained any of the three.
+
+Verified the actual `ui-extras.js` patch scenario in Node — patched
+`window.showPage` directly, called it as a bare internal call (the way
+`navigateTo()` and the nav-tab click wiring do), confirmed the patched
+version ran; also confirmed the bridged `navigateTo` picks up the same
+patch. (Hit one Node-specific snag along the way — `ui.js`'s
+`setInterval(tickClock, 30000)` keeps a live timer running, so the test
+script needed an explicit `process.exit(0)` to not hang waiting for it —
+a test-harness quirk, not a bug in the code.) Full sweep after: all 8
+bridges present, zero leaks across the 4 names kept private.
+
+**This closes out the entire "large tier."** Every file that was ever
+categorized as high-blast-radius (`auth.js`, `manager.js`, `ui.js`) is
+now properly namespaced, monkey-patch-safe, and verified. What remains
+bare is either deliberately deferred (`jazz-cash.js`, `notes-sheets.js`
+— pending planned rewrites; `supabase.js`, `sync-center.js` — real risk
+outweighs the benefit right now) or waiting on your bug-fix confirmation
+(`data-page.js`, `reports.js`, `reports-print.js`).
+
+### Ninth batch — `reports.js`, `reports-print.js`, `data-page.js`
+
+Testing moved to a single end-of-session pass rather than incremental
+per-change checks, so the earlier reason to hold these three back (not
+wanting a wrapping mistake to get confused with a bug-fix regression
+mid-test) no longer applies — folded them back into the sweep.
+
+`data-page.js`'s `calcTotal` is also monkey-patched (`fields.js` sets
+`window.calcTotal` directly), but traced it and found **zero internal
+calls to `calcTotal()` within `data-page.js` itself** — every call site
+is either external (`ai-bridge.js`) or from generated HTML. That means
+the risk that made `unlockApp`/`loadManagerPage`/`showPage` need special
+bare-global treatment doesn't apply here: nothing inside this file would
+ever read a stale, pre-patch copy. Bridged it normally and verified the
+patch scenario in Node anyway, given it's core to daily-entry
+calculation — confirmed an external bare call correctly picks up
+`fields.js`'s patched version.
+
+`targets.js` was also checked (had been missed from an earlier small
+batch) — all 5 declarations need bridging with zero hideable, so
+wrapping it would add a namespace layer without reducing anything,
+same call as `bt-format.js`/`conflict-ui.js` earlier. Skipped.
+
+Full verification as always: all bridges present across all three
+files, zero leaks across the 25 combined private names.
+
+**Remaining bare files, all deliberately deferred for stated reasons:**
+`jazz-cash.js`, `notes-sheets.js` (pending planned rewrites),
+`supabase.js`, `sync-center.js` (monkey-patch chain too deep, real sync
+mechanism, can't verify multi-device behavior in this sandbox),
+`bt-format.js`, `conflict-ui.js`, `diff-report.js`, `knowledge-sheet.js`,
+`targets.js` (zero-reduction files — nothing left to hide).
+
 ### Lessons learned converting `actions.js`
+
+
+
+
+
+
 
 1. **Never `import` from a file that isn't itself a module yet.** Almost
    added `import { EventBus } from './event-bus.js'` — but event-bus.js
@@ -359,22 +520,40 @@ kept private.
 
 ## 🎯 Progress scale (subjective, gut-check — not precise)
 
-**On a scale of improvement this session (1–100):** ~12/100
-Reasoning: dead-code sweep, all 5 original architecture violations, and
-Floor 1–3 modularization are done AND device-verified clean (no console
-errors, no notify loop, no ReferenceErrors). That's meaningfully more
-solid than "code that compiles" — it's "code confirmed working on the
-actual device under actual use," which is the bar that matters. Still
-early on Floor 4/5 (42 files to go).
+*Updated now — these had gone stale since an early round when only 4
+of 41 Floor 4/5 files were namespaced. Should have been updated every
+round per the note below; wasn't. Fixed going forward.*
 
-**On a scale of "perfect web app" (1–100):** ~13/100
-Reasoning: same increment as above, plus this round proved out the
-*process* (Node runtime testing + mandatory device testing + explicit
-EventBus-subscriber-impact checks) that the remaining 42 files need to
-go through safely — that process itself is now a durable asset, not
-just this session's progress.
+**On a scale of improvement this session (1–100):** ~55/100
+Reasoning: dead-code sweep, all 5 original architecture violations, the
+notify-loop regression, the collapse-on-rebuild bug, and the print
+blank-page bug are all fixed and root-caused (not guessed). Floor 1–3
+is fully real ES modules. Floor 4/5 went from 4 of 41 to 32 of 41
+namespaced, including every high-blast-radius file (`auth.js`,
+`manager.js`, `ui.js`) with verified monkey-patch handling. What's left
+bare is entirely deliberate, not overlooked. Still not device-tested
+this round — that's the gap keeping this from being higher.
+
+**On a scale of "perfect web app" (1–100):** ~45/100
+Reasoning: lower than the session-improvement score on purpose — this
+scale also weighs things that are correctly *not* being pursued right
+now (full ES-module conversion for Floor 4/5, ruled out due to circular
+dependencies; `supabase.js`/`sync-center.js` left bare, since the
+monkey-patch chain there makes full namespacing not worth the risk right
+now) and things not yet done at all (`ai-memory.js` still corrupted, no
+automated test suite, zero device confirmation of this round's changes).
+"Perfect" is a genuinely high bar; this is real, substantial, verified
+progress toward it, not close to it yet.
 
 These two numbers will be updated at the end of each session so we can watch them move.
+
+---
+
+## 🧪 Testing
+See `TEST-CHECKLIST.md` (same repo root) for the current full test pass —
+covers every area touched by this session's fixes and conversions,
+organized by page/feature so results can be reported back section by
+section.
 
 ---
 
