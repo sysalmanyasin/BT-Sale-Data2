@@ -63,11 +63,23 @@ regressions via `diff` against your original upload — nothing guessed):
 - [ ] Print a yearly report — content should now actually be visible (not blank)
 
 ### Sale Data page
-- [ ] Months expand/collapse correctly
-- [ ] Expand a month, wait ~1 minute, confirm it **stays expanded**
-- [ ] Add a new daily entry — TOTAL calculates correctly
-- [ ] Edit an existing entry (especially a Returns field) — TOTAL/DIFF still correct
-- [ ] Print a monthly report — content visible
+- [x] ~~Months expand/collapse correctly~~ — **root cause found & fixed** (event-delegation, verified with a test reproducing the exact bug). Please re-test: expand a month, navigate away and back to Sale Data, confirm it still responds to clicks.
+- [x] Add a new daily entry — TOTAL calculates correctly (confirmed working)
+- [x] Edit an existing entry (Returns field) — TOTAL/DIFF correct (confirmed working)
+- [ ] Print a monthly report — **still investigating**, see note below
+
+### Index page
+- [ ] Print a yearly report — **still investigating**, see note below
+
+### Print — diagnostic needed
+Two fixes applied (print-color-adjust, grid→flex fallback for
+Android's print pipeline) but neither is verified against the real
+failure yet. **Most useful next step:** try the same print action on
+**desktop Chrome** if possible. If it works there, the bug is confirmed
+Android-print-pipeline-specific and we keep iterating on Android-safe
+CSS. If it's *also* blank on desktop, something else is going on and
+we start over on the diagnosis.
+
 
 ### Manager tab
 - [ ] Staff Registry: add / edit / toggle-active / delete an employee

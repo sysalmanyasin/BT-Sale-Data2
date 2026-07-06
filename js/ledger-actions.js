@@ -1,0 +1,39 @@
+// ══════════════════════════════════════════════════════════════════════
+// LEDGER ACTIONS  —  Floor 3 of the architecture
+//
+// The only door Pages should use to change ledger data. Wraps
+// ledger-store.js's internal write functions with validation and
+// naming that matches the rest of this app's Actions API
+// (Actions.addDailyEntry, Actions.addEmployee, etc.).
+// ══════════════════════════════════════════════════════════════════════
+
+import { _addEntry, _updateEntry, _removeEntry, getCategory } from './ledger-store.js';
+
+export const LedgerActions = (function () {
+
+  function addEntry(ledgerType, { date, categoryId, amount, desc, groupLabel, shift } = {}) {
+    if (!ledgerType) throw new Error('LedgerActions.addEntry: ledgerType is required');
+    if (!date) throw new Error('LedgerActions.addEntry: date is required');
+    const cat = getCategory(ledgerType, categoryId);
+    if (!cat) throw new Error('LedgerActions.addEntry: unknown category "' + categoryId + '" for ledger "' + ledgerType + '"');
+    return _addEntry({
+      ledgerType, date, categoryId,
+      amount: Math.abs(parseFloat(amount) || 0), // always a positive magnitude — sign lives on the category
+      desc: desc || '',
+      groupLabel: groupLabel || null,
+      shift: shift || null,
+    });
+  }
+
+  function updateEntry(id, changes) {
+    if (changes && 'amount' in changes) changes.amount = Math.abs(parseFloat(changes.amount) || 0);
+    return _updateEntry(id, changes);
+  }
+
+  function removeEntry(id) {
+    return _removeEntry(id);
+  }
+
+  return { addEntry, updateEntry, removeEntry };
+
+})();

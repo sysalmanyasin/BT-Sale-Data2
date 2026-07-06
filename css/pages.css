@@ -74,6 +74,17 @@
     page-break-before:always;break-before:page;
   }
   .pr-tbl tr{page-break-inside:avoid;break-inside:avoid;}
+
+  /* Defensive fallback for Android's print pipeline: window.print() on
+     Android hands off to the SYSTEM print framework (see the Print
+     Spooler in the screenshot that surfaced this), not Chrome's own
+     on-screen rendering — a genuinely different code path with its own
+     history of CSS Grid content silently failing to paint at all. Force
+     a flex-based fallback for print specifically, since flexbox has
+     more consistently reliable print support across Android print
+     pipelines than grid does. */
+  .pr-kpis{display:flex!important;flex-wrap:wrap!important;}
+  .pr-kpis .pr-kpi{flex:1 1 30%!important;min-width:0!important;}
 }
 .pr-tbl{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:12px;}
 .pr-tbl th{background:#1e3a5f;color:#fff;padding:6px 10px;text-align:left;font-size:11px;letter-spacing:.05em;}

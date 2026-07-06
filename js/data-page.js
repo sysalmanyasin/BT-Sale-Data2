@@ -105,8 +105,8 @@ function renderDataTable() {
 
     const hdr=document.createElement('div');
     hdr.className='mon-hdr';
+    hdr.dataset.monToggle='1';
     hdr.innerHTML=`<div class="mon-hdr-left"><span class="mon-chevron${shouldBeOpen?' open':''}">&#9654;</span><span class="mon-hdr-label">${monKey}</span><span class="mon-hdr-meta">${rows.length} days</span></div><div style="display:flex;align-items:center;gap:12px"><span class="mon-hdr-total">&#8360; ${ff(monTotal)}</span><span class="mon-hdr-meta">&#128101; ${fc(monCust)}</span></div>`;
-    hdr.onclick=()=>toggleMonGroup(hdr);
 
     const body=document.createElement('div');
     body.className='mon-body'+(shouldBeOpen?' open':'');
@@ -121,7 +121,7 @@ function renderDataTable() {
     rows.forEach(d=>{
       const tr=document.createElement('tr');
       tr.className='cl'; tr.title='Click for full breakdown';
-      tr.onclick=()=>openDayModal(d.Date,d.Month_Year);
+      tr.dataset.dayDate=d.Date; tr.dataset.dayMy=d.Month_Year;
       tr.innerHTML=DailyRowComponent(d, extraCol);
       tbody.appendChild(tr);
     });
@@ -144,6 +144,32 @@ function renderDataTable() {
   if(subEl) subEl.textContent=totalRecords+' records across '+sortedMons.length+' months';
   // Store in render cache
   _rc.data = { key: _rcKey('data'), html: wrapper.innerHTML };
+
+  _bindDataPageDelegation();
+}
+
+// Event delegation, bound exactly once to the stable #page-data container
+// (which is never destroyed or replaced — only its descendants are,
+// whether from a fresh renderDataTable() call or a cache-restore via
+// innerHTML in ui.js's showPage()). Per-element onclick assignment
+// (hdr.onclick = fn) does NOT survive innerHTML being reassigned onto a
+// NEW element — the click handlers were bound to the discarded original
+// elements — which is exactly what silently broke month-toggle after a
+// cache restore. Delegating from a stable ancestor sidesteps the whole
+// problem instead of needing to re-bind handlers after every possible
+// path that can (re)create this content.
+let _dataPageDelegationBound = false;
+function _bindDataPageDelegation() {
+  if (_dataPageDelegationBound) return;
+  const page = document.getElementById('page-data');
+  if (!page) return;
+  page.addEventListener('click', (e) => {
+    const hdr = e.target.closest('[data-mon-toggle]');
+    if (hdr) { toggleMonGroup(hdr); return; }
+    const tr = e.target.closest('tr[data-day-date]');
+    if (tr) { openDayModal(tr.dataset.dayDate, tr.dataset.dayMy); return; }
+  });
+  _dataPageDelegationBound = true;
 }
 
 function toggleMonGroup(hdr) {

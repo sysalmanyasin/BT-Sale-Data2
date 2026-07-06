@@ -58,8 +58,8 @@ known `ai-memory.js` placeholder issue remains).*
 | Global naming collisions | 1 | **0** | `chpOpenScan` was defined twice (intentional override, but left dead code + a stale comment behind — cleaned up) |
 | Total `.js` lines | 22,617 | 22,571 | net **−46** (274 lines removed, 230 added — some removals were bug-fix rewrites, not pure deletion) |
 | Architecture violations fixed | 5 categories | | See list below |
-| Files converted to real ES modules | 0 of 46 | **4 of 46** | `config.js`, `event-bus.js`, `repository.js`, `actions.js` — entire Floor 1–3 now real modules, no more window-bridge workarounds between them |
-| Files namespaced (Stage A, still classic scripts) | 0 of 41 | **32 of 41** | + `reports.js`, `reports-print.js`, `data-page.js` this round |
+| Files converted to real ES modules | 0 of 46 | **7 of 46** | Floor 1–3 (`config.js`, `event-bus.js`, `repository.js`, `actions.js`) + new `ledger-store.js`, `ledger-actions.js`, `ledger-migration.js` (real feature work, dormant, not yet wired into UI) |
+| Files namespaced (Stage A, still classic scripts) | 0 of 41 | **32 of 41** | unchanged this round — focus was new feature work, not further namespacing |
 | Global symbols behind a module export | 0 of ~850 | **38 of ~850** | + `EventBus` |
 | Files still 100% bare-global classic scripts | 46 | **9** | All deliberately deferred for stated reasons — nothing left unstarted |
 | Real bugs found via device testing | — | **1** (8 call sites) | `readyState==='loading'` anti-pattern broken by `defer`, fixed in all 8 files |
@@ -493,7 +493,121 @@ mechanism, can't verify multi-device behavior in this sandbox),
 `bt-format.js`, `conflict-ui.js`, `diff-report.js`, `knowledge-sheet.js`,
 `targets.js` (zero-reduction files — nothing left to hide).
 
+### Tenth round — two bugs found via real device testing, one solved with high confidence, one still open
+
+**1. Sale Data month-toggle: root cause found and fixed, verified with a
+real test reproducing the exact bug.** Confirmed pre-existing (byte-
+identical to the original zip). Root cause: `ui.js`'s render-cache
+restore path does `element.innerHTML = cachedHtmlString` (or
+`old.replaceWith(newElement)`) when switching back to a page whose
+content hasn't changed — but the month-toggle click handlers were
+bound via `hdr.onclick = () => toggleMonGroup(hdr)`, a JS property
+assignment on the *original* DOM element. That binding is lost the
+moment the element is discarded and replaced with fresh HTML from a
+cached string — HTML strings don't carry JS property bindings with
+them. Confirms exactly why the Index page (which uses a string-based
+`onclick="toggleYrGroup(this)"` HTML attribute — browsers re-bind those
+every time the HTML is parsed, cache-restore included) tested fine
+while Sale Data (JS-property-bound) didn't.
+
+**Fix:** replaced per-element `onclick` assignment with **event
+delegation** — one listener bound once (guarded by a flag) to the
+stable `#page-data` container, which is never destroyed regardless of
+which code path populated its children. Delegation reads a
+`data-mon-toggle`/`data-day-date` attribute from the clicked element via
+`closest()` instead of relying on a live JS reference. This is strictly
+more robust than either the old approach *or* switching to a
+window-global function — it doesn't need anything on `window` at all,
+and survives any future code path that might replace this content.
+Found and fixed the identical vulnerability in the day-row click handler
+(`tr.onclick = () => openDayModal(...)`) at the same time, even though
+it hadn't been reported yet, since it's the exact same bug class.
+Verified with a real jsdom test that reproduces the actual bug
+end-to-end: bind delegation → build content → simulate a cache-restore
+(fresh element, `innerHTML` from a cached string, zero JS bindings) →
+click the restored content → confirm the handler still fires.
+
+**2. Print still blank after the color-adjust fix — less certain, still
+investigating.** The screenshot that surfaced this was Android's
+**system Print Spooler**, not Chrome's own print preview — on Android,
+`window.print()` hands off to the OS print framework, a genuinely
+different rendering pipeline than Chrome's on-screen rendering, with
+its own separate history of compatibility quirks (matches this
+codebase's own prior documented fix for an Android-specific pagination
+bug). Added a second, defensive fix: `.pr-kpis` (`display:grid`) now
+falls back to `display:flex` under `@media print`, since CSS Grid has a
+well-documented history of content silently failing to paint at all in
+various Android/Chromium print pipelines, while flexbox has more
+consistently reliable print support. **Being honest about confidence
+here:** unlike the toggle bug, this one hasn't been verified against
+the actual failure — there's no way to simulate Android's system print
+framework in this sandbox. If this doesn't resolve it, the single most
+useful next diagnostic is testing the same print action on **desktop**
+Chrome — if it works there, the bug is confirmed Android-print-pipeline-specific;
+if it's *also* blank on desktop, the cause is something else entirely
+and the two fixes so far (color-adjust, grid-fallback) were addressing
+the wrong hypothesis.
+
+### First real feature work — the generalized Ledger (dormant, not yet wired in)
+
+Built the core Ledger module from the V2 plan (§3), as real ES modules
+from day one — no window-bridge compromise, since nothing existing
+depends on this yet. Split across three files, matching this app's
+existing one-file-per-floor-concern convention
+(`ledger-store.js` = Floor 1/2, `ledger-actions.js` = Floor 3,
+`ledger-migration.js` = one-time data conversion, deliberately not
+auto-run since it changes real financial data).
+
+**Refined the design against real proven data**, not the original plan
+sketch: Jazz Cash's actual pattern stores `amount` as a positive
+magnitude with a separate `type` that carries its own sign/color/icon
+(`JC_TYPES`) — better and more flexible than the "signed amount" model
+originally sketched in the V2 plan, so the Ledger's category system
+(`LEDGER_CATEGORIES`) matches this proven shape instead. Adding a new
+ledger type (the eventual "Other Sections" feature) is a config entry,
+not new code — `registerLedgerType()` exists for exactly that.
+
+**One real bug found and fixed via testing, in this brand-new code
+before it ever shipped:** `getCategory()` had a fallback
+(`|| list[0]`) that silently returned the *first* category for an
+unrecognized `categoryId` instead of correctly failing — meaning
+invalid data would never be rejected, it'd just get miscategorized.
+Caught by an actual test (`addEntry` with a bogus category should
+throw — it didn't), not by inspection. Same standard applied to new
+code as to everything else this session: write it, then prove it
+works, don't assume it does.
+
+**Migration is genuinely two different risk levels, and the code says
+so explicitly:** Jazz Cash → Ledger is mechanical (matching shapes,
+low risk). Petty → Ledger is not just a reshape — it's the actual
+behavior change from month-scoped to continuous that was asked for,
+and Petty has no per-row dates today, only month-level grouping, so
+migrated entries get the 1st of their source month as a placeholder
+date with the original grouping preserved as `groupLabel`. Documented
+in the code itself, not just here, so this doesn't get lost.
+
+**Verified with real Node execution, not just syntax checks:** basic
+add/balance math, opening-balance handling, ledger-type isolation,
+invalid-category rejection, update/remove, and — the one that matters
+most given this touches real stored data — **persistence across a
+simulated app restart** (fresh module instance reading back through the
+same underlying `Repository`/`localStorage`). Also ran both migration
+functions against realistic old-format sample data (matching
+`jazz-cash.js`'s and `manager.js`'s actual storage shapes exactly, not
+synthetic test data) and confirmed correct entry counts, opening
+balance carry-over, `groupLabel` preservation, and the placeholder-date
+logic.
+
+**Added to `index.html`/`sw.js`, but genuinely dormant** — no Page or
+Action calls into this yet. It exists, is tested, and is ready for the
+day `jazz-cash.js`/`manager.js`'s Petty tab get rebuilt to use it
+instead of their current separate implementations.
+
 ### Lessons learned converting `actions.js`
+
+
+
+
 
 
 

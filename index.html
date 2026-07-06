@@ -1373,6 +1373,13 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/repository.js"></script>
 <script type="module" src="js/actions.js"></script>
 
+<!-- Ledger — new generalized module (config.js/repository.js/event-bus.js
+     dependency), not yet wired into any Page. Dormant until the Jazz
+     Cash / Petty rebuild replaces their current implementations. -->
+<script type="module" src="js/ledger-store.js"></script>
+<script type="module" src="js/ledger-actions.js"></script>
+<script type="module" src="js/ledger-migration.js"></script>
+
 <!-- 3. Auth: Google Sign-In -->
 <script defer src="js/auth.js"></script>
 

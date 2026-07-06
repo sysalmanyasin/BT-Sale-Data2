@@ -1,11 +1,11 @@
 /* ═══════════════════════════════════════════════════════════════
-   BT Sales IC — Service Worker  v9
+   BT Sales IC — Service Worker  v8.3
    Strategy: Network-first for same-origin app shell (fresh on connect,
    cached fallback offline). CDN libs use stale-while-revalidate.
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v9'; //v9: ES module migration (config/repository/actions) + script reorder + notify-loop fix
+const CACHE_NAME = 'bt-sales-v8.8'; // v8.8: new Ledger module scaffolded (dormant, not yet wired into UI)
 
 const APP_SHELL = [
   './',
@@ -45,6 +45,9 @@ const APP_SHELL = [
   './js/sync-center.js',
   './js/repository.js',
   './js/actions.js',
+  './js/ledger-store.js',
+  './js/ledger-actions.js',
+  './js/ledger-migration.js',
   './js/conflict-ui.js',
   './js/supabase.js',
 
