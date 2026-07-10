@@ -115,16 +115,46 @@ export function createCustomLedgerType(sectionId, label, categories) {
   return ledgerType;
 }
 
-export function deleteCustomLedgerType(ledgerType) {
+// Renames a custom section and/or replaces its category list. Existing
+// entries keep their categoryId as-is — if a category was removed in
+// `categories`, those entries fall back to "unknown category" rendering
+// (see ledger-page.js's `cat ? ... : '<em>unknown</em>'`) rather than
+// being deleted, so no historical entry ever silently disappears.
+export function updateCustomLedgerType(ledgerType, { label, categories } = {}) {
+  _ensureCustomTypesLoaded();
+  const existing = _customLedgerTypes[ledgerType];
+  if (!existing) throw new Error('LedgerStore: no custom ledger type found for "' + ledgerType + '"');
+  if (categories !== undefined) {
+    if (!Array.isArray(categories) || !categories.length) {
+      throw new Error('LedgerStore: at least one category is required');
+    }
+    existing.categories = categories;
+  }
+  if (label !== undefined && label !== null && String(label).trim()) {
+    existing.label = String(label).trim();
+  }
+  _persistCustomTypes();
+  return existing;
+}
+
+// `force`, when true, also deletes every entry belonging to this ledger
+// type first — the explicit, opt-in escape hatch for a user who really
+// does want to remove a section along with its data (surfaced in the UI
+// as a second, clearly-worded confirmation before this is ever called).
+export function deleteCustomLedgerType(ledgerType, force) {
   _ensureCustomTypesLoaded();
   if (!_customLedgerTypes[ledgerType]) return false;
-  // Refuse to delete a section that still has entries — caller should
-  // remove/migrate those first. Prevents silently orphaning stored data
-  // that would then have no category config to render against.
-  if (getEntries(ledgerType).length > 0) {
-    throw new Error('LedgerStore: cannot delete "' + ledgerType + '" — it still has entries. Remove them first.');
+  const existingEntries = getEntries(ledgerType);
+  if (existingEntries.length > 0) {
+    if (!force) {
+      throw new Error('LedgerStore: cannot delete "' + ledgerType + '" — it still has entries. Remove them first.');
+    }
+    _ensureLoaded();
+    _entries = _entries.filter(e => e.ledgerType !== ledgerType);
+    _persist();
   }
   delete _customLedgerTypes[ledgerType];
+  delete _openingBalances[ledgerType];
   _persistCustomTypes();
   return true;
 }
@@ -264,7 +294,7 @@ window.LEDGER_CUSTOM_TYPES_KEY = CUSTOM_TYPES_KEY;
 window.LedgerStore = {
   SHIFTS, ledgerUsesShift,
   getCategoryList, getCategory, getAllLedgerTypes,
-  createCustomLedgerType, deleteCustomLedgerType,
+  createCustomLedgerType, updateCustomLedgerType, deleteCustomLedgerType,
   getEntries, getEntriesWithBalance, getOpeningBalance, setOpeningBalance,
   getCurrentBalance,
 };

@@ -8,6 +8,7 @@
 // ══════════════════════════════════════════════════════════════════════
 
 import { _addEntry, _updateEntry, _removeEntry, _getEntryById, getCategory } from './ledger-store.js';
+import * as LedgerStore from './ledger-store.js';
 
 export const LedgerActions = (function () {
 
@@ -40,7 +41,26 @@ export const LedgerActions = (function () {
     return _removeEntry(id);
   }
 
-  return { addEntry, updateEntry, removeEntry };
+  // Create/edit/delete an "Other Section" — the section-management half
+  // of the Ledger, distinct from entry-level add/update/remove above.
+  // Kept behind this same "one door" so Pages never call LedgerStore's
+  // custom-type functions directly.
+  function createSection(sectionId, label, categories) {
+    return LedgerStore.createCustomLedgerType(sectionId, label, categories);
+  }
+
+  function updateSection(ledgerType, changes) {
+    return LedgerStore.updateCustomLedgerType(ledgerType, changes);
+  }
+
+  // `force` deletes every entry under this section first — the caller
+  // (ledger-page.js) is responsible for getting explicit user
+  // confirmation before ever passing force:true.
+  function deleteSection(ledgerType, force) {
+    return LedgerStore.deleteCustomLedgerType(ledgerType, !!force);
+  }
+
+  return { addEntry, updateEntry, removeEntry, createSection, updateSection, deleteSection };
 
 })();
 

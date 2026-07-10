@@ -124,9 +124,40 @@ const Analytics = (function () {
     return latest ? latest.Month_Year : '';
   }
 
+  // Builds a { rows, total } breakdown for one Ledger type — opening
+  // balance (if any) as its own row, then one row per category that has
+  // ever had activity, each signed by that category's own +/- sign, so
+  // Inflow and Outflow categories are never conflated. `total` is the
+  // ledger's real running balance (LedgerStore.getCurrentBalance), not a
+  // re-derived sum, so this always matches what the Ledger page itself
+  // shows.
+  function _ledgerBreakdown(ledgerType) {
+    const LS = (typeof window !== 'undefined') ? window.LedgerStore : null;
+    if (!LS) return { rows: [], total: 0 };
+    const categories = LS.getCategoryList(ledgerType) || [];
+    const entries = LS.getEntries(ledgerType) || [];
+    const sums = {};
+    entries.forEach(e => { sums[e.categoryId] = (sums[e.categoryId] || 0) + (parseFloat(e.amount) || 0); });
+    const opening = LS.getOpeningBalance(ledgerType) || 0;
+    const rows = [];
+    if (opening) rows.push({ name: '🏦 Opening Balance', net: opening });
+    categories.forEach(c => {
+      const sum = sums[c.id] || 0;
+      if (sum) rows.push({ name: (c.icon ? c.icon + ' ' : '') + c.label, net: c.sign * sum });
+    });
+    return { rows, total: LS.getCurrentBalance(ledgerType) };
+  }
+
   // Aggregates all data needed by buildCreditSection — a pure data
   // query that the page function just renders. Closes CF-04 gap where
   // buildCreditSection() mixed data fetching with DOM rendering.
+  //
+  // Staff Credit stays month-scoped (mgrData.credit[my] is genuinely
+  // month-by-month data). Jazz Cash, Patty/Expenses, and every "Other
+  // Section" now come straight from the unified Ledger (bt_ledger_v1) —
+  // continuous, running balances, same source of truth as the Ledger
+  // tabs themselves — replacing the old month-scoped Expense-tab math
+  // and the old per-section custom-sections store entirely.
   function getCreditSectionData(my) {
     const _ni = v => Math.round(Number(v) || 0);
     const mgrData = typeof mgrLoad === 'function' ? mgrLoad() : {};
@@ -140,50 +171,28 @@ const Analytics = (function () {
     }).filter(r => r.net !== 0);
     const staffTotal = staffRows.reduce((s, r) => s + r.net, 0);
 
-    // 2. Patty / Expense balance
-    const expData = mgrData.expense && mgrData.expense[my];
-    let pattyTotal = 0;
-    let pattyRows  = [];
-    if (expData) {
-      const rows    = expData.rows || [];
-      const opening = _ni(expData.opening);
-      const totHO   = rows.reduce((s, r) => s + _ni(r.pattyHO), 0);
-      const totBill = rows.reduce((s, r) => s + _ni(r.bill), 0);
-      const totFuel = rows.reduce((s, r) => s + _ni(r.fuel), 0);
-      const totSoap = rows.reduce((s, r) => s + _ni(r.soap), 0);
-      const totRef  = rows.reduce((s, r) => s + _ni(r.refresh), 0);
-      const totExt  = rows.reduce((s, r) => s + _ni(r.extra), 0);
-      const totalExp = totBill + totFuel + totSoap + totRef + totExt;
-      pattyTotal = opening + totHO - totalExp;
-      pattyRows  = [
-        { name: 'Opening Patty', net:  opening  },
-        { name: 'HO Received',   net:  totHO    },
-        { name: 'Total Expenses', net: -totalExp },
-      ].filter(r => r.net !== 0);
-    }
+    // 2. Jazz Cash ledger (continuous, all-time — not month-scoped)
+    const jazzCash = _ledgerBreakdown('jazzcash');
 
-    // 3. Custom sections + Jazz Cash
-    const csecAll  = typeof _csecLoad === 'function' ? _csecLoad() : {};
-    const otherRows = Object.values(csecAll).map(sec => {
-      const rows  = (sec.months && sec.months[my]) || [];
-      const total = rows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-      return { name: (sec.emoji || '📋') + ' ' + sec.name, net: total };
-    }).filter(r => r.net !== 0);
+    // 3. Patty / Expenses ledger (continuous, all-time — not month-scoped)
+    const patty = _ledgerBreakdown('expense');
 
-    if (typeof _jcCurrentBalance === 'function') {
-      const jcBal = _jcCurrentBalance();
-      const dupIdx = otherRows.findIndex(r => r.name.toLowerCase().includes('jazz cash'));
-      if (dupIdx >= 0) otherRows.splice(dupIdx, 1);
-      otherRows.unshift({ name: '💚 Salman Jazz Cash', net: jcBal, isJcLedger: true });
-    }
-    const otherTotal = otherRows.reduce((s, r) => s + r.net, 0);
+    // 4. Every user-created "Other Section", each with its own category
+    // breakdown, plus a combined total across all of them.
+    const LS = (typeof window !== 'undefined') ? window.LedgerStore : null;
+    const customTypes = LS ? LS.getAllLedgerTypes().filter(t => t.isCustom) : [];
+    const otherSections = customTypes.map(t => ({
+      id: t.id, label: t.label, ..._ledgerBreakdown(t.id),
+    }));
+    const otherSectionsTotal = otherSections.reduce((s, sec) => s + sec.total, 0);
 
     return {
       my,
       staffRows, staffTotal,
-      pattyRows, pattyTotal,
-      otherRows, otherTotal,
-      grandTotal: staffTotal + pattyTotal + otherTotal,
+      jazzCashRows: jazzCash.rows, jazzCashTotal: jazzCash.total,
+      pattyRows: patty.rows, pattyTotal: patty.total,
+      otherSections, otherSectionsTotal,
+      grandTotal: staffTotal + jazzCash.total + patty.total + otherSectionsTotal,
     };
   }
 

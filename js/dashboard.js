@@ -166,22 +166,18 @@ function buildCreditSection(lat) {
   const fmtAmt  = v => (v < 0 ? '−' : '') + '₨' + _fc2(Math.abs(v));
   const amtColor = v => v > 0 ? 'var(--green)' : v < 0 ? 'var(--red)' : 'var(--muted)';
 
-  const detailRows = rows => rows.map(r => {
-    const isJc = r.isJcLedger;
-    return `
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);${isJc ? 'background:#f0fdf4;margin:0 -16px;padding:6px 16px;' : ''}">
-      <span style="font-size:11px;color:${isJc ? '#166534' : 'var(--t2)'};font-weight:${isJc ? '700' : '400'}">
-        ${r.name}
-        ${isJc ? `<span onclick="navigateTo('manager');setTimeout(()=>{switchMgrTab('jazzcash');},200)" style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:4px;margin-left:6px;cursor:pointer;font-weight:700">LIVE ↗</span>` : ''}
-      </span>
-      <span style="font-size:11px;font-family:var(--mono);font-weight:${isJc ? '800' : '600'};color:${isJc ? (r.net < 0 ? 'var(--red)' : '#15803d') : amtColor(r.net)}">${fmtAmt(r.net)}</span>
-    </div>`;
-  }).join('') || `<div style="font-size:11px;color:var(--muted);padding:4px 0">No data for ${my}</div>`;
+  const detailRows = rows => rows.map(r => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:11px;color:var(--t2)">${r.name}</span>
+      <span style="font-size:11px;font-family:var(--mono);font-weight:600;color:${amtColor(r.net)}">${fmtAmt(r.net)}</span>
+    </div>`).join('') || `<div style="font-size:11px;color:var(--muted);padding:4px 0">No activity yet</div>`;
 
-  const sectionCard = (icon, title, rows, total) => `
+  const sectionCard = (icon, title, rows, total, navTab) => `
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:14px 16px;box-shadow:var(--sh)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div style="font-size:12px;font-weight:700;color:var(--t2)">${icon} ${title}</div>
+        <div style="font-size:12px;font-weight:700;color:var(--t2)">${icon} ${title}
+          ${navTab ? `<span onclick="navigateTo('manager');setTimeout(()=>{switchMgrTab('${navTab}');},200)" style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:4px;margin-left:6px;cursor:pointer;font-weight:700">OPEN ↗</span>` : ''}
+        </div>
         <div style="font-size:15px;font-weight:700;font-family:var(--mono);color:${amtColor(total)}">${fmtAmt(total)}</div>
       </div>
       <div style="border-top:1px solid var(--border);padding-top:8px">${detailRows(rows)}</div>
@@ -198,19 +194,24 @@ function buildCreditSection(lat) {
       <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">💳 Credit Details</span>
       <select onchange="dashSetCreditMonth(this.value)"
         style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--s2);color:var(--text);outline:none;cursor:pointer"
-        title="Pick which month to view on the dashboard credit section">
+        title="Staff Credit is by month — pick which month to view">
         ${monthPickerOpts}
       </select>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:10px">
-      ${sectionCard('👥', 'Staff Credit',     d.staffRows,  d.staffTotal)}
-      ${sectionCard('🧾', 'Patty / Expenses', d.pattyRows,  d.pattyTotal)}
-      ${sectionCard('📋', 'Other Credits',    d.otherRows,  d.otherTotal)}
+      ${sectionCard('👥', 'Staff Credit — ' + my, d.staffRows, d.staffTotal)}
+      ${sectionCard('💚', 'Jazz Cash (all-time)', d.jazzCashRows, d.jazzCashTotal, 'jazzcash')}
+      ${sectionCard('🧾', 'Patty / Expenses (all-time)', d.pattyRows, d.pattyTotal, 'expense')}
     </div>
+    ${d.otherSections.length ? `
+    <div style="margin:14px 0 8px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">📋 Other Sections (all-time)</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:10px">
+      ${d.otherSections.map(sec => sectionCard('📋', sec.label, sec.rows, sec.total, 'custom')).join('')}
+    </div>` : ''}
     <div style="background:linear-gradient(135deg,#0f172a,#1e3a5f);border-radius:11px;padding:14px 20px;display:flex;align-items:center;justify-content:space-between">
       <div>
-        <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:3px">Total Outstanding Credits — ${my}</div>
-        <div style="font-size:10px;color:rgba(255,255,255,.4)">Staff + Patty + Other</div>
+        <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:3px">Total Outstanding Credits</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.4)">Staff (${my}) + Jazz Cash + Patty/Expenses + Other Sections, all-time</div>
       </div>
       <div style="font-size:24px;font-weight:700;font-family:var(--mono);color:${d.grandTotal >= 0 ? '#4ade80' : '#f87171'}">${fmtAmt(d.grandTotal)}</div>
     </div>`;
