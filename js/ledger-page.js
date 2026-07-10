@@ -174,12 +174,12 @@ let _osEditingSection = null; // which custom section, if any, is being renamed/
 // or a look-and-feel change to one applies to both automatically).
 function _catRowHtml(cat) {
   const name = cat ? _esc(cat.label) : '';
-  const sign = cat ? cat.sign : -1;
+  const sign = cat ? cat.sign : 1;
   return `<div class="os-cat-row" style="display:flex;gap:6px;margin-bottom:6px;align-items:center">
     <input type="text" placeholder="Category name" class="os-cat-name" value="${name}" style="flex:1">
     <select class="os-cat-sign">
-      <option value="-1"${sign === -1 ? ' selected' : ''}>Outflow (−)</option>
-      <option value="1"${sign === 1 ? ' selected' : ''}>Inflow (+)</option>
+      <option value="1"${sign === 1 ? ' selected' : ''}>Outflow (+)</option>
+      <option value="-1"${sign === -1 ? ' selected' : ''}>Inflow (−)</option>
     </select>
     <button type="button" class="btn-icon os-cat-remove" title="Remove category">🗑</button>
   </div>`;

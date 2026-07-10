@@ -49,13 +49,23 @@ export const LEDGER_CATEGORIES = {
   // entry writes immediately instead of sitting unsaved in memory
   // until a manual Save click (the actual root cause of the data-loss
   // bug reported against the old Expense tab).
+  // SIGN CONVENTION (flipped per explicit request): an expense you pay
+  // out of pocket (Bill Amount, Fuel/HO, Soap/Tissue, Refreshment,
+  // Extra) now shows as a POSITIVE (+) entry and ADDS to the Patty
+  // balance; receiving petty-cash reimbursement from Head Office
+  // (Patty H/O) now shows as NEGATIVE (−) and SUBTRACTS from the
+  // balance. So "Patty / Expenses" now reads as "how much you're
+  // currently owed by HO" — e.g. the same activity that used to show
+  // +281 now shows -281. Sign is looked up dynamically from this
+  // config everywhere (dashboard, ledger table, print summaries, AI
+  // bridge) — nothing else needs to change for this to take effect.
   expense: [
-    { id: 'bill',      label: 'Bill Amount',   sign: -1, color: 'var(--red)',    icon: '🧾' },
-    { id: 'fuel',      label: 'Fuel/HO',       sign: -1, color: 'var(--amber)',  icon: '⛽' },
-    { id: 'soap',      label: 'Soap/Tissue',   sign: -1, color: 'var(--purple)', icon: '🧼' },
-    { id: 'refresh',   label: 'Refreshment',   sign: -1, color: 'var(--blue)',   icon: '☕' },
-    { id: 'extra',     label: 'Extra',         sign: -1, color: 'var(--muted)',  icon: '➕' },
-    { id: 'pattyHO',   label: 'Patty H/O (received)', sign: +1, color: 'var(--green)', icon: '⬆' },
+    { id: 'bill',      label: 'Bill Amount',   sign: +1, color: 'var(--red)',    icon: '🧾' },
+    { id: 'fuel',      label: 'Fuel/HO',       sign: +1, color: 'var(--amber)',  icon: '⛽' },
+    { id: 'soap',      label: 'Soap/Tissue',   sign: +1, color: 'var(--purple)', icon: '🧼' },
+    { id: 'refresh',   label: 'Refreshment',   sign: +1, color: 'var(--blue)',   icon: '☕' },
+    { id: 'extra',     label: 'Extra',         sign: +1, color: 'var(--muted)',  icon: '➕' },
+    { id: 'pattyHO',   label: 'Patty H/O (received)', sign: -1, color: 'var(--green)', icon: '⬆' },
   ],
 };
 
@@ -70,6 +80,30 @@ export const LEDGER_CATEGORIES = {
 const CUSTOM_TYPES_KEY = 'bt_ledger_custom_types_v1';
 let _customLedgerTypes = null; // { [ledgerType]: { label, categories: [...] } }
 
+// One-time sign-flip migration (per explicit request): "Outflow (−)"
+// categories in every custom "Other Section" now mean + and add to the
+// section's total, "Inflow (+)" categories now mean − and subtract.
+// This runs exactly once, the first time custom types load after this
+// change ships — guarded by a flag so re-loading the app (or this
+// function running again) never flips signs a second time. Only the
+// sign is flipped here; label text is handled separately by the
+// Outflow/Inflow dropdown in ledger-page.js for any category added or
+// edited going forward.
+const SIGN_FLIP_DONE_KEY = 'bt_ledger_signflip_v1_done';
+function _runSignFlipMigrationOnce() {
+  if (Repository.getItem(SIGN_FLIP_DONE_KEY)) return;
+  Object.keys(_customLedgerTypes).forEach(ledgerType => {
+    const def = _customLedgerTypes[ledgerType];
+    (def.categories || []).forEach(cat => {
+      cat.sign = -cat.sign;
+      cat.color = cat.sign > 0 ? 'var(--green)' : 'var(--red)';
+      cat.icon = cat.sign > 0 ? '⬆' : '⬇';
+    });
+  });
+  Repository.setItem(SIGN_FLIP_DONE_KEY, '1');
+  Repository.setItem(CUSTOM_TYPES_KEY, JSON.stringify(_customLedgerTypes));
+}
+
 function _ensureCustomTypesLoaded() {
   if (_customLedgerTypes !== null) return;
   try {
@@ -78,6 +112,7 @@ function _ensureCustomTypesLoaded() {
   } catch (e) {
     _customLedgerTypes = {};
   }
+  _runSignFlipMigrationOnce();
 }
 
 function _persistCustomTypes() {

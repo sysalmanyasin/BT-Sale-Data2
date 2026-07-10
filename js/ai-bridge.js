@@ -511,7 +511,10 @@ function _aiReadExpenseSummary(monthStr) {
     const totBill = sumCat('bill'), totFuel = sumCat('fuel'), totSoap = sumCat('soap'),
           totRef  = sumCat('refresh'), totExt = sumCat('extra'), totHO = sumCat('pattyHO');
     const totalExp = totBill + totFuel + totSoap + totRef + totExt;
-    const balance = opening + totHO - totalExp;
+    // Sign convention (flipped per explicit request): expenses ADD to
+    // the balance, HO Received SUBTRACTS from it — matches
+    // LEDGER_CATEGORIES.expense in ledger-store.js.
+    const balance = opening + totalExp - totHO;
     const fmt = v => '\u20a8' + Math.abs(Math.round(v)).toLocaleString('en-PK');
     let out = '<b>Expenses \u2014 ' + monthStr + '</b><br>';
     out += '\u2022 Opening Patty: ' + fmt(opening) + '<br>';
