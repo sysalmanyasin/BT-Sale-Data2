@@ -211,18 +211,35 @@ function getAppContextSummary(opts) {
     lines.push('');
   }
 
-  if (mgr.expense && Object.keys(mgr.expense).length) {
-    lines.push('=== MANAGER > EXPENSE SHEET (every month) ===');
-    Object.entries(mgr.expense).forEach(function (e) {
-      const my = e[0], rows = e[1] || [];
-      const tot = rows.reduce(function (s, r) { return s + n(r.bill) + n(r.fuel) + n(r.soap) + n(r.refresh) + n(r.extra) + n(r.pattyHO); }, 0);
-      lines.push('  ' + my + ': \u20a8' + fc(tot) + ' total (' + rows.length + ' entries)');
-      rows.forEach(function (r) {
-        lines.push('    ' + r.date + ' ' + (r.desc || '') + ': \u20a8' + fc(n(r.bill) + n(r.fuel) + n(r.soap) + n(r.refresh) + n(r.extra) + n(r.pattyHO)));
-      });
-    });
-    lines.push('');
-  }
+  // ── 5b. LEDGER ─ Expense, Jazz Cash Daily Ledger, Other Sections.
+  // Replaces the old separate "EXPENSE SHEET" (mgr.expense, month-keyed)
+  // and "CUSTOM SECTIONS" (mw_custom_sections_v1) blocks that used to be
+  // here — both retired storage locations the live UI stopped writing
+  // to once Expense/Jazz Cash/Other Sections moved onto the generalized
+  // Ledger; those blocks always reported empty/stale data after that.
+  // Jazz Cash never had a block here at all before this — it does now. ──
+  try {
+    if (typeof LedgerStore !== 'undefined') {
+      const types = LedgerStore.getAllLedgerTypes();
+      const withEntries = types.filter(t => LedgerStore.getEntries(t.id).length);
+      if (withEntries.length) {
+        lines.push('=== MANAGER > LEDGER (Expense / Jazz Cash / Other Sections) ===');
+        withEntries.forEach(function (t) {
+          const cats = LedgerStore.getCategoryList(t.id);
+          const entries = LedgerStore.getEntries(t.id);
+          const bal = LedgerStore.getCurrentBalance(t.id);
+          lines.push('  ' + t.label + ' — current balance: ₨' + fc(bal) + ' (' + entries.length + ' entries)');
+          entries.forEach(function (e) {
+            const cat = cats.find(function (c) { return c.id === e.categoryId; });
+            const signed = (cat && cat.sign < 0 ? '-' : '') + '₨' + fc(e.amount);
+            const shiftTxt = e.shift ? ' [' + e.shift + ']' : '';
+            lines.push('    ' + e.date + shiftTxt + ' ' + (cat ? cat.label : e.categoryId) + (e.desc ? ' (' + e.desc + ')' : '') + ': ' + signed);
+          });
+        });
+        lines.push('');
+      }
+    }
+  } catch (_) {}
 
   // ── 6. PETTY CASH (every month, scanning via Repository) ─────────────
   try {
@@ -232,33 +249,7 @@ function getAppContextSummary(opts) {
       lines.push('=== MANAGER > PETTY CASH (every month) ===');
       pettyMonths.forEach(function (my) {
         const p = _acPettyTotalForMonth(my);
-        if (p.count) lines.push('  ' + my + ': \u20a8' + fc(p.total) + ' (' + p.count + ' items)');
-      });
-      lines.push('');
-    }
-  } catch (_) {}
-
-  // ── 7. CUSTOM SECTIONS in Manager (e.g. Jazz Cash) — all entries ───
-  try {
-    const secs = JSON.parse(Repository.getItem('mw_custom_sections_v1') || '{}');
-    const ids = Object.keys(secs);
-    if (ids.length) {
-      lines.push('=== MANAGER > CUSTOM SECTIONS (all entries) ===');
-      ids.forEach(function (id) {
-        const s = secs[id];
-        // Custom sections store data under s.months[monthYear] = [{desc, amount, notes}].
-        // s.rows / s.entries are legacy field names that are never populated — flatten months.
-        const allMonthRows = Object.values(s.months || {}).reduce(function (acc, r) { return acc.concat(r); }, []);
-        const rows = (s.rows && s.rows.length) ? s.rows : ((s.entries && s.entries.length) ? s.entries : allMonthRows);
-        const tot = rows.reduce(function (sum, r) { return sum + n(r.amount); }, 0);
-        lines.push('  ' + (s.emoji || '') + ' ' + s.name + ': \u20a8' + fc(tot) + ' total (' + rows.length + ' entries)');
-        // Emit by month so the AI can see when each entry was made.
-        Object.entries(s.months || {}).forEach(function (me) {
-          var my = me[0], mrs = me[1] || [];
-          mrs.forEach(function (r) {
-            lines.push('    [' + my + '] ' + (r.date || r.desc || '') + (r.notes ? ' — ' + r.notes : '') + ': \u20a8' + fc(n(r.amount)));
-          });
-        });
+        if (p.count) lines.push('  ' + my + ': ₨' + fc(p.total) + ' (' + p.count + ' items)');
       });
       lines.push('');
     }

@@ -52,9 +52,11 @@ function _buildStaticPromptParts() {
   } catch (_) {}
   var customSections = '';
   try {
-    var _csAll = JSON.parse(Repository.getItem('mw_custom_sections_v1') || '{}');
-    var _csSecs = Object.entries(_csAll).map(function(e){
-      return e[1].emoji + ' ' + e[1].name + ' (id:' + e[0] + ')';
+    var _csTypes = (typeof LedgerStore !== 'undefined') ? LedgerStore.getAllLedgerTypes().filter(function(x){ return x.isCustom; }) : [];
+    var _csSecs = _csTypes.map(function(x){
+      var cats = LedgerStore.getCategoryList(x.id);
+      var icon = (cats[0] && cats[0].icon) || '📋';
+      return icon + ' ' + x.label;
     }).join(', ');
     if (_csSecs) customSections = '\nCUSTOM SECTIONS IN MANAGER: ' + _csSecs;
   } catch (_) {}
@@ -160,6 +162,42 @@ function _aiResolveMonth(text) {
 function _aiMonthYearFor(d) {
   const M = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   return M[d.getMonth()] + ' ' + d.getFullYear();
+}
+// Ledger entries store ISO dates (YYYY-MM-DD, from <input type="date">) —
+// this converts one to the "Month YYYY" format _aiResolveMonth() returns,
+// so Ledger data (Expense, Jazz Cash, custom sections) can be filtered by
+// the same month strings the rest of this file already works with.
+function _aiIsoMonthOf(dateStr) {
+  const d = new Date((dateStr || '') + 'T00:00:00');
+  if (isNaN(d)) return '';
+  return _aiMonthYearFor(d);
+}
+// The Ledger (Expense/Custom Sections/Jazz Cash) needs ISO dates
+// (YYYY-MM-DD, from <input type="date">) for correct chronological sort
+// and month-matching — distinct from _aiTodayStr()'s DD/Mon/YYYY, which
+// matches DAILY[].Date and stays that way for Salary/Credit/Generic.
+// Mixing the two formats into the same field silently breaks sort order
+// (string-comparing "05/Mar/2026" vs "12/Jan/2026" puts March first).
+function _aiIsoTodayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+// Converts whatever date format the Groq system prompt might still hand
+// back (its EXPENSE/CUSTOM SECTION docs currently ask for DD-Mon-YYYY,
+// a holdover from the old row-based models) into ISO, so Ledger data
+// never ends up storing anything but ISO regardless of prompt drift.
+function _aiToIsoDate(str) {
+  if (!str) return _aiIsoTodayStr();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str; // already ISO
+  const m = String(str).match(/^(\d{1,2})[\/\-]([A-Za-z]{3})[\/\-](\d{4})$/); // DD/Mon/YYYY or DD-Mon-YYYY
+  if (m) {
+    const MONTHS = { Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12' };
+    const mm = MONTHS[m[2].charAt(0).toUpperCase() + m[2].slice(1,3).toLowerCase()];
+    if (mm) return m[3] + '-' + mm + '-' + m[1].padStart(2, '0');
+  }
+  const d = new Date(str);
+  if (!isNaN(d)) return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  return _aiIsoTodayStr();
 }
 
 // ── Staff fuzzy match ─────────────────────────────────────────────────
@@ -276,17 +314,20 @@ function _aiParseCreditQuery(text) {
 }
 
 // ── Custom section fuzzy resolver (shared by add/edit/delete/read) ─────
-const _AI_CSEC_KEY = 'mw_custom_sections_v1';
+// Resolves against the Ledger's custom "Other Sections" types now
+// (ledger-store.js's createCustomLedgerType registry) — the old
+// mw_custom_sections_v1 blob this used to read is retired and no longer
+// written to by the live UI (see custom-sections.js's retired-code note).
 function _aiResolveCustomSection(rawName) {
-  let all;
-  try { all = JSON.parse(Repository.getItem(_AI_CSEC_KEY) || '{}'); } catch(_){ all = {}; }
+  if (typeof LedgerStore === 'undefined') return null;
   const norm = s => (s || '').trim().toLowerCase();
   const t = norm(rawName);
-  const sid = Object.keys(all).find(k => {
-    const n = norm(all[k].name);
+  const custom = LedgerStore.getAllLedgerTypes().filter(x => x.isCustom);
+  const hit = custom.find(x => {
+    const n = norm(x.label);
     return n === t || n.includes(t) || t.includes(n);
   });
-  return sid ? { sid, name: all[sid].name, all } : null;
+  return hit ? { ledgerType: hit.id, name: hit.label } : null;
 }
 
 // ── Staff Registry — read ───────────────────────────────────────────────
@@ -431,49 +472,44 @@ function _aiParseCustomSectionCommand(text) {
   const amount = parseFloat(amtMatch[1].replace(/,/g, ''));
   if (!amount) return null;
 
-  let all;
-  try { all = JSON.parse(Repository.getItem('mw_custom_sections_v1') || '{}'); } catch (_) { return null; }
-  const ids = Object.keys(all);
-  if (!ids.length) return null;
+  if (typeof LedgerStore === 'undefined') return null;
+  const custom = LedgerStore.getAllLedgerTypes().filter(x => x.isCustom);
+  if (!custom.length) return null;
 
   const norm = s => (s || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
   const tNorm = norm(t.replace(amtMatch[0], ''));
   if (!tNorm) return null;
 
   let best = null, bestScore = 0;
-  ids.forEach(function (id) {
-    const name = all[id].name || '';
-    const words = norm(name).split(' ').filter(Boolean);
+  custom.forEach(function (x) {
+    const words = norm(x.label).split(' ').filter(Boolean);
     if (!words.length) return;
     const hits = words.filter(function (w) { return tNorm.includes(w); }).length;
     const score = hits / words.length;
-    if (score > bestScore) { bestScore = score; best = id; }
+    if (score > bestScore) { bestScore = score; best = x; }
   });
   if (!best || bestScore < 0.6) return null;
 
-  const secName = all[best].name;
-  // LLM prompt specifies DD/Mon/YYYY (slash) for addCustomSectionRow — use BTDate.today().
-  const today   = (typeof BTDate !== 'undefined') ? BTDate.today() : _aiTodayStr();
   return {
-    text: '\u2705 Adding \u20a8' + Math.abs(amount).toLocaleString('en-PK') + ' to <b>' + secName + '</b>.',
-    intent: { action: 'addCustomSectionRow', params: [secName, today, amount, ''] },
+    text: '\u2705 Adding \u20a8' + Math.abs(amount).toLocaleString('en-PK') + ' to <b>' + best.label + '</b>.',
+    intent: { action: 'addCustomSectionRow', params: [best.label, '', amount, ''] },
   };
 }
 
-// ── Expenses / Patty — read ─────────────────────────────────────────────
+// ── Expenses / Patty — read (reads the generalized Ledger now; the old
+// mgrLoad().expense[monthStr] shape this used to read no longer exists —
+// see jazz-cash.js/manager.js's retired-code notes) ─────────────────────
 function _aiReadExpenseSummary(monthStr) {
   try {
-    const data = mgrLoad();
-    const stored = data.expense && data.expense[monthStr];
-    if (!stored) return '<b>' + monthStr + ':</b> No expense data found.';
-    const rows = stored.rows || [];
-    const opening = _ni(stored.opening);
-    const totBill = rows.reduce((s, r) => s + _ni(r.bill), 0);
-    const totFuel = rows.reduce((s, r) => s + _ni(r.fuel), 0);
-    const totSoap = rows.reduce((s, r) => s + _ni(r.soap), 0);
-    const totRef  = rows.reduce((s, r) => s + _ni(r.refresh), 0);
-    const totExt  = rows.reduce((s, r) => s + _ni(r.extra), 0);
-    const totHO   = rows.reduce((s, r) => s + _ni(r.pattyHO), 0);
+    if (typeof LedgerStore === 'undefined') return null;
+    const opening = LedgerStore.getOpeningBalance('expense');
+    const all = LedgerStore.getEntries('expense');
+    const rows = all.filter(e => _aiIsoMonthOf(e.date) === monthStr);
+    if (!rows.length) return '<b>' + monthStr + ':</b> No expense data found.';
+    const cats = LedgerStore.getCategoryList('expense');
+    const sumCat = id => rows.filter(r => r.categoryId === id).reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+    const totBill = sumCat('bill'), totFuel = sumCat('fuel'), totSoap = sumCat('soap'),
+          totRef  = sumCat('refresh'), totExt = sumCat('extra'), totHO = sumCat('pattyHO');
     const totalExp = totBill + totFuel + totSoap + totRef + totExt;
     const balance = opening + totHO - totalExp;
     const fmt = v => '\u20a8' + Math.abs(Math.round(v)).toLocaleString('en-PK');
@@ -507,14 +543,16 @@ function _aiReadCustomSectionTotal(rawName, monthStr) {
   try {
     const resolved = _aiResolveCustomSection(rawName);
     if (!resolved) return null;
-    const monthRows = (resolved.all[resolved.sid].months && resolved.all[resolved.sid].months[monthStr]) || [];
+    const monthRows = LedgerStore.getEntries(resolved.ledgerType).filter(e => _aiIsoMonthOf(e.date) === monthStr);
     if (!monthRows.length) return '<b>' + resolved.name + '</b> (' + monthStr + '): no entries found.';
-    const total = monthRows.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+    const cats = LedgerStore.getCategoryList(resolved.ledgerType);
+    const signOf = id => { const c = cats.find(x => x.id === id); return c ? c.sign : -1; };
+    const total = monthRows.reduce((s, r) => s + signOf(r.categoryId) * (parseFloat(r.amount) || 0), 0);
     const fmt = v => '\u20a8' + Math.abs(Math.round(v)).toLocaleString('en-PK');
     let out = '<b>' + resolved.name + '</b> \u2014 ' + monthStr + ': ' + (total < 0 ? '-' : '') + fmt(total) + '<br>';
-    const recent = monthRows.slice(-3).map((r, i) => {
-      const idx = monthRows.length - monthRows.slice(-3).length + i;
-      return '\u2022 #' + idx + ' ' + (r.desc || '?') + ': ' + (r.amount < 0 ? '-' : '') + fmt(r.amount);
+    const recent = monthRows.slice(-3).map(r => {
+      const signed = signOf(r.categoryId) < 0 ? '-' : '';
+      return '\u2022 ' + (r.desc || '?') + ': ' + signed + fmt(r.amount);
     }).join('<br>');
     return out + '<em style="font-size:11px;color:var(--muted)">Recent:</em><br>' + recent;
   } catch (_) { return null; }
@@ -544,17 +582,28 @@ function _aiParseCustomSectionQuery(text) {
   return null;
 }
 // ── Custom Sections — edit a specific row (add/delete already existed) ──
+// "rowIndex" no longer maps to a real stored index (the old month-scoped
+// row array is gone) — this is a best-effort approximation: position
+// within LedgerStore.getEntries() for that section, which returns entries
+// sorted by date. Good enough for "edit the entry I just added" (chat's
+// dominant real use case), not a guarantee for older/reordered entries.
 function _aiEditCustomSectionRow(sectionName, rowIndex, field, value) {
   const resolved = _aiResolveCustomSection(sectionName);
   if (!resolved) { if (typeof toast === 'function') toast('\u26a0 Section "' + sectionName + '" not found.', 'w'); return; }
-  const sel = document.getElementById('csec-month-sel') || document.getElementById('mgr-month-sel');
-  const curMon = (sel && sel.value) ? sel.value : _aiCurrentMonthYear();
-  const rows = (resolved.all[resolved.sid].months && resolved.all[resolved.sid].months[curMon]) || [];
-  if (!rows[rowIndex]) { if (typeof toast === 'function') toast('\u26a0 Row index ' + rowIndex + ' not found.', 'w'); return; }
-  rows[rowIndex][field] = (field === 'amount') ? (parseFloat(value) || 0) : value;
-  Actions.saveFeatureData(_AI_CSEC_KEY, JSON.stringify(resolved.all));
-  if (typeof renderAllCustomSections === 'function') renderAllCustomSections();
-  if (typeof toast === 'function') toast('\u2705 ' + resolved.name + ' row ' + rowIndex + ' updated.');
+  const entries = LedgerStore.getEntries(resolved.ledgerType);
+  const entry = entries[rowIndex];
+  if (!entry) { if (typeof toast === 'function') toast('\u26a0 Row index ' + rowIndex + ' not found.', 'w'); return; }
+  const changes = {};
+  if (field === 'amount') changes.amount = parseFloat(value) || 0;
+  else if (field === 'desc' || field === 'notes') changes.desc = value;
+  else if (field === 'date') changes.date = value;
+  else { if (typeof toast === 'function') toast('\u26a0 Unknown field "' + field + '".', 'w'); return; }
+  try {
+    LedgerActions.updateEntry(entry.id, changes);
+    if (typeof toast === 'function') toast('\u2705 ' + resolved.name + ' row ' + rowIndex + ' updated.');
+  } catch (e) {
+    if (typeof toast === 'function') toast('\u26a0 ' + e.message, 'e');
+  }
 }
 
 // ── Salary — read ────────────────────────────────────────────────────────
@@ -1573,8 +1622,7 @@ function _buildLlmPrompt(question) {
     '══════════ EXPENSE SHEET ACTIONS ══════════',
     '',
     'ADD EXPENSE → addExpense  params: ["DD-Mon-YYYY","desc",bill,fuel,soap,refresh,extra,pattyHO]',
-    'EDIT EXPENSE ROW → editExpenseRow  requiresConfirm: true  params: [rowIndex,"field",value]  fields: date|desc|bill|fuel|soap|refresh|extra|pattyHO',
-    'DELETE EXPENSE ROW → deleteExpenseRow  requiresConfirm: true  params: [rowIndex]',
+    'EDIT/DELETE EXPENSE ENTRY → not available via chat (each expense category is its own ledger entry now, not an indexed row) \u2014 tell the user to tap the entry in Manager \u2192 Patty/Expenses to edit or delete it.',
     '',
     '══════════ CREDIT LEDGER ACTIONS ══════════',
     '',
@@ -1601,7 +1649,7 @@ function _buildLlmPrompt(question) {
     '',
     '══════════ CUSTOM SECTIONS ══════════',
     '',
-    'ADD ROW → addCustomSectionRow  params: ["sectionName","'+today+'",amount,"notes"]',
+    'ADD ROW → addCustomSectionRow  params: ["sectionName","desc",amount,"notes"]  (dated today automatically)',
     'CREATE SECTION → createCustomSection  params: ["name","emoji"]',
     'DELETE ROW → deleteCustomSectionRow  requiresConfirm: true  params: ["sectionName",rowIndex]',
     'DELETE SECTION → deleteCustomSection  requiresConfirm: true  params: ["sectionName"]',
@@ -1992,31 +2040,34 @@ function _aiAddCreditEntry(rawName, rawAmount, rawDesc, rawDate) {
   }, 280);
 }
 
+// Old model had one multi-field "row" (bill/fuel/soap/refresh/extra/
+// pattyHO all on the same row); the Ledger has no row concept — each
+// category is its own entry. Splits the single addExpense call into up
+// to 6 separate LedgerActions.addEntry calls, one per nonzero field,
+// sharing the same date/desc. (_expRows_cur/renderExpenseTable/
+// saveExpenseData this used to call no longer exist — see manager.js's
+// retired-code note; this was a silent no-op until this rewrite.)
 function _aiAddExpenseRow(date, desc, bill, fuel, soap, refresh, extra, pattyHO) {
+  if (typeof LedgerActions === 'undefined') { if (typeof toast === 'function') toast('\u26a0 Ledger not available.', 'w'); return; }
+  const d = _aiToIsoDate(date);
+  const fields = [
+    ['bill', bill], ['fuel', fuel], ['soap', soap],
+    ['refresh', refresh], ['extra', extra], ['pattyHO', pattyHO],
+  ];
+  let total = 0, added = 0;
+  fields.forEach(([categoryId, val]) => {
+    const amount = Math.round(Number(val) || 0);
+    if (!amount) return;
+    LedgerActions.addEntry('expense', { date: d, categoryId, amount, desc: desc || '' });
+    total += (categoryId === 'pattyHO') ? 0 : amount; // pattyHO is an inflow, not part of the expense total
+    added++;
+  });
+  if (!added) { if (typeof toast === 'function') toast('\u26a0 No nonzero expense amounts given.', 'w'); return; }
   if (typeof showPage === 'function') showPage('manager');
   setTimeout(function () {
     if (typeof switchMgrTab === 'function') switchMgrTab('expense');
-    setTimeout(function () {
-      if (typeof _expRows_cur === 'undefined') {
-        if (typeof toast === 'function') toast('\u26a0 Expense data not loaded — try again.', 'w'); return;
-      }
-      const row = {
-        date: date || _aiTodayStr(), desc: desc || '',
-        bill: Math.round(Number(bill)||0), fuel: Math.round(Number(fuel)||0),
-        soap: Math.round(Number(soap)||0), refresh: Math.round(Number(refresh)||0),
-        extra: Math.round(Number(extra)||0), pattyHO: Math.round(Number(pattyHO)||0),
-      };
-      _expRows_cur.push(row);
-      if (typeof renderExpenseTable === 'function') renderExpenseTable(_expRows_cur);
-      if (typeof saveExpenseData    === 'function') saveExpenseData();
-      setTimeout(function () {
-        const tbody = document.getElementById('exp-tbody');
-        if (tbody) { const rows = tbody.querySelectorAll('tr'); if (rows.length) { const last = rows[rows.length-1]; last.scrollIntoView({behavior:'smooth',block:'center'}); last.style.transition='background .4s'; last.style.background='#eff6ff'; setTimeout(function(){last.style.background='';},2000); } }
-        const total = row.bill+row.fuel+row.soap+row.refresh+row.extra;
-        if (typeof toast === 'function') toast('\u2705 Expense added: '+(desc||'entry')+' \u20a8'+total.toLocaleString('en-PK')+' \u2014 saved.');
-      }, 120);
-    }, 280);
-  }, 280);
+    if (typeof toast === 'function') toast('\u2705 Expense added: ' + (desc || 'entry') + ' \u20a8' + total.toLocaleString('en-PK') + ' \u2014 saved.');
+  }, 250);
 }
 
 function _aiAddPettyItem(desc, amount, period) {
@@ -2072,57 +2123,33 @@ function _aiPrintMgrReport(type) {
 }
 
 function _aiAddCustomSectionRow(sectionName, desc, amount, notes) {
-  const CSEC_KEY = 'mw_custom_sections_v1';
-  const norm = s => (s || '').trim().toLowerCase();
-  const t    = norm(sectionName);
-  let all;
-  try { all = JSON.parse(Repository.getItem(CSEC_KEY) || '{}'); } catch(_){ all={}; }
-
-  const sid = Object.keys(all).find(k => {
-    const n = norm(all[k].name);
-    return n === t || n.includes(t) || t.includes(n);
-  });
-
-  if (!sid) {
+  const resolved = _aiResolveCustomSection(sectionName);
+  if (!resolved) {
     if (typeof toast === 'function') toast('\u26a0 Section "'+sectionName+'" not found. Create it first in Manager \u2192 C. New Sections.','w');
     return;
   }
-
-  if (typeof showPage === 'function') showPage('manager');
-  setTimeout(function () {
-    document.querySelectorAll('button,[data-tab]').forEach(function(el){
-      const txt = (el.textContent || '').trim();
-      if (txt.includes('New Section') || txt.includes('Custom') || (el.dataset && el.dataset.tab === 'csec')) el.click();
+  const cats = LedgerStore.getCategoryList(resolved.ledgerType);
+  // The old AI command never specified a category (custom sections used
+  // to be single-field) — default to the section's first category, same
+  // simplification renderOtherSectionsManager's own UI assumes for
+  // single-category sections.
+  const categoryId = cats.length ? cats[0].id : null;
+  if (!categoryId) { if (typeof toast === 'function') toast('\u26a0 Section "'+resolved.name+'" has no categories.', 'w'); return; }
+  try {
+    LedgerActions.addEntry(resolved.ledgerType, {
+      date: _aiIsoTodayStr(),
+      categoryId,
+      amount: parseFloat(amount) || 0,
+      desc: desc || notes || '',
     });
-
+    if (typeof showPage === 'function') showPage('manager');
     setTimeout(function () {
-      const sel = document.getElementById('csec-month-sel') || document.getElementById('mgr-month-sel');
-      const curMon = (sel && sel.value) ? sel.value : _aiCurrentMonthYear();
-
-      if (!all[sid].months) all[sid].months = {};
-      if (!all[sid].months[curMon]) all[sid].months[curMon] = [];
-      all[sid].months[curMon].push({
-        // Use slash-format date (DD/Mon/YYYY) to match LLM prompt spec and app conventions.
-        desc:   desc   || ((typeof BTDate !== 'undefined') ? BTDate.today() : _aiTodayStr()),
-        amount: parseFloat(amount) || 0,
-        notes:  notes  || '',
-      });
-      Actions.saveFeatureData(CSEC_KEY, JSON.stringify(all));
-
-      if (typeof renderAllCustomSections === 'function') renderAllCustomSections();
-
-      setTimeout(function () {
-        const block = document.querySelector('.csec-block[data-sid="' + sid + '"]');
-        if (block) {
-          block.scrollIntoView({behavior:'smooth',block:'start'});
-          block.style.transition='box-shadow .4s';
-          block.style.boxShadow='0 0 0 3px var(--green)';
-          setTimeout(function(){block.style.boxShadow='';},2500);
-        }
-        if (typeof toast === 'function') toast('\u2705 '+all[sid].name+': \u20a8'+Math.abs(parseFloat(amount)||0).toLocaleString('en-PK')+' added for '+(desc||_aiTodayStr())+' \u2014 saved.');
-      }, 200);
-    }, 350);
-  }, 300);
+      if (typeof switchMgrTab === 'function') switchMgrTab('custom');
+      if (typeof toast === 'function') toast('\u2705 Added to ' + resolved.name + ': \u20a8' + (parseFloat(amount)||0).toLocaleString('en-PK'));
+    }, 250);
+  } catch (e) {
+    if (typeof toast === 'function') toast('\u26a0 ' + e.message, 'e');
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -2369,21 +2396,6 @@ function _aiDeleteGenericRow(staffName) {
   }, 280);
 }
 
-function _aiDeleteExpenseRow(rowIndex) {
-  if (typeof showPage === 'function') showPage('manager');
-  setTimeout(function () {
-    if (typeof switchMgrTab === 'function') switchMgrTab('expense');
-    setTimeout(function () {
-      if (typeof _expRows_cur === 'undefined' || !_expRows_cur[rowIndex]) { if (typeof toast === 'function') toast('\u26a0 Expense row not found.', 'w'); return; }
-      const desc = _expRows_cur[rowIndex].desc;
-      _expRows_cur.splice(rowIndex, 1);
-      if (typeof renderExpenseTable === 'function') renderExpenseTable(_expRows_cur);
-      if (typeof saveExpenseData === 'function') saveExpenseData();
-      if (typeof toast === 'function') toast('\u2705 Expense row deleted: ' + desc);
-    }, 280);
-  }, 280);
-}
-
 function _aiAddCreditEmployee(staffName) {
   if (typeof showPage === 'function') showPage('manager');
   setTimeout(function () {
@@ -2529,59 +2541,46 @@ function _aiDeleteMonthTarget(monthYear) {
 
 function _aiCreateCustomSection(name, emoji) {
   try {
-    const CSEC_KEY = 'mw_custom_sections_v1';
-    let all;
-    try { all = JSON.parse(Repository.getItem(CSEC_KEY) || '{}'); } catch(_){ all={}; }
-    const sid = 'csec_' + Date.now();
-    all[sid] = { name: name || 'New Section', emoji: emoji || '📋', months: {} };
-    Actions.saveFeatureData(CSEC_KEY, JSON.stringify(all));
+    if (typeof LedgerStore === 'undefined') { if (typeof toast === 'function') toast('\u26a0 Ledger not available.', 'w'); return; }
+    const label = name || 'New Section';
+    const sectionId = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || ('section' + Date.now());
+    // Old AI command only ever took a name + emoji (no categories) — every
+    // section it created was implicitly single-field. Match that with one
+    // default outflow category, same default renderOtherSectionsManager's
+    // own "+Create Section" form falls back to for a single blank row.
+    LedgerStore.createCustomLedgerType(sectionId, label, [
+      { id: 'amount', label: 'Amount', sign: -1, color: 'var(--red)', icon: emoji || '📋' },
+    ]);
     if (typeof showPage === 'function') showPage('manager');
     setTimeout(function(){
-      // BUG FIX: this used to search the DOM for a button containing the
-      // text "New Section" or "Custom" and simulate a click on it — but no
-      // such button exists anywhere in the rendered Manager page HTML, so
-      // the section was created and saved correctly, but the user was
-      // never actually shown it. switchMgrTab('custom') is the same,
-      // reliable mechanism every other Manager tab already uses.
       if (typeof switchMgrTab === 'function') switchMgrTab('custom');
-      setTimeout(function(){ if (typeof renderAllCustomSections === 'function') renderAllCustomSections(); }, 200);
     }, 300);
-    if (typeof toast === 'function') toast('\u2705 Custom section "' + (emoji||'📋') + ' ' + name + '" created.');
+    if (typeof toast === 'function') toast('\u2705 Custom section "' + (emoji||'📋') + ' ' + label + '" created.');
   } catch (e) { if (typeof toast === 'function') toast('\u26a0 Failed to create section: ' + e.message, 'w'); }
 }
 
 function _aiDeleteCustomSectionRow(sectionName, rowIndex) {
-  const CSEC_KEY = 'mw_custom_sections_v1';
-  let all;
-  try { all = JSON.parse(Repository.getItem(CSEC_KEY) || '{}'); } catch(_){ all={}; }
-  const norm = s => (s||'').trim().toLowerCase();
-  const t    = norm(sectionName);
-  const sid  = Object.keys(all).find(k => { const n=norm(all[k].name); return n===t||n.includes(t)||t.includes(n); });
-  if (!sid) { if (typeof toast === 'function') toast('\u26a0 Section "' + sectionName + '" not found.', 'w'); return; }
-  const sel = document.getElementById('csec-month-sel') || document.getElementById('mgr-month-sel');
-  const curMon = (sel && sel.value) ? sel.value : _aiCurrentMonthYear();
-  const rows = (all[sid].months && all[sid].months[curMon]) ? all[sid].months[curMon] : [];
-  if (!rows[rowIndex]) { if (typeof toast === 'function') toast('\u26a0 Row index ' + rowIndex + ' not found.', 'w'); return; }
-  const desc = rows[rowIndex].desc;
-  rows.splice(rowIndex, 1);
-  Actions.saveFeatureData(CSEC_KEY, JSON.stringify(all));
-  if (typeof renderAllCustomSections === 'function') renderAllCustomSections();
-  if (typeof toast === 'function') toast('\u2705 Row deleted from ' + all[sid].name + ': ' + desc);
+  const resolved = _aiResolveCustomSection(sectionName);
+  if (!resolved) { if (typeof toast === 'function') toast('\u26a0 Section "' + sectionName + '" not found.', 'w'); return; }
+  const entries = LedgerStore.getEntries(resolved.ledgerType);
+  const entry = entries[rowIndex];
+  if (!entry) { if (typeof toast === 'function') toast('\u26a0 Row index ' + rowIndex + ' not found.', 'w'); return; }
+  LedgerActions.removeEntry(entry.id);
+  if (typeof toast === 'function') toast('\u2705 Row deleted from ' + resolved.name + ': ' + (entry.desc || ''));
 }
 
 function _aiDeleteCustomSection(sectionName) {
-  const CSEC_KEY = 'mw_custom_sections_v1';
-  let all;
-  try { all = JSON.parse(Repository.getItem(CSEC_KEY) || '{}'); } catch(_){ all={}; }
-  const norm = s => (s||'').trim().toLowerCase();
-  const t    = norm(sectionName);
-  const sid  = Object.keys(all).find(k => { const n=norm(all[k].name); return n===t||n.includes(t)||t.includes(n); });
-  if (!sid) { if (typeof toast === 'function') toast('\u26a0 Section "' + sectionName + '" not found.', 'w'); return; }
-  const name = all[sid].name;
-  delete all[sid];
-  Actions.saveFeatureData(CSEC_KEY, JSON.stringify(all));
-  if (typeof renderAllCustomSections === 'function') renderAllCustomSections();
-  if (typeof toast === 'function') toast('\u2705 Custom section "' + name + '" deleted.');
+  const resolved = _aiResolveCustomSection(sectionName);
+  if (!resolved) { if (typeof toast === 'function') toast('\u26a0 Section "' + sectionName + '" not found.', 'w'); return; }
+  try {
+    // deleteCustomLedgerType refuses to delete a section with entries
+    // still in it — clear them first, same as the UI would require.
+    LedgerStore.getEntries(resolved.ledgerType).forEach(e => LedgerActions.removeEntry(e.id));
+    LedgerStore.deleteCustomLedgerType(resolved.ledgerType);
+    if (typeof toast === 'function') toast('\u2705 Custom section "' + resolved.name + '" deleted.');
+  } catch (e) {
+    if (typeof toast === 'function') toast('\u26a0 ' + e.message, 'e');
+  }
 }
 
 function _aiToggleFieldVisibility(fieldId, visible) {
@@ -2725,8 +2724,20 @@ function aiBridgeExecuteIntent(intent) {
       case 'deleteGenericRow':   _aiDeleteGenericRow(p[0]); break;
       // Expense
       case 'addExpense':         _aiAddExpenseRow(p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7]); break;
-      case 'editExpenseRow':     if(typeof showPage==='function')showPage('manager');setTimeout(function(){if(typeof switchMgrTab==='function')switchMgrTab('expense');setTimeout(function(){if(typeof _expRows_cur!=='undefined'&&_expRows_cur[p[0]]){_expRows_cur[p[0]][p[1]]=p[2];if(typeof renderExpenseTable==='function')renderExpenseTable(_expRows_cur);if(typeof saveExpenseData==='function')saveExpenseData();if(typeof toast==='function')toast('\u2705 Expense row updated.');}},280);},280); break;
-      case 'deleteExpenseRow':   _aiDeleteExpenseRow(p[0]); break;
+      case 'editExpenseRow':
+      case 'deleteExpenseRow':
+        // The old "row" concept (one row = up to 6 category amounts
+        // together) has no equivalent in the Ledger, where each category
+        // is its own independent entry -- there's no single rowIndex to
+        // edit/delete anymore. Point to the UI, which has a real delete
+        // button and (as of this session) inline edit per entry, rather
+        // than silently doing nothing against retired storage.
+        if (typeof showPage === 'function') showPage('manager');
+        setTimeout(function () {
+          if (typeof switchMgrTab === 'function') switchMgrTab('expense');
+          if (typeof toast === 'function') toast('\u2139 Editing/deleting a specific expense entry isn\u2019t supported via chat \u2014 tap it in the table to edit, or use the delete button.', 'w');
+        }, 250);
+        break;
       // Credit
       case 'addCredit':          _aiAddCreditEntry(p[0],p[1],p[2],p[3]); break;
       case 'addCreditEmployee':  _aiAddCreditEmployee(p[0]); break;
@@ -2780,7 +2791,7 @@ function aiBridgeExecuteIntent(intent) {
         if (amount > 0 && typeof LedgerActions !== 'undefined') {
           try {
             LedgerActions.addEntry('jazzcash', {
-              date: jcOpts.date || (typeof _aiTodayStr === 'function' ? _aiTodayStr() : new Date().toISOString().slice(0, 10)),
+              date: _aiToIsoDate(jcOpts.date),
               categoryId: jcOpts.type || jcOpts.categoryId || 'credit',
               amount,
               desc: jcOpts.desc || jcOpts.description || '',

@@ -71,6 +71,46 @@ over "looks right."
   `LedgerActions` this session; the params contract (`amount`/`type`/
   `desc`/`shift`) is unchanged so the Groq system prompt didn't need
   updating, only the executor bodies.
+- **Inline edit-in-place for every Ledger entry** (`renderLedgerView`,
+  `ledger-page.js`) — a ✎ button per row swaps it for an inline form
+  (date/category/amount/desc/shift), Save writes via
+  `LedgerActions.updateEntry`, Cancel discards. One component, so this
+  covers Expense, Jazz Cash's Daily Ledger, and every Other Section at
+  once. `LedgerActions.updateEntry` now validates `categoryId` against
+  the entry's own ledger type when it's part of the edit (same
+  protection `addEntry` already had) — real hardening now that this
+  path takes direct user input instead of only internal calls.
+- `ai-bridge.js`'s Expense/Custom Sections AI-chat commands
+  (`addExpense`, `addCustomSectionRow`, `editCustomSectionRow`,
+  `createCustomSection`, `deleteCustomSectionRow`, `deleteCustomSection`,
+  plus the read-side `_aiReadExpenseSummary`/`_aiReadCustomSectionTotal`/
+  `_aiResolveCustomSection`) — all rewired to the Ledger this session.
+  These were **entirely dead** before this: reading/writing
+  `mw_custom_sections_v1` and `mgrLoad().expense`, both retired storage
+  locations the live UI stopped writing to when Expense/Custom Sections
+  moved onto the Ledger. `editExpenseRow`/`deleteExpenseRow` couldn't be
+  meaningfully revived (the old "row" = up to 6 category amounts
+  together; the Ledger has no such grouping, each category is its own
+  entry) — they now navigate to the tab and point at the UI instead of
+  silently no-oping.
+- `app-context.js`'s deep-context dump (the full-data-snapshot feature,
+  distinct from `ai-bridge.js`'s live chat) — its "EXPENSE SHEET" and
+  "CUSTOM SECTIONS" blocks read the same retired storage and were
+  merged into one "LEDGER" block reading real data. Jazz Cash never had
+  a block here at all before this session — it does now.
+
+**A real, pre-existing bug fixed this session, independent of the
+migration work above:** `_aiTodayStr()` returns `DD/Mon/YYYY` (matches
+`DAILY[].Date`) — but every Ledger-bound date default in `ai-bridge.js`
+(Jazz Cash's executor from the migration session, plus Expense/Custom
+Sections' this session) was defaulting to it instead of ISO
+(`YYYY-MM-DD`, what `<input type="date">` and `LedgerStore`'s sort/
+month-matching require). Mixing formats silently corrupts chronological
+sort (string-comparing `"05/Mar/2026"` vs `"12/Jan/2026"` puts March
+first). Fixed with two new helpers, `_aiIsoTodayStr()` (default) and
+`_aiToIsoDate()` (converts whatever the Groq prompt hands back, since
+its docs still ask for `DD-Mon-YYYY` for `addExpense`) — every
+Ledger-bound date now goes through one of these.
 
 **What's RETIRED (genuinely deleted, not just deprecated):**
 - Old Expense tab: `renderExpenseTable`, `loadExpenseMonth`,
@@ -99,18 +139,13 @@ over "looks right."
 **What's UNTOUCHED (deliberately, not overlooked):**
 - The separate, simpler "Petty Detail" tab (`data-mtab="petty"`) —
   different feature, was never named for removal
-- `ai-bridge.js`'s AI-chat commands for the old Expense/Custom Sections
-  features — still `typeof`-guarded so they fail silently rather than
-  crash, but currently do nothing if invoked via chat. **Known gap, not
-  fixed** (Jazz Cash's chat commands *were* rewired this session — see
-  above — but Expense/Custom Sections' were not; same fix, just not
-  done yet).
 - `supabase.js`/`sync-center.js` — deliberately not namespaced, real
   multi-device sync mechanism, judged too risky to touch without real
-  device testing (see `BLUEPRINT.md` for the full reasoning). This
-  session added new payload keys (`ledger`/`ledgerCustomTypes`) using
-  the exact same merge convention already proven for `jazzcash`/
-  `jcTally`, additive-only — the core sync engine itself wasn't touched.
+  device testing (see `BLUEPRINT.md` for the full reasoning). Two
+  sessions have added new payload keys (`ledger`/`ledgerCustomTypes`)
+  using the exact same merge convention already proven for `jazzcash`/
+  `jcTally`, additive-only — the core sync engine itself still hasn't
+  been touched.
 
 **Two real bugs found and fixed this session (not pre-existing on
 purpose — worth knowing about even though they're already fixed):**
@@ -202,10 +237,9 @@ of per-element handlers that don't survive a DOM replacement.
    present), then compare the resulting balance to the old ledger's
    balance before trusting it. Logic is smoke-tested against sample
    data only, not the user's real `bt_jazzcash_v2` blob.
-3. **Wire `ai-bridge.js`'s Expense/Custom Sections AI-chat commands to
-   the Ledger** — same fix Jazz Cash's chat commands just got this
-   session (route through `LedgerActions` instead of the retired
-   per-feature functions), just not done for these two yet.
+3. **Real-device check on the new inline edit + rewired AI commands** —
+   both are jsdom-smoke-tested (sample data) but not used on a real
+   phone yet. See `TEST-CHECKLIST.md`'s updated Ledger section.
 4. **`ui.js`/`manager.js` full ES-module conversion** — currently
    Stage-A namespaced (globals hidden) but not real `import`/`export`
    modules, because of circular dependencies between them. Revisit only
@@ -216,8 +250,8 @@ of per-element handlers that don't survive a DOM replacement.
 6. Continue the Stage-A namespacing sweep on whatever's left, letting
    real feature work modernize files as a side effect rather than
    pre-namespacing speculatively (established pattern, `V2-PLAN.md` §1)
-   — this is how `jazz-cash.js` got modernized this session, as a side
-   effect of the Ledger migration rather than a standalone pass.
+   — this is how `jazz-cash.js` got modernized in the prior session, as
+   a side effect of the Ledger migration rather than a standalone pass.
 
 ## 6. One thing to hold onto across sessions
 

@@ -232,6 +232,15 @@ export function _updateEntry(id, changes) {
   return _entries[idx];
 }
 
+// Looks up one entry by id regardless of ledgerType — used by
+// LedgerActions.updateEntry to validate a categoryId change against the
+// entry's *own* ledgerType (an edit form never lets ledgerType itself
+// change, only its date/category/amount/desc/shift).
+export function _getEntryById(id) {
+  _ensureLoaded();
+  return _entries.find(e => e.id === id) || null;
+}
+
 export function _removeEntry(id) {
   _ensureLoaded();
   const idx = _entries.findIndex(e => e.id === id);

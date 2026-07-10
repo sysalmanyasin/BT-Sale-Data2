@@ -7,7 +7,7 @@
 // (Actions.addDailyEntry, Actions.addEmployee, etc.).
 // ══════════════════════════════════════════════════════════════════════
 
-import { _addEntry, _updateEntry, _removeEntry, getCategory } from './ledger-store.js';
+import { _addEntry, _updateEntry, _removeEntry, _getEntryById, getCategory } from './ledger-store.js';
 
 export const LedgerActions = (function () {
 
@@ -27,6 +27,12 @@ export const LedgerActions = (function () {
 
   function updateEntry(id, changes) {
     if (changes && 'amount' in changes) changes.amount = Math.abs(parseFloat(changes.amount) || 0);
+    if (changes && 'categoryId' in changes) {
+      const existing = _getEntryById(id);
+      if (existing && !getCategory(existing.ledgerType, changes.categoryId)) {
+        throw new Error('LedgerActions.updateEntry: unknown category "' + changes.categoryId + '" for ledger "' + existing.ledgerType + '"');
+      }
+    }
     return _updateEntry(id, changes);
   }
 

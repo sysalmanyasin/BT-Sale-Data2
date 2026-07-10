@@ -5,7 +5,7 @@
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v9.1'; // v9.1: Jazz Cash Daily Ledger migrated onto the generalized Ledger (jazz-cash.js keeps only Balance Tally now); drive.js/supabase.js gained Ledger backup+sync (real gap — Expense/Custom Sections data wasn't backed up or synced before this)
+const CACHE_NAME = 'bt-sales-v9.2'; // v9.2: ai-bridge.js's Expense/Custom Sections AI-chat commands rewired to the Ledger (were silently dead — reading/writing retired storage); Jazz Cash date-format bug fixed (DD/Mon/YYYY was corrupting Ledger sort order); app-context.js's deep-context dump rewired off retired Expense/Custom Sections storage, and now includes Jazz Cash for the first time; renderLedgerView (ledger-page.js) gained inline edit-in-place for every entry, covering Expense/Jazz Cash/Other Sections at once
 
 const APP_SHELL = [
   './',

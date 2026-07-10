@@ -872,3 +872,70 @@ real `bt_jazzcash_v2` data, or on a real device — see
 
 `sw.js` cache bumped to `v9.1` for this round's file changes.
 
+---
+
+## 🗓 Session: Inline Ledger edit + Expense/Custom Sections AI-chat rewiring
+
+Continuation of the Ledger work. Two threads, picked up together since
+they touch the same files:
+
+**1. Inline edit-in-place for every Ledger entry (explicit request).**
+`renderLedgerView` (`ledger-page.js`) gained a `editingId` parameter — a
+✎ button per row re-renders that one row as an inline form (date,
+category, amount, desc, and shift where applicable) with ✓ Save / ✕
+Cancel. One shared component, so this landed for Expense, Jazz Cash's
+Daily Ledger, and every Other Section simultaneously — no per-feature
+work needed. `LedgerActions.updateEntry` picked up the same category
+validation `addEntry` already had (throws on an unknown `categoryId`
+for that entry's ledger type), since this path now takes direct user
+input instead of only internal/migration calls. Added `_getEntryById`
+to `ledger-store.js` to support that validation. Verified via jsdom:
+edit/save updates balance correctly, cancel discards changes, category
+validation rejects bad ids, shift field present/absent correctly per
+ledger type.
+
+**2. `ai-bridge.js`'s Expense/Custom Sections AI-chat commands — found
+completely dead, rewired to the Ledger.** While reaching for the next
+HANDOFF.md item, checking whether these commands still worked surfaced
+that they'd been reading/writing retired storage this whole time
+(`mw_custom_sections_v1`, `mgrLoad().expense`) — every add/edit/delete/
+read silently touched data the live UI never looks at anymore. Rewired:
+`_aiAddExpenseRow` (splits one multi-field call into per-category Ledger
+entries), `_aiReadExpenseSummary`, `_aiResolveCustomSection` (now
+resolves against `LedgerStore.getAllLedgerTypes().filter(isCustom)`),
+`_aiReadCustomSectionTotal`, `_aiAddCustomSectionRow`,
+`_aiEditCustomSectionRow`, `_aiCreateCustomSection`,
+`_aiDeleteCustomSectionRow`, `_aiDeleteCustomSection`, and the local
+fast-path parser `_aiParseCustomSectionCommand`. `editExpenseRow`/
+`deleteExpenseRow` couldn't be meaningfully revived — the old "row" (up
+to 6 category amounts bundled together) has no equivalent once each
+category is its own flat Ledger entry — so they now redirect to the UI
+with an explanation instead of silently no-oping. Also fixed the same
+staleness in `app-context.js`'s deep-context dump (a different feature
+from `ai-bridge.js`'s live chat) — merged its "EXPENSE SHEET" and
+"CUSTOM SECTIONS" blocks into one "LEDGER" block, which also gives Jazz
+Cash a block there for the first time (it never had one before).
+
+**A real bug, independent of the above, found while doing this:**
+`_aiTodayStr()` returns `DD/Mon/YYYY` (matches `DAILY[].Date`'s format)
+— but Ledger dates need ISO (`YYYY-MM-DD`) for correct chronological
+sort/month-matching. The Jazz Cash executor written in the prior
+session was defaulting to `_aiTodayStr()` for Ledger-bound dates — a
+real bug, now fixed. Added `_aiIsoTodayStr()` and `_aiToIsoDate()` (the
+latter converts whatever format the Groq prompt hands back, since its
+`addExpense` docs still specify `DD-Mon-YYYY`) and routed every
+Ledger-bound date default through one of them. Verified the converter
+handles `DD/Mon/YYYY`, `DD-Mon-YYYY`, already-ISO, and missing input
+correctly, and confirmed the specific failure mode (string-sorting
+`"05/Mar/2026"` before `"12/Jan/2026"`) is what made this worth fixing
+rather than a cosmetic nit.
+
+Also found and fixed in passing: the pre-existing `addCustomSectionRow`
+Groq prompt doc documented param 2 as a date, but the function always
+treated it as `desc` — a mismatch that predates this session. Aligned
+the doc to match the (now-working) implementation rather than the other
+way around, since the desc-based contract is what every caller
+(including the LLM, going forward) actually needs.
+
+`sw.js` cache bumped to `v9.2`.
+

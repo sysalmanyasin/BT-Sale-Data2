@@ -89,15 +89,18 @@ we start over on the diagnosis.
 - [x] Sheets & Notes loads/renders (confirmed working)
 - [x] "Copy to Next Month" works (confirmed working)
 
-### Jazz Cash — Daily Ledger now on the generalized Ledger (new this session)
+### Ledger — Expense, Jazz Cash Daily Ledger, Other Sections (Jazz Cash migration was the prior session; this session added inline edit + fixed the AI chat commands)
 - [ ] Open Manager → Jazz Cash. If old data exists, a yellow "Old Jazz Cash data found" banner should appear with a Migrate button.
 - [ ] Click Migrate, confirm the dialog. Toast should report the number of entries migrated.
 - [ ] **Compare the resulting balance to whatever the old ledger's balance was** (screenshot it beforehand if possible) — this is the one thing that hasn't been verified against real data, only sample data.
 - [ ] Add a new entry (with a shift selected) — balance and running-balance column update correctly.
 - [ ] Delete an entry — balance recalculates correctly.
+- [ ] **NEW — tap the ✎ button on any entry (Expense, Jazz Cash, or any Other Section) — the row should turn into an inline edit form (date/category/amount/desc/shift). Change something, tap ✓ Save — balance and running balance should update correctly. Tap ✎ again, change something, tap ✕ Cancel — nothing should be saved.**
 - [ ] "⚙ Set Opening" button prompts and updates the opening balance correctly.
 - [ ] Balance Tally sub-tab still works exactly as before (unchanged this session) — its "Jazz Cash Balance (Ledger)" row should reflect the *new* Ledger balance, not the old one.
 - [ ] AI chat command still works, e.g. "Jazz Cash 5000 for Ali" or "jazz cash balance" — should add to / read from the new Ledger now, not the old one.
+- [ ] **NEW — AI chat commands for Expense and Other Sections, e.g. "add expense 500 for fuel" or "add 300 to [section name]" — these were completely dead before this session (silently did nothing); should now actually add to the Ledger and be visible in the tab.**
+- [ ] **NEW — ask the AI "what's our expense total this month?" or "[section name] total this month?" — should return real numbers now instead of "no data found".**
 - [ ] Google Drive backup / Supabase sync — after adding a Jazz Cash entry, trigger a manual backup/push and confirm no console errors (the payload now includes `ledger`/`ledgerCustomTypes` keys that didn't exist before this session).
 - [ ] Print buttons (Salary/Generic/Credit/Petty/Incentive) — content visible, not blank (**still pending your desktop-print diagnostic**)
 
