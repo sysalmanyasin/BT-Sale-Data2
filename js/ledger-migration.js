@@ -38,7 +38,10 @@ export function migrateJazzCashToLedger() {
       amount: Math.abs(parseFloat(e.amount) || 0),
       desc: e.desc || '',
       groupLabel: null,
-      shift: null,
+      shift: e.shift || null,  // BUG FIX: this used to hardcode null, silently
+                                // dropping every entry's Morning/Evening/Night/
+                                // Both/Off shift on migration — found while
+                                // smoke-testing this migration for real use.
       // preserve the original entry's own id if it has one, so this
       // migration doesn't invent a second identity for the same record
       id: e.id ? ('jc_' + e.id) : undefined,
@@ -112,3 +115,9 @@ function _firstDayOf(monthYearStr) {
   if (!abbrev || !year) return null;
   return '01/' + abbrev + '/' + year;
 }
+
+// ── Window bridge — jazz-cash.js (classic script) triggers this from an
+// explicit, user-confirmed button click, not automatically on load, per
+// this file's own header comment. ──
+window.migrateJazzCashToLedger = migrateJazzCashToLedger;
+window.migratePettyToLedger = migratePettyToLedger;

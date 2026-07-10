@@ -58,8 +58,9 @@ known `ai-memory.js` placeholder issue remains).*
 | Global naming collisions | 1 | **0** | `chpOpenScan` was defined twice (intentional override, but left dead code + a stale comment behind — cleaned up) |
 | Total `.js` lines | 22,617 | 22,571 | net **−46** (274 lines removed, 230 added — some removals were bug-fix rewrites, not pure deletion) |
 | Architecture violations fixed | 5 categories | | See list below |
-| Files converted to real ES modules | 0 of 46 | **7 of 46** | Floor 1–3 (`config.js`, `event-bus.js`, `repository.js`, `actions.js`) + new `ledger-store.js`, `ledger-actions.js`, `ledger-migration.js` (real feature work, dormant, not yet wired into UI) |
-| Files namespaced (Stage A, still classic scripts) | 0 of 41 | **32 of 41** | unchanged this round — focus was new feature work, not further namespacing |
+| Files converted to real ES modules | 0 of 46 | **8 of 46** | Floor 1–3 + `ledger-store.js`, `ledger-actions.js`, `ledger-migration.js`, `ledger-page.js` — **now live**, wired into Manager's Expense/Other Sections tabs, not dormant anymore |
+| Files namespaced (Stage A, still classic scripts) | 0 of 41 | **32 of 41** | `custom-sections.js` shrunk from 277 to 112 lines (Custom Sections feature retired, 2 unrelated helper functions kept) |
+| Legacy features fully retired (not just deprecated) | 0 | **2** | Old "Patty/Expenses" tab (root cause of the reported data-loss bug) and old "Custom Sections" — both replaced by the Ledger |
 | Global symbols behind a module export | 0 of ~850 | **38 of ~850** | + `EventBus` |
 | Files still 100% bare-global classic scripts | 46 | **9** | All deliberately deferred for stated reasons — nothing left unstarted |
 | Real bugs found via device testing | — | **1** (8 call sites) | `readyState==='loading'` anti-pattern broken by `defer`, fixed in all 8 files |
@@ -603,7 +604,131 @@ Action calls into this yet. It exists, is tested, and is ready for the
 day `jazz-cash.js`/`manager.js`'s Petty tab get rebuilt to use it
 instead of their current separate implementations.
 
+### Correction, a real bug diagnosed, and Ledger extended for Expense + Other Sections
+
+**Correction first:** the user's real day-to-day "Patty" tracking turned
+out to be the **Expense tab** (`_expRows_cur` in `manager.js`, columns
+Bill Amt / Fuel-HO / Soap-Tissue / Refreshment / Extra / Patty H/O), not
+the tab literally called "Petty" in the code (the simple grouped-rows,
+single-amount one the Ledger migration was originally built against).
+Different feature entirely — worth being explicit about since the
+earlier migration design (§9 of the V2 plan, and `ledger-migration.js`'s
+`migratePettyToLedger`) was built against the *wrong* tab's data shape.
+
+**Real, serious bug found while investigating:** `expRowChange()` only
+mutates an in-memory array — nothing is written to storage until the
+user explicitly clicks "Save." Any background rebuild (the same event
+class that caused the earlier month-collapse bug — a sync pull, any
+EventBus notify) calls `loadExpenseMonth()` again, which re-reads from
+storage and silently discards anything not yet saved. Not unique to
+Expense — Salary, Generic, Credit, and the old Petty tab all share this
+same "unsaved state can be silently wiped by an unrelated background
+event" flaw. **Not fixing the old system** — user confirmed they have
+backups of this data outside the app and would rather the effort go
+into finishing the replacement than patching something being retired.
+
+**Extended the Ledger to cover both real asks:**
+1. Registered a new built-in `expense` ledger type in
+   `ledger-store.js`, with the exact six categories already in use
+   (`bill`, `fuel`, `soap`, `refresh`, `extra` as outflows, `pattyHO` as
+   the one inflow) — same mental model, now continuous instead of
+   month-scoped, and every entry **writes immediately** (no separate
+   unsaved-in-memory state), which is what actually closes off the
+   data-loss bug class as a side effect of the redesign rather than a
+   separate patch.
+2. Replaced the in-memory-only custom-ledger-type registry
+   (`registerLedgerType`, which would have been lost on every reload)
+   with a **persisted** one: `createCustomLedgerType(sectionId, label,
+   categories)` stores the definition, not just registers it for the
+   current session — needed since "Other Sections" (3-6 of them,
+   confirmed each needs its own custom categories, not a generic
+   amount+description) are created by the user, not known ahead of
+   time in code. Added `deleteCustomLedgerType()` (refuses to delete a
+   section that still has entries — guards against orphaning stored
+   data with no category config left to render it against) and
+   `getAllLedgerTypes()` (enumerates built-in + custom, so a future
+   Other Sections navigation page doesn't need to know section ids
+   ahead of time).
+
+Verified all of this with real Node tests, including — since the whole
+point of the persisted registry is surviving a reload — a simulated
+app restart test: create a custom section, add an entry, fresh module
+instance, confirm the section definition, its category config, its
+entries, and its computed balance all read back correctly.
+
+### Full cutover — old Expense tab and Custom Sections retired, Ledger goes live
+
+The dormant Ledger became real. Old "Patty/Expenses" (`renderExpenseTable`,
+`loadExpenseMonth`, `expRowChange`, `addExpenseRow`, `saveExpenseData`,
+`printExpenseReport` — the actual source of the reported data-loss bug)
+and old "Custom Sections" (`custom-sections.js`'s `_csecLoad`,
+`loadCustomSections`, `saveAllCustomSections`, `promptAddCustomSection`,
+`deleteCustomSection`, `renderAllCustomSections`, `csecAddRow`,
+`csecDelRow`, `csecLiveTotal`) are fully removed — not deprecated, not
+left dormant alongside the new system, genuinely deleted. `switchMgrTab`'s
+`expense`/`custom` tab dispatch now calls the new
+`renderLedgerView`/`renderOtherSectionsManager` instead, reusing the
+same tab ids and section divs rather than adding parallel new ones —
+the Manager nav looks the same, the underlying implementation doesn't.
+
+**One real bug found and fixed during the cutover, not before shipping
+it:** `drive.js` and `supabase.js` reference `CSEC_KEY` directly for
+backup/sync of whatever old custom-sections data may still exist — I'd
+deleted that constant along with the rest of the feature, which would
+have thrown a `ReferenceError` the moment a backup or sync ran. Restored
+just the constant (not the feature) with a comment explaining why.
+
+**`custom-sections.js` kept, but gutted to just two functions**
+(`salaryNextMonth`, `pettyNextMonth`) — these are unrelated
+"Copy to Next Month" helpers for Salary/Petty that happened to live in
+the same file as Custom Sections; removing the file entirely would
+have taken them down too. 277 lines → 112.
+
+**Full monkey-patch re-verification after touching `switchMgrTab` yet
+again** (this function has now been edited three times across this
+session): confirmed the bare-global structure is intact, confirmed the
+retired functions are genuinely gone (not just hidden — checked
+`typeof` returns `'undefined'`, not just "unused"), confirmed the
+three-file monkey-patch chain (`custom-sections.js`/`jazz-cash.js`
+patching `loadManagerPage`) still works, and confirmed the new dispatch
+branches don't throw even if `renderLedgerView` hasn't loaded yet
+(defensive `typeof` guard, same pattern as everywhere else in this
+file).
+
+**Real end-to-end integration test, not just unit tests this time:**
+built a jsdom harness that runs `manager.js` (via indirect eval, same
+execution model as the real classic-script) alongside the real
+ES-module `ledger-page.js`, and actually called `switchMgrTab('expense')`
+/`switchMgrTab('custom')` to confirm the real dispatch renders the real
+Ledger UI into the real DOM containers and toggles the right section
+visible. Hit one test-harness bug of my own along the way — my first
+attempt set `window` to a separate object rather than making it truly
+identical to the global scope (as it is in a real browser), which
+produced a false failure; fixed by properly unifying `globalThis` and
+`dom.window`'s identity before re-running.
+
+**One more real bug caught in final verification, before packaging:**
+`ledger-page.js` had no `<script>` tag in `index.html` at all — it was
+referenced only in HTML comments, never actually loaded. Would have
+been a completely silent failure: `switchMgrTab`'s `typeof` guard would
+have quietly no-op'd forever, nothing would ever render, no error
+anywhere. Caught by checking the service-worker precache list against
+the actual script tags rather than assuming they matched.
+
+**Deliberately NOT touched:** the separate, simpler "Petty Detail" tab
+(`data-mtab="petty"`, the original groups/rows structure) — only
+"Patty/Expenses" and "Custom Sections" were named for removal. Also not
+rewired: `ai-bridge.js`'s natural-language AI commands for adding/
+editing expense rows and custom-section rows — these are all
+`typeof`-guarded so they fail silently (no crash) rather than throwing,
+but the AI assistant will currently do nothing if asked to add an
+expense via chat. Flagged as a known follow-up, not fixed this round.
+
 ### Lessons learned converting `actions.js`
+
+
+
+
 
 
 
@@ -673,4 +798,77 @@ section.
 
 ## 📋 Backlog (deferred by request)
 - **Manager tab credit summary card** — same collapsed-by-default summary card with month dropdown that exists on the Dashboard, placed above "Credit Details" / below "Save All & Sync" on the Manager tab. Explicitly deferred by request until the improvement score reaches 100.
+
+---
+
+## 🗓 Session: Jazz Cash → Ledger migration
+
+Picked up HANDOFF.md §5 item 2. Same pattern as the Expense/Custom
+Sections cutover, with one real difference: **Jazz Cash has actual
+historical production data** (`bt_jazzcash_v2`), so unlike Expense/
+Custom Sections this couldn't be a silent swap — old data needed an
+explicit, confirmed, one-time migration path rather than just starting
+fresh on the new model.
+
+**What moved:**
+- Jazz Cash's Daily Ledger sub-tab now renders via `renderLedgerView`
+  (`ledger-page.js`) against `ledgerType: 'jazzcash'`, same as Expense.
+- `jazz-cash.js` shrank to Balance Tally only (wallet reconciliation/
+  snapshots — a genuinely different feature with no Ledger equivalent)
+  plus a thin `_renderLedger()` wrapper. `_jcCurrentBalance()` now reads
+  `LedgerStore.getCurrentBalance('jazzcash')` instead of the old
+  `bt_jazzcash_v2` blob directly.
+- `ai-bridge.js`'s three Jazz Cash chat-command executors
+  (`addJazzCashEntry`/`editJazzCashEntry`/`deleteJazzCashEntry`) rewired
+  to `LedgerActions` instead of the retired `jcAddEntry`/`jcEditEntry`/
+  `jcDeleteEntry`. The intent *shape* (params: amount/type/desc/shift)
+  didn't change, so the Groq system prompt didn't need updating.
+
+**What stayed put, deliberately:**
+- `JC_KEY` (`bt_jazzcash_v2`) is kept as a frozen constant — nothing
+  writes through it anymore, but `drive.js`/`supabase.js` still back it
+  up (same reasoning as `CSEC_KEY` after the Custom Sections cutover),
+  and the migration button reads it.
+- Migration is **not automatic**. `_renderLedger()` shows a banner +
+  confirm-gated button only when old data is detected and a
+  `bt_jazzcash_ledger_migrated_v1` flag isn't already set.
+
+**Generalizations added to the Ledger itself (benefit Expense/Custom
+Sections too, not just Jazz Cash):**
+- `ledgerUsesShift(ledgerType)` + `SHIFTS` — `renderLedgerView` now
+  shows a shift selector/column only for ledger types that opt in
+  (currently just `jazzcash`).
+- An "⚙ Set Opening" control in `renderLedgerView` — previously
+  `LedgerStore.setOpeningBalance` had no UI path to reach it at all.
+- Window bridges added for `LedgerStore`, `LedgerActions`, and the
+  migration functions — these were real ES-module-only exports before
+  this session; nothing needed to call them from a classic script yet.
+
+**Two real bugs found (not pre-existing on purpose — genuinely found
+and fixed this session, via the jsdom-smoke-test-before-shipping
+discipline from §4 of HANDOFF.md):**
+1. `migrateJazzCashToLedger()` hardcoded `shift: null` instead of
+   copying `e.shift` — would have silently dropped every migrated
+   entry's shift. Caught by the smoke test's first run, before this was
+   ever pointed at real data.
+2. The generalized Ledger (`bt_ledger_v1` / `bt_ledger_custom_types_v1`)
+   had **zero backup/sync coverage** — missing entirely from both
+   `drive.js`'s Drive backup payload and `supabase.js`'s multi-device
+   sync payload, meaning the already-LIVE Expense/Other-Sections data
+   had no backup or cross-device sync since the prior session. Fixed
+   additively in both files, same merge-by-id / local-wins-on-push /
+   remote-wins-on-pull convention already proven for the `jazzcash`/
+   `jcTally` blocks sitting right next to it — the sync engine itself
+   wasn't touched, per the standing caution around `supabase.js`.
+
+**Verified this session (jsdom, sample data — not real production
+data):** migration preserves opening balance, entries, and now shift;
+running-balance math correct pre/post migration; manual add via
+`LedgerActions` with shift correct; delete correct; `renderLedgerView`
+correctly shows/hides the shift column and column count per ledger
+type; window bridges present. **Not yet verified:** against the user's
+real `bt_jazzcash_v2` data, or on a real device — see
+`TEST-CHECKLIST.md`'s new Jazz Cash section.
+
+`sw.js` cache bumped to `v9.1` for this round's file changes.
 

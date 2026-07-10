@@ -1,17 +1,16 @@
 // ══════════════════════════════════════════════════════════════════
-// JAZZ CASH MODULE — Ledger + Balance Tally
+// JAZZ CASH MODULE — Balance Tally
+// (The Daily Ledger sub-tab now runs on the generalized Ledger —
+// see ledger-store.js/ledger-actions.js/ledger-page.js. This file keeps
+// only the Balance Tally feature, which has no equivalent there — it's
+// a wallet-reconciliation/snapshot tool, not a transaction ledger.)
 // ══════════════════════════════════════════════════════════════════
 
-// ─── LEDGER constants ────────────────────────────────────────────
+// ─── LEDGER constants — kept only because drive.js/supabase.js still
+// back up the frozen legacy blob under this key, and the one-time
+// migration button below reads it. Nothing writes through here anymore. ───
 const JC_KEY     = 'bt_jazzcash_v2';
-const JC_SHIFTS  = ['Morning', 'Evening', 'Night', 'Both', 'Off'];
-const JC_TYPES   = [
-  { id:'credit',     label:'Received (+)',          sign:+1, color:'var(--green)',  icon:'⬆' },
-  { id:'debit',      label:'Patty Incentive (−)',   sign:-1, color:'var(--red)',    icon:'⬇' },
-  { id:'withdrawal', label:'Generic Incentive (−)', sign:-1, color:'var(--amber)',  icon:'💸' },
-  { id:'commission', label:'Strips / Adjustments (−)', sign:-1, color:'var(--purple)', icon:'🏅' },
-  { id:'transfer',   label:'Transfer (−)',          sign:-1, color:'var(--muted)',  icon:'↔'  },
-];
+const JC_MIGRATED_FLAG = 'bt_jazzcash_ledger_migrated_v1';
 
 // ─── TALLY constants ─────────────────────────────────────────────
 const JC_TALLY_KEY = 'bt_jc_tally_v1';
@@ -27,9 +26,6 @@ const JC_TALLY_DEFAULTS = [
 ];
 
 // ─── State ───────────────────────────────────────────────────────
-let _jcData       = null;
-let _jcFilterMonth= '';
-let _jcAiLoading  = false;
 let _jcActiveTab  = 'ledger';  // 'ledger' | 'tally'
 let _jcTallyData  = null;
 let _jcTallyDate  = '';
@@ -37,14 +33,7 @@ let _jcTallyDate  = '';
 // ══════════════════════════════════════════════════════════════════
 // SHARED HELPERS
 // ══════════════════════════════════════════════════════════════════
-function _jcType(id) { return JC_TYPES.find(t => t.id === id) || JC_TYPES[0]; }
 function _jcFmt(v)   { return Math.abs(Math.round(Number(v)||0)).toLocaleString('en-PK'); }
-function _jcMonthOf(dateStr) {
-  const d = new Date(dateStr);
-  if (isNaN(d)) return '';
-  const M = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  return M[d.getMonth()] + ' ' + d.getFullYear();
-}
 function _jcTodayStr() {
   const d = new Date();
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -57,29 +46,14 @@ function _jcFmtDate(ds) {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// LEDGER — Persistence
+// LEDGER — current balance (reads the generalized Ledger now; the old
+// jcLoad()/jcSave() pair that read/wrote JC_KEY directly is gone along
+// with the rest of the old ledger UI — see header comment)
 // ══════════════════════════════════════════════════════════════════
-function jcLoad() {
-  try { const r=Repository.getItem(JC_KEY); if(r) return JSON.parse(r); } catch(e){}
-  return { openingBalance:0, entries:[] };
-}
-function jcSave() {
-  Actions.saveFeatureData(JC_KEY, JSON.stringify(_jcData));
-  if (Repository.getItem('bt_auto_save')==='1' && typeof pushToSupabase==='function') pushToSupabase();
-}
-function _jcRunningBalances(entries, openingBalance) {
-  let bal = openingBalance||0;
-  return entries.map(e => { const t=_jcType(e.type); bal+=t.sign*(parseFloat(e.amount)||0); return {...e,_balance:bal}; });
-}
-function _jcFilteredEntries() {
-  const entries=(_jcData.entries||[]).slice().sort((a,b)=>a.date.localeCompare(b.date));
-  return _jcFilterMonth ? entries.filter(e=>_jcMonthOf(e.date)===_jcFilterMonth) : entries;
-}
 function _jcCurrentBalance() {
-  _jcData = jcLoad();
-  const sorted=(_jcData.entries||[]).slice().sort((a,b)=>a.date.localeCompare(b.date));
-  const wb=_jcRunningBalances(sorted,_jcData.openingBalance||0);
-  return wb.length ? wb[wb.length-1]._balance : (_jcData.openingBalance||0);
+  return (typeof LedgerStore !== 'undefined' && LedgerStore.getCurrentBalance)
+    ? LedgerStore.getCurrentBalance('jazzcash')
+    : 0;
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -131,281 +105,51 @@ function jcSwitchTab(tab) {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// LEDGER PANEL
+// LEDGER PANEL — thin wrapper around the generalized Ledger
+// (renderLedgerView, from ledger-page.js). Shows a one-time migration
+// banner if old bt_jazzcash_v2 data exists and hasn't been moved over
+// yet; the move itself is explicit/confirmed, never automatic — see
+// ledger-migration.js's header comment.
 // ══════════════════════════════════════════════════════════════════
 function _renderLedger() {
   const panel = document.getElementById('jc-panel-ledger');
   if (!panel) return;
-  _jcData = jcLoad();
 
-  const allSorted=(_jcData.entries||[]).slice().sort((a,b)=>a.date.localeCompare(b.date));
-  const allWithBal=_jcRunningBalances(allSorted,_jcData.openingBalance||0);
-  const currentBal=allWithBal.length?allWithBal[allWithBal.length-1]._balance:(_jcData.openingBalance||0);
-  const today=_jcTodayStr();
-  const todayNet=allSorted.filter(e=>e.date===today).reduce((s,e)=>s+_jcType(e.type).sign*(parseFloat(e.amount)||0),0);
-
-  const filtered=_jcFilteredEntries();
-  const displayEntries=_jcFilterMonth
-    ? _jcRunningBalances(filtered,_jcData.openingBalance||0)
-    : allWithBal;
-  const monthCredits=filtered.filter(e=>_jcType(e.type).sign>0).reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
-  const monthDebits =filtered.filter(e=>_jcType(e.type).sign<0).reduce((s,e)=>s+(parseFloat(e.amount)||0),0);
-
-  const allMonths=[...new Set(allSorted.map(e=>_jcMonthOf(e.date)).filter(Boolean))];
-  const monthOptHtml=['', ...allMonths.reverse()].map(m=>
-    `<option value="${m}"${m===_jcFilterMonth?' selected':''}>${m||'All Time'}</option>`).join('');
+  const alreadyMigrated = Repository.getItem(JC_MIGRATED_FLAG) === '1';
+  let legacyHasData = false;
+  if (!alreadyMigrated) {
+    try {
+      const raw = Repository.getItem(JC_KEY);
+      const d = raw ? JSON.parse(raw) : null;
+      legacyHasData = !!(d && Array.isArray(d.entries) && d.entries.length);
+    } catch (e) {}
+  }
 
   panel.innerHTML = `
-    <!-- Balance Card -->
-    <div style="background:linear-gradient(135deg,#16a34a 0%,#15803d 100%);border-radius:16px;padding:20px 20px 16px;margin-bottom:16px;color:#fff;position:relative;overflow:hidden">
-      <div style="position:absolute;right:-20px;top:-20px;width:100px;height:100px;background:rgba(255,255,255,.08);border-radius:50%"></div>
-      <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.8;margin-bottom:4px">📒 Jazz Cash — Ledger Balance</div>
-      <div style="font-size:36px;font-weight:800;font-family:var(--mono);letter-spacing:-1px">${currentBal<0?'−':''}₨${_jcFmt(currentBal)}</div>
-      <div style="display:flex;gap:20px;margin-top:12px;font-size:12px;opacity:.9">
-        <div><span style="opacity:.7">Today</span><br><span style="font-weight:700;font-family:var(--mono)">${todayNet>=0?'+':'−'}₨${_jcFmt(todayNet)}</span></div>
-        <div><span style="opacity:.7">Opening</span><br><span style="font-weight:700;font-family:var(--mono)">₨${_jcFmt(_jcData.openingBalance||0)}</span></div>
-        <div style="margin-left:auto;text-align:right">
-          <button onclick="jcSetOpening()" style="background:rgba(255,255,255,.2);border:none;color:#fff;padding:5px 11px;border-radius:7px;font-size:11px;cursor:pointer;font-weight:600">⚙ Set Opening</button>
-        </div>
-      </div>
-    </div>
+    ${legacyHasData ? `
+    <div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:10px;padding:14px;margin-bottom:14px">
+      <div style="font-weight:700;font-size:13px;margin-bottom:6px">⚠ Old Jazz Cash data found</div>
+      <div style="font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:10px">This ledger now runs on the app's unified Ledger. Your previous Jazz Cash entries haven't been moved over yet — migrate them once below. Nothing is deleted; your old data stays backed up either way.</div>
+      <button id="jc-migrate-btn" style="background:#d97706;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer">Migrate old Jazz Cash entries →</button>
+    </div>` : ''}
+    <div id="jc-ledger-inner"></div>
+  `;
 
-    <!-- KPI Strip -->
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px">
-      <div class="kpi" style="text-align:center"><div class="klbl">In (+)</div><div class="kval" style="color:var(--green);font-size:15px">₨${_jcFmt(monthCredits)}</div></div>
-      <div class="kpi" style="text-align:center"><div class="klbl">Out (−)</div><div class="kval" style="color:var(--red);font-size:15px">₨${_jcFmt(monthDebits)}</div></div>
-      <div class="kpi" style="text-align:center"><div class="klbl">Net</div><div class="kval" style="color:${(monthCredits-monthDebits)>=0?'var(--green)':'var(--red)'};font-size:15px">${(monthCredits-monthDebits)>=0?'+':'−'}₨${_jcFmt(Math.abs(monthCredits-monthDebits))}</div></div>
-    </div>
+  const btn = document.getElementById('jc-migrate-btn');
+  if (btn) btn.onclick = function () {
+    if (!confirm('Migrate your existing Jazz Cash ledger entries into the new Ledger? This only needs to run once.')) return;
+    const result = (typeof migrateJazzCashToLedger === 'function') ? migrateJazzCashToLedger() : { migrated: 0 };
+    Actions.saveFeatureData(JC_MIGRATED_FLAG, '1');
+    toast(`✓ Migrated ${result.migrated} Jazz Cash entries`);
+    _renderLedger();
+  };
 
-    <!-- Quick Add Form -->
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:16px;overflow:hidden">
-      <div style="background:var(--s2);padding:11px 16px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:space-between">
-        ➕ Add Entry
-        <button onclick="jcToggleForm()" id="jc-form-toggle" style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--muted)">▲</button>
-      </div>
-      <div id="jc-quick-form" style="padding:14px 16px">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-          <div>
-            <label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">DATE</label>
-            <input type="date" id="jc-f-date" value="${today}"
-              style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;background:var(--s2);color:var(--text);outline:none">
-          </div>
-          <div>
-            <label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">SHIFT</label>
-            <select id="jc-f-shift" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;background:var(--s2);color:var(--text);outline:none">
-              ${JC_SHIFTS.map(s=>`<option>${s}</option>`).join('')}
-            </select>
-          </div>
-        </div>
-        <div style="margin-bottom:10px">
-          <label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:6px">TYPE</label>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            ${JC_TYPES.map((t,i)=>`
-              <label style="display:flex;align-items:center;gap:5px;padding:7px 11px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;transition:all .15s" id="jc-type-lbl-${t.id}">
-                <input type="radio" name="jc-type" value="${t.id}" ${i===0?'checked':''} onchange="jcTypeChange()" style="display:none">
-                ${t.icon} ${t.label}
-              </label>`).join('')}
-          </div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-          <div>
-            <label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">AMOUNT (₨)</label>
-            <input type="number" id="jc-f-amount" placeholder="0"
-              style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:14px;font-weight:700;font-family:var(--mono);background:var(--s2);color:var(--text);outline:none;text-align:right">
-          </div>
-          <div>
-            <label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">DESCRIPTION</label>
-            <input type="text" id="jc-f-desc" placeholder="Optional note"
-              style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;background:var(--s2);color:var(--text);outline:none">
-          </div>
-        </div>
-        <button onclick="jcAddEntry()" style="width:100%;background:var(--green);color:#fff;border:none;border-radius:9px;padding:11px;font-size:14px;font-weight:700;cursor:pointer">
-          ✅ Add to Ledger
-        </button>
-      </div>
-    </div>
-
-    <!-- Ledger Table -->
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden">
-      <div style="background:var(--s2);padding:11px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <div style="font-weight:700;font-size:13px;flex:1">📒 Ledger</div>
-        <select id="jc-month-filter" onchange="_jcFilterMonth=this.value;_renderLedger()"
-          style="padding:6px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px;background:#fff;color:var(--text);outline:none">
-          ${monthOptHtml}
-        </select>
-        <button onclick="jcClearAll()" style="background:none;border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:11px;cursor:pointer;color:var(--muted)">🗑 Clear</button>
-      </div>
-      <div style="overflow-x:auto">
-        ${_jcBuildLedgerTable(displayEntries.filter(e=>!_jcFilterMonth||_jcMonthOf(e.date)===_jcFilterMonth))}
-      </div>
-    </div>`;
-
-  jcTypeChange();
+  if (typeof renderLedgerView === 'function') {
+    renderLedgerView('jc-ledger-inner', 'jazzcash', '📒 Jazz Cash');
+  }
 }
 
-function _jcBuildLedgerTable(entries) {
-  if (!entries.length) return `<div style="text-align:center;padding:40px;color:var(--muted);font-size:13px">No entries yet. Use the form or AI above.</div>`;
-  const rows=[...entries].reverse().map((e,i)=>{
-    const t=_jcType(e.type);
-    const signed=t.sign>0?`+₨${_jcFmt(e.amount)}`:`−₨${_jcFmt(e.amount)}`;
-    const isToday=e.date===_jcTodayStr();
-    return `<tr style="border-bottom:1px solid var(--border);${isToday?'background:#f0fdf4':i%2?'background:var(--s2)':''}">
-      <td style="padding:10px 8px 10px 14px;white-space:nowrap;font-size:11px;color:var(--muted)">
-        ${isToday?'<span style="background:#dcfce7;color:#166534;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;display:block;margin-bottom:2px">TODAY</span>':''}
-        ${_jcFmtDate(e.date)}
-      </td>
-      <td style="padding:10px 6px;white-space:nowrap">
-        <span style="background:var(--s2);border:1px solid var(--border);border-radius:5px;padding:2px 7px;font-size:11px;font-weight:600">${e.shift||'—'}</span>
-      </td>
-      <td style="padding:10px 6px;font-size:12px;color:var(--t2);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.icon} ${e.desc||t.label}</td>
-      <td style="padding:10px 6px;font-family:var(--mono);font-weight:700;font-size:13px;text-align:right;color:${t.color};white-space:nowrap">${signed}</td>
-      <td style="padding:10px 6px;font-family:var(--mono);font-weight:700;font-size:13px;text-align:right;white-space:nowrap">${e._balance<0?'−':''}₨${_jcFmt(e._balance)}</td>
-      <td style="padding:10px 12px 10px 4px;text-align:right;white-space:nowrap">
-        <button onclick="jcEditEntry('${e.id}')" style="background:var(--alt);border:none;border-radius:5px;padding:4px 8px;font-size:11px;cursor:pointer;color:var(--accent);font-weight:600;margin-right:3px">✏</button>
-        <button onclick="jcDeleteEntry('${e.id}')" style="background:var(--rlt);border:none;border-radius:5px;padding:4px 8px;font-size:11px;cursor:pointer;color:var(--red);font-weight:600">✕</button>
-      </td>
-    </tr>`;
-  }).join('');
-  return `<table style="width:100%;border-collapse:collapse;min-width:480px">
-    <thead><tr style="background:var(--s2);font-size:10px;text-transform:uppercase;font-weight:700;color:var(--muted);letter-spacing:.05em">
-      <th style="padding:8px 8px 8px 14px;text-align:left;border-bottom:2px solid var(--border)">Date</th>
-      <th style="padding:8px 6px;text-align:left;border-bottom:2px solid var(--border)">Shift</th>
-      <th style="padding:8px 6px;text-align:left;border-bottom:2px solid var(--border)">Description</th>
-      <th style="padding:8px 6px;text-align:right;border-bottom:2px solid var(--border)">Amount</th>
-      <th style="padding:8px 6px;text-align:right;border-bottom:2px solid var(--border)">Balance</th>
-      <th style="padding:8px 12px 8px 4px;border-bottom:2px solid var(--border)"></th>
-    </tr></thead>
-    <tbody>${rows}</tbody>
-  </table>`;
-}
 
-// ── Ledger actions ────────────────────────────────────────────────
-function jcToggleForm() {
-  const f=document.getElementById('jc-quick-form'), b=document.getElementById('jc-form-toggle');
-  if (!f) return;
-  const hidden=f.style.display==='none';
-  f.style.display=hidden?'':'none';
-  if (b) b.textContent=hidden?'▲':'▼';
-}
-function jcTypeChange() {
-  const sel=document.querySelector('input[name="jc-type"]:checked');
-  JC_TYPES.forEach(t=>{
-    const lbl=document.getElementById('jc-type-lbl-'+t.id); if(!lbl)return;
-    const on=sel&&sel.value===t.id;
-    lbl.style.borderColor=on?t.color:'var(--border)';
-    lbl.style.background=on?t.color.replace('var(--green)','#f0fdf4').replace('var(--red)','#fef2f2').replace('var(--amber)','#fffbeb').replace('var(--purple)','#f5f3ff').replace('var(--muted)','var(--s2)'):'var(--surface)';
-    lbl.style.color=on?t.color:'var(--t2)';
-  });
-}
-function jcAddEntry(opts) {
-  _jcData=jcLoad();
-  const date  =(opts&&opts.date)  ||document.getElementById('jc-f-date')?.value  ||_jcTodayStr();
-  const shift =(opts&&opts.shift) ||document.getElementById('jc-f-shift')?.value ||'Morning';
-  const type  =(opts&&opts.type)  ||document.querySelector('input[name="jc-type"]:checked')?.value||'credit';
-  const amount=parseFloat((opts&&opts.amount)||document.getElementById('jc-f-amount')?.value||0);
-  const desc  =(opts&&opts.desc)  ||document.getElementById('jc-f-desc')?.value  ||'';
-  if (!amount||isNaN(amount)||amount<=0){toast('⚠ Enter a valid amount','w');return;}
-  _jcData.entries.push({id:String(Date.now()),date,shift,type,amount,desc});
-  jcSave();
-  const ae=document.getElementById('jc-f-amount'), de=document.getElementById('jc-f-desc');
-  if (ae) ae.value=''; if (de) de.value='';
-  _renderLedger();
-  toast(`✓ ${_jcType(type).icon} ₨${_jcFmt(amount)} (${shift} shift) added`);
-}
-function jcDeleteEntry(id) {
-  if (!confirm('Delete this entry?')) return;
-  _jcData=jcLoad();
-  _jcData.entries=_jcData.entries.filter(e=>e.id!==id);
-  jcSave(); _renderLedger(); toast('✓ Entry deleted');
-}
-function jcEditEntry(id) {
-  _jcData=jcLoad();
-  const e=_jcData.entries.find(e=>e.id===id); if (!e) return;
-  const a=prompt(`Amount (current: ${_jcFmt(e.amount)}):`,e.amount); if(a===null)return;
-  const pa=parseFloat(a); if(isNaN(pa)||pa<=0){toast('⚠ Invalid','w');return;}
-  const d=prompt('Description:',e.desc||''); if(d===null)return;
-  const s=prompt(`Shift (${JC_SHIFTS.join('/')}):`,e.shift||'Morning'); if(s===null)return;
-  const ns=JC_SHIFTS.find(x=>x.toLowerCase()===(s||'').toLowerCase().trim())||e.shift;
-  const ty=prompt(`Type (${JC_TYPES.map(t=>t.id).join('/')}):`,e.type); if(ty===null)return;
-  const nt=JC_TYPES.find(t=>t.id===(ty||'').toLowerCase().trim())?.id||e.type;
-  e.amount=pa; e.desc=d; e.shift=ns; e.type=nt;
-  jcSave(); _renderLedger(); toast('✓ Entry updated');
-}
-function jcSetOpening() {
-  _jcData=jcLoad();
-  const v=prompt(`Opening balance (current: ₨${_jcFmt(_jcData.openingBalance||0)}):`,_jcData.openingBalance||0);
-  if (v===null)return;
-  const p=parseFloat(v); if(isNaN(p)){toast('⚠ Invalid','w');return;}
-  _jcData.openingBalance=p; jcSave(); _renderLedger(); toast(`✓ Opening set to ₨${_jcFmt(p)}`);
-}
-function jcClearAll() {
-  if(!confirm('Clear ALL Jazz Cash ledger entries?'))return;
-  _jcData={openingBalance:_jcData?.openingBalance||0,entries:[]};
-  jcSave(); _jcFilterMonth=''; _renderLedger(); toast('✓ Ledger cleared');
-}
-
-// ── AI Command ────────────────────────────────────────────────────
-async function jcAiCommand() {
-  const inp=document.getElementById('jc-ai-inp'), resEl=document.getElementById('jc-ai-result'), sp=document.getElementById('jc-ai-spinner');
-  if (!inp||!resEl) return;
-  const text=inp.value.trim(); if (!text){toast('⚠ Type a command','w');return;}
-  if (_jcAiLoading) return;
-  const apiKey=(typeof getAiSettings==='function')?getAiSettings().apiKey:'';
-  if (!apiKey){toast('⚠ No Groq API key — add it in the AI ⚙ settings','w');return;}
-  _jcAiLoading=true; if(sp)sp.style.display='inline'; resEl.style.display='none';
-  _jcData=jcLoad();
-  const sorted=(_jcData.entries||[]).slice().sort((a,b)=>a.date.localeCompare(b.date));
-  const wb=_jcRunningBalances(sorted,_jcData.openingBalance||0);
-  const bal=wb.length?wb[wb.length-1]._balance:(_jcData.openingBalance||0);
-  const recent=wb.slice(-5).reverse().map(e=>`${e.date}|${e.shift}|${e.type}|₨${_jcFmt(e.amount)}|bal:₨${_jcFmt(e._balance)}`).join('\n');
-  const today=_jcTodayStr(); const nd=new Date();
-  const M=['January','February','March','April','May','June','July','August','September','October','November','December'];
-  try {
-    const resp=await fetch(_GROQ_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:JSON.stringify({
-      model:_GROQ_MODEL,max_tokens:1000,temperature:0.1,
-      messages:[
-        {role:'system',content:`You are a Jazz Cash ledger assistant for Salman in Pakistan. Today: ${today} (${M[nd.getMonth()]} ${nd.getDate()}, ${nd.getFullYear()}).
-Current balance: ₨${_jcFmt(bal)}. Recent entries:\n${recent||'(none)'}
-Shifts: Morning,Evening,Night,Both,Off. Types: credit(+),debit(-),withdrawal(-),commission(+),transfer(-).
-Return ONLY valid JSON, no markdown.
-For add entry: {"action":"add","date":"YYYY-MM-DD","shift":"Morning","type":"credit","amount":5000,"desc":"description","explanation":"..."}
-For question: {"action":"info","message":"..."}
-Parse amounts: 5k=5000, 1.5k=1500. Default shift=Morning, default date=today.`},
-        {role:'user',content:text}]})});
-    if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error('Groq '+resp.status+': '+((e.error&&e.error.message)||resp.statusText));}
-    const data=await resp.json();
-    const raw=(data.choices?.[0]?.message?.content||'').trim();
-    const parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());
-    if (parsed.action==='add') {
-      resEl.style.display='block';
-      resEl.innerHTML=`
-        <div style="color:var(--green);font-weight:700;margin-bottom:8px">✅ ${parsed.explanation||'Ready to add'}</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;margin-bottom:10px">
-          <div><span style="color:var(--muted)">Date:</span> <strong>${_jcFmtDate(parsed.date)}</strong></div>
-          <div><span style="color:var(--muted)">Shift:</span> <strong>${parsed.shift}</strong></div>
-          <div><span style="color:var(--muted)">Type:</span> <strong>${_jcType(parsed.type).icon} ${_jcType(parsed.type).label}</strong></div>
-          <div><span style="color:var(--muted)">Amount:</span> <strong style="font-family:var(--mono)">₨${_jcFmt(parsed.amount)}</strong></div>
-          ${parsed.desc?`<div style="grid-column:1/-1"><span style="color:var(--muted)">Desc:</span> <strong>${parsed.desc}</strong></div>`:''}
-        </div>
-        <div style="display:flex;gap:8px">
-          <button onclick="jcAddEntry({date:'${parsed.date}',shift:'${parsed.shift}',type:'${parsed.type}',amount:${parsed.amount},desc:'${(parsed.desc||'').replace(/'/g,'&#39;')}'});document.getElementById('jc-ai-inp').value='';document.getElementById('jc-ai-result').style.display='none';"
-            style="background:var(--green);color:#fff;border:none;border-radius:7px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;flex:1">✅ Confirm & Add</button>
-          <button onclick="document.getElementById('jc-ai-result').style.display='none'"
-            style="background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:8px 14px;font-size:13px;cursor:pointer;color:var(--muted)">Cancel</button>
-        </div>`;
-    } else {
-      resEl.style.display='block';
-      resEl.innerHTML=`<div style="color:var(--t2);line-height:1.6">🤖 ${parsed.message}</div>`;
-    }
-    inp.value='';
-  } catch(err) {
-    resEl.style.display='block';
-    resEl.innerHTML=`<div style="color:var(--red)">⚠ ${err.message}</div>`;
-  } finally { _jcAiLoading=false; if(sp)sp.style.display='none'; }
-}
-
-// ══════════════════════════════════════════════════════════════════
-// BALANCE TALLY PANEL
 // ══════════════════════════════════════════════════════════════════
 function _renderTally() {
   const panel=document.getElementById('jc-panel-tally'); if(!panel)return;

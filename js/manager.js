@@ -23,9 +23,11 @@ function switchMgrTab(tab) {
   if (tab === 'staff') renderStaffRegistry();
   if (tab === 'jazzcash' && typeof renderJazzCash === 'function') renderJazzCash();
   if (tab === 'sheets' && typeof renderNotesSheets === 'function') renderNotesSheets();
-  if (tab === 'custom' && typeof loadCustomSections === 'function') {
-    const cur = document.getElementById('csec-month-sel')?.value || mgrMonths()[0] || '';
-    loadCustomSections(cur);
+  if (tab === 'expense' && typeof renderLedgerView === 'function') {
+    renderLedgerView('ledger-expense-container', 'expense', 'Expense');
+  }
+  if (tab === 'custom' && typeof renderOtherSectionsManager === 'function') {
+    renderOtherSectionsManager('ledger-sections-container');
   }
 }
 
@@ -36,14 +38,11 @@ function loadManagerPage() {
   const cur = mons[0] || '';
   _mgrPopSel('sal-month-sel', cur);
   _mgrPopSel('gen-month-sel', cur);
-  _mgrPopSel('exp-month-sel', cur);
   _mgrPopSel('crd-month-sel', cur);
   _mgrPopSel('petty-month-sel', cur);
   _mgrPopSel('inc-month-sel', cur);
-  _mgrPopSel('csec-month-sel', cur);
   loadSalaryMonth(cur);
   loadGenericMonth(cur);
-  loadExpenseMonth(cur);
   loadCreditMonth(cur);
   loadPettyMonth(cur);
   loadIncentiveMonth(cur);
@@ -588,98 +587,6 @@ function saveGenericData() {
 // ══════════════════════════════
 // EXPENSE / PATTY CASH
 // ══════════════════════════════
-let _expRows_cur = [];
-let _expOpening_cur = 0;
-
-function _expRows(my) {
-  const data = mgrLoad();
-  const stored = data.expense && data.expense[my];
-  return stored ? stored.rows : [];
-}
-function _expOpening(my) {
-  const data = mgrLoad();
-  return (data.expense && data.expense[my] && data.expense[my].opening) || 0;
-}
-
-function renderExpenseTable(rows) {
-  const tbody = document.getElementById('exp-tbody');
-  if (!tbody) return;
-  tbody.innerHTML = rows.map((r, i) => `
-    <tr class="mgr-tr">
-      <td class="mgr-td">${_inp('text', r.date||'', '', `expRowChange(${i},'date',this.value)`, 'DD-Mon-YYYY')}</td>
-      <td class="mgr-td">${_inp('text', r.desc||'', '', `expRowChange(${i},'desc',this.value)`, 'Description / Expense')}</td>
-      <td class="mgr-td">${_inp('number', r.bill||0, '', `expRowChange(${i},'bill',this.value);recalcExpense()`, '0')}</td>
-      <td class="mgr-td">${_inp('number', r.fuel||0, '', `expRowChange(${i},'fuel',this.value);recalcExpense()`, '0')}</td>
-      <td class="mgr-td">${_inp('number', r.soap||0, '', `expRowChange(${i},'soap',this.value);recalcExpense()`, '0')}</td>
-      <td class="mgr-td">${_inp('number', r.refresh||0, '', `expRowChange(${i},'refresh',this.value);recalcExpense()`, '0')}</td>
-      <td class="mgr-td">${_inp('number', r.extra||0, '', `expRowChange(${i},'extra',this.value);recalcExpense()`, '0')}</td>
-      <td class="mgr-td">${_inp('number', r.pattyHO||0, '', `expRowChange(${i},'pattyHO',this.value);recalcExpense()`, '0')}</td>
-      <td class="mgr-td" style="text-align:center"><button class="mgr-del" onclick="deleteExpRow(${i})">🗑</button></td>
-    </tr>`).join('');
-  recalcExpense();
-}
-
-function loadExpenseMonth(my) {
-  _expRows_cur = _expRows(my);
-  _expOpening_cur = _expOpening(my);
-  const op = document.getElementById('exp-opening');
-  if (op) op.value = _expOpening_cur;
-  renderExpenseTable(_expRows_cur);
-}
-function expRowChange(i, field, val) {
-  _expRows_cur[i][field] = (field === 'date' || field === 'desc') ? val : _ni(val);
-}
-function recalcExpense() {
-  const op = _ni(document.getElementById('exp-opening')?.value);
-  _expOpening_cur = op;
-  const totBill = _expRows_cur.reduce((s,r) => s + _ni(r.bill), 0);
-  const totFuel = _expRows_cur.reduce((s,r) => s + _ni(r.fuel), 0);
-  const totSoap = _expRows_cur.reduce((s,r) => s + _ni(r.soap), 0);
-  const totRef  = _expRows_cur.reduce((s,r) => s + _ni(r.refresh), 0);
-  const totExt  = _expRows_cur.reduce((s,r) => s + _ni(r.extra), 0);
-  const totHO   = _expRows_cur.reduce((s,r) => s + _ni(r.pattyHO), 0);
-  const totalExp = totBill + totFuel + totSoap + totRef + totExt;
-  const balance  = op + totHO - totalExp;
-  // KPIs
-  const setK = (id, v, col) => { const el = document.getElementById(id); if(el){ el.textContent = '₨' + _fc2(v); if(col) el.style.color = col; } };
-  setK('exp-k-open', op);
-  setK('exp-k-ho', totHO);
-  setK('exp-k-total', totalExp);
-  setK('exp-k-bal', balance, balance >= 0 ? 'var(--green)' : 'var(--red)');
-  // Footer
-  const ft = document.getElementById('exp-tfoot');
-  if (ft) ft.innerHTML = `<tr class="mgr-tfoot">
-    <td colspan="2" style="text-align:right;padding:7px 10px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">TOTALS</td>
-    <td class="mgr-td" style="text-align:right">₨${_fc2(totBill)}</td>
-    <td class="mgr-td" style="text-align:right">₨${_fc2(totFuel)}</td>
-    <td class="mgr-td" style="text-align:right">₨${_fc2(totSoap)}</td>
-    <td class="mgr-td" style="text-align:right">₨${_fc2(totRef)}</td>
-    <td class="mgr-td" style="text-align:right">₨${_fc2(totExt)}</td>
-    <td class="mgr-td" style="text-align:right">₨${_fc2(totHO)}</td>
-    <td></td>
-  </tr>`;
-}
-function addExpenseRow() {
-  const today = new Date();
-  const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const dateStr = String(today.getDate()).padStart(2,'0') + '-' + ms[today.getMonth()] + '-' + today.getFullYear();
-  _expRows_cur.push({date:dateStr, desc:'', bill:0, fuel:0, soap:0, refresh:0, extra:0, pattyHO:0});
-  renderExpenseTable(_expRows_cur);
-}
-function deleteExpRow(i) {
-  _expRows_cur.splice(i, 1);
-  renderExpenseTable(_expRows_cur);
-}
-function saveExpenseData() {
-  const my = document.getElementById('exp-month-sel').value;
-  const data = mgrLoad();
-  if (!data.expense) data.expense = {};
-  data.expense[my] = { opening: _expOpening_cur, rows: _expRows_cur.map(r => ({...r})) };
-  mgrSave(data);
-  toast('✓ Expense data saved for ' + my);
-  if (Repository.getItem('bt_auto_save')==='1') pushToSupabase();
-}
-
 // ══════════════════════════════
 // STAFF CREDIT LEDGER
 // ══════════════════════════════
@@ -978,52 +885,6 @@ function printGenericReport() {
         <td colspan="6" style="padding:7px 8px;font-weight:700;font-size:11px">TOTAL INCENTIVE</td>
         <td style="padding:7px 8px;text-align:right;font-weight:700;font-family:monospace;color:#1e40af">₨${_fc2(totFin)}</td>
       </tr></tfoot>
-    </table>
-  </div>`);
-}
-
-function printExpenseReport() {
-  const my = document.getElementById('exp-month-sel').value;
-  const rows = _expRows_cur;
-  const op = _expOpening_cur;
-  const today = new Date().toLocaleDateString('en-PK',{day:'2-digit',month:'short',year:'numeric'});
-  const totBill = rows.reduce((s,r) => s + _ni(r.bill), 0);
-  const totHO   = rows.reduce((s,r) => s + _ni(r.pattyHO), 0);
-  const totalExp = rows.reduce((s,r) => s + _ni(r.bill) + _ni(r.fuel) + _ni(r.soap) + _ni(r.refresh) + _ni(r.extra), 0);
-  const balance  = op + totHO - totalExp;
-  const trows = rows.map(r => `<tr>
-    <td style="padding:5px 8px;border-bottom:1px solid #eee">${r.date}</td>
-    <td style="padding:5px 8px;border-bottom:1px solid #eee">${r.desc}</td>
-    <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${_fc2(r.bill)}</td>
-    <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${_fc2(r.fuel)}</td>
-    <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${_fc2(r.soap)}</td>
-    <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${_fc2(r.refresh)}</td>
-    <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${_fc2(r.extra)}</td>
-    <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${_fc2(r.pattyHO)}</td>
-  </tr>`).join('');
-  _mgrPrint(`<div style="max-width:760px;margin:0 auto;font-family:Arial,sans-serif">
-    <div style="background:#0f172a;color:#fff;padding:14px 20px;border-radius:8px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
-      <div><h2 style="margin:0;font-size:16px">PATTY CASH / EXPENSE DETAIL — ${my}</h2></div>
-      <div style="font-size:11px;opacity:.7">Printed: ${today}</div>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px 12px"><div style="font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#64748b">Opening Patty</div><div style="font-size:15px;font-weight:700;font-family:monospace">₨${_fc2(op)}</div></div>
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px 12px"><div style="font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#64748b">HO Received</div><div style="font-size:15px;font-weight:700;font-family:monospace">₨${_fc2(totHO)}</div></div>
-      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px 12px"><div style="font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#64748b">Total Expenses</div><div style="font-size:15px;font-weight:700;font-family:monospace;color:#dc2626">₨${_fc2(totalExp)}</div></div>
-      <div style="background:${balance>=0?'#f0fdf4':'#fef2f2'};border:1px solid ${balance>=0?'#bbf7d0':'#fecaca'};border-radius:6px;padding:8px 12px"><div style="font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#64748b">Balance</div><div style="font-size:15px;font-weight:700;font-family:monospace;color:${balance>=0?'#059669':'#dc2626'}">₨${_fc2(balance)}</div></div>
-    </div>
-    <table style="width:100%;border-collapse:collapse;font-size:12px">
-      <thead><tr style="background:#f8fafc">
-        <th style="padding:7px 8px;text-align:left;border-bottom:2px solid #000;font-size:10px">Date</th>
-        <th style="padding:7px 8px;text-align:left;border-bottom:2px solid #000;font-size:10px">Description</th>
-        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">Bill Amt</th>
-        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">Fuel/HO</th>
-        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">Soap/Tissue</th>
-        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">Refreshment</th>
-        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">Extra</th>
-        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">Patty H/O</th>
-      </tr></thead>
-      <tbody>${trows}</tbody>
     </table>
   </div>`);
 }
@@ -1412,7 +1273,7 @@ function printIncentiveReport() {
 
 // ── Save All Manager Sections ──────────────────────────────────────────────
 function saveAllManagerSections() {
-  const monthSels = ['sal-month-sel','gen-month-sel','exp-month-sel','crd-month-sel','petty-month-sel','inc-month-sel','csec-month-sel'];
+  const monthSels = ['sal-month-sel','gen-month-sel','crd-month-sel','petty-month-sel','inc-month-sel'];
   const anyMonth = monthSels.map(id => (document.getElementById(id)||{}).value || '').find(v => v);
   if (!anyMonth) { toast('⚠ No month selected — open a tab and pick a month first','w'); return; }
   let saved = 0;
@@ -1420,11 +1281,9 @@ function saveAllManagerSections() {
   staffSave(); saved++; // always save staff registry
   tryCall(saveSalaryData);
   tryCall(saveGenericData);
-  tryCall(saveExpenseData);
   tryCall(saveCreditData);
   tryCall(savePettyData);
   tryCall(saveIncentiveData);
-  tryCall(saveAllCustomSections);
   toast('✓ All sections saved (' + saved + ')');
   // pushToSupabase is debounced — each save* call above already triggers it;
   // this call ensures a push happens even when auto-save is off.
@@ -1751,13 +1610,6 @@ window.loadGenericMonth = loadGenericMonth;
 window.addGenericRow = addGenericRow;
 window.deleteGenRow = deleteGenRow;
 window.saveGenericData = saveGenericData;
-window._expRows_cur = _expRows_cur;
-window.renderExpenseTable = renderExpenseTable;
-window.loadExpenseMonth = loadExpenseMonth;
-window.recalcExpense = recalcExpense;
-window.addExpenseRow = addExpenseRow;
-window.deleteExpRow = deleteExpRow;
-window.saveExpenseData = saveExpenseData;
 window._crdData_cur = _crdData_cur;
 window.renderCreditLedger = renderCreditLedger;
 window._toggleCrdEmpBody = _toggleCrdEmpBody;
@@ -1772,7 +1624,6 @@ window.saveCreditData = saveCreditData;
 window.copyToNextMonth = copyToNextMonth;
 window.printSalaryReport = printSalaryReport;
 window.printGenericReport = printGenericReport;
-window.printExpenseReport = printExpenseReport;
 window.printCreditReport = printCreditReport;
 window.printCreditSummaryReport = printCreditSummaryReport;
 window._pettyData = _pettyData;

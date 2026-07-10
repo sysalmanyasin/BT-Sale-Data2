@@ -1050,19 +1050,12 @@ if ('serviceWorker' in navigator) {
   </div>
 
   <!-- ═══ CUSTOM SPREADSHEET SECTIONS ═══ -->
+  <!-- ═══ OTHER SECTIONS — now the Ledger-based version (ledger-page.js) ═══ -->
   <div id="mgr-custom" class="mgr-section" style="display:none">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap">
-      <div class="fg" style="flex:1;min-width:140px">
-        <label>Month</label>
-        <select id="csec-month-sel" onchange="loadCustomSections(this.value)" style="font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s2);width:100%;color:var(--text);outline:none"></select>
-      </div>
-      <button class="btn btn-p" style="margin-top:16px" onclick="promptAddCustomSection()">＋ Add Section</button>
-      <button class="btn btn-g" style="margin-top:16px" onclick="saveAllCustomSections()">💾 Save All</button>
-    </div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.7">
-      💡 Create any number of custom spreadsheet-like sections (e.g. Fuel Log, Maintenance, Stock). Each section is a live table with description, amount and notes columns. Data is saved per-month and synced with Supabase.
+      💡 Create any number of custom ledgers with your own categories — each one continuous, not month-scoped.
     </div>
-    <div id="csec-container"></div>
+    <div id="ledger-sections-container"></div>
   </div>
 
   <!-- ═══ NOTES & SHEETS — rendered by notes-sheets.js ═══ -->
@@ -1139,46 +1132,12 @@ if ('serviceWorker' in navigator) {
   </div>
 
   <!-- ═══ EXPENSE / PATTY ═══ -->
+  <!-- ═══ PATTY/EXPENSES — now the Ledger-based version (ledger-page.js) ═══ -->
   <div id="mgr-expense" class="mgr-section" style="display:none">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-      <div class="fg" style="flex:1;min-width:140px">
-        <label>Month</label>
-        <select id="exp-month-sel" onchange="loadExpenseMonth(this.value)" style="font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s2);width:100%;color:var(--text);outline:none"></select>
-      </div>
-      <div class="fg" style="min-width:120px">
-        <label>Opening Patty (₨)</label>
-        <input type="number" id="exp-opening" placeholder="0" style="font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s2);width:100%;color:var(--text);outline:none" oninput="recalcExpense()">
-      </div>
-      <button class="btn btn-p" style="margin-top:16px" onclick="addExpenseRow()">+ Add Row</button>
-      <button class="btn btn-g" style="margin-top:16px" onclick="saveExpenseData()">💾 Save</button>
-      <button class="btn" style="margin-top:16px;background:var(--purple);color:#fff" onclick="printExpenseReport()">🖨 Print</button>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.7">
+      💡 New continuous Expense ledger — every entry saves immediately, no monthly reset, no "unsaved until you click Save" risk.
     </div>
-    <!-- KPI strip -->
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px" id="exp-kpis">
-      <div class="kpi"><div class="klbl">Opening Patty</div><div class="kval" id="exp-k-open">₨0</div></div>
-      <div class="kpi"><div class="klbl">HO Received</div><div class="kval" id="exp-k-ho">₨0</div></div>
-      <div class="kpi"><div class="klbl">Total Expenses</div><div class="kval" id="exp-k-total">₨0</div></div>
-      <div class="kpi"><div class="klbl">Current Balance</div><div class="kval" id="exp-k-bal" style="color:var(--green)">₨0</div></div>
-    </div>
-    <div style="overflow-x:auto">
-      <table id="exp-table" style="width:100%;border-collapse:collapse;font-size:12px;min-width:860px">
-        <thead>
-          <tr style="background:var(--s2)">
-            <th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Date</th>
-            <th style="padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Description / Expense</th>
-            <th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Bill Amt</th>
-            <th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Fuel/HO</th>
-            <th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Soap/Tissue</th>
-            <th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Refreshment</th>
-            <th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Extra</th>
-            <th style="padding:8px 10px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Patty H/O</th>
-            <th style="padding:8px 10px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Del</th>
-          </tr>
-        </thead>
-        <tbody id="exp-tbody"></tbody>
-        <tfoot id="exp-tfoot"></tfoot>
-      </table>
-    </div>
+    <div id="ledger-expense-container"></div>
   </div>
 
   <!-- ═══ STAFF CREDIT LEDGER ═══ -->
@@ -1373,12 +1332,14 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/repository.js"></script>
 <script type="module" src="js/actions.js"></script>
 
-<!-- Ledger — new generalized module (config.js/repository.js/event-bus.js
-     dependency), not yet wired into any Page. Dormant until the Jazz
-     Cash / Petty rebuild replaces their current implementations. -->
+<!-- Ledger — generalized module (config.js/repository.js/event-bus.js
+     dependency). Wired into Manager's Expense tab, Other Sections, and
+     now Jazz Cash's Daily Ledger sub-tab (jazz-cash.js keeps only
+     Balance Tally, which has no Ledger equivalent). -->
 <script type="module" src="js/ledger-store.js"></script>
 <script type="module" src="js/ledger-actions.js"></script>
 <script type="module" src="js/ledger-migration.js"></script>
+<script type="module" src="js/ledger-page.js"></script>
 
 <!-- 3. Auth: Google Sign-In -->
 <script defer src="js/auth.js"></script>
@@ -1444,7 +1405,7 @@ if ('serviceWorker' in navigator) {
 <!-- 13. Custom spreadsheet sections (manager add-on) -->
 <script defer src="js/custom-sections.js"></script>
 
-<!-- 13b. Jazz Cash Ledger — AI-powered daily ledger -->
+<!-- 13b. Jazz Cash — Balance Tally (Daily Ledger now runs on the generalized Ledger, see ledger-page.js) -->
 <script defer src="js/jazz-cash.js"></script>
 
 <!-- 13c. Hub Quick Actions — headless print/report triggers for CommandHub chips -->

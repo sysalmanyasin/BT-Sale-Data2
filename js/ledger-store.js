@@ -16,14 +16,22 @@
 import { Repository } from './repository.js';
 import { EventBus } from './event-bus.js';
 
-const LEDGER_KEY = 'bt_ledger_v1';
+export const LEDGER_KEY = 'bt_ledger_v1';
+
+// Shift options — only meaningful for ledger types that opt in below
+// (currently just 'jazzcash', migrated from jazz-cash.js's JC_SHIFTS).
+export const SHIFTS = ['Morning', 'Evening', 'Night', 'Both', 'Off'];
+const LEDGER_TYPES_WITH_SHIFT = { jazzcash: true };
+export function ledgerUsesShift(ledgerType) { return !!LEDGER_TYPES_WITH_SHIFT[ledgerType]; }
 
 // ── Category config, one array per ledgerType ───────────────────────────
 // Each category carries its own sign, so `amount` in an entry is always
 // stored as a positive magnitude — exactly the pattern already proven in
-// jazz-cash.js's JC_TYPES, not a signed-amount model. New ledgers (e.g.
-// "Other Sections") are added here as a new entry in this config object,
-// not new code.
+// jazz-cash.js's JC_TYPES, not a signed-amount model. New built-in
+// ledgers are added here as a new entry in this config object, not new
+// code. User-created "Other Sections" ledgers go through the persisted
+// custom-type registry below instead, since their categories aren't
+// known ahead of time.
 export const LEDGER_CATEGORIES = {
   jazzcash: [
     { id: 'credit',     label: 'Received (+)',            sign: +1, color: 'var(--green)',  icon: '⬆' },
@@ -35,14 +43,52 @@ export const LEDGER_CATEGORIES = {
   petty: [
     { id: 'expense', label: 'Expense', sign: -1, color: 'var(--red)', icon: '🧾' },
   ],
-  // 'custom:<sectionId>' ledgers get their category list added here at
-  // the point a section is actually created — see addCustomLedgerType().
+  // Matches the real, currently-used Expense tab exactly (Bill Amt /
+  // Fuel-HO / Soap-Tissue / Refreshment / Extra / Patty H/O) — same
+  // mental model, now continuous instead of month-scoped, and each
+  // entry writes immediately instead of sitting unsaved in memory
+  // until a manual Save click (the actual root cause of the data-loss
+  // bug reported against the old Expense tab).
+  expense: [
+    { id: 'bill',      label: 'Bill Amount',   sign: -1, color: 'var(--red)',    icon: '🧾' },
+    { id: 'fuel',      label: 'Fuel/HO',       sign: -1, color: 'var(--amber)',  icon: '⛽' },
+    { id: 'soap',      label: 'Soap/Tissue',   sign: -1, color: 'var(--purple)', icon: '🧼' },
+    { id: 'refresh',   label: 'Refreshment',   sign: -1, color: 'var(--blue)',   icon: '☕' },
+    { id: 'extra',     label: 'Extra',         sign: -1, color: 'var(--muted)',  icon: '➕' },
+    { id: 'pattyHO',   label: 'Patty H/O (received)', sign: +1, color: 'var(--green)', icon: '⬆' },
+  ],
 };
 
-const _customLedgerTypes = {}; // populated at runtime for 'custom:*' ledgers
+// ── Custom ledger types ("Other Sections") — persisted registry ────────
+// Unlike the built-in types above (known ahead of time, defined in code),
+// user-created sections aren't known until the user creates one — so
+// their definitions (label + category list) are stored, not hardcoded,
+// and reloaded on every app start. This is what makes "Other Sections"
+// genuinely add-able from the UI without touching this file's code —
+// the actual "add features without breaking existing code" golden rule
+// in practice, not just in principle.
+const CUSTOM_TYPES_KEY = 'bt_ledger_custom_types_v1';
+let _customLedgerTypes = null; // { [ledgerType]: { label, categories: [...] } }
+
+function _ensureCustomTypesLoaded() {
+  if (_customLedgerTypes !== null) return;
+  try {
+    const raw = Repository.getItem(CUSTOM_TYPES_KEY);
+    _customLedgerTypes = raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    _customLedgerTypes = {};
+  }
+}
+
+function _persistCustomTypes() {
+  Repository.setItem(CUSTOM_TYPES_KEY, JSON.stringify(_customLedgerTypes));
+  EventBus.notify('ledger:customTypesChanged', { types: _customLedgerTypes });
+}
 
 export function getCategoryList(ledgerType) {
-  return LEDGER_CATEGORIES[ledgerType] || _customLedgerTypes[ledgerType] || [];
+  if (LEDGER_CATEGORIES[ledgerType]) return LEDGER_CATEGORIES[ledgerType];
+  _ensureCustomTypesLoaded();
+  return (_customLedgerTypes[ledgerType] && _customLedgerTypes[ledgerType].categories) || [];
 }
 
 export function getCategory(ledgerType, categoryId) {
@@ -50,11 +96,47 @@ export function getCategory(ledgerType, categoryId) {
   return list.find(c => c.id === categoryId) || null;
 }
 
-// Lets a future "Other Sections" feature register a brand new ledger
-// type at runtime without touching this file's code — exactly the
-// "add features without breaking existing code" golden rule.
-export function registerLedgerType(ledgerType, categories) {
-  _customLedgerTypes[ledgerType] = categories;
+// Creates a brand new "Other Section" ledger type — e.g.
+// createCustomLedgerType('office-supplies', 'Office Supplies',
+//   [{id:'amount', label:'Amount', sign:-1, color:'var(--red)', icon:'📦'}])
+// ledgerType passed to everything else should be `'custom:' + sectionId`
+// to keep custom types visually distinct from built-ins at a glance.
+export function createCustomLedgerType(sectionId, label, categories) {
+  _ensureCustomTypesLoaded();
+  const ledgerType = 'custom:' + sectionId;
+  if (LEDGER_CATEGORIES[ledgerType] || _customLedgerTypes[ledgerType]) {
+    throw new Error('LedgerStore: a ledger type already exists for "' + sectionId + '"');
+  }
+  if (!Array.isArray(categories) || !categories.length) {
+    throw new Error('LedgerStore: createCustomLedgerType requires at least one category');
+  }
+  _customLedgerTypes[ledgerType] = { label: label || sectionId, categories };
+  _persistCustomTypes();
+  return ledgerType;
+}
+
+export function deleteCustomLedgerType(ledgerType) {
+  _ensureCustomTypesLoaded();
+  if (!_customLedgerTypes[ledgerType]) return false;
+  // Refuse to delete a section that still has entries — caller should
+  // remove/migrate those first. Prevents silently orphaning stored data
+  // that would then have no category config to render against.
+  if (getEntries(ledgerType).length > 0) {
+    throw new Error('LedgerStore: cannot delete "' + ledgerType + '" — it still has entries. Remove them first.');
+  }
+  delete _customLedgerTypes[ledgerType];
+  _persistCustomTypes();
+  return true;
+}
+
+// Enumerates every ledger type that currently exists — built-in and
+// custom — so a future "Other Sections" navigation page can list them
+// without needing to know their ids ahead of time.
+export function getAllLedgerTypes() {
+  _ensureCustomTypesLoaded();
+  const builtIn = Object.keys(LEDGER_CATEGORIES).map(id => ({ id, label: id, isCustom: false }));
+  const custom = Object.keys(_customLedgerTypes).map(id => ({ id, label: _customLedgerTypes[id].label, isCustom: true }));
+  return [...builtIn, ...custom];
 }
 
 // ── State ────────────────────────────────────────────────────────────
@@ -158,3 +240,22 @@ export function _removeEntry(id) {
   _persist();
   return removed;
 }
+
+// ── Window bridge ────────────────────────────────────────────────────
+// Classic-script consumers need this: jazz-cash.js's Balance Tally panel
+// reads the live Jazz Cash ledger balance, and drive.js/supabase.js back
+// up and sync the raw storage keys directly (same established pattern as
+// JC_KEY/CSEC_KEY elsewhere in this app — a bare `const` in a module
+// never reaches a classic script's global scope, only `window.X` does).
+// Only the read-oriented + genuinely-safe-to-call-directly surface is
+// bridged (not _addEntry/_updateEntry/_removeEntry — those stay behind
+// LedgerActions, the one door, same as everywhere else in this app).
+window.LEDGER_KEY = LEDGER_KEY;
+window.LEDGER_CUSTOM_TYPES_KEY = CUSTOM_TYPES_KEY;
+window.LedgerStore = {
+  SHIFTS, ledgerUsesShift,
+  getCategoryList, getCategory, getAllLedgerTypes,
+  createCustomLedgerType, deleteCustomLedgerType,
+  getEntries, getEntriesWithBalance, getOpeningBalance, setOpeningBalance,
+  getCurrentBalance,
+};

@@ -983,7 +983,8 @@ function _aiParsePrintCommand(text) {
 //   commission  → Strips / Adjustments (−)
 //   transfer    → Transfer (−)
 //
-// JC date format is ISO (YYYY-MM-DD) — handled internally by jcAddEntry
+// JC date format is ISO (YYYY-MM-DD) — defaulted via _aiTodayStr() when
+// no date is supplied to the addJazzCashEntry executor below.
 // which calls _jcTodayStr() when no date is provided.
 function _aiParseJazzCashCommand(text) {
   const t = text.toLowerCase().trim();
@@ -2615,6 +2616,27 @@ function _aiSwitchMonth(monthYear) {
   if (typeof toast === 'function') toast('\u2192 Switched to ' + monthYear + '.');
 }
 
+function _aiEditJazzCashEntry(id) {
+  if (typeof LedgerStore === 'undefined' || typeof LedgerActions === 'undefined') return;
+  const entry = LedgerStore.getEntries('jazzcash').find(function (e) { return e.id === id; });
+  if (!entry) { if (typeof toast === 'function') toast('⚠ Entry not found', 'w'); return; }
+  const a = prompt('Amount (current: ' + entry.amount + '):', entry.amount); if (a === null) return;
+  const pa = parseFloat(a); if (isNaN(pa) || pa <= 0) { if (typeof toast === 'function') toast('⚠ Invalid', 'w'); return; }
+  const d = prompt('Description:', entry.desc || ''); if (d === null) return;
+  const cats = LedgerStore.getCategoryList('jazzcash').map(function (c) { return c.id; });
+  const ty = prompt('Type (' + cats.join('/') + '):', entry.categoryId); if (ty === null) return;
+  const nt = cats.find(function (c) { return c === (ty || '').toLowerCase().trim(); }) || entry.categoryId;
+  const shifts = LedgerStore.SHIFTS;
+  const s = prompt('Shift (' + shifts.join('/') + '):', entry.shift || 'Morning'); if (s === null) return;
+  const ns = shifts.find(function (x) { return x.toLowerCase() === (s || '').toLowerCase().trim(); }) || entry.shift;
+  try {
+    LedgerActions.updateEntry(id, { amount: pa, desc: d, categoryId: nt, shift: ns });
+    if (typeof toast === 'function') toast('✓ Entry updated');
+  } catch (e) {
+    if (typeof toast === 'function') toast('⚠ ' + e.message, 'e');
+  }
+}
+
 // ── AI Memory / Rules / Section Config executors ──────────────────────
 function _aiAddMemoryFact(fact) {
   if (typeof aimFactAdd !== 'function') return;
@@ -2745,27 +2767,38 @@ function aiBridgeExecuteIntent(intent) {
       case 'addRule':            _aiAddRule(p[0]); break;
       case 'deleteRule':         _aiDeleteRule(p[0]); break;
       case 'setSectionAiConfig': _aiSetSectionAiConfig(p[0], p[1]); break;
-      // Jazz Cash Ledger
+      // Jazz Cash Ledger — routes through the generalized LedgerActions
+      // now (jazz-cash.js's old jcAddEntry/jcEditEntry/jcDeleteEntry were
+      // retired when the Daily Ledger sub-tab moved onto the unified
+      // Ledger; see jazz-cash.js's header comment).
       case 'addJazzCashEntry': {
         // p[0] may be a full opts object (from Groq) or plain amount (from local parser)
         const jcOpts = (p[0] && typeof p[0] === 'object')
           ? p[0]
-          : { amount: Number(p[0]) || 0, description: p[1] || '', type: p[2] || 'Credit' };
-        if (typeof jcAddEntry === 'function') {
-          // Navigate to Jazz Cash tab first, then add
-          if (typeof showPage === 'function') showPage('manager');
-          setTimeout(function () {
-            if (typeof switchMgrTab === 'function') switchMgrTab('jazzcash');
-            setTimeout(function () { jcAddEntry(jcOpts); }, 200);
-          }, 200);
+          : { amount: Number(p[0]) || 0, desc: p[1] || '', type: p[2] || 'credit' };
+        const amount = Math.abs(parseFloat(jcOpts.amount) || 0);
+        if (amount > 0 && typeof LedgerActions !== 'undefined') {
+          try {
+            LedgerActions.addEntry('jazzcash', {
+              date: jcOpts.date || (typeof _aiTodayStr === 'function' ? _aiTodayStr() : new Date().toISOString().slice(0, 10)),
+              categoryId: jcOpts.type || jcOpts.categoryId || 'credit',
+              amount,
+              desc: jcOpts.desc || jcOpts.description || '',
+              shift: jcOpts.shift || 'Morning',
+            });
+            if (typeof showPage === 'function') showPage('manager');
+            setTimeout(function () { if (typeof switchMgrTab === 'function') switchMgrTab('jazzcash'); }, 200);
+          } catch (e) {
+            if (typeof toast === 'function') toast('⚠ ' + e.message, 'e');
+          }
         }
         break;
       }
       case 'editJazzCashEntry':
-        if (typeof jcEditEntry === 'function') jcEditEntry(p[0]);
+        _aiEditJazzCashEntry(p[0]);
         break;
       case 'deleteJazzCashEntry':
-        if (typeof jcDeleteEntry === 'function') jcDeleteEntry(p[0]);
+        if (typeof LedgerActions !== 'undefined') LedgerActions.removeEntry(p[0]);
         break;
       // Notes & Sheets
       // BUG FIX (found during Repository migration audit): all three cases

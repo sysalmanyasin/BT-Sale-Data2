@@ -140,6 +140,10 @@ function _buildPayload() {
     assistant: (typeof aimBuildAssistantPayload === 'function') ? aimBuildAssistantPayload() : null,
     jazzcash: JSON.parse(Repository.getItem(JC_KEY)       || 'null'),
     jcTally:  JSON.parse(Repository.getItem(JC_TALLY_KEY) || 'null'),
+    // Generalized Ledger (Expense, Jazz Cash's Daily Ledger, any custom
+    // "Other Section") — was missing from sync entirely until now.
+    ledger:            JSON.parse(Repository.getItem(LEDGER_KEY)            || 'null'),
+    ledgerCustomTypes: JSON.parse(Repository.getItem(LEDGER_CUSTOM_TYPES_KEY) || 'null'),
     notes:    JSON.parse(Repository.getItem('bt_notes_v1') || '[]'),
     colConfig: {
       hidden: JSON.parse(Repository.getItem('bt_col_config')  || '[]'),
@@ -305,6 +309,42 @@ function mergeIncomingData(data, isPull = false) {
     });
     const merged = { accounts: Object.values(acctById), snapshots: Object.values(snapByDate) };
     Actions.saveFeatureData(JC_TALLY_KEY, JSON.stringify(merged));
+  }
+
+  // ── Generalized Ledger — entries merged by id, openingBalances merged
+  // per ledgerType, same local-wins-on-push / remote-wins-on-pull
+  // convention as JazzCash above (was missing from sync entirely until
+  // now — a real gap, since this is where live financial data now lives) ──
+  if (data.ledger) {
+    const local  = JSON.parse(Repository.getItem(LEDGER_KEY) || 'null') || { entries: [], openingBalances: {} };
+    const remote = data.ledger;
+    const byId = {};
+    (local.entries || []).forEach(e => { byId[e.id] = e; });
+    (remote.entries || []).forEach(e => {
+      if (!e || !e.id) return;
+      if (isPull) byId[e.id] = e;
+      else if (!byId[e.id]) byId[e.id] = e;
+    });
+    const localOB = local.openingBalances || {}, remoteOB = remote.openingBalances || {};
+    const mergedOB = Object.assign({}, localOB);
+    Object.keys(remoteOB).forEach(t => {
+      if (isPull) mergedOB[t] = remoteOB[t];
+      else if (!(t in mergedOB)) mergedOB[t] = remoteOB[t];
+    });
+    Actions.saveFeatureData(LEDGER_KEY, JSON.stringify({ entries: Object.values(byId), openingBalances: mergedOB }));
+  }
+
+  // ── Custom "Other Sections" ledger-type definitions — merged by key,
+  // same convention ──
+  if (data.ledgerCustomTypes) {
+    const local  = JSON.parse(Repository.getItem(LEDGER_CUSTOM_TYPES_KEY) || 'null') || {};
+    const remote = data.ledgerCustomTypes;
+    const merged = Object.assign({}, local);
+    Object.keys(remote).forEach(t => {
+      if (isPull) merged[t] = remote[t];
+      else if (!(t in merged)) merged[t] = remote[t];
+    });
+    Actions.saveFeatureData(LEDGER_CUSTOM_TYPES_KEY, JSON.stringify(merged));
   }
 
   // ── Column / field manager config — small list, remote wins on pull,

@@ -109,6 +109,11 @@ async function driveBackupNow() {
       custom:  JSON.parse(Repository.getItem(CSEC_KEY)||'{}'),
       jazzcash: JSON.parse(Repository.getItem(JC_KEY)       || 'null'),
       jcTally:  JSON.parse(Repository.getItem(JC_TALLY_KEY) || 'null'),
+      // Generalized Ledger (Expense, Jazz Cash's Daily Ledger, any custom
+      // "Other Section") — was missing from backup/sync entirely until
+      // now; a real gap, since this is where live financial data now lives.
+      ledger:            JSON.parse(Repository.getItem(LEDGER_KEY)            || 'null'),
+      ledgerCustomTypes: JSON.parse(Repository.getItem(LEDGER_CUSTOM_TYPES_KEY) || 'null'),
       colConfig: {
         hidden: JSON.parse(Repository.getItem('bt_col_config')  || '[]'),
         custom: JSON.parse(Repository.getItem('bt_custom_cols') || '[]')
@@ -277,13 +282,32 @@ async function _driveRestoreFile(fileId, label) {
       cur.snapshots = Object.values(snapByDate);
       Actions.saveFeatureData(JC_TALLY_KEY, JSON.stringify(cur));
     }
+    // Restore generalized Ledger (entries merged by id — never drop local
+    // entries; openingBalances merged per ledgerType, fill gaps only)
+    if (data.ledger && typeof data.ledger === 'object') {
+      const cur = JSON.parse(Repository.getItem(LEDGER_KEY)||'null') || { entries:[], openingBalances:{} };
+      const byId = {}; (cur.entries||[]).forEach(e => byId[e.id]=e);
+      (data.ledger.entries||[]).forEach(e => { if (e && e.id && !byId[e.id]) byId[e.id]=e; });
+      cur.entries = Object.values(byId);
+      cur.openingBalances = cur.openingBalances || {};
+      Object.keys(data.ledger.openingBalances||{}).forEach(t => {
+        if (!(t in cur.openingBalances)) cur.openingBalances[t] = data.ledger.openingBalances[t];
+      });
+      Actions.saveFeatureData(LEDGER_KEY, JSON.stringify(cur));
+    }
+    // Restore custom "Other Sections" ledger-type definitions (fill gaps only)
+    if (data.ledgerCustomTypes && typeof data.ledgerCustomTypes === 'object') {
+      const cur = JSON.parse(Repository.getItem(LEDGER_CUSTOM_TYPES_KEY)||'null') || {};
+      Object.keys(data.ledgerCustomTypes).forEach(t => { if (!cur[t]) cur[t] = data.ledgerCustomTypes[t]; });
+      Actions.saveFeatureData(LEDGER_CUSTOM_TYPES_KEY, JSON.stringify(cur));
+    }
     // Restore column/field config (only if nothing set locally yet)
     if (data.colConfig && typeof data.colConfig === 'object') {
       if (!Repository.getItem('bt_col_config')  && Array.isArray(data.colConfig.hidden)) Actions.saveFeatureData('bt_col_config',  JSON.stringify(data.colConfig.hidden));
       if (!Repository.getItem('bt_custom_cols') && Array.isArray(data.colConfig.custom)) Actions.saveFeatureData('bt_custom_cols', JSON.stringify(data.colConfig.custom));
       if (typeof fmLoad === 'function') fmLoad();
     }
-    driveLog(`✓ Restored from ${label}: +${mN} months, +${dN} days of sales data. Manager/Petty/Custom/JazzCash/Fields merged.`,'ok');
+    driveLog(`✓ Restored from ${label}: +${mN} months, +${dN} days of sales data. Manager/Petty/Custom/JazzCash/Ledger/Fields merged.`,'ok');
     toast(`✓ Restored from ${label}`);
     if (typeof showPage==='function') showPage(_curPage||'ai');
   } catch(e) {

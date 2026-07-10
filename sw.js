@@ -5,7 +5,7 @@
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v8.8'; // v8.8: new Ledger module scaffolded (dormant, not yet wired into UI)
+const CACHE_NAME = 'bt-sales-v9.1'; // v9.1: Jazz Cash Daily Ledger migrated onto the generalized Ledger (jazz-cash.js keeps only Balance Tally now); drive.js/supabase.js gained Ledger backup+sync (real gap — Expense/Custom Sections data wasn't backed up or synced before this)
 
 const APP_SHELL = [
   './',
@@ -48,6 +48,7 @@ const APP_SHELL = [
   './js/ledger-store.js',
   './js/ledger-actions.js',
   './js/ledger-migration.js',
+  './js/ledger-page.js',
   './js/conflict-ui.js',
   './js/supabase.js',
 

@@ -38,8 +38,8 @@ regressions via `diff` against your original upload — nothing guessed):
 - Floor 4–5 — 32 of 41 files namespaced (down from ~700 loose global functions to properly scoped, private-by-default code). Every wrap included tracing for hidden monkey-patches (3 different files patch `manager.js`'s tab-switching and page-loading; `ui.js`'s page navigation is patched by `ui-extras.js`) — each one traced and verified working correctly in isolated tests before being included.
 
 ## What's left (all deliberate, not overlooked)
-- `jazz-cash.js`, `notes-sheets.js` — will be rewritten as real features soon (generalized Ledger, Notes & Sheets expansion), so namespacing them now would be wasted work.
-- `supabase.js`, `sync-center.js` — the real multi-device sync mechanism; the safe scope of change is small relative to the risk, and it can't be verified without real multi-device testing.
+- `notes-sheets.js` — will be rewritten as a real feature soon (Notes & Sheets expansion), so namespacing it now would be wasted work.
+- `supabase.js`, `sync-center.js` — the real multi-device sync mechanism; the safe scope of change is small relative to the risk, and it can't be verified without real multi-device testing. (This session added new `ledger`/`ledgerCustomTypes` payload keys to both — additive only, same merge convention as the existing `jazzcash` block — but did not touch the sync engine itself.)
 - `bt-format.js`, `conflict-ui.js`, `diff-report.js`, `knowledge-sheet.js`, `targets.js` — genuinely nothing left to hide in these; every function is already needed externally.
 - `ai-memory.js` — still corrupted from before this session began (contains only placeholder text); left alone per your earlier instruction.
 
@@ -82,13 +82,38 @@ we start over on the diagnosis.
 
 
 ### Manager tab
-- [ ] Staff Registry: add / edit / toggle-active / delete an employee
-- [ ] Salary, Generic, Expense, Credit, Petty, Incentive tabs all load and save correctly
-- [ ] Jazz Cash ledger works (add entry, balance updates)
-- [ ] Switching between Manager tabs works correctly
-- [ ] Sheets & Notes loads/renders
-- [ ] Each report print button (Salary/Generic/Expense/Credit/Petty/Incentive) — content visible, not blank
-- [ ] "Copy to Next Month" works
+- [x] Staff Registry: add / edit / toggle-active / delete an employee (confirmed working)
+- [x] Salary, Generic, Credit, Petty (the simple one), Incentive tabs all load and save correctly (confirmed working)
+- [ ] **Jazz Cash — re-verify, implementation changed this session** (see below; the "confirmed working" note that used to be here was against the *old* implementation, now retired)
+- [x] Switching between Manager tabs works correctly (confirmed working)
+- [x] Sheets & Notes loads/renders (confirmed working)
+- [x] "Copy to Next Month" works (confirmed working)
+
+### Jazz Cash — Daily Ledger now on the generalized Ledger (new this session)
+- [ ] Open Manager → Jazz Cash. If old data exists, a yellow "Old Jazz Cash data found" banner should appear with a Migrate button.
+- [ ] Click Migrate, confirm the dialog. Toast should report the number of entries migrated.
+- [ ] **Compare the resulting balance to whatever the old ledger's balance was** (screenshot it beforehand if possible) — this is the one thing that hasn't been verified against real data, only sample data.
+- [ ] Add a new entry (with a shift selected) — balance and running-balance column update correctly.
+- [ ] Delete an entry — balance recalculates correctly.
+- [ ] "⚙ Set Opening" button prompts and updates the opening balance correctly.
+- [ ] Balance Tally sub-tab still works exactly as before (unchanged this session) — its "Jazz Cash Balance (Ledger)" row should reflect the *new* Ledger balance, not the old one.
+- [ ] AI chat command still works, e.g. "Jazz Cash 5000 for Ali" or "jazz cash balance" — should add to / read from the new Ledger now, not the old one.
+- [ ] Google Drive backup / Supabase sync — after adding a Jazz Cash entry, trigger a manual backup/push and confirm no console errors (the payload now includes `ledger`/`ledgerCustomTypes` keys that didn't exist before this session).
+- [ ] Print buttons (Salary/Generic/Credit/Petty/Incentive) — content visible, not blank (**still pending your desktop-print diagnostic**)
+
+### NEW — Ledger-based Expense (replaces the old Patty/Expenses tab)
+- [ ] Opening the "🧾 B. Patty/Expenses" tab shows the new Ledger view (add-entry form + running balance table), not the old spreadsheet-style table
+- [ ] Add an entry (pick a category — Bill Amount/Fuel-HO/Soap-Tissue/Refreshment/Extra/Patty H/O — amount, description) — appears in the table immediately, balance updates
+- [ ] Delete an entry — removed immediately, balance recalculates
+- [ ] **The actual bug this was built to fix:** add an entry, then trigger a sync (or just wait ~1 minute for a poll cycle) — entry should still be there, not silently lost
+- [ ] Navigate away to another Manager tab and back — entries and balance still correct
+
+### NEW — Ledger-based Other Sections (replaces the old Custom Sections tab)
+- [ ] Opening "＋ C. New Sections" shows the new Other Sections manager (list of sections + "Create New Section" button), not the old month-scoped custom-sections UI
+- [ ] Create a new section: give it a name, add 1+ categories (each with a name and inflow/outflow direction), confirm it's created
+- [ ] Click into the new section — opens its own ledger view (add entry, running balance, same as Expense)
+- [ ] "← Back to Sections" returns to the section list
+- [ ] Reload the page (or sign out/in) — the custom section and its entries are still there (this is the point of the persisted registry — confirm it actually survives, not just "looks like it works")
 
 ### Field Manager (Tools)
 - [ ] Open Field Manager, toggle a field on/off, save — reflects on Sale Data entry form

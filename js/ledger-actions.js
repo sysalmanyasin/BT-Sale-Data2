@@ -37,3 +37,9 @@ export const LedgerActions = (function () {
   return { addEntry, updateEntry, removeEntry };
 
 })();
+
+// ── Window bridge — classic-script consumers (ai-bridge.js's Jazz Cash
+// intent executors, ledger-migration's callers) use LedgerActions the
+// same way Repository/Actions are used elsewhere: the one door for
+// writes, never LedgerStore's underscore-prefixed internals directly.
+window.LedgerActions = LedgerActions;
