@@ -1,11 +1,11 @@
 /* ═══════════════════════════════════════════════════════════════
-   BT Sales IC — Service Worker  v8.3
+   BT Sales IC — Service Worker  v10
    Strategy: Network-first for same-origin app shell (fresh on connect,
    cached fallback offline). CDN libs use stale-while-revalidate.
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v9.2'; // v9.2: ai-bridge.js's Expense/Custom Sections AI-chat commands rewired to the Ledger (were silently dead — reading/writing retired storage); Jazz Cash date-format bug fixed (DD/Mon/YYYY was corrupting Ledger sort order); app-context.js's deep-context dump rewired off retired Expense/Custom Sections storage, and now includes Jazz Cash for the first time; renderLedgerView (ledger-page.js) gained inline edit-in-place for every entry, covering Expense/Jazz Cash/Other Sections at once
+const CACHE_NAME = 'bt-sales-v10'; // v10: ai-bridge.js's Expense/Custom Sections AI-chat commands rewired to the Ledger (were silently dead — reading/writing retired storage); Jazz Cash date-format bug fixed (DD/Mon/YYYY was corrupting Ledger sort order); app-context.js's deep-context dump rewired off retired Expense/Custom Sections storage, and now includes Jazz Cash for the first time; renderLedgerView (ledger-page.js) gained inline edit-in-place for every entry, covering Expense/Jazz Cash/Other Sections at once
 
 const APP_SHELL = [
   './',
