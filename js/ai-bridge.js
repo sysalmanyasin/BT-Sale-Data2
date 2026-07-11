@@ -730,7 +730,8 @@ function _aiParseNotesCommand(text) {
   // BUG FIX: this used to emit { action:'showPage', params:['notes-sheets'] }
   // — but there's no page-notes-sheets element, so showPage() hid every
   // page and showed a blank screen. Now routes through the fixed
-  // 'showNotesPanel' action, which correctly opens Manager > Sheets tab.
+  // 'showNotesPanel' action, which opens the Notes & Sheets peer
+  // dashboard directly (V2 plan §5 — no longer a Manager sub-tab).
   if (/^(open|go to|show|kholo|jao)\s+(notes|sheets|notes.?(and|&)?.?sheets|notebook)/i.test(t) ||
       t === 'notes' || t === 'sheets') {
     return {
@@ -940,15 +941,12 @@ function _aiOpenSheetByName(name) {
 
 // Called from the chat "add note" button / intent
 function _aiAddNoteFromChat() {
-  if (typeof showPage === 'function') showPage('manager');
+  if (typeof showPage === 'function') showPage('notesheets');
   setTimeout(function () {
-    if (typeof switchMgrTab === 'function') switchMgrTab('sheets');
+    if (typeof _nsSetPanel === 'function') _nsSetPanel('notes');
     setTimeout(function () {
-      if (typeof _nsSetPanel === 'function') _nsSetPanel('notes');
-      setTimeout(function () {
-        if (typeof _nsNewNote === 'function') _nsNewNote();
-      }, 200);
-    }, 250);
+      if (typeof _nsNewNote === 'function') _nsNewNote();
+    }, 200);
   }, 250);
 }
 
@@ -959,19 +957,25 @@ function _aiParseNavCommand(text) {
   if (!isNavPhrase) return null;
 
   const pages = {
-    dashboard: ['dashboard','home','ghar','main','summary'],
-    index:     ['index','month index','all months'],
-    data:      ['data','daily data','records','daily records'],
-    entry:     ['entry','add entry','daily entry','enter data','data entry'],
-    report:    ['report','sale report','sales report','monthly report'],
-    diff:      ['diff','diff report','difference'],
-    tools:     ['tools','settings page','supabase'],
-    manager:   ['manager','mgr','management'],
+    dashboard:  ['dashboard','home','ghar','main','summary'],
+    index:      ['index','month index','all months'],
+    data:       ['data','daily data','records','daily records'],
+    entry:      ['entry','add entry','daily entry','enter data','data entry'],
+    report:     ['report','sale report','sales report','monthly report'],
+    diff:       ['diff','diff report','difference'],
+    tools:      ['tools','settings page','supabase'],
+    manager:    ['manager','mgr','management'],
+    // Notes & Sheets is its own peer dashboard now (V2 plan §5), not a
+    // Manager sub-tab — so it belongs in this showPage() table, not the
+    // switchMgrTab() `tabs` table below.
+    notesheets: ['notes-sheets', 'notes sheets', 'notepad', 'spreadsheet', 'notes', 'sheets'],
   };
+  const _pageLabels = { notesheets: 'Notes & Sheets' };
   for (const [page, keywords] of Object.entries(pages)) {
     if (keywords.some(kw => t.includes(kw))) {
+      const label = _pageLabels[page] || (page.charAt(0).toUpperCase() + page.slice(1));
       return {
-        text: '\u2192 Opening <b>' + page.charAt(0).toUpperCase() + page.slice(1) + '</b>.',
+        text: '\u2192 Opening <b>' + label + '</b>.',
         intent: { action: 'showPage', params: [page] },
       };
     }
@@ -984,11 +988,6 @@ function _aiParseNavCommand(text) {
     petty:     ['petty detail','petty cash detail'],
     incentive: ['incentive','incentive calculator'],
     staff:     ['staff','employees','staff list','staff registry'],
-    // BUG FIX: 'notes-sheets' used to be in the `pages` table above, which
-    // emitted showPage('notes-sheets') — but that page doesn't exist, so
-    // saying "spreadsheet" or "notepad" to the AI would blank the whole
-    // screen. Notes/Sheets is a Manager tab, so it belongs here instead.
-    sheets:    ['notes-sheets', 'notes sheets', 'notepad', 'spreadsheet', 'notes', 'sheets'],
   };
   for (const [tab, keywords] of Object.entries(tabs)) {
     if (keywords.some(kw => t.includes(kw))) {
@@ -2820,56 +2819,47 @@ function aiBridgeExecuteIntent(intent) {
       // page-notes-sheets element anywhere in index.html. showPage() hides
       // EVERY page first, then fails to find the target and shows nothing —
       // leaving the user looking at a completely blank screen. Notes/Sheets
-      // actually lives inside the Manager page's "sheets" tab, same as the
-      // Command Hub's own "Open Sheets" quick action correctly does it.
+      // is its own peer dashboard now (V2 plan §5) — showPage('notesheets')
+      // renders it directly, no Manager sub-tab hop needed anymore.
       case 'addNote': {
-        // Navigate to Manager > Sheets tab, open editor with pre-filled content
-        if (typeof showPage === 'function') showPage('manager');
+        // Navigate to Notes & Sheets, open editor with pre-filled content
+        if (typeof showPage === 'function') showPage('notesheets');
         setTimeout(function () {
-          if (typeof switchMgrTab === 'function') switchMgrTab('sheets');
+          if (typeof _nsSetPanel === 'function') _nsSetPanel('notes');
           setTimeout(function () {
-            if (typeof _nsSetPanel === 'function') _nsSetPanel('notes');
-            setTimeout(function () {
-              if (typeof _nsNewNote === 'function') {
-                _nsNewNote();
-                // Pre-fill body if content was provided
-                if (p[0]) {
-                  setTimeout(function () {
-                    const bodyEl = document.getElementById('nse-body');
-                    if (bodyEl) bodyEl.value = p[0];
-                    const titleEl = document.getElementById('nse-title');
-                    // Auto-generate title from first line if no title
-                    if (titleEl && !titleEl.value) {
-                      titleEl.value = p[0].slice(0, 50).split('\n')[0];
-                    }
-                  }, 150);
-                }
+            if (typeof _nsNewNote === 'function') {
+              _nsNewNote();
+              // Pre-fill body if content was provided
+              if (p[0]) {
+                setTimeout(function () {
+                  const bodyEl = document.getElementById('nse-body');
+                  if (bodyEl) bodyEl.value = p[0];
+                  const titleEl = document.getElementById('nse-title');
+                  // Auto-generate title from first line if no title
+                  if (titleEl && !titleEl.value) {
+                    titleEl.value = p[0].slice(0, 50).split('\n')[0];
+                  }
+                }, 150);
               }
-            }, 200);
-          }, 250);
-        }, 250);
-        break;
-      }
-      case 'showNotesPanel': {
-        if (typeof showPage === 'function') showPage('manager');
-        const panelTarget = p[0] || 'notes';
-        setTimeout(function () {
-          if (typeof switchMgrTab === 'function') switchMgrTab('sheets');
-          setTimeout(function () {
-            if (typeof _nsSetPanel === 'function') _nsSetPanel(panelTarget);
+            }
           }, 200);
         }, 250);
         break;
       }
-      case 'openSheetFile': {
-        if (typeof showPage === 'function') showPage('manager');
+      case 'showNotesPanel': {
+        if (typeof showPage === 'function') showPage('notesheets');
+        const panelTarget = p[0] || 'notes';
         setTimeout(function () {
-          if (typeof switchMgrTab === 'function') switchMgrTab('sheets');
+          if (typeof _nsSetPanel === 'function') _nsSetPanel(panelTarget);
+        }, 250);
+        break;
+      }
+      case 'openSheetFile': {
+        if (typeof showPage === 'function') showPage('notesheets');
+        setTimeout(function () {
+          if (typeof _nsSetPanel === 'function') _nsSetPanel('sheets');
           setTimeout(function () {
-            if (typeof _nsSetPanel === 'function') _nsSetPanel('sheets');
-            setTimeout(function () {
-              if (typeof _nsSFLoad_ === 'function') _nsSFLoad_(p[0]);
-            }, 200);
+            if (typeof _nsSFLoad_ === 'function') _nsSFLoad_(p[0]);
           }, 200);
         }, 250);
         break;

@@ -25,6 +25,48 @@ function showPage(id) {
     if (_subnav) _subnav.style.display = _inSaleData ? '' : 'none';
     const _bnavSub = document.getElementById('bnav-saledata-sub');
     if (_bnavSub) _bnavSub.style.display = _inSaleData ? '' : 'none';
+
+    // ── Domain isolation (V2 plan §2) — Sales and Manager are separate
+    // peer dashboards. body[data-domain] drives the CSS that hides the
+    // other domain's nav tabs and re-themes Manager's accent color
+    // (see nav.css). Cover/CommandHub/Tools aren't owned by either
+    // domain, so they don't set one — both stay visible from there.
+    const _salesDomainPages = ['dashboard'].concat(_saleDataPages);
+    const _managerDomainPages = ['manager'];
+    const _notesheetsDomainPages = ['notesheets'];
+    const _closingDomainPages = ['closing'];
+    const _auditDomainPages = ['audit']; // V2 plan §12 — Pharmacy Audit Hub embed
+    const _domain = _salesDomainPages.indexOf(id) !== -1 ? 'sales'
+                  : _managerDomainPages.indexOf(id) !== -1 ? 'manager'
+                  : _notesheetsDomainPages.indexOf(id) !== -1 ? 'notesheets'
+                  : _closingDomainPages.indexOf(id) !== -1 ? 'closing'
+                  : _auditDomainPages.indexOf(id) !== -1 ? 'audit'
+                  : '';
+    document.body.dataset.domain = _domain;
+    const _brandSub = document.getElementById('nbrand-sub-label');
+    if (_brandSub) {
+      _brandSub.textContent = _domain === 'sales'      ? 'Sales Dashboard'
+                             : _domain === 'manager'    ? 'Manager Dashboard'
+                             : _domain === 'notesheets' ? 'Notes & Sheets'
+                             : _domain === 'closing'    ? 'Closing'
+                             : _domain === 'audit'      ? 'Audit'
+                             : 'Intelligence Centre';
+    }
+    if (id === 'closing') {
+      // Lazy-load — the iframe only ever fetches closing.duapharma.com
+      // once you actually navigate here, not on every app boot.
+      const _cIframe = document.getElementById('closing-iframe');
+      if (_cIframe && !_cIframe.getAttribute('src')) _cIframe.setAttribute('src', _cIframe.dataset.src);
+      if (typeof closingBridgeRefresh === 'function') closingBridgeRefresh();
+    }
+    if (id === 'audit') {
+      // Lazy-load — the iframe only ever fetches random.duapharma.com
+      // once you actually navigate here, not on every app boot (V2 §12).
+      const _aIframe = document.getElementById('audit-iframe');
+      if (_aIframe && !_aIframe.getAttribute('src')) _aIframe.setAttribute('src', _aIframe.dataset.src);
+      if (typeof auditBridgeRefresh === 'function') auditBridgeRefresh();
+    }
+
     if (_inSaleData) {
       document.querySelectorAll('.ntab[data-group="saledata"],.bnav-item[data-group="saledata"]').forEach(t=>t.classList.add('active'));
     }
@@ -35,6 +77,8 @@ function showPage(id) {
     // Announce navigation through EventBus so any subscriber can react
     // (closes MF-03 — _curPage was previously a silent bare `let`).
     if (typeof EventBus !== 'undefined') EventBus.notify('nav:changed', { page: id });
+    if(id==='cover') { if(typeof renderCoverDashboard==='function') renderCoverDashboard(); }
+    if(id==='notesheets') { if(typeof renderNotesSheets==='function') renderNotesSheets(); }
     if(id==='commandhub') { if(typeof loadCommandHubPage==='function') loadCommandHubPage(); }
     if(id==='tools') { loadToolsPage(); }
     if(id==='manager') { loadManagerPage(); }

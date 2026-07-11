@@ -52,6 +52,20 @@ const Analytics = (function () {
                 .reduce((s, d) => s + n(d[field]), 0);
   }
 
+  // Last calendar day-of-month with an actual (non-zero) DAILY entry for
+  // the given month. This is "days elapsed" for every pace/forecast/MTD
+  // calculation below — deliberately NOT today's calendar date, because
+  // the day's sale is typically entered the next day (today is the 10th,
+  // but the last saved entry is the 9th's — elapsed is 9, not 10, and the
+  // remaining-days math is over the true days left in the month, not one
+  // short). Single source of truth so getDashboardKPIs() and
+  // getTargetPaceForMonth() can never drift from each other on this.
+  function _lastFilledDay(monthYear) {
+    return Math.max(0, ...DAILY
+      .filter(d => d.Month_Year === monthYear && n(d.TOTAL) > 0)
+      .map(d => _dayOf(d.Date)));
+  }
+
   // ── Manager data queries ──────────────────────────────────────────
 
   // Returns true if the given Month_Year has any non-trivial manager data
@@ -213,11 +227,7 @@ const Analytics = (function () {
     const isLive  = lat.Month_Year === curMonthYear;
 
     // Last day with actual data in the current month
-    const lastFilledDay = isLive
-      ? Math.max(0, ...DAILY
-          .filter(d => d.Month_Year === lat.Month_Year && n(d.TOTAL) > 0)
-          .map(d => _dayOf(d.Date)))
-      : 0;
+    const lastFilledDay = isLive ? _lastFilledDay(lat.Month_Year) : 0;
 
     const D = lastFilledDay;
     const vsLabel = isLive ? 'vs prev (day 1–' + D + ')' : 'vs prev';
@@ -365,13 +375,27 @@ const Analytics = (function () {
   // Extracted from dashboard-insights.js's _dbiBuildTargetPace(). Returns
   // plain numbers; dashboard-insights.js only formats them into HTML.
   function getTargetPaceForMonth(monthYear, tgts) {
-    const now = new Date();
     const tgt = n((tgts || {})[monthYear]);
     if (!tgt) return null;
 
-    const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    const daysElapsed = now.getDate();
-    const daysLeft     = daysInMonth - daysElapsed;
+    // Derive daysInMonth from the actual target month (not always "now"'s
+    // month) — same reasoning getDashboardKPIs() already uses for daysInMon,
+    // so a report run for a different month never inherits the wrong month
+    // length.
+    const [_pMonName, _pYrStr] = String(monthYear).split(' ');
+    const _pMonIdx = _MN.indexOf(_pMonName);
+    const _pYrNum  = parseInt(_pYrStr, 10);
+    const now = new Date();
+    const daysInMonth = (_pMonIdx >= 0 && !isNaN(_pYrNum))
+      ? new Date(_pYrNum, _pMonIdx + 1, 0).getDate()
+      : new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+
+    // Days elapsed = last day with an actual entered sale, not today's
+    // calendar date — see _lastFilledDay()'s header note. If today is the
+    // 10th but only the 9th has been entered so far, elapsed is 9 and
+    // daysLeft is the true 22 remaining days of the month, not 21.
+    const daysElapsed = _lastFilledDay(monthYear);
+    const daysLeft     = Math.max(0, daysInMonth - daysElapsed);
     const monthRec     = MONTHLY.find(m => m.Month_Year === monthYear);
     const soFar         = n((monthRec && monthRec.TOTAL) || 0);
     const pct           = tgt > 0 ? Math.min(100, Math.round(soFar / tgt * 100)) : 0;

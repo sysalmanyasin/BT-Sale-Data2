@@ -19,13 +19,26 @@ let _dashCreditMonthOverride = '';
 // Re-renders the credit block and the Working Summary for the chosen month.
 function dashSetCreditMonth(my) {
   _dashCreditMonthOverride = my;
-  const kd = Analytics.getDashboardKPIs();
-  const lat = kd ? kd.lat : null;
-  const resolved = my
-    || Analytics.latestManagerMonth()
-    || (lat ? Analytics.latestSalesMonth(lat) : '');
+  const resolved = my || _dashRunningMonth();
   buildCreditSection(resolved);
   if (typeof populateDashWorking === 'function') populateDashWorking(resolved || '');
+}
+
+// The default month for every "current" dashboard card — always the
+// running calendar month from day 1, even before any Manager data (or
+// even any sales) has been entered for it yet. Previously this defaulted
+// to Analytics.latestManagerMonth()/latestSalesMonth(), which silently
+// fell back to the last month that happened to have data — so on day 1
+// of a new month (before Jazz Cash/Expense/credit entries exist yet) the
+// dashboard kept showing last month instead. A past month is still one
+// dropdown pick away (see _dashCreditMonthOptions()); it's just never the
+// unrequested default again.
+function _dashRunningMonth() {
+  return (typeof BTDate !== 'undefined' && BTDate.currentMonthYear)
+    ? BTDate.currentMonthYear()
+    : (() => { const d = new Date();
+        const MN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        return MN[d.getMonth()] + ' ' + d.getFullYear(); })();
 }
 
 // Returns a sorted list of the last N month-year strings that have either
@@ -129,12 +142,10 @@ function buildDashboard() {
   buildDayOfWeek();
   buildBestWorstPerYear();
 
-  // Manager month: use user override if set, otherwise auto-detect.
-  // _dashCreditMonthOverride is set by dashSetCreditMonth() when the user
-  // picks a month from the picker inside the credit section.
-  const managerMonth = _dashCreditMonthOverride
-    || Analytics.latestManagerMonth()
-    || Analytics.latestSalesMonth(lat);
+  // Manager month: use user override if set, otherwise the running
+  // calendar month from day 1 (see _dashRunningMonth() for why this no
+  // longer falls back to "last month with manager data" by default).
+  const managerMonth = _dashCreditMonthOverride || _dashRunningMonth();
   buildCreditSection(managerMonth);
   if (typeof populateDashWorking === 'function') populateDashWorking(managerMonth || '');
 }

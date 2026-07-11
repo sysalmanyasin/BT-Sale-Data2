@@ -123,6 +123,7 @@ export const Actions = (function () {
   function saveCustomSections(json)    { return saveFeatureData('mw_custom_sections_v1', json); }
   function saveFieldConfig(key, json)  { return saveFeatureData(key, json); } // key: bt_col_config | bt_custom_cols
   function saveNotes(json)             { return saveFeatureData('bt_notes_v1', json); }
+  function saveStaffNotes(json)        { return saveFeatureData('bt_staff_notes_v1', json); } // V2 plan §4 — Staff Card Notes tab
   function saveSheets(json)            { return saveFeatureData('bt_sheets_v2', json); } // v2 = new format with cell formatting — was hardcoded to v1, a stale key (audit-caught bug)
   function saveSheetFiles(json)        { return saveFeatureData('bt_sheet_files_v1', json); }
   function saveAiInstructions(json)    { return saveFeatureData('bt_ai_instructions_v1', json); }
@@ -166,7 +167,7 @@ export const Actions = (function () {
     // feature data
     saveFeatureData, loadFeatureData, clearFeatureData,
     saveManagerWork, saveTargets, saveCustomSections, saveFieldConfig,
-    saveNotes, saveSheets, saveSheetFiles, saveAiInstructions,
+    saveNotes, saveStaffNotes, saveSheets, saveSheetFiles, saveAiInstructions,
     saveAiMemoryItem, saveCommandHubRecents, saveAppSetting,
     // navigation
     navigate,

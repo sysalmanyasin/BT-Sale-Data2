@@ -22,7 +22,6 @@ function switchMgrTab(tab) {
   if (sec) sec.style.display = '';
   if (tab === 'staff') renderStaffRegistry();
   if (tab === 'jazzcash' && typeof renderJazzCash === 'function') renderJazzCash();
-  if (tab === 'sheets' && typeof renderNotesSheets === 'function') renderNotesSheets();
   if (tab === 'expense' && typeof renderLedgerView === 'function') {
     renderLedgerView('ledger-expense-container', 'expense', 'Expense');
   }
@@ -1331,6 +1330,11 @@ function openStaffCard(i) {
   const sid = emp.staffId || ('EMP-' + String(i + 1).padStart(3, '0'));
   document.getElementById('sc-title-id').textContent = sid;
   document.getElementById('sc-title-name').textContent = emp.name || '(unnamed)';
+  // Stable key for the Notes tab (emp.id, falling back to staffId/name for
+  // older records) — set on the hidden field so switchStaffCardTab can
+  // read it without needing STAFF[i] to still be in scope.
+  document.getElementById('sc-notes-key').value =
+    (typeof staffNotesKeyFor === 'function') ? staffNotesKeyFor(emp) : (emp.id || sid || emp.name || '');
   // Fill form fields
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
   set('sc-f-staffId', sid);
@@ -1385,9 +1389,13 @@ function saveStaffCard() {
 
 function switchStaffCardTab(tab) {
   document.querySelectorAll('.sc-tab').forEach(b => b.classList.toggle('active', b.dataset.sctab === tab));
-  document.querySelectorAll('#sc-panel-details,#sc-panel-credit').forEach(p => { p.style.display = 'none'; });
+  document.querySelectorAll('#sc-panel-details,#sc-panel-credit,#sc-panel-notes').forEach(p => { p.style.display = 'none'; });
   const panel = document.getElementById('sc-panel-' + tab);
   if (panel) panel.style.display = '';
+  if (tab === 'notes') {
+    const key = document.getElementById('sc-notes-key')?.value;
+    if (key && typeof renderStaffNotesPanel === 'function') renderStaffNotesPanel(key);
+  }
 }
 
 function renderStaffCreditHistory(empName) {
@@ -1479,7 +1487,7 @@ function initApp() {
   // regardless of the current page call rebuildAll() directly.
   _initEventBusSubscribers();
 
-  let target = 'dashboard';
+  let target = 'cover';
   try {
     const saved = sessionStorage.getItem('bt_nav_target');
     if (saved && document.getElementById('page-' + saved)) target = saved;

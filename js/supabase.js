@@ -145,6 +145,9 @@ function _buildPayload() {
     ledger:            JSON.parse(Repository.getItem(LEDGER_KEY)            || 'null'),
     ledgerCustomTypes: JSON.parse(Repository.getItem(LEDGER_CUSTOM_TYPES_KEY) || 'null'),
     notes:    JSON.parse(Repository.getItem('bt_notes_v1') || '[]'),
+    // Staff Card Notes tab (V2 plan §4) — same id-merge convention as
+    // the Notes & Sheets `notes` key above.
+    staffNotes: JSON.parse(Repository.getItem('bt_staff_notes_v1') || '[]'),
     colConfig: {
       hidden: JSON.parse(Repository.getItem('bt_col_config')  || '[]'),
       custom: JSON.parse(Repository.getItem('bt_custom_cols') || '[]')
@@ -376,6 +379,26 @@ function mergeIncomingData(data, isPull = false) {
     Actions.saveFeatureData('bt_notes_v1', JSON.stringify(Object.values(byId)));
     if (isPull && typeof renderNotesSheets === 'function' && document.getElementById('mgr-sheets')) {
       renderNotesSheets();
+    }
+  }
+
+  // ── Staff Card Notes (V2 plan §4) — merged by id, same convention as
+  // the Notes & Sheets `notes` key above. Re-renders live if the Notes
+  // tab on a staff card happens to be open during a pull. ──
+  if (data.staffNotes && data.staffNotes.length) {
+    const local = JSON.parse(Repository.getItem('bt_staff_notes_v1') || '[]');
+    const byId  = {};
+    local.forEach(n => { if (n && n.id) byId[n.id] = n; });
+    data.staffNotes.forEach(n => {
+      if (!n || !n.id) return;
+      if (isPull) byId[n.id] = n;
+      else if (!byId[n.id]) byId[n.id] = n;
+    });
+    Actions.saveFeatureData('bt_staff_notes_v1', JSON.stringify(Object.values(byId)));
+    if (isPull && typeof renderStaffNotesPanel === 'function') {
+      const key = document.getElementById('sc-notes-key')?.value;
+      const panel = document.getElementById('sc-panel-notes');
+      if (key && panel && panel.style.display !== 'none') renderStaffNotesPanel(key);
     }
   }
 
