@@ -91,6 +91,24 @@ to make each new one cheap: new Floor 2 state + Floor 1 Repository +
 Floor 3 Actions + reused Floor 4 components (`Ledger`, `Print`, chart
 components) + one Floor 5 page + one Cover Dashboard tile.
 
+**Status: LIVE — Sales/Manager domain isolation.** `showPage()` now
+classifies every page into a domain (`sales`: Dashboard + all Sale Data
+pages, `manager`: Manager, or `''` for the cross-domain utilities —
+Cover/CommandHub/Tools) and sets `body[data-domain]`. `nav.css` uses
+that attribute to hide the other domain's nav tabs entirely — while on
+a Manager page the Dashboard/Sale Data tabs don't exist in the nav at
+all, and vice versa; the only way across is through Cover (or
+CommandHub/Tools, which stay visible everywhere as cross-domain
+utilities, not owned by either dashboard). Manager also gets its own
+`--accent`/`--alt` re-theme (reuses the existing `--purple` token) that
+cascades to every button/tab/hover state already written against those
+variables — no per-component changes needed. The nav brand subtitle
+swaps between "Sales Dashboard" / "Manager Dashboard" / "Intelligence
+Centre" to reinforce which domain you're in. Verified with a real
+jsdom test against the actual `index.html` markup and `ui.js` logic —
+domain classification, brand-label swap, and the presence of the
+CSS hiding/retheme rules.
+
 ---
 
 ## 3. The generalized Ledger (replaces Jazz Cash + Expense/Petty/Other Sections as separate builds)
@@ -209,6 +227,18 @@ Existing fields/CRUD stay as-is. Each staff card gains a **3rd tab**:
   Supabase-backed, no messaging/external API. Purely a personal record
   ("met about attendance on 3 July", etc.), not staff-facing.
 
+**Status: LIVE.** `staff-notes.js` (Floor 1/2/3/5) is a real ES module —
+notes keyed by `emp.id` (stable since creation, falls back to
+`staffId`/name for older records), stored under `bt_staff_notes_v1`,
+persisted through a new `Actions.saveStaffNotes` verb. Wired into the
+staff card's 3rd tab (`sc-panel-notes`) via `switchStaffCardTab`, add/
+delete both re-render immediately. Included in the Supabase push/pull
+payload (`staffNotes` key) with the same id-based merge convention as
+the Notes & Sheets `notes` key — remote wins on pull, local wins on
+push (gap-fill only). Verified with a real jsdom test against the
+actual staff-card markup: add → render → per-staff isolation →
+persistence → delete.
+
 ---
 
 ## 5. Sheets & Notes — elevated to its own peer dashboard
@@ -225,6 +255,32 @@ over the "100x" timeframe, so the architecture goal here is specifically
 to make adding new sheet types/views cheap later, not to lock in a
 final feature list now.
 
+**Status: structural elevation LIVE — multi-sheet workbook model still
+open.** Notes & Sheets is now a genuine peer dashboard: own top/bottom
+nav tab, own page (`#page-notesheets`), own domain in the Sales/Manager
+domain-isolation system (§2/§1) — while inside it, the Sales and
+Manager tabs are hidden, and it gets its own accent color (green) that
+cascades through every button/tab already written against
+`var(--accent)`. The Cover Dashboard tile now links straight to it with
+real stats (note/sheet-file counts) instead of the old "inside Manager
+for now" placeholder.
+
+The 2600+/500+ lines of `notes-sheets.js`/`sheets-patch.js` were left
+completely untouched — both hardcode the `#mgr-sheets` container id
+throughout, so the container was *relocated* into the new page rather
+than renamed, reusing all of that proven logic with zero risk. Every
+call site that used to route through `showPage('manager')` +
+`switchMgrTab('sheets')` (CommandHub's quick actions, all 4 of
+ai-bridge's AI-chat intents, the AI's own page/tab keyword router) was
+updated to route straight to `showPage('notesheets')` instead — grepped
+clean of any remaining `switchMgrTab('sheets')` references. Verified
+with a real jsdom test against the actual `index.html`/`ui.js`: the
+container's new DOM parent, the old Manager tab button's removal, the
+domain classification, brand-label swap, and `renderNotesSheets()`
+actually firing through the `showPage()` dispatch. The multi-sheet
+*workbook* model itself (one file → many named sheets) is unstarted —
+today's version is still the single-flat-sheet-per-file model.
+
 ---
 
 ## 6. Inventory Audit & Cash Closing (Dropbox-fed)
@@ -232,6 +288,40 @@ final feature list now.
 Both apps already exist independently and keep running independently —
 this is a **read + re-analyze** integration, not a merge, not a data
 migration of those apps themselves.
+
+**Status: Cash Closing LIVE, both layers.** Analyzed the real
+`Closing-main` codebase (own 5-floor ES-module architecture, same
+philosophy as this app) and confirmed it's genuinely safe to integrate
+two ways at once, with zero shared code:
+
+- **Shell embed** — a new `closing` peer dashboard (own nav tab, own
+  domain in the isolation system, own teal accent matching the
+  standalone app's real theme-color) iframes the *live*
+  `closing.duapharma.com` directly. Nothing of Closing's code or data
+  lives in this repo — different subdomain means the browser gives it
+  a completely separate storage bucket automatically, no key collision
+  possible even in principle. The iframe is lazy-loaded (only fetches
+  on first visit, not on every app boot) with an "↗ New Tab" escape
+  hatch, since Dropbox's own login page can't be framed — needed only
+  if the Dropbox connection ever has to be re-authenticated from here.
+- **Read-only Dropbox data bridge** (`closing-bridge.js`) — reads the
+  same `pharmpos_sync_data.json` blob Closing already pushes to
+  Dropbox after every save, using the same "Export Connection" token
+  Closing's own Settings page generates for moving devices (no new
+  Dropbox app registration needed). Surfaces today's Night/Morning/
+  Evening status (pending/draft/closed) plus each closed shift's
+  already-computed `outNetSale`/`finalNetSale` on the Cover Dashboard
+  tile. Deliberately reads only already-computed fields off the
+  record — never recomputes Closing's own variance/target-pace math,
+  so this app can never quietly drift out of sync with how Closing
+  actually calculates something. Rate-limited to one Dropbox fetch per
+  5 minutes; the access-token exchange and file download were both
+  verified against a mocked Dropbox API (correct refresh-token grant,
+  correct bearer/path headers, correct shift-status derivation,
+  rate-limiting, forced-refresh, and disconnect-clears-cache).
+
+Inventory Audit is unstarted — still waiting on a real data sample the
+same way Cash Closing was, per the note below.
 
 ### Cash Closing — confirmed real schema (from `pharmapos_backup_2026-07-04.json`)
 

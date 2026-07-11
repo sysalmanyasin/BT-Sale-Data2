@@ -238,13 +238,17 @@ if ('serviceWorker' in navigator) {
 <nav id="nav" style="display:none" class="no-print">
   <div class="nbrand">
     <div class="nlogo">BT</div>
-    <div><div class="nbrand-text">Bahria Town Sales IC</div><div class="nbrand-sub">Intelligence Centre</div></div>
+    <div><div class="nbrand-text">Bahria Town Sales IC</div><div class="nbrand-sub" id="nbrand-sub-label">Intelligence Centre</div></div>
   </div>
   <div class="ntabs">
+    <button class="ntab" data-page="cover" data-group="cover">🏠 Cover</button>
     <button class="ntab ntab-ai" data-page="commandhub" data-group="commandhub">🧭 CommandHub</button>
     <button class="ntab" data-page="dashboard" data-group="dashboard">Dashboard</button>
     <button class="ntab" data-page="index" data-group="saledata">Sale Data</button>
     <button class="ntab" data-page="manager" data-group="manager">👔 Manager</button>
+    <button class="ntab" data-page="notesheets" data-group="notesheets">📑 Notes &amp; Sheets</button>
+    <button class="ntab" data-page="closing" data-group="closing">🔒 Closing</button>
+    <button class="ntab" data-page="audit" data-group="audit">🧾 Audit</button>
     <button class="ntab" data-page="tools" data-group="tools">Tools</button>
   </div>
   <div class="ntabs subnav" id="saledata-subnav" style="display:none">
@@ -265,10 +269,14 @@ if ('serviceWorker' in navigator) {
 
 <!-- ══ BOTTOM TAB BAR (mobile) ══ -->
 <div class="bnav no-print" id="bnav" role="navigation" aria-label="Page navigation">
+  <button class="bnav-item" data-page="cover" data-group="cover"><span class="bicon">🏠</span><span class="blabel">Cover</span></button>
   <button class="bnav-item bnav-ai" data-page="commandhub" data-group="commandhub"><span class="bicon">🧭</span><span class="blabel">Hub</span></button>
   <button class="bnav-item" data-page="dashboard" data-group="dashboard"><span class="bicon">📊</span><span class="blabel">Home</span></button>
   <button class="bnav-item" data-page="index" data-group="saledata"><span class="bicon">🗂️</span><span class="blabel">Sale Data</span></button>
   <button class="bnav-item" data-page="manager" data-group="manager"><span class="bicon">👔</span><span class="blabel">Manager</span></button>
+  <button class="bnav-item" data-page="notesheets" data-group="notesheets"><span class="bicon">📑</span><span class="blabel">Notes</span></button>
+  <button class="bnav-item" data-page="closing" data-group="closing"><span class="bicon">🔒</span><span class="blabel">Closing</span></button>
+  <button class="bnav-item" data-page="audit" data-group="audit"><span class="bicon">🧾</span><span class="blabel">Audit</span></button>
   <button class="bnav-item" data-page="tools" data-group="tools"><span class="bicon">⚙️</span><span class="blabel">Tools</span></button>
 </div>
 <!-- Sale Data sub-nav (mobile) -->
@@ -282,6 +290,13 @@ if ('serviceWorker' in navigator) {
 
 <!-- ====== PAGES ====== -->
 <!-- ══ PAGES ══ -->
+
+<!-- COVER DASHBOARD PAGE (V2 plan §2) — landing page, concise cross-domain summary + tiles to each peer dashboard. Rendered by cover-dashboard.js -->
+<div class="page" id="page-cover">
+  <h2 style="margin:0 0 4px">Cover</h2>
+  <div style="color:var(--muted);font-size:13px;margin-bottom:18px">Bahria Town Sales IC — at a glance</div>
+  <div id="cover-container">Loading…</div>
+</div>
 
 <!-- COMMANDHUB PAGE -->
 <div class="page" id="page-commandhub">
@@ -1003,7 +1018,6 @@ if ('serviceWorker' in navigator) {
         <button class="btn mgr-tab" data-mtab="expense" onclick="switchMgrTab('expense')">🧾 B. Patty/Expenses</button>
         <button class="btn mgr-tab" data-mtab="jazzcash" onclick="switchMgrTab('jazzcash')">📒 Jazz Cash</button>
         <button class="btn mgr-tab" data-mtab="custom" onclick="switchMgrTab('custom')" id="mgr-tab-custom" style="background:var(--s2);border:2px dashed var(--border);color:var(--muted)">＋ C. New Sections</button>
-        <button class="btn mgr-tab" data-mtab="sheets" onclick="switchMgrTab('sheets')" id="mgr-tab-sheets">📑 D. Notes &amp; Sheets</button>
       </div>
     </div>
     <!-- ── Group: Working ──────────────────────────── -->
@@ -1058,13 +1072,7 @@ if ('serviceWorker' in navigator) {
     <div id="ledger-sections-container"></div>
   </div>
 
-  <!-- ═══ NOTES & SHEETS — rendered by notes-sheets.js ═══ -->
-  <div id="mgr-sheets" class="mgr-section" style="display:none">
-    <div style="text-align:center;padding:40px 20px;color:var(--muted)" id="mgr-sheets-loading">
-      <div style="font-size:22px;margin-bottom:8px">📑</div>
-      <div style="font-size:12px">Loading Notes &amp; Sheets…</div>
-    </div>
-  </div>
+  <!-- ═══ NOTES & SHEETS relocated to its own peer dashboard — see #page-notesheets ═══ -->
 
   <!-- ═══ SALARY ═══ -->
   <div id="mgr-salary" class="mgr-section">
@@ -1244,6 +1252,73 @@ if ('serviceWorker' in navigator) {
   </div>
 </div>
 
+<!-- NOTES & SHEETS DASHBOARD (V2 plan §5) — elevated to its own peer
+     dashboard, same standing as Sales/Manager. The #mgr-sheets id and
+     everything inside is untouched — notes-sheets.js and sheets-patch.js
+     (2600+/500+ lines) both hardcode that id throughout, so relocating
+     the container here (rather than renaming it) reuses all of that
+     proven logic with zero risk instead of re-risking it on a rename. -->
+<div class="page" id="page-notesheets">
+  <div class="hero"><h1 class="htitle">📑 Notes &amp; Sheets</h1><p class="hsub">Notes, multi-sheet workbooks, and a live read-only view of Sale Data / Staff.</p></div>
+  <div id="mgr-sheets" style="min-height:500px">
+    <div style="text-align:center;padding:40px 20px;color:var(--muted)" id="mgr-sheets-loading">
+      <div style="font-size:22px;margin-bottom:8px">📑</div>
+      <div style="font-size:12px">Loading Notes &amp; Sheets…</div>
+    </div>
+  </div>
+</div>
+
+<!-- CLOSING — embedded peer dashboard (V2 plan §6). The app itself is
+     fully separate: own domain (closing.duapharma.com), own repo, own
+     PWA/service worker, own localStorage. This page just frames the
+     live site so it feels native inside this app's shell; nothing of
+     its code or data lives here. See closing-bridge.js for the
+     separate read-only Dropbox summary shown on the Cover tile. -->
+<div class="page" id="page-closing" style="padding:0;display:flex;flex-direction:column">
+  <div style="padding:14px 20px 10px;flex-shrink:0">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+      <div>
+        <h1 class="htitle" style="margin:0">🔒 Closing</h1>
+        <p class="hsub" style="margin:2px 0 0">Shift Register &amp; Daily Closing — live, embedded from closing.duapharma.com</p>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span id="closing-bridge-status" style="font-size:11px;color:var(--muted)"></span>
+        <button class="btn" style="border:1px solid var(--border);font-size:12px" onclick="closingBridgeButtonClick()">🔗 Data Bridge</button>
+        <a href="https://closing.duapharma.com" target="_blank" rel="noopener" class="btn" style="border:1px solid var(--border);font-size:12px;text-decoration:none;color:inherit" title="Open in a new tab — needed if you ever have to reconnect Dropbox here, since Dropbox's own login page can't be framed">↗ New Tab</a>
+      </div>
+    </div>
+  </div>
+  <iframe id="closing-iframe" data-src="https://closing.duapharma.com"
+    style="flex:1;width:100%;border:0;min-height:70vh;background:var(--surface)"
+    title="Closing — Shift Register &amp; Daily Closing"
+    allow="clipboard-write"></iframe>
+</div>
+
+<!-- AUDIT — embedded peer dashboard (V2 plan §12). Fully separate app:
+     own domain (random.duapharma.com), own repo, own PWA/service
+     worker, own Supabase project. This page just frames the live site
+     so it feels native inside this app's shell; nothing of its code or
+     data lives here. See audit-bridge.js for the read-only Supabase
+     summary shown on the Cover tile. -->
+<div class="page" id="page-audit" style="padding:0;display:flex;flex-direction:column">
+  <div style="padding:14px 20px 10px;flex-shrink:0">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+      <div>
+        <h1 class="htitle" style="margin:0">🧾 Audit</h1>
+        <p class="hsub" style="margin:2px 0 0">Pharmacy Audit Hub — live, embedded from random.duapharma.com</p>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span id="audit-bridge-status" style="font-size:11px;color:var(--muted)"></span>
+        <a href="https://random.duapharma.com" target="_blank" rel="noopener" class="btn" style="border:1px solid var(--border);font-size:12px;text-decoration:none;color:inherit" title="Open in a new tab if login inside the frame ever misbehaves">↗ New Tab</a>
+      </div>
+    </div>
+  </div>
+  <iframe id="audit-iframe" data-src="https://random.duapharma.com"
+    style="flex:1;width:100%;border:0;min-height:70vh;background:var(--surface)"
+    title="Audit — Pharmacy Audit Hub"
+    allow="clipboard-write"></iframe>
+</div>
+
 <!-- PRINT AREA (hidden, shown only during print) -->
 <div id="print-area"></div>
 
@@ -1340,6 +1415,10 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/ledger-actions.js"></script>
 <script type="module" src="js/ledger-migration.js"></script>
 <script type="module" src="js/ledger-page.js"></script>
+<script type="module" src="js/cover-dashboard.js"></script>
+<script type="module" src="js/staff-notes.js"></script>
+<script type="module" src="js/closing-bridge.js"></script>
+<script type="module" src="js/audit-bridge.js"></script>
 
 <!-- 3. Auth: Google Sign-In -->
 <script defer src="js/auth.js"></script>
@@ -1454,9 +1533,11 @@ if ('serviceWorker' in navigator) {
     <div class="sc-tabs">
       <button class="sc-tab active" data-sctab="details" onclick="switchStaffCardTab('details')">👤 Details</button>
       <button class="sc-tab" data-sctab="credit" onclick="switchStaffCardTab('credit')">💳 Credit Ledger</button>
+      <button class="sc-tab" data-sctab="notes" onclick="switchStaffCardTab('notes')">🗒 Notes</button>
     </div>
     <div class="sc-body">
       <input type="hidden" id="sc-idx" value="">
+      <input type="hidden" id="sc-notes-key" value="">
 
       <!-- Details Panel -->
       <div id="sc-panel-details">
@@ -1521,6 +1602,11 @@ if ('serviceWorker' in navigator) {
         <div id="sc-credit-history">
           <p style="text-align:center;color:var(--muted);padding:32px">Select an employee to view credit history.</p>
         </div>
+      </div>
+
+      <!-- Notes Panel (V2 plan §4) -->
+      <div id="sc-panel-notes" style="display:none">
+        <p style="text-align:center;color:var(--muted);padding:32px">Select an employee to view notes.</p>
       </div>
     </div>
     <div class="sc-foot">
