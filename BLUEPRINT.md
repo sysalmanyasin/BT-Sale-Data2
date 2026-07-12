@@ -58,7 +58,7 @@ known `ai-memory.js` placeholder issue remains).*
 | Global naming collisions | 1 | **0** | `chpOpenScan` was defined twice (intentional override, but left dead code + a stale comment behind — cleaned up) |
 | Total `.js` lines | 22,617 | 22,571 | net **−46** (274 lines removed, 230 added — some removals were bug-fix rewrites, not pure deletion) |
 | Architecture violations fixed | 5 categories | | See list below |
-| Files converted to real ES modules | 0 of 46 | **8 of 46** | Floor 1–3 + `ledger-store.js`, `ledger-actions.js`, `ledger-migration.js`, `ledger-page.js` — **now live**, wired into Manager's Expense/Other Sections tabs, not dormant anymore |
+| Files converted to real ES modules | 0 of 55 | **15 of 56** | Floor 1–3 + `ledger-store.js`/`ledger-actions.js`/`ledger-migration.js`/`ledger-page.js`, `cover-dashboard.js`, `staff-notes.js`, `closing-bridge.js`, `closing-native.js`, `audit-bridge.js`, `audit-native.js`, and now `print.js` — all live, not dormant. *(This line had gone stale twice — see the two correction entries below for the full history.)* |
 | Files namespaced (Stage A, still classic scripts) | 0 of 41 | **32 of 41** | `custom-sections.js` shrunk from 277 to 112 lines (Custom Sections feature retired, 2 unrelated helper functions kept) |
 | Legacy features fully retired (not just deprecated) | 0 | **2** | Old "Patty/Expenses" tab (root cause of the reported data-loss bug) and old "Custom Sections" — both replaced by the Ledger |
 | Global symbols behind a module export | 0 of ~850 | **38 of ~850** | + `EventBus` |
@@ -939,3 +939,311 @@ way around, since the desc-based contract is what every caller
 
 `sw.js` cache bumped to `v9.2`.
 
+---
+
+## 🗓 Session: Golden Rule audit (Actions/Repository bypass sweep)
+
+A full codebase sweep for the 5 architectural Golden Rules, not tied to
+any feature work. Checked, systematically, across all 46 `.js` files:
+raw `localStorage`/`indexedDB` access outside `repository.js`,
+`Repository.setItem`/write-function calls bypassing `Actions`, direct
+field-level mutation of the protected `DAILY`/`MONTHLY`/`STAFF` arrays,
+duplicated business-logic (the `computeDailyTotals` class of bug),
+and business logic leaking into Floor 4/5 (component/page) files.
+
+**One real, previously-undetected violation found and fixed:**
+`ai-bridge.js`'s AI-chat `editStaffField` command
+(`_aiEditStaffField`) mutated `STAFF[i][field] = value` directly,
+instead of going through `Actions.updateEmployee(i, changes)` the way
+its sibling functions in the same file (`_aiReactivateStaff`,
+`_aiDeleteStaff`) already did. Worth being precise about why this
+matters even though `saveStaffRegistry()` (called right after) does
+ultimately persist the change: `config.js`'s write-guard Proxy only
+traps assignment on the `STAFF` array itself (`STAFF[i] = ...`,
+`STAFF.length = ...`) — it has **no visibility into a mutation on an
+already-referenced element's own property** (`STAFF[i][field] = ...`).
+Verified this concretely in Node: the exact old pattern produces zero
+`[Architecture] RAW MUTATION` console error, so this bug class is a
+genuine blind spot in the guard, not just a style violation the guard
+would have caught anyway. Fixed by routing through
+`Actions.updateEmployee`, matching the sibling functions. Verified via
+a real (non-DOM, since this slice doesn't touch it) Node execution
+importing the actual `config.js`/`repository.js`/`actions.js`/
+`event-bus.js` modules: confirms the fix updates `STAFF[i]`, persists
+to `localStorage`, and fires `staff:updated` on the `EventBus` — and
+confirms the old raw-mutation pattern really does slip past the guard
+silently (`false` for "guard fired"), which is what made this worth
+fixing rather than a cosmetic nit.
+
+**Everything else checked came back clean** — worth recording so a
+future session doesn't re-walk the same ground from scratch:
+- `closing-bridge.js`/`audit-bridge.js` read/write `localStorage`
+  directly for local-only secrets and read-only external-data caches
+  (Dropbox/Supabase tokens, cached tile summaries) — deliberate and
+  already justified in their own header comments, same reasoning as
+  `auth.js`'s Google client-id seed. Not business data, not meant to
+  be Actions/EventBus-guarded.
+- `ui-extras.js`'s `bt_targets` fallback path (`localStorage` only if
+  `Actions`/`Actions.saveTargets` aren't defined yet) is dead in
+  practice now that `index.html`'s foundation-block reordering
+  (Floor 1–3 always loads first) guarantees `Actions` exists — a
+  vestigial defensive branch, not a live bypass. Left as-is; not worth
+  the risk of touching a defensive fallback for a cosmetic cleanup.
+- No other `ARRAY[i].field = value` pattern exists anywhere else in
+  the codebase against `DAILY`/`MONTHLY`/`STAFF` — the `ai-bridge.js`
+  case above was the only one.
+- `ledger-store.js` calling `Repository.setItem` directly is correct,
+  not a bypass — it's the Floor 1/2 module *for the Ledger domain*,
+  the same architectural role `repository.js` plays for everything
+  else (per the Blueprint's own file-to-floor mapping).
+- Every `Repository` write function (`upsertDaily`, `upsertMonthly`,
+  `deleteDaily`, `deleteMonthly`, `addStaffMember`,
+  `updateStaffMember`, `removeStaffMember`, `setItem`, `removeItem`,
+  etc.) calls `_notify(...)` — confirmed by reading every call site,
+  not sampling.
+- `editCalcTotal` in `data-page.js` (a live-preview-only helper) reuses
+  `config.js`'s shared `DAILY_ADD_KEYS`/`DAILY_SUB_KEYS` rather than
+  redefining its own list — confirms the fix for the earlier
+  triple-duplication bug (§ KPI table, "Duplicated business logic")
+  has held and hasn't regressed.
+- `ledger-page.js` reads balances via `LedgerStore.getCurrentBalance`
+  rather than computing them itself — no business logic leaked into
+  the Floor 4/5 layer there.
+
+**Not part of this pass, by design:** `supabase.js`/`sync-center.js`
+weren't re-audited beyond confirming their existing deliberate
+deferral is still the standing decision (real multi-device sync
+mechanism, too risky to touch without real device testing — see
+earlier sessions' reasoning). A dedicated audit of those two would be
+its own session, not folded into a general sweep.
+
+---
+
+## 🗓 Session: ES module conversion status — corrected the stale KPI count
+
+The KPI table's "Files converted to real ES modules" row had gone
+stale: it still said "8 of 46" from an early round, but six modules
+were added in later sessions (`cover-dashboard.js`, `staff-notes.js`,
+`closing-bridge.js`, `closing-native.js`, `audit-bridge.js`,
+`audit-native.js`) without that line being updated. Corrected by
+counting `<script type="module">` tags in `index.html` directly rather
+than trusting the table: **14 of 55** files are real ES modules today.
+(The denominator is also corrected — 55 total `.js` files, verified
+against the actual `js/` directory and cross-checked against
+`index.html`'s script includes one-for-one; the table's old "46" was
+itself stale.)
+
+**The 14:** Floor 1–3 (`config.js`, `event-bus.js`, `repository.js`,
+`actions.js`), the Ledger (`ledger-store.js`, `ledger-actions.js`,
+`ledger-migration.js`, `ledger-page.js`), and every newer Floor 4/5
+feature built as a module from day one since it had no legacy
+circular-dependency baggage to inherit (`cover-dashboard.js`,
+`staff-notes.js`, `closing-bridge.js`, `closing-native.js`,
+`audit-bridge.js`, `audit-native.js`).
+
+**Worth being explicit about, since it's easy to misread "41 files
+still classic scripts" as a backlog:** full ES-module conversion for
+the legacy Floor 4/5 layer was **ruled out as a goal, not merely
+deferred** — `ui.js` alone has 658 call sites across 28 other files,
+so real `import`/`export` there would mean permanently untangling
+circular imports for a cosmetic win. Stage A namespacing (IIFE-wrap +
+window bridge) is the actual, deliberate end-state for that layer, and
+32 of the 41 are already there. Re-checked the remaining 9 bare files'
+stated deferral reasons this session to see if any had gone stale the
+way `jazz-cash.js`'s already had (see the earlier "Golden Rule audit"
+entry, and the `jazz-cash.js` shrink noted throughout this doc):
+
+- **`jazz-cash.js`** — deferral reason ("pending planned rewrites")
+  confirmed stale, as already flagged. Still open; namespacing it is a
+  legitimate next task, just not done yet.
+- **`notes-sheets.js`** — reason ("pending planned rewrite") still
+  holds; no rewrite has landed. 2,618 lines, the single largest file in
+  the app — namespacing it now would just be extra work to redo once
+  the planned rewrite happens.
+- **`supabase.js`/`sync-center.js`** — reason (real multi-device sync
+  mechanism, can't verify without a real device) still holds
+  unconditionally; nothing about that risk has changed.
+- **`bt-format.js`, `conflict-ui.js`, `diff-report.js`,
+  `knowledge-sheet.js`, `targets.js`** — re-verified the "zero
+  reduction" claim directly rather than trusting the old note: counted
+  each file's total top-level declarations vs. how many are called
+  from outside the file (cross-file references + `index.html`
+  `onclick=`/`onchange=`/etc. + generated-HTML attributes within the
+  same file). All five still have every declaration externally
+  referenced somewhere — wrapping any of them would add a namespace
+  layer while hiding nothing. Confirmed still correct, not stale.
+
+**Net conclusion:** ES-module conversion, as a category of open work,
+is essentially closed except for genuinely new features (which already
+default to real modules) and `jazz-cash.js` specifically, which is
+namespacing-eligible now but hasn't been done yet.
+
+---
+
+## 🗓 Session: Print consolidation (V2 plan §7)
+
+New real ES module: **`print.js`** — now the one and only place in the
+app that touches `window.print()`, `document.write()`, or `#print-area`.
+Exports `Print.render(html, opts)` (in-page, injects into `#print-area`)
+and `Print.renderNewTab(html, opts)` (opens a full standalone document
+in a new tab and prints that window). Bridged to `window.Print` for the
+55 still-classic-script consumers, same pattern as every other module.
+
+**What was actually duplicated, and why it mattered:** four independent
+places touched the print mechanism directly, with three different
+levels of race-condition safety against the specific Android bug where
+`window.print()` doesn't block JS execution (documented at length in
+`btPrint`'s original header, preserved in `print.js` now):
+1. `btPrint()` (bt-format.js) — in-page, the correct proven fix
+   (double-rAF before `print()`, hide on `afterprint` + generous
+   fallback). **Removed** — became `Print.render`.
+2. `doPrint()` (private to `manager-export.js`) — new-tab, correctly
+   used `win.onload` + a fallback instead of a guessed delay.
+   **Removed** — became `Print.renderNewTab`.
+3. `_nsSpPrint()`'s own inline new-tab trigger (`notes-sheets.js`) —
+   used only a fixed 500ms `setTimeout`, no `onload` at all: the exact
+   bug class #1 exists to fix, just not caught yet for Sheets
+   specifically (a plain table rarely takes long enough to lay out for
+   the guess to matter — that's exactly the kind of gap that surfaces
+   later on a slow device with a bigger sheet). **Fixed** — now calls
+   `Print.renderNewTab`.
+4. `sheets-patch.js`'s `shtFmPrint()` fallback chain — ended in a bare,
+   completely unguarded `window.print()` on the live page if its
+   DOM-query for a print button ever came up empty. Also referenced
+   `printSheet`/`nsPrintSheet` — two functions that **do not exist
+   anywhere in this codebase**, dead `typeof` checks. **Fixed** — now
+   calls `_nsSpPrint()` directly (the real Sheets print function) or
+   toasts, never falls through to a raw `window.print()`.
+
+**Verified, not just wired up:** ran the real `print.js` module through
+Node with a minimal DOM shim (no jsdom available in this environment) —
+confirmed `Print.render` actually injects HTML into `#print-area`, sets
+`display:block`, calls `window.print()` only after the double-rAF
+fires, and clears the area on `afterprint`; confirmed `Print.renderNewTab`
+warns via `toast` and returns `false` on a blocked popup, and on
+success writes the HTML and calls `win.print()` via `onload`. Also
+confirmed by grep that after the edits, zero files outside `print.js`
+call `window.print()`/`win.print()`, `document.write()`, or touch
+`#print-area` — the one `window.open()` left elsewhere (`cover-dashboard.js`,
+opening an external tile link) is unrelated to printing.
+
+**Deliberate scope decision, worth being explicit about:** the ~15
+named report-entry-point functions (`printSalaryReport`,
+`printMonthReport`, `printDayDirectly`, `exportManagerSummary`, the
+`hubPrintX` family, etc.) were **not** renamed or removed. They aren't
+print *engines* — they gather report-specific data (reading DOM
+selects, resolving month/date args, building the report's own HTML)
+and then call into `Print` for the actual triggering, the same
+relationship `Actions.addDailyEntry()` has to `Repository` — a many
+callers, one door pattern, not duplication. Renaming all of them would
+mean touching `onclick=` attributes baked into `index.html` and several
+generated-HTML strings, `ai-bridge.js`'s NLU dispatch/param-doc tables,
+`intent-groups.js`'s intent registry, `commandhub-page.js`'s label
+dictionaries, and `commandhub.js`'s headless test harness (which calls
+`global.printMonthReport`/`global.printYearlyReport` by name) — a much
+larger, purely cosmetic churn across files that have nothing to do with
+the actual print mechanism, for no functional gain. If a future session
+wants that renamed too, it's a separate, bigger, lower-value pass.
+
+`sw.js` bumped to `v9.4`.
+
+
+---
+
+## 🗓 Session: Multi-file workbook model (V2 plan §5)
+
+Notes & Sheets goes from "one flat sheet per file" (well, one flat
+*workbook*, see below) to real independent files, each its own
+multi-sheet workbook — same mental model as opening several separate
+spreadsheet documents.
+
+**The surprise going in:** the multi-sheet *tab* mechanism already
+existed — `_nsSpAddSheet`/`_nsSpSwitchSheet`/`_nsSpRenameSheet`/
+`_nsSpDeleteSheet`/`_nsSpDuplicateSheet`, a real tab bar, right-click
+context menu, all already working. The actual gap was one level up:
+only ONE such workbook existed globally (`bt_sheets_v2`, shared by the
+whole app), and "Sheet Files" (`bt_sheet_files_v1`, the "Manage Sheets"
+panel) was a *different*, older feature — named snapshots, each a
+flat point-in-time copy of one sheet's cells; opening one **destructively
+overwrote whatever was currently on screen** (with a confirm warning).
+Asked the user how to reconcile the two rather than guessing, since
+either answer had real data-migration consequences: **convert each
+existing Sheet File into its own workbook** (starts with the one sheet
+it had, more tabs addable afterward) was the direction taken, rather
+than keeping snapshots around as a separate, parallel concept.
+
+**New storage:** `bt_sheet_workbooks_v1` → `{ activeFileId, files }`.
+Each file: `{ id, name, category, createdAt, updatedAt, grids, activeSheet }`
+— `grids` is the *exact* shape the sheet-tab system already used, so
+every existing grid-editing function (cell edit, formulas, freeze row,
+XLSX import/export, the whole ~2600-line surface) needed **zero
+changes**. Only `_nsGetSheets()`/`_nsSheetsSave()` changed, and only on
+the inside — same `{grids}` in/out signature as before, now resolving
+to the *active file's* grids instead of one global set. That one design
+choice is what kept this from becoming a much larger, riskier rewrite:
+roughly 15 call sites across the file that already called these two
+functions didn't need to change at all.
+
+**Migration — one-time, lossless, additive-only:**
+1. The old single global workbook becomes a file called "My Workbook",
+   keeping every existing sheet-tab exactly as it was (including
+   multi-tab workbooks that were already using the tab feature).
+2. Each old Sheet File snapshot becomes its own one-sheet file,
+   preserving name/category/cells/dimensions/timestamps exactly.
+3. Brand new install, nothing to migrate → bootstrap one empty file.
+4. Old keys (`bt_sheets_v2`, `bt_sheet_files_v1`) are read once and
+   **never written again** — an untouched safety net, nothing deleted.
+   Re-running migration is a no-op the instant `bt_sheet_workbooks_v1`
+   has any files in it.
+
+**Verified with an 18-scenario Node test**, not just wired up — built
+realistic legacy data (a 2-tab workbook + 2 old snapshots with distinct
+categories/dimensions/timestamps) and confirmed: exact file count and
+content after migration, `activeFileId` lands on the migrated workbook
+not a snapshot, every cell/category/timestamp preserved exactly,
+re-migration is a true no-op (no data changed, no extra writes), old
+keys genuinely never rewritten, editing one file's sheet never bleeds
+into another file's data even after switching active files mid-session,
+and a brand-new install bootstraps correctly with zero legacy data
+present. All 18 checks pass.
+
+**Kept every existing function name** that had zero references outside
+`notes-sheets.js` (`_nsSFOpenManager`, `_nsSFSaveAs`, `_nsSFRename`,
+`_nsSFEditCategory`, `_nsSFDuplicate`, `_nsSFDelete`, `_nsSFExportXLSX`,
+`_nsSFCloseManager`) and changed their *bodies* to operate on files
+instead of snapshots — meaning every existing `onclick=` in this file's
+own generated HTML needed zero rewiring. The one name with a real
+external reference, `_nsSFLoad_` (called from `ai-bridge.js`'s AI-chat
+dispatcher), kept its exact name too, just changed what it does: it now
+*switches* the active file (non-destructive — nothing is lost, so no
+confirm() needed any more) instead of overwriting the current sheet.
+
+**Real bugs found and fixed along the way, not part of the original
+plan:** `ai-bridge.js`'s `_aiQuerySheetGroups`/`_aiOpenSheetByName` and
+`cover-dashboard.js`'s landing-page status tile were all reading
+`bt_sheet_files_v1` directly rather than through `notes-sheets.js`'s
+own accessor — meaning all three would have silently frozen at
+whatever that key held the instant migration ran, never reflecting any
+file created/renamed/deleted afterward. Now route through `_nsSFLoad()`
+(with a `typeof` guard + direct-read fallback, matching this
+codebase's established cross-script-dependency pattern) so they stay
+live.
+
+**New UI, additive only:** the Files ribbon tab's "📁 Switch File…"
+button (was "Open File…") and a small persistent "📁 [current file] ▾"
+indicator above the ribbon, both opening the existing file-picker
+modal — plus a "Switch File" entry added to the WPS-style File dropdown
+menu in `sheets-patch.js`. The "⬆ Save (Overwrite)" button was
+relabeled "✅ Autosave On" — sheets already autosaved on every edit
+before this feature and still do, so there was never a real "overwrite"
+step to perform; the button now just reassures instead of doing a
+misleading no-op-shaped action.
+
+**Not done, flagged as a reasonable follow-up, not a gap in this work:**
+a true multi-sheet `.xlsx` export (every sheet in a file as its own tab
+in one exported workbook) — today's `_nsExportGridToXLSX` helper takes
+one grid at a time, so exporting a multi-sheet file exports its
+currently-active sheet only.
+
+`sw.js` bumped to `v9.5`. New entries in `TEST-CHECKLIST.md` under a
+dedicated "Notes & Sheets — multi-file workbook model" section.

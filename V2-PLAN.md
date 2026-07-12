@@ -168,10 +168,16 @@ no `<script>` tag in `index.html` at all — would have been a
 completely silent failure (nothing renders, no error anywhere).
 
 **Deliberately not touched:** the separate, simpler "Petty Detail" tab
-(different feature, wasn't named for removal), and `ai-bridge.js`'s
-AI-chat commands for the old Expense/Custom Sections features (still
-`typeof`-guarded so they fail silently rather than crash, but won't do
-anything if asked via chat — logged as a follow-up).
+(different feature, wasn't named for removal). *(Correction: the note
+that used to be here — "`ai-bridge.js`'s AI-chat commands for the old
+Expense/Custom Sections features are still `typeof`-guarded dead code,
+logged as a follow-up" — is stale. That follow-up was done in a later
+session: `_aiAddExpenseRow`, `_aiResolveCustomSection`, and the rest of
+the Expense/Custom Sections AI-chat commands were rewired onto the
+Ledger, not left dead. See `BLUEPRINT.md`'s "Inline Ledger edit +
+Expense/Custom Sections AI-chat rewiring" session entry for the full
+list and the real date-format bug found while doing it. This section
+of the plan just wasn't updated to match at the time.)*
 
 No migration of old Expense/Custom-Sections data was run — user
 confirmed backups exist outside the app and preferred a clean start
@@ -255,9 +261,9 @@ over the "100x" timeframe, so the architecture goal here is specifically
 to make adding new sheet types/views cheap later, not to lock in a
 final feature list now.
 
-**Status: structural elevation LIVE — multi-sheet workbook model still
-open.** Notes & Sheets is now a genuine peer dashboard: own top/bottom
-nav tab, own page (`#page-notesheets`), own domain in the Sales/Manager
+**Status: structural elevation LIVE, multi-sheet workbook model LIVE.**
+Notes & Sheets is a genuine peer dashboard: own top/bottom nav tab, own
+page (`#page-notesheets`), own domain in the Sales/Manager
 domain-isolation system (§2/§1) — while inside it, the Sales and
 Manager tabs are hidden, and it gets its own accent color (green) that
 cascades through every button/tab already written against
@@ -266,20 +272,52 @@ real stats (note/sheet-file counts) instead of the old "inside Manager
 for now" placeholder.
 
 The 2600+/500+ lines of `notes-sheets.js`/`sheets-patch.js` were left
-completely untouched — both hardcode the `#mgr-sheets` container id
-throughout, so the container was *relocated* into the new page rather
-than renamed, reusing all of that proven logic with zero risk. Every
-call site that used to route through `showPage('manager')` +
-`switchMgrTab('sheets')` (CommandHub's quick actions, all 4 of
-ai-bridge's AI-chat intents, the AI's own page/tab keyword router) was
-updated to route straight to `showPage('notesheets')` instead — grepped
-clean of any remaining `switchMgrTab('sheets')` references. Verified
-with a real jsdom test against the actual `index.html`/`ui.js`: the
-container's new DOM parent, the old Manager tab button's removal, the
-domain classification, brand-label swap, and `renderNotesSheets()`
-actually firing through the `showPage()` dispatch. The multi-sheet
-*workbook* model itself (one file → many named sheets) is unstarted —
-today's version is still the single-flat-sheet-per-file model.
+completely untouched for the *elevation* step — both hardcode the
+`#mgr-sheets` container id throughout, so the container was *relocated*
+into the new page rather than renamed, reusing all of that proven logic
+with zero risk. Every call site that used to route through
+`showPage('manager')` + `switchMgrTab('sheets')` (CommandHub's quick
+actions, all 4 of ai-bridge's AI-chat intents, the AI's own page/tab
+keyword router) was updated to route straight to
+`showPage('notesheets')` instead — grepped clean of any remaining
+`switchMgrTab('sheets')` references. Verified with a real jsdom test
+against the actual `index.html`/`ui.js`: the container's new DOM
+parent, the old Manager tab button's removal, the domain
+classification, brand-label swap, and `renderNotesSheets()` actually
+firing through the `showPage()` dispatch.
+
+**The multi-sheet workbook model itself was a separate, later session.**
+Turned out the multi-sheet-*tab* mechanism already existed and worked —
+`_nsSpAddSheet`/`_nsSpSwitchSheet`/`_nsSpRenameSheet`/`_nsSpDeleteSheet`,
+a real tab bar, right-click menu. The actual gap was one level up:
+there was only ONE such workbook globally (`bt_sheets_v2`, shared by
+the whole app), and what was called "Sheet Files" (`bt_sheet_files_v1`)
+was a different, older feature — named snapshots that each captured
+one sheet's cells at a point in time, and loading one *destructively
+overwrote* whatever was on screen. User's call on reconciling the two:
+**convert each existing Sheet File into its own workbook** (one file =
+one sheet to start, more tabs addable afterward), rather than keeping
+snapshots as a separate concept.
+
+New `bt_sheet_workbooks_v1` key holds `{ activeFileId, files }` — each
+file is an independent workbook with its own `grids` dict, using the
+exact same grid shape and exact same sheet-tab CRUD functions above,
+completely unchanged. Only the storage underneath `_nsGetSheets()`/
+`_nsSheetsSave()` changed — same signature, now resolves to the active
+file's grids instead of one global set, so none of the ~15 existing
+call sites needed touching. One-time, lossless migration: the old
+global workbook becomes "My Workbook" (keeping every existing tab
+exactly as it was), each old Sheet File snapshot becomes its own
+one-sheet file. Old keys (`bt_sheets_v2`, `bt_sheet_files_v1`) are read
+once for migration and never written again — an untouched safety net,
+nothing deleted. Verified with an 18-scenario Node test against
+realistic legacy data (multi-tab workbook + snapshots, migration
+correctness, idempotency, file-isolation on edit, brand-new-install
+bootstrap) — see `BLUEPRINT.md`'s "Multi-file workbook model" session
+entry for the full list and everything else that had to be found and
+fixed along the way (two AI-chat functions and the Cover Dashboard tile
+were reading the legacy key directly and would have silently gone
+stale after migration).
 
 ---
 
@@ -386,12 +424,29 @@ schema → state design → note any Ledger-reuse opportunity.
 
 ---
 
-## 7. Print — one module
+## 7. Print — one module ✅ Done (engine consolidation; see below for exact scope)
 
-`Print.render(reportType, data, opts)` — one Floor-4 component, every
-report type (daily, monthly, yearly, ledger statement, cash closing,
-inventory audit) is a template registered with it, not a copy-pasted
-`btPrint()`-style function per feature like today.
+Original plan: `Print.render(reportType, data, opts)` — one Floor-4
+component, every report type is a template *registered* with it,
+rather than a copy-pasted `btPrint()`-style function per feature.
+
+**What actually shipped, and how it differs from that description:**
+`print.js` is real and is the one place `window.print()`,
+`document.write()`, and `#print-area` are touched — `Print.render(html,
+opts)` (in-page) and `Print.renderNewTab(html, opts)` (new-tab). That
+consolidates the part that was genuinely duplicated and risky: four
+places independently reimplemented the print *trigger*, with two of
+them missing the race-condition fix the other two already had (see
+`BLUEPRINT.md`'s "Print consolidation" session entry for the full
+list). What it does *not* do is a template registry keyed by
+`reportType` — each report's HTML-building logic stays where it lives
+today (`manager.js`, `reports.js`, `reports-print.js`, `hub-actions.js`,
+etc.), now just calling `Print.render`/`Print.renderNewTab` instead of
+reimplementing the trigger. A true template registry would mean
+relocating ~15 report-builder functions and their DOM-read/validation
+glue into one file — a larger, purely organizational move with no
+correctness payoff, since the actual duplication (and the actual bugs)
+lived in the trigger mechanism, not in having many report builders.
 
 ---
 

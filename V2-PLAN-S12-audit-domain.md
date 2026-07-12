@@ -1,15 +1,17 @@
 # V2 Plan — §12: Audit Domain (Pharmacy Audit Hub embed)
 
-*Status: LIVE (code). Addendum to V2-PLAN.md — extends §2 (Navigation
-structure) and follows the exact precedent already shipped for §6
-(Closing). §12.2–12.6 are implemented (`ui.js`, `nav.css`, `index.html`,
-`audit-bridge.js`, `cover-dashboard.js`). The Supabase URL/anon key used
-is the same default already baked into Pharmacy Audit Hub's own
-`auth-actions.js`, so no new project or key was needed (§12.10 Q1
-resolved). `supabase-js` was already loaded globally for this app's own
-sync — no second `<script>` tag needed (§12.10 Q2 resolved). Still
-outstanding: §12.7's real-device iOS standalone-PWA test, and the jsdom
-test extension in §12.9 item 8.*
+*Status: SUPERSEDED. The iframe embed described below (§12.2–12.5) was
+built, then deliberately removed at the user's request, for both Audit
+and this same-shaped Closing embed (§6) — the embedded pages, their nav
+tabs, and their domain routing are gone. What remains, for both: the
+Cover Dashboard tile + its read-only bridge module
+(`audit-bridge.js` / `closing-bridge.js`), which still shows a live
+status line on the tile. Tapping the tile now opens the real app
+(`random.duapharma.com` / `closing.duapharma.com`) in a new tab instead
+of framing it in-app. Closing's tile also carries a small "🔗 Data
+Bridge" button — the one-time Dropbox pairing step that used to live on
+the now-removed embedded page. The sections below are kept for
+reference/history, not as the current implementation.*
 
 ## 12.0 Decision
 

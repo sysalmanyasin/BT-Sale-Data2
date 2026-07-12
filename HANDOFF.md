@@ -160,6 +160,50 @@ purpose — worth knowing about even though they're already fixed):**
   had zero backup/sync coverage. Fixed additively in both files, same
   merge convention as the existing `jazzcash`/`jcTally` blocks.
 
+**Multi-file workbook model (this session, V2 plan §5):** Notes &
+Sheets now supports real independent files, each its own multi-sheet
+workbook — new `bt_sheet_workbooks_v1` storage, lossless one-time
+migration from the old single global workbook + the old "Sheet Files"
+snapshot feature (which used to destructively overwrite the current
+sheet — now files are switched non-destructively). Verified with an
+18-scenario Node test against realistic legacy data. Also fixed two
+`ai-bridge.js` AI-chat functions and the Cover Dashboard status tile
+that were reading the legacy key directly and would have gone stale
+after migration. Full detail in `BLUEPRINT.md`'s "Multi-file workbook
+model" session entry. New test items in `TEST-CHECKLIST.md`. `sw.js`
+bumped to `v9.5`.
+
+**Print consolidation (earlier session, V2 plan §7):** new `print.js` —
+the one and only place `window.print()`/`document.write()`/
+`#print-area` are touched anywhere in the app. Removed four duplicated
+print-trigger implementations (`btPrint()`, `manager-export.js`'s
+private `doPrint()`, `notes-sheets.js`'s `_nsSpPrint`'s own inline
+new-tab trigger, and `sheets-patch.js`'s unguarded bare `window.print()`
+fallback — the last two had real, previously-undetected bugs: a fixed
+500ms guess instead of `onload`, and no race-condition handling at
+all). Every report-building function now calls `Print.render`/
+`Print.renderNewTab` instead. Verified functionally in Node against a
+minimal DOM shim (both engines actually inject/open/print correctly),
+not just wired up. Full detail in `BLUEPRINT.md`'s "Print
+consolidation" session entry, including the deliberate scope line: the
+~15 named report-entry functions (`printSalaryReport`, etc.) were kept
+as-is — they're report-specific glue calling into the one engine, not
+duplicated engines themselves. `sw.js` bumped to `v9.4`.
+
+**Golden Rule audit (earlier session):** swept the whole codebase for
+architecture-violation classes (raw storage access, `Repository`
+writes bypassing `Actions`, direct field mutation on the protected
+`DAILY`/`MONTHLY`/`STAFF` arrays, duplicated calc logic, business logic
+in Floor 4/5 files). One real, previously-undetected violation found
+and fixed: `ai-bridge.js`'s `_aiEditStaffField` (AI-chat "edit staff
+field" command) now routes through `Actions.updateEmployee` instead of
+`STAFF[i][field] = value` — the old form was invisible to `config.js`'s
+write-guard Proxy, which only traps assignment on the `STAFF` array
+itself, not on properties of an already-referenced element. Verified
+via Node, importing the real modules. Full details and everything
+checked-and-clean in `BLUEPRINT.md`'s latest session entry. `sw.js`
+bumped to `v9.3`.
+
 **Known open bugs:**
 - **Print still produces a blank page on Android** (confirmed via
   screenshots — even "Save as PDF" is blank on mobile). Two defensive

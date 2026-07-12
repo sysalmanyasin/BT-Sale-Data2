@@ -86,8 +86,18 @@ we start over on the diagnosis.
 - [x] Salary, Generic, Credit, Petty (the simple one), Incentive tabs all load and save correctly (confirmed working)
 - [ ] **Jazz Cash — re-verify, implementation changed this session** (see below; the "confirmed working" note that used to be here was against the *old* implementation, now retired)
 - [x] Switching between Manager tabs works correctly (confirmed working)
-- [x] Sheets & Notes loads/renders (confirmed working)
+- [ ] **Sheets & Notes — re-verify, the underlying storage model changed this session (multi-file workbook, V2 plan §5)** (see below; the "confirmed working" note that used to be here was against the *old* single-workbook implementation)
 - [x] "Copy to Next Month" works (confirmed working)
+
+### Notes & Sheets — multi-file workbook model (new this session, V2 plan §5)
+- [ ] **First load after this update**: open Sheets & Notes. Your existing sheet(s)/tabs should appear exactly as before, under a file called "My Workbook" — nothing should look different or be missing. If you had any items in "Manage Sheets" (saved sheet files) before, each one should now show up as its own separate file too.
+- [ ] Files ribbon tab (🗂 icon) → **📁 Switch File…** — should show all your files, with the one you're currently in marked "Current".
+- [ ] Tap **Open** on a different file — should switch to it instantly, no confirmation prompt, and your other file's data should be completely unaffected when you switch back.
+- [ ] **💾 Save As New File…** — enter a name/category, confirm a brand-new file appears (starts with one sheet, named after your current sheet).
+- [ ] Within a file, add a new sheet-tab (+ button) — should work exactly as before (this part of the feature was already there, unchanged).
+- [ ] 🗂 Manage Sheets → confirm each file card shows the right sheet count and cell count, and Rename / Group / Duplicate / Delete all work. Duplicate should create an independent copy — editing the copy should not affect the original.
+- [ ] Try to delete your last remaining file — should be blocked with a warning toast.
+- [ ] Ask the AI assistant something like "what sheet files do I have" or "open the [name] sheet" — should reflect your current files, not stale data from before this update.
 
 ### Ledger — Expense, Jazz Cash Daily Ledger, Other Sections (Jazz Cash migration was the prior session; this session added inline edit + fixed the AI chat commands)
 - [ ] Open Manager → Jazz Cash. If old data exists, a yellow "Old Jazz Cash data found" banner should appear with a Migrate button.
