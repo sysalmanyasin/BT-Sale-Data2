@@ -92,71 +92,33 @@ nav{position:sticky;top:22px;z-index:200;background:rgba(255,255,255,.96);backdr
 body[data-domain="manager"] .ntab[data-group="dashboard"],
 body[data-domain="manager"] .ntab[data-group="saledata"],
 body[data-domain="manager"] .ntab[data-group="notesheets"],
-body[data-domain="manager"] .ntab[data-group="closing"],
-body[data-domain="manager"] .ntab[data-group="audit"],
 body[data-domain="manager"] .bnav-item[data-group="dashboard"],
 body[data-domain="manager"] .bnav-item[data-group="saledata"],
-body[data-domain="manager"] .bnav-item[data-group="notesheets"],
-body[data-domain="manager"] .bnav-item[data-group="closing"],
-body[data-domain="manager"] .bnav-item[data-group="audit"] {
+body[data-domain="manager"] .bnav-item[data-group="notesheets"] {
   display: none !important;
 }
 body[data-domain="sales"] .ntab[data-group="manager"],
 body[data-domain="sales"] .ntab[data-group="notesheets"],
-body[data-domain="sales"] .ntab[data-group="closing"],
-body[data-domain="sales"] .ntab[data-group="audit"],
 body[data-domain="sales"] .bnav-item[data-group="manager"],
-body[data-domain="sales"] .bnav-item[data-group="notesheets"],
-body[data-domain="sales"] .bnav-item[data-group="closing"],
-body[data-domain="sales"] .bnav-item[data-group="audit"] {
+body[data-domain="sales"] .bnav-item[data-group="notesheets"] {
   display: none !important;
 }
 body[data-domain="notesheets"] .ntab[data-group="dashboard"],
 body[data-domain="notesheets"] .ntab[data-group="saledata"],
 body[data-domain="notesheets"] .ntab[data-group="manager"],
-body[data-domain="notesheets"] .ntab[data-group="closing"],
-body[data-domain="notesheets"] .ntab[data-group="audit"],
 body[data-domain="notesheets"] .bnav-item[data-group="dashboard"],
 body[data-domain="notesheets"] .bnav-item[data-group="saledata"],
-body[data-domain="notesheets"] .bnav-item[data-group="manager"],
-body[data-domain="notesheets"] .bnav-item[data-group="closing"],
-body[data-domain="notesheets"] .bnav-item[data-group="audit"] {
-  display: none !important;
-}
-body[data-domain="closing"] .ntab[data-group="dashboard"],
-body[data-domain="closing"] .ntab[data-group="saledata"],
-body[data-domain="closing"] .ntab[data-group="manager"],
-body[data-domain="closing"] .ntab[data-group="notesheets"],
-body[data-domain="closing"] .ntab[data-group="audit"],
-body[data-domain="closing"] .bnav-item[data-group="dashboard"],
-body[data-domain="closing"] .bnav-item[data-group="saledata"],
-body[data-domain="closing"] .bnav-item[data-group="manager"],
-body[data-domain="closing"] .bnav-item[data-group="notesheets"],
-body[data-domain="closing"] .bnav-item[data-group="audit"] {
-  display: none !important;
-}
-/* V2 plan §12 — Audit (Pharmacy Audit Hub embed), same shape as Closing. */
-body[data-domain="audit"] .ntab[data-group="dashboard"],
-body[data-domain="audit"] .ntab[data-group="saledata"],
-body[data-domain="audit"] .ntab[data-group="manager"],
-body[data-domain="audit"] .ntab[data-group="notesheets"],
-body[data-domain="audit"] .ntab[data-group="closing"],
-body[data-domain="audit"] .bnav-item[data-group="dashboard"],
-body[data-domain="audit"] .bnav-item[data-group="saledata"],
-body[data-domain="audit"] .bnav-item[data-group="manager"],
-body[data-domain="audit"] .bnav-item[data-group="notesheets"],
-body[data-domain="audit"] .bnav-item[data-group="closing"] {
+body[data-domain="notesheets"] .bnav-item[data-group="manager"] {
   display: none !important;
 }
 
-/* Manager, Notes & Sheets, Closing, and Audit each get their own accent
-   color throughout — every button, active tab, hover state, and
-   highlight that already reads var(--accent)/var(--alt) re-themes
-   automatically, no per-component changes needed. Sales keeps the app's
-   base blue. Closing reuses the exact teal (#0d9488) the standalone app
-   itself uses as its PWA theme-color, so the embedded page and its own
-   nav tab feel like the same product, not a re-skin. Audit does the
-   same with Pharmacy Audit Hub's own deep navy (#0F1F3D). */
+/* Manager and Notes & Sheets each get their own accent color throughout
+   — every button, active tab, hover state, and highlight that already
+   reads var(--accent)/var(--alt) re-themes automatically, no
+   per-component changes needed. Sales keeps the app's base blue. Closing
+   and Audit no longer have embedded pages/nav tabs of their own (only
+   their Cover Dashboard bridge tiles remain, opening the real apps in a
+   new tab), so they're no longer domains here. */
 body[data-domain="manager"] {
   --accent: var(--purple);
   --alt: #f5f3ff;
@@ -164,12 +126,4 @@ body[data-domain="manager"] {
 body[data-domain="notesheets"] {
   --accent: var(--green);
   --alt: var(--glt);
-}
-body[data-domain="closing"] {
-  --accent: var(--teal);
-  --alt: var(--tlt);
-}
-body[data-domain="audit"] {
-  --accent: #0F1F3D;
-  --alt: #e8ebf3;
 }

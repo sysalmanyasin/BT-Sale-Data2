@@ -1,0 +1,54 @@
+/* ══════════════════════════════════════════════════════════════════
+   AUDIT NATIVE — Assignments Overview + Live Snapshot popup
+   Ported from Pharmacy Audit Hub's own css/app.css. All classes
+   prefixed an- since Random's own .card/.btn/.val-badge class names
+   collide with BT's own (different-styled) classes of the same name.
+   Status colors (navy/gold/green-ink/red) are kept as the same literal
+   hex Random itself uses — fixed status colors, not theme accents.
+   ══════════════════════════════════════════════════════════════════ */
+
+.an-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.an-toolbar span { font-size: 11px; color: var(--muted); }
+
+.an-engagement-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; overflow: hidden; box-shadow: var(--sh); }
+.an-engagement-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; cursor: pointer; background: var(--s2); }
+.an-engagement-card.an-open .an-engagement-head { border-bottom: 1px solid var(--border); }
+.an-chevron { font-size: 11px; color: var(--muted); transition: transform .2s; }
+.an-engagement-card.an-open .an-chevron { transform: rotate(90deg); }
+.an-engagement-body { display: none; padding: 10px 12px; }
+.an-engagement-card.an-open .an-engagement-body { display: block; }
+
+.an-val-badge { font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 12px; white-space: nowrap; }
+.an-val-grey  { background: var(--s2); color: var(--muted); }
+.an-val-green { background: #ECFDF5; color: #047857; }
+.an-val-red   { background: #FEF2F2; color: #DC2626; }
+.an-val-gold  { background: #FFFBEB; color: #B45309; }
+.an-val-navy  { background: #EFF3FB; color: #1B3A6B; }
+
+.an-history-item { border: 1px solid var(--border); border-radius: 9px; margin-bottom: 8px; overflow: hidden; }
+.an-history-item:last-child { margin-bottom: 0; }
+.an-history-header { display: flex; align-items: center; justify-content: space-between; padding: 9px 11px; cursor: pointer; background: var(--s2); }
+.an-arrow { font-size: 10px; color: var(--muted); transition: transform .2s; }
+.an-history-item.an-open .an-arrow { transform: rotate(90deg); }
+.an-history-body { display: none; padding: 8px 11px 10px; }
+.an-history-item.an-open .an-history-body { display: block; }
+
+.an-movable-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 0; font-size: 12px; color: var(--t2); border-bottom: 1px solid var(--border); }
+.an-movable-row:last-child { border-bottom: none; }
+
+.an-progress-track { height: 6px; border-radius: 3px; background: var(--s2); overflow: hidden; margin-top: 2px; }
+.an-progress-fill { height: 100%; background: #F59E0B; border-radius: 3px; }
+
+.an-filter-btn { font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--t2); cursor: pointer; }
+.an-filter-btn-active { background: #1B3A6B; color: #fff; border-color: #1B3A6B; }
+.an-sort-btn { font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--t2); cursor: pointer; }
+.an-btn-primary { padding: 10px; border-radius: 9px; border: none; background: #1B3A6B; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
+.an-btn-primary:hover { background: #16305A; }
+
+/* ── Live Snapshot modal ─────────────────────────────────────────── */
+.an-snapshot-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.5); display: none; align-items: flex-end; justify-content: center; z-index: 500; }
+.an-snapshot-overlay.an-open { display: flex; }
+.an-snapshot-sheet { background: var(--surface); border-radius: 16px 16px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)); width: 100%; max-width: 520px; max-height: 86vh; overflow: auto; }
+.an-snapshot-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.an-snapshot-head h3 { color: var(--text); font-size: 15px; font-weight: 800; }
+.an-snapshot-close { border: none; background: var(--s2); color: var(--t2); border-radius: 8px; padding: 4px 10px; font-size: 13px; cursor: pointer; }

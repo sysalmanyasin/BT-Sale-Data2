@@ -1,0 +1,109 @@
+/* ══════════════════════════════════════════════════════════════════
+   CLOSING NATIVE — Credit Ledger + Closing Book
+   Ported from Closing's own css/main.css (.cl-*/.cb-* classes),
+   remapped onto BT's design tokens (--surface/--border/--muted/--text/
+   --t2/--teal/--tlt/--s2) instead of Closing's own (--navy/--slate/
+   --blue/--radius-*). Colors that don't have a direct BT equivalent
+   (the amber "Final" badge, the blue "Shift" badge) are kept as the
+   same literal hex Closing itself uses, since those are fixed status
+   colors, not theme accents.
+   ══════════════════════════════════════════════════════════════════ */
+
+.cln-empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 13px; }
+
+/* ── Closing Book ─────────────────────────────────────────────── */
+.cb-summary-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  padding: 18px 20px; margin-bottom: 16px; box-shadow: var(--sh);
+}
+.cb-summary-head { font-size: 12px; font-weight: 700; letter-spacing: .4px; color: var(--muted); text-transform: uppercase; }
+.cb-summary-date { font-size: 16px; font-weight: 700; color: var(--text); margin-top: 4px; margin-bottom: 14px; }
+.cb-summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 20px; }
+.cb-summary-cell { padding-top: 8px; border-top: 1px solid var(--border); }
+.cb-summary-cell:nth-child(-n+2) { border-top: none; padding-top: 0; }
+.cb-summary-label { font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+.cb-summary-val { font-size: 20px; font-weight: 700; font-family: var(--mono); color: var(--text); }
+
+.cb-range-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; }
+.cb-range-title { font-size: 13px; font-weight: 700; color: var(--muted); margin-bottom: 10px; }
+.cb-range-row { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.cb-range-field { flex: 1; min-width: 130px; display: flex; flex-direction: column; gap: 4px; }
+.cb-range-field label { font-size: 11px; color: var(--muted); font-weight: 600; }
+.cb-range-field input, .cb-range-field select {
+  background: var(--s2); border: 1px solid var(--border); color: var(--text);
+  border-radius: 7px; padding: 8px 10px; font-size: 13px; font-family: var(--sans);
+}
+.cb-shortcut-row { display: flex; gap: 8px; margin: 10px 0; flex-wrap: wrap; }
+.cb-shortcut-row button {
+  flex: 1; min-width: 100px; padding: 8px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--s2); color: var(--text); font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.cb-shortcut-row button:hover { background: var(--tlt); border-color: var(--teal); color: #0f766e; }
+.cb-generate-btn {
+  width: 100%; padding: 11px; border-radius: 9px; border: none;
+  background: var(--teal); color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; margin-top: 4px;
+}
+.cb-generate-btn:hover { filter: brightness(1.05); }
+.cb-generate-status { font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+
+.cb-entry { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; background: var(--surface); }
+.cb-entry-missing { opacity: .6; }
+.cb-entry-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.cb-entry-date { font-size: 13px; font-weight: 700; color: var(--text); }
+.cb-entry-empty { font-size: 12px; color: var(--muted); }
+.cb-entry-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; }
+.cb-entry-grid div { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+.cb-entry-grid b { color: var(--text); font-family: var(--mono); font-weight: 700; }
+
+/* ── Credit / Misc Ledger ─────────────────────────────────────── */
+.cl-mode-tabs { display: flex; gap: 6px; margin-bottom: 12px; background: var(--s2); border-radius: 10px; padding: 4px; }
+.cl-mode-tab {
+  flex: 1; text-align: center; padding: 8px 10px; border: none; border-radius: 7px;
+  background: transparent; color: var(--muted); font-size: 13px; font-weight: 700; cursor: pointer; font-family: var(--sans);
+}
+.cl-mode-tab.active { background: var(--surface); color: #0f766e; box-shadow: var(--sh); }
+
+.cl-date-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; overflow: hidden; box-shadow: var(--sh); }
+.cl-date-head { display: flex; align-items: center; gap: 10px; padding: 11px 14px; cursor: pointer; background: var(--s2); border-bottom: 1px solid transparent; transition: background .15s; }
+.cl-date-card.open .cl-date-head { border-bottom-color: var(--border); }
+.cl-date-head:hover { background: var(--tlt); }
+.cl-date-icon { font-size: 15px; flex-shrink: 0; }
+.cl-date-label { font-size: 14px; font-weight: 700; color: var(--text); }
+.cl-date-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.cl-date-total { font-size: 13px; font-weight: 800; color: #0f766e; background: var(--tlt); border-radius: 20px; padding: 3px 10px; white-space: nowrap; }
+.cl-chevron { font-size: 11px; color: var(--muted); margin-left: 6px; transition: transform .2s; }
+.cl-date-card.open .cl-chevron { transform: rotate(90deg); }
+.cl-date-body { display: none; padding: 8px 10px 10px; }
+.cl-date-card.open .cl-date-body { display: block; }
+
+.cl-shift-block { border: 1px solid var(--border); border-radius: 9px; margin-bottom: 8px; overflow: hidden; }
+.cl-shift-block:last-child { margin-bottom: 0; }
+.cl-shift-header { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--s2); border-bottom: 1px solid var(--border); }
+.cl-shift-block.mode-final .cl-shift-header { background: #fffbeb; border-bottom-color: #fde68a; }
+.cl-badge-shift { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 10px; background: #eff6ff; color: #2563eb; white-space: nowrap; }
+.cl-badge-final { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 10px; background: #fef3c7; color: #92400e; white-space: nowrap; }
+.cl-shift-name { font-size: 13px; font-weight: 700; color: var(--text); flex: 1; }
+.cl-shift-total { font-size: 13px; font-weight: 800; color: var(--text); }
+
+.cl-lines { padding: 6px 12px 10px; }
+.cl-opening-row { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); padding: 4px 0 6px; border-bottom: 1px dashed var(--border); margin-bottom: 4px; }
+.cl-opening-row span:last-child { font-weight: 700; color: var(--t2); }
+.cl-line { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; color: var(--t2); }
+.cl-line .cl-lbl { color: var(--text); font-weight: 700; font-size: 12px; }
+.cl-lbl-desc { color: var(--muted); font-weight: 400; }
+.cl-line .cl-val { font-weight: 600; font-family: var(--mono); font-size: 12px; }
+.cl-adj-row .cl-lbl, .cl-adj-row .cl-val { color: #92400e; }
+.cl-total-row { display: flex; justify-content: space-between; font-size: 13px; font-weight: 800; color: var(--text); border-top: 1.5px solid var(--border); margin-top: 6px; padding-top: 6px; }
+.cl-cat-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); padding: 6px 0 2px; }
+.cl-empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 13px; }
+
+.cln-filter-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.cln-filter-row select { flex: 1; min-width: 140px; background: var(--s2); border: 1px solid var(--border); color: var(--text); border-radius: 7px; padding: 7px 10px; font-size: 12px; }
+.cln-count-badge { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.cln-toolbar-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.cln-toolbar-row button { flex: 1; padding: 7px; border-radius: 7px; border: 1px solid var(--border); background: var(--s2); color: var(--text); font-size: 12px; font-weight: 600; cursor: pointer; }
+.cln-toolbar-row button:hover { background: var(--tlt); border-color: var(--teal); color: #0f766e; }
+
+.cl-show-more { width: 100%; padding: 10px; border-radius: 9px; background: var(--s2); border: 1px dashed var(--border); color: var(--muted); font-size: 12px; cursor: pointer; text-align: center; margin-top: 4px; }
+.cl-show-more:hover { border-color: var(--teal); color: #0f766e; background: var(--tlt); }
+.cl-show-more.hidden { display: none; }
