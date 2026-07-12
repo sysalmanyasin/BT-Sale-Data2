@@ -40,6 +40,8 @@
 <link rel="stylesheet" href="css/variables.css">
 <link rel="stylesheet" href="css/auth.css">
 <link rel="stylesheet" href="css/nav.css">
+<link rel="stylesheet" href="css/closing-native.css">
+<link rel="stylesheet" href="css/audit-native.css">
 <link rel="stylesheet" href="css/components.css">
 <link rel="stylesheet" href="css/modals.css">
 <link rel="stylesheet" href="css/pages.css">
@@ -247,8 +249,9 @@ if ('serviceWorker' in navigator) {
     <button class="ntab" data-page="index" data-group="saledata">Sale Data</button>
     <button class="ntab" data-page="manager" data-group="manager">👔 Manager</button>
     <button class="ntab" data-page="notesheets" data-group="notesheets">📑 Notes &amp; Sheets</button>
-    <button class="ntab" data-page="closing" data-group="closing">🔒 Closing</button>
-    <button class="ntab" data-page="audit" data-group="audit">🧾 Audit</button>
+    <button class="ntab" data-page="closing-book" data-group="tools">📖 Closing Book</button>
+    <button class="ntab" data-page="credit-ledger" data-group="tools">💳 Credit Ledger</button>
+    <button class="ntab" data-page="assignments" data-group="tools">🧾 Assignments</button>
     <button class="ntab" data-page="tools" data-group="tools">Tools</button>
   </div>
   <div class="ntabs subnav" id="saledata-subnav" style="display:none">
@@ -275,8 +278,6 @@ if ('serviceWorker' in navigator) {
   <button class="bnav-item" data-page="index" data-group="saledata"><span class="bicon">🗂️</span><span class="blabel">Sale Data</span></button>
   <button class="bnav-item" data-page="manager" data-group="manager"><span class="bicon">👔</span><span class="blabel">Manager</span></button>
   <button class="bnav-item" data-page="notesheets" data-group="notesheets"><span class="bicon">📑</span><span class="blabel">Notes</span></button>
-  <button class="bnav-item" data-page="closing" data-group="closing"><span class="bicon">🔒</span><span class="blabel">Closing</span></button>
-  <button class="bnav-item" data-page="audit" data-group="audit"><span class="bicon">🧾</span><span class="blabel">Audit</span></button>
   <button class="bnav-item" data-page="tools" data-group="tools"><span class="bicon">⚙️</span><span class="blabel">Tools</span></button>
 </div>
 <!-- Sale Data sub-nav (mobile) -->
@@ -611,9 +612,84 @@ if ('serviceWorker' in navigator) {
   </div>
 </div>
 
+<!-- CLOSING BOOK — native port of Closing's own Closing Book page
+     (V2 plan follow-up). Reads the full Closing db via
+     closing-bridge.js's getFullDb() — same download already used for
+     the Cover Dashboard tile, no separate fetch. See closing-native.js
+     for the ported business logic and header note on what's simplified
+     (a scrollable list here, not Closing's full paginated PDF reader). -->
+<div class="page" id="page-closing-book">
+  <div class="hero"><div class="hlabel">Closing</div><div class="htitle">📖 Closing Book</div><div class="hsub">Every closing, laid out like a printed register — live from Closing's own data.</div></div>
+  <div id="cln-cb-summary" class="cb-summary-card"><div class="cln-empty">⏳ Waiting for the first sync from Closing…</div></div>
+  <div class="cb-range-card">
+    <div class="cb-range-title">SELECT RANGE</div>
+    <div class="cb-range-row">
+      <div class="cb-range-field"><label>From date</label><input type="date" id="cln-cb-from-date"></div>
+      <div class="cb-range-field"><label>Shift</label><select id="cln-cb-from-shift"><option>Night</option><option>Morning</option><option>Evening</option></select></div>
+    </div>
+    <div class="cb-range-row">
+      <div class="cb-range-field"><label>To date</label><input type="date" id="cln-cb-to-date"></div>
+      <div class="cb-range-field"><label>Shift</label><select id="cln-cb-to-shift"><option>Night</option><option>Morning</option><option selected>Evening</option></select></div>
+    </div>
+    <div class="cb-shortcut-row">
+      <button onclick="clnSetShortcutClosings(10)">Last 10 Closings</button>
+      <button onclick="clnSetShortcutDays(3)">Last 3 Days</button>
+      <button onclick="clnSetShortcutDays(7)">Last 7 Days</button>
+      <button onclick="clnSetShortcutDays(30)">Last 1 Month</button>
+    </div>
+    <button class="cb-generate-btn" onclick="clnGenerateBook()">📖 Generate Book</button>
+    <div class="cb-generate-status" id="cln-cb-status"></div>
+  </div>
+  <div id="cln-cb-results" style="margin-top:12px"></div>
+</div>
+
+<!-- CREDIT LEDGER — native port of Closing's own Credit Ledger page.
+     Same data source and same simplification note as Closing Book
+     above. Credit tab and Misc/Ongoing tab share this one page, same
+     as the original. -->
+<div class="page" id="page-credit-ledger">
+  <div class="hero"><div class="hlabel">Closing</div><div class="htitle" id="cln-cl-title">💳 Credit</div><div class="hsub" id="cln-cl-sub">Snapshot history of every shift's credit</div></div>
+  <div class="cl-mode-tabs">
+    <button class="cl-mode-tab active" id="cln-cl-tab-credit" onclick="clnSwitchMode('credit')">💳 Credit</button>
+    <button class="cl-mode-tab" id="cln-cl-tab-misc" onclick="clnSwitchMode('misc')">🧮 Misc / Ongoing</button>
+  </div>
+  <div class="cln-toolbar-row">
+    <button onclick="clnToggleAll(true)">Expand All</button>
+    <button onclick="clnToggleAll(false)">Collapse All</button>
+  </div>
+  <div class="cln-filter-row" id="cln-cl-filter-row">
+    <span style="font-size:12px;color:var(--muted)">Filter account:</span>
+    <select id="cln-cl-filter-select" onchange="clnSetFilter(this.value)"><option value="">All Accounts</option></select>
+    <span class="cln-count-badge" id="cln-cl-count"></span>
+  </div>
+  <div id="cln-cl-cards"><div class="cln-empty">⏳ Waiting for the first sync from Closing…</div></div>
+  <button class="cl-show-more hidden" id="cln-cl-more-btn" onclick="clnShowMore()"></button>
+</div>
+
+<!-- AUDIT ASSIGNMENTS — native port of Pharmacy Audit Hub's own Main
+     Auditor dashboard (Auditor Progress + Company Coverage + Compile
+     Status per round, across every engagement, open and closed) plus
+     the Live Snapshot popup. Read-only — see audit-native.js's header
+     note on why the write actions (Force Submit / Move to… / Revoke)
+     are deliberately not ported. -->
+<div class="page" id="page-assignments">
+  <div class="hero"><div class="hlabel">Audit</div><div class="htitle">🧾 Assignments</div><div class="hsub">Every engagement, open and closed — live from Pharmacy Audit Hub.</div></div>
+  <div class="an-toolbar"><span id="an-status">⏳ Loading…</span></div>
+  <div id="an-list"><div class="cln-empty">⏳ Loading from Audit…</div></div>
+</div>
+
+<!-- Live Snapshot popup — see audit-native.js's renderSnapshotModal() -->
+<div class="an-snapshot-overlay" id="an-snapshot-overlay" onclick="if(event.target===this) anCloseSnapshot()">
+  <div class="an-snapshot-sheet">
+    <div class="an-snapshot-head"><h3 id="an-snapshot-title">Live counts</h3><button class="an-snapshot-close" onclick="anCloseSnapshot()">✕</button></div>
+    <div id="an-snapshot-body"></div>
+  </div>
+</div>
+
 <!-- TOOLS -->
 <div class="page" id="page-tools">
   <div class="hero"><div class="hlabel">Tools</div><div class="htitle">Settings &amp; Data Management</div><div class="hsub">Tap any card to expand it.</div></div>
+
 
   <!-- Quick Actions moved to the always-visible top status strip (#qa-strip) -->
 
@@ -1268,57 +1344,6 @@ if ('serviceWorker' in navigator) {
   </div>
 </div>
 
-<!-- CLOSING — embedded peer dashboard (V2 plan §6). The app itself is
-     fully separate: own domain (closing.duapharma.com), own repo, own
-     PWA/service worker, own localStorage. This page just frames the
-     live site so it feels native inside this app's shell; nothing of
-     its code or data lives here. See closing-bridge.js for the
-     separate read-only Dropbox summary shown on the Cover tile. -->
-<div class="page" id="page-closing" style="padding:0;display:flex;flex-direction:column">
-  <div style="padding:14px 20px 10px;flex-shrink:0">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-      <div>
-        <h1 class="htitle" style="margin:0">🔒 Closing</h1>
-        <p class="hsub" style="margin:2px 0 0">Shift Register &amp; Daily Closing — live, embedded from closing.duapharma.com</p>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <span id="closing-bridge-status" style="font-size:11px;color:var(--muted)"></span>
-        <button class="btn" style="border:1px solid var(--border);font-size:12px" onclick="closingBridgeButtonClick()">🔗 Data Bridge</button>
-        <a href="https://closing.duapharma.com" target="_blank" rel="noopener" class="btn" style="border:1px solid var(--border);font-size:12px;text-decoration:none;color:inherit" title="Open in a new tab — needed if you ever have to reconnect Dropbox here, since Dropbox's own login page can't be framed">↗ New Tab</a>
-      </div>
-    </div>
-  </div>
-  <iframe id="closing-iframe" data-src="https://closing.duapharma.com"
-    style="flex:1;width:100%;border:0;min-height:70vh;background:var(--surface)"
-    title="Closing — Shift Register &amp; Daily Closing"
-    allow="clipboard-write"></iframe>
-</div>
-
-<!-- AUDIT — embedded peer dashboard (V2 plan §12). Fully separate app:
-     own domain (random.duapharma.com), own repo, own PWA/service
-     worker, own Supabase project. This page just frames the live site
-     so it feels native inside this app's shell; nothing of its code or
-     data lives here. See audit-bridge.js for the read-only Supabase
-     summary shown on the Cover tile. -->
-<div class="page" id="page-audit" style="padding:0;display:flex;flex-direction:column">
-  <div style="padding:14px 20px 10px;flex-shrink:0">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-      <div>
-        <h1 class="htitle" style="margin:0">🧾 Audit</h1>
-        <p class="hsub" style="margin:2px 0 0">Pharmacy Audit Hub — live, embedded from random.duapharma.com</p>
-      </div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <span id="audit-bridge-status" style="font-size:11px;color:var(--muted)"></span>
-        <a href="https://random.duapharma.com" target="_blank" rel="noopener" class="btn" style="border:1px solid var(--border);font-size:12px;text-decoration:none;color:inherit" title="Open in a new tab if login inside the frame ever misbehaves">↗ New Tab</a>
-      </div>
-    </div>
-  </div>
-  <iframe id="audit-iframe" data-src="https://random.duapharma.com"
-    style="flex:1;width:100%;border:0;min-height:70vh;background:var(--surface)"
-    title="Audit — Pharmacy Audit Hub"
-    allow="clipboard-write"></iframe>
-</div>
-
 <!-- PRINT AREA (hidden, shown only during print) -->
 <div id="print-area"></div>
 
@@ -1390,6 +1415,7 @@ if ('serviceWorker' in navigator) {
 
 <!-- 1b. Shared service layer -->
 <script defer src="js/bt-format.js"></script>
+<script type="module" src="js/print.js"></script>
 <script defer src="js/bt-date.js"></script>
 <script defer src="js/bt-calc.js"></script>
 <script defer src="js/bt-search.js"></script>
@@ -1418,7 +1444,9 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/cover-dashboard.js"></script>
 <script type="module" src="js/staff-notes.js"></script>
 <script type="module" src="js/closing-bridge.js"></script>
+<script type="module" src="js/closing-native.js"></script>
 <script type="module" src="js/audit-bridge.js"></script>
+<script type="module" src="js/audit-native.js"></script>
 
 <!-- 3. Auth: Google Sign-In -->
 <script defer src="js/auth.js"></script>

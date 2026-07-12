@@ -5,7 +5,7 @@
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v9.2'; // v9.2: ai-bridge.js's Expense/Custom Sections AI-chat commands rewired to the Ledger (were silently dead — reading/writing retired storage); Jazz Cash date-format bug fixed (DD/Mon/YYYY was corrupting Ledger sort order); app-context.js's deep-context dump rewired off retired Expense/Custom Sections storage, and now includes Jazz Cash for the first time; renderLedgerView (ledger-page.js) gained inline edit-in-place for every entry, covering Expense/Jazz Cash/Other Sections at once
+const CACHE_NAME = 'bt-sales-v9.5'; // v9.5: Notes & Sheets multi-file workbook model (V2 plan §5) — new bt_sheet_workbooks_v1 storage, each file its own independent set of sheet-tabs; the old "Sheet Files" snapshot feature (destructive overwrite) was converted into this rather than kept separate. Lossless one-time migration from bt_sheets_v2 + bt_sheet_files_v1 (both left untouched as a safety net). Also fixed: two ai-bridge.js AI-chat functions and the Cover Dashboard status tile were reading the legacy bt_sheet_files_v1 key directly and would have gone stale the moment migration ran
 
 const APP_SHELL = [
   './',
