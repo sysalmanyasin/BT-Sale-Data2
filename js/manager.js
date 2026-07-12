@@ -807,7 +807,7 @@ function copyToNextMonth() {
 // MANAGER PRINT FUNCTIONS
 // ══════════════════════════════
 function _mgrPrint(html) {
-  btPrint(html);
+  Print.render(html);
 }
 
 function printSalaryReport() {

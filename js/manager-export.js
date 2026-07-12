@@ -312,33 +312,11 @@ function buildManagerSummaryHTML(mon) {
 function exportManagerSummary(mon) {
   mon = mon || _msLatestManagerMonth();
   const html = buildManagerSummaryHTML(mon);
-  const win  = window.open('', '_blank');
-  // Mobile browsers often return a non-null window that's still silently
-  // discarded a tick later (especially when this is invoked a few calls
-  // deep inside an async chat-command chain, rather than directly from
-  // the click). Re-check after the write so we can warn instead of
-  // failing silently.
-  if (!win || win.closed) {
-    if (typeof toast === 'function') toast('⚠️ Pop-up blocked — please allow pop-ups for this site and try again.', 'w');
-    return false;
-  }
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
-  // win.onload is far more reliable on mobile than a fixed setTimeout:
-  // a guessed delay can fire before the new tab/document has actually
-  // finished rendering, causing print() to act on a blank page (or be
-  // dropped if the tab isn't focused yet).
-  var printed = false;
-  function doPrint() {
-    if (printed || win.closed) return;
-    printed = true;
-    try { win.focus(); win.print(); } catch (_) {}
-  }
-  win.onload = doPrint;
-  // Fallback in case onload never fires (some in-app/WebView browsers).
-  setTimeout(doPrint, 600);
-  return true;
+  // The actual new-tab open + print trigger now lives in print.js
+  // (Print.renderNewTab) — this used to be a private doPrint() here
+  // duplicating that exact logic. See print.js's header for why having
+  // two copies of this was worth consolidating.
+  return Print.renderNewTab(html);
 }
 
 // Only exportManagerSummary is consumed externally (commandhub-page.js,

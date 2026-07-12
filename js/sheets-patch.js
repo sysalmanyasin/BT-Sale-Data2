@@ -37,6 +37,7 @@
     Actions.saveSheets      = _wrap(Actions.saveSheets);
     Actions.saveNotes       = _wrap(Actions.saveNotes);
     Actions.saveSheetFiles  = _wrap(Actions.saveSheetFiles);
+    Actions.saveSheetWorkbooks = _wrap(Actions.saveSheetWorkbooks);
   }
 
   // ─────────────────────────────────────────────────────────────────────
@@ -137,6 +138,7 @@
 
     const rows = [
       { icon: '📄', label: 'New Sheet',         kb: '',       fn: 'shtFmNew'         },
+      { icon: '📁', label: 'Switch File',        kb: '',       fn: 'shtFmSwitchFile'  },
       { icon: '📂', label: 'Import XLSX',        kb: '',       fn: 'shtFmImport'      },
       null, // separator
       { icon: '💾', label: 'Save All',           kb: 'Ctrl+S', fn: 'shtFmSave'        },
@@ -465,6 +467,14 @@
     toast('Use the + tab button to add a new sheet', 'w');
   };
 
+  window.shtFmSwitchFile = function () {
+    _closeFilePanel();
+    // The multi-file workbook switcher lives in notes-sheets.js — this
+    // just opens it (V2 plan §5 — one file, many named sheets).
+    if (typeof _nsSFOpenManager === 'function') { _nsSFOpenManager(); return; }
+    toast('File switcher unavailable', 'w');
+  };
+
   window.shtFmImport = function () {
     _closeFilePanel();
     // Click the XLSX import button (toolbar shows "XLSX")
@@ -512,9 +522,15 @@
       '#mgr-sheets [onclick*="print" i]:not(.sfm-row), #mgr-sheets [title*="print" i]:not(.sfm-row)'
     );
     if (btn) { btn.click(); return; }
-    if (typeof printSheet    === 'function') { printSheet();    return; }
-    if (typeof nsPrintSheet  === 'function') { nsPrintSheet();  return; }
-    window.print();
+    // Fall back to calling the real Sheets print function directly
+    // rather than a bare window.print() — a bare call here used to
+    // print whatever the live page happened to look like at that
+    // moment, with none of print.js's race-condition safety, if the
+    // DOM-query above ever failed to find a button. (The two typeof
+    // checks that used to be here — printSheet/nsPrintSheet — were
+    // dead: neither function exists anywhere in this codebase.)
+    if (typeof _nsSpPrint === 'function') { _nsSpPrint(); return; }
+    if (typeof toast === 'function') toast('⚠ Nothing to print here.', 'w');
   };
 
   window.shtFmSync = function () {

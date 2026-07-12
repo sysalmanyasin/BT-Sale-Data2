@@ -117,10 +117,14 @@ function _managerStatus() {
 function _notesheetsStatus() {
   try {
     const notes = JSON.parse(Repository.getItem('bt_notes_v1') || '[]');
-    const sheetFiles = JSON.parse(Repository.getItem('bt_sheet_files_v1') || '[]');
+    // Read via _nsSFLoad() (notes-sheets.js) rather than the legacy
+    // bt_sheet_files_v1 key directly — V2 plan §5's multi-file workbook
+    // migration leaves that key frozen at whatever it held the moment
+    // migration ran, so reading it directly here would go stale.
+    const sheetFiles = (typeof _nsSFLoad === 'function') ? _nsSFLoad() : JSON.parse(Repository.getItem('bt_sheet_files_v1') || '[]');
     if (!notes.length && !sheetFiles.length) return 'No notes or sheets yet';
     return notes.length + ' note' + (notes.length === 1 ? '' : 's') + ' · ' +
-           sheetFiles.length + ' sheet file' + (sheetFiles.length === 1 ? '' : 's');
+           sheetFiles.length + ' file' + (sheetFiles.length === 1 ? '' : 's');
   } catch (e) {
     return 'Notes & Sheets status unavailable';
   }
@@ -129,7 +133,7 @@ function _notesheetsStatus() {
 const SHIFT_ICON = { pending: '⚪', draft: '🟡', closed: '✅' };
 function _closingStatus() {
   if (!ClosingBridge.isConnected()) {
-    return 'Not connected — open Closing to link the data bridge';
+    return 'Not connected — tap 🔗 Data Bridge below to link';
   }
   const summary = ClosingBridge.getCachedSummary();
   if (!summary) return 'Live shift register — Fazal Din\u2019s Pharma Plus';
@@ -152,8 +156,24 @@ function _tiles() {
     { page: 'dashboard', icon: '📊', title: 'Sales',           status: _salesStatus(),   enabled: true },
     { page: 'manager',   icon: '👔', title: 'Manager',          status: _managerStatus(), enabled: true },
     { page: 'notesheets',icon: '📑', title: 'Notes & Sheets',   status: _notesheetsStatus(), enabled: true },
-    { page: 'closing',   icon: '🔒', title: 'Closing',          status: _closingStatus(), enabled: true },
-    { page: 'audit',     icon: '🧾', title: 'Audit',            status: _auditStatus(),   enabled: true },
+    // Closing and Audit are standalone sibling apps — own repo, own PWA,
+    // own data. No embedded page in this app anymore; tapping the tile
+    // opens the real thing in a new tab. The status line below still
+    // comes from the live read-only bridge (closing-bridge.js /
+    // audit-bridge.js), so the dashboard summary keeps working exactly
+    // as before — only the in-app iframe embed was removed. Closing's
+    // bridge needs a one-time manual pairing step (Dropbox has no
+    // queryable API); that used to live behind a button on the now-removed
+    // embedded page, so it moves to the tile itself via bridgeAction.
+    // Audit's bridge reads Supabase directly with a baked-in key — no
+    // pairing step, so it doesn't need one.
+    { href: 'https://closing.duapharma.com', icon: '🔒', title: 'Closing', status: _closingStatus(), enabled: true, bridgeAction: 'closingBridgeButtonClick' },
+    // Native reports built off the same Closing data the tile above
+    // reads — not an iframe, not an external link. See closing-native.js.
+    { page: 'closing-book',   icon: '📖', title: 'Closing Book',  status: 'Every closing, laid out like a printed register', enabled: true },
+    { page: 'credit-ledger',  icon: '💳', title: 'Credit Ledger', status: 'Credit + Misc/Ongoing snapshot history',           enabled: true },
+    { href: 'https://random.duapharma.com',  icon: '🧾', title: 'Audit',   status: _auditStatus(),   enabled: true },
+    { page: 'assignments', icon: '📋', title: 'Assignments', status: 'Auditor progress + company coverage, every engagement', enabled: true },
     { page: null,        icon: '📦', title: 'Inventory Audit',  status: 'Not built yet — Dropbox-fed, planned (V2 plan §6)', enabled: false },
     // Standalone sub-app — its own file, own storage, not part of this app's
     // data model. Opens in a new tab rather than routing through showPage(),
@@ -191,6 +211,7 @@ export function renderCoverDashboard() {
           <div style="font-size:22px">${t.icon}</div>
           <div style="font-weight:600;margin-top:6px">${_esc(t.title)}${t.href ? ' <span style="font-size:11px;color:var(--muted);font-weight:400">↗</span>' : ''}</div>
           <div style="font-size:12px;color:var(--muted);margin-top:4px">${_esc(t.status)}</div>
+          ${t.bridgeAction ? `<button data-bridge-idx="${i}" style="margin-top:8px;font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:var(--s2);color:inherit;cursor:pointer">🔗 Data Bridge</button>` : ''}
         </div>`).join('')}
     </div>`;
 
@@ -206,6 +227,13 @@ export function renderCoverDashboard() {
     };
     card.addEventListener('click', goTo);
     card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goTo(); } });
+  });
+  container.querySelectorAll('[data-bridge-idx]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation(); // don't also trigger the tile's own click → new tab
+      const t = tiles[+btn.dataset.bridgeIdx];
+      if (t && typeof window[t.bridgeAction] === 'function') window[t.bridgeAction]();
+    });
   });
 
   // Background refresh of the Closing summary (rate-limited to once per

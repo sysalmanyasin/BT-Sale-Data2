@@ -370,38 +370,39 @@
 
 /* ══════════════════════════════════════════════════════════════════════
    STORAGE
+
+   V2 plan §5 — multi-sheet workbook model. Before this: ONE global set
+   of sheet-tabs shared by the whole app (bt_sheets_v2), plus a
+   completely separate "Sheet Files" snapshot list (bt_sheet_files_v1)
+   where each entry was a flat, point-in-time copy of a single sheet's
+   cells — loading one *destructively overwrote* whatever was currently
+   on screen. Neither was "one file, many named sheets."
+
+   Now: bt_sheet_workbooks_v1 holds { activeFileId, files } — each file
+   is its own independent workbook with its own `grids` dict and its
+   own sheet-tabs, using the exact same grid shape (and exact same
+   sheet-tab CRUD functions — _nsSpAddSheet/_nsSpSwitchSheet/etc. — all
+   below, completely unchanged) that already worked before this. Only
+   the storage underneath them changed: _nsGetSheets()/_nsSheetsSave()
+   keep their old signature (a bare {grids} object) but now read/write
+   the ACTIVE FILE's grids instead of one global set, so none of the
+   ~15 call sites that already used them needed to change.
+
+   Old keys (bt_sheets_v2, bt_sheet_files_v1) are read once for
+   migration and never written again — nothing is deleted, they stay as
+   an untouched safety net.
 ══════════════════════════════════════════════════════════════════════ */
-const NS_NOTES_KEY  = 'bt_notes_v1';
-const NS_SHEETS_KEY = 'bt_sheets_v2';  // v2 = new format with cell formatting
+const NS_NOTES_KEY      = 'bt_notes_v1';
+const NS_SHEETS_KEY     = 'bt_sheets_v2';       // legacy — read-only now, migration source
+const NS_SHEET_FILES_KEY = 'bt_sheet_files_v1'; // legacy — read-only now, migration source
+const NS_WORKBOOKS_KEY  = 'bt_sheet_workbooks_v1';
 
 function _nsNotesLoad()  { try { return JSON.parse(Repository.getItem(NS_NOTES_KEY) || '[]'); } catch(_){ return []; } }
 function _nsNotesSave(a) {
   try { Actions.saveNotes(JSON.stringify(a)); } catch(_){}
   if (Repository.getItem('bt_auto_save') === '1' && typeof pushToSupabase === 'function') pushToSupabase();
 }
-function _nsSheetsLoad() { try { return JSON.parse(Repository.getItem(NS_SHEETS_KEY) || '{}'); } catch(_){ return {}; } }
-function _nsSheetsSave(o){ try { Actions.saveSheets(JSON.stringify(o)); } catch(_){} }
 function _nsUid()        { return 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
-
-/* Sheet File storage */
-const NS_SHEET_FILES_KEY = 'bt_sheet_files_v1';
-function _nsSFLoad() {
-  let arr = [];
-  try { arr = JSON.parse(Repository.getItem(NS_SHEET_FILES_KEY) || '[]'); } catch(_){ arr = []; }
-  // Migrate older files that don't have a category yet
-  let changed = false;
-  arr.forEach(f => { if (!f.category) { f.category = f.sheetName || 'General'; changed = true; } });
-  if (changed) { try { Actions.saveFeatureData(NS_SHEET_FILES_KEY, JSON.stringify(arr)); } catch(_){} }
-  return arr;
-}
-function _nsSFSave(a){ try { Actions.saveSheetFiles(JSON.stringify(a)); } catch(_){} }
-
-// Manage Sheets panel state
-var _nsMgsSort   = (Repository.getItem('bt_mgs_sort')  || 'created_desc');
-var _nsMgsGroup  = (Repository.getItem('bt_mgs_group') || 'category');
-var _nsMgsSearch = '';
-var _nsMgsCollapsed = {};
-function _nsEsc(s)       { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 function _nsDefaultGrid(name) {
   return {
@@ -412,35 +413,121 @@ function _nsDefaultGrid(name) {
   };
 }
 
-function _nsGetSheets() {
-  const s = _nsSheetsLoad();
-  // Migrate old v1 format
-  if (!s.grids && Repository.getItem('bt_sheets_v1')) {
-    try {
-      const old = JSON.parse(Repository.getItem('bt_sheets_v1') || '{}');
-      if (old.grids) {
-        const newGrids = {};
-        Object.values(old.grids).forEach(g => {
-          const ng = _nsDefaultGrid(g.name);
-          (g.data || []).forEach((row, ri) => {
-            (row || []).forEach((val, ci) => {
-              if (val) ng.cells[ri + ',' + ci] = { v: val };
-            });
-          });
-          newGrids[ng.id] = ng;
-        });
-        s.grids = newGrids;
-        _nsSheetsSave(s);
-      }
-    } catch(e) {}
-  }
-  if (!s.grids || !Object.keys(s.grids).length) {
-    const g = _nsDefaultGrid('Sheet 1');
-    s.grids = { [g.id]: g };
-    _nsSheetsSave(s);
-  }
-  return s;
+/* ── Workbook (file) storage — the new home for everything ─────────── */
+function _nsWBLoadRaw() {
+  try { return JSON.parse(Repository.getItem(NS_WORKBOOKS_KEY) || '{}'); } catch(_) { return {}; }
 }
+function _nsWBSaveRaw(o) { try { Actions.saveSheetWorkbooks(JSON.stringify(o)); } catch(_) {} }
+
+// One-time, lossless migration. Runs at most once per install: once
+// bt_sheet_workbooks_v1 has any files in it, this returns immediately.
+function _nsWBMigrate() {
+  const wb = _nsWBLoadRaw();
+  if (wb.files && Object.keys(wb.files).length) return wb;
+
+  const files = {};
+  let activeFileId = null;
+
+  // 1) The old single global workbook becomes the first file, keeping
+  //    every existing sheet/tab exactly as it was.
+  let oldSheets = null;
+  try { oldSheets = JSON.parse(Repository.getItem(NS_SHEETS_KEY) || 'null'); } catch(_) {}
+  if (oldSheets && oldSheets.grids && Object.keys(oldSheets.grids).length) {
+    const fid = _nsUid();
+    files[fid] = {
+      id: fid, name: 'My Workbook', category: 'General',
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      grids: oldSheets.grids,
+      activeSheet: Object.keys(oldSheets.grids)[0],
+    };
+    activeFileId = fid;
+  }
+
+  // 2) Each old "Sheet File" snapshot becomes its own one-sheet file.
+  let oldFiles = [];
+  try { oldFiles = JSON.parse(Repository.getItem(NS_SHEET_FILES_KEY) || '[]'); } catch(_) {}
+  oldFiles.forEach(f => {
+    const gid = _nsUid();
+    const grid = {
+      id: gid, name: f.sheetName || 'Sheet 1',
+      numRows: f.numRows || 100, numCols: f.numCols || 26,
+      colWidths: f.colWidths || {}, cells: f.cells || {},
+    };
+    const fid = _nsUid();
+    files[fid] = {
+      id: fid, name: f.name || 'Untitled', category: f.category || f.sheetName || 'General',
+      createdAt: f.createdAt || new Date().toISOString(),
+      updatedAt: f.updatedAt || f.createdAt || new Date().toISOString(),
+      grids: { [gid]: grid },
+      activeSheet: gid,
+    };
+    if (!activeFileId) activeFileId = fid;
+  });
+
+  // 3) Brand new install, nothing to migrate — bootstrap one empty file.
+  if (!Object.keys(files).length) {
+    const gid = _nsUid(), fid = _nsUid();
+    files[fid] = {
+      id: fid, name: 'My Workbook', category: 'General',
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      grids: { [gid]: _nsDefaultGrid('Sheet 1') },
+      activeSheet: gid,
+    };
+    activeFileId = fid;
+  }
+
+  const result = { activeFileId, files };
+  _nsWBSaveRaw(result);
+  return result;
+}
+
+function _nsWBActiveFile() {
+  const wb = _nsWBMigrate();
+  let f = wb.files[wb.activeFileId];
+  if (!f) { // stale/missing pointer — fall back to the first available file
+    const firstId = Object.keys(wb.files)[0];
+    wb.activeFileId = firstId;
+    f = wb.files[firstId];
+    _nsWBSaveRaw(wb);
+  }
+  return f;
+}
+
+function _nsWBList() { return Object.values(_nsWBMigrate().files); }
+
+function _nsWBSheetCount(f) { return Object.keys(f.grids || {}).length; }
+function _nsWBCellCount(f)  { return Object.values(f.grids || {}).reduce((s,g) => s + _nsSFCountCells(g.cells), 0); }
+
+/* ── Bridges: every existing sheet-tab function below (grids CRUD, cell
+   edit, formulas — everything that already worked) still calls these
+   two exactly as before; they just now operate on the active file's
+   grids instead of one global set. ── */
+function _nsGetSheets() {
+  const f = _nsWBActiveFile();
+  if (!f.grids || !Object.keys(f.grids).length) {
+    const g = _nsDefaultGrid('Sheet 1');
+    f.grids = { [g.id]: g };
+    f.activeSheet = g.id;
+    _nsSheetsSave({ grids: f.grids });
+  }
+  return { grids: f.grids };
+}
+function _nsSheetsSave(s) {
+  const wb = _nsWBLoadRaw();
+  const f = wb.files && wb.files[wb.activeFileId];
+  if (!f) return;
+  f.grids = s.grids;
+  f.activeSheet = _spState.activeSheet || f.activeSheet;
+  f.updatedAt = new Date().toISOString();
+  _nsWBSaveRaw(wb);
+}
+
+// Manage Sheets panel state
+var _nsMgsSort   = (Repository.getItem('bt_mgs_sort')  || 'created_desc');
+var _nsMgsGroup  = (Repository.getItem('bt_mgs_group') || 'category');
+var _nsMgsSearch = '';
+var _nsMgsCollapsed = {};
+function _nsEsc(s)       { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 /* ══════════════════════════════════════════════════════════════════════
    MAIN RENDERER
@@ -922,8 +1009,12 @@ function _nsSpBuild(host) {
   const s = _nsGetSheets();
   const ids = Object.keys(s.grids);
   if (!_spState.activeSheet || !s.grids[_spState.activeSheet]) _spState.activeSheet = ids[0];
+  const activeFile = _nsWBActiveFile();
 
   host.innerHTML = `<div class="ns-sp" id="ns-sp-root">
+    <div onclick="_nsSFOpenManager()" title="Switch file" style="display:flex;align-items:center;gap:6px;padding:6px 10px;font-size:12px;color:var(--text,#1e293b);cursor:pointer;user-select:none;border-bottom:1px solid var(--border,#e2e8f0)">
+      📁 <strong>${_nsEsc(activeFile.name)}</strong> <span style="opacity:.6">▾</span>
+    </div>
     <div id="ns-ribbon-tabs" class="ns-ribbon-tabs"></div>
     <div id="ns-ribbon-bar" class="ns-ribbon-bar"></div>
     <div class="ns-fbar">
@@ -1740,11 +1831,16 @@ function _nsSpPrint() {
     tbl += '</tr>';
   }
   tbl += '</table>';
-  const win = window.open('', '_blank', 'width=900,height=700');
-  win.document.write(`<html><head><title>${grid.name}</title><style>body{margin:20px;font-family:Arial}</style></head><body>
-    <h2 style="margin-bottom:12px">${grid.name}</h2>${tbl}</body></html>`);
-  win.document.close();
-  setTimeout(() => win.print(), 500);
+  const html = `<html><head><title>${grid.name}</title><style>body{margin:20px;font-family:Arial}</style></head><body>
+    <h2 style="margin-bottom:12px">${grid.name}</h2>${tbl}</body></html>`;
+  // Was its own window.open()+document.write()+fixed-500ms-setTimeout
+  // here — the exact "guessed fixed delay" bug class that print.js's
+  // header documents fixing elsewhere, just not caught yet for Sheets
+  // specifically because a plain table rarely takes long enough to lay
+  // out for the guess to matter in practice. Print.renderNewTab uses
+  // win.onload (+ a fallback timeout) instead, same as every other
+  // new-tab report in the app now.
+  Print.renderNewTab(html, { windowFeatures: 'width=900,height=700' });
 }
 
 /* ─── Ribbon ─────────────────────────────────────────────────────── */
@@ -1898,11 +1994,11 @@ function _nsSpRibbonHTML(tab) {
   if (tab === 'files') {
     const files = _nsSFLoad();
     return `
-      <button class="ns-rb-btn primary" onclick="_nsSFSaveAs()" style="background:#1a73e8;color:#fff;border-color:#1a73e8">💾 Save As…</button>
-      <button class="ns-rb-btn" onclick="_nsSFOverwrite()" title="Overwrite last saved version of this sheet">⬆ Save (Overwrite)</button>
+      <button class="ns-rb-btn primary" onclick="_nsSFSaveAs()" style="background:#1a73e8;color:#fff;border-color:#1a73e8">💾 Save As New File…</button>
+      <button class="ns-rb-btn" onclick="_nsSFOverwrite()" title="Sheets save automatically as you type">✅ Autosave On</button>
       <div class="ns-rb-sep"></div>
-      <button class="ns-rb-btn" onclick="_nsSFOpenManager()">📁 Open File… <span style="background:#1a73e8;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:2px">${files.length}</span></button>
-      <button class="ns-rb-btn" onclick="_nsSetPanel('manage')" title="Full sheet management — sort, group, export">🗂 Manage Sheets</button>
+      <button class="ns-rb-btn" onclick="_nsSFOpenManager()">📁 Switch File… <span style="background:#1a73e8;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:2px">${files.length}</span></button>
+      <button class="ns-rb-btn" onclick="_nsSetPanel('manage')" title="Full file management — sort, group, export">🗂 Manage Files</button>
     `;
   }
   return '';
@@ -2129,11 +2225,27 @@ function _nsSpDeleteSheet(id) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════
-   SHEET FILE MANAGER
+   SHEET FILE MANAGER  (now: independent multi-sheet workbooks)
+
+   _nsSFLoad() below returns the array form of _nsWBList() so that every
+   render/search/sort function in this section — none of which cared
+   whether "file" meant a flat snapshot or a real workbook — keeps
+   working completely unchanged. Only the functions that actually
+   create/open/delete a file were rewritten.
 ══════════════════════════════════════════════════════════════════════ */
 
-/* Track which file ID is "currently open" for quick overwrite */
-var _nsCurrentFileId = null;
+function _nsSFLoad() { return _nsWBList(); }
+// Takes the same array shape _nsSFLoad() returns and writes it back as
+// the workbook dict, preserving activeFileId — this is what lets
+// _nsSFRename/_nsSFEditCategory/_nsSFDuplicate below stay so close to
+// their original "load array, mutate one entry, save array" shape.
+function _nsSFSave(arr) {
+  const wb = _nsWBLoadRaw();
+  const files = {};
+  arr.forEach(f => { files[f.id] = f; });
+  wb.files = files;
+  _nsWBSaveRaw(wb);
+}
 
 function _nsSFCountCells(cells) {
   return Object.values(cells || {}).filter(c => c.v !== undefined && c.v !== '').length;
@@ -2144,55 +2256,54 @@ function _nsSFRefreshOpenViews() {
   if (_nsActivePanel === 'manage') _nsRenderManage(document.getElementById('ns-panel-host'));
 }
 
+// "Save As…" — saves the CURRENT active sheet as a new, independent
+// one-sheet file (a copy; the current file/sheet you're on is
+// untouched and stays open). More sheets can be added to the new file
+// afterward with the usual + tab button, same as any file.
 function _nsSFSaveAs() {
   const grid = _nsSpGetGrid();
   if (!grid) return;
   const defaultName = grid.name + ' — ' + new Date().toLocaleDateString('en-PK', { day:'2-digit', month:'short', year:'numeric' });
-  const name = prompt('Save sheet as:', defaultName);
+  const name = prompt('Save current sheet as a new file:', defaultName);
   if (!name) return;
-  const category = prompt('Category (used to group sheets in Manage Sheets):', grid.name || 'General') || (grid.name || 'General');
-  const snapshot = {
-    id: _nsUid(),
-    name,
-    category,
-    sheetName: grid.name,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    numRows: grid.numRows || 100,
-    numCols: grid.numCols || 26,
-    colWidths: Object.assign({}, grid.colWidths || {}),
-    cells: JSON.parse(JSON.stringify(grid.cells || {}))
+  const category = prompt('Category (used to group files in Manage Sheets):', grid.name || 'General') || (grid.name || 'General');
+  const wb = _nsWBLoadRaw();
+  const gid = _nsUid(), fid = _nsUid();
+  wb.files = wb.files || {};
+  wb.files[fid] = {
+    id: fid, name, category,
+    createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    grids: {
+      [gid]: {
+        id: gid, name: grid.name,
+        numRows: grid.numRows || 100, numCols: grid.numCols || 26,
+        colWidths: Object.assign({}, grid.colWidths || {}),
+        cells: JSON.parse(JSON.stringify(grid.cells || {})),
+      },
+    },
+    activeSheet: gid,
   };
-  const files = _nsSFLoad();
-  files.unshift(snapshot);
-  _nsSFSave(files);
-  _nsCurrentFileId = snapshot.id;
+  _nsWBSaveRaw(wb);
   _nsSpRenderRibbon();
   _nsSFRefreshOpenViews();
-  if (typeof toast === 'function') toast('💾 Saved as "' + name + '"');
+  if (typeof toast === 'function') toast('💾 Saved as new file "' + name + '"');
 }
 
+// Sheets already autosave on every edit (same as before this feature),
+// so there's no separate "overwrite" step to perform any more — this
+// button now just reassures the user of that instead of doing a
+// destructive snapshot-overwrite of unrelated data.
 function _nsSFOverwrite() {
-  const grid = _nsSpGetGrid();
-  if (!grid) return;
-  const files = _nsSFLoad();
-  const existing = _nsCurrentFileId ? files.find(f => f.id === _nsCurrentFileId) : null;
-  if (!existing) { _nsSFSaveAs(); return; }
-  existing.cells = JSON.parse(JSON.stringify(grid.cells || {}));
-  existing.numRows = grid.numRows || 100;
-  existing.numCols = grid.numCols || 26;
-  existing.colWidths = Object.assign({}, grid.colWidths || {});
-  existing.updatedAt = new Date().toISOString();
-  _nsSFSave(files);
-  _nsSFRefreshOpenViews();
-  if (typeof toast === 'function') toast('✅ Saved — "' + existing.name + '"');
+  if (typeof toast === 'function') toast('✅ Sheets save automatically — nothing to overwrite.');
 }
 
-// Quick-access modal (still available from the ribbon for fast Open); the
-// full management experience lives in the "Manage Sheets" nav panel.
+// Quick-access modal (still available from the ribbon for fast
+// switching); the full management experience lives in the
+// "Manage Sheets" nav panel (_nsRenderManage).
 function _nsSFOpenManager() {
   _nsSFCloseManager();
   const files = _nsSFLoad();
+  const activeFileId = _nsWBLoadRaw().activeFileId;
   const overlay = document.createElement('div');
   overlay.className = 'ns-sfm-overlay';
   overlay.id = 'ns-sfm-overlay';
@@ -2202,14 +2313,14 @@ function _nsSFOpenManager() {
     const updated = new Date(f.updatedAt || f.createdAt);
     const dateStr = updated.toLocaleDateString('en-PK', { day:'2-digit', month:'short', year:'numeric' });
     const timeStr = updated.toLocaleTimeString('en-PK', { hour:'2-digit', minute:'2-digit' });
-    const cellCount = _nsSFCountCells(f.cells);
-    const isCurrent = f.id === _nsCurrentFileId;
+    const sheetCount = _nsWBSheetCount(f), cellCount = _nsWBCellCount(f);
+    const isCurrent = f.id === activeFileId;
     return `
       <div class="ns-sfm-card${isCurrent?' ns-sfm-card-active':''}">
         <div class="ns-sfm-card-icon">📊</div>
         <div class="ns-sfm-card-body">
           <div class="ns-sfm-card-name">${_nsEsc(f.name)}${isCurrent?' <span style="font-size:10px;background:#1a73e8;color:#fff;border-radius:6px;padding:1px 6px;font-weight:500">Current</span>':''}</div>
-          <div class="ns-sfm-card-meta">Sheet: ${_nsEsc(f.sheetName)} &nbsp;·&nbsp; ${cellCount} cell${cellCount!==1?'s':''} &nbsp;·&nbsp; ${dateStr} ${timeStr}</div>
+          <div class="ns-sfm-card-meta">${sheetCount} sheet${sheetCount!==1?'s':''} &nbsp;·&nbsp; ${cellCount} cell${cellCount!==1?'s':''} &nbsp;·&nbsp; ${dateStr} ${timeStr}</div>
         </div>
         <div class="ns-sfm-card-actions">
           <button class="ns-sfm-btn primary" onclick="_nsSFLoad_('${f.id}')">Open</button>
@@ -2219,15 +2330,15 @@ function _nsSFOpenManager() {
       </div>`;
   }).join('') : `<div class="ns-sfm-empty">
     <div style="font-size:36px;margin-bottom:10px">📁</div>
-    <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px">No saved sheet files yet</div>
-    <div style="font-size:12px;color:var(--muted)">Go to the <strong>Files</strong> ribbon tab and tap <strong>Save As…</strong> to save your first sheet.</div>
+    <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px">No files yet</div>
+    <div style="font-size:12px;color:var(--muted)">Go to the <strong>Files</strong> ribbon tab and tap <strong>Save As…</strong> to create your first file.</div>
   </div>`;
 
   overlay.innerHTML = `
     <div class="ns-sfm-panel">
       <div class="ns-sfm-header">
         <span style="font-size:20px">📁</span>
-        <span class="ns-sfm-title">Sheet Files</span>
+        <span class="ns-sfm-title">Files</span>
         <button class="ns-sfm-btn" onclick="_nsSFSaveAs();_nsSFCloseManager();" style="background:#1a73e8;color:#fff;border-color:#1a73e8">💾 Save As…</button>
         <button class="ns-sfm-btn" onclick="_nsSFCloseManager();_nsSetPanel('manage');" title="Open the full Manage Sheets section">🗂 Manage All</button>
         <button class="ns-sfm-btn" onclick="_nsSFCloseManager()">✕</button>
@@ -2242,26 +2353,21 @@ function _nsSFCloseManager() {
   if (el) el.remove();
 }
 
+// Switches to a different file (workbook) — non-destructive. Both the
+// file you're leaving and the file you're opening keep their own data;
+// nothing is overwritten, so no confirm() is needed (this used to
+// destructively replace the current sheet's cells — that's the whole
+// gap this feature closes).
 function _nsSFLoad_(id) {
-  const files = _nsSFLoad();
-  const f = files.find(x => x.id === id);
+  const wb = _nsWBLoadRaw();
+  const f = wb.files && wb.files[id];
   if (!f) return;
-  if (!confirm(`Load "${f.name}" into the current sheet?\n\nThis will replace all data in the current sheet. Your other sheets will not be affected.`)) return;
-
-  const s = _nsGetSheets();
-  const g = s.grids[_spState.activeSheet];
-  if (!g) return;
-  g.cells    = JSON.parse(JSON.stringify(f.cells || {}));
-  g.numRows  = f.numRows || 100;
-  g.numCols  = f.numCols || 26;
-  g.colWidths= Object.assign({}, f.colWidths || {});
-  _nsSheetsSave(s);
-  _nsCurrentFileId = id;
+  wb.activeFileId = id;
+  _nsWBSaveRaw(wb);
+  _spState.activeSheet = (f.activeSheet && f.grids[f.activeSheet]) ? f.activeSheet : Object.keys(f.grids)[0];
   _nsSFCloseManager();
   _nsSetPanel('sheets');
-  _nsSpRenderGrid();
-  _nsSpRenderRibbon();
-  if (typeof toast === 'function') toast('✅ Loaded "' + f.name + '"');
+  if (typeof toast === 'function') toast('📂 Switched to "' + f.name + '"');
 }
 
 function _nsSFRename(id) {
@@ -2279,7 +2385,7 @@ function _nsSFEditCategory(id) {
   const files = _nsSFLoad();
   const f = files.find(x => x.id === id);
   if (!f) return;
-  const category = prompt('Set category / group for "' + f.name + '":', f.category || f.sheetName || 'General');
+  const category = prompt('Set category / group for "' + f.name + '":', f.category || 'General');
   if (!category || category === f.category) return;
   f.category = category;
   _nsSFSave(files);
@@ -2296,7 +2402,18 @@ function _nsSFDuplicate(id) {
   copy.name = f.name + ' (Copy)';
   copy.createdAt = new Date().toISOString();
   copy.updatedAt = copy.createdAt;
-  files.unshift(copy);
+  // Re-key every sheet inside so the duplicate doesn't share sheet ids
+  // with the original file (editing one would otherwise silently edit
+  // the other too, since they'd point at the same grid ids).
+  const newGrids = {};
+  Object.values(copy.grids || {}).forEach(g => {
+    const ngid = _nsUid();
+    g.id = ngid;
+    newGrids[ngid] = g;
+  });
+  copy.grids = newGrids;
+  copy.activeSheet = Object.keys(newGrids)[0];
+  files.push(copy);
   _nsSFSave(files);
   _nsSFRefreshOpenViews();
   if (typeof toast === 'function') toast('📄 Duplicated "' + f.name + '"');
@@ -2304,22 +2421,33 @@ function _nsSFDuplicate(id) {
 
 function _nsSFDelete(id) {
   const files = _nsSFLoad();
+  if (files.length <= 1) { if (typeof toast === 'function') toast('⚠ Cannot delete the last file.', 'w'); return; }
   const f = files.find(x => x.id === id);
   if (!f) return;
   if (!confirm('Delete "' + f.name + '"? This cannot be undone.')) return;
-  const updated = files.filter(x => x.id !== id);
-  _nsSFSave(updated);
-  if (_nsCurrentFileId === id) _nsCurrentFileId = null;
+  const wb = _nsWBLoadRaw();
+  delete wb.files[id];
+  if (wb.activeFileId === id) {
+    wb.activeFileId = Object.keys(wb.files)[0];
+    const nf = wb.files[wb.activeFileId];
+    _spState.activeSheet = (nf.activeSheet && nf.grids[nf.activeSheet]) ? nf.activeSheet : Object.keys(nf.grids)[0];
+  }
+  _nsWBSaveRaw(wb);
   _nsSFRefreshOpenViews();
   if (typeof toast === 'function') toast('🗑 Deleted "' + f.name + '"');
 }
 
-// Export a single saved sheet file straight to .xlsx — no dialogs, no CSV.
+// Exports the file's active sheet to .xlsx. (A full multi-sheet export
+// — every sheet in the file as its own tab in one .xlsx — would be a
+// nice follow-up; today's XLSX helper takes one grid at a time, so a
+// file with several sheets exports its currently-active one.)
 function _nsSFExportXLSX(id) {
   const files = _nsSFLoad();
   const f = files.find(x => x.id === id);
   if (!f) return;
-  _nsExportGridToXLSX({ name: f.sheetName, numRows: f.numRows, numCols: f.numCols, cells: f.cells }, f.name);
+  const g = (f.activeSheet && f.grids[f.activeSheet]) || Object.values(f.grids || {})[0];
+  if (!g) return;
+  _nsExportGridToXLSX(g, f.name);
 }
 
 /* ── Shared XLSX helper: builds a workbook from a {cells} grid and saves
@@ -2374,7 +2502,6 @@ function _nsRenderManage(host) {
   const q = _nsMgsSearch.trim().toLowerCase();
   let files = all.filter(f => !q ||
     (f.name||'').toLowerCase().includes(q) ||
-    (f.sheetName||'').toLowerCase().includes(q) ||
     (f.category||'').toLowerCase().includes(q));
 
   // Sort
@@ -2390,12 +2517,12 @@ function _nsRenderManage(host) {
     }
   });
 
-  const totalCells = all.reduce((s,f) => s + _nsSFCountCells(f.cells), 0);
+  const totalCells = all.reduce((s,f) => s + _nsWBCellCount(f), 0);
 
   host.innerHTML = `
     <div class="ns-mgs">
       <div class="ns-mgs-toolbar">
-        <input class="ns-mgs-search" placeholder="🔍 Search sheets by name, type or category…"
+        <input class="ns-mgs-search" placeholder="🔍 Search files by name or category…"
           value="${_nsEsc(_nsMgsSearch)}" oninput="_nsMgsSearch=this.value;_nsRenderManage(document.getElementById('ns-panel-host'))">
         <select class="ns-mgs-select" onchange="_nsMgsSort=this.value;Actions.saveFeatureData('bt_mgs_sort',this.value);_nsRenderManage(document.getElementById('ns-panel-host'))">
           <option value="created_desc" ${_nsMgsSort==='created_desc'?'selected':''}>🕓 Newest Created</option>
@@ -2409,9 +2536,9 @@ function _nsRenderManage(host) {
           <option value="category" ${_nsMgsGroup==='category'?'selected':''}>🗂 Group by Type</option>
           <option value="none"     ${_nsMgsGroup==='none'    ?'selected':''}>📋 No Grouping</option>
         </select>
-        <button class="ns-btn primary" onclick="_nsSetPanel('sheets');setTimeout(_nsSFSaveAs,50)">💾 Save Current Sheet</button>
+        <button class="ns-btn primary" onclick="_nsSetPanel('sheets');setTimeout(_nsSFSaveAs,50)">💾 Save Current Sheet As New File</button>
       </div>
-      <div class="ns-mgs-stats">${all.length} sheet${all.length!==1?'s':''} saved &nbsp;·&nbsp; ${totalCells.toLocaleString('en-PK')} total cells${q?` &nbsp;·&nbsp; ${files.length} match${files.length!==1?'es':''}`:''}</div>
+      <div class="ns-mgs-stats">${all.length} file${all.length!==1?'s':''} &nbsp;·&nbsp; ${totalCells.toLocaleString('en-PK')} total cells${q?` &nbsp;·&nbsp; ${files.length} match${files.length!==1?'es':''}`:''}</div>
       <div class="ns-mgs-body" id="ns-mgs-body"></div>
     </div>`;
   _nsRenderManageList(files);
@@ -2424,8 +2551,8 @@ function _nsRenderManageList(files) {
   if (!files.length) {
     body.innerHTML = `<div class="ns-empty">
       <div class="ns-empty-icon">🗂</div>
-      <div class="ns-empty-title">No saved sheets yet</div>
-      <div class="ns-empty-sub">Open a sheet in the <strong>Sheets</strong> tab and use <strong>Save As…</strong> to create your first saved file. It will show up here, fully manageable.</div>
+      <div class="ns-empty-title">No files yet</div>
+      <div class="ns-empty-sub">Open a sheet in the <strong>Sheets</strong> tab and use <strong>Save As…</strong> to create your first file. It will show up here, fully manageable.</div>
     </div>`;
     return;
   }
@@ -2438,7 +2565,7 @@ function _nsRenderManageList(files) {
   // Group by category
   const groups = {};
   files.forEach(f => {
-    const key = f.category || f.sheetName || 'General';
+    const key = f.category || 'General';
     (groups[key] = groups[key] || []).push(f);
   });
   const groupNames = Object.keys(groups).sort((a,b) => a.localeCompare(b));
@@ -2471,7 +2598,6 @@ function _nsMgsCurrentFiles() {
   const q = _nsMgsSearch.trim().toLowerCase();
   let files = all.filter(f => !q ||
     (f.name||'').toLowerCase().includes(q) ||
-    (f.sheetName||'').toLowerCase().includes(q) ||
     (f.category||'').toLowerCase().includes(q));
   files = files.slice().sort((a, b) => {
     switch (_nsMgsSort) {
@@ -2493,8 +2619,8 @@ function _nsMgsCardHTML(f) {
   const createdStr = created.toLocaleDateString('en-PK', { day:'2-digit', month:'short', year:'numeric' });
   const updatedStr  = updated.toLocaleDateString('en-PK', { day:'2-digit', month:'short', year:'numeric' }) +
                        ' ' + updated.toLocaleTimeString('en-PK', { hour:'2-digit', minute:'2-digit' });
-  const cellCount = _nsSFCountCells(f.cells);
-  const isCurrent = f.id === _nsCurrentFileId;
+  const sheetCount = _nsWBSheetCount(f), cellCount = _nsWBCellCount(f);
+  const isCurrent = f.id === _nsWBLoadRaw().activeFileId;
   return `
     <div class="ns-mgs-card${isCurrent?' ns-mgs-card-active':''}">
       <div class="ns-mgs-card-icon">📊</div>
@@ -2502,9 +2628,9 @@ function _nsMgsCardHTML(f) {
         <div class="ns-mgs-card-name">
           ${_nsEsc(f.name)}
           ${isCurrent?'<span class="ns-mgs-card-tag" style="background:#dcfce7;color:#16a34a">Current</span>':''}
-          <span class="ns-mgs-card-tag">${_nsEsc(f.category || f.sheetName || 'General')}</span>
+          <span class="ns-mgs-card-tag">${_nsEsc(f.category || 'General')}</span>
         </div>
-        <div class="ns-mgs-card-meta">${cellCount} cell${cellCount!==1?'s':''} &nbsp;·&nbsp; Created ${createdStr} &nbsp;·&nbsp; Updated ${updatedStr}</div>
+        <div class="ns-mgs-card-meta">${sheetCount} sheet${sheetCount!==1?'s':''} &nbsp;·&nbsp; ${cellCount} cell${cellCount!==1?'s':''} &nbsp;·&nbsp; Created ${createdStr} &nbsp;·&nbsp; Updated ${updatedStr}</div>
       </div>
       <div class="ns-mgs-card-actions">
         <button class="ns-mgs-btn primary" onclick="_nsSFLoad_('${f.id}')">📂 Open</button>

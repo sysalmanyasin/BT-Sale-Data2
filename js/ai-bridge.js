@@ -899,16 +899,21 @@ function _aiSearchNotes(query) {
 
 function _aiQuerySheetGroups() {
   try {
-    const files = JSON.parse(Repository.getItem('bt_sheet_files_v1') || '[]');
+    // Read via _nsSFLoad() (notes-sheets.js) rather than the legacy
+    // bt_sheet_files_v1 key directly — that key is frozen at whatever
+    // it held the moment the multi-file workbook migration ran (V2 plan
+    // §5), so reading it directly here would silently go stale the
+    // moment a user created, renamed, or deleted a file afterward.
+    const files = (typeof _nsSFLoad === 'function') ? _nsSFLoad() : JSON.parse(Repository.getItem('bt_sheet_files_v1') || '[]');
     if (!files.length) {
-      return { text: '📊 No saved sheet files yet. Open Sheets and use <b>Save As…</b> to create one.', intent: null };
+      return { text: '📊 No files yet. Open Sheets and use <b>Save As…</b> to create one.', intent: null };
     }
     const groups = {};
     files.forEach(function (f) {
-      const cat = f.category || f.sheetName || 'General';
+      const cat = f.category || 'General';
       (groups[cat] = groups[cat] || []).push(f.name);
     });
-    const html = '<b>Sheet groups</b> (' + files.length + ' files):<br>' +
+    const html = '<b>File groups</b> (' + files.length + ' files):<br>' +
       Object.entries(groups).map(function (e) {
         return '🗂 <b>' + e[0] + '</b>: ' + e[1].join(', ');
       }).join('<br>') +
@@ -921,17 +926,16 @@ function _aiQuerySheetGroups() {
 
 function _aiOpenSheetByName(name) {
   try {
-    const files = JSON.parse(Repository.getItem('bt_sheet_files_v1') || '[]');
+    const files = (typeof _nsSFLoad === 'function') ? _nsSFLoad() : JSON.parse(Repository.getItem('bt_sheet_files_v1') || '[]');
     const q = name.toLowerCase();
     const match = files.find(function (f) {
-      return (f.name || '').toLowerCase().includes(q) ||
-             (f.sheetName || '').toLowerCase().includes(q);
+      return (f.name || '').toLowerCase().includes(q);
     });
     if (!match) {
-      return { text: '📊 No saved sheet matching <b>"' + name + '"</b>. <button class=\'ai-chip\' onclick="showPage(\'manager\');setTimeout(function(){switchMgrTab(\'sheets\');setTimeout(function(){if(typeof _nsSetPanel===\'function\')_nsSetPanel(\'manage\');},200)},250)">View All Sheets →</button>', intent: null };
+      return { text: '📊 No file matching <b>"' + name + '"</b>. <button class=\'ai-chip\' onclick="showPage(\'manager\');setTimeout(function(){switchMgrTab(\'sheets\');setTimeout(function(){if(typeof _nsSetPanel===\'function\')_nsSetPanel(\'manage\');},200)},250)">View All Sheets →</button>', intent: null };
     }
     return {
-      text: '→ Opening sheet <b>"' + match.name + '"</b>.',
+      text: '→ Opening <b>"' + match.name + '"</b>.',
       intent: { action: 'openSheetFile', params: [match.id] },
     };
   } catch (_) {
@@ -2281,15 +2285,21 @@ function _aiDeleteStaff(nameOrIndex) {
 
 function _aiEditStaffField(nameOrIndex, field, value) {
   const i = typeof nameOrIndex === 'number' ? nameOrIndex : _aiFuzzyStaffIndex(nameOrIndex);
-  if (i === -1 || !STAFF[i]) { if (typeof toast === 'function') toast('\u26a0 Staff not found.', 'w'); return; }
-  STAFF[i][field] = value;
+  const staff = Repository.getStaff();
+  if (i === -1 || !staff[i]) { if (typeof toast === 'function') toast('\u26a0 Staff not found.', 'w'); return; }
+  // Route through Actions (like _aiReactivateStaff/_aiDeleteStaff above) instead
+  // of mutating STAFF[i][field] directly — that raw form bypassed the write-guard
+  // undetected (the config.js Proxy only traps the STAFF array itself, not
+  // properties on an already-referenced element) and skipped the staff:updated
+  // EventBus notification that other subscribers rely on.
+  const updated = Actions.updateEmployee(i, { [field]: value });
   if (typeof showPage === 'function') showPage('manager');
   setTimeout(function () {
     if (typeof switchMgrTab === 'function') switchMgrTab('staff');
     setTimeout(function () {
       if (typeof renderStaffRegistry === 'function') renderStaffRegistry();
       if (typeof saveStaffRegistry === 'function') saveStaffRegistry();
-      if (typeof toast === 'function') toast('\u2705 ' + STAFF[i].name + ' \u2014 ' + field + ' updated to: ' + value);
+      if (typeof toast === 'function') toast('\u2705 ' + updated.name + ' \u2014 ' + field + ' updated to: ' + value);
     }, 280);
   }, 280);
 }

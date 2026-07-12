@@ -284,20 +284,23 @@ function getAppContextSummary(opts) {
     }
   } catch (_) {}
 
-  // ── 9. SHEET FILES — saved sheet names and categories ─────────────
+  // ── 9. SHEET FILES — file names and categories (V2 plan §5 — multi-
+  // sheet workbook model; read via _nsSFLoad() rather than the legacy
+  // bt_sheet_files_v1 key directly, since that key stops updating the
+  // moment the workbook migration runs) ─────────────────────────────
   try {
-    const sheetFiles = JSON.parse(Repository.getItem('bt_sheet_files_v1') || '[]');
+    const sheetFiles = (typeof _nsSFLoad === 'function') ? _nsSFLoad() : JSON.parse(Repository.getItem('bt_sheet_files_v1') || '[]');
     if (sheetFiles.length) {
-      lines.push('=== SAVED SHEET FILES ===');
+      lines.push('=== SHEET FILES ===');
       const groups = {};
       sheetFiles.forEach(function (f) {
-        const cat = f.category || f.sheetName || 'General';
+        const cat = f.category || 'General';
         (groups[cat] = groups[cat] || []).push(f.name);
       });
       Object.entries(groups).forEach(function (e) {
         lines.push('  ' + e[0] + ': ' + e[1].join(', '));
       });
-      lines.push('Total saved sheets: ' + sheetFiles.length);
+      lines.push('Total files: ' + sheetFiles.length);
       lines.push('');
     }
   } catch (_) {}

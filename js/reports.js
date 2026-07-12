@@ -325,7 +325,7 @@ function printDayReport() {
   const patty=n(document.getElementById('rpt-patty')?.value);
   const html=buildPrintHTML(_selDate,_selMy,till,patty);
   if(!html){ toast('⚠ Record not found','e'); return; }
-  btPrint(html);
+  Print.render(html);
 }
 
 function printCurrentDay() {
@@ -333,7 +333,7 @@ function printCurrentDay() {
   const html=buildPrintHTML(_printDay.date,_printDay.my,0,0);
   if(!html){ toast('⚠ Record not found','e'); return; }
   closeDay();
-  btPrint(html);
+  Print.render(html);
 }
 
 function copyReportText() {

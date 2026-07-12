@@ -136,6 +136,56 @@ function _renderStatusLine(text) {
 // Called once when the Audit page is shown (see ui.js's showPage).
 export function refreshOnPageShow() { refresh(false); }
 
+// ═══════════════════════════════════════════════════════════════════
+// FULL DATA — Assignments Overview + Live Snapshot popup (audit-native.js)
+// Deliberately separate from refresh()/getCachedSummary() above: this
+// pulls item_snapshot/live_snapshot, which can be a real amount of data
+// on a big engagement — only fetched when the Assignments page is
+// actually opened, not on every 5-min Cover Dashboard tile refresh.
+// ═══════════════════════════════════════════════════════════════════
+let _fullData = null;
+let _fullInFlight = null;
+const FULLDATA_CACHE_KEY = 'bt_audit_fulldata_v1';
+const FULLDATA_MIN_REFRESH_MS = 60 * 1000; // 1 min — this is opened deliberately, so keep it fresher than the tile
+
+export function getFullData() {
+  if (_fullData) return _fullData;
+  try { const raw = _getLocal(FULLDATA_CACHE_KEY); if (raw) return (_fullData = JSON.parse(raw)); } catch (e) { /* fall through */ }
+  return null;
+}
+
+export async function refreshFullData(force) {
+  const cached = _fullData;
+  if (!force && cached && (Date.now() - cached.fetchedAt) < FULLDATA_MIN_REFRESH_MS) return cached;
+  if (_fullInFlight) return _fullInFlight;
+
+  _fullInFlight = (async () => {
+    try {
+      const client = _getClient();
+      if (!client) return cached;
+
+      const [{ data: engagements }, { data: rounds }, { data: assignments }, { data: compiledRounds }, { data: finalSnapshots }] = await Promise.all([
+        client.from('engagements').select('id,name,status,scope_type,scope_companies,scope_codes,created_at'),
+        client.from('rounds').select('id,engagement_id,round_number,round_suffix,unit,state,base_round_id,item_snapshot,created_at,locked_at,compiled_at,finalized_at'),
+        client.from('assignments').select('id,round_id,engagement_id,auditor_id,auditor_name,unit,companies,items,method,status,progress_count,live_snapshot,created_at'),
+        client.from('compiled_rounds').select('id,round_id,variances,compiled_with_missing,missing_assignment_ids,compiled_at'),
+        client.from('final_snapshots').select('id,engagement_id,report,generated_at').order('generated_at', { ascending: false }),
+      ]);
+
+      const data = { engagements: engagements || [], rounds: rounds || [], assignments: assignments || [], compiledRounds: compiledRounds || [], finalSnapshots: finalSnapshots || [], fetchedAt: Date.now() };
+      _fullData = data;
+      try { _setLocal(FULLDATA_CACHE_KEY, JSON.stringify(data)); } catch (e) { /* best-effort — fine if too big, _fullData in-memory still works this session */ }
+      if (typeof window.auditNativeOnRefresh === 'function') window.auditNativeOnRefresh();
+      return data;
+    } catch (e) {
+      return _fullData;
+    } finally {
+      _fullInFlight = null;
+    }
+  })();
+  return _fullInFlight;
+}
+
 // Bridged — see header note.
 window.auditBridgeRefresh = refreshOnPageShow;
 window.auditBridgeIsConnected = isConnected;

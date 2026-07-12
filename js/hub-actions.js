@@ -26,7 +26,7 @@ function hubPrintTodayReport() {
   }
   const html = buildPrintHTML(dateStr, rec.Month_Year, 0, 0);
   if (!html) { _hubPost('⚠️ Could not build today\'s report.'); return; }
-  btPrint(html);
+  Print.render(html);
 }
 
 // ── Credit Balance → Staff Credit Summary print ────────────────────────
@@ -87,7 +87,7 @@ function hubPrintPaceReport() {
     </table>
     ${statusHtml}
   </div>`;
-  btPrint(html);
+  Print.render(html);
 }
 
 // ── Expense Summary → print totals-only Patty/Expense summary ─────────
@@ -126,7 +126,7 @@ function hubPrintExpenseSummary() {
       <tr style="background:${balance>=0?'#f0fdf4':'#fef2f2'}"><td style="padding:7px 10px;font-weight:700;color:${balance>=0?'#059669':'#dc2626'}">Balance</td><td style="padding:7px 10px;text-align:right;font-weight:700;font-family:monospace;color:${balance>=0?'#059669':'#dc2626'}">₨${fc(balance)}</td></tr>
     </table>
   </div>`;
-  btPrint(html);
+  Print.render(html);
 }
 
 // ── Month Summary → current month Sale Report print (full report) ────

@@ -27,18 +27,29 @@
 
 import { Repository } from './repository.js';
 
-const APPKEY_KEY  = 'bt_closing_dbx_appkey';   // local-only, not synced
-const REFRESH_KEY = 'bt_closing_dbx_refresh';  // local-only, not synced
-const CACHE_KEY    = 'bt_closing_cache_v1';     // local-only summary cache
+const APPKEY_KEY   = 'bt_closing_dbx_appkey';   // local-only, not synced
+const REFRESH_KEY  = 'bt_closing_dbx_refresh';  // local-only, not synced
+const DISABLED_KEY = 'bt_closing_dbx_disabled'; // explicit user opt-out flag
+const CACHE_KEY     = 'bt_closing_cache_v1';     // local-only summary cache
 const SYNC_FILE_PATH = '/pharmpos_sync_data.json';
 const MIN_REFRESH_MS = 5 * 60 * 1000; // don't hit Dropbox more than once per 5 min
+
+// No baked-in default connection — unlike the Supabase anon key in
+// audit-bridge.js (safe to expose by design; RLS is the real
+// protection), a Dropbox app key + refresh token grants real account
+// access and must never be committed to source. Each device must pair
+// via connectPrompt() (the "Export Connection" token from Closing's
+// own Settings page); the pairing is then stored local-only.
 
 let _accessToken = null;
 let _accessTokenExpiresAt = 0;
 let _inFlight = null;
+let _fullDb = null; // in-memory cache of the full downloaded Closing db — see getFullDb()
+const FULLDB_CACHE_KEY = 'bt_closing_fulldb_v1'; // local-only, best-effort persistence across reloads
 
-function _getAppKey()  { return Repository.getItem(APPKEY_KEY)  || ''; }
-function _getRefresh() { return Repository.getItem(REFRESH_KEY) || ''; }
+function _isDisabled()   { return _getLocal(DISABLED_KEY) === '1'; }
+function _getAppKey()    { return _isDisabled() ? '' : (Repository.getItem(APPKEY_KEY)  || ''); }
+function _getRefresh()   { return _isDisabled() ? '' : (Repository.getItem(REFRESH_KEY) || ''); }
 function _setLocal(key, val) {
   // Deliberately NOT Actions.saveFeatureData — this is a local secret,
   // same as how Closing's own sync.js keeps its Dropbox token local-only
@@ -70,17 +81,21 @@ export function connectPrompt() {
   }
   _setLocal(APPKEY_KEY, parsed.appKey);
   _setLocal(REFRESH_KEY, parsed.refreshToken);
+  try { localStorage.removeItem(DISABLED_KEY); } catch (e) { /* best-effort */ }
   _accessToken = null; // force re-exchange
   if (typeof window.toast === 'function') window.toast('✓ Connected — fetching latest closing data…');
   refresh(true);
 }
 
 export function disconnect() {
-  if (!window.confirm('Disconnect the Closing data bridge? The embedded app itself is unaffected.')) return;
+  if (!window.confirm('Disconnect the Closing data bridge? Closing itself is unaffected.')) return;
   try {
     localStorage.removeItem(APPKEY_KEY);
     localStorage.removeItem(REFRESH_KEY);
     localStorage.removeItem(CACHE_KEY);
+    // Explicit opt-out — without this the baked-in default connection
+    // (see DEFAULT_APPKEY/DEFAULT_REFRESH) would just take back over.
+    localStorage.setItem(DISABLED_KEY, '1');
   } catch (e) { /* best-effort */ }
   _accessToken = null;
   _renderStatusLine('Not connected');
@@ -152,6 +167,16 @@ function _saveCache(summary) { _setLocal(CACHE_KEY, JSON.stringify(summary)); }
 // ── Public: cached summary for Cover Dashboard (sync, no network) ───
 export function getCachedSummary() { return _loadCache(); }
 
+// ── Public: the full downloaded Closing db — Closing Book and Credit
+// Ledger (closing-native.js) read this directly. Same download as the
+// tile summary above, nothing extra fetched; this just stops discarding
+// everything except the 3 shift statuses after computing that summary.
+export function getFullDb() {
+  if (_fullDb) return _fullDb;
+  try { const raw = _getLocal(FULLDB_CACHE_KEY); if (raw) return (_fullDb = JSON.parse(raw)); } catch (e) { /* fall through */ }
+  return null;
+}
+
 // ── Public: refresh from Dropbox (async, rate-limited) ──────────────
 export async function refresh(force) {
   if (!isConnected()) return null;
@@ -163,10 +188,13 @@ export async function refresh(force) {
     try {
       _renderStatusLine('Syncing…');
       const closingDb = await _downloadSyncFile();
+      _fullDb = closingDb;
+      try { _setLocal(FULLDB_CACHE_KEY, JSON.stringify(closingDb)); } catch (e) { /* best-effort — fine if it's too big for localStorage, _fullDb in-memory still works this session */ }
       const summary = _summarize(closingDb);
       _saveCache(summary);
       _renderStatusLine('Synced ' + new Date(summary.fetchedAt).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' }));
       if (typeof window.renderCoverDashboard === 'function') window.renderCoverDashboard();
+      if (typeof window.closingNativeOnRefresh === 'function') window.closingNativeOnRefresh();
       return summary;
     } catch (e) {
       _renderStatusLine('Sync failed — ' + e.message);
@@ -209,3 +237,15 @@ window.closingBridgeRefresh = refreshOnPageShow;
 window.closingBridgeButtonClick = buttonClick;
 window.closingBridgeIsConnected = isConnected;
 window.closingBridgeGetCachedSummary = getCachedSummary;
+
+// ── Auto-refresh once connected ─────────────────────────────────────
+// If this device has already paired via connectPrompt(), kick off an
+// immediate fetch and keep it current on the same cadence refresh()
+// itself rate-limits to — so the Cover Dashboard tile is fresh even if
+// the user never taps into the Sales/Manager pages that would
+// otherwise trigger a refresh. On a fresh install/device, isConnected()
+// is false until the user pastes an Export Connection token.
+if (isConnected()) {
+  refresh(false);
+  setInterval(() => { refresh(false); }, MIN_REFRESH_MS);
+}
