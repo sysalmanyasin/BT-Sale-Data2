@@ -35,12 +35,15 @@
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <!-- CSS Modules — load order matters -->
 <link rel="stylesheet" href="css/variables.css">
 <link rel="stylesheet" href="css/auth.css">
 <link rel="stylesheet" href="css/nav.css">
 <link rel="stylesheet" href="css/closing-native.css">
+<link rel="stylesheet" href="css/closing-book-print.css">
 <link rel="stylesheet" href="css/audit-native.css">
 <link rel="stylesheet" href="css/components.css">
 <link rel="stylesheet" href="css/modals.css">
@@ -615,12 +618,12 @@ if ('serviceWorker' in navigator) {
   </div>
 </div>
 
-<!-- CLOSING BOOK — native port of Closing's own Closing Book page
-     (V2 plan follow-up). Reads the full Closing db via
-     closing-bridge.js's getFullDb() — same download already used for
-     the Cover Dashboard tile, no separate fetch. See closing-native.js
-     for the ported business logic and header note on what's simplified
-     (a scrollable list here, not Closing's full paginated PDF reader). -->
+<!-- CLOSING BOOK — native port of Closing's own Closing Book page,
+     including the full paginated print-register reader (ps-* pages,
+     cover, placeholders, pinch/zoom/swipe, PDF export). Reads the full
+     Closing db via closing-bridge.js's getFullDb() — same download
+     already used for the Cover Dashboard tile, no separate fetch. See
+     closing-native.js for the ported business logic. -->
 <div class="page" id="page-closing-book">
   <div class="hero"><div class="hlabel">Closing</div><div class="htitle">📖 Closing Book</div><div class="hsub">Every closing, laid out like a printed register — live from Closing's own data.</div></div>
   <div id="cln-cb-summary" class="cb-summary-card"><div class="cln-empty">⏳ Waiting for the first sync from Closing…</div></div>
@@ -640,10 +643,36 @@ if ('serviceWorker' in navigator) {
       <button onclick="clnSetShortcutDays(7)">Last 7 Days</button>
       <button onclick="clnSetShortcutDays(30)">Last 1 Month</button>
     </div>
-    <button class="cb-generate-btn" onclick="clnGenerateBook()">📖 Generate Book</button>
+    <button class="cb-generate-btn" id="cln-cb-generate-btn" onclick="clnGenerateBook()">📖 Generate Book</button>
     <div class="cb-generate-status" id="cln-cb-status"></div>
   </div>
-  <div id="cln-cb-results" style="margin-top:12px"></div>
+
+  <!-- READER — paginated, print-accurate register replica -->
+  <div id="cln-cb-reader" class="cb-reader hidden">
+    <div class="cb-reader-toolbar">
+      <button class="cb-reader-btn" onclick="clnCbCloseReader()">← Back</button>
+      <div class="cb-page-counter" id="cln-cb-page-counter">1 / 1</div>
+    </div>
+    <div class="cb-reader-toolbar cb-reader-toolbar2">
+      <button class="cb-reader-btn" onclick="clnCbPrev()" id="cln-cb-btn-prev">‹ Prev</button>
+      <select id="cln-cb-jump-select" onchange="clnCbJump(this.value)" style="flex:1;min-width:0;"></select>
+      <button class="cb-reader-btn" onclick="clnCbNext()" id="cln-cb-btn-next">Next ›</button>
+    </div>
+    <div class="cb-reader-toolbar cb-reader-toolbar2" style="justify-content:center;">
+      <div class="cb-zoom-group">
+        <button class="cb-reader-btn" onclick="clnCbZoom(1)">1x</button>
+        <button class="cb-reader-btn" onclick="clnCbZoom(2)">2x</button>
+        <button class="cb-reader-btn" onclick="clnCbZoom(4)">4x</button>
+        <button class="cb-reader-btn" onclick="clnCbZoom(8)">8x</button>
+      </div>
+    </div>
+    <div class="cb-viewport" id="cln-cb-viewport">
+      <div class="cb-page-sizer" id="cln-cb-page-sizer">
+        <div class="cb-page-stage ps-sheet-scope" id="cln-cb-page-stage"></div>
+      </div>
+    </div>
+    <button class="cb-generate-btn" style="margin-top:12px;" onclick="clnCbExportPdf()" id="cln-cb-btn-export">⬇ Export Book as PDF</button>
+  </div>
 </div>
 
 <!-- CREDIT LEDGER — native port of Closing's own Credit Ledger page.
