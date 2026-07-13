@@ -251,6 +251,7 @@ if ('serviceWorker' in navigator) {
     <button class="ntab" data-page="dashboard" data-group="dashboard" data-domain-group="sales">Dashboard</button>
     <button class="ntab" data-page="index" data-group="saledata" data-domain-group="sales">Sale Data</button>
     <button class="ntab" data-page="manager" data-group="manager" data-domain-group="manager">👔 Manager</button>
+    <button class="ntab" data-page="manager-dashboard" data-group="managerdash" data-domain-group="manager">📊 Manager Dashboard</button>
     <button class="ntab" data-page="notesheets" data-group="notesheets" data-domain-group="notesheets">📑 Notes &amp; Sheets</button>
     <button class="ntab" data-page="closing-book" data-group="closing" data-domain-group="closing">📖 Closing Book</button>
     <button class="ntab" data-page="credit-ledger" data-group="closing" data-domain-group="closing">💳 Credit Ledger</button>
@@ -280,6 +281,7 @@ if ('serviceWorker' in navigator) {
   <button class="bnav-item" data-page="dashboard" data-group="dashboard" data-domain-group="sales"><span class="bicon">📊</span><span class="blabel">Home</span></button>
   <button class="bnav-item" data-page="index" data-group="saledata" data-domain-group="sales"><span class="bicon">🗂️</span><span class="blabel">Sale Data</span></button>
   <button class="bnav-item" data-page="manager" data-group="manager" data-domain-group="manager"><span class="bicon">👔</span><span class="blabel">Manager</span></button>
+  <button class="bnav-item" data-page="manager-dashboard" data-group="managerdash" data-domain-group="manager"><span class="bicon">📊</span><span class="blabel">Overview</span></button>
   <button class="bnav-item" data-page="notesheets" data-group="notesheets" data-domain-group="notesheets"><span class="bicon">📑</span><span class="blabel">Notes</span></button>
   <button class="bnav-item" data-page="closing-book" data-group="closing" data-domain-group="closing"><span class="bicon">📖</span><span class="blabel">Closing Book</span></button>
   <button class="bnav-item" data-page="credit-ledger" data-group="closing" data-domain-group="closing"><span class="bicon">💳</span><span class="blabel">Credit Ledger</span></button>
@@ -369,6 +371,46 @@ if ('serviceWorker' in navigator) {
     <div class="hsub" style="margin-top:4px" id="hero-sub"></div>
   </div>
   <div class="krow" id="krow"></div>
+  <div class="frow no-print" style="margin-bottom:14px">
+    <span style="font-size:11px;font-weight:600;color:var(--muted)">YEAR</span>
+    <select id="dash-year" onchange="buildDashboard()"></select>
+    <select id="dash-metric" onchange="buildDashboard()">
+      <option value="TOTAL">Total Sales</option>
+      <option value="Cash Sale">Cash Sales</option>
+      <option value="Customers">Customers</option>
+    </select>
+    <button class="btn btn-s" style="padding:5px 10px;font-size:11px" onclick="manualSync()">↻ Sync</button>
+    <button class="btn btn-s" style="padding:5px 10px;font-size:11px" onclick="window.print()">🖨 Print</button>
+  </div>
+  <div id="dash-top10" style="margin-bottom:14px"></div>
+  <div id="dash-dow" style="margin-bottom:14px"></div>
+  <div id="dash-best-worst" style="margin-bottom:14px"></div>
+  <div class="g2">
+    <div class="card"><div class="ctitle"><span class="cdot" style="background:var(--accent)"></span>Monthly Total Sales</div><div style="height:220px"><canvas id="ch-total"></canvas></div></div>
+    <div class="card"><div class="ctitle"><span class="cdot" style="background:var(--amber)"></span>Cash vs Bank</div><div style="height:220px"><canvas id="ch-cashbank"></canvas></div></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div class="ctitle"><span class="cdot" style="background:var(--green)"></span>Top Clients — All Time</div><div style="height:240px"><canvas id="ch-clients"></canvas></div></div>
+    <div class="card"><div class="ctitle"><span class="cdot" style="background:var(--purple)"></span>Monthly Customers</div><div style="height:240px"><canvas id="ch-cust"></canvas></div></div>
+  </div>
+  <div class="card" style="margin-bottom:14px"><div class="ctitle"><span class="cdot" style="background:var(--amber)"></span>Year-on-Year</div><div style="height:240px"><canvas id="ch-yoy"></canvas></div></div>
+  <div class="card">
+    <div class="ctitle"><span class="cdot" style="background:var(--green)"></span>Last 12 Months Summary</div>
+    <div class="twrap tscroll"><table id="tbl-summary"></table></div>
+  </div>
+</div>
+
+<!-- MANAGER DASHBOARD (moved from Home — read-only overview of all Manager-section credits/ledgers) -->
+<div class="page" id="page-manager-dashboard">
+  <div class="hero">
+    <h1 class="htitle">📊 Manager Dashboard</h1>
+    <p class="hsub">Staff Credit · Jazz Cash · Patty/Expenses · Other ledgers · Working Summary — all in one view</p>
+  </div>
+  <div class="frow no-print" style="margin-bottom:14px">
+    <button class="btn btn-s" style="padding:5px 10px;font-size:11px" onclick="manualSync()">↻ Sync</button>
+    <button class="btn btn-s" style="padding:5px 10px;font-size:11px" onclick="window.print()">🖨 Print</button>
+    <button class="btn btn-s" style="padding:5px 10px;font-size:11px;background:var(--accent,#2563eb);color:#fff;border-color:var(--accent,#2563eb)" onclick="exportManagerSummary()">📋 Export Summary</button>
+  </div>
   <div id="dash-credit-section" style="margin-bottom:14px"></div>
   <div id="dash-working-section" style="margin-bottom:14px;display:none">
     <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:8px">
@@ -393,34 +435,6 @@ if ('serviceWorker' in navigator) {
         <div style="font-size:10px;color:var(--muted);margin-top:3px">Incentives</div>
       </div>
     </div>
-  </div>
-  <div class="frow no-print" style="margin-bottom:14px">
-    <span style="font-size:11px;font-weight:600;color:var(--muted)">YEAR</span>
-    <select id="dash-year" onchange="buildDashboard()"></select>
-    <select id="dash-metric" onchange="buildDashboard()">
-      <option value="TOTAL">Total Sales</option>
-      <option value="Cash Sale">Cash Sales</option>
-      <option value="Customers">Customers</option>
-    </select>
-    <button class="btn btn-s" style="padding:5px 10px;font-size:11px" onclick="manualSync()">↻ Sync</button>
-    <button class="btn btn-s" style="padding:5px 10px;font-size:11px" onclick="window.print()">🖨 Print</button>
-    <button class="btn btn-s" style="padding:5px 10px;font-size:11px;background:var(--accent,#2563eb);color:#fff;border-color:var(--accent,#2563eb)" onclick="exportManagerSummary()">📋 Export Summary</button>
-  </div>
-  <div id="dash-top10" style="margin-bottom:14px"></div>
-  <div id="dash-dow" style="margin-bottom:14px"></div>
-  <div id="dash-best-worst" style="margin-bottom:14px"></div>
-  <div class="g2">
-    <div class="card"><div class="ctitle"><span class="cdot" style="background:var(--accent)"></span>Monthly Total Sales</div><div style="height:220px"><canvas id="ch-total"></canvas></div></div>
-    <div class="card"><div class="ctitle"><span class="cdot" style="background:var(--amber)"></span>Cash vs Bank</div><div style="height:220px"><canvas id="ch-cashbank"></canvas></div></div>
-  </div>
-  <div class="g2">
-    <div class="card"><div class="ctitle"><span class="cdot" style="background:var(--green)"></span>Top Clients — All Time</div><div style="height:240px"><canvas id="ch-clients"></canvas></div></div>
-    <div class="card"><div class="ctitle"><span class="cdot" style="background:var(--purple)"></span>Monthly Customers</div><div style="height:240px"><canvas id="ch-cust"></canvas></div></div>
-  </div>
-  <div class="card" style="margin-bottom:14px"><div class="ctitle"><span class="cdot" style="background:var(--amber)"></span>Year-on-Year</div><div style="height:240px"><canvas id="ch-yoy"></canvas></div></div>
-  <div class="card">
-    <div class="ctitle"><span class="cdot" style="background:var(--green)"></span>Last 12 Months Summary</div>
-    <div class="twrap tscroll"><table id="tbl-summary"></table></div>
   </div>
 </div>
 
