@@ -104,14 +104,14 @@ function aggregateBooksAndReturnsSinceLastFinal(cdb, ds, shift) {
   let totalBookBills = 0, totalManualReturns = 0;
   let cur = { date: ds, shift };
   for (let i = 0; i < 400; i++) {
-    cur = timelineStep(cdb, cur.date, cur.shift, -1);
     const key = `${cur.date}_${cur.shift}`;
     if (lastFinal && key === lastFinal.key) break;
     const rec = getRealSheet(cdb, key);
-    if (!rec) { if (!lastFinal) break; else continue; }
+    if (!rec) { if (!lastFinal) break; else { cur = timelineStep(cdb, cur.date, cur.shift, -1); continue; } }
     if (rec.profileMode === 'final') break;
     totalManualReturns += n(rec.posRet1) + n(rec.posRet2) + n(rec.posRet3);
     totalBookBills += n(rec.inBook1) + n(rec.inBook2);
+    cur = timelineStep(cdb, cur.date, cur.shift, -1);
   }
   return { totalBookBills, totalManualReturns };
 }
