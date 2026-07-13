@@ -44,7 +44,7 @@ function showPage(id) {
     // (closing-bridge.js / audit-bridge.js) instead of this app's own
     // Repository.
     const _salesDomainPages = ['dashboard'].concat(_saleDataPages);
-    const _managerDomainPages = ['manager'];
+    const _managerDomainPages = ['manager', 'manager-dashboard'];
     const _notesheetsDomainPages = ['notesheets'];
     const _closingDomainPages = ['closing-book', 'credit-ledger'];
     const _auditDomainPages = ['assignments'];
@@ -83,6 +83,7 @@ function showPage(id) {
     if(id==='commandhub') { if(typeof loadCommandHubPage==='function') loadCommandHubPage(); }
     if(id==='tools') { loadToolsPage(); }
     if(id==='manager') { loadManagerPage(); }
+    if(id==='manager-dashboard') { if (typeof buildDashboard === 'function') buildDashboard(); }
     if(id==='report') { dsInit(); }
     if(id==='diff')   { renderDiffReport(); }
     if(id==='entry') { autoFillEntryDate(); }
