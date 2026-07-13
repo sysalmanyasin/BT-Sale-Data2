@@ -156,17 +156,20 @@ function _tiles() {
     { page: 'dashboard', icon: '📊', title: 'Sales',           status: _salesStatus(),   enabled: true },
     { page: 'manager',   icon: '👔', title: 'Manager',          status: _managerStatus(), enabled: true },
     { page: 'notesheets',icon: '📑', title: 'Notes & Sheets',   status: _notesheetsStatus(), enabled: true },
-    // Closing and Audit are standalone sibling apps — own repo, own PWA,
-    // own data. No embedded page in this app anymore; tapping the tile
-    // opens the real thing in a new tab. The status line below still
-    // comes from the live read-only bridge (closing-bridge.js /
-    // audit-bridge.js), so the dashboard summary keeps working exactly
-    // as before — only the in-app iframe embed was removed. Closing's
+    // Closing and Audit's own standalone apps (the tiles with `href`
+    // below) are separate sibling apps — own repo, own PWA, own data;
+    // tapping those opens the real thing in a new tab. But Closing
+    // Book/Credit Ledger and Assignments ARE embedded pages in this
+    // app — native ports (closing-native.js / audit-native.js) reading
+    // through a read-only bridge, each its own domain now (V2 plan §2 —
+    // hidden from nav except while inside it, same as every other
+    // domain; see nav.css). The status line below still comes from the
+    // live read-only bridge (closing-bridge.js / audit-bridge.js), so
+    // the dashboard summary keeps working exactly as before. Closing's
     // bridge needs a one-time manual pairing step (Dropbox has no
-    // queryable API); that used to live behind a button on the now-removed
-    // embedded page, so it moves to the tile itself via bridgeAction.
-    // Audit's bridge reads Supabase directly with a baked-in key — no
-    // pairing step, so it doesn't need one.
+    // queryable API); that lives behind bridgeAction on the tile
+    // itself. Audit's bridge reads Supabase directly with a baked-in
+    // key — no pairing step needed.
     { href: 'https://closing.duapharma.com', icon: '🔒', title: 'Closing', status: _closingStatus(), enabled: true, bridgeAction: 'closingBridgeButtonClick' },
     // Native reports built off the same Closing data the tile above
     // reads — not an iframe, not an external link. See closing-native.js.

@@ -26,20 +26,33 @@ function showPage(id) {
     const _bnavSub = document.getElementById('bnav-saledata-sub');
     if (_bnavSub) _bnavSub.style.display = _inSaleData ? '' : 'none';
 
-    // ── Domain isolation (V2 plan §2) — Sales and Manager are separate
-    // peer dashboards. body[data-domain] drives the CSS that hides the
-    // other domain's nav tabs and re-themes Manager's accent color
-    // (see nav.css). Cover/CommandHub/Tools aren't owned by either
-    // domain, so they don't set one — both stay visible from there.
-    // Closing and Audit no longer have embedded pages of their own (only
-    // their Cover Dashboard bridge/summary tiles remain, opening the real
-    // apps in a new tab instead), so they're no longer domains here.
+    // ── Domain isolation (V2 plan §2) — Sales, Manager, Notes & Sheets,
+    // Closing, and Audit are separate peer dashboards, not nested tabs.
+    // body[data-domain] drives the CSS that hides every other domain's
+    // nav tabs and re-themes the current domain's accent color (see
+    // nav.css). Cover/CommandHub/Tools aren't owned by any domain, so
+    // they don't set one — both stay visible from anywhere, including
+    // from Cover itself, which is the only place you switch domains
+    // (via its tiles) rather than by picking from a long row of
+    // always-visible nav icons.
+    //
+    // Closing Book/Credit Ledger (native ports of the standalone
+    // Closing app's own pages, live in closing-native.js) and
+    // Assignments (native port of Pharmacy Audit Hub's own page, live
+    // in audit-native.js) are real embedded pages here — same as any
+    // other domain, just reading through a read-only bridge
+    // (closing-bridge.js / audit-bridge.js) instead of this app's own
+    // Repository.
     const _salesDomainPages = ['dashboard'].concat(_saleDataPages);
     const _managerDomainPages = ['manager'];
     const _notesheetsDomainPages = ['notesheets'];
+    const _closingDomainPages = ['closing-book', 'credit-ledger'];
+    const _auditDomainPages = ['assignments'];
     const _domain = _salesDomainPages.indexOf(id) !== -1 ? 'sales'
                   : _managerDomainPages.indexOf(id) !== -1 ? 'manager'
                   : _notesheetsDomainPages.indexOf(id) !== -1 ? 'notesheets'
+                  : _closingDomainPages.indexOf(id) !== -1 ? 'closing'
+                  : _auditDomainPages.indexOf(id) !== -1 ? 'audit'
                   : '';
     document.body.dataset.domain = _domain;
     const _brandSub = document.getElementById('nbrand-sub-label');
@@ -47,6 +60,8 @@ function showPage(id) {
       _brandSub.textContent = _domain === 'sales'      ? 'Sales Dashboard'
                              : _domain === 'manager'    ? 'Manager Dashboard'
                              : _domain === 'notesheets' ? 'Notes & Sheets'
+                             : _domain === 'closing'    ? 'Closing'
+                             : _domain === 'audit'      ? 'Audit'
                              : 'Intelligence Centre';
     }
 

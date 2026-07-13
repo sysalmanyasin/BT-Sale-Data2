@@ -245,13 +245,13 @@ if ('serviceWorker' in navigator) {
   <div class="ntabs">
     <button class="ntab" data-page="cover" data-group="cover">🏠 Cover</button>
     <button class="ntab ntab-ai" data-page="commandhub" data-group="commandhub">🧭 CommandHub</button>
-    <button class="ntab" data-page="dashboard" data-group="dashboard">Dashboard</button>
-    <button class="ntab" data-page="index" data-group="saledata">Sale Data</button>
-    <button class="ntab" data-page="manager" data-group="manager">👔 Manager</button>
-    <button class="ntab" data-page="notesheets" data-group="notesheets">📑 Notes &amp; Sheets</button>
-    <button class="ntab" data-page="closing-book" data-group="tools">📖 Closing Book</button>
-    <button class="ntab" data-page="credit-ledger" data-group="tools">💳 Credit Ledger</button>
-    <button class="ntab" data-page="assignments" data-group="tools">🧾 Assignments</button>
+    <button class="ntab" data-page="dashboard" data-group="dashboard" data-domain-group="sales">Dashboard</button>
+    <button class="ntab" data-page="index" data-group="saledata" data-domain-group="sales">Sale Data</button>
+    <button class="ntab" data-page="manager" data-group="manager" data-domain-group="manager">👔 Manager</button>
+    <button class="ntab" data-page="notesheets" data-group="notesheets" data-domain-group="notesheets">📑 Notes &amp; Sheets</button>
+    <button class="ntab" data-page="closing-book" data-group="closing" data-domain-group="closing">📖 Closing Book</button>
+    <button class="ntab" data-page="credit-ledger" data-group="closing" data-domain-group="closing">💳 Credit Ledger</button>
+    <button class="ntab" data-page="assignments" data-group="audit" data-domain-group="audit">🧾 Assignments</button>
     <button class="ntab" data-page="tools" data-group="tools">Tools</button>
   </div>
   <div class="ntabs subnav" id="saledata-subnav" style="display:none">
@@ -274,10 +274,13 @@ if ('serviceWorker' in navigator) {
 <div class="bnav no-print" id="bnav" role="navigation" aria-label="Page navigation">
   <button class="bnav-item" data-page="cover" data-group="cover"><span class="bicon">🏠</span><span class="blabel">Cover</span></button>
   <button class="bnav-item bnav-ai" data-page="commandhub" data-group="commandhub"><span class="bicon">🧭</span><span class="blabel">Hub</span></button>
-  <button class="bnav-item" data-page="dashboard" data-group="dashboard"><span class="bicon">📊</span><span class="blabel">Home</span></button>
-  <button class="bnav-item" data-page="index" data-group="saledata"><span class="bicon">🗂️</span><span class="blabel">Sale Data</span></button>
-  <button class="bnav-item" data-page="manager" data-group="manager"><span class="bicon">👔</span><span class="blabel">Manager</span></button>
-  <button class="bnav-item" data-page="notesheets" data-group="notesheets"><span class="bicon">📑</span><span class="blabel">Notes</span></button>
+  <button class="bnav-item" data-page="dashboard" data-group="dashboard" data-domain-group="sales"><span class="bicon">📊</span><span class="blabel">Home</span></button>
+  <button class="bnav-item" data-page="index" data-group="saledata" data-domain-group="sales"><span class="bicon">🗂️</span><span class="blabel">Sale Data</span></button>
+  <button class="bnav-item" data-page="manager" data-group="manager" data-domain-group="manager"><span class="bicon">👔</span><span class="blabel">Manager</span></button>
+  <button class="bnav-item" data-page="notesheets" data-group="notesheets" data-domain-group="notesheets"><span class="bicon">📑</span><span class="blabel">Notes</span></button>
+  <button class="bnav-item" data-page="closing-book" data-group="closing" data-domain-group="closing"><span class="bicon">📖</span><span class="blabel">Closing Book</span></button>
+  <button class="bnav-item" data-page="credit-ledger" data-group="closing" data-domain-group="closing"><span class="bicon">💳</span><span class="blabel">Credit Ledger</span></button>
+  <button class="bnav-item" data-page="assignments" data-group="audit" data-domain-group="audit"><span class="bicon">🧾</span><span class="blabel">Assignments</span></button>
   <button class="bnav-item" data-page="tools" data-group="tools"><span class="bicon">⚙️</span><span class="blabel">Tools</span></button>
 </div>
 <!-- Sale Data sub-nav (mobile) -->

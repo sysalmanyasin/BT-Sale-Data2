@@ -5,7 +5,7 @@
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v9.5'; // v9.5: Notes & Sheets multi-file workbook model (V2 plan §5) — new bt_sheet_workbooks_v1 storage, each file its own independent set of sheet-tabs; the old "Sheet Files" snapshot feature (destructive overwrite) was converted into this rather than kept separate. Lossless one-time migration from bt_sheets_v2 + bt_sheet_files_v1 (both left untouched as a safety net). Also fixed: two ai-bridge.js AI-chat functions and the Cover Dashboard status tile were reading the legacy bt_sheet_files_v1 key directly and would have gone stale the moment migration ran
+const CACHE_NAME = 'bt-sales-v9.6'; // v9.6: Cover-as-hub nav model (V2 plan §2) — nav now shows only Cover/CommandHub/Tools plus whichever domain you're currently in, instead of ~10 always-visible icons. Closing Book/Credit Ledger and Assignments (previously lumped into the generic cross-domain "tools" nav group) are now their own real domains ("closing", "audit"), each with their own accent color, matching Manager/Notes & Sheets. Fixed two stale comments (ui.js, cover-dashboard.js) that incorrectly claimed Closing/Audit had no embedded pages of their own
 
 const APP_SHELL = [
   './',

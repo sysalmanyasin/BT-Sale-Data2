@@ -81,44 +81,44 @@ nav{position:sticky;top:22px;z-index:200;background:rgba(255,255,255,.96);backdr
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   DOMAIN ISOLATION — Sales / Manager / Notes & Sheets
+   DOMAIN ISOLATION — Sales / Manager / Notes & Sheets / Closing / Audit
    Each is a first-class peer dashboard (V2 plan §2), not nested tabs.
-   While inside one domain's pages, every other domain's nav tabs are
-   hidden entirely — the only way across is through Cover. Cover,
-   CommandHub, and Tools stay visible everywhere: they're cross-domain
-   utilities (routing hub, AI assistant, sync/settings), not owned by
-   any one dashboard.
+   Cover is the one hub: every domain-owned nav tab is hidden by
+   default and only reappears once you're actually inside that domain
+   (body[data-domain] matches it) — so from Cover itself, the nav shows
+   nothing but Cover/CommandHub/Tools, and picking a domain happens via
+   Cover's tiles, not by scanning a long row of always-visible icons.
+   Cover, CommandHub, and Tools have no data-domain-group and are never
+   touched by this rule — they're cross-domain utilities (routing hub,
+   AI assistant, sync/settings), not owned by any one dashboard.
+
+   Closing Book/Credit Ledger (native ports of the standalone Closing
+   app's own pages) and Assignments (native port of Pharmacy Audit
+   Hub's own page) are real embedded pages here, reached via their own
+   Cover tiles — same pattern as Sales/Manager/Notes & Sheets, just
+   reading from an external bridge instead of this app's own data.
    ══════════════════════════════════════════════════════════════════ */
-body[data-domain="manager"] .ntab[data-group="dashboard"],
-body[data-domain="manager"] .ntab[data-group="saledata"],
-body[data-domain="manager"] .ntab[data-group="notesheets"],
-body[data-domain="manager"] .bnav-item[data-group="dashboard"],
-body[data-domain="manager"] .bnav-item[data-group="saledata"],
-body[data-domain="manager"] .bnav-item[data-group="notesheets"] {
-  display: none !important;
+.ntab[data-domain-group], .bnav-item[data-domain-group] { display: none !important; }
+
+body[data-domain="sales"]      .ntab[data-domain-group="sales"],
+body[data-domain="manager"]    .ntab[data-domain-group="manager"],
+body[data-domain="notesheets"] .ntab[data-domain-group="notesheets"],
+body[data-domain="closing"]    .ntab[data-domain-group="closing"],
+body[data-domain="audit"]      .ntab[data-domain-group="audit"] {
+  display: inline-block !important;
 }
-body[data-domain="sales"] .ntab[data-group="manager"],
-body[data-domain="sales"] .ntab[data-group="notesheets"],
-body[data-domain="sales"] .bnav-item[data-group="manager"],
-body[data-domain="sales"] .bnav-item[data-group="notesheets"] {
-  display: none !important;
-}
-body[data-domain="notesheets"] .ntab[data-group="dashboard"],
-body[data-domain="notesheets"] .ntab[data-group="saledata"],
-body[data-domain="notesheets"] .ntab[data-group="manager"],
-body[data-domain="notesheets"] .bnav-item[data-group="dashboard"],
-body[data-domain="notesheets"] .bnav-item[data-group="saledata"],
-body[data-domain="notesheets"] .bnav-item[data-group="manager"] {
-  display: none !important;
+body[data-domain="sales"]      .bnav-item[data-domain-group="sales"],
+body[data-domain="manager"]    .bnav-item[data-domain-group="manager"],
+body[data-domain="notesheets"] .bnav-item[data-domain-group="notesheets"],
+body[data-domain="closing"]    .bnav-item[data-domain-group="closing"],
+body[data-domain="audit"]      .bnav-item[data-domain-group="audit"] {
+  display: flex !important;
 }
 
-/* Manager and Notes & Sheets each get their own accent color throughout
-   — every button, active tab, hover state, and highlight that already
-   reads var(--accent)/var(--alt) re-themes automatically, no
-   per-component changes needed. Sales keeps the app's base blue. Closing
-   and Audit no longer have embedded pages/nav tabs of their own (only
-   their Cover Dashboard bridge tiles remain, opening the real apps in a
-   new tab), so they're no longer domains here. */
+/* Each domain gets its own accent color throughout — every button,
+   active tab, hover state, and highlight that already reads
+   var(--accent)/var(--alt) re-themes automatically, no per-component
+   changes needed. Sales keeps the app's base blue. */
 body[data-domain="manager"] {
   --accent: var(--purple);
   --alt: #f5f3ff;
@@ -126,4 +126,12 @@ body[data-domain="manager"] {
 body[data-domain="notesheets"] {
   --accent: var(--green);
   --alt: var(--glt);
+}
+body[data-domain="closing"] {
+  --accent: var(--teal);
+  --alt: var(--tlt);
+}
+body[data-domain="audit"] {
+  --accent: var(--amber);
+  --alt: var(--alt2);
 }
