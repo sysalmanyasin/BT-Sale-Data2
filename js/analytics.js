@@ -226,11 +226,20 @@ const Analytics = (function () {
     const _curMY0 = _MN[_now0.getMonth()] + ' ' + _now0.getFullYear();
     if (typeof recomputeMonthly === 'function') recomputeMonthly(_curMY0);
 
-    if (!MONTHLY.length || !MONTHLY[MONTHLY.length - 1]) return null;
+    if (!MONTHLY.length) return null;
 
-    const lat  = MONTHLY[MONTHLY.length - 1];
-    const prv  = MONTHLY[MONTHLY.length - 2];
-    if (!prv) return null;
+    // Pick 'lat'/'prv' by actual chronological month value, never by raw
+    // array position. Synced-in month rows (mergePulledMonthly/gapFillMonthly
+    // in repository.js) are pushed onto MONTHLY without a re-sort, so the
+    // truly-latest month is not guaranteed to be the last array element —
+    // that mismatch was why the dashboard could stay stuck showing a
+    // "Closed" older month even after the current month's row existed with
+    // real data in it. Sorting a shallow copy here makes this computation
+    // correct regardless of how MONTHLY got into whatever order it's in.
+    const _sortedMonthly = MONTHLY.slice().sort((a, b) => _monthSortVal(a.Month_Year) - _monthSortVal(b.Month_Year));
+    const lat  = _sortedMonthly[_sortedMonthly.length - 1];
+    const prv  = _sortedMonthly[_sortedMonthly.length - 2];
+    if (!lat || !prv) return null;
 
     const now     = new Date();
     const curY    = now.getFullYear();
