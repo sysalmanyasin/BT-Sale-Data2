@@ -214,6 +214,18 @@ const Analytics = (function () {
   // Returns a plain object with all values buildDashboard() needs to
   // render. Zero DOM access. Pure data in, plain data out.
   function getDashboardKPIs() {
+    // Make sure MONTHLY already reflects any DAILY entries saved for the
+    // running calendar month before picking 'lat' as MONTHLY's last row.
+    // Without this, the dashboard could stay pinned on last month's
+    // "Closed / Final" card even after this month's sales have been
+    // entered — e.g. after a raw data import, or a sync pull that for
+    // whatever reason didn't trigger the usual recomputeMonthly() hook.
+    // recomputeMonthly() is a safe no-op when the month has no DAILY
+    // rows yet, so this never invents a month that has no real entries.
+    const _now0 = new Date();
+    const _curMY0 = _MN[_now0.getMonth()] + ' ' + _now0.getFullYear();
+    if (typeof recomputeMonthly === 'function') recomputeMonthly(_curMY0);
+
     if (!MONTHLY.length || !MONTHLY[MONTHLY.length - 1]) return null;
 
     const lat  = MONTHLY[MONTHLY.length - 1];
