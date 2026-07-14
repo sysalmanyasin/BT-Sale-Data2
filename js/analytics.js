@@ -541,3 +541,11 @@ const Analytics = (function () {
   }
 
 })();
+
+// Bridged so ES modules (cover-dashboard.js) can reach Analytics — it's a
+// classic script's top-level `const`, which does NOT become a window
+// property on its own the way `var` does, so without this an ES module
+// referencing `Analytics` (or `window.Analytics`) would find nothing.
+// Same low-risk bridge pattern already used for renderCoverDashboard,
+// closingBridgeRefresh, etc.
+window.Analytics = Analytics;

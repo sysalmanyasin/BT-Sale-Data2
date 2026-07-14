@@ -31,13 +31,6 @@ function _esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-// Same DD/Mon/YYYY shape as DAILY[].Date (BTDate.today() in bt-date.js) —
-// reimplemented locally rather than importing, since bt-date.js is still
-// a classic script and not reachable from an ES module.
-function _todayDMY() {
-  const d = new Date();
-  return String(d.getDate()).padStart(2, '0') + '/' + MONTH_SHORT[d.getMonth()] + '/' + d.getFullYear();
-}
 function _currentMonthYear() {
   const d = new Date();
   return MONTH_NAMES[d.getMonth()] + ' ' + d.getFullYear();
@@ -47,6 +40,16 @@ function _isoMonthPrefix() {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
 }
 function _daysInMonth(y, mi) { return new Date(y, mi + 1, 0).getDate(); }
+
+// Comparable numeric value for DAILY's "DD/Mon/YYYY" Date strings (e.g.
+// "12/Jul/2026") — DAILY isn't guaranteed to be in date order, and a plain
+// string comparison sorts wrong (e.g. "9/Jul/2026" > "12/Jul/2026"
+// lexically), so finding "the latest filled day" needs real parsing.
+function _dailyDateVal(dateStr) {
+  const [dd, mon, yyyy] = String(dateStr || '').split('/');
+  const mi = MONTH_SHORT.indexOf(mon);
+  return (parseInt(yyyy, 10) || 0) * 10000 + (mi >= 0 ? mi : 0) * 100 + (parseInt(dd, 10) || 0);
+}
 
 // Last calendar day-of-month with an actual (non-zero) DAILY entry —
 // mirrors analytics.js's _lastFilledDay(), reimplemented locally rather
@@ -67,12 +70,16 @@ function _getTargets() {
 }
 
 // ── Hero numbers ─────────────────────────────────────────────────────
+// Previously showed strictly TODAY's entry, so this read "No entry yet"
+// for most of the day (the day's sale is typically entered the next
+// morning — see _lastFilledDay's comment below). Now always shows the
+// most recent day that actually has a filled entry, whichever day that
+// was, so the card is never just "no data" by default.
 function _salesHeadline() {
-  const todayStr = _todayDMY();
-  const rec = DAILY.find(d => d.Date === todayStr);
-  return rec
-    ? { label: "Today's sales", value: '₨' + fc(n(rec.TOTAL)), sub: todayStr }
-    : { label: "Today's sales", value: 'No entry yet', sub: todayStr };
+  const filled = DAILY.filter(d => n(d.TOTAL) > 0);
+  if (!filled.length) return { label: 'Latest sale', value: 'No entries yet', sub: '' };
+  const latest = filled.reduce((best, d) => _dailyDateVal(d.Date) > _dailyDateVal(best.Date) ? d : best);
+  return { label: 'Latest sale', value: '₨' + fc(n(latest.TOTAL)), sub: latest.Date };
 }
 
 function _targetPace() {
@@ -111,6 +118,31 @@ function _managerStatus() {
     return 'Jazz Cash ₨' + fc(jcBal) + ' · ' + expCount + ' expense entries this month';
   } catch (e) {
     return 'Ledger status unavailable';
+  }
+}
+
+// Same figure as the Manager page's own "Total Outstanding Credits" strip
+// (Staff Credit for the latest manager month + Jazz Cash + Patty/Expenses
+// + Other Sections, all-time) — reuses Analytics.getCreditSectionData
+// rather than re-deriving the math here, so this can never drift from what
+// the Manager page itself shows. Analytics is a classic script's top-level
+// `const`, not an ES export, so it's read via the window.Analytics bridge
+// (see analytics.js) rather than import.
+function _totalOutstandingCredits() {
+  try {
+    const A = window.Analytics;
+    if (!A) return { label: 'Total Outstanding Credits', value: 'Unavailable', sub: '' };
+    const my = A.latestManagerMonth();
+    const data = A.getCreditSectionData(my);
+    const v = data.grandTotal;
+    const sign = v < 0 ? '−' : '';
+    return {
+      label: 'Total Outstanding Credits',
+      value: sign + '₨' + fc(Math.abs(v)),
+      sub: 'Staff (' + (my || '—') + ') + Jazz Cash + Patty/Expenses + Other Sections, all-time',
+    };
+  } catch (e) {
+    return { label: 'Total Outstanding Credits', value: 'Unavailable', sub: '' };
   }
 }
 
@@ -203,20 +235,25 @@ export function renderCoverDashboard() {
 
   const headline = _salesHeadline();
   const pace = _targetPace();
+  const credits = _totalOutstandingCredits();
   const tiles = _tiles();
+
+  const heroCard = h => `
+    <div class="kpi">
+      <div style="font-size:12px;color:var(--muted)">${_esc(h.label)}</div>
+      <div style="font-size:22px;font-weight:700;margin-top:4px">${_esc(h.value)}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px">${_esc(h.sub)}</div>
+    </div>`;
 
   const heroHtml = `
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:14px">
-      <div class="kpi">
-        <div style="font-size:12px;color:var(--muted)">${_esc(headline.label)}</div>
-        <div style="font-size:22px;font-weight:700;margin-top:4px">${_esc(headline.value)}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">${_esc(headline.sub)}</div>
-      </div>
-      <div class="kpi">
-        <div style="font-size:12px;color:var(--muted)">${_esc(pace.label)}</div>
-        <div style="font-size:22px;font-weight:700;margin-top:4px">${_esc(pace.value)}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">${_esc(pace.sub)}</div>
-      </div>
+      ${heroCard(headline)}
+      ${heroCard(pace)}
+    </div>`;
+
+  const managerHeroHtml = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:14px">
+      ${heroCard(credits)}
     </div>`;
 
   const tileCardHtml = (t, i) => `
@@ -230,15 +267,16 @@ export function renderCoverDashboard() {
 
   // Group tiles by section, preserving each tile's original array index
   // (data-goto-idx / data-bridge-idx below still point into the flat
-  // `tiles` array — grouping is purely visual).
+  // `tiles` array — grouping is purely visual). Each group may carry its
+  // own hero card(s), rendered above its tile grid.
+  const GROUP_HERO = { Sales: heroHtml, Manager: managerHeroHtml };
   const groupsHtml = GROUP_ORDER.map(groupName => {
     const members = tiles.map((t, i) => ({ t, i })).filter(x => x.t.group === groupName);
     if (!members.length) return '';
-    const isSales = groupName === 'Sales';
     return `
       <div class="cover-group" style="margin-bottom:22px">
         <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)">${_esc(groupName)}</div>
-        ${isSales ? heroHtml : ''}
+        ${GROUP_HERO[groupName] || ''}
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">
           ${members.map(({ t, i }) => tileCardHtml(t, i)).join('')}
         </div>
