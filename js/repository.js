@@ -212,7 +212,11 @@ export const Repository = (function () {
     if (!c) return false;
     const winner = choice === 'incoming' ? c.incoming : c.local;
     if (c.kind === 'daily') upsertDaily(winner);
-    else upsertMonthly(winner);
+    else if (c.kind === 'monthly') upsertMonthly(winner);
+    else if (c.kind === 'staff') {
+      const idx = findStaffIndexById(winner.id);
+      if (idx === -1) addStaffMember(winner); else updateStaffMember(idx, winner);
+    }
     _conflicts.splice(conflictIndex, 1);
     _notify('conflict:resolved', { kind: c.kind, key: c.key, choice });
     return true;
@@ -291,6 +295,56 @@ export const Repository = (function () {
     });
   }
 
+  // ──────────────────────────────────────────────────────────────────────
+  // STAFF merge — was previously "remote list wins wholesale, local-only
+  // records appended" with NO per-record comparison and NO direction
+  // awareness (ran identically on push and pull). That meant an unsynced
+  // local edit — e.g. deactivating an employee, which also clears srNum —
+  // was silently discarded and replaced by stale remote data on the very
+  // next sync in EITHER direction, including push (mergeIncomingData(...,
+  // false) runs before every push, to merge remote into local first). This
+  // is what caused "inactive member becomes active again with the same
+  // Sr# on next sync". Fixed by giving STAFF the same per-record,
+  // isPull-aware treatment DAILY/MONTHLY already had: match by stable
+  // `id`, use isGenuineConflict + queueConflict instead of blind overwrite
+  // on pull, and gap-fill only (never overwrite) on push.
+  // ──────────────────────────────────────────────────────────────────────
+  function findStaffIndexById(id) {
+    return STAFF.findIndex(e => e.id === id);
+  }
+
+  function mergePulledStaff(incomingArr) {
+    return _withInternalWrite(() => {
+      let added = 0, updated = 0, conflicts = 0;
+      (incomingArr || []).forEach(incoming => {
+        const idx = findStaffIndexById(incoming.id);
+        if (idx === -1) {
+          STAFF.push(incoming);
+          added++;
+        } else if (isGenuineConflict(STAFF[idx], incoming)) {
+          queueConflict('staff', incoming.id, STAFF[idx], incoming);
+          conflicts++;
+        } else {
+          Object.assign(STAFF[idx], incoming);
+          updated++;
+        }
+      });
+      if (added || updated) { localStorage.setItem(STAFF_KEY, JSON.stringify(STAFF)); _notify('staff:changed', { staff: STAFF }); }
+      return { added, updated, conflicts };
+    });
+  }
+
+  function gapFillStaff(incomingArr) {
+    return _withInternalWrite(() => {
+      let added = 0;
+      (incomingArr || []).forEach(e => {
+        if (findStaffIndexById(e.id) === -1) { STAFF.push(e); added++; }
+      });
+      if (added) { localStorage.setItem(STAFF_KEY, JSON.stringify(STAFF)); _notify('staff:changed', { staff: STAFF }); }
+      return { added };
+    });
+  }
+
   // ── Floor 2 observability: track mutations that bypassed Repository ──
   let _rawMutationCounts = { MONTHLY: 0, DAILY: 0, STAFF: 0 };
   function _noteRawMutation(label) {
@@ -343,6 +397,7 @@ export const Repository = (function () {
   // outside the guard, only the persist step was inside it).
   function addStaffMember(emp) {
     return _withInternalWrite(() => {
+      _stamp(emp);
       STAFF.push(emp);
       localStorage.setItem(STAFF_KEY, JSON.stringify(STAFF));
       _notify('staff:changed', { staff: STAFF });
@@ -354,6 +409,7 @@ export const Repository = (function () {
     if (i < 0 || i >= STAFF.length) throw new Error('Repository.updateStaffMember: index ' + i + ' out of range');
     return _withInternalWrite(() => {
       Object.assign(STAFF[i], changes);
+      _stamp(STAFF[i]);
       localStorage.setItem(STAFF_KEY, JSON.stringify(STAFF));
       _notify('staff:changed', { staff: STAFF });
       return STAFF[i];
@@ -377,8 +433,17 @@ export const Repository = (function () {
         const raw = localStorage.getItem(STAFF_KEY);
         if (raw) arr = JSON.parse(raw);
       } catch (e) { arr = []; }
+      // Legacy staff records (created before addEmployee started stamping
+      // an `id`) may not have one — the new id-based merge (mergePulledStaff
+      // /gapFillStaff/resolveConflict) needs a stable, unique id per record
+      // or several id-less legacy rows would all match each other via
+      // `e.id === undefined`. Backfilled once, on load, so it happens
+      // exactly once per record rather than being a recurring write.
+      let backfilled = false;
+      arr.forEach((e, i) => { if (!e.id) { e.id = 'emp_legacy_' + Date.now() + '_' + i; backfilled = true; } });
       STAFF.length = 0;
       arr.forEach(e => STAFF.push(e));
+      if (backfilled) localStorage.setItem(STAFF_KEY, JSON.stringify(STAFF));
       return STAFF;
     });
   }
@@ -483,7 +548,7 @@ export const Repository = (function () {
     isGenuineConflict, getPendingConflicts, resolveConflict,
     markSynced, getLastSyncedAt,
     // staff
-    getStaff, setStaff, saveStaff, loadStaff,
+    getStaff, setStaff, saveStaff, loadStaff, mergePulledStaff, gapFillStaff, findStaffIndexById,
     addStaffMember, updateStaffMember, removeStaffMember,
     // pending entries (session log, gated push, ghost-state fix)
     getPendingEntries, loadPendingEntries, upsertPendingEntry, removePendingEntry,

@@ -55,14 +55,26 @@ export const Actions = (function () {
 
   // ── STAFF ────────────────────────────────────────────────────────────
 
+  // Sr# is picked as "one past the highest Sr# currently held by an ACTIVE
+  // employee" (excludeId lets a record being re-activated ignore its own,
+  // now-cleared, old number). Centralized here so addEmployee and
+  // updateEmployee (reactivation / collision auto-resolve) never disagree
+  // on how a Sr# is chosen.
+  function _nextSrNum(staff, excludeId) {
+    const maxSr = staff.reduce((m, e) => {
+      if (e.active === false || e.id === excludeId) return m;
+      return Math.max(m, Number(e.srNum) || 0);
+    }, 0);
+    return maxSr + 1;
+  }
+
   function addEmployee(empObj) {
     const staff = Repository.getStaff();
     const num   = staff.length + 1;
-    const maxSr = staff.reduce((m, e) => Math.max(m, Number(e.srNum) || 0), 0);
     const newEmp = Object.assign({
       id:          'emp_' + Date.now(),
       staffId:     'EMP-' + String(num).padStart(3, '0'),
-      srNum:       maxSr + 1,
+      srNum:       _nextSrNum(staff, null),
       name:        '',
       designation: 'Salesman',
       fatherName:  '',
@@ -81,7 +93,41 @@ export const Actions = (function () {
   // Update one or more fields on employee at index i.
   // i is the current position in Repository.getStaff() — caller is
   // responsible for passing a valid, current index.
+  //
+  // Enforces the Sr# rules that make Staff Registry, Salary, Generic, and
+  // Credit sheets stay in sync no matter which UI (or the AI assistant)
+  // made the edit:
+  //   - Deactivating clears srNum — an inactive employee holds no Sr#, so
+  //     it can never collide with a new hire, and the existing "srNum ==
+  //     null sorts last" display rule automatically drops them to the
+  //     bottom of every Sr#-ordered list.
+  //   - Reactivating never restores the old srNum (that's exactly how a
+  //     reactivated employee used to end up sharing a number with whoever
+  //     was assigned it while they were inactive) — always hands out a
+  //     fresh one via _nextSrNum.
+  //   - Any explicit srNum that collides with another ACTIVE employee's
+  //     number is silently reassigned to the next free one instead of
+  //     being allowed through — this is the one hard guarantee ("never
+  //     allow a duplicate Sr#") and it holds regardless of entry point.
   function updateEmployee(i, changes) {
+    const staff = Repository.getStaff();
+    const current = staff[i];
+    if (!current) throw new Error('Actions.updateEmployee: no employee at index ' + i);
+    changes = Object.assign({}, changes);
+
+    if (changes.active === false && current.active !== false) {
+      changes.srNum = null;
+    } else if (changes.active === true && current.active === false && changes.srNum == null) {
+      changes.srNum = _nextSrNum(staff, current.id);
+    }
+
+    if (changes.srNum != null && changes.srNum !== '') {
+      const wanted = Number(changes.srNum);
+      const willBeActive = changes.active !== undefined ? changes.active !== false : current.active !== false;
+      const taken = willBeActive && staff.some((e, idx) => idx !== i && e.active !== false && Number(e.srNum) === wanted);
+      if (taken) changes.srNum = _nextSrNum(staff, current.id);
+    }
+
     const updated = Repository.updateStaffMember(i, changes);
     EventBus.notify('staff:updated', updated);
     return updated;

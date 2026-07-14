@@ -238,7 +238,11 @@ function staffFieldChange(i, field, val) {
   Actions.updateEmployee(i, { [field]: val });
 }
 function staffSrNumChange(i, val) {
-  Actions.updateEmployee(i, { srNum: Number(val) || 1 });
+  const before = Number(val) || 1;
+  const updated = Actions.updateEmployee(i, { srNum: before });
+  if (updated.srNum !== before && typeof toast === 'function') {
+    toast('Sr# ' + before + ' is already in use — assigned Sr# ' + updated.srNum + ' instead', 'w');
+  }
   // Re-render the table so the sort order updates live
   renderStaffRegistry();
 }
@@ -246,6 +250,7 @@ function staffSrNumChange(i, val) {
 function staffToggleActive(i, active) {
   Actions.updateEmployee(i, { active });
   renderStaffRegistry();
+  _propagateStaffToSheets();
 }
 
 function staffDelete(i) {
@@ -259,6 +264,11 @@ function staffDelete(i) {
 function addStaffEmployee() {
   const newEmp = Actions.addEmployee();
   renderStaffRegistry();
+  // Immediately add to Salary/Generic/Credit sheets — previously this only
+  // happened when the manager clicked "💾 Save Staff List" afterwards, so a
+  // newly added employee was invisible in every sheet until that separate
+  // step was remembered.
+  _propagateStaffToSheets();
   setTimeout(() => openStaffCard(Repository.getStaff().length - 1), 100);
 }
 
@@ -282,27 +292,33 @@ function _propagateStaffToSheets() {
   const cur = document.getElementById('sal-month-sel')?.value;
   if (!cur) return;
   const norm = s => (s||'').trim().toLowerCase();
+  // Match by staffId when the row has one (added by every propagation from
+  // here on); fall back to name-matching only for legacy rows that predate
+  // staffId being stamped onto sheet rows. Pure name-matching was fragile —
+  // a typo'd or duplicate name meant a new employee with the same display
+  // name as an old one would never get a row of their own.
+  const matches = (row, emp) => (row.staffId && emp.staffId) ? row.staffId === emp.staffId : norm(row.name) === norm(emp.name);
 
   // Salary — add missing
   activeStaff().forEach(emp => {
-    if (!_salRows_cur.find(r => norm(r.name) === norm(emp.name))) {
-      _salRows_cur.push({ name: emp.name, desig: emp.designation, days: 31, hoSal: 0, advance: 0, generic: 0 });
+    if (!_salRows_cur.find(r => matches(r, emp))) {
+      _salRows_cur.push({ staffId: emp.staffId, name: emp.name, desig: emp.designation, days: 31, hoSal: 0, advance: 0, generic: 0 });
     }
   });
   renderSalaryTable(_salRows_cur);
 
   // Generic — add missing
   activeStaff().forEach(emp => {
-    if (!_genRows_cur.find(r => norm(r.name) === norm(emp.name))) {
-      _genRows_cur.push({ name: emp.name, desig: emp.designation, genericSale: 0, extra: 0 });
+    if (!_genRows_cur.find(r => matches(r, emp))) {
+      _genRows_cur.push({ staffId: emp.staffId, name: emp.name, desig: emp.designation, genericSale: 0, extra: 0 });
     }
   });
   renderGenericTable(_genRows_cur);
 
   // Credit — add missing
   activeStaff().forEach(emp => {
-    if (!_crdData_cur.find(r => norm(r.name) === norm(emp.name))) {
-      _crdData_cur.push({ name: emp.name, prevBal: 0, entries: [], salary: 0, lessGeneric: 0 });
+    if (!_crdData_cur.find(r => matches(r, emp))) {
+      _crdData_cur.push({ staffId: emp.staffId, name: emp.name, prevBal: 0, entries: [], salary: 0, lessGeneric: 0 });
     }
   });
   renderCreditLedger(_crdData_cur);
@@ -1384,6 +1400,7 @@ function saveStaffCard() {
   document.getElementById('sc-title-id').textContent   = updated.staffId || '';
   document.getElementById('sc-title-name').textContent  = updated.name || '(unnamed)';
   renderStaffRegistry();
+  _propagateStaffToSheets();
   toast('✓ Staff details saved — click 💾 Save Staff List to persist');
 }
 

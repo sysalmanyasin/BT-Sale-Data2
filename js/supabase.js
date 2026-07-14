@@ -182,17 +182,18 @@ function mergeIncomingData(data, isPull = false) {
   }
 
   if (data.staff && data.staff.length) {
-    // Merge remote staff into local, preferring the incoming list on pull.
-    // Route through Repository.setStaff so STAFF is never directly assigned
-    // (closes CF-02 / the one remaining STAFF bypass in the codebase).
-    const local  = Repository.getStaff();
-    const merged = [...data.staff];
-    const norm   = s => (s || '').trim().toLowerCase();
-    local.forEach(le => {
-      if (!merged.find(r => r.id === le.id) && !merged.find(r => norm(r.name) === norm(le.name)))
-        merged.push(le);
-    });
-    Actions.setStaff(merged);
+    // Direction-aware, per-record merge — matches Daily/Monthly's existing
+    // pattern (Repository.mergePulledDaily/gapFillDaily etc). Previously
+    // this ran the SAME "remote list wins wholesale" merge on both push
+    // and pull, with no per-record conflict check — meaning an unsynced
+    // local edit (e.g. deactivating an employee, which also clears their
+    // Sr#) got silently discarded and replaced by stale remote data on
+    // the very next sync, including push (mergeIncomingData(..., false)
+    // runs to merge remote into local BEFORE every push). That was the
+    // exact mechanism behind "inactive member becomes active again with
+    // the same Sr# on next sync."
+    if (isPull) Repository.mergePulledStaff(data.staff);
+    else        Repository.gapFillStaff(data.staff);
   }
 
   if (data.manager) {

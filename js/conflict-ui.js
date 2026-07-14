@@ -26,10 +26,15 @@ function reviewConflicts() {
   pending.forEach(function () {
     const c = Repository.getPendingConflicts()[0];
     if (!c) return;
-    const label = c.kind === 'daily' ? 'Daily entry ' + c.key : 'Monthly ' + c.key;
+    const label = c.kind === 'daily' ? 'Daily entry ' + c.key
+      : c.kind === 'staff' ? 'Staff record — ' + (c.local.name || c.incoming.name || c.key)
+      : 'Monthly ' + c.key;
     const msg = label + ' was edited on two devices.\n\n'
-      + 'This device:  TOTAL = ' + c.local.TOTAL + '\n'
-      + 'Other device: TOTAL = ' + c.incoming.TOTAL + '\n\n'
+      + (c.kind === 'staff'
+        ? 'This device:  active=' + c.local.active + ', Sr#=' + c.local.srNum + '\n'
+          + 'Other device: active=' + c.incoming.active + ', Sr#=' + c.incoming.srNum + '\n\n'
+        : 'This device:  TOTAL = ' + c.local.TOTAL + '\n'
+          + 'Other device: TOTAL = ' + c.incoming.TOTAL + '\n\n')
       + 'Click OK to keep THIS device\'s version, Cancel to keep the OTHER device\'s version.';
     const keepLocal = window.confirm(msg);
     Repository.resolveConflict(0, keepLocal ? 'local' : 'incoming');
@@ -50,6 +55,8 @@ function openConflictModal() {
   const c = pending[0];
   const label = c.kind === 'daily'
     ? 'Daily entry — ' + c.key
+    : c.kind === 'staff'
+    ? 'Staff record — ' + (c.local.name || c.incoming.name || c.key)
     : 'Monthly record — ' + c.key;
   document.getElementById('conflict-label').textContent = label;
 
