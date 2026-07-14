@@ -17,10 +17,34 @@ function dayData(d) {
   const gourmet=n(d['Gourmet']),wapda=n(d['Wapda Hospital']),bth=n(d['BTH']),berger=n(d['Berger Paints']);
   const ecolean=n(d['Ecolean PK']),style_t=n(d['Style Textile']),babar=n(d['Syed Babar Ali Foundation']);
   const rahnuma=n(d['Rahnuma NGO']),healthP=n(d['Health Pass']),nisar=n(d['Nisar Spinning Mills']),foodP=n(d['Food Panda']);
-  const netCash=cashSale+meezan+alfalah+alHabib+hbl+mcb+cashRet;   // cashRet is negative → subtracts
-  const netCredit=pso+nespak+parco+askari+askariRet+lda+tepa+fissue+gourmet+wapda+bth+berger+ecolean+style_t+babar+rahnuma+healthP+nisar+foodP+psoRet+nespakRet+parcoRet+tepaRet+ldaRet;
+
+  // Custom fields added via Manage Fields (fields.js's _fmCustom, e.g. "Bank
+  // Alfalah 2") are NOT in this file's hardcoded column list above — they
+  // were silently excluded from every report/print view built from this
+  // function, even though config.js's computeDailyTotals already folds them
+  // into the stored TOTAL. That mismatch is exactly the bug: Daily Data /
+  // Index showed the correct total (includes custom fields), every report
+  // built from dayData() showed a different, lower one (didn't). Folding
+  // them in dynamically here, once, fixes every caller of dayData() at once
+  // instead of needing a fix per report function.
+  const customRows = [];
+  let customCash = 0, customCredit = 0;
+  if (typeof _fmCustom !== 'undefined' && _fmCustom) {
+    _fmCustom.forEach(f => {
+      if (f.calcType === 'none') return;
+      const raw = n(d[f.id]);
+      if (!raw) return; // skip zero/unused custom fields so reports don't clutter
+      const signed = f.calcType === 'sub' ? -Math.abs(raw) : raw;
+      const isCash = f.section !== 'Credit Clients'; // 'Cash'/'Banks' → cash side
+      if (isCash) customCash += signed; else customCredit += signed;
+      customRows.push({ label: f.label, value: signed, cash: isCash });
+    });
+  }
+
+  const netCash=cashSale+meezan+alfalah+alHabib+hbl+mcb+cashRet+customCash;   // cashRet is negative → subtracts
+  const netCredit=pso+nespak+parco+askari+askariRet+lda+tepa+fissue+gourmet+wapda+bth+berger+ecolean+style_t+babar+rahnuma+healthP+nisar+foodP+psoRet+nespakRet+parcoRet+tepaRet+ldaRet+customCredit;
   const grand=netCash+netCredit;
-  return {cashSale,meezan,alfalah,alHabib,hbl,mcb,cashRet,askari,askariRet,pso,psoRet,nespak,nespakRet,parco,parcoRet,tepa,tepaRet,lda,ldaRet,fissue,gourmet,wapda,bth,berger,ecolean,style_t,babar,rahnuma,healthP,nisar,foodP,netCash,netCredit,grand,
+  return {cashSale,meezan,alfalah,alHabib,hbl,mcb,cashRet,askari,askariRet,pso,psoRet,nespak,nespakRet,parco,parcoRet,tepa,tepaRet,lda,ldaRet,fissue,gourmet,wapda,bth,berger,ecolean,style_t,babar,rahnuma,healthP,nisar,foodP,netCash,netCredit,grand,customRows,
     fdpp:n(d['FDPP']),fdppCon:n(d['FDPP Con']),customers:n(d['Customers']),
     amtRec:n(d['Amount Received']),loadSale:n(d['Load Sale']),cashDepo:n(d['Cash to be Deposited']),compSale:n(d['COMP SALE']),
     diff:Math.round(n(d['TOTAL'])-n(d['COMP SALE'])),
@@ -44,6 +68,7 @@ function buildDayHTML(r) {
       ${dmOptRow('HBL',r.hbl)}
       ${dmOptRow('MCB',r.mcb)}
       ${dmRowHTML('Cash Returns',r.cashRet,'Returns Only')}
+      ${r.customRows.filter(c=>c.cash).map(c=>dmRowHTML(c.label,c.value)).join('')}
     </div>
     <div class="dmnet"><span>Net Cash Sale</span><span style="font-family:var(--mono)">${fv(r.netCash)}</span></div>
     <div class="dmsec"><div class="dmsh">📋 Credit Sale</div>
@@ -71,6 +96,7 @@ function buildDayHTML(r) {
       ${dmRowHTML('Credit Return LDA',r.ldaRet,'Returns Only')}
       ${dmRowHTML('Askari',r.askari)}
       ${dmOptRow('Askari Returns',r.askariRet)}
+      ${r.customRows.filter(c=>!c.cash).map(c=>dmRowHTML(c.label,c.value)).join('')}
     </div>
     <div class="dmnet"><span>Net Credit Sale</span><span style="font-family:var(--mono)">${fv(r.netCredit)}</span></div>
     <div class="dmgrand"><span>Grand Total</span><span style="font-family:var(--mono)">₨${fv(r.grand)}</span></div>
@@ -114,9 +140,18 @@ function openMonthModal(my) {
     .sort((a,b)=>_dateVal(b.Date)-_dateVal(a.Date));
   const fields=[['Cash Sale',m['Cash Sale']],['Cash Returns',negR(m['Cash Returns'])],['HBL',m.HBL],['MCB',m.MCB],
     ['Bank Alfalah',m['Alfala Bank']],['Bank Al Habib',m['Bank Al Habib']],['Meezan Bank',m['Meezan Bank (Paysa)']],
+    ['Askari',m['Askari Bank']],['Askari Returns',negR(m['Askari Bank Returns'])],
     ['PSO',m.PSO],['NESPAK',m.NESPAK],['PARCO',m.PARCO],['LDA',m.LDA],
     ['Gourmet',m.Gourmet],['F/Issue',m['F/Issue']],['COMP SALE',m['COMP SALE']],
-    ['Difference',n(m.TOTAL)-n(m['COMP SALE'])],['TOTAL',m.TOTAL],['Customers',m.Customers]
+    ['Difference',n(m.TOTAL)-n(m['COMP SALE'])],['TOTAL',m.TOTAL],['Customers',m.Customers],
+    // Custom fields (Manage Fields, fields.js's _fmCustom — e.g. "Bank
+    // Alfalah 2") were entirely absent from this tile list, same class of
+    // bug as dayData()/reports-print.js: a hardcoded field list that never
+    // knew custom fields exist. Appended dynamically so any custom field
+    // added now or later shows up here without another code change.
+    ...((typeof _fmCustom !== 'undefined' && _fmCustom) ? _fmCustom
+      .filter(f => f.calcType !== 'none')
+      .map(f => [f.label, f.calcType === 'sub' ? negR(m[f.id]) : m[f.id]]) : [])
   ].filter(([,v])=>v!=null&&n(v)!==0);
 
   const tgts=getTgts(), tgt=tgts[my];
@@ -245,6 +280,7 @@ function renderReport() {
       ${rrow('Bank Al Habib',r.alHabib)}
       ${ropt('HBL',r.hbl)}${ropt('MCB',r.mcb)}
       ${rrow('Cash Returns <small style="font-size:10px;color:#888">(Returns Only)</small>',r.cashRet)}
+      ${r.customRows.filter(c=>c.cash).map(c=>rrow(c.label,c.value)).join('')}
       <div class="rnet"><span>Net Cash Sale:</span><span class="rv">${fv(r.netCash)}</span></div>
       <div class="rsec">Credit Sale:</div>
       ${rrow('PSO <small style="font-size:10px;color:#888">(Sales Only)</small>',r.pso)}
@@ -264,6 +300,7 @@ function renderReport() {
       ${rrow('Credit Return Tepa <small style="font-size:10px;color:#888">(Returns Only)</small>',r.tepaRet)}
       ${rrow('Credit Return LDA <small style="font-size:10px;color:#888">(Returns Only)</small>',r.ldaRet)}
       ${ropt('Askari Returns',r.askariRet)}
+      ${r.customRows.filter(c=>!c.cash).map(c=>rrow(c.label,c.value)).join('')}
       <div class="rnet"><span>Net Credit Sale:</span><span class="rv">${fv(r.netCredit)}</span></div>
       <div class="rgrand"><span>Grand Total:</span><span class="rv">₨${fv(r.grand)}</span></div>
       ${(r.compSale||r.diff!==0)?`<div class="rmisc"><span>COMP SALE</span><span class="rv">${fv(r.compSale)}</span></div>`:''}
@@ -296,6 +333,7 @@ function buildPrintHTML(date, my, till, patty) {
       ${row('Bank Al Habib',r.alHabib)}
       ${orow('HBL',r.hbl)}${orow('MCB',r.mcb)}
       ${row('Cash Returns (Returns Only)',r.cashRet)}
+      ${r.customRows.filter(c=>c.cash).map(c=>row(c.label,c.value)).join('')}
       <tr><td style="padding:6px 12px;font-size:13px;font-weight:700;color:#c00;background:#fff5f5;border-top:1px solid #fecaca">Net Cash Sale:</td><td style="padding:6px 12px;font-size:13px;font-weight:700;color:#c00;text-align:right;font-family:monospace;background:#fff5f5;border-top:1px solid #fecaca">${fv(r.netCash)}</td></tr>
       <tr><td colspan="2" style="text-align:center;font-size:13px;font-weight:700;padding:5px;background:#f8fafc;border-top:1px solid #eee;border-bottom:1px solid #eee">Credit Sale:</td></tr>
       ${row('PSO (Sales Only)',r.pso)}${row('Nespak (Sales Only)',r.nespak)}${row('Parco (Sales Only)',r.parco)}
@@ -307,6 +345,7 @@ function buildPrintHTML(date, my, till, patty) {
       ${row('Credit Return PSO (Returns Only)',r.psoRet)}${row('Credit Return Nespak (Returns Only)',r.nespakRet)}
       ${row('Credit Return Parco (Returns Only)',r.parcoRet)}${row('Credit Return Tepa (Returns Only)',r.tepaRet)}
       ${row('Credit Return LDA (Returns Only)',r.ldaRet)}${orow('Askari Returns',r.askariRet)}
+      ${r.customRows.filter(c=>!c.cash).map(c=>row(c.label,c.value)).join('')}
       <tr><td style="padding:6px 12px;font-size:13px;font-weight:700;color:#c00;background:#fff5f5;border-top:1px solid #fecaca">Net Credit Sale:</td><td style="padding:6px 12px;font-size:13px;font-weight:700;color:#c00;text-align:right;font-family:monospace;background:#fff5f5;border-top:1px solid #fecaca">${fv(r.netCredit)}</td></tr>
       <tr><td style="padding:10px 12px;font-size:16px;font-weight:700;color:#1e40af;background:#eff6ff;border-top:2px solid #bfdbfe">Grand Total:</td><td style="padding:10px 12px;font-size:16px;font-weight:700;color:#1e40af;text-align:right;font-family:monospace;background:#eff6ff;border-top:2px solid #bfdbfe">₨${fv(r.grand)}</td></tr>
       ${(r.compSale||r.diff!==0)?`<tr><td style="padding:5px 12px;font-size:12px;font-weight:600;border-bottom:1px solid #eee">COMP SALE</td><td style="padding:5px 12px;font-size:12px;text-align:right;font-family:monospace;border-bottom:1px solid #eee">${fv(r.compSale)}</td></tr>`:''}
@@ -348,11 +387,14 @@ function copyReportText() {
     '','Cash Sale:',line('Cash Sale (Sales Only)',r.cashSale),line('Meezan Bank',r.meezan),
     line('Bank Alfalah',r.alfalah),line('Bank Al Habib',r.alHabib),
     ...(r.hbl?[line('HBL',r.hbl)]:[]),...(r.mcb?[line('MCB',r.mcb)]:[]),
-    line('Cash Returns',r.cashRet),'Net Cash Sale: '+fv(r.netCash),
+    line('Cash Returns',r.cashRet),
+    ...r.customRows.filter(c=>c.cash).map(c=>line(c.label,c.value)),
+    'Net Cash Sale: '+fv(r.netCash),
     '','Credit Sale:',line('PSO',r.pso),line('Nespak',r.nespak),line('Parco',r.parco),
     line('Askari',r.askari),line('LDA',r.lda),line('Tepa',r.tepa),line('Free Issue',r.fissue),
     line('Credit Return PSO',r.psoRet),line('Credit Return Nespak',r.nespakRet),
     line('Credit Return Parco',r.parcoRet),line('Credit Return Tepa',r.tepaRet),line('Credit Return LDA',r.ldaRet),
+    ...r.customRows.filter(c=>!c.cash).map(c=>line(c.label,c.value)),
     'Net Credit Sale: '+fv(r.netCredit),'','Grand Total: ₨'+fv(r.grand),
     ...(r.compSale||r.diff!==0?[line('COMP SALE',r.compSale),'Difference (Total − COMP): '+fv(r.diff)]:[]),
     line('FDPP POS Sale',r.fdpp),line('FDPP Consumer POS Sale',r.fdppCon),

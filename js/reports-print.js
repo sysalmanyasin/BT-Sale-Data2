@@ -10,10 +10,19 @@ function _prRow(lbl, val, opts='') {
   return `<tr${opts}><td class="l">${lbl}</td><td class="r">${s}</td></tr>`;
 }
 function _prRowOpt(lbl, val, opts='') { return n(val) !== 0 ? _prRow(lbl, val, opts) : ''; }
+// Renders any custom fields (Manage Fields, fields.js's _fmCustom) whose
+// `section` is in `sections` — same gap as DAILY_COL_DEFS above, but for the
+// Summary table's monthly totals rather than the daily breakdown page.
+function _prCustomRowsOpt(m, sections) {
+  if (typeof _fmCustom === 'undefined' || !_fmCustom) return '';
+  return _fmCustom.filter(f => f.calcType !== 'none' && sections.includes(f.section))
+    .map(f => _prRowOpt(f.label, f.calcType === 'sub' ? negR(m[f.id]) : n(m[f.id])))
+    .join('');
+}
 
 // Candidate daily columns for the landscape breakdown page. Only columns
 // with at least one non-zero value in the selected month are rendered.
-const DAILY_COL_DEFS = [
+const DAILY_COL_DEFS_BUILTIN = [
   ['Cash Sale','Cash Sale'], ['Cash Returns','Cash Returns'],
   ['HBL','HBL'], ['MCB','MCB'], ['Alfala Bank','Bank Alfalah'],
   ['Bank Al Habib','Bank Al Habib'], ['Meezan Bank (Paysa)','Meezan Bank'],
@@ -33,6 +42,19 @@ const DAILY_COL_DEFS = [
   ['Amount Received','Amount Received'], ['Load Sale','Load Sale'],
   ['Cash to be Deposited','Cash to Deposit'],
 ];
+const _BUILTIN_COL_IDS = new Set(DAILY_COL_DEFS_BUILTIN.map(([k]) => k));
+// Custom fields (Manage Fields, fields.js's _fmCustom — e.g. "Bank Alfalah
+// 2") aren't in the static built-in list above, so the landscape daily
+// breakdown page silently dropped them, same bug as reports.js's dayData().
+// Computed as a getter (not a fixed const) so it always reflects whatever
+// custom fields exist at print time, not just whatever existed when this
+// file first parsed.
+function _daily_col_defs() {
+  const extra = (typeof _fmCustom !== 'undefined' && _fmCustom)
+    ? _fmCustom.filter(f => f.calcType !== 'none' && !_BUILTIN_COL_IDS.has(f.id)).map(f => [f.id, f.label])
+    : [];
+  return DAILY_COL_DEFS_BUILTIN.concat(extra);
+}
 
 
 // ── Monthly print ─────────────────────────────────────────────────────────────
@@ -63,6 +85,7 @@ function buildMonthlyPrintHTML(my) {
     ${_prRowOpt('Meezan Bank', m['Meezan Bank (Paysa)'])}
     ${_prRowOpt('HBL', m.HBL)}
     ${_prRowOpt('MCB', m.MCB)}
+    ${_prCustomRowsOpt(m, ['Cash','Banks'])}
     <tr class="grp"><td colspan="2">Credit Clients</td></tr>
     ${_prRowOpt('PSO', m.PSO)}
     ${_prRowOpt('NESPAK', m.NESPAK)}
@@ -88,6 +111,7 @@ function buildMonthlyPrintHTML(my) {
     ${_prRowOpt('TEPA Returns', negR(m['TEPA Returns']))}
     ${_prRowOpt('LDA Returns', negR(m['LDA Returns']))}
     ${_prRowOpt('F/Issue', m['F/Issue'])}
+    ${_prCustomRowsOpt(m, ['Credit Clients'])}
     <tr class="tot"><td>GRAND TOTAL</td><td class="r">₨${Math.round(total).toLocaleString('en-PK')}</td></tr>
     <tr><td class="l">Customers</td><td class="r">${Math.round(cust).toLocaleString('en-PK')}</td></tr>
     ${tgt ? `<tr><td class="l">Monthly Target</td><td class="r">₨${Math.round(tgt).toLocaleString('en-PK')} (${pct}%)</td></tr>` : ''}
@@ -109,8 +133,10 @@ function buildMonthlyPrintHTML(my) {
   // how the underlying record happens to be signed (see RETURN_FIELDS /
   // negR in config.js) — this is what keeps the printed report correct
   // even for records edited before that bug was fixed at the source.
-  const colVal = (d, key) => RETURN_FIELDS.has(key) ? negR(d[key]) : n(d[key]);
-  const activeCols = DAILY_COL_DEFS.filter(([key]) => days.some(d => colVal(d, key) !== 0));
+  const _customSubIds = (typeof _fmCustom !== 'undefined' && _fmCustom)
+    ? new Set(_fmCustom.filter(f => f.calcType === 'sub').map(f => f.id)) : new Set();
+  const colVal = (d, key) => (RETURN_FIELDS.has(key) || _customSubIds.has(key)) ? negR(d[key]) : n(d[key]);
+  const activeCols = _daily_col_defs().filter(([key]) => days.some(d => colVal(d, key) !== 0));
   const hasNotes = days.some(d => d['Low Sale Reason']);
   const colCount = 3 + activeCols.length + (hasNotes ? 1 : 0);
 
@@ -215,15 +241,23 @@ function buildYearlyPrintHTML(yr) {
   }).join('');
 
   const clientCols = ['PSO','PSO Returns','NESPAK','NESPAK Returns','PARCO','PARCO Returns','TEPA','TEPA Returns','LDA','LDA Returns','Gourmet','Wapda Hospital','BTH','Berger Paints','Ecolean PK','Style Textile','Syed Babar Ali Foundation','Rahnuma NGO','Health Pass','Nisar Spinning Mills','Food Panda','Askari Bank','Askari Bank Returns','F/Issue'];
-  const clientRows = clientCols.map(c => {
-    const pick = RETURN_FIELDS.has(c) ? negR : n;
+  const _customSubIdsY = (typeof _fmCustom !== 'undefined' && _fmCustom)
+    ? new Set(_fmCustom.filter(f => f.calcType === 'sub').map(f => f.id)) : new Set();
+  const _customClientIds = (typeof _fmCustom !== 'undefined' && _fmCustom)
+    ? _fmCustom.filter(f => f.calcType !== 'none' && f.section === 'Credit Clients').map(f => f.id) : [];
+  const _customBankIds = (typeof _fmCustom !== 'undefined' && _fmCustom)
+    ? _fmCustom.filter(f => f.calcType !== 'none' && f.section !== 'Credit Clients').map(f => f.id) : [];
+  const _fmLabel = id => { const f = (_fmCustom || []).find(x => x.id === id); return f ? f.label : id; };
+  const clientRows = clientCols.concat(_customClientIds).map(c => {
+    const pick = (RETURN_FIELDS.has(c) || _customSubIdsY.has(c)) ? negR : n;
     const v = mons.reduce((s, m) => s + pick(m[c]), 0);
-    return v !== 0 ? _prRow(c, v) : '';
+    return v !== 0 ? _prRow(_fmLabel(c), v) : '';
   }).join('');
   const bankCols = ['HBL','MCB','Alfala Bank','Bank Al Habib','Meezan Bank (Paysa)'];
-  const bankRows = bankCols.map(c => {
-    const v = mons.reduce((s, m) => s + n(m[c]), 0);
-    return v !== 0 ? _prRow(c, v) : '';
+  const bankRows = bankCols.concat(_customBankIds).map(c => {
+    const pick = _customSubIdsY.has(c) ? negR : n;
+    const v = mons.reduce((s, m) => s + pick(m[c]), 0);
+    return v !== 0 ? _prRow(_fmLabel(c), v) : '';
   }).join('');
 
   return `<div style="max-width:720px;margin:0 auto">
