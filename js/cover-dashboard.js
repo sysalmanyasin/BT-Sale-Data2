@@ -1,4 +1,4 @@
-// ══════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════��[...]
 // COVER DASHBOARD  —  Floor 5 of the architecture (V2 plan §2)
 //
 // New landing page. Concise cross-domain summary + one tile per peer
@@ -12,7 +12,7 @@
 // Bridged to `window.renderCoverDashboard` at the bottom so ui.js's
 // showPage() (still a classic script) can call it — same low-risk
 // bridge pattern already used by ledger-page.js's renderLedgerView.
-// ══════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════�[...]
 
 import { MONTHLY, DAILY, n, fc } from './config.js';
 import { Repository } from './repository.js';
@@ -61,7 +61,7 @@ function _dailyDateVal(dateStr) {
 // math below is over the true 22 days left in the month, not 21.
 function _lastFilledDay(monthYear) {
   return Math.max(0, ...DAILY
-    .filter(d => d.Month_Year === monthYear && n(d.TOTAL) > 0)
+    .filter(d => n(d.TOTAL) > 0 && d.Month_Year === monthYear)
     .map(d => parseInt((d.Date || '').split('/')[0], 10) || 0));
 }
 
@@ -182,6 +182,65 @@ function _auditStatus() {
   ).join('  ·  ');
 }
 
+// ── Helpers for Closing-derived cover heroes ─────────────────────────
+function _clFmtDate(ds) { try { return new Date(ds + 'T00:00:00').toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' }); } catch (e) { return ds; } }
+function _shiftSeq(shift) { if (shift === 'Night') return 10; if (shift === 'Evening') return 9999; return 20; }
+function _sheetSortKey(cdb, key) {
+  const parts = key.split('_');
+  const rec = (cdb.sheets && cdb.sheets[key]) || {};
+  const seq = (typeof rec.seq === 'number') ? rec.seq : _shiftSeq(parts[1]);
+  return parts[0] + '_' + String(seq).padStart(6, '0');
+}
+function _latestRealSheet(cdb) {
+  if (!cdb || !cdb.sheets) return null;
+  const keys = Object.keys(cdb.sheets).filter(k => {
+    const rec = cdb.sheets[k]; return !!rec && rec.draft !== true;
+  });
+  if (!keys.length) return null;
+  keys.sort((a, b) => _sheetSortKey(cdb, a).localeCompare(_sheetSortKey(cdb, b)));
+  const key = keys[keys.length - 1]; const rec = cdb.sheets[key]; const parts = key.split('_');
+  return { key, rec, date: parts[0], shift: parts[1] };
+}
+
+function _closingLatestSummary() {
+  const cdb = ClosingBridge.getFullDb();
+  if (!cdb) return { label: 'Latest Closing Summary', value: 'Waiting for Closing…', sub: '' };
+  const latest = _latestRealSheet(cdb);
+  if (!latest) return { label: 'Latest Closing Summary', value: 'No closings yet', sub: '' };
+  const rec = latest.rec;
+  let totalBooks = 0, totalManRet = 0;
+  if (rec.profileMode === 'final') {
+    totalBooks = n(rec.inBook1) + n(rec.inBook2);
+    totalManRet = n(rec.posRet1) + n(rec.posRet2) + n(rec.posRet3);
+  }
+  const val = `${_clFmtDate(latest.date)} · ${latest.shift}`;
+  const sub = `Carried CC: Rs. ${fc(n(rec.outPrevCC))} · Deposits: Rs. ${fc(n(rec.outTotalF))} · Book Bills: Rs. ${fc(totalBooks)} · Manual Returns: Rs. ${fc(totalManRet)}`;
+  return { label: 'Latest Closing Summary', value: val, sub };
+}
+
+function _closingLatestCredit() {
+  const cdb = ClosingBridge.getFullDb();
+  if (!cdb) return { label: 'Latest Credit', value: 'Waiting for Closing…', sub: '' };
+  // Find latest real sheet which also has credit (outTotalE)
+  const latest = _latestRealSheet(cdb);
+  if (!latest) return { label: 'Latest Credit', value: 'No credit records', sub: '' };
+  const rec = latest.rec;
+  const credit = n(rec.outTotalE);
+  return { label: 'Latest Credit', value: 'Rs. ' + fc(credit), sub: `${_clFmtDate(latest.date)} · ${latest.shift}` };
+}
+
+function _closingLatestMisc() {
+  const cdb = ClosingBridge.getFullDb();
+  if (!cdb) return { label: 'Latest Misc / Ongoing', value: 'Waiting for Closing…', sub: '' };
+  // Walk sheets to find the latest non-draft sheet that has miscRows
+  const keys = Object.keys(cdb.sheets || {}).filter(k => { const r = cdb.sheets[k]; return r && r.draft !== true && Array.isArray(r.miscRows) && r.miscRows.length; });
+  if (!keys.length) return { label: 'Latest Misc / Ongoing', value: 'No misc entries', sub: '' };
+  keys.sort((a, b) => _sheetSortKey(cdb, a).localeCompare(_sheetSortKey(cdb, b)));
+  const key = keys[keys.length - 1]; const rec = cdb.sheets[key]; const parts = key.split('_'); const date = parts[0], shift = parts[1];
+  const total = (rec.miscRows || []).reduce((s, r) => s + (parseFloat(r.val) || 0), 0);
+  return { label: 'Latest Misc / Ongoing', value: 'Rs. ' + fc(total), sub: `${_clFmtDate(date)} · ${shift}` };
+}
+
 // ── Tiles (V2 plan §2's confirmed shape, + standalone sub-apps) ────
 // Each tile carries a `group` — the render function sections tiles by
 // group instead of one flat grid (see GROUP_ORDER / renderCoverDashboard).
@@ -219,8 +278,7 @@ function _tiles() {
     // checklist.html shipped inside this repo — that file has been removed;
     // all three checklist/report tools now live on reports.duapharma.com.)
     { href: 'https://reports.duapharma.com/daily_report.html', icon: '✅', title: 'Daily Check List', status: 'Fazal Din\'s Pharma Plus — standalone checklist app', enabled: true, group: 'Reports' },
-    { href: 'https://reports.duapharma.com/excess-stock-control.html', icon: '📦', title: 'Excess Stock Control', status: 'Fazal Din\'s Pharma Plus — excess stock control', enabled: true, group: 'Reports' },
-    { href: 'https://reports.duapharma.com/invoice-desk.html', icon: '🧮', title: 'Branch Invoice Desk', status: 'Fazal Din\'s Pharma Plus — branch invoice desk', enabled: true, group: 'Reports' },
+    { href: 'https://reports.duapharma.com/excess-stock-control.html', icon: '📦', title: 'Excess Stock Control', status: 'Fazal Din\'s Pharma Plus — excess stock control', enabled: true, gro[...]
   ];
 }
 
@@ -256,20 +314,31 @@ export function renderCoverDashboard() {
       ${heroCard(credits)}
     </div>`;
 
+  // Closing hero cards (Latest Closing Summary, Latest Credit, Latest Misc)
+  const closingLatestSummary = _closingLatestSummary();
+  const closingLatestCredit = _closingLatestCredit();
+  const closingLatestMisc = _closingLatestMisc();
+  const closingHeroHtml = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:14px">
+      ${heroCard(closingLatestSummary)}
+      ${heroCard(closingLatestCredit)}
+      ${heroCard(closingLatestMisc)}
+    </div>`;
+
   const tileCardHtml = (t, i) => `
     <div class="card cover-tile${t.enabled ? '' : ' cover-tile-disabled'}"
          ${t.enabled ? `data-goto-idx="${i}" role="button" tabindex="0"` : ''}>
       <div style="font-size:22px">${t.icon}</div>
       <div style="font-weight:600;margin-top:6px">${_esc(t.title)}${t.href ? ' <span style="font-size:11px;color:var(--muted);font-weight:400">↗</span>' : ''}</div>
       <div style="font-size:12px;color:var(--muted);margin-top:4px">${_esc(t.status)}</div>
-      ${t.bridgeAction ? `<button data-bridge-idx="${i}" style="margin-top:8px;font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:var(--s2);color:inherit;cursor:pointer">🔗 Data Bridge</button>` : ''}
+      ${t.bridgeAction ? `<button data-bridge-idx="${i}" style="margin-top:8px;font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:var(--s2);color:inherit;cursor:pointer">Bridge</button>` : ''}
     </div>`;
 
   // Group tiles by section, preserving each tile's original array index
   // (data-goto-idx / data-bridge-idx below still point into the flat
   // `tiles` array — grouping is purely visual). Each group may carry its
   // own hero card(s), rendered above its tile grid.
-  const GROUP_HERO = { Sales: heroHtml, Manager: managerHeroHtml };
+  const GROUP_HERO = { Sales: heroHtml, Manager: managerHeroHtml, Closing: closingHeroHtml };
   const groupsHtml = GROUP_ORDER.map(groupName => {
     const members = tiles.map((t, i) => ({ t, i })).filter(x => x.t.group === groupName);
     if (!members.length) return '';
