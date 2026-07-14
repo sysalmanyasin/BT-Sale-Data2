@@ -212,6 +212,24 @@ function _tiles() {
 }
 
 const GROUP_ORDER = ['Sales', 'Manager', 'Notes & Sheets', 'Closing', 'Audit', 'Reports'];
+const GROUP_META = {
+  'Sales':           { slug: 'sales',   icon: '📊' },
+  'Manager':         { slug: 'manager', icon: '👔' },
+  'Notes & Sheets':  { slug: 'notes',   icon: '📑' },
+  'Closing':         { slug: 'closing', icon: '🔒' },
+  'Audit':           { slug: 'audit',   icon: '🧾' },
+  'Reports':         { slug: 'reports', icon: '📚' },
+};
+
+function _updateHeroDate() {
+  const el = document.getElementById('cover-hero-date');
+  if (!el) return;
+  const d = new Date();
+  const dayName = d.toLocaleDateString('en-PK', { weekday: 'long' });
+  const dateStr = d.toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
+  const timeStr = d.toLocaleTimeString('en-PK', { hour: 'numeric', minute: '2-digit' });
+  el.innerHTML = `<div class="d-day">${_esc(dayName)}</div><div>${_esc(dateStr)} · ${_esc(timeStr)}</div>`;
+}
 
 export function renderCoverDashboard() {
   const container = document.getElementById('cover-container');
@@ -223,20 +241,20 @@ export function renderCoverDashboard() {
   const tiles = _tiles();
 
   const heroCard = h => `
-    <div class="kpi">
-      <div style="font-size:12px;color:var(--muted)">${_esc(h.label)}</div>
-      <div style="font-size:22px;font-weight:700;margin-top:4px">${_esc(h.value)}</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:2px">${_esc(h.sub)}</div>
+    <div class="cover-hero-card">
+      <div class="cover-hero-label">${_esc(h.label)}</div>
+      <div class="cover-hero-value">${_esc(h.value)}</div>
+      <div class="cover-hero-sub">${_esc(h.sub)}</div>
     </div>`;
 
   const heroHtml = `
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:14px">
+    <div class="cover-hero-row">
       ${heroCard(headline)}
       ${heroCard(pace)}
     </div>`;
 
   const managerHeroHtml = `
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:14px">
+    <div class="cover-hero-row">
       ${heroCard(credits)}
     </div>`;
 
@@ -244,36 +262,42 @@ export function renderCoverDashboard() {
   const closingLatestCredit = _closingLatestCredit();
   const closingLatestMisc = _closingLatestMisc();
   const closingHeroHtml = `
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:14px">
+    <div class="cover-hero-row">
       ${heroCard(closingLatestSummary)}
       ${heroCard(closingLatestCredit)}
       ${heroCard(closingLatestMisc)}
     </div>`;
 
   const tileCardHtml = (t, i) => `
-    <div class="card cover-tile${t.enabled ? '' : ' cover-tile-disabled'}"
+    <div class="cover-tile${t.enabled ? '' : ' cover-tile-disabled'}"
          ${t.enabled ? `data-goto-idx="${i}" role="button" tabindex="0"` : ''}>
-      <div style="font-size:22px">${t.icon}</div>
-      <div style="font-weight:600;margin-top:6px">${_esc(t.title)}${t.href ? ' <span style="font-size:11px;color:var(--muted);font-weight:400">↗</span>' : ''}</div>
-      <div style="font-size:12px;color:var(--muted);margin-top:4px">${_esc(t.status)}</div>
-      ${t.bridgeAction ? `<button data-bridge-idx="${i}" style="margin-top:8px;font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:var(--s2);color:inherit;cursor:pointer">Bridge</button>` : ''}
+      <div class="cover-tile-icon">${t.icon}</div>
+      <div class="cover-tile-title">${_esc(t.title)}${t.href ? ' <span class="ext">↗</span>' : ''}</div>
+      <div class="cover-tile-status">${_esc(t.status)}</div>
+      ${t.bridgeAction ? `<button class="cover-tile-bridge" data-bridge-idx="${i}">Bridge</button>` : ''}
     </div>`;
 
   const GROUP_HERO = { Sales: heroHtml, Manager: managerHeroHtml, Closing: closingHeroHtml };
   const groupsHtml = GROUP_ORDER.map(groupName => {
     const members = tiles.map((t, i) => ({ t, i })).filter(x => x.t.group === groupName);
     if (!members.length) return '';
+    const meta = GROUP_META[groupName] || { slug: 'sales', icon: '•' };
     return `
-      <div class="cover-group" style="margin-bottom:22px">
-        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)">${_esc(groupName)}</div>
+      <div class="cover-group" data-group="${meta.slug}">
+        <div class="cover-group-header">
+          <div class="cover-group-icon">${meta.icon}</div>
+          <div class="cover-group-title">${_esc(groupName)}</div>
+          <div class="cover-group-line"></div>
+        </div>
         ${GROUP_HERO[groupName] || ''}
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">
+        <div class="cover-tile-grid">
           ${members.map(({ t, i }) => tileCardHtml(t, i)).join('')}
         </div>
       </div>`;
   }).join('');
 
   container.innerHTML = groupsHtml;
+  _updateHeroDate();
   container.querySelectorAll('[data-goto-idx]').forEach(card => {
     const goTo = () => {
       const t = tiles[+card.dataset.gotoIdx];
