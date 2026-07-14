@@ -48,6 +48,7 @@
 <link rel="stylesheet" href="css/components.css">
 <link rel="stylesheet" href="css/modals.css">
 <link rel="stylesheet" href="css/pages.css">
+<link rel="stylesheet" href="css/cover-dashboard.css">
 <link rel="stylesheet" href="css/mobile.css">
 <link rel="stylesheet" href="css/assistant.css">
 <link rel="stylesheet" href="css/assistant-fixes.css">
@@ -302,8 +303,16 @@ if ('serviceWorker' in navigator) {
 
 <!-- COVER DASHBOARD PAGE (V2 plan §2) — landing page, concise cross-domain summary + tiles to each peer dashboard. Rendered by cover-dashboard.js -->
 <div class="page" id="page-cover">
-  <h2 style="margin:0 0 4px">Cover</h2>
-  <div style="color:var(--muted);font-size:13px;margin-bottom:18px">Bahria Town Sales IC — at a glance</div>
+  <div class="cover-page-hero">
+    <div class="cover-page-hero-row">
+      <div>
+        <div class="cover-page-hero-badge">🏠 Intelligence Centre</div>
+        <div class="cover-page-hero-title">Bahria Town Sales IC</div>
+        <div class="cover-page-hero-sub">Everything at a glance — sales, manager, closing &amp; audit</div>
+      </div>
+      <div class="cover-page-hero-date" id="cover-hero-date"></div>
+    </div>
+  </div>
   <div id="cover-container">Loading…</div>
 </div>
 
