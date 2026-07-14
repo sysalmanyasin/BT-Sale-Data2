@@ -120,8 +120,8 @@ body[data-domain="audit"]      .bnav-item[data-domain-group="audit"] {
    var(--accent)/var(--alt) re-themes automatically, no per-component
    changes needed. Sales keeps the app's base blue. */
 body[data-domain="manager"] {
-  --accent: var(--purple);
-  --alt: #f5f3ff;
+  --accent: var(--mgrblue);
+  --alt: var(--mgrblue-lt);
 }
 body[data-domain="notesheets"] {
   --accent: var(--green);
