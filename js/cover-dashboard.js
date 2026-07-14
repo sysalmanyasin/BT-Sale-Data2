@@ -151,11 +151,13 @@ function _auditStatus() {
 }
 
 // ── Tiles (V2 plan §2's confirmed shape, + standalone sub-apps) ────
+// Each tile carries a `group` — the render function sections tiles by
+// group instead of one flat grid (see GROUP_ORDER / renderCoverDashboard).
 function _tiles() {
   return [
-    { page: 'dashboard', icon: '📊', title: 'Sales',           status: _salesStatus(),   enabled: true },
-    { page: 'manager',   icon: '👔', title: 'Manager',          status: _managerStatus(), enabled: true },
-    { page: 'notesheets',icon: '📑', title: 'Notes & Sheets',   status: _notesheetsStatus(), enabled: true },
+    { page: 'dashboard', icon: '📊', title: 'Sales',           status: _salesStatus(),   enabled: true, group: 'Sales' },
+    { page: 'manager',   icon: '👔', title: 'Manager',          status: _managerStatus(), enabled: true, group: 'Manager' },
+    { page: 'notesheets',icon: '📑', title: 'Notes & Sheets',   status: _notesheetsStatus(), enabled: true, group: 'Notes & Sheets' },
     // Closing and Audit's own standalone apps (the tiles with `href`
     // below) are separate sibling apps — own repo, own PWA, own data;
     // tapping those opens the real thing in a new tab. But Closing
@@ -170,20 +172,30 @@ function _tiles() {
     // queryable API); that lives behind bridgeAction on the tile
     // itself. Audit's bridge reads Supabase directly with a baked-in
     // key — no pairing step needed.
-    { href: 'https://closing.duapharma.com', icon: '🔒', title: 'Closing', status: _closingStatus(), enabled: true, bridgeAction: 'closingBridgeButtonClick' },
+    { href: 'https://closing.duapharma.com', icon: '🔒', title: 'Closing', status: _closingStatus(), enabled: true, bridgeAction: 'closingBridgeButtonClick', group: 'Closing' },
     // Native reports built off the same Closing data the tile above
     // reads — not an iframe, not an external link. See closing-native.js.
-    { page: 'closing-book',   icon: '📖', title: 'Closing Book',  status: 'Every closing, laid out like a printed register', enabled: true },
-    { page: 'credit-ledger',  icon: '💳', title: 'Credit Ledger', status: 'Credit + Misc/Ongoing snapshot history',           enabled: true },
-    { href: 'https://random.duapharma.com',  icon: '🧾', title: 'Audit',   status: _auditStatus(),   enabled: true },
-    { page: 'assignments', icon: '📋', title: 'Assignments', status: 'Auditor progress + company coverage, every engagement', enabled: true },
-    { page: null,        icon: '📦', title: 'Inventory Audit',  status: 'Not built yet — Dropbox-fed, planned (V2 plan §6)', enabled: false },
-    // Standalone sub-app — its own file, own storage, not part of this app's
-    // data model. Opens in a new tab rather than routing through showPage(),
-    // since it isn't a Floor 5 page of this app at all.
-    { href: 'checklist.html', icon: '✅', title: 'Daily Check List', status: 'Fazal Din\'s Pharma Plus — standalone checklist app', enabled: true },
+    { page: 'closing-book',   icon: '📖', title: 'Closing Book',  status: 'Every closing, laid out like a printed register', enabled: true, group: 'Closing' },
+    { page: 'credit-ledger',  icon: '💳', title: 'Credit Ledger', status: 'Credit + Misc/Ongoing snapshot history',           enabled: true, group: 'Closing' },
+    { href: 'https://random.duapharma.com',  icon: '🧾', title: 'Audit',   status: _auditStatus(),   enabled: true, group: 'Audit' },
+    { page: 'assignments', icon: '📋', title: 'Assignments', status: 'Auditor progress + company coverage, every engagement', enabled: true, group: 'Audit' },
+    { page: null,        icon: '📦', title: 'Inventory Audit',  status: 'Not built yet — Dropbox-fed, planned (V2 plan §6)', enabled: false, group: 'Audit' },
+    // Standalone sub-apps at reports.duapharma.com — own files, own storage,
+    // not part of this app's data model. Open in a new tab rather than
+    // routing through showPage(), since none of them are a Floor 5 page of
+    // this app. (Previously "Daily Check List" pointed at a local
+    // checklist.html shipped inside this repo — that file has been removed;
+    // all three checklist/report tools now live on reports.duapharma.com.)
+    { href: 'https://reports.duapharma.com/daily_report.html', icon: '✅', title: 'Daily Check List', status: 'Fazal Din\'s Pharma Plus — standalone checklist app', enabled: true, group: 'Reports' },
+    { href: 'https://reports.duapharma.com/excess-stock-control.html', icon: '📦', title: 'Excess Stock Control', status: 'Fazal Din\'s Pharma Plus — excess stock control', enabled: true, group: 'Reports' },
+    { href: 'https://reports.duapharma.com/invoice-desk.html', icon: '🧮', title: 'Branch Invoice Desk', status: 'Fazal Din\'s Pharma Plus — branch invoice desk', enabled: true, group: 'Reports' },
   ];
 }
+
+// Display order for the Cover page's sections. The Sales section also
+// carries the two hero cards (Today's sales / Target pace) — see
+// renderCoverDashboard.
+const GROUP_ORDER = ['Sales', 'Manager', 'Notes & Sheets', 'Closing', 'Audit', 'Reports'];
 
 export function renderCoverDashboard() {
   const container = document.getElementById('cover-container');
@@ -191,9 +203,10 @@ export function renderCoverDashboard() {
 
   const headline = _salesHeadline();
   const pace = _targetPace();
+  const tiles = _tiles();
 
   const heroHtml = `
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:18px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:14px">
       <div class="kpi">
         <div style="font-size:12px;color:var(--muted)">${_esc(headline.label)}</div>
         <div style="font-size:22px;font-weight:700;margin-top:4px">${_esc(headline.value)}</div>
@@ -206,21 +219,33 @@ export function renderCoverDashboard() {
       </div>
     </div>`;
 
-  const tilesHtml = `
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">
-      ${_tiles().map((t, i) => `
-        <div class="card cover-tile${t.enabled ? '' : ' cover-tile-disabled'}"
-             ${t.enabled ? `data-goto-idx="${i}" role="button" tabindex="0"` : ''}>
-          <div style="font-size:22px">${t.icon}</div>
-          <div style="font-weight:600;margin-top:6px">${_esc(t.title)}${t.href ? ' <span style="font-size:11px;color:var(--muted);font-weight:400">↗</span>' : ''}</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:4px">${_esc(t.status)}</div>
-          ${t.bridgeAction ? `<button data-bridge-idx="${i}" style="margin-top:8px;font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:var(--s2);color:inherit;cursor:pointer">🔗 Data Bridge</button>` : ''}
-        </div>`).join('')}
+  const tileCardHtml = (t, i) => `
+    <div class="card cover-tile${t.enabled ? '' : ' cover-tile-disabled'}"
+         ${t.enabled ? `data-goto-idx="${i}" role="button" tabindex="0"` : ''}>
+      <div style="font-size:22px">${t.icon}</div>
+      <div style="font-weight:600;margin-top:6px">${_esc(t.title)}${t.href ? ' <span style="font-size:11px;color:var(--muted);font-weight:400">↗</span>' : ''}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">${_esc(t.status)}</div>
+      ${t.bridgeAction ? `<button data-bridge-idx="${i}" style="margin-top:8px;font-size:11px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:var(--s2);color:inherit;cursor:pointer">🔗 Data Bridge</button>` : ''}
     </div>`;
 
-  container.innerHTML = heroHtml + tilesHtml;
+  // Group tiles by section, preserving each tile's original array index
+  // (data-goto-idx / data-bridge-idx below still point into the flat
+  // `tiles` array — grouping is purely visual).
+  const groupsHtml = GROUP_ORDER.map(groupName => {
+    const members = tiles.map((t, i) => ({ t, i })).filter(x => x.t.group === groupName);
+    if (!members.length) return '';
+    const isSales = groupName === 'Sales';
+    return `
+      <div class="cover-group" style="margin-bottom:22px">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)">${_esc(groupName)}</div>
+        ${isSales ? heroHtml : ''}
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">
+          ${members.map(({ t, i }) => tileCardHtml(t, i)).join('')}
+        </div>
+      </div>`;
+  }).join('');
 
-  const tiles = _tiles();
+  container.innerHTML = groupsHtml;
   container.querySelectorAll('[data-goto-idx]').forEach(card => {
     const goTo = () => {
       const t = tiles[+card.dataset.gotoIdx];
