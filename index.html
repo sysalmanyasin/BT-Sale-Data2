@@ -1207,7 +1207,7 @@ if ('serviceWorker' in navigator) {
       <button class="btn" style="margin-top:16px;background:#0891b2;color:#fff" onclick="autoFillSalaryFromSheets()" title="Pull Advance from Credit sheet & Generic from Generic Working for this month">⚡ Auto-Fill</button>
       <button class="btn btn-g" style="margin-top:16px" onclick="saveSalaryData()">💾 Save</button>
       <button class="btn" style="margin-top:16px;background:var(--amber,#f59e0b);color:#fff" onclick="salaryNextMonth()" title="Carry employee names & HO Salary to next month (Days, Advance, Generic reset to 0)">📋 Copy → Next Month</button>
-      <button class="btn" style="margin-top:16px;background:var(--purple);color:#fff" onclick="printSalaryReport()">🖨 Print</button>
+      <button class="btn" style="margin-top:16px;background:var(--accent);color:#fff" onclick="printSalaryReport()">🖨 Print</button>
     </div>
     <div style="overflow-x:auto">
       <table id="sal-table" style="width:100%;border-collapse:collapse;font-size:12px;min-width:780px">
@@ -1239,7 +1239,7 @@ if ('serviceWorker' in navigator) {
       </div>
       <button class="btn btn-p" style="margin-top:16px" onclick="addGenericRow()">+ Add Row</button>
       <button class="btn btn-g" style="margin-top:16px" onclick="saveGenericData()">💾 Save</button>
-      <button class="btn" style="margin-top:16px;background:var(--purple);color:#fff" onclick="printGenericReport()">🖨 Print</button>
+      <button class="btn" style="margin-top:16px;background:var(--accent);color:#fff" onclick="printGenericReport()">🖨 Print</button>
     </div>
     <div style="overflow-x:auto">
       <table id="gen-table" style="width:100%;border-collapse:collapse;font-size:12px;min-width:660px">
@@ -1281,7 +1281,7 @@ if ('serviceWorker' in navigator) {
       <button class="btn btn-g" style="margin-top:16px" onclick="saveCreditData()">💾 Save</button>
       <button class="btn" style="margin-top:16px;background:var(--amber);color:#fff" onclick="copyToNextMonth()" title="Save this month, then open next month with each employee's net as their new opening balance">📋 Copy → Next Month</button>
       <button class="btn" style="margin-top:16px;background:var(--indigo,#4f46e5);color:#fff" onclick="printCreditSummaryReport()">🖨 Print Summary</button>
-      <button class="btn" style="margin-top:16px;background:var(--purple);color:#fff" onclick="printCreditReport()">🖨 Print Detailed</button>
+      <button class="btn" style="margin-top:16px;background:var(--accent);color:#fff" onclick="printCreditReport()">🖨 Print Detailed</button>
     </div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.7">
       💡 Each employee row shows their previous balance, daily credits/deductions, and the net carried to next month. Positive = money owed to employee, Negative = deducted next month. When the month ends, click <strong>📋 Copy → Next Month</strong> — it saves current data and opens the next month with each person's net as their new opening balance.
@@ -1299,7 +1299,7 @@ if ('serviceWorker' in navigator) {
       <button class="btn btn-p" style="margin-top:16px" onclick="addPettyGroup()">＋ Add New Group</button>
       <button class="btn btn-g" style="margin-top:16px" onclick="savePettyData()">💾 Save</button>
       <button class="btn" style="margin-top:16px;background:var(--amber,#f59e0b);color:#fff" onclick="pettyNextMonth()" title="Save this month and carry all groups/amounts into the next month">📋 Copy → Next Month</button>
-      <button class="btn" style="margin-top:16px;background:var(--purple);color:#fff" onclick="printPettyReport()">🖨 Print</button>
+      <button class="btn" style="margin-top:16px;background:var(--accent);color:#fff" onclick="printPettyReport()">🖨 Print</button>
     </div>
     <!-- KPI strip -->
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
@@ -1318,7 +1318,7 @@ if ('serviceWorker' in navigator) {
         <select id="inc-month-sel" onchange="loadIncentiveMonth(this.value)" style="font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s2);width:100%;color:var(--text);outline:none"></select>
       </div>
       <button class="btn btn-g" style="margin-top:16px" onclick="saveIncentiveData()">💾 Save</button>
-      <button class="btn" style="margin-top:16px;background:var(--purple);color:#fff" onclick="printIncentiveReport()">🖨 Print</button>
+      <button class="btn" style="margin-top:16px;background:var(--accent);color:#fff" onclick="printIncentiveReport()">🖨 Print</button>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:860px" id="inc-form">
 
