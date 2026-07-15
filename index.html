@@ -630,7 +630,10 @@ if ('serviceWorker' in navigator) {
         </div>
         <div class="brow" style="margin-top:0">
           <button class="btn btn-p" onclick="printDayReport()">🖨 Print Report</button>
-          <button class="btn btn-s" onclick="copyReportText()">📋 Copy Text</button>
+          <button class="btn btn-s" onclick="copyReportRich()">📋 Copy</button>
+        </div>
+        <div class="brow" style="margin-top:8px">
+          <button class="btn btn-s" onclick="openRowManager()" style="width:100%">⚙ Customize Rows</button>
         </div>
       </div>
       <div class="card" id="rpt-tgt-card">
@@ -1124,6 +1127,22 @@ if ('serviceWorker' in navigator) {
     <div class="dmprint-btn no-print" id="mon-print-footer">
       <button class="btn btn-p" style="flex:1" onclick="printMonthReport(_curMon)">🖨 Print Monthly Report</button>
       <button class="btn btn-s" onclick="closeMon()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- CUSTOMIZE REPORT ROWS — toggle which rows show in the Sale Report's
+     on-screen preview, Print, and Copy (rich + plain), all at once.
+     Same .mbg/.modal shell as the Month modal above; separate overlay
+     id so opening one never fights the other. -->
+<div class="mbg" id="rowmgr-bg" onclick="if(event.target===this)closeRowManager()">
+  <div class="modal" style="width:min(96vw,480px)">
+    <div class="sheet-handle"></div>
+    <div class="mhdr"><h2>Customize Rows</h2><button class="mclose" onclick="closeRowManager()">✕</button></div>
+    <div class="mbody" id="rowmgr-body"></div>
+    <div class="dmprint-btn no-print">
+      <button class="btn btn-s" style="flex:1" onclick="resetReportRows()">↺ Show All Rows</button>
+      <button class="btn btn-p" onclick="closeRowManager()">Done</button>
     </div>
   </div>
 </div>
