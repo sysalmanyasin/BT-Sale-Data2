@@ -91,39 +91,50 @@ function hubPrintPaceReport() {
 }
 
 // ── Expense Summary → print totals-only Patty/Expense summary ─────────
+// FOUND IN DEEP AUDIT: this used to read data.expense[my] via mgrLoad() —
+// a per-month structure from before Patty/Expenses was migrated to the
+// unified Ledger (see ledger-store.js's LEDGER_CATEGORIES.expense and
+// analytics.js's _ledgerBreakdown). Nothing has WRITTEN to
+// data.expense[my] since that migration — the Manager → Expense tab
+// (manager.js's switchMgrTab → renderLedgerView('ledger-expense-
+// container','expense',...)) and the Dashboard's own "Patty / Expenses"
+// credit-details card have both been reading from LedgerStore for a
+// while. This function alone was never updated, so it silently printed
+// an all-zero summary no matter how much real expense data existed —
+// no error, just wrong numbers. Now reads the same all-time Ledger data,
+// with the same category sign convention, as everywhere else in the app.
 function hubPrintExpenseSummary() {
-  const my = (typeof BTDate !== 'undefined') ? BTDate.currentMonthYear() : '';
-  const data = (typeof mgrLoad === 'function') ? mgrLoad() : {};
-  const stored = data.expense && data.expense[my];
-  const rows = (stored && stored.rows) || [];
-  const opening = (stored && stored.opening) || 0;
+  const LS = (typeof window !== 'undefined') ? window.LedgerStore : null;
+  if (!LS) { toast('⚠️ Ledger data not available.', 'w'); return; }
+  const categories = LS.getCategoryList('expense') || [];
+  const entries = LS.getEntries('expense') || [];
+  const opening = LS.getOpeningBalance('expense') || 0;
+  const balance = LS.getCurrentBalance('expense');
   const ni = v => Math.round(Number(v) || 0);
-  const fc = v => ni(v).toLocaleString('en-PK');
-  const totBill = rows.reduce((s,r) => s + ni(r.bill), 0);
-  const totFuel = rows.reduce((s,r) => s + ni(r.fuel), 0);
-  const totSoap = rows.reduce((s,r) => s + ni(r.soap), 0);
-  const totRef  = rows.reduce((s,r) => s + ni(r.refresh), 0);
-  const totExt  = rows.reduce((s,r) => s + ni(r.extra), 0);
-  const totHO   = rows.reduce((s,r) => s + ni(r.pattyHO), 0);
-  const totalExp = totBill + totFuel + totSoap + totRef + totExt;
-  const balance  = opening + totHO - totalExp;
+  const fc = v => Math.abs(ni(v)).toLocaleString('en-PK');
   const today = new Date().toLocaleDateString('en-PK', { day:'2-digit', month:'short', year:'numeric' });
+
+  const sums = {};
+  entries.forEach(e => { sums[e.categoryId] = (sums[e.categoryId] || 0) + (parseFloat(e.amount) || 0); });
+
+  const rows = categories
+    .map(c => ({ label: c.label, raw: sums[c.id] || 0, signed: c.sign * (sums[c.id] || 0) }))
+    .filter(r => r.raw !== 0);
+
+  const rowsHtml = rows.map(r => `
+    <tr><td style="padding:6px 10px;border-bottom:1px solid #eee">${r.label}</td>
+      <td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">${r.signed < 0 ? '−' : ''}₨${fc(r.raw)}</td></tr>`
+  ).join('') || '<tr><td colspan="2" style="padding:10px;text-align:center;color:#94a3b8">No expense activity yet</td></tr>';
 
   const html = `<div style="max-width:560px;margin:0 auto;font-family:Arial,sans-serif">
     <div style="background:#0f172a;color:#fff;padding:14px 20px;border-radius:8px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
-      <div><h2 style="margin:0;font-size:16px">EXPENSE SUMMARY</h2><p style="margin:4px 0 0;font-size:11px;opacity:.7">${my}</p></div>
+      <div><h2 style="margin:0;font-size:16px">PATTY / EXPENSES SUMMARY</h2><p style="margin:4px 0 0;font-size:11px;opacity:.7">All-time — same running ledger as Manager → Expense</p></div>
       <div style="font-size:11px;opacity:.7">Printed: ${today}</div>
     </div>
     <table style="width:100%;border-collapse:collapse;font-size:12px">
-      <tr><td style="padding:6px 10px;border-bottom:1px solid #eee">Opening Patty</td><td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${fc(opening)}</td></tr>
-      <tr><td style="padding:6px 10px;border-bottom:1px solid #eee">HO Received</td><td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${fc(totHO)}</td></tr>
-      <tr><td style="padding:6px 10px;border-bottom:1px solid #eee">Bills</td><td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${fc(totBill)}</td></tr>
-      <tr><td style="padding:6px 10px;border-bottom:1px solid #eee">Fuel/HO</td><td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${fc(totFuel)}</td></tr>
-      <tr><td style="padding:6px 10px;border-bottom:1px solid #eee">Soap/Tissue</td><td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${fc(totSoap)}</td></tr>
-      <tr><td style="padding:6px 10px;border-bottom:1px solid #eee">Refreshment</td><td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${fc(totRef)}</td></tr>
-      <tr><td style="padding:6px 10px;border-bottom:1px solid #eee">Extra</td><td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${fc(totExt)}</td></tr>
-      <tr style="background:#fff5f5"><td style="padding:7px 10px;font-weight:700;color:#dc2626">Total Expenses</td><td style="padding:7px 10px;text-align:right;font-weight:700;font-family:monospace;color:#dc2626">₨${fc(totalExp)}</td></tr>
-      <tr style="background:${balance>=0?'#f0fdf4':'#fef2f2'}"><td style="padding:7px 10px;font-weight:700;color:${balance>=0?'#059669':'#dc2626'}">Balance</td><td style="padding:7px 10px;text-align:right;font-weight:700;font-family:monospace;color:${balance>=0?'#059669':'#dc2626'}">₨${fc(balance)}</td></tr>
+      ${opening ? `<tr><td style="padding:6px 10px;border-bottom:1px solid #eee">Opening Balance</td><td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${fc(opening)}</td></tr>` : ''}
+      ${rowsHtml}
+      <tr style="background:${balance>=0?'#f0fdf4':'#fef2f2'}"><td style="padding:7px 10px;font-weight:700;color:${balance>=0?'#059669':'#dc2626'}">Current Balance</td><td style="padding:7px 10px;text-align:right;font-weight:700;font-family:monospace;color:${balance>=0?'#059669':'#dc2626'}">₨${fc(balance)}</td></tr>
     </table>
   </div>`;
   Print.render(html);

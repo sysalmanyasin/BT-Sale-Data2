@@ -5,7 +5,7 @@
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v10.0'; // v9.6: Cover-as-hub nav model (V2 plan §2) — nav now shows only Cover/CommandHub/Tools plus whichever domain you're currently in, instead of ~10 always-visible icons. Closing Book/Credit Ledger and Assignments (previously lumped into the generic cross-domain "tools" nav group) are now their own real domains ("closing", "audit"), each with their own accent color, matching Manager/Notes & Sheets. Fixed two stale comments (ui.js, cover-dashboard.js) that incorrectly claimed Closing/Audit had no embedded pages of their own
+const CACHE_NAME = 'bt-sales-v10.1'; // v10.1: APP_SHELL was missing 11 files that index.html actually loads, including js/print.js, the ONE print engine every report in the app now funnels through (Sale/Monthly/Yearly/Manager/CommandHub reports all call Print.render()/renderNewTab()). Same-origin requests use networkFirst, so this only broke offline/flaky-connection printing (no cached fallback when the live fetch for print.js failed), matching the "reports just silently do nothing" symptom. Also missing: cover-dashboard.js, closing-bridge.js, closing-native.js, audit-bridge.js, audit-native.js, inventory-bridge.js, inventory-native.js, staff-notes.js, sheets-patch.js, ui-extras.js. All 11 added below, and the version bumped so already-installed clients actually pick up the corrected shell list instead of keeping the old one cached forever.
 
 const APP_SHELL = [
   './',
@@ -29,6 +29,7 @@ const APP_SHELL = [
 
   /* ── JS — shared service layer ── */
   './js/bt-format.js',
+  './js/print.js',
   './js/bt-date.js',
   './js/bt-calc.js',
   './js/bt-search.js',
@@ -51,6 +52,14 @@ const APP_SHELL = [
   './js/ledger-page.js',
   './js/conflict-ui.js',
   './js/supabase.js',
+  './js/cover-dashboard.js',
+  './js/staff-notes.js',
+  './js/closing-bridge.js',
+  './js/closing-native.js',
+  './js/audit-bridge.js',
+  './js/audit-native.js',
+  './js/inventory-bridge.js',
+  './js/inventory-native.js',
 
   /* ── JS — features ── */
   './js/targets.js',
@@ -67,10 +76,12 @@ const APP_SHELL = [
   './js/manager-export.js',
   './js/ai-helpers.js',
   './js/notes-sheets.js',
+  './js/sheets-patch.js',
   './js/manager.js',
   './js/custom-sections.js',
   './js/jazz-cash.js',
   './js/hub-actions.js',
+  './js/ui-extras.js',
   './js/fields.js',
   './js/drive.js',
 

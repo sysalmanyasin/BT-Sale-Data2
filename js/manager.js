@@ -826,6 +826,37 @@ function _mgrPrint(html) {
   Print.render(html);
 }
 
+// The Manager Dashboard page's toolbar Print button used to call a bare
+// window.print() directly from index.html — a pre-Floor-4 leftover that
+// was never migrated when print.js consolidated every report behind
+// Print.render()/#print-area (see print.js's header comment). Since then,
+// the shared @media print rule in pages.css hides everything except
+// #print-area, so that bare window.print() call printed a BLANK page —
+// #print-area was empty because nothing had populated it. Fix: clone the
+// already-rendered Credit Details + Working Summary sections (both are
+// plain, already-computed DOM at this point — no need to recompute
+// anything) into a header-wrapped report and hand it to Print.render(),
+// same as every other report in the app.
+function printManagerDashboard() {
+  const creditEl = document.getElementById('dash-credit-section');
+  const workEl = document.getElementById('dash-working-section');
+  if (!creditEl || !creditEl.innerHTML.trim()) {
+    toast('⚠ Manager Dashboard is still loading — try again in a moment.', 'w');
+    return;
+  }
+  const today = new Date().toLocaleDateString('en-PK', {day:'2-digit',month:'short',year:'numeric'});
+  const workingHtml = (workEl && workEl.style.display !== 'none' && workEl.innerHTML.trim())
+    ? `<div style="margin-top:14px">${workEl.innerHTML}</div>` : '';
+  _mgrPrint(`<div style="max-width:900px;margin:0 auto">
+    <div class="pr-header">
+      <div><h1>BAHRIA TOWN SALES IC</h1><p>Manager Dashboard — Staff Credit · Jazz Cash · Patty/Expenses · Working Summary</p></div>
+      <div class="pr-meta">Printed: ${today}</div>
+    </div>
+    ${creditEl.innerHTML}
+    ${workingHtml}
+  </div>`);
+}
+
 function printSalaryReport() {
   const my = document.getElementById('sal-month-sel').value;
   const rows = _salRows_cur;
@@ -1648,6 +1679,7 @@ window.deleteCrdEmp = deleteCrdEmp;
 window.saveCreditData = saveCreditData;
 window.copyToNextMonth = copyToNextMonth;
 window.printSalaryReport = printSalaryReport;
+window.printManagerDashboard = printManagerDashboard;
 window.printGenericReport = printGenericReport;
 window.printCreditReport = printCreditReport;
 window.printCreditSummaryReport = printCreditSummaryReport;

@@ -2119,7 +2119,13 @@ function _aiPrintMgrReport(type) {
     credit:    function(){if(typeof switchMgrTab==='function')switchMgrTab('credit');setTimeout(function(){if(typeof printCreditReport==='function')printCreditReport();},300);},
     salary:    function(){if(typeof switchMgrTab==='function')switchMgrTab('salary');setTimeout(function(){if(typeof printSalaryReport==='function')printSalaryReport();},300);},
     generic:   function(){if(typeof switchMgrTab==='function')switchMgrTab('generic');setTimeout(function(){if(typeof printGenericReport==='function')printGenericReport();},300);},
-    expense:   function(){if(typeof switchMgrTab==='function')switchMgrTab('expense');setTimeout(function(){if(typeof printExpenseReport==='function')printExpenseReport();},300);},
+    // FOUND IN DEEP AUDIT: this called printExpenseReport(), a function
+    // that never existed anywhere in this codebase — the typeof guard
+    // meant it silently did nothing (tab switched, nothing printed, no
+    // error). hubPrintExpenseSummary (hub-actions.js) is the real,
+    // now-fixed Ledger-backed expense report — same one the CommandHub
+    // "Expense Summary" quick chip uses.
+    expense:   function(){if(typeof switchMgrTab==='function')switchMgrTab('expense');setTimeout(function(){if(typeof hubPrintExpenseSummary==='function')hubPrintExpenseSummary();},300);},
     petty:     function(){if(typeof switchMgrTab==='function')switchMgrTab('petty');setTimeout(function(){if(typeof printPettyReport==='function')printPettyReport();},300);},
     incentive: function(){if(typeof switchMgrTab==='function')switchMgrTab('incentive');setTimeout(function(){if(typeof printIncentiveReport==='function')printIncentiveReport();},300);},
     month:     function(){if(typeof printMonthReport==='function')printMonthReport();},

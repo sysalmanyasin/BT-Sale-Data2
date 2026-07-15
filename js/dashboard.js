@@ -518,6 +518,55 @@ function buildBestWorstPerYear() {
     </div>`;
 }
 
+// ══════════════════════════════════════════
+// DASHBOARD PRINT REPORT
+// ══════════════════════════════════════════
+// This dashboard's toolbar Print button used to call a bare window.print()
+// directly from index.html — before print.js's Floor 4 consolidation, that
+// worked because nothing hid the rest of the page. Now that the shared
+// @media print rule hides everything except #print-area (needed so every
+// other report prints cleanly, see pages.css), a bare window.print() here
+// printed a BLANK page: #print-area was empty because nothing had ever
+// populated it. Fix is the same as every other report in the app — build
+// real HTML and hand it to Print.render(), never call window.print() here
+// directly (see print.js's header comment).
+function printDashboardReport() {
+  const krow = document.getElementById('krow');
+  const tbl = document.getElementById('tbl-summary');
+  if (!krow || !tbl || !krow.children.length) {
+    toast('⚠ Dashboard is still loading — try again in a moment.', 'w');
+    return;
+  }
+  const today = new Date().toLocaleDateString('en-PK', {day:'2-digit',month:'short',year:'numeric'});
+  const heroSub = document.getElementById('hero-sub')?.textContent || '';
+
+  // Re-skin the live KPI cards into the app's shared print classes
+  // (pr-kpi/pr-tbl, from pages.css) rather than cloning the screen-only
+  // .kpi cards verbatim — this keeps the printed dashboard visually
+  // consistent with every other printed report (Sale/Monthly/Yearly/
+  // Manager), instead of dragging along hover/shadow/border styling that
+  // means nothing on paper.
+  const kpiCards = Array.from(krow.querySelectorAll('.kpi')).map(card => {
+    const label = card.querySelector('.klabel')?.textContent || '';
+    const value = card.querySelector('.kvalue')?.textContent || '';
+    const sub = card.querySelector('.kdelta')?.textContent || '';
+    return `<div class="pr-kpi"><div class="pr-kpi-l">${label}</div><div class="pr-kpi-v">${value}</div>${sub ? `<div style="font-size:9px;color:#64748b;margin-top:3px">${sub}</div>` : ''}</div>`;
+  }).join('');
+
+  const summaryTbl = tbl.outerHTML.replace('id="tbl-summary"', 'class="pr-tbl"');
+
+  const html = `<div style="max-width:900px;margin:0 auto">
+    <div class="pr-header">
+      <div><h1>BAHRIA TOWN SALES IC</h1><p>Dashboard Summary${heroSub ? ' — ' + heroSub : ''}</p></div>
+      <div class="pr-meta">Printed: ${today}</div>
+    </div>
+    <div class="pr-kpis" style="grid-template-columns:repeat(3,1fr)">${kpiCards}</div>
+    <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#64748b;margin:14px 0 6px">Last 12 Months Summary</div>
+    ${summaryTbl}
+  </div>`;
+  Print.render(html);
+}
+
 // Bridge what's used externally or referenced via a same-file onchange
 // attribute (dashSetCreditMonth is the credit-month dropdown handler).
 window.buildDashboard = buildDashboard;
@@ -530,5 +579,6 @@ window.dc = dc;
 window.buildTop10Days = buildTop10Days;
 window.buildBestWorstPerYear = buildBestWorstPerYear;
 window.dashSetCreditMonth = dashSetCreditMonth;
+window.printDashboardReport = printDashboardReport;
 
 })();
