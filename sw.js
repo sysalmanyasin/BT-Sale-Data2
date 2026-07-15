@@ -1,11 +1,11 @@
 /* ═══════════════════════════════════════════════════════════════
-   BT Sales IC — Service Worker  v10.01
+   BT Sales IC — Service Worker  v8.3
    Strategy: Network-first for same-origin app shell (fresh on connect,
    cached fallback offline). CDN libs use stale-while-revalidate.
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v10.01'; // v10.01: Cover-as-hub nav model (V2 plan §2) — nav now shows only Cover/CommandHub/Tools plus whichever domain you're currently in, instead of ~10 always-visible icons. Closing Book/Credit Ledger and Assignments (previously lumped into the generic cross-domain "tools" nav group) are now their own real domains ("closing", "audit"), each with their own accent color, matching Manager/Notes & Sheets. Fixed two stale comments (ui.js, cover-dashboard.js) that incorrectly claimed Closing/Audit had no embedded pages of their own
+const CACHE_NAME = 'bt-sales-v10.0'; // v9.6: Cover-as-hub nav model (V2 plan §2) — nav now shows only Cover/CommandHub/Tools plus whichever domain you're currently in, instead of ~10 always-visible icons. Closing Book/Credit Ledger and Assignments (previously lumped into the generic cross-domain "tools" nav group) are now their own real domains ("closing", "audit"), each with their own accent color, matching Manager/Notes & Sheets. Fixed two stale comments (ui.js, cover-dashboard.js) that incorrectly claimed Closing/Audit had no embedded pages of their own
 
 const APP_SHELL = [
   './',

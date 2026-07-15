@@ -5,10 +5,12 @@ import { Repository } from './repository.js';
 import * as LedgerStore from './ledger-store.js';
 import * as ClosingBridge from './closing-bridge.js';
 import * as AuditBridge from './audit-bridge.js';
+import * as InventoryBridge from './inventory-bridge.js';
 
 const TGT_KEY = 'bt_targets';
 let _closingRefreshInFlight = false;
 let _auditRefreshInFlight = false;
+let _inventoryRefreshInFlight = false;
 const MONTH_NAMES = ['January','February','March','April','May','June',
                       'July','August','September','October','November','December'];
 const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -138,6 +140,16 @@ function _auditStatus() {
   ).join('  ·  ');
 }
 
+function _inventoryStatus() {
+  const data = InventoryBridge.getFullData();
+  if (!data) return 'Live from Random — Supabase-synced inventory';
+  if (!data.products.length) return 'No inventory synced yet';
+  const syncedLabel = data.lastSync
+    ? 'last sync ' + new Date(data.lastSync.syncedAt).toLocaleDateString('en-PK', { day: 'numeric', month: 'short' })
+    : 'synced ' + new Date(data.fetchedAt).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' });
+  return data.products.length.toLocaleString() + ' item(s) · ' + syncedLabel;
+}
+
 function _clFmtDate(ds) { try { return new Date(ds + 'T00:00:00').toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' }); } catch (e) { return ds; } }
 function _shiftSeq(shift) { if (shift === 'Night') return 10; if (shift === 'Evening') return 9999; return 20; }
 function _sheetSortKey(cdb, key) {
@@ -204,7 +216,7 @@ function _tiles() {
     { page: 'credit-ledger',  icon: '💳', title: 'Credit Ledger', status: 'Credit + Misc/Ongoing snapshot history',           enabled: true, group: 'Closing' },
     { href: 'https://random.duapharma.com',  icon: '🧾', title: 'Audit',   status: _auditStatus(),   enabled: true, group: 'Audit' },
     { page: 'assignments', icon: '📋', title: 'Assignments', status: 'Auditor progress + company coverage, every engagement', enabled: true, group: 'Audit' },
-    { page: null,        icon: '📦', title: 'Inventory Audit',  status: 'Not built yet — Dropbox-fed, planned (V2 plan §6)', enabled: false, group: 'Audit' },
+    { page: 'inventory', icon: '📦', title: 'BT Inventory',    status: _inventoryStatus(), enabled: true, group: 'Audit' },
     { href: 'https://reports.duapharma.com/daily_report.html', icon: '✅', title: 'Daily Check List', status: 'Fazal Din\'s Pharma Plus — standalone checklist app', enabled: true, group: 'Reports' },
     { href: 'https://reports.duapharma.com/excess-stock-control.html', icon: '📦', title: 'Excess Stock Control', status: 'Fazal Din\'s Pharma Plus — excess stock control', enabled: true, group: 'Reports' },
     { href: 'https://reports.duapharma.com/invoice-desk.html', icon: '🧮', title: 'Branch Invoice Desk', status: 'Fazal Din\'s Pharma Plus — branch invoice desk', enabled: true, group: 'Reports' },
@@ -324,6 +336,11 @@ export function renderCoverDashboard() {
   if (!_auditRefreshInFlight) {
     _auditRefreshInFlight = true;
     AuditBridge.refresh(false).finally(() => { _auditRefreshInFlight = false; });
+  }
+
+  if (!_inventoryRefreshInFlight) {
+    _inventoryRefreshInFlight = true;
+    InventoryBridge.refreshFullData(false).finally(() => { _inventoryRefreshInFlight = false; });
   }
 }
 

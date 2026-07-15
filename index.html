@@ -45,6 +45,7 @@
 <link rel="stylesheet" href="css/closing-native.css">
 <link rel="stylesheet" href="css/closing-book-print.css">
 <link rel="stylesheet" href="css/audit-native.css">
+<link rel="stylesheet" href="css/inventory-native.css">
 <link rel="stylesheet" href="css/components.css">
 <link rel="stylesheet" href="css/modals.css">
 <link rel="stylesheet" href="css/pages.css">
@@ -257,6 +258,7 @@ if ('serviceWorker' in navigator) {
     <button class="ntab" data-page="closing-book" data-group="closing" data-domain-group="closing">📖 Closing Book</button>
     <button class="ntab" data-page="credit-ledger" data-group="closing" data-domain-group="closing">💳 Credit Ledger</button>
     <button class="ntab" data-page="assignments" data-group="audit" data-domain-group="audit">🧾 Assignments</button>
+    <button class="ntab" data-page="inventory" data-group="audit" data-domain-group="audit">📦 BT Inventory</button>
     <button class="ntab" data-page="tools" data-group="tools">Tools</button>
   </div>
   <div class="ntabs subnav" id="saledata-subnav" style="display:none">
@@ -287,6 +289,7 @@ if ('serviceWorker' in navigator) {
   <button class="bnav-item" data-page="closing-book" data-group="closing" data-domain-group="closing"><span class="bicon">📖</span><span class="blabel">Closing Book</span></button>
   <button class="bnav-item" data-page="credit-ledger" data-group="closing" data-domain-group="closing"><span class="bicon">💳</span><span class="blabel">Credit Ledger</span></button>
   <button class="bnav-item" data-page="assignments" data-group="audit" data-domain-group="audit"><span class="bicon">🧾</span><span class="blabel">Assignments</span></button>
+  <button class="bnav-item" data-page="inventory" data-group="audit" data-domain-group="audit"><span class="bicon">📦</span><span class="blabel">BT Inventory</span></button>
   <button class="bnav-item" data-page="tools" data-group="tools"><span class="bicon">⚙️</span><span class="blabel">Tools</span></button>
 </div>
 <!-- Sale Data sub-nav (mobile) -->
@@ -739,6 +742,45 @@ if ('serviceWorker' in navigator) {
     <div class="an-snapshot-head"><h3 id="an-snapshot-title">Live counts</h3><button class="an-snapshot-close" onclick="anCloseSnapshot()">✕</button></div>
     <div id="an-snapshot-body"></div>
   </div>
+</div>
+
+<!-- BT INVENTORY — read-only browser over Pharmacy Audit Hub's shared,
+     Supabase-synced inventory (Dropbox pull now happens server-side —
+     see inventory-bridge.js's header note). Searchable, groupable by
+     Manufacturer/Supplier, paged 100 rows at a time. No selection,
+     templates, or Random Audit launch here — those stay in Pharmacy
+     Audit Hub itself; this is view-only, same "read-only bridge"
+     principle as Assignments (audit-native.js). -->
+<div class="page" id="page-inventory">
+  <div class="hero"><div class="hlabel">Audit</div><div class="htitle">📦 BT Inventory</div><div class="hsub">Live product inventory, synced from Pharmacy Audit Hub via Supabase.</div></div>
+  <div class="bti-toolbar">
+    <span id="bti-status">⏳ Loading…</span>
+    <button class="bti-refresh-btn" onclick="biRefresh()">🔄 Refresh</button>
+  </div>
+  <div class="bti-search-row">
+    <input type="text" class="bti-search-input" id="bti-search-input" placeholder="Search code, name, generic, manufacturer, supplier…" oninput="biSetSearch(this.value)">
+  </div>
+  <div class="bti-group-row">
+    <button class="bti-group-btn bti-group-btn-active" data-group="none" onclick="biSetGroupBy('none')">No Grouping</button>
+    <button class="bti-group-btn" data-group="company" onclick="biSetGroupBy('company')">By Manufacturer</button>
+    <button class="bti-group-btn" data-group="supplier" onclick="biSetGroupBy('supplier')">By Supplier</button>
+  </div>
+  <div class="bti-empty" id="bti-empty-state">⏳ Loading inventory from Random…</div>
+  <div id="bti-pagination-top"></div>
+  <div class="bti-table-wrap" id="bti-table-wrap" style="display:none">
+    <table class="bti-table">
+      <thead><tr>
+        <th>Product</th>
+        <th class="bti-num">Qty</th>
+        <th class="bti-num">Price</th>
+        <th>Manufacturer</th>
+        <th>Supplier</th>
+        <th class="bti-num">Conv.</th>
+      </tr></thead>
+      <tbody id="bti-table-body"></tbody>
+    </table>
+  </div>
+  <div id="bti-pagination-bottom"></div>
 </div>
 
 <!-- TOOLS -->
@@ -1502,6 +1544,8 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/closing-native.js"></script>
 <script type="module" src="js/audit-bridge.js"></script>
 <script type="module" src="js/audit-native.js"></script>
+<script type="module" src="js/inventory-bridge.js"></script>
+<script type="module" src="js/inventory-native.js"></script>
 
 <!-- 3. Auth: Google Sign-In -->
 <script defer src="js/auth.js"></script>

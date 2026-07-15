@@ -37,17 +37,19 @@ function showPage(id) {
     // always-visible nav icons.
     //
     // Closing Book/Credit Ledger (native ports of the standalone
-    // Closing app's own pages, live in closing-native.js) and
-    // Assignments (native port of Pharmacy Audit Hub's own page, live
-    // in audit-native.js) are real embedded pages here — same as any
+    // Closing app's own pages, live in closing-native.js), Assignments
+    // (native port of Pharmacy Audit Hub's own page, live in
+    // audit-native.js), and BT Inventory (native port over Pharmacy
+    // Audit Hub's shared, Supabase-synced inventory, live in
+    // inventory-native.js) are real embedded pages here — same as any
     // other domain, just reading through a read-only bridge
-    // (closing-bridge.js / audit-bridge.js) instead of this app's own
-    // Repository.
+    // (closing-bridge.js / audit-bridge.js / inventory-bridge.js)
+    // instead of this app's own Repository.
     const _salesDomainPages = ['dashboard'].concat(_saleDataPages);
     const _managerDomainPages = ['manager', 'manager-dashboard'];
     const _notesheetsDomainPages = ['notesheets'];
     const _closingDomainPages = ['closing-book', 'credit-ledger'];
-    const _auditDomainPages = ['assignments'];
+    const _auditDomainPages = ['assignments', 'inventory'];
     const _domain = _salesDomainPages.indexOf(id) !== -1 ? 'sales'
                   : _managerDomainPages.indexOf(id) !== -1 ? 'manager'
                   : _notesheetsDomainPages.indexOf(id) !== -1 ? 'notesheets'
@@ -71,6 +73,7 @@ function showPage(id) {
     if (id === 'closing-book' && typeof window.clnOnShowClosingBook === 'function') window.clnOnShowClosingBook();
     if (id === 'credit-ledger' && typeof window.clnOnShowCreditLedger === 'function') window.clnOnShowCreditLedger();
     if (id === 'assignments' && typeof window.anOnShowAssignments === 'function') window.anOnShowAssignments();
+    if (id === 'inventory' && typeof window.invOnShowInventory === 'function') window.invOnShowInventory();
     if (id==='commandhub') {
       document.querySelectorAll('.ntab[data-group="commandhub"],.bnav-item[data-group="commandhub"]').forEach(t=>t.classList.add('active'));
     }

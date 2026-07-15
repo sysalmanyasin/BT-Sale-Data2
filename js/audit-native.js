@@ -156,7 +156,7 @@ function renderAssignmentsPage() {
         <div class="an-history-body">${bodyHtml}</div>
       </div>`;
 
-    return `<div class="an-engagement-card">
+    return `<div class="an-engagement-card" data-eid="${esc(e.id)}">
       <div class="an-engagement-head" onclick="anToggleEngagement('${esc(e.id)}')">
         <div style="flex:1;min-width:0">
           <div style="font-weight:700;color:var(--text);font-size:14px">${esc(e.name)}</div>

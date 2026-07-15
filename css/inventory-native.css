@@ -1,0 +1,36 @@
+/* ══════════════════════════════════════════════════════════════════
+   INVENTORY NATIVE — BT Inventory tab
+   Classes prefixed bti- (BT Inventory) — new namespace, no collision
+   with an- (Assignments) or cln- (Closing) native ports.
+   ══════════════════════════════════════════════════════════════════ */
+
+.bti-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 8px; flex-wrap: wrap; }
+.bti-toolbar span { font-size: 11px; color: var(--muted); }
+.bti-refresh-btn { font-size: 11px; font-weight: 700; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--t2); cursor: pointer; }
+.bti-refresh-btn:hover { background: var(--s2); }
+
+.bti-search-row { margin-bottom: 10px; }
+.bti-search-input { width: 100%; padding: 10px 12px; border-radius: 9px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; box-sizing: border-box; }
+.bti-search-input:focus { outline: none; border-color: #1B3A6B; }
+
+.bti-group-row { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.bti-group-btn { font-size: 11px; font-weight: 700; padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--t2); cursor: pointer; }
+.bti-group-btn-active { background: #1B3A6B; color: #fff; border-color: #1B3A6B; }
+
+.bti-empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 13px; }
+
+.bti-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: var(--sh); }
+.bti-table { width: 100%; border-collapse: collapse; min-width: 560px; }
+.bti-table thead th { position: sticky; top: 0; background: var(--s2); color: var(--muted); font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.bti-table thead th.bti-num { text-align: right; }
+.bti-row td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.bti-row:last-child td { border-bottom: none; }
+.bti-row:hover td { background: var(--s2); }
+.bti-group-header td { padding: 8px 10px; background: var(--s2); border-bottom: 1px solid var(--border); border-top: 1px solid var(--border); }
+.bti-group-header:first-child td { border-top: none; }
+
+.bti-pagination { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 2px; flex-wrap: wrap; }
+.bti-page-info { font-size: 11px; color: var(--muted); }
+.bti-page-btn { font-size: 12px; font-weight: 700; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
+.bti-page-btn:hover:not(:disabled) { background: var(--s2); }
+.bti-page-btn:disabled { opacity: .4; cursor: default; }
