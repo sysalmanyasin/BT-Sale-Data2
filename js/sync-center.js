@@ -558,6 +558,12 @@ function scSwitchTab(tab) {
   document.querySelectorAll('.sc-panel').forEach(p => {
     p.style.display = p.dataset.panel === tab ? 'block' : 'none';
   });
+  // Keep the address bar as #tools/synccenter/<tab> — this sub-sub-section
+  // can then be bookmarked or opened directly in a new tab.
+  try {
+    const _newHash = '#tools/synccenter/' + tab;
+    if (window.location.hash !== _newHash) history.replaceState(null, '', _newHash);
+  } catch(_) {}
   // F12: always re-render settings when that tab is opened.
   if (tab === 'settings') _sc_renderSettings();
 }

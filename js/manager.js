@@ -20,6 +20,12 @@ function switchMgrTab(tab) {
   document.querySelectorAll('.mgr-section').forEach(s => s.style.display = 'none');
   const sec = document.getElementById('mgr-' + tab);
   if (sec) sec.style.display = '';
+  // Keep the address bar as #manager/<tab> so a Manager sub-section can be
+  // bookmarked or opened directly in a new tab, same as top-level pages.
+  try {
+    const _newHash = '#manager/' + tab;
+    if (window.location.hash !== _newHash) history.replaceState(null, '', _newHash);
+  } catch(_) {}
   if (tab === 'staff') renderStaffRegistry();
   if (tab === 'jazzcash' && typeof renderJazzCash === 'function') renderJazzCash();
   if (tab === 'expense' && typeof renderLedgerView === 'function') {
@@ -712,6 +718,7 @@ function addCrdEntryFocused(ei) {
 
 function loadCreditMonth(my) {
   _crdData_cur = _crdData(my);
+  window._crdData_cur = _crdData_cur; // keep the window bridge live — it's a snapshot copy otherwise (Quick Add relies on this staying current)
   renderCreditLedger(_crdData_cur);
 }
 
@@ -1536,12 +1543,24 @@ function initApp() {
   _initEventBusSubscribers();
 
   let target = 'cover';
+  let _routed = false;
   try {
-    const saved = sessionStorage.getItem('bt_nav_target');
-    if (saved && document.getElementById('page-' + saved)) target = saved;
+    const rawHash = window.location.hash || '';
+    if (rawHash && typeof window._routeFromHash === 'function') {
+      // Delegates to the same registry ui.js's hashchange listener uses,
+      // so a fresh tab opened at e.g. #manager/credit or
+      // #tools/synccenter/health lands directly on that sub-section too.
+      _routed = window._routeFromHash(rawHash);
+    }
+    if (!_routed) {
+      // Fall back to the ?page= → sessionStorage handoff (e.g. PWA
+      // shortcuts, post-OAuth redirect) only if the hash didn't resolve.
+      const saved = sessionStorage.getItem('bt_nav_target');
+      if (saved && document.getElementById('page-' + saved)) target = saved;
+    }
     sessionStorage.removeItem('bt_nav_target');
   } catch (_) {}
-  showPage(target);
+  if (!_routed) showPage(target);
   renderEntryList();
   updateGhBadge();
 }

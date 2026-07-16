@@ -1,4 +1,11 @@
 /* ── Navigation ── */
+/* Nav items are <a href="#..."> now (was <button>) so the browser's native
+   Ctrl/Cmd/middle-click "open in new tab" works. Strip default link styling
+   so they still look and behave like the buttons they replaced. */
+.ntab, .bnav-item, .bnav-sub-item, .mgr-tab, .cl-mode-tab, .sc-tab {
+  text-decoration: none;
+  color: inherit;
+}
 /* NAV */
 nav{position:sticky;top:22px;z-index:200;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:env(safe-area-inset-top) 20px 0;height:56px;box-sizing:content-box;box-shadow:0 1px 3px rgba(0,0,0,.06);}
 .nbrand{display:flex;align-items:center;gap:10px;}

@@ -302,6 +302,7 @@ export function renderCoverDashboard() {
           <div class="cover-group-line"></div>
         </div>
         ${GROUP_HERO[groupName] || ''}
+        ${groupName === 'Manager' ? '<div id="qa-panel-cover"></div>' : ''}
         <div class="cover-tile-grid">
           ${members.map(({ t, i }) => tileCardHtml(t, i)).join('')}
         </div>
@@ -310,6 +311,9 @@ export function renderCoverDashboard() {
 
   container.innerHTML = groupsHtml;
   _updateHeroDate();
+  if (document.getElementById('qa-panel-cover') && typeof window.renderQuickAdd === 'function') {
+    window.renderQuickAdd('qa-panel-cover');
+  }
   container.querySelectorAll('[data-goto-idx]').forEach(card => {
     const goTo = () => {
       const t = tiles[+card.dataset.gotoIdx];

@@ -248,25 +248,25 @@ if ('serviceWorker' in navigator) {
     <div><div class="nbrand-text">Bahria Town Sales IC</div><div class="nbrand-sub" id="nbrand-sub-label">Intelligence Centre</div></div>
   </div>
   <div class="ntabs">
-    <button class="ntab" data-page="cover" data-group="cover">🏠 Cover</button>
-    <button class="ntab ntab-ai" data-page="commandhub" data-group="commandhub">🧭 CommandHub</button>
-    <button class="ntab" data-page="dashboard" data-group="dashboard" data-domain-group="sales">Dashboard</button>
-    <button class="ntab" data-page="index" data-group="saledata" data-domain-group="sales">Sale Data</button>
-    <button class="ntab" data-page="manager" data-group="manager" data-domain-group="manager">👔 Manager</button>
-    <button class="ntab" data-page="manager-dashboard" data-group="managerdash" data-domain-group="manager">📊 Manager Dashboard</button>
-    <button class="ntab" data-page="notesheets" data-group="notesheets" data-domain-group="notesheets">📑 Notes &amp; Sheets</button>
-    <button class="ntab" data-page="closing-book" data-group="closing" data-domain-group="closing">📖 Closing Book</button>
-    <button class="ntab" data-page="credit-ledger" data-group="closing" data-domain-group="closing">💳 Credit Ledger</button>
-    <button class="ntab" data-page="assignments" data-group="audit" data-domain-group="audit">🧾 Assignments</button>
-    <button class="ntab" data-page="inventory" data-group="audit" data-domain-group="audit">📦 BT Inventory</button>
-    <button class="ntab" data-page="tools" data-group="tools">Tools</button>
+    <a class="ntab" href="#cover" data-page="cover" data-group="cover">🏠 Cover</a>
+    <a class="ntab ntab-ai" href="#commandhub" data-page="commandhub" data-group="commandhub">🧭 CommandHub</a>
+    <a class="ntab" href="#dashboard" data-page="dashboard" data-group="dashboard" data-domain-group="sales">Dashboard</a>
+    <a class="ntab" href="#index" data-page="index" data-group="saledata" data-domain-group="sales">Sale Data</a>
+    <a class="ntab" href="#manager" data-page="manager" data-group="manager" data-domain-group="manager">👔 Manager</a>
+    <a class="ntab" href="#manager-dashboard" data-page="manager-dashboard" data-group="managerdash" data-domain-group="manager">📊 Manager Dashboard</a>
+    <a class="ntab" href="#notesheets" data-page="notesheets" data-group="notesheets" data-domain-group="notesheets">📑 Notes &amp; Sheets</a>
+    <a class="ntab" href="#closing-book" data-page="closing-book" data-group="closing" data-domain-group="closing">📖 Closing Book</a>
+    <a class="ntab" href="#credit-ledger" data-page="credit-ledger" data-group="closing" data-domain-group="closing">💳 Credit Ledger</a>
+    <a class="ntab" href="#assignments" data-page="assignments" data-group="audit" data-domain-group="audit">🧾 Assignments</a>
+    <a class="ntab" href="#inventory" data-page="inventory" data-group="audit" data-domain-group="audit">📦 BT Inventory</a>
+    <a class="ntab" href="#tools" data-page="tools" data-group="tools">Tools</a>
   </div>
   <div class="ntabs subnav" id="saledata-subnav" style="display:none">
-    <button class="ntab sub" data-page="index">Index</button>
-    <button class="ntab sub" data-page="data">Daily Data</button>
-    <button class="ntab sub" data-page="entry">Add Entry</button>
-    <button class="ntab sub" data-page="report">Sale Report</button>
-    <button class="ntab sub" data-page="diff">DIFF Report</button>
+    <a class="ntab sub" href="#index" data-page="index">Index</a>
+    <a class="ntab sub" href="#data" data-page="data">Daily Data</a>
+    <a class="ntab sub" href="#entry" data-page="entry">Add Entry</a>
+    <a class="ntab sub" href="#report" data-page="report">Sale Report</a>
+    <a class="ntab sub" href="#diff" data-page="diff">DIFF Report</a>
   </div>
   <div class="nright">
     <div class="syncbadge" id="synci" onclick="showPage('tools')" title="Supabase sync">
@@ -279,26 +279,26 @@ if ('serviceWorker' in navigator) {
 
 <!-- ══ BOTTOM TAB BAR (mobile) ══ -->
 <div class="bnav no-print" id="bnav" role="navigation" aria-label="Page navigation">
-  <button class="bnav-item" data-page="cover" data-group="cover"><span class="bicon">🏠</span><span class="blabel">Cover</span></button>
-  <button class="bnav-item bnav-ai" data-page="commandhub" data-group="commandhub"><span class="bicon">🧭</span><span class="blabel">Hub</span></button>
-  <button class="bnav-item" data-page="dashboard" data-group="dashboard" data-domain-group="sales"><span class="bicon">📊</span><span class="blabel">Home</span></button>
-  <button class="bnav-item" data-page="index" data-group="saledata" data-domain-group="sales"><span class="bicon">🗂️</span><span class="blabel">Sale Data</span></button>
-  <button class="bnav-item" data-page="manager" data-group="manager" data-domain-group="manager"><span class="bicon">👔</span><span class="blabel">Manager</span></button>
-  <button class="bnav-item" data-page="manager-dashboard" data-group="managerdash" data-domain-group="manager"><span class="bicon">📊</span><span class="blabel">Overview</span></button>
-  <button class="bnav-item" data-page="notesheets" data-group="notesheets" data-domain-group="notesheets"><span class="bicon">📑</span><span class="blabel">Notes</span></button>
-  <button class="bnav-item" data-page="closing-book" data-group="closing" data-domain-group="closing"><span class="bicon">📖</span><span class="blabel">Closing Book</span></button>
-  <button class="bnav-item" data-page="credit-ledger" data-group="closing" data-domain-group="closing"><span class="bicon">💳</span><span class="blabel">Credit Ledger</span></button>
-  <button class="bnav-item" data-page="assignments" data-group="audit" data-domain-group="audit"><span class="bicon">🧾</span><span class="blabel">Assignments</span></button>
-  <button class="bnav-item" data-page="inventory" data-group="audit" data-domain-group="audit"><span class="bicon">📦</span><span class="blabel">BT Inventory</span></button>
-  <button class="bnav-item" data-page="tools" data-group="tools"><span class="bicon">⚙️</span><span class="blabel">Tools</span></button>
+  <a class="bnav-item" href="#cover" data-page="cover" data-group="cover"><span class="bicon">🏠</span><span class="blabel">Cover</span></a>
+  <a class="bnav-item bnav-ai" href="#commandhub" data-page="commandhub" data-group="commandhub"><span class="bicon">🧭</span><span class="blabel">Hub</span></a>
+  <a class="bnav-item" href="#dashboard" data-page="dashboard" data-group="dashboard" data-domain-group="sales"><span class="bicon">📊</span><span class="blabel">Home</span></a>
+  <a class="bnav-item" href="#index" data-page="index" data-group="saledata" data-domain-group="sales"><span class="bicon">🗂️</span><span class="blabel">Sale Data</span></a>
+  <a class="bnav-item" href="#manager" data-page="manager" data-group="manager" data-domain-group="manager"><span class="bicon">👔</span><span class="blabel">Manager</span></a>
+  <a class="bnav-item" href="#manager-dashboard" data-page="manager-dashboard" data-group="managerdash" data-domain-group="manager"><span class="bicon">📊</span><span class="blabel">Overview</span></a>
+  <a class="bnav-item" href="#notesheets" data-page="notesheets" data-group="notesheets" data-domain-group="notesheets"><span class="bicon">📑</span><span class="blabel">Notes</span></a>
+  <a class="bnav-item" href="#closing-book" data-page="closing-book" data-group="closing" data-domain-group="closing"><span class="bicon">📖</span><span class="blabel">Closing Book</span></a>
+  <a class="bnav-item" href="#credit-ledger" data-page="credit-ledger" data-group="closing" data-domain-group="closing"><span class="bicon">💳</span><span class="blabel">Credit Ledger</span></a>
+  <a class="bnav-item" href="#assignments" data-page="assignments" data-group="audit" data-domain-group="audit"><span class="bicon">🧾</span><span class="blabel">Assignments</span></a>
+  <a class="bnav-item" href="#inventory" data-page="inventory" data-group="audit" data-domain-group="audit"><span class="bicon">📦</span><span class="blabel">BT Inventory</span></a>
+  <a class="bnav-item" href="#tools" data-page="tools" data-group="tools"><span class="bicon">⚙️</span><span class="blabel">Tools</span></a>
 </div>
 <!-- Sale Data sub-nav (mobile) -->
 <div class="bnav-sub no-print" id="bnav-saledata-sub" style="display:none">
-  <button class="bnav-sub-item" data-page="index">Index</button>
-  <button class="bnav-sub-item" data-page="data">Daily Data</button>
-  <button class="bnav-sub-item" data-page="entry">Add Entry</button>
-  <button class="bnav-sub-item" data-page="report">Report</button>
-  <button class="bnav-sub-item" data-page="diff">DIFF</button>
+  <a class="bnav-sub-item" href="#index" data-page="index">Index</a>
+  <a class="bnav-sub-item" href="#data" data-page="data">Daily Data</a>
+  <a class="bnav-sub-item" href="#entry" data-page="entry">Add Entry</a>
+  <a class="bnav-sub-item" href="#report" data-page="report">Report</a>
+  <a class="bnav-sub-item" href="#diff" data-page="diff">DIFF</a>
 </div>
 
 <!-- ====== PAGES ====== -->
@@ -711,8 +711,8 @@ if ('serviceWorker' in navigator) {
 <div class="page" id="page-credit-ledger">
   <div class="hero"><div class="hlabel">Closing</div><div class="htitle" id="cln-cl-title">💳 Credit</div><div class="hsub" id="cln-cl-sub">Snapshot history of every shift's credit</div></div>
   <div class="cl-mode-tabs">
-    <button class="cl-mode-tab active" id="cln-cl-tab-credit" onclick="clnSwitchMode('credit')">💳 Credit</button>
-    <button class="cl-mode-tab" id="cln-cl-tab-misc" onclick="clnSwitchMode('misc')">🧮 Misc / Ongoing</button>
+    <a class="cl-mode-tab active" href="#credit-ledger/credit" id="cln-cl-tab-credit">💳 Credit</a>
+    <a class="cl-mode-tab" href="#credit-ledger/misc" id="cln-cl-tab-misc">🧮 Misc / Ongoing</a>
   </div>
   <div class="cln-toolbar-row">
     <button onclick="clnToggleAll(true)">Expand All</button>
@@ -808,30 +808,30 @@ if ('serviceWorker' in navigator) {
 
       <!-- Sub-tab nav -->
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
-        <button class="sc-tab btn" data-tab="session"  onclick="scSwitchTab('session')"
+        <a class="sc-tab btn" href="#tools/synccenter/session" data-tab="session"
           style="font-size:11px;padding:5px 12px;background:var(--accent);color:#fff;font-weight:700;border-radius:20px">
           📊 Session
-        </button>
-        <button class="sc-tab btn" data-tab="devices"  onclick="scSwitchTab('devices')"
+        </a>
+        <a class="sc-tab btn" href="#tools/synccenter/devices" data-tab="devices"
           style="font-size:11px;padding:5px 12px;background:var(--s3);color:var(--muted);border-radius:20px">
           📱 Devices
-        </button>
-        <button class="sc-tab btn" data-tab="controls" onclick="scSwitchTab('controls')"
+        </a>
+        <a class="sc-tab btn" href="#tools/synccenter/controls" data-tab="controls"
           style="font-size:11px;padding:5px 12px;background:var(--s3);color:var(--muted);border-radius:20px">
           ⚔ Controls
-        </button>
-        <button class="sc-tab btn" data-tab="health"   onclick="scSwitchTab('health')"
+        </a>
+        <a class="sc-tab btn" href="#tools/synccenter/health" data-tab="health"
           style="font-size:11px;padding:5px 12px;background:var(--s3);color:var(--muted);border-radius:20px">
           💚 Health
-        </button>
-        <button class="sc-tab btn" data-tab="logs"     onclick="scSwitchTab('logs')"
+        </a>
+        <a class="sc-tab btn" href="#tools/synccenter/logs" data-tab="logs"
           style="font-size:11px;padding:5px 12px;background:var(--s3);color:var(--muted);border-radius:20px">
           📋 Logs
-        </button>
-        <button class="sc-tab btn" data-tab="settings" onclick="scSwitchTab('settings');_sc_renderSettings()"
+        </a>
+        <a class="sc-tab btn" href="#tools/synccenter/settings" data-tab="settings"
           style="font-size:11px;padding:5px 12px;background:var(--s3);color:var(--muted);border-radius:20px">
           ⚙ Settings
-        </button>
+        </a>
       </div>
 
       <!-- ── Session Panel ── -->
@@ -1197,6 +1197,13 @@ if ('serviceWorker' in navigator) {
   <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
     <button class="btn btn-p" onclick="saveAllManagerSections()" style="font-weight:700;font-size:13px;padding:8px 20px;gap:7px">💾 Save All &amp; Sync</button>
   </div>
+
+  <!-- ═══ QUICK ADD ═══ Add an entry to Jazz Cash / Staff Credit / Expenses /
+       a New Section without switching tabs. Writes straight to the same data
+       each tab uses — this is just a faster front door, not a separate store.
+       Built by renderQuickAdd() in js/quick-add.js. -->
+  <div id="qa-panel-mgr"></div>
+
   <div style="margin-bottom:18px" id="mgr-tabs">
     <!-- ── Group: Credit Detail ────────────────────── -->
     <div style="margin-bottom:12px">
@@ -1205,11 +1212,11 @@ if ('serviceWorker' in navigator) {
         <span style="flex:1;height:1px;background:var(--border);opacity:.5;display:inline-block"></span>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn mgr-tab" data-mtab="staff" onclick="switchMgrTab('staff')" style="background:var(--green,#059669);color:#fff">👤 Staff Registry</button>
-        <button class="btn mgr-tab" data-mtab="credit" onclick="switchMgrTab('credit')">👥 A. Staff Credits</button>
-        <button class="btn mgr-tab" data-mtab="expense" onclick="switchMgrTab('expense')">🧾 B. Patty/Expenses</button>
-        <button class="btn mgr-tab" data-mtab="jazzcash" onclick="switchMgrTab('jazzcash')">📒 Jazz Cash</button>
-        <button class="btn mgr-tab" data-mtab="custom" onclick="switchMgrTab('custom')" id="mgr-tab-custom" style="background:var(--s2);border:2px dashed var(--border);color:var(--muted)">＋ C. New Sections</button>
+        <a class="btn mgr-tab" href="#manager/staff" data-mtab="staff" style="background:var(--green,#059669);color:#fff">👤 Staff Registry</a>
+        <a class="btn mgr-tab" href="#manager/credit" data-mtab="credit">👥 A. Staff Credits</a>
+        <a class="btn mgr-tab" href="#manager/expense" data-mtab="expense">🧾 B. Patty/Expenses</a>
+        <a class="btn mgr-tab" href="#manager/jazzcash" data-mtab="jazzcash">📒 Jazz Cash</a>
+        <a class="btn mgr-tab" href="#manager/custom" data-mtab="custom" id="mgr-tab-custom" style="background:var(--s2);border:2px dashed var(--border);color:var(--muted)">＋ C. New Sections</a>
       </div>
     </div>
     <!-- ── Group: Working ──────────────────────────── -->
@@ -1219,10 +1226,10 @@ if ('serviceWorker' in navigator) {
         <span style="flex:1;height:1px;background:var(--border);opacity:.5;display:inline-block"></span>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button class="btn mgr-tab active" data-mtab="salary" onclick="switchMgrTab('salary')">💰 a. Salary</button>
-        <button class="btn mgr-tab" data-mtab="generic" onclick="switchMgrTab('generic')">📈 b. Generic</button>
-        <button class="btn mgr-tab" data-mtab="petty" onclick="switchMgrTab('petty')">🧮 c. Patty Detail</button>
-        <button class="btn mgr-tab" data-mtab="incentive" onclick="switchMgrTab('incentive')">🏆 d. Incentives</button>
+        <a class="btn mgr-tab active" href="#manager/salary" data-mtab="salary">💰 a. Salary</a>
+        <a class="btn mgr-tab" href="#manager/generic" data-mtab="generic">📈 b. Generic</a>
+        <a class="btn mgr-tab" href="#manager/petty" data-mtab="petty">🧮 c. Patty Detail</a>
+        <a class="btn mgr-tab" href="#manager/incentive" data-mtab="incentive">🏆 d. Incentives</a>
       </div>
     </div>
   </div>
@@ -1632,6 +1639,8 @@ if ('serviceWorker' in navigator) {
 
 <!-- 13b. Jazz Cash — Balance Tally (Daily Ledger now runs on the generalized Ledger, see ledger-page.js) -->
 <script defer src="js/jazz-cash.js"></script>
+
+<script defer src="js/quick-add.js"></script>
 
 <!-- 13c. Hub Quick Actions — headless print/report triggers for CommandHub chips -->
 <script defer src="js/hub-actions.js"></script>

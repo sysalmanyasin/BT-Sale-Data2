@@ -81,6 +81,15 @@ function showPage(id) {
     // Announce navigation through EventBus so any subscriber can react
     // (closes MF-03 — _curPage was previously a silent bare `let`).
     if (typeof EventBus !== 'undefined') EventBus.notify('nav:changed', { page: id });
+    // ── URL hash routing ── keep the address bar in sync with the page
+    // (#manager, #dashboard, ...) so links can be bookmarked, shared, or
+    // opened in a second browser tab. replaceState (not location.hash=)
+    // is used so this never itself fires a 'hashchange' event — only a
+    // real link click / typed URL / back-forward navigation should.
+    try {
+      const _newHash = '#' + id;
+      if (window.location.hash !== _newHash) history.replaceState(null, '', _newHash);
+    } catch(_) {}
     if(id==='cover') { if(typeof renderCoverDashboard==='function') renderCoverDashboard(); }
     if(id==='notesheets') { if(typeof renderNotesSheets==='function') renderNotesSheets(); }
     if(id==='commandhub') { if(typeof loadCommandHubPage==='function') loadCommandHubPage(); }
@@ -161,9 +170,60 @@ function navigateTo(pageId) {
 }
 
 
-document.querySelectorAll('.ntab,.bnav-item,.bnav-sub-item').forEach(t=>{
-  if (t.dataset.page) t.addEventListener('click',()=>showPage(t.dataset.page));
-});
+// Registry: pageId -> function(subPath) that switches to a sub-section
+// within that page once it's loaded. Add an entry here for any future
+// page that has its own internal tabs and should support deep-linking.
+const _PAGE_SUBROUTES = {
+  manager: function(sub) {
+    if (typeof switchMgrTab === 'function') switchMgrTab(sub);
+  },
+  'credit-ledger': function(sub) {
+    if (typeof clnSwitchMode === 'function') clnSwitchMode(sub);
+  },
+  tools: function(sub) {
+    // Sync Center is a collapsible card inside Tools; its own tabs
+    // (session/devices/controls/health) are a sub-sub-route:
+    // #tools/synccenter/<tab>
+    const parts = sub.split('/');
+    if (parts[0] !== 'synccenter') return;
+    const card = document.getElementById('tc-sync-center');
+    if (card && !card.classList.contains('open')) card.classList.add('open');
+    if (parts[1] && typeof scSwitchTab === 'function') scSwitchTab(parts[1]);
+  }
+};
+
+// Nav items (.ntab, .bnav-item, .bnav-sub-item, .mgr-tab, .cl-mode-tab,
+// .sc-tab) are real <a href="#..."> links now, not JS-only buttons — the
+// browser drives navigation via the hash, and _routeFromHash (below)
+// reacts to it. This is what makes Ctrl/Cmd/middle-click → "open in new
+// tab" work: the browser opens a fresh tab at that hash without touching
+// the current tab at all.
+function _routeFromHash(hash) {
+  const raw = (hash || '').replace(/^#/, '');
+  if (!raw) return false;
+  const slash = raw.indexOf('/');
+  const page = slash === -1 ? raw : raw.slice(0, slash);
+  const sub  = slash === -1 ? '' : raw.slice(slash + 1);
+  if (!page || !document.getElementById('page-' + page)) return false;
+  const _already = (typeof _curPage !== 'undefined' && _curPage === page);
+  const _route = _PAGE_SUBROUTES[page];
+  if (!_already) {
+    showPage(page);
+    if (sub && _route) {
+      // Sub-sections only exist in the DOM once the page's own load
+      // function — triggered by showPage() above — has rendered them,
+      // so give it a tick before switching to the sub-tab.
+      setTimeout(() => _route(sub), 30);
+    }
+  } else if (sub && _route) {
+    // Already on this page — just switch sub-tabs, don't re-run the
+    // page's load function (that would reset dropdowns/selections).
+    _route(sub);
+  }
+  return true;
+}
+window._routeFromHash = _routeFromHash;
+window.addEventListener('hashchange', () => _routeFromHash(window.location.hash));
 
 // Handle ?page= shortcuts from PWA manifest (survives OAuth redirect via sessionStorage)
 (function() {

@@ -890,6 +890,12 @@ function clSwitchMode(mode) {
   const sub = document.getElementById('cln-cl-sub');
   if (title) title.textContent = mode === 'credit' ? '💳 Credit' : '🧮 Misc / Ongoing';
   if (sub) sub.textContent = mode === 'credit' ? "Snapshot history of every shift's credit" : "Snapshot history of every shift's miscellaneous / ongoing charges";
+  // Keep the address bar as #credit-ledger/<mode> so this sub-section can
+  // be bookmarked or opened directly in a new tab, same as other pages.
+  try {
+    const _newHash = '#credit-ledger/' + mode;
+    if (window.location.hash !== _newHash) history.replaceState(null, '', _newHash);
+  } catch(_) {}
   renderCreditLedgerPage();
 }
 
