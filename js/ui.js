@@ -49,7 +49,7 @@ function showPage(id) {
     const _managerDomainPages = ['manager', 'manager-dashboard'];
     const _notesheetsDomainPages = ['notesheets'];
     const _closingDomainPages = ['closing-book', 'credit-ledger'];
-    const _auditDomainPages = ['assignments', 'inventory'];
+    const _auditDomainPages = ['assignments', 'inventory', 'stockledger'];
     const _domain = _salesDomainPages.indexOf(id) !== -1 ? 'sales'
                   : _managerDomainPages.indexOf(id) !== -1 ? 'manager'
                   : _notesheetsDomainPages.indexOf(id) !== -1 ? 'notesheets'
@@ -74,6 +74,12 @@ function showPage(id) {
     if (id === 'credit-ledger' && typeof window.clnOnShowCreditLedger === 'function') window.clnOnShowCreditLedger();
     if (id === 'assignments' && typeof window.anOnShowAssignments === 'function') window.anOnShowAssignments();
     if (id === 'inventory' && typeof window.invOnShowInventory === 'function') window.invOnShowInventory();
+    // Stock Ledger is fully self-contained (own Supabase panel + JSON
+    // upload fallback, no dependency on this app's inventory_products
+    // bridge — see index.html's comment above #page-stockledger for
+    // why). init() no-ops with a console.warn if already initialized,
+    // so it's safe to call on every visit rather than tracking state here.
+    if (id === 'stockledger' && window.StockLedgerApp && typeof window.StockLedgerApp.init === 'function') window.StockLedgerApp.init();
     if (id==='commandhub') {
       document.querySelectorAll('.ntab[data-group="commandhub"],.bnav-item[data-group="commandhub"]').forEach(t=>t.classList.add('active'));
     }
