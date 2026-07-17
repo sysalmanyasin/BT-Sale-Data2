@@ -46,6 +46,7 @@
 <link rel="stylesheet" href="css/closing-book-print.css">
 <link rel="stylesheet" href="css/audit-native.css">
 <link rel="stylesheet" href="css/inventory-native.css">
+<link rel="stylesheet" href="css/stockledger.css">
 <link rel="stylesheet" href="css/components.css">
 <link rel="stylesheet" href="css/modals.css">
 <link rel="stylesheet" href="css/pages.css">
@@ -259,6 +260,7 @@ if ('serviceWorker' in navigator) {
     <a class="ntab" href="#credit-ledger" data-page="credit-ledger" data-group="closing" data-domain-group="closing">💳 Credit Ledger</a>
     <a class="ntab" href="#assignments" data-page="assignments" data-group="audit" data-domain-group="audit">🧾 Assignments</a>
     <a class="ntab" href="#inventory" data-page="inventory" data-group="audit" data-domain-group="audit">📦 BT Inventory</a>
+    <a class="ntab" href="#stockledger" data-page="stockledger" data-group="audit" data-domain-group="audit">📒 Stock Ledger</a>
     <a class="ntab" href="#tools" data-page="tools" data-group="tools">Tools</a>
   </div>
   <div class="ntabs subnav" id="saledata-subnav" style="display:none">
@@ -290,6 +292,7 @@ if ('serviceWorker' in navigator) {
   <a class="bnav-item" href="#credit-ledger" data-page="credit-ledger" data-group="closing" data-domain-group="closing"><span class="bicon">💳</span><span class="blabel">Credit Ledger</span></a>
   <a class="bnav-item" href="#assignments" data-page="assignments" data-group="audit" data-domain-group="audit"><span class="bicon">🧾</span><span class="blabel">Assignments</span></a>
   <a class="bnav-item" href="#inventory" data-page="inventory" data-group="audit" data-domain-group="audit"><span class="bicon">📦</span><span class="blabel">BT Inventory</span></a>
+  <a class="bnav-item" href="#stockledger" data-page="stockledger" data-group="audit" data-domain-group="audit"><span class="bicon">📒</span><span class="blabel">Stock Ledger</span></a>
   <a class="bnav-item" href="#tools" data-page="tools" data-group="tools"><span class="bicon">⚙️</span><span class="blabel">Tools</span></a>
 </div>
 <!-- Sale Data sub-nav (mobile) -->
@@ -785,6 +788,209 @@ if ('serviceWorker' in navigator) {
   </div>
   <div id="bti-pagination-bottom"></div>
 </div>
+
+<!-- STOCK LEDGER — native port of the standalone Stock Ledger tool.
+     Self-contained: loads inventory data from its own Supabase panel
+     (URL + key entered there) or its own JSON upload/paste fallback —
+     deliberately NOT wired to this app's existing inventory_products
+     table (inventory-bridge.js), since that table's schema
+     (qty/price/company/supplier) has none of the fields this tool
+     needs (lastReceiveDate, lastSaleDate, netQty100Days) to do its
+     never-sold/dead-stock/excess analysis. See js/stockledger.js. -->
+<section class="page stockledger-app app-page" id="page-stockledger">
+<header>
+  <p class="eyebrow">Inventory Movement Audit</p>
+  <h1>Stock Ledger</h1>
+  <p class="sub">Five views on the shelf: stock that's never sold, stock gone quiet, stock stacked past what recent sales justify, plus two reference lists — items with an unreliable pack size, and items already at zero.</p>
+  <p class="asof" id="sl-asofLine"></p>
+</header>
+
+<div class="uploadwrap">
+
+  <div class="dbxpanel" id="sl-sbPanel">
+    <button class="dbxtoggle open" id="sl-sbToggle">
+      <span class="dbxicon">◎</span> Supabase <span class="srctag">primary source</span> <span class="chev" id="sl-sbChev">▾</span>
+    </button>
+    <div class="dbxbody open" id="sl-sbBody">
+
+      <div class="dbxstep" id="sl-sbSharedNote" style="display:none;">
+        <p class="dbxlabel ok">Using the Supabase client your host app already provides. No setup needed here.</p>
+      </div>
+
+      <div class="dbxstep" id="sl-sbManualFields">
+        <p class="dbxlabel">Project URL <span class="dbxhint">Supabase project settings → API</span></p>
+        <div class="dbxrow">
+          <input type="text" id="sl-sbUrl" placeholder="https://xxxx.supabase.co">
+        </div>
+      </div>
+      <div class="dbxstep" id="sl-sbManualFields2">
+        <p class="dbxlabel">Anon public key <span class="dbxhint">safe to use client-side — this is what it's for</span></p>
+        <div class="dbxrow">
+          <input type="text" id="sl-sbKey" placeholder="anon / public API key">
+        </div>
+      </div>
+
+      <div class="dbxstep">
+        <p class="dbxlabel">Table name</p>
+        <div class="dbxrow">
+          <input type="text" id="sl-sbTable" value="inventory">
+          <button class="filebtn" id="sl-sbFetchBtn">Load from Supabase</button>
+        </div>
+      </div>
+
+      <p class="dbxstatus" id="sl-sbStatus"></p>
+    </div>
+  </div>
+
+  <p class="fallbacklabel">Fallback sources — used if Supabase isn't reachable</p>
+
+  <div class="dropzone" id="sl-dropzone">
+    <div class="icon">JSON</div>
+    <div class="text">
+      <strong>Load an inventory file</strong>
+      <span>Drop your inventory.json here, or browse. Fields expected: code, name, stock, unitPrice, conversionFactor, lastReceiveDate, lastSaleDate, netQty100Days.</span>
+    </div>
+    <span class="filename" id="sl-filename"></span>
+    <button class="filebtn" id="sl-browseBtn">Browse file</button>
+    <input type="file" id="sl-fileInput" accept=".json,application/json,text/plain,text/json,application/octet-stream,*/*">
+  </div>
+  <p class="loaderr" id="sl-loadErr"></p>
+
+  <div class="dbxpanel" id="sl-dbxPanel">
+    <button class="dbxtoggle" id="sl-dbxToggle">
+      <span class="dbxicon">⇄</span> Connect Dropbox <span class="chev" id="sl-dbxChev">▾</span>
+    </button>
+    <div class="dbxbody" id="sl-dbxBody">
+
+      <div class="dbxstep">
+        <p class="dbxlabel">1 — App key <span class="dbxhint">from your Dropbox App Console — not secret, fine to paste here</span></p>
+        <div class="dbxrow">
+          <input type="text" id="sl-dbxAppKey" placeholder="e.g. 8kx2n9q7p1r4z3m">
+          <button class="btn-ghost" id="sl-dbxAuthorizeBtn">Open Dropbox approval</button>
+        </div>
+      </div>
+
+      <div class="dbxstep">
+        <p class="dbxlabel">2 — Paste the code Dropbox shows you</p>
+        <div class="dbxrow">
+          <input type="text" id="sl-dbxCode" placeholder="authorization code">
+          <button class="btn-ghost" id="sl-dbxExchangeBtn">Exchange for tokens</button>
+        </div>
+      </div>
+
+      <div class="dbxstep">
+        <p class="dbxlabel">Already connected before? <span class="dbxhint">paste the refresh token you saved last time and skip steps 1–2</span></p>
+        <div class="dbxrow">
+          <input type="text" id="sl-dbxRefreshInput" placeholder="paste saved refresh token">
+          <button class="btn-ghost" id="sl-dbxUseRefreshBtn">Use this token</button>
+        </div>
+      </div>
+
+      <div class="dbxstep" id="sl-dbxTokenOut" style="display:none;">
+        <p class="dbxlabel">Your refresh token — save this somewhere safe (password manager / notes). It won't be shown again and never gets written into this file.</p>
+        <div class="dbxrow">
+          <input type="text" id="sl-dbxRefreshOut" readonly>
+          <button class="btn-ghost" id="sl-dbxCopyBtn">Copy</button>
+        </div>
+      </div>
+
+      <div class="dbxstep">
+        <p class="dbxlabel">File path in Dropbox <span class="dbxhint">relative to the app folder if you used "App folder" access</span></p>
+        <div class="dbxrow">
+          <input type="text" id="sl-dbxPath" value="/inventory.json">
+          <button class="filebtn" id="sl-dbxFetchBtn">Fetch from Dropbox</button>
+        </div>
+      </div>
+
+      <p class="dbxstatus" id="sl-dbxStatus"></p>
+    </div>
+  </div>
+</div>
+
+<div class="empty" id="sl-emptyState">
+  <strong>No file loaded yet</strong>
+  Load inventory.json above to generate the never-sold, dead-stock, excess, and reference reports.
+</div>
+
+<main id="sl-main">
+
+  <div class="cards" id="sl-summaryCards"></div>
+
+  <div class="exportbar">
+    <button class="filebtn" id="sl-exportAllBtn">Export all sheets (.xlsx)</button>
+    <span class="filename" id="sl-exportStatus"></span>
+  </div>
+
+  <div class="tabs" id="sl-tabs">
+    <button class="tab rust active" data-panel="neverSold">Never Sold <span class="count" id="sl-cnt-neverSold">0</span></button>
+    <button class="tab amber" data-panel="deadStock">Dead Stock <span class="count" id="sl-cnt-deadStock">0</span></button>
+    <button class="tab indigo" data-panel="excess">100-Day Excess <span class="count" id="sl-cnt-excess">0</span></button>
+    <button class="tab slate" data-panel="packIssues">Pack Size Issues <span class="count" id="sl-cnt-packIssues">0</span></button>
+    <button class="tab stone" data-panel="zeroStock">Zero Stock <span class="count" id="sl-cnt-zeroStock">0</span></button>
+  </div>
+
+  <!-- NEVER SOLD -->
+  <section class="panel active" id="sl-panel-neverSold">
+    <p class="note">No sale on record at all, and last received more than the selected window ago. Quantities are rounded down to full pack sizes (conversionFactor) before valuing — loose, partial-pack units are excluded from the value.</p>
+    <div class="controls">
+      <div class="toggle-group" id="sl-neverSoldThreshold">
+        <button data-days="60">60 days</button>
+        <button data-days="90" class="active">90 days</button>
+      </div>
+      <div class="search"><input type="text" id="sl-search-neverSold" placeholder="Search code, name, generic, company, supplier…"></div>
+      <button class="btn-ghost" data-export="neverSold">Export CSV</button>
+    </div>
+    <div class="tablewrap"><table id="sl-table-neverSold"></table></div>
+  </section>
+
+  <!-- DEAD STOCK -->
+  <section class="panel" id="sl-panel-deadStock">
+    <p class="note">Has a sale history, but nothing sold in the selected window, and last received more than that same window ago. Mutually exclusive with Never Sold — this tab only covers items that sold at some point. Quantities down-rounded to full pack sizes before valuing.</p>
+    <div class="controls">
+      <div class="toggle-group" id="sl-deadThreshold">
+        <button data-days="60" class="active">60 days</button>
+        <button data-days="90">90 days</button>
+      </div>
+      <div class="search"><input type="text" id="sl-search-deadStock" placeholder="Search code, name, generic, company, supplier…"></div>
+      <button class="btn-ghost" data-export="deadStock">Export CSV</button>
+    </div>
+    <div class="tablewrap"><table id="sl-table-deadStock"></table></div>
+  </section>
+
+  <!-- EXCESS -->
+  <section class="panel" id="sl-panel-excess">
+    <p class="note">The source data's "netQty100Days" field is actually a 90-day net sold quantity. Target 100d Stock = (Sold /90d ÷ 90) × 100 — the amount needed to cover 100 days at the current sell-through rate. Excess = current stock beyond that target, valued at unit price, no pack rounding. Items with zero sales in the last 90 days are excluded here — they show up under Never Sold or Dead Stock instead.</p>
+    <div class="controls">
+      <div class="search"><input type="text" id="sl-search-excess" placeholder="Search code, name, generic, company, supplier…"></div>
+      <button class="btn-ghost" data-export="excess">Export CSV</button>
+    </div>
+    <div class="tablewrap"><table id="sl-table-excess"></table></div>
+  </section>
+
+  <!-- PACK SIZE ISSUES -->
+  <section class="panel" id="sl-panel-packIssues">
+    <p class="note">Stock is greater than zero but the pack size (conversionFactor) is missing, zero, or invalid — down-rounding to a pack isn't reliable, so these are excluded from Never Sold and Dead Stock and just listed here as raw data for review. (They can still appear under 100-Day Excess, since that calc doesn't depend on pack size.)</p>
+    <div class="controls">
+      <div class="search"><input type="text" id="sl-search-packIssues" placeholder="Search code, name, generic, company, supplier…"></div>
+      <button class="btn-ghost" data-export="packIssues">Export CSV</button>
+    </div>
+    <div class="tablewrap"><table id="sl-table-packIssues"></table></div>
+  </section>
+
+  <!-- ZERO STOCK -->
+  <section class="panel" id="sl-panel-zeroStock">
+    <p class="note">Stock is currently zero, so there's nothing to value — listed here as raw reference data only, excluded from all three main reports.</p>
+    <div class="controls">
+      <div class="search"><input type="text" id="sl-search-zeroStock" placeholder="Search code, name, generic, company, supplier…"></div>
+      <button class="btn-ghost" data-export="zeroStock">Export CSV</button>
+    </div>
+    <div class="tablewrap"><table id="sl-table-zeroStock"></table></div>
+  </section>
+
+</main>
+
+<footer id="sl-footerNote"></footer>
+</section>
 
 <!-- TOOLS -->
 <div class="page" id="page-tools">
@@ -1572,6 +1778,7 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/audit-native.js"></script>
 <script type="module" src="js/inventory-bridge.js"></script>
 <script type="module" src="js/inventory-native.js"></script>
+<script defer src="js/stockledger.js"></script>
 
 <!-- 3. Auth: Google Sign-In -->
 <script defer src="js/auth.js"></script>

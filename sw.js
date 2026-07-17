@@ -5,7 +5,7 @@
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v10.1'; // v10.1: APP_SHELL was missing 11 files that index.html actually loads, including js/print.js, the ONE print engine every report in the app now funnels through (Sale/Monthly/Yearly/Manager/CommandHub reports all call Print.render()/renderNewTab()). Same-origin requests use networkFirst, so this only broke offline/flaky-connection printing (no cached fallback when the live fetch for print.js failed), matching the "reports just silently do nothing" symptom. Also missing: cover-dashboard.js, closing-bridge.js, closing-native.js, audit-bridge.js, audit-native.js, inventory-bridge.js, inventory-native.js, staff-notes.js, sheets-patch.js, ui-extras.js. All 11 added below, and the version bumped so already-installed clients actually pick up the corrected shell list instead of keeping the old one cached forever.
+const CACHE_NAME = 'bt-sales-v10.2'; // v10.2: added Stock Ledger (Audit domain) — css/stockledger.css + js/stockledger.js — a self-contained never-sold/dead-stock/excess-stock analysis tool with its own Supabase panel + JSON upload fallback, deliberately not wired to inventory-bridge.js's inventory_products table (schema mismatch — see index.html's comment above #page-stockledger). v10.1: APP_SHELL was missing 11 files that index.html actually loads, including js/print.js, the ONE print engine every report in the app now funnels through (Sale/Monthly/Yearly/Manager/CommandHub reports all call Print.render()/renderNewTab()). Same-origin requests use networkFirst, so this only broke offline/flaky-connection printing (no cached fallback when the live fetch for print.js failed), matching the "reports just silently do nothing" symptom. Also missing: cover-dashboard.js, closing-bridge.js, closing-native.js, audit-bridge.js, audit-native.js, inventory-bridge.js, inventory-native.js, staff-notes.js, sheets-patch.js, ui-extras.js. All 11 added below, and the version bumped so already-installed clients actually pick up the corrected shell list instead of keeping the old one cached forever.
 
 const APP_SHELL = [
   './',
@@ -26,6 +26,7 @@ const APP_SHELL = [
   './css/intent-groups.css',
   './css/ai-instructions.css',
   './css/ai-context.css',
+  './css/stockledger.css',
 
   /* ── JS — shared service layer ── */
   './js/bt-format.js',
@@ -60,6 +61,7 @@ const APP_SHELL = [
   './js/audit-native.js',
   './js/inventory-bridge.js',
   './js/inventory-native.js',
+  './js/stockledger.js',
 
   /* ── JS — features ── */
   './js/targets.js',
