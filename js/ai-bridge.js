@@ -509,8 +509,9 @@ function _aiReadExpenseSummary(monthStr) {
     const cats = LedgerStore.getCategoryList('expense');
     const sumCat = id => rows.filter(r => r.categoryId === id).reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
     const totBill = sumCat('bill'), totFuel = sumCat('fuel'), totSoap = sumCat('soap'),
-          totRef  = sumCat('refresh'), totExt = sumCat('extra'), totHO = sumCat('pattyHO');
-    const totalExp = totBill + totFuel + totSoap + totRef + totExt;
+          totRef  = sumCat('refresh'), totExt = sumCat('extra'), totHO = sumCat('pattyHO'),
+          totGuard = sumCat('guardIncentive');
+    const totalExp = totBill + totFuel + totSoap + totRef + totExt + totGuard;
     // Sign convention (flipped per explicit request): expenses ADD to
     // the balance, HO Received SUBTRACTS from it — matches
     // LEDGER_CATEGORIES.expense in ledger-store.js.
@@ -1627,7 +1628,7 @@ function _buildLlmPrompt(question) {
     '',
     '══════════ EXPENSE SHEET ACTIONS ══════════',
     '',
-    'ADD EXPENSE → addExpense  params: ["DD-Mon-YYYY","desc",bill,fuel,soap,refresh,extra,pattyHO]',
+    'ADD EXPENSE → addExpense  params: ["DD-Mon-YYYY","desc",bill,fuel,soap,refresh,extra,pattyHO,guardIncentive]',
     'EDIT/DELETE EXPENSE ENTRY → not available via chat (each expense category is its own ledger entry now, not an indexed row) \u2014 tell the user to tap the entry in Manager \u2192 Patty/Expenses to edit or delete it.',
     '',
     '══════════ CREDIT LEDGER ACTIONS ══════════',
@@ -2053,12 +2054,13 @@ function _aiAddCreditEntry(rawName, rawAmount, rawDesc, rawDate) {
 // sharing the same date/desc. (_expRows_cur/renderExpenseTable/
 // saveExpenseData this used to call no longer exist — see manager.js's
 // retired-code note; this was a silent no-op until this rewrite.)
-function _aiAddExpenseRow(date, desc, bill, fuel, soap, refresh, extra, pattyHO) {
+function _aiAddExpenseRow(date, desc, bill, fuel, soap, refresh, extra, pattyHO, guardIncentive) {
   if (typeof LedgerActions === 'undefined') { if (typeof toast === 'function') toast('\u26a0 Ledger not available.', 'w'); return; }
   const d = _aiToIsoDate(date);
   const fields = [
     ['bill', bill], ['fuel', fuel], ['soap', soap],
     ['refresh', refresh], ['extra', extra], ['pattyHO', pattyHO],
+    ['guardIncentive', guardIncentive],
   ];
   let total = 0, added = 0;
   fields.forEach(([categoryId, val]) => {
@@ -2741,7 +2743,7 @@ function aiBridgeExecuteIntent(intent) {
       case 'setGenericSale':     _aiEditGenericRow(p[0],'genericSale',p[1]); break;
       case 'deleteGenericRow':   _aiDeleteGenericRow(p[0]); break;
       // Expense
-      case 'addExpense':         _aiAddExpenseRow(p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7]); break;
+      case 'addExpense':         _aiAddExpenseRow(p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],p[8]); break;
       case 'editExpenseRow':
       case 'deleteExpenseRow':
         // The old "row" concept (one row = up to 6 category amounts

@@ -65,6 +65,7 @@ export const LEDGER_CATEGORIES = {
     { id: 'soap',      label: 'Soap/Tissue',   sign: +1, color: 'var(--purple)', icon: '🧼' },
     { id: 'refresh',   label: 'Refreshment',   sign: +1, color: 'var(--blue)',   icon: '☕' },
     { id: 'extra',     label: 'Extra',         sign: +1, color: 'var(--muted)',  icon: '➕' },
+    { id: 'guardIncentive', label: 'Guard Incentive', sign: +1, color: 'var(--blue)', icon: '🛡' },
     { id: 'pattyHO',   label: 'Patty H/O (received)', sign: -1, color: 'var(--green)', icon: '⬆' },
   ],
 };
