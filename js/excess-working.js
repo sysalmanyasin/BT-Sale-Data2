@@ -35,6 +35,8 @@ window.ExcessWorkingApp = (function () {
     hoValue: '',
     filter: 'All',
     search: '',
+    groupByCompany: false,
+    collapsedGroups: new Set(),
     topN: 20,
     rawExcess: [],
     computed: [],
@@ -316,7 +318,14 @@ window.ExcessWorkingApp = (function () {
     if (q) rows = rows.filter(r => (r.code || '').toLowerCase().includes(q) || (r.name || '').toLowerCase().includes(q));
     rows = [...rows].sort((a, b) => b.correctedValue - a.correctedValue);
 
-    const tableBody = rows.length ? rows.map(r => `
+    function retainBtnHtml(r) {
+      const isRetained = r.status === 'Retained';
+      const icon = isRetained ? 'bookmark' : 'bookmark_add';
+      const title = isRetained ? 'Click to remove from retain list' : 'Click to add to retain list';
+      return `<button class="retain-toggle-btn${isRetained ? ' active' : ''}" data-action="ew-retain-toggle" data-name="${esc(r.name)}" title="${title}"><span class="material-symbols-outlined">${icon}</span></button>`;
+    }
+    function rowHtml(r) {
+      return `
       <tr>
         <td class="mono">${esc(r.code)}</td>
         <td class="wrap">${esc(r.name)}</td>
@@ -324,7 +333,38 @@ window.ExcessWorkingApp = (function () {
         <td class="num">${fmt(r.packQty)}</td>
         <td class="num">${fmt(r.correctedValue)}</td>
         <td><span class="status-pill ${r.status}">${r.status}</span></td>
-      </tr>`).join('') : '<tr class="empty-row"><td colspan="6" class="no-data-note">No rows match.</td></tr>';
+        <td class="retain-col">${retainBtnHtml(r)}</td>
+      </tr>`;
+    }
+    function groupedBody(list) {
+      const groups = new Map();
+      list.forEach(r => {
+        const key = (r.company && String(r.company).trim()) || 'Unspecified';
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(r);
+      });
+      const groupArr = Array.from(groups.entries()).map(([company, items]) => ({
+        company, items, total: items.reduce((s, r) => s + r.correctedValue, 0)
+      })).sort((a, b) => b.total - a.total);
+      return groupArr.map(g => {
+        const collapsed = state.collapsedGroups.has(g.company);
+        const header = `
+      <tr class="group-header" data-action="ew-group-toggle" data-company="${esc(g.company)}">
+        <td colspan="7">
+          <span class="material-symbols-outlined group-chev">${collapsed ? 'chevron_right' : 'expand_more'}</span>
+          <span class="group-name">${esc(g.company)}</span>
+          <span class="hint group-count">${g.items.length} item${g.items.length === 1 ? '' : 's'}</span>
+          <span class="num group-total">${fmt(g.total)}</span>
+        </td>
+      </tr>`;
+        const body = collapsed ? '' : g.items.map(rowHtml).join('');
+        return header + body;
+      }).join('');
+    }
+
+    const tableBody = rows.length
+      ? (state.groupByCompany ? groupedBody(rows) : rows.map(rowHtml).join(''))
+      : '<tr class="empty-row"><td colspan="7" class="no-data-note">No rows match.</td></tr>';
 
     return `
       <div class="stat-grid">
@@ -351,10 +391,14 @@ window.ExcessWorkingApp = (function () {
           <button class="ftab${state.filter === 'Loose' ? ' active' : ''}" data-f="Loose" data-action="ew-filter">Loose</button>
           <button class="ftab${state.filter === 'Retained' ? ' active' : ''}" data-f="Retained" data-action="ew-filter">Retained</button>
           <div class="search-box"><span class="material-symbols-outlined">search</span><input type="text" id="ewSearchBox" placeholder="Search code or name…" value="${esc(state.search)}"></div>
+          <div class="toggle-group" id="ewGroupToggle">
+            <button class="${!state.groupByCompany ? 'active' : ''}" data-action="ew-group" data-group="0">List</button>
+            <button class="${state.groupByCompany ? 'active' : ''}" data-action="ew-group" data-group="1">By Company</button>
+          </div>
         </div>
         <div class="tablewrap">
           <table>
-            <thead><tr><th>Code</th><th>Product Name</th><th class="num">Excess Qty</th><th class="num">Pack Qty</th><th class="num">Value</th><th>Status</th></tr></thead>
+            <thead><tr><th>Code</th><th>Product Name</th><th class="num">Excess Qty</th><th class="num">Pack Qty</th><th class="num">Value</th><th>Status</th><th class="retain-col-h">Retain</th></tr></thead>
             <tbody id="ewTableBody">${tableBody}</tbody>
           </table>
         </div>
@@ -473,6 +517,31 @@ window.ExcessWorkingApp = (function () {
         saveRetain();
         recompute();
         if (removed[0]) say('Removed from retain list: ' + removed[0]);
+        render();
+        return;
+      }
+      if (action === 'ew-retain-toggle') {
+        const name = btn.dataset.name || '';
+        if (!name) return;
+        const key = name.toLowerCase();
+        const idx = state.retainList.findIndex(x => x.toLowerCase() === key);
+        if (idx >= 0) {
+          state.retainList.splice(idx, 1);
+          saveRetain(); recompute();
+          say('Removed from retain list: ' + name);
+        } else {
+          state.retainList.push(name);
+          saveRetain(); recompute();
+          say('Added to retain list: ' + name);
+        }
+        render();
+        return;
+      }
+      if (action === 'ew-group') { state.groupByCompany = btn.dataset.group === '1'; render(); return; }
+      if (action === 'ew-group-toggle') {
+        const company = btn.dataset.company || '';
+        if (state.collapsedGroups.has(company)) state.collapsedGroups.delete(company);
+        else state.collapsedGroups.add(company);
         render();
         return;
       }
