@@ -893,6 +893,19 @@ window.StockLedgerApp = (function(){
       // ---------- Init ----------
       $('#sl-asofLine').textContent = 'Reference date: ' + state.today.toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'}) + ' — all "days since" figures are measured against this.';
 
+      // ---------- Read-only bridge for other pages (e.g. Excess Working) ----------
+      // Excess Working reuses the exact same "100-Day Excess" rows this page
+      // computes (see computeAll(), section 3) instead of re-loading or
+      // re-deriving them — one inventory load, one source of truth. These
+      // closures capture `computed`/`state` by reference, so they always
+      // return whatever this page most recently computed, live.
+      window.StockLedgerApp.getExcessRows = function(){ return (computed.excess || []).slice(); };
+      window.StockLedgerApp.hasData = function(){ return state.raw.length > 0; };
+      window.StockLedgerApp.getRawCount = function(){ return state.raw.length; };
+      window.StockLedgerApp.getAsOfLabel = function(){
+        return state.today.toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+      };
+
   }
 
   return { init: init };

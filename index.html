@@ -37,6 +37,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 
 <!-- CSS Modules — load order matters -->
 <link rel="stylesheet" href="css/variables.css">
@@ -47,6 +48,8 @@
 <link rel="stylesheet" href="css/audit-native.css">
 <link rel="stylesheet" href="css/inventory-native.css">
 <link rel="stylesheet" href="css/stockledger.css">
+<link rel="stylesheet" href="css/excess-working.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,400,0,0">
 <link rel="stylesheet" href="css/components.css">
 <link rel="stylesheet" href="css/modals.css">
 <link rel="stylesheet" href="css/pages.css">
@@ -261,6 +264,7 @@ if ('serviceWorker' in navigator) {
     <a class="ntab" href="#assignments" data-page="assignments" data-group="audit" data-domain-group="audit">🧾 Assignments</a>
     <a class="ntab" href="#inventory" data-page="inventory" data-group="audit" data-domain-group="audit">📦 BT Inventory</a>
     <a class="ntab" href="#stockledger" data-page="stockledger" data-group="audit" data-domain-group="audit">📒 Stock Ledger</a>
+    <a class="ntab" href="#excess" data-page="excess" data-group="audit" data-domain-group="audit">📉 Excess Working</a>
     <a class="ntab" href="#tools" data-page="tools" data-group="tools">Tools</a>
   </div>
   <div class="ntabs subnav" id="saledata-subnav" style="display:none">
@@ -293,6 +297,7 @@ if ('serviceWorker' in navigator) {
   <a class="bnav-item" href="#assignments" data-page="assignments" data-group="audit" data-domain-group="audit"><span class="bicon">🧾</span><span class="blabel">Assignments</span></a>
   <a class="bnav-item" href="#inventory" data-page="inventory" data-group="audit" data-domain-group="audit"><span class="bicon">📦</span><span class="blabel">BT Inventory</span></a>
   <a class="bnav-item" href="#stockledger" data-page="stockledger" data-group="audit" data-domain-group="audit"><span class="bicon">📒</span><span class="blabel">Stock Ledger</span></a>
+  <a class="bnav-item" href="#excess" data-page="excess" data-group="audit" data-domain-group="audit"><span class="bicon">📉</span><span class="blabel">Excess</span></a>
   <a class="bnav-item" href="#tools" data-page="tools" data-group="tools"><span class="bicon">⚙️</span><span class="blabel">Tools</span></a>
 </div>
 <!-- Sale Data sub-nav (mobile) -->
@@ -990,6 +995,37 @@ if ('serviceWorker' in navigator) {
 </main>
 
 <footer id="sl-footerNote"></footer>
+</section>
+
+<!-- EXCESS WORKING — native port of the standalone "Excess Stock Control"
+     tool's calculation engine (pack-correction, Retain/Loose/Excess
+     classification, misc buffer, corrected excess value). Reads its raw
+     rows straight from Stock Ledger's "100-Day Excess" tab (js/excess-working.js
+     pulls them from window.StockLedgerApp.getExcessRows()) — load your
+     inventory file on Stock Ledger first, then this page's numbers follow
+     automatically. See js/excess-working.js. -->
+<section class="page excessworking-app app-page" id="page-excess">
+<header>
+  <p class="eyebrow">Excess Stock Working</p>
+  <h1>Excess Working</h1>
+  <p class="sub">Takes the 100-Day Excess rows from Stock Ledger, corrects each one down to whole packs, lets you mark items to always retain, and rolls it all up into a single corrected excess value — with a Top N / full-sheet export.</p>
+  <p class="asof" id="ew-asofLine"></p>
+</header>
+
+<div class="uploadwrap">
+  <div class="tabs" id="ew-tabs">
+    <button class="tab indigo ew-tab active" data-tab="working">Working</button>
+    <button class="tab rust ew-tab" data-tab="retain">Retain List</button>
+    <button class="tab amber ew-tab" data-tab="adjustments">Adjustments</button>
+    <button class="tab teal ew-tab" data-tab="export">Export</button>
+  </div>
+</div>
+
+<main id="ew-main" style="display:block;">
+  <div id="ew-body"></div>
+</main>
+
+<footer>Excess Working — reads live from Stock Ledger, figures update the moment that page's data changes.</footer>
 </section>
 
 <!-- TOOLS -->
@@ -1779,6 +1815,7 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/inventory-bridge.js"></script>
 <script type="module" src="js/inventory-native.js"></script>
 <script defer src="js/stockledger.js"></script>
+<script defer src="js/excess-working.js"></script>
 
 <!-- 3. Auth: Google Sign-In -->
 <script defer src="js/auth.js"></script>
