@@ -169,20 +169,45 @@ function _latestRealSheet(cdb) {
   return { key, rec, date: parts[0], shift: parts[1] };
 }
 
+function _closingBookBillsAndReturnsSince(cdb, uptoKey) {
+  // Mirrors Closing app's own aggregateSinceLastFinal (js/pages.js / js/actions.js):
+  // Book Bills & Manual Returns accumulate across shift closings until the
+  // most recent "Final" closing, whose own totals are included, then stop.
+  // Only counting rec.inBook1+inBook2 on 'final'-mode records (the old bug
+  // here) reads 0 on every ordinary Night/Morning/Evening shift closing —
+  // which is nearly all of them.
+  const keys = Object.keys(cdb.sheets || {}).filter(k => {
+    const r = cdb.sheets[k]; return !!r && r.draft !== true;
+  });
+  keys.sort((a, b) => _sheetSortKey(cdb, a).localeCompare(_sheetSortKey(cdb, b)));
+  const uptoIdx = keys.indexOf(uptoKey);
+  if (uptoIdx === -1) return { totalBooks: 0, totalManRet: 0 };
+  let totalBooks = 0, totalManRet = 0;
+  for (let i = uptoIdx; i >= 0; i--) {
+    const rec = cdb.sheets[keys[i]];
+    if (!rec) continue;
+    totalBooks += n(rec.inBook1) + n(rec.inBook2);
+    totalManRet += n(rec.posRet1) + n(rec.posRet2) + n(rec.posRet3);
+    if (rec.profileMode === 'final') break; // include the Final itself, then stop
+  }
+  return { totalBooks, totalManRet };
+}
+
 function _closingLatestSummary() {
   const cdb = ClosingBridge.getFullDb();
-  if (!cdb) return { label: 'Latest Closing Summary', value: 'Waiting for Closing…', sub: '' };
+  if (!cdb) return { label: 'Latest Closing Summary', value: 'Waiting for Closing…', stats: [] };
   const latest = _latestRealSheet(cdb);
-  if (!latest) return { label: 'Latest Closing Summary', value: 'No closings yet', sub: '' };
+  if (!latest) return { label: 'Latest Closing Summary', value: 'No closings yet', stats: [] };
   const rec = latest.rec;
-  let totalBooks = 0, totalManRet = 0;
-  if (rec.profileMode === 'final') {
-    totalBooks = n(rec.inBook1) + n(rec.inBook2);
-    totalManRet = n(rec.posRet1) + n(rec.posRet2) + n(rec.posRet3);
-  }
+  const { totalBooks, totalManRet } = _closingBookBillsAndReturnsSince(cdb, latest.key);
   const val = `${_clFmtDate(latest.date)} · ${latest.shift}`;
-  const sub = `Carried CC: Rs. ${fc(n(rec.outPrevCC))} · Deposits: Rs. ${fc(n(rec.outTotalF))} · Book Bills: Rs. ${fc(totalBooks)} · Manual Returns: Rs. ${fc(totalManRet)}`;
-  return { label: 'Latest Closing Summary', value: val, sub };
+  const stats = [
+    { icon: '💳', cls: 'cc', label: 'Carried CC',      value: n(rec.outPrevCC) },
+    { icon: '🏦', cls: 'dep', label: 'Deposits',        value: n(rec.outTotalF) },
+    { icon: '📚', cls: 'books', label: 'Book Bills',    value: totalBooks },
+    { icon: '↩️', cls: 'ret', label: 'Manual Returns',  value: totalManRet },
+  ];
+  return { label: 'Latest Closing Summary', value: val, stats };
 }
 
 function _closingLatestCredit() {
@@ -262,6 +287,23 @@ export function renderCoverDashboard() {
       <div class="cover-hero-sub">${_esc(h.sub)}</div>
     </div>`;
 
+  const closingSummaryCard = h => `
+    <div class="cover-hero-card cover-closing-summary-card">
+      <div class="cover-hero-label">${_esc(h.label)}</div>
+      <div class="cover-hero-value">${_esc(h.value)}</div>
+      ${h.stats && h.stats.length ? `
+      <div class="ccs-stat-grid">
+        ${h.stats.map(s => `
+          <div class="ccs-stat ccs-${s.cls}">
+            <span class="ccs-ic">${s.icon}</span>
+            <div class="ccs-text">
+              <div class="ccs-lbl">${_esc(s.label)}</div>
+              <div class="ccs-val">Rs. ${_esc(fc(s.value))}</div>
+            </div>
+          </div>`).join('')}
+      </div>` : ''}
+    </div>`;
+
   const heroHtml = `
     <div class="cover-hero-row">
       ${heroCard(headline)}
@@ -277,8 +319,10 @@ export function renderCoverDashboard() {
   const closingLatestCredit = _closingLatestCredit();
   const closingLatestMisc = _closingLatestMisc();
   const closingHeroHtml = `
+    <div class="cover-hero-row cover-hero-row-single">
+      ${closingSummaryCard(closingLatestSummary)}
+    </div>
     <div class="cover-hero-row">
-      ${heroCard(closingLatestSummary)}
       ${heroCard(closingLatestCredit)}
       ${heroCard(closingLatestMisc)}
     </div>`;
