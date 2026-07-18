@@ -116,6 +116,35 @@
 }
 .cover-tile-bridge:hover{background:var(--g-accent,var(--accent));color:#fff;}
 
+/* ── Latest Closing Summary — mini stat grid ── */
+.cover-hero-row-single{margin-bottom:14px;}
+.cover-closing-summary-card{padding:18px 20px 20px;}
+.ccs-stat-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;
+  margin-top:14px;position:relative;z-index:1;
+}
+.ccs-stat{
+  display:flex;align-items:center;gap:10px;
+  background:var(--surface);border:1px solid var(--border);border-radius:11px;
+  padding:9px 12px;transition:transform .15s,box-shadow .15s;
+}
+.ccs-stat:hover{transform:translateY(-2px);box-shadow:var(--sh);}
+.ccs-ic{
+  font-size:16px;width:30px;height:30px;flex-shrink:0;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+}
+.ccs-lbl{font-size:10.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;}
+.ccs-val{font-size:14.5px;font-weight:700;color:var(--text);font-family:var(--mono);margin-top:1px;}
+
+.ccs-stat.ccs-cc .ccs-ic{background:var(--mgrblue-lt);}
+.ccs-stat.ccs-dep .ccs-ic{background:#dcfce7;}
+.ccs-stat.ccs-books .ccs-ic{background:var(--alt2);}
+.ccs-stat.ccs-ret .ccs-ic{background:var(--rlt);}
+
+@media(max-width:640px){
+  .ccs-stat-grid{grid-template-columns:repeat(2,1fr);}
+}
+
 @media(max-width:640px){
   .cover-page-hero{padding:20px;}
   .cover-page-hero-title{font-size:21px;}
