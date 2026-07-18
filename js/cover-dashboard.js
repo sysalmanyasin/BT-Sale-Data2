@@ -216,21 +216,23 @@ function _tiles() {
     { page: 'credit-ledger',  icon: '💳', title: 'Credit Ledger', status: 'Credit + Misc/Ongoing snapshot history',           enabled: true, group: 'Closing' },
     { href: 'https://random.duapharma.com',  icon: '🧾', title: 'Audit',   status: _auditStatus(),   enabled: true, group: 'Audit' },
     { page: 'assignments', icon: '📋', title: 'Assignments', status: 'Auditor progress + company coverage, every engagement', enabled: true, group: 'Audit' },
-    { page: 'inventory', icon: '📦', title: 'BT Inventory',    status: _inventoryStatus(), enabled: true, group: 'Audit' },
-    { page: 'stockledger', icon: '📒', title: 'Stock Ledger', status: 'Never-sold, dead stock, excess & pack-issue analysis', enabled: true, group: 'Audit' },
+    { page: 'inventory', icon: '📦', title: 'BT Inventory',    status: _inventoryStatus(), enabled: true, group: 'Stock Tools' },
+    { page: 'stockledger', icon: '📒', title: 'Stock Ledger', status: 'Never-sold, dead stock, excess & pack-issue analysis', enabled: true, group: 'Stock Tools' },
+    { page: 'excess', icon: '📉', title: 'Excess Working', status: 'Corrected excess value, retain list & Top N export', enabled: true, group: 'Stock Tools' },
     { href: 'https://reports.duapharma.com/daily_report.html', icon: '✅', title: 'Daily Check List', status: 'Fazal Din\'s Pharma Plus — standalone checklist app', enabled: true, group: 'Reports' },
     { href: 'https://reports.duapharma.com/excess-stock-control.html', icon: '📦', title: 'Excess Stock Control', status: 'Fazal Din\'s Pharma Plus — excess stock control', enabled: true, group: 'Reports' },
     { href: 'https://reports.duapharma.com/invoice-desk.html', icon: '🧮', title: 'Branch Invoice Desk', status: 'Fazal Din\'s Pharma Plus — branch invoice desk', enabled: true, group: 'Reports' },
   ];
 }
 
-const GROUP_ORDER = ['Sales', 'Manager', 'Notes & Sheets', 'Closing', 'Audit', 'Reports'];
+const GROUP_ORDER = ['Sales', 'Manager', 'Notes & Sheets', 'Closing', 'Audit', 'Stock Tools', 'Reports'];
 const GROUP_META = {
   'Sales':           { slug: 'sales',   icon: '📊' },
   'Manager':         { slug: 'manager', icon: '👔' },
   'Notes & Sheets':  { slug: 'notes',   icon: '📑' },
   'Closing':         { slug: 'closing', icon: '🔒' },
   'Audit':           { slug: 'audit',   icon: '🧾' },
+  'Stock Tools':     { slug: 'stock-tools', icon: '📦' },
   'Reports':         { slug: 'reports', icon: '📚' },
 };
 

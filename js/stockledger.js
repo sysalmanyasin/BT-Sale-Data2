@@ -739,16 +739,39 @@ window.StockLedgerApp = (function(){
 
       $('#sl-sbFetchBtn').addEventListener('click', ()=> fetchFromSupabase(false));
 
-      if(sbConfig.autoLoad && sbConfig.client){
-        fetchFromSupabase(true);
-      }
-
       // ---------- Dropbox integration ----------
       // PKCE, no-redirect ("copy the code") flow — works from a plain local HTML file
       // with no backend and no client secret. Refresh token doesn't expire on its own;
-      // it's only ever held in this page's memory, never written into the file.
+      // it's saved to localStorage (never written into this source file) so it survives
+      // a page refresh and the file can auto-load again without re-entering anything.
       const dbx = { appKey:'', verifier:'', accessToken:'', refreshToken:'', expiresAt:0 };
-    
+
+      const DBX_STORE_KEY = 'bt_sl_dbx_v1';
+      function dbxLoadPersisted(){
+        try{
+          const raw = window.Repository ? window.Repository.getItem(DBX_STORE_KEY) : localStorage.getItem(DBX_STORE_KEY);
+          return raw ? JSON.parse(raw) : {};
+        }catch(e){ return {}; }
+      }
+      function dbxSavePersisted(){
+        try{
+          const payload = {
+            appKey: dbx.appKey || '',
+            refreshToken: dbx.refreshToken || '',
+            path: ($('#sl-dbxPath').value || '').trim() || '/inventory.json'
+          };
+          const raw = JSON.stringify(payload);
+          if(window.Repository) window.Repository.setItem(DBX_STORE_KEY, raw);
+          else localStorage.setItem(DBX_STORE_KEY, raw);
+        }catch(e){ /* storage unavailable — non-fatal */ }
+      }
+      (function dbxRestore(){
+        const saved = dbxLoadPersisted();
+        if(saved.appKey){ dbx.appKey = saved.appKey; $('#sl-dbxAppKey').value = saved.appKey; }
+        if(saved.refreshToken){ dbx.refreshToken = saved.refreshToken; $('#sl-dbxRefreshInput').value = saved.refreshToken; }
+        if(saved.path){ $('#sl-dbxPath').value = saved.path; }
+      })();
+
       function dbxSetStatus(msg, cls){
         const el = $('#sl-dbxStatus');
         el.textContent = msg;
@@ -818,7 +841,8 @@ window.StockLedgerApp = (function(){
           dbx.expiresAt = Date.now() + (json.expires_in*1000) - 60000;
           $('#sl-dbxRefreshOut').value = dbx.refreshToken;
           $('#sl-dbxTokenOut').style.display = 'block';
-          dbxSetStatus('Connected. Save the refresh token above, then use "Fetch from Dropbox" below.', 'ok');
+          dbxSavePersisted();
+          dbxSetStatus('Connected. Saved locally — this file will auto-load next time you open Stock Ledger.', 'ok');
         }catch(err){
           dbxSetStatus('Exchange failed: ' + err.message, 'err');
         }
@@ -833,7 +857,8 @@ window.StockLedgerApp = (function(){
         dbx.refreshToken = rt;
         dbx.accessToken = '';
         dbx.expiresAt = 0;
-        dbxSetStatus('Refresh token loaded. Click "Fetch from Dropbox" to pull the file.', 'ok');
+        dbxSavePersisted();
+        dbxSetStatus('Refresh token loaded and saved locally. Click "Fetch from Dropbox" to pull the file.', 'ok');
       });
     
       $('#sl-dbxCopyBtn').addEventListener('click', async ()=>{
@@ -864,12 +889,12 @@ window.StockLedgerApp = (function(){
         return dbx.accessToken;
       }
     
-      $('#sl-dbxFetchBtn').addEventListener('click', async ()=>{
+      async function dbxFetchFile(silent){
         const path = $('#sl-dbxPath').value.trim() || '/inventory.json';
-        dbxSetStatus('Refreshing access token…');
+        if(!silent) dbxSetStatus('Refreshing access token…');
         try{
           const token = await dbxEnsureAccessToken();
-          dbxSetStatus('Downloading ' + path + ' from Dropbox…');
+          if(!silent) dbxSetStatus('Downloading ' + path + ' from Dropbox…');
           const res = await fetch('https://content.dropboxapi.com/2/files/download', {
             method:'POST',
             headers:{
@@ -882,14 +907,33 @@ window.StockLedgerApp = (function(){
             throw new Error('Dropbox returned ' + res.status + ': ' + errText.slice(0,200));
           }
           const text = await res.text();
-          if(loadRawJSON(text, path.split('/').pop() + ' (Dropbox)')){
-            dbxSetStatus('Loaded from Dropbox ✓', 'ok');
+          if(loadRawJSON(text, path.split('/').pop() + ' (Dropbox)' + (silent ? ', auto' : ''))){
+            dbxSetStatus('Loaded from Dropbox ✓' + (silent ? ' (auto)' : ''), 'ok');
+            dbxSavePersisted();
+            return true;
           }
+          return false;
         }catch(err){
-          dbxSetStatus('Fetch failed: ' + err.message, 'err');
+          dbxSetStatus((silent ? 'Dropbox auto-load unavailable (' : 'Fetch failed: ') + err.message + (silent ? ')' : ''), 'err');
+          return false;
         }
-      });
-    
+      }
+
+      $('#sl-dbxFetchBtn').addEventListener('click', ()=> dbxFetchFile(false));
+
+      // ---------- Auto-load on open ----------
+      // Supabase (primary) first; if that's unavailable, fall back to a saved
+      // Dropbox refresh token so a fresh file is already loaded without any clicks.
+      (async function autoLoadInventory(){
+        let loaded = false;
+        if(sbConfig.autoLoad && sbConfig.client){
+          loaded = await fetchFromSupabase(true);
+        }
+        if(!loaded && dbx.appKey && dbx.refreshToken){
+          await dbxFetchFile(true);
+        }
+      })();
+
       // ---------- Init ----------
       $('#sl-asofLine').textContent = 'Reference date: ' + state.today.toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'}) + ' — all "days since" figures are measured against this.';
 
