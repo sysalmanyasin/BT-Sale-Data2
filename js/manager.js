@@ -1544,17 +1544,25 @@ function closeStaffCard() {
 // (phone number) before using this, since the function reads phone
 // from bt_staff, never from this form directly.
 async function setStaffLogin() {
-  const sid = document.getElementById('sc-f-staffId')?.value;
-  if (!sid) { toast('⚠ No Staff ID for this employee.', 'w'); return; }
+  const i = Number(document.getElementById('sc-idx')?.value);
+  const emp = STAFF[i];
+  if (!emp) { toast('⚠ No Staff ID for this employee.', 'w'); return; }
+  // bt_staff.id (and staff_auth_link.staff_id, which FKs to it) is the
+  // internal emp.id ('emp_...'), NOT the human-readable staffId shown in
+  // the form ('EMP-001') — those are different fields. Sending the
+  // display staffId here would never match a row in bt_staff.
+  const internalId = emp.id;
+  const displaySid = document.getElementById('sc-f-staffId')?.value || internalId;
+  if (!internalId) { toast('⚠ No internal ID for this employee — re-save the Staff List.', 'w'); return; }
   const phone = document.getElementById('sc-f-phone')?.value;
   if (!phone) { toast('⚠ Add a phone number and click 💾 Save Staff List first.', 'w'); return; }
-  const pin = prompt('Set a 4-digit PIN for ' + sid + ' (used with their phone number to log into Closing App):');
+  const pin = prompt('Set a 4-digit PIN for ' + displaySid + ' (used with their phone number to log into Closing App):');
   if (pin === null) return;
   if (!/^\d{4}$/.test(pin.trim())) { alert('PIN must be exactly 4 digits.'); return; }
 
   try {
     const { data, error } = await _sb().functions.invoke('set-staff-login', {
-      body: { staffId: sid, pin: pin.trim() },
+      body: { staffId: internalId, pin: pin.trim() },
     });
     if (error) {
       // supabase-js only gives a generic "non-2xx status code" message on
@@ -1568,7 +1576,7 @@ async function setStaffLogin() {
       throw new Error(detail);
     }
     if (data?.error) throw new Error(data.error);
-    toast('✓ Login set for ' + sid + ' (phone ' + data.phone + ')');
+    toast('✓ Login set for ' + displaySid + ' (phone ' + data.phone + ')');
   } catch (e) {
     alert('Could not set login: ' + (e?.message || e) +
       '\n\nMake sure you clicked 💾 Save Staff List after adding the phone number, so bt_staff has it.');
