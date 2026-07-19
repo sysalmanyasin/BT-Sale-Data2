@@ -45,7 +45,7 @@ const CLOSING_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3Mi
 
 const CACHE_KEY      = 'bt_closing_cache_v1';     // local-only summary cache
 const FULLDB_CACHE_KEY = 'bt_closing_fulldb_v1';  // local-only, best-effort persistence across reloads
-const MIN_REFRESH_MS = 5 * 60 * 1000;             // don't hit Supabase more than once per 5 min
+const MIN_REFRESH_MS = 15 * 1000;                 // refresh every 15s — near-real-time across devices (was 5 min)
 
 const PRESENCE_CACHE_KEY    = 'bt_closing_presence_v1';
 const PRESENCE_MIN_REFRESH_MS = 60 * 1000;  // presence should feel live — refresh more often than the shift summary
