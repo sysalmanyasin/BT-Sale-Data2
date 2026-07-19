@@ -1814,6 +1814,16 @@ if ('serviceWorker' in navigator) {
      dependency). Wired into Manager's Expense tab, Other Sections, and
      now Jazz Cash's Daily Ledger sub-tab (jazz-cash.js keeps only
      Balance Tally, which has no Ledger equivalent). -->
+<!-- Supabase client lib moved up here — closing-bridge.js / audit-bridge.js
+     (module scripts below) call supabase.createClient() at module-load
+     time. Module scripts and defer scripts execute in strict document
+     order once parsing finishes, regardless of network speed, so this
+     tag MUST appear before those modules or `typeof supabase` is still
+     'undefined' when they run — every single page load, not just
+     sometimes. (Was previously down at the old "6b" spot near
+     sync-center.js, which was too late for these bridges.) -->
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
 <script type="module" src="js/ledger-store.js"></script>
 <script type="module" src="js/ledger-actions.js"></script>
 <script type="module" src="js/ledger-migration.js"></script>
@@ -1838,8 +1848,8 @@ if ('serviceWorker' in navigator) {
 <!-- 5. UI: showPage, toast, clock, rebuild, dropdowns -->
 <script defer src="js/ui.js"></script>
 
-<!-- 6b. Supabase client lib + sync center (needs EventBus) -->
-<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<!-- 6b. Sync center (needs EventBus). Supabase client lib itself now
+     loads much earlier above — see comment there. -->
 <script defer src="js/sync-center.js"></script>
 
 <!-- 6c2. Conflict UI (Floor 4/5) — DOM code that reacts to Repository/Actions -->
