@@ -1,11 +1,11 @@
 /* ═══════════════════════════════════════════════════════════════
-   BT Sales IC — Service Worker  v8.3
+   BT Sales IC — Service Worker  v10.3
    Strategy: Network-first for same-origin app shell (fresh on connect,
    cached fallback offline). CDN libs use stale-while-revalidate.
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v10.2'; // v10.2: added Stock Ledger (Audit domain) — css/stockledger.css + js/stockledger.js — a self-contained never-sold/dead-stock/excess-stock analysis tool with its own Supabase panel + JSON upload fallback, deliberately not wired to inventory-bridge.js's inventory_products table (schema mismatch — see index.html's comment above #page-stockledger). v10.1: APP_SHELL was missing 11 files that index.html actually loads, including js/print.js, the ONE print engine every report in the app now funnels through (Sale/Monthly/Yearly/Manager/CommandHub reports all call Print.render()/renderNewTab()). Same-origin requests use networkFirst, so this only broke offline/flaky-connection printing (no cached fallback when the live fetch for print.js failed), matching the "reports just silently do nothing" symptom. Also missing: cover-dashboard.js, closing-bridge.js, closing-native.js, audit-bridge.js, audit-native.js, inventory-bridge.js, inventory-native.js, staff-notes.js, sheets-patch.js, ui-extras.js. All 11 added below, and the version bumped so already-installed clients actually pick up the corrected shell list instead of keeping the old one cached forever.
+const CACHE_NAME = 'bt-sales-v10.3'; // v10.3: APP_SHELL was missing 8 more real, actively-loaded files — 6 CSS (closing-native.css, closing-book-print.css, audit-native.css, inventory-native.css, excess-working.css, cover-dashboard.css — all real <link> tags in index.html) and 2 JS (excess-working.js, quick-add.js — both real <script defer> tags). Same "reports/features silently do nothing offline or on a flaky connection" symptom as v10.1's fix, just a different batch of files that had been added to index.html without ever being added here. (js/data-base.js was checked too and correctly left out — it defines MONTHLY_BASE/DAILY_BASE but isn't loaded by any <script> tag; it's dead code, not a missing shell file.) v10.2: added Stock Ledger (Audit domain) — css/stockledger.css + js/stockledger.js — a self-contained never-sold/dead-stock/excess-stock analysis tool with its own Supabase panel + JSON upload fallback, deliberately not wired to inventory-bridge.js's inventory_products table (schema mismatch — see index.html's comment above #page-stockledger). v10.1: APP_SHELL was missing 11 files that index.html actually loads, including js/print.js, the ONE print engine every report in the app now funnels through (Sale/Monthly/Yearly/Manager/CommandHub reports all call Print.render()/renderNewTab()). Same-origin requests use networkFirst, so this only broke offline/flaky-connection printing (no cached fallback when the live fetch for print.js failed), matching the "reports just silently do nothing" symptom. Also missing: cover-dashboard.js, closing-bridge.js, closing-native.js, audit-bridge.js, audit-native.js, inventory-bridge.js, inventory-native.js, staff-notes.js, sheets-patch.js, ui-extras.js. All 11 added below, and the version bumped so already-installed clients actually pick up the corrected shell list instead of keeping the old one cached forever.
 
 const APP_SHELL = [
   './',
@@ -17,16 +17,22 @@ const APP_SHELL = [
   './css/variables.css',
   './css/auth.css',
   './css/nav.css',
+  './css/closing-native.css',
+  './css/closing-book-print.css',
+  './css/audit-native.css',
+  './css/inventory-native.css',
+  './css/stockledger.css',
+  './css/excess-working.css',
   './css/components.css',
   './css/modals.css',
   './css/pages.css',
+  './css/cover-dashboard.css',
   './css/mobile.css',
   './css/assistant.css',
   './css/assistant-fixes.css',
   './css/intent-groups.css',
   './css/ai-instructions.css',
   './css/ai-context.css',
-  './css/stockledger.css',
 
   /* ── JS — shared service layer ── */
   './js/bt-format.js',
@@ -62,6 +68,7 @@ const APP_SHELL = [
   './js/inventory-bridge.js',
   './js/inventory-native.js',
   './js/stockledger.js',
+  './js/excess-working.js',
 
   /* ── JS — features ── */
   './js/targets.js',
@@ -82,6 +89,7 @@ const APP_SHELL = [
   './js/manager.js',
   './js/custom-sections.js',
   './js/jazz-cash.js',
+  './js/quick-add.js',
   './js/hub-actions.js',
   './js/ui-extras.js',
   './js/fields.js',
