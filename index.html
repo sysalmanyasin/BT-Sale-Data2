@@ -1459,6 +1459,7 @@ if ('serviceWorker' in navigator) {
         <a class="btn mgr-tab" href="#manager/expense" data-mtab="expense">🧾 B. Patty/Expenses</a>
         <a class="btn mgr-tab" href="#manager/jazzcash" data-mtab="jazzcash">📒 Jazz Cash</a>
         <a class="btn mgr-tab" href="#manager/custom" data-mtab="custom" id="mgr-tab-custom" style="background:var(--s2);border:2px dashed var(--border);color:var(--muted)">＋ C. New Sections</a>
+        <a class="btn mgr-tab" href="#manager/unmatched" data-mtab="unmatched" style="background:var(--amber,#d97706);color:#fff">⚠ Unmatched</a>
       </div>
     </div>
     <!-- ── Group: Working ──────────────────────────── -->
@@ -1627,6 +1628,15 @@ if ('serviceWorker' in navigator) {
       <div class="kpi"><div class="klbl">Grand Total</div><div class="kval" id="petty-k-total" style="color:var(--accent)">₨0</div></div>
     </div>
     <div id="petty-groups"></div>
+  </div>
+
+  <!-- ═══ UNMATCHED — entries from Closing App awaiting review ═══ -->
+  <div id="mgr-unmatched" class="mgr-section" style="display:none">
+    <p style="color:var(--muted);font-size:13px;margin-bottom:14px">
+      Entries from Closing App that couldn't be automatically matched to a staff member or expense category.
+      The amount is already accounted for the moment it's saved — resolving here just decides where it belongs.
+    </p>
+    <div id="unmatched-list"></div>
   </div>
 
   <!-- ═══ INCENTIVE ═══ -->
@@ -1992,6 +2002,13 @@ if ('serviceWorker' in navigator) {
           <div class="sc-fg" style="grid-column:1/-1;flex-direction:row;align-items:center;gap:10px">
             <input type="checkbox" id="sc-f-active" style="width:auto;margin:0">
             <label style="text-transform:none;font-size:13px;font-weight:600;color:var(--text)" for="sc-f-active">Active Employee</label>
+          </div>
+          <div class="sc-fg" style="grid-column:1/-1;border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
+            <label>Closing App Login</label>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <button class="btn btn-p" style="font-size:12px;padding:6px 14px" onclick="setStaffLogin()">🔑 Set/Reset PIN</button>
+              <span style="font-size:11px;color:var(--muted)">Uses the phone number above — save it first if you haven't.</span>
+            </div>
           </div>
         </div><!-- end 2-col grid -->
       </div>
