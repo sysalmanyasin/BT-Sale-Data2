@@ -144,6 +144,7 @@ function _buildPayload() {
     // "Other Section") — was missing from sync entirely until now.
     ledger:            JSON.parse(Repository.getItem(LEDGER_KEY)            || 'null'),
     ledgerCustomTypes: JSON.parse(Repository.getItem(LEDGER_CUSTOM_TYPES_KEY) || 'null'),
+    unmatched:         JSON.parse(Repository.getItem('bt_unmatched_v1')      || 'null'),
     notes:    JSON.parse(Repository.getItem('bt_notes_v1') || '[]'),
     // Staff Card Notes tab (V2 plan §4) — same id-merge convention as
     // the Notes & Sheets `notes` key above.
@@ -336,6 +337,23 @@ function mergeIncomingData(data, isPull = false) {
       else if (!(t in mergedOB)) mergedOB[t] = remoteOB[t];
     });
     Actions.saveFeatureData(LEDGER_KEY, JSON.stringify({ entries: Object.values(byId), openingBalances: mergedOB }));
+  }
+
+  // ── Unmatched entries from Closing App — merged by id, same
+  // convention as the generalized ledger above. `resolved` entries are
+  // kept (not deleted) so history/audit stays intact; the Unmatched
+  // tab just filters them out of the active review list. ──
+  if (data.unmatched) {
+    const local  = JSON.parse(Repository.getItem('bt_unmatched_v1') || 'null') || { entries: [] };
+    const remote = data.unmatched;
+    const byId = {};
+    (local.entries || []).forEach(e => { byId[e.id] = e; });
+    (remote.entries || []).forEach(e => {
+      if (!e || !e.id) return;
+      if (isPull) { if (!byId[e.id] || !byId[e.id].resolved) byId[e.id] = e; }
+      else if (!byId[e.id]) byId[e.id] = e;
+    });
+    Actions.saveFeatureData('bt_unmatched_v1', JSON.stringify({ entries: Object.values(byId) }));
   }
 
   // ── Custom "Other Sections" ledger-type definitions — merged by key,

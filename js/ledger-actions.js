@@ -12,7 +12,7 @@ import * as LedgerStore from './ledger-store.js';
 
 export const LedgerActions = (function () {
 
-  function addEntry(ledgerType, { date, categoryId, amount, desc, groupLabel, shift } = {}) {
+  function addEntry(ledgerType, { date, categoryId, amount, desc, groupLabel, shift, source } = {}) {
     if (!ledgerType) throw new Error('LedgerActions.addEntry: ledgerType is required');
     if (!date) throw new Error('LedgerActions.addEntry: date is required');
     const cat = getCategory(ledgerType, categoryId);
@@ -23,6 +23,7 @@ export const LedgerActions = (function () {
       desc: desc || '',
       groupLabel: groupLabel || null,
       shift: shift || null,
+      source: source || null,
     });
   }
 

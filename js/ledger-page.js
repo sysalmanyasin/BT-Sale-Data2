@@ -62,7 +62,7 @@ export function renderLedgerView(containerId, ledgerType, label, editingId) {
       <td>${_esc(e.date)}</td>
       ${showShift ? `<td>${_esc(e.shift || '—')}</td>` : ''}
       <td>${cat ? _esc(cat.icon || '') + ' ' + _esc(cat.label) : '<em>unknown</em>'}</td>
-      <td>${_esc(e.desc)}</td>
+      <td>${_esc(e.desc)}${e.source === 'closing_app' ? ' <span title="From Closing App" style="font-size:11px;background:var(--blue,#2563eb);color:#fff;padding:1px 6px;border-radius:10px;">📱 Closing</span>' : ''}</td>
       <td style="color:${color};font-weight:600">${signedLabel}</td>
       <td>₨${_fmt(e._balance)}</td>
       <td style="white-space:nowrap">
