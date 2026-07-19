@@ -121,12 +121,38 @@ function _notesheetsStatus() {
 }
 
 const SHIFT_ICON = { pending: '⚪', draft: '🟡', closed: '✅' };
+
+// Turns a Closing shift key ("2026-07-19_Night") into "19 Jul · Night".
+// Falls back to raw text for anything that doesn't parse (e.g. a
+// Settings/Dashboard page with no shift key — see auth.js's
+// active_key, only ever set while a shift is actually open).
+function _activeKeyLabel(key) {
+  if (!key) return 'Browsing (no shift open)';
+  const m = /^(\d{4})-(\d{2})-(\d{2})_(.+)$/.exec(key);
+  if (!m) return key;
+  const [, , mo, dd, shift] = m;
+  return dd + ' ' + MONTH_SHORT[parseInt(mo, 10) - 1] + ' · ' + shift;
+}
+
 function _onlineStaffBadge() {
   const online = ClosingBridge.getOnlineStaff();
   if (!online.length) return '';
   const names = online.map(s => s.name).join(', ');
   return '🟢 ' + names;
 }
+
+// Called by the badge's onclick (bridged to window below). Shows what
+// each online staff member is currently doing, derived from their
+// presence row's active_key — same data BT's own collision-free
+// dashboard already polls, just surfaced instead of only aggregated
+// into a name list.
+export function showOnlineStaffDetail() {
+  const online = ClosingBridge.getOnlineStaff();
+  if (!online.length) { alert('Nobody is currently signed into Closing.'); return; }
+  const lines = online.map(s => '• ' + s.name + ' — ' + _activeKeyLabel(s.active_key));
+  alert('Online in Closing right now:\n\n' + lines.join('\n'));
+}
+window.showOnlineStaffDetail = showOnlineStaffDetail;
 function _closingStatus() {
   if (!ClosingBridge.isConnected()) {
     return 'Not connected — tap 🔗 Data Bridge below to link';
@@ -280,9 +306,20 @@ function _updateHeroDate() {
   el.innerHTML = `<div class="d-day">${_esc(dayName)}</div><div>${_esc(dateStr)} · ${_esc(timeStr)}</div>`;
 }
 
+function _updateOnlinePill() {
+  const pill = document.getElementById('cover-online-pill');
+  if (!pill) return;
+  const online = ClosingBridge.getOnlineStaff();
+  if (!online.length) { pill.style.display = 'none'; return; }
+  pill.textContent = '🟢 ' + online.length + ' online in Closing — tap for details';
+  pill.style.display = 'inline-flex';
+}
+
 export function renderCoverDashboard() {
   const container = document.getElementById('cover-container');
   if (!container) return;
+
+  _updateOnlinePill();
 
   const headline = _salesHeadline();
   const pace = _targetPace();

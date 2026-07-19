@@ -145,7 +145,7 @@ export async function refreshOnlineStaff(force) {
     try {
       const client = _getClient();
       if (!client) return getOnlineStaff();
-      const { data, error } = await client.from('staff_presence').select('staff_id, name, last_seen');
+      const { data, error } = await client.from('staff_presence').select('staff_id, name, last_seen, active_key');
       if (error) throw error;
       _setLocal(PRESENCE_CACHE_KEY, JSON.stringify(data || []));
       _setLocal(PRESENCE_CACHE_KEY + '_at', String(Date.now()));
