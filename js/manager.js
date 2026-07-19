@@ -1556,7 +1556,17 @@ async function setStaffLogin() {
     const { data, error } = await _sb().functions.invoke('set-staff-login', {
       body: { staffId: sid, pin: pin.trim() },
     });
-    if (error) throw error;
+    if (error) {
+      // supabase-js only gives a generic "non-2xx status code" message on
+      // FunctionsHttpError — the actual reason is in the response body,
+      // reachable via error.context (the raw Response object).
+      let detail = error.message;
+      try {
+        const body = await error.context.json();
+        if (body?.error) detail = body.error;
+      } catch { /* body wasn't JSON or context unavailable — keep generic message */ }
+      throw new Error(detail);
+    }
     if (data?.error) throw new Error(data.error);
     toast('✓ Login set for ' + sid + ' (phone ' + data.phone + ')');
   } catch (e) {
