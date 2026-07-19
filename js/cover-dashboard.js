@@ -121,13 +121,21 @@ function _notesheetsStatus() {
 }
 
 const SHIFT_ICON = { pending: '⚪', draft: '🟡', closed: '✅' };
+function _onlineStaffBadge() {
+  const online = ClosingBridge.getOnlineStaff();
+  if (!online.length) return '';
+  const names = online.map(s => s.name).join(', ');
+  return '🟢 ' + names;
+}
 function _closingStatus() {
   if (!ClosingBridge.isConnected()) {
     return 'Not connected — tap 🔗 Data Bridge below to link';
   }
   const summary = ClosingBridge.getCachedSummary();
-  if (!summary) return 'Live shift register — Fazal Din\u2019s Pharma Plus';
+  const badge = _onlineStaffBadge();
+  if (!summary) return (badge || 'Live shift register — Fazal Din\u2019s Pharma Plus');
   const parts = summary.shifts.map(s => SHIFT_ICON[s.status] + ' ' + s.shift);
+  if (badge) parts.push(badge);
   return parts.join('  ·  ');
 }
 
@@ -201,13 +209,14 @@ function _closingLatestSummary() {
   const rec = latest.rec;
   const { totalBooks, totalManRet } = _closingBookBillsAndReturnsSince(cdb, latest.key);
   const val = `${_clFmtDate(latest.date)} · ${latest.shift}`;
+  const savedBy = ClosingBridge.getSavedBy(latest.key);
   const stats = [
     { icon: '💳', cls: 'cc', label: 'Carried CC',      value: n(rec.outPrevCC) },
     { icon: '🏦', cls: 'dep', label: 'Deposits',        value: n(rec.outTotalF) },
     { icon: '📚', cls: 'books', label: 'Book Bills',    value: totalBooks },
     { icon: '↩️', cls: 'ret', label: 'Manual Returns',  value: totalManRet },
   ];
-  return { label: 'Latest Closing Summary', value: val, stats };
+  return { label: 'Latest Closing Summary', value: val, sub: savedBy ? `Saved by ${savedBy}` : '', stats };
 }
 
 function _closingLatestCredit() {
@@ -236,7 +245,7 @@ function _tiles() {
     { page: 'dashboard', icon: '📊', title: 'Sales',           status: _salesStatus(),   enabled: true, group: 'Sales' },
     { page: 'manager',   icon: '👔', title: 'Manager',          status: _managerStatus(), enabled: true, group: 'Manager' },
     { page: 'notesheets',icon: '📑', title: 'Notes & Sheets',   status: _notesheetsStatus(), enabled: true, group: 'Notes & Sheets' },
-    { href: 'https://closing.duapharma.com', icon: '🔒', title: 'Closing', status: _closingStatus(), enabled: true, bridgeAction: 'closingBridgeButtonClick', group: 'Closing' },
+    { href: 'https://closing.duapharma.com', icon: '🔒', title: 'Closing', status: _closingStatus(), enabled: true, group: 'Closing' },
     { page: 'closing-book',   icon: '📖', title: 'Closing Book',  status: 'Every closing, laid out like a printed register', enabled: true, group: 'Closing' },
     { page: 'credit-ledger',  icon: '💳', title: 'Credit Ledger', status: 'Credit + Misc/Ongoing snapshot history',           enabled: true, group: 'Closing' },
     { href: 'https://random.duapharma.com',  icon: '🧾', title: 'Audit',   status: _auditStatus(),   enabled: true, group: 'Audit' },
@@ -291,6 +300,7 @@ export function renderCoverDashboard() {
     <div class="cover-hero-card cover-closing-summary-card">
       <div class="cover-hero-label">${_esc(h.label)}</div>
       <div class="cover-hero-value">${_esc(h.value)}</div>
+      ${h.sub ? `<div class="cover-hero-sub">${_esc(h.sub)}</div>` : ''}
       ${h.stats && h.stats.length ? `
       <div class="ccs-stat-grid">
         ${h.stats.map(s => `
