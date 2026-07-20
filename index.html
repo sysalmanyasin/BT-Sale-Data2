@@ -1791,12 +1791,11 @@ if ('serviceWorker' in navigator) {
 -->
 
 <!-- 1b. Shared service layer -->
-<script defer src="js/bt-format.js"></script>
+<script type="module" src="js/bt-format.js"></script>
 <script type="module" src="js/print.js"></script>
-<script defer src="js/bt-date.js"></script>
-<script defer src="js/bt-calc.js"></script>
-<script defer src="js/bt-search.js"></script>
-<script defer src="js/app-context.js"></script>
+<script type="module" src="js/bt-date.js"></script>
+<script type="module" src="js/bt-search.js"></script>
+<script type="module" src="js/app-context.js"></script>
 
 <!-- 2. Config: Floor 2 state store — protected MONTHLY/DAILY/STAFF + utils -->
 <script type="module" src="js/config.js"></script>
@@ -1809,6 +1808,15 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/event-bus.js"></script>
 <script type="module" src="js/repository.js"></script>
 <script type="module" src="js/actions.js"></script>
+
+<!-- Boot guard — classic defer script placed right here on purpose: it
+     runs after the module block above (module + defer scripts share one
+     document-order execution queue) and before every other classic
+     defer feature script below. If Repository/Actions/config's state
+     globals aren't on window by the time this runs, the load order
+     broke somewhere and this fails loud instead of every page silently
+     showing blank/wrong data. See js/boot-guard.js for the full reasoning. -->
+<script defer src="js/boot-guard.js"></script>
 
 <!-- Ledger — generalized module (config.js/repository.js/event-bus.js
      dependency). Wired into Manager's Expense tab, Other Sections, and
@@ -1880,7 +1888,7 @@ if ('serviceWorker' in navigator) {
 <script defer src="js/data-page.js"></script>
 <script defer src="js/diff-report.js"></script>
 <script defer src="js/commandhub-page.js"></script>
-<script defer src="js/commandhub.js"></script>
+<script type="module" src="js/commandhub.js"></script>
 
 <!-- 11b. Reports print helpers (extracted from manager.js — Step 8) -->
 <script defer src="js/reports-print.js"></script>
@@ -1897,8 +1905,31 @@ if ('serviceWorker' in navigator) {
 <!-- 11e-patch. Sheets enhancements: copy/paste, File menu, Supabase sync -->
 <script defer src="js/sheets-patch.js"></script>
 
-<!-- 12. Manager: salary, generic, expense, credit, petty, incentive -->
-<script defer src="js/manager.js"></script>
+<!-- 12. Manager: salary, generic, expense, credit, petty, incentive.
+     Split from one 1906-line manager.js monolith into focused modules
+     (see each file's own header comment for why it's shaped the way
+     it is). manager-shared.js first — everything else depends on it. -->
+<script type="module" src="js/manager-shared.js"></script>
+<script type="module" src="js/manager-staff.js"></script>
+<script type="module" src="js/manager-salary.js"></script>
+<script type="module" src="js/manager-generic.js"></script>
+<script type="module" src="js/manager-credit.js"></script>
+<script type="module" src="js/manager-unmatched.js"></script>
+<script type="module" src="js/manager-reports.js"></script>
+<script type="module" src="js/manager-petty.js"></script>
+<script type="module" src="js/manager-incentive.js"></script>
+<!-- app-init.js: the actual whole-app bootstrap (was misplaced at the
+     bottom of manager.js despite having nothing to do with Manager —
+     see its header comment). Needs everything above (renderStaffRegistry
+     etc.) available on window before it can safely run, and everything
+     below (rebuildAll, showPage, renderEntryList, etc.) too — same
+     reasoning as boot-guard.js placement. -->
+<script type="module" src="js/app-init.js"></script>
+<!-- manager-page.js: tab switching + page-load orchestration. Deliberately
+     classic, not a module — jazz-cash.js/custom-sections.js/notes-sheets.js
+     monkey-patch its functions and depend on sloppy-mode global semantics
+     to do it. See the file's own header comment before changing this. -->
+<script defer src="js/manager-page.js"></script>
 
 <!-- 13. Custom spreadsheet sections (manager add-on) -->
 <script defer src="js/custom-sections.js"></script>

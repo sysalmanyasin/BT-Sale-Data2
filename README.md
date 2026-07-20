@@ -43,8 +43,10 @@ User → Action → Repository → Data → State → Event Bus → Pages → Co
 - **Floor 1 (Repository)** — `repository.js`, `config.js`. Owns
   `localStorage`/IndexedDB. The only place raw storage is touched
   (a few named, deliberate exceptions: `closing-bridge.js`/
-  `audit-bridge.js` for local-only external caches/secrets — not app
-  business data).
+  `audit-bridge.js`/`inventory-bridge.js` for local-only external
+  caches/secrets — not app business data. All three read-only bridges
+  into sibling apps' own Supabase-backed data follow the same pattern;
+  see each file's own header comment for its specific reasoning).
 - **Floor 2 (State)** — the actual in-memory arrays/objects
   (`DAILY`/`MONTHLY`/`STAFF`), guarded by a write-detection Proxy in
   `config.js` (catches raw mutation on the array itself — not on a
@@ -101,10 +103,11 @@ through the Event Bus.
   + snapshot model; old keys kept untouched as a safety net.
 - **Print** — one engine (`print.js`), every report is a caller into
   it, never a reimplementation.
-- **Closing / Audit bridges** — read-only, local-only caches of two
-  sibling apps' data (Dropbox export for Closing, direct Supabase read
-  for Audit). Not app business data; don't route through
-  Actions/EventBus by design.
+- **Closing / Audit / Inventory bridges** — read-only, local-only
+  caches of sibling apps' data (Dropbox export for Closing, direct
+  Supabase read for Audit and for Inventory — the latter two share one
+  Supabase project, different tables). Not app business data; don't
+  route through Actions/EventBus by design.
 
 ## Working conventions for future sessions
 
