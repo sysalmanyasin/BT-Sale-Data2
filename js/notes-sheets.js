@@ -2235,6 +2235,15 @@ function _nsSpDeleteSheet(id) {
 ══════════════════════════════════════════════════════════════════════ */
 
 function _nsSFLoad() { return _nsWBList(); }
+// Bridged to window: cover-dashboard.js (already a module) and
+// app-context.js (being converted) both do `typeof _nsSFLoad ===
+// 'function'` — a bare-identifier check that can only ever be true in a
+// classic script sharing this file's scope. Neither of those two ever
+// saw it before this bridge existed, so both were silently falling back
+// to a legacy storage key that stops updating once the workbook
+// migration above runs. Purely additive: nothing in this file's own
+// behavior changes.
+window._nsSFLoad = _nsSFLoad;
 // Takes the same array shape _nsSFLoad() returns and writes it back as
 // the workbook dict, preserving activeFileId — this is what lets
 // _nsSFRename/_nsSFEditCategory/_nsSFDuplicate below stay so close to

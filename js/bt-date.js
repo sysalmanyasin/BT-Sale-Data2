@@ -1,9 +1,18 @@
 // ══════════════════════════════════════════════════════════════════════
 // BTDate — Step 3: Single source of truth for date logic
-// Consumed by: Config, CommandHub, Assistant, Manager, Custom Sections
+// Consumed by (verified via grep, not the stale list this comment used to
+// have — config.js does NOT actually reference BTDate): ai-bridge.js,
+// commandhub-page.js, commandhub.js, dashboard.js, hub-actions.js, manager.js.
+//
+// Module-migration Stage B: now a real ES module. Window bridge below
+// stays until all six classic-script consumers above are converted too.
+// (bt-calc.js, originally planned as the next file in this batch, turned
+// out to be fully dead code — zero consumers anywhere, superseded by
+// config.js's own cashSales/creditSales/branchScore/yearlyCAGR — and was
+// deleted instead of converted.)
 // ══════════════════════════════════════════════════════════════════════
 
-const BTDate = Object.freeze({
+export const BTDate = Object.freeze({
   monthNames: ['January','February','March','April','May','June',
                'July','August','September','October','November','December'],
   monthShort: ['Jan','Feb','Mar','Apr','May','Jun',
@@ -47,3 +56,9 @@ const BTDate = Object.freeze({
     return `${BTDate.monthNames[next.getMonth()]} ${next.getFullYear()}`;
   },
 });
+
+// TEMPORARY WINDOW BRIDGE — remove once ai-bridge.js, commandhub-page.js,
+// commandhub.js, dashboard.js, hub-actions.js, manager.js (the six
+// remaining classic-script consumers, verified via grep) are themselves
+// converted to `import { BTDate } from './bt-date.js'`.
+window.BTDate = BTDate;

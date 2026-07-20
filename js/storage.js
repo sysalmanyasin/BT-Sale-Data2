@@ -8,6 +8,15 @@
 // disconnected window property instead of updating the real binding.
 let _curPage = '';
 
+// Read-only getter, safe to bridge to window: this doesn't touch the
+// reassignment concern above (ui.js still writes the bare `_curPage`
+// directly, in the same shared classic-script scope as before) — it
+// just gives modules (which can't see that shared scope at all) a way
+// to read the current live value. Added for app-context.js's module
+// conversion; harmless to any existing classic-script consumer.
+function getCurrentPage() { return _curPage; }
+window.getCurrentPage = getCurrentPage;
+
 (function() {
 'use strict';
 

@@ -37,7 +37,24 @@
  *   - type="text" to suppress native search-clear button
  *   - Fuzzy subsequence only for queries ≥ 3 chars
  *   - loadManagerPage() called before switchMgrTab()
+ *
+ * Module-migration Stage B: converted from classic <script defer> to a
+ * real ES module. Verified via grep this file has zero external
+ * consumers (nothing else references `CommandHub.`), so this conversion
+ * only had to get its OWN dependencies right, not worry about breaking
+ * anyone downstream. Real imports below replace the `typeof X !==
+ * 'undefined'` guards for BTFormat/BTDate/BTSearch/Actions/Repository —
+ * those five all have real module exports now. getAppContext (from
+ * app-context.js, still a classic script) is left as a bare identifier;
+ * it resolves via that file's existing `window.getAppContext = ...`
+ * bridge, same as before.
  */
+import { BTFormat } from './bt-format.js';
+import { BTDate } from './bt-date.js';
+import { BTSearch } from './bt-search.js';
+import { Actions } from './actions.js';
+import { Repository } from './repository.js';
+
 (function (global) {
   'use strict';
 
@@ -259,31 +276,17 @@
   /* ═══════════════════════════════════════════════════════════════════════
      FUZZY SEARCH ENGINE
   ═══════════════════════════════════════════════════════════════════════ */
-  // Step 10: delegate to BTSearch (bt-search.js) with inline fallback
+  // Step 10: delegate to BTSearch (bt-search.js). Was previously a
+  // `typeof BTSearch !== 'undefined'` guard with a duplicate inline
+  // fallback — removed now that this is a real `import`, which is
+  // guaranteed to resolve or fail the whole module load, so the
+  // fallback branch could never actually run.
   function norm(s) {
-    return (typeof BTSearch !== 'undefined') ? BTSearch.norm(s) : String(s || '').toLowerCase().trim();
+    return BTSearch.norm(s);
   }
 
   function score(text, query) {
-    if (typeof BTSearch !== 'undefined') return BTSearch.score(text, query);
-    const t = norm(text), q = norm(query);
-    if (!q) return 50;
-    if (t === q) return 100;
-    if (t.startsWith(q)) return 95;
-    if (t.includes(q)) return 85;
-    const qWords = q.split(/\s+/);
-    if (qWords.length > 1 && qWords.every(w => t.includes(w))) return 80;
-    if (qWords.some(w => w.length >= 2 && t.includes(w))) return 60;
-    if (q.length >= 3) {
-      let ti = 0;
-      for (let qi = 0; qi < q.length; qi++) {
-        while (ti < t.length && t[ti] !== q[qi]) ti++;
-        if (ti >= t.length) return 0;
-        ti++;
-      }
-      return 35;
-    }
-    return 0;
+    return BTSearch.score(text, query);
   }
 
   function esc(s) {
@@ -295,43 +298,31 @@
   /* ═══════════════════════════════════════════════════════════════════════
      NUMBER HELPERS
   ═══════════════════════════════════════════════════════════════════════ */
-  // Step 10: delegate to BTFormat (bt-format.js) with inline fallback
+  // Step 10: delegate to BTFormat (bt-format.js). Fallback branches
+  // removed for the same reason as BTSearch above.
   function _n(v) {
-    return (typeof BTFormat !== 'undefined') ? BTFormat.num(v) :
-      ((v == null || v === '' || isNaN(parseFloat(v))) ? 0 : parseFloat(v));
+    return BTFormat.num(v);
   }
   function fmtAmt(v) {
-    if (typeof BTFormat !== 'undefined') return BTFormat.compact(v);
-    const a = Math.abs(Math.round(v));
-    if (a >= 1e6) return '₨ ' + (v / 1e6).toFixed(2) + 'M';
-    if (a >= 1000) return '₨ ' + Math.round(v).toLocaleString('en-PK');
-    return '₨ ' + String(Math.round(v));
+    return BTFormat.compact(v);
   }
 
   /* ═══════════════════════════════════════════════════════════════════════
      DATE HELPERS
   ═══════════════════════════════════════════════════════════════════════ */
-  // Step 10: delegate to BTDate (bt-date.js) with inline fallback arrays
-  const MON_NAMES = (typeof BTDate !== 'undefined') ? BTDate.monthNames :
-    ['January','February','March','April','May','June',
-     'July','August','September','October','November','December'];
-  const MON_SHORT = (typeof BTDate !== 'undefined') ? BTDate.monthShort :
-    ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-
+  // Step 10: delegate to BTDate (bt-date.js). Fallback arrays and
+  // branches removed for the same reason as BTSearch/BTFormat above —
+  // MON_NAMES/MON_SHORT were only ever read inside those dead branches.
   function todayStr() {
-    if (typeof BTDate !== 'undefined') return BTDate.today();
-    const d = new Date(), dd = String(d.getDate()).padStart(2, '0');
-    return `${dd}/${MON_SHORT[d.getMonth()]}/${d.getFullYear()}`;
+    return BTDate.today();
   }
 
   function currentMonthYear() {
-    if (typeof BTDate !== 'undefined') return BTDate.currentMonthYear();
-    const d = new Date();
-    return `${MON_NAMES[d.getMonth()]} ${d.getFullYear()}`;
+    return BTDate.currentMonthYear();
   }
 
   function currentYear() {
-    return (typeof BTDate !== 'undefined') ? BTDate.currentYear() : String(new Date().getFullYear());
+    return BTDate.currentYear();
   }
 
   /* ═══════════════════════════════════════════════════════════════════════

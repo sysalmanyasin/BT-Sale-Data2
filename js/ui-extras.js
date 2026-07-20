@@ -196,25 +196,35 @@
     return parseInt(p[1] || '0', 10) * 100 + (_MON_IDX[p[0]] || 0);
   }
 
+  // Actions is a module loaded before every classic <script defer> file
+  // (see index.html load order), so by the time ui-extras.js runs,
+  // window.Actions.loadFeatureData/saveTargets are guaranteed to exist.
+  // There used to be a silent localStorage fallback here for the case
+  // where they weren't — that fallback could never legitimately fire
+  // given the load order, so if Actions/saveTargets ever really is
+  // missing, it means something broke upstream (wrong load order, a
+  // rename, etc.), and silently writing straight to localStorage would
+  // hide that bug (bypassing Repository's stamping + EventBus notify)
+  // instead of surfacing it. Fail loud instead, matching the pattern
+  // config.js's _protectArray already uses for the same class of bug.
+  function _assertActionsAvailable(fnName) {
+    if (window.Actions && typeof Actions[fnName] === 'function') return true;
+    console.error('[Architecture] ui-extras.js: Actions.' + fnName + ' unavailable — ' +
+      'targets self-heal skipped this run. Check js load order in index.html.');
+    try { if (typeof toast === 'function') toast('⚠ Targets sync unavailable — check console', 'e'); } catch (e) {}
+    return false;
+  }
+
   function _loadTgts() {
+    if (!_assertActionsAvailable('loadFeatureData')) return {};
     var raw = '';
-    try {
-      raw = (window.Actions && typeof Actions.loadFeatureData === 'function')
-        ? (Actions.loadFeatureData('bt_targets') || '')
-        : (localStorage.getItem('bt_targets') || '');
-    } catch (e) {}
+    try { raw = Actions.loadFeatureData('bt_targets') || ''; } catch (e) {}
     try { return raw ? JSON.parse(raw) : {}; } catch (e) { return {}; }
   }
 
   function _saveTgts(tgts) {
-    var json = JSON.stringify(tgts);
-    try {
-      if (window.Actions && typeof Actions.saveTargets === 'function') {
-        Actions.saveTargets(json);
-      } else {
-        localStorage.setItem('bt_targets', json);
-      }
-    } catch (e) {}
+    if (!_assertActionsAvailable('saveTargets')) return;
+    try { Actions.saveTargets(JSON.stringify(tgts)); } catch (e) {}
   }
 
   function _refreshTargetUI() {

@@ -1,10 +1,13 @@
 // ══════════════════════════════════════════════════════════════════════
 // BTSearch — Step 10 extraction: Fuzzy search engine
 // Extracted from CommandHub. Standalone, no external dependencies.
-// Consumed by: CommandHub, Assistant (future record search)
+// Consumed by (verified via grep): commandhub.js.
+//
+// Module-migration Stage B: now a real ES module. Window bridge below
+// stays until commandhub.js is converted too.
 // ══════════════════════════════════════════════════════════════════════
 
-const BTSearch = Object.freeze({
+export const BTSearch = Object.freeze({
   norm(s) {
     return String(s || '').toLowerCase().trim();
   },
@@ -47,3 +50,7 @@ const BTSearch = Object.freeze({
       .map(x => x.item);
   },
 });
+
+// TEMPORARY WINDOW BRIDGE — remove once commandhub.js (the only consumer,
+// verified via grep) is converted to `import { BTSearch } from './bt-search.js'`.
+window.BTSearch = BTSearch;

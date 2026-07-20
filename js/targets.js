@@ -3,6 +3,12 @@
 // ══════════════════════════════════════════
 const TGT_K = 'bt_targets';
 function getTgts() { try{return JSON.parse(Repository.getItem(TGT_K)||'{}')}catch{return{}} }
+// Bridged to window: app-context.js is being converted to a real ES
+// module and needs this. Every existing consumer (analytics.js,
+// hub-actions.js, reports.js, reports-print.js, commandhub.js) keeps
+// using the bare identifier via shared classic-script scope, unaffected —
+// this is purely additive.
+window.getTgts = getTgts;
 
 function saveTarget() {
   const mon=document.getElementById('tgt-sel').value;

@@ -1,12 +1,37 @@
 // ══════════════════════════════════════════════════════════════════════
-(function() {
-'use strict';
 // AppContext — Unified read-only snapshot of application state
 // Consumed by: AI Bridge, Command Hub, Assistant Engine
 // Gives the AI full visibility into EVERY page: Dashboard, Index, Data,
 // Diff, and every tab inside Manager (Credit, Salary, Generic, Expense,
 // Petty Cash, Custom Sections) — not just the last few months.
+//
+// Module-migration Stage B: converted from classic <script defer> to a
+// real ES module. This conversion required fixing three things first,
+// not just adding imports — see sw.js's changelog and this session's
+// notes for full detail:
+//   1. getTgts (targets.js) was never bridged to window at all. Also
+//      fixed a real pre-existing bug in the process: this file used to
+//      check `window.getTgts` specifically, which was NEVER assigned
+//      anywhere in the repo, so ctx.targets silently was always {}.
+//   2. _curPage (storage.js) is deliberately never bridged to window
+//      (ui.js reassigns it directly — bridging would desync that write).
+//      Added a read-only getCurrentPage() getter instead, bridged to
+//      window, which doesn't touch that reassignment concern at all.
+//   3. _nsSFLoad (notes-sheets.js) was never bridged to window either —
+//      fixing this also fixes the same silent-fallback bug that was
+//      already live in cover-dashboard.js (already a module before this
+//      session), which has the identical `typeof _nsSFLoad` check.
+// getTgts, getCurrentPage, and _nsSFLoad are still classic-script-only
+// functions (targets.js, storage.js, notes-sheets.js aren't converted
+// yet), so they're referenced as bare identifiers below, resolving via
+// their new window bridges — not real imports, since there's nothing to
+// import yet. Everything else below IS a real import.
 // ══════════════════════════════════════════════════════════════════════
+import { MONTHLY, DAILY, STAFF, CLIENT_COLS, BANK_COLS, RETURN_FIELDS,
+         yearlyCAGR, branchScore, cashSales, creditSales } from './config.js';
+import { BTFormat } from './bt-format.js';
+import { Repository } from './repository.js';
+import { getAllLedgerTypes, getEntries, getCategoryList, getCurrentBalance } from './ledger-store.js';
 
 const MGR_STORAGE_KEY = 'BT_ManagerWork_v1';
 
@@ -15,22 +40,26 @@ function getAppContext() {
     monthly:      Array.isArray(MONTHLY)      ? MONTHLY      : [],
     daily:        Array.isArray(DAILY)        ? DAILY        : [],
     staff:        Array.isArray(STAFF)        ? STAFF        : [],
-    targets:      typeof window.getTgts === 'function' ? window.getTgts()  : {},
-    // CLIENT_COLS / BANK_COLS / RETURN_FIELDS are `const` in config.js and
-    // _curPage is `let` in storage.js — neither attaches to window, so
-    // window.X is always undefined.  Reference as bare identifiers instead.
+    // getTgts is still classic-script-only (targets.js) — see header note.
+    targets:      typeof getTgts === 'function' ? getTgts()  : {},
+    // CLIENT_COLS / BANK_COLS / RETURN_FIELDS ARE real exports of config.js
+    // and ARE bridged to window (confirmed via grep — this comment used to
+    // claim otherwise). currentPage now goes through storage.js's
+    // getCurrentPage() getter instead of the bare `_curPage` global, since
+    // _curPage itself is deliberately never bridged to window (see
+    // storage.js's comment — ui.js reassigns it directly).
     clientCols:   typeof CLIENT_COLS   !== 'undefined' ? CLIENT_COLS   : [],
     bankCols:     typeof BANK_COLS     !== 'undefined' ? BANK_COLS     : [],
     returnFields: typeof RETURN_FIELDS !== 'undefined' ? RETURN_FIELDS : new Set(),
-    currentPage:  typeof _curPage      !== 'undefined' ? _curPage      : '',
+    currentPage:  typeof getCurrentPage === 'function'  ? getCurrentPage() : '',
   });
 }
 
 function _acNum(v) {
-  return (typeof BTFormat !== 'undefined') ? BTFormat.num(v) : (isNaN(parseFloat(v)) ? 0 : parseFloat(v));
+  return BTFormat.num(v);
 }
 function _acFc(v) {
-  return (typeof BTFormat !== 'undefined') ? BTFormat.plain(v) : Math.round(v).toLocaleString('en-PK');
+  return BTFormat.plain(v);
 }
 function _acMgrLoad() {
   try { return JSON.parse(Repository.getItem(MGR_STORAGE_KEY) || '{}'); } catch (_) { return {}; }
@@ -72,11 +101,11 @@ function getAppContextSummary(opts) {
     const last        = M[M.length - 1];
     const prev        = M.length > 1 ? M[M.length - 2] : null;
     const activeStaff = ctx.staff.filter(function (s) { return s.active !== false; }).length;
-    const cagr        = (typeof yearlyCAGR === 'function') ? yearlyCAGR() : null;
+    const cagr        = yearlyCAGR();
     const tgts        = ctx.targets || {};
     const latTgt       = n(tgts[last.Month_Year]);
     const cumDiff      = M.reduce(function (s, m) { return s + Math.round(n(m.TOTAL) - n(m['COMP SALE'] || m['COMP_SALE'])); }, 0);
-    const bScore       = (typeof branchScore === 'function' && prev) ? branchScore(last, prev, latTgt, n(last.TOTAL)) : null;
+    const bScore       = prev ? branchScore(last, prev, latTgt, n(last.TOTAL)) : null;
 
     lines.push('=== DASHBOARD OVERVIEW (all-time, every page) ===');
     lines.push('Total months recorded: ' + M.length + ' | Total daily records: ' + D.length + ' | Date range: ' + dateRange);
@@ -105,12 +134,12 @@ function getAppContextSummary(opts) {
     lines.push('Format: Month: Total | Cash | Credit | Cust | LoadSale | CompSale | DIFF');
     M.forEach(function (m) {
       const tot   = n(m.TOTAL);
-      const cash  = (typeof cashSales === 'function') ? cashSales(m) : n(m['Cash_Sale'] || m['Cash Sale'] || 0);
+      const cash  = cashSales(m);
       const load  = n(m['Load_Sale'] || m['Load Sale'] || 0);
       const comp  = n(m['COMP_SALE'] || m['COMP SALE'] || 0);
       const diff  = tot - comp;
       const cust  = Math.round(n(m.Customers || m['Customers'] || 0));
-      const creditTotal = (typeof creditSales === 'function') ? creditSales(m) : (ctx.clientCols || []).reduce(function (s, c) { return s + n(m[c]); }, 0);
+      const creditTotal = creditSales(m);
       let line = m.Month_Year + ': \u20a8' + fc(tot) + ' | Cash \u20a8' + fc(cash) + ' | Credit \u20a8' + fc(creditTotal) + ' | Cust ' + cust;
       if (load > 0) line += ' | Load \u20a8' + fc(load);
       if (comp > 0) line += ' | Comp \u20a8' + fc(comp) + ' | DIFF ' + (diff >= 0 ? '+' : '') + fc(diff);
@@ -217,27 +246,30 @@ function getAppContextSummary(opts) {
   // here — both retired storage locations the live UI stopped writing
   // to once Expense/Jazz Cash/Other Sections moved onto the generalized
   // Ledger; those blocks always reported empty/stale data after that.
-  // Jazz Cash never had a block here at all before this — it does now. ──
+  // Jazz Cash never had a block here at all before this — it does now.
+  //
+  // Was `LedgerStore.getAllLedgerTypes()` etc against the window-only
+  // grouped object (ledger-store.js never exports a `LedgerStore`
+  // namespace via ES export, only individual named functions) — now
+  // imports those functions directly. ──
   try {
-    if (typeof LedgerStore !== 'undefined') {
-      const types = LedgerStore.getAllLedgerTypes();
-      const withEntries = types.filter(t => LedgerStore.getEntries(t.id).length);
-      if (withEntries.length) {
-        lines.push('=== MANAGER > LEDGER (Expense / Jazz Cash / Other Sections) ===');
-        withEntries.forEach(function (t) {
-          const cats = LedgerStore.getCategoryList(t.id);
-          const entries = LedgerStore.getEntries(t.id);
-          const bal = LedgerStore.getCurrentBalance(t.id);
-          lines.push('  ' + t.label + ' — current balance: ₨' + fc(bal) + ' (' + entries.length + ' entries)');
-          entries.forEach(function (e) {
-            const cat = cats.find(function (c) { return c.id === e.categoryId; });
-            const signed = (cat && cat.sign < 0 ? '-' : '') + '₨' + fc(e.amount);
-            const shiftTxt = e.shift ? ' [' + e.shift + ']' : '';
-            lines.push('    ' + e.date + shiftTxt + ' ' + (cat ? cat.label : e.categoryId) + (e.desc ? ' (' + e.desc + ')' : '') + ': ' + signed);
-          });
+    const types = getAllLedgerTypes();
+    const withEntries = types.filter(t => getEntries(t.id).length);
+    if (withEntries.length) {
+      lines.push('=== MANAGER > LEDGER (Expense / Jazz Cash / Other Sections) ===');
+      withEntries.forEach(function (t) {
+        const cats = getCategoryList(t.id);
+        const entries = getEntries(t.id);
+        const bal = getCurrentBalance(t.id);
+        lines.push('  ' + t.label + ' — current balance: ₨' + fc(bal) + ' (' + entries.length + ' entries)');
+        entries.forEach(function (e) {
+          const cat = cats.find(function (c) { return c.id === e.categoryId; });
+          const signed = (cat && cat.sign < 0 ? '-' : '') + '₨' + fc(e.amount);
+          const shiftTxt = e.shift ? ' [' + e.shift + ']' : '';
+          lines.push('    ' + e.date + shiftTxt + ' ' + (cat ? cat.label : e.categoryId) + (e.desc ? ' (' + e.desc + ')' : '') + ': ' + signed);
         });
-        lines.push('');
-      }
+      });
+      lines.push('');
     }
   } catch (_) {}
 
@@ -309,11 +341,10 @@ function getAppContextSummary(opts) {
   return lines.join('\n');
 }
 
-// Only these two are consumed by other files (ai-bridge.js, commandhub.js) —
-// everything else above (MGR_STORAGE_KEY, _acNum, _acFc, _acMgrLoad,
-// _acPettyTotalForMonth) is now properly private to this file instead of
-// sitting on window like the public API.
+// These two are consumed by other files still on classic <script> tags
+// (ai-bridge.js, commandhub.js) — everything else above (MGR_STORAGE_KEY,
+// _acNum, _acFc, _acMgrLoad, _acPettyTotalForMonth) stays private to this
+// file, same as before. Bridge kept for those two classic-script
+// consumers; will be removable once they're converted too.
 window.getAppContext = getAppContext;
 window.getAppContextSummary = getAppContextSummary;
-
-})();
