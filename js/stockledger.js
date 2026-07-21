@@ -147,7 +147,7 @@ window.StockLedgerApp = (function(){
           const recDays = daysSince(it.lastReceiveDate);
           const saleDays = daysSince(it.lastSaleDate);
           const hasSale = !!it.lastSaleDate;
-          const net100 = Number(it.netQty100Days)||0;
+          const net100 = Number(it.netQty90Days)||0;
     
           // Zero stock: nothing to value, pulled out entirely, reference only.
           if(stock === 0){
@@ -194,7 +194,7 @@ window.StockLedgerApp = (function(){
             }
           }
     
-          // 3. 100-day excess: netQty100Days is actually a 90-day net sold quantity
+          // 3. 100-day excess: netQty90Days is a trailing 90-day net sold quantity
           // (confirmed from the source SQL: DATEADD(DAY,-90,...)). Scale it to a
           // 100-day target stock level, then flag stock held beyond that target.
           // No pack rounding applied. Only items with an inventory (stock) unit
@@ -504,7 +504,7 @@ window.StockLedgerApp = (function(){
           [],
           ['Never Sold threshold (days)', state.neverSoldDays],
           ['Dead Stock threshold (days)', state.deadDays],
-          ['Sales window used (days)', 90, 'The source field is named netQty100Days but the SQL actually sums a trailing 90-day window. Target 100d stock = that 90-day quantity scaled to a 100-day equivalent.'],
+          ['Sales window used (days)', 90, 'The source field netQty90Days sums a trailing 90-day window. Target 100d stock = that 90-day quantity scaled to a 100-day equivalent.'],
           ['Report snapshot date', new Date()],
           [],
           ['How this workbook works'],
@@ -513,7 +513,7 @@ window.StockLedgerApp = (function(){
           ['The five report tabs link back to specific Data rows with formulas, so cell VALUES stay live if you edit Data. Their ROW MEMBERSHIP was fixed when this file was exported — re-export from the app after changing thresholds or loading new data to refresh which SKUs appear on each tab.'],
           ['Never Sold: no sale on record at all, received more than the threshold days ago.'],
           ['Dead Stock: HAS a sale on record, but not within the threshold window, and received more than that same window ago. Requiring a sale history keeps this mutually exclusive with Never Sold.'],
-          ['100-Day Excess: netQty100Days is actually a 90-day net sold quantity (see source SQL). Target 100d Stock = that 90-day quantity × (100/90) — the amount needed to cover 100 days at the current rate. Excess = stock beyond that target, only for items that sold something in the last 90 days AND have a stock quantity of 4 or more. No pack rounding.'],
+          ['100-Day Excess: netQty90Days is a 90-day net sold quantity (see source SQL). Target 100d Stock = that 90-day quantity × (100/90) — the amount needed to cover 100 days at the current rate. Excess = stock beyond that target, only for items that sold something in the last 90 days AND have a stock quantity of 4 or more. No pack rounding.'],
           ['Pack Size Issues: stock > 0 but conversionFactor is missing, zero, or invalid — excluded from Never Sold / Dead Stock, but still eligible for Excess.'],
           ['Zero Stock: stock = 0, reference only, excluded from all three calculated reports.'],
           ['Never Sold / Dead Stock quantities are down-rounded to full packs: INT(stock / pack) * pack.'],
@@ -537,7 +537,7 @@ window.StockLedgerApp = (function(){
             Number(it.stock)||0, Number(it.unitPrice)||0,
             (it.conversionFactor===undefined||it.conversionFactor===null||it.conversionFactor==='') ? '' : Number(it.conversionFactor),
             recD ? excelSerial(recD) : '', saleD ? excelSerial(saleD) : '',
-            Number(it.netQty100Days)||0,
+            Number(it.netQty90Days)||0,
             '','','','','','','','','','','','','','',''
           ]);
         });
@@ -646,7 +646,7 @@ window.StockLedgerApp = (function(){
           ['Code','A'], ['Item','B'], ['Company','C'], ['Stock','F'],
           ['Sold /90d','K'], ['Target 100d Stock','Z'], ['Excess Qty','S'],
           ['Unit Price','G',MONEY_FMT], ['Excess Value','T',MONEY_FMT],
-        ], 'netQty100Days is actually a 90-day net sold quantity (per the source SQL). Target 100d Stock = Sold/90d × (100/90). Excess = stock beyond that target, for items that sold something in the last 90 days and have a stock quantity of 4 or more. No pack rounding applied.',
+        ], 'netQty90Days is a 90-day net sold quantity (per the source SQL). Target 100d Stock = Sold/90d × (100/90). Excess = stock beyond that target, for items that sold something in the last 90 days and have a stock quantity of 4 or more. No pack rounding applied.',
         'T', [13,34,22,8,11,15,11,10,12]);
     
         reportSheet('Pack Size Issues', computed.packIssues, [
