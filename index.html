@@ -49,6 +49,7 @@
 <link rel="stylesheet" href="css/inventory-native.css">
 <link rel="stylesheet" href="css/stockledger.css">
 <link rel="stylesheet" href="css/excess-working.css">
+<link rel="stylesheet" href="css/reorder-report.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,400,0,0">
 <link rel="stylesheet" href="css/components.css">
 <link rel="stylesheet" href="css/modals.css">
@@ -265,6 +266,7 @@ if ('serviceWorker' in navigator) {
     <a class="ntab" href="#inventory" data-page="inventory" data-group="audit" data-domain-group="audit">📦 BT Inventory</a>
     <a class="ntab" href="#stockledger" data-page="stockledger" data-group="audit" data-domain-group="audit">📒 Stock Ledger</a>
     <a class="ntab" href="#excess" data-page="excess" data-group="audit" data-domain-group="audit">📉 Excess Working</a>
+    <a class="ntab" href="#reorder" data-page="reorder" data-group="audit" data-domain-group="audit">🛒 Reorder Report</a>
     <a class="ntab" href="#tools" data-page="tools" data-group="tools">Tools</a>
   </div>
   <div class="ntabs subnav" id="saledata-subnav" style="display:none">
@@ -298,6 +300,7 @@ if ('serviceWorker' in navigator) {
   <a class="bnav-item" href="#inventory" data-page="inventory" data-group="audit" data-domain-group="audit"><span class="bicon">📦</span><span class="blabel">BT Inventory</span></a>
   <a class="bnav-item" href="#stockledger" data-page="stockledger" data-group="audit" data-domain-group="audit"><span class="bicon">📒</span><span class="blabel">Stock Ledger</span></a>
   <a class="bnav-item" href="#excess" data-page="excess" data-group="audit" data-domain-group="audit"><span class="bicon">📉</span><span class="blabel">Excess</span></a>
+  <a class="bnav-item" href="#reorder" data-page="reorder" data-group="audit" data-domain-group="audit"><span class="bicon">🛒</span><span class="blabel">Reorder</span></a>
   <a class="bnav-item" href="#tools" data-page="tools" data-group="tools"><span class="bicon">⚙️</span><span class="blabel">Tools</span></a>
 </div>
 <!-- Sale Data sub-nav (mobile) -->
@@ -1028,6 +1031,35 @@ if ('serviceWorker' in navigator) {
 </main>
 
 <footer>Excess Working — reads live from Stock Ledger, figures update the moment that page's data changes.</footer>
+</section>
+
+<!-- REORDER REPORT — the inverse of Excess Working: flags items whose
+     stock cover (stock ÷ daily sale rate) is running under a chosen
+     threshold, ranks the shortfall by sale value, and shows how much to
+     buy. Reads straight from Stock Ledger's loaded inventory
+     (js/reorder-report.js pulls it from window.StockLedgerApp.getRawRows())
+     — load your inventory file on Stock Ledger first, then this page's
+     numbers follow automatically. See js/reorder-report.js. -->
+<section class="page reorder-app app-page" id="page-reorder">
+<header>
+  <p class="eyebrow">Replenishment</p>
+  <h1>Reorder Report</h1>
+  <p class="sub">Ranks items by sale value that are running low on stock cover for a chosen sales window (30/60/90d), against a "less than N days stock" threshold you set — a Top N buy list plus the full flagged list, groupable by supplier.</p>
+  <p class="asof" id="ror-asofLine"></p>
+</header>
+
+<div class="uploadwrap">
+  <div class="tabs" id="ror-tabs">
+    <button class="tab indigo ror-tab active" data-tab="topn">Top N</button>
+    <button class="tab rust ror-tab" data-tab="all">All Flagged</button>
+  </div>
+</div>
+
+<main id="ror-main" style="display:block;">
+  <div id="ror-body"></div>
+</main>
+
+<footer>Reorder Report — reads live from Stock Ledger, figures update the moment that page's data changes.</footer>
 </section>
 
 <!-- TOOLS -->
@@ -1846,6 +1878,7 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/inventory-native.js"></script>
 <script defer src="js/stockledger.js"></script>
 <script defer src="js/excess-working.js"></script>
+<script defer src="js/reorder-report.js"></script>
 
 <!-- 3. Auth: Google Sign-In -->
 <script defer src="js/auth.js"></script>
