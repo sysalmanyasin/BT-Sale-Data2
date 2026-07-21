@@ -4,13 +4,41 @@
 // see ledger-store.js/ledger-actions.js/ledger-page.js. This file keeps
 // only the Balance Tally feature, which has no equivalent there — it's
 // a wallet-reconciliation/snapshot tool, not a transaction ledger.)
+//
+// Module-migration: converted from classic <script defer> to a real ES
+// module, together with manager-page.js and notes-sheets.js (the three
+// files were entangled via a monkey-patch, now untangled — see
+// manager-page.js's header comment). Repository/Actions/LedgerStore
+// below are real imports now (they had no `typeof` guard before this
+// change — they were called unconditionally, so this is a pure
+// correctness upgrade, not a behavior change). renderLedgerView and
+// pushToSupabase are left as bare identifiers guarded by `typeof`,
+// same as before — their source files (ledger-page.js is a module but
+// doesn't export renderLedgerView; supabase.js is still classic) don't
+// give this file anything better to import yet, so they keep resolving
+// via window the same way they did as a classic script.
+//
+// This file's own functions are called two ways from outside its own
+// module scope, both of which need an explicit `window.X = X` bridge
+// now that top-level declarations are module-scoped instead of
+// implicitly global: (1) manager-page.js calls renderJazzCash()
+// directly; (2) this file's own generated HTML uses inline
+// onclick/onchange attributes (jcSwitchTab, _tally*, etc.), which
+// always execute in global scope regardless of where the HTML came
+// from. See the bridge list at the bottom.
 // ══════════════════════════════════════════════════════════════════
 
-// ─── LEDGER constants — kept only because drive.js/supabase.js still
-// back up the frozen legacy blob under this key, and the one-time
-// migration button below reads it. Nothing writes through here anymore. ───
-const JC_KEY     = 'bt_jazzcash_v2';
-const JC_MIGRATED_FLAG = 'bt_jazzcash_ledger_migrated_v1';
+import { Repository } from './repository.js';
+import { Actions } from './actions.js';
+import { LedgerStore } from './ledger-store.js';
+
+// ─── LEDGER constant — the one-time migration into the unified Ledger
+// has already been run for this app's data. Nothing in this file
+// reads/writes this key anymore. It's kept ONLY because drive.js/
+// supabase.js still back up the frozen legacy blob under this key as
+// a safety net — do not remove until those two files stop referencing
+// it too. ───
+const JC_KEY = 'bt_jazzcash_v2';
 
 // ─── TALLY constants ─────────────────────────────────────────────
 const JC_TALLY_KEY = 'bt_jc_tally_v1';
@@ -47,8 +75,8 @@ function _jcFmtDate(ds) {
 
 // ══════════════════════════════════════════════════════════════════
 // LEDGER — current balance (reads the generalized Ledger now; the old
-// jcLoad()/jcSave() pair that read/wrote JC_KEY directly is gone along
-// with the rest of the old ledger UI — see header comment)
+// jcLoad()/jcSave() pair that read/wrote JC_KEY directly, and the
+// one-time migration banner/button, are both gone — see header comment)
 // ══════════════════════════════════════════════════════════════════
 function _jcCurrentBalance() {
   return (typeof LedgerStore !== 'undefined' && LedgerStore.getCurrentBalance)
@@ -106,49 +134,29 @@ function jcSwitchTab(tab) {
 
 // ══════════════════════════════════════════════════════════════════
 // LEDGER PANEL — thin wrapper around the generalized Ledger
-// (renderLedgerView, from ledger-page.js). Shows a one-time migration
-// banner if old bt_jazzcash_v2 data exists and hasn't been moved over
-// yet; the move itself is explicit/confirmed, never automatic — see
-// ledger-migration.js's header comment.
+// (renderLedgerView, from ledger-page.js). The one-time migration off
+// old bt_jazzcash_v2 data has already been run, so this is just a
+// direct render — no migration banner/button anymore.
 // ══════════════════════════════════════════════════════════════════
 function _renderLedger() {
   const panel = document.getElementById('jc-panel-ledger');
   if (!panel) return;
 
-  const alreadyMigrated = Repository.getItem(JC_MIGRATED_FLAG) === '1';
-  let legacyHasData = false;
-  if (!alreadyMigrated) {
-    try {
-      const raw = Repository.getItem(JC_KEY);
-      const d = raw ? JSON.parse(raw) : null;
-      legacyHasData = !!(d && Array.isArray(d.entries) && d.entries.length);
-    } catch (e) {}
-  }
-
-  panel.innerHTML = `
-    ${legacyHasData ? `
-    <div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:10px;padding:14px;margin-bottom:14px">
-      <div style="font-weight:700;font-size:13px;margin-bottom:6px">⚠ Old Jazz Cash data found</div>
-      <div style="font-size:12px;color:var(--t2);line-height:1.5;margin-bottom:10px">This ledger now runs on the app's unified Ledger. Your previous Jazz Cash entries haven't been moved over yet — migrate them once below. Nothing is deleted; your old data stays backed up either way.</div>
-      <button id="jc-migrate-btn" style="background:#d97706;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer">Migrate old Jazz Cash entries →</button>
-    </div>` : ''}
-    <div id="jc-ledger-inner"></div>
-  `;
-
-  const btn = document.getElementById('jc-migrate-btn');
-  if (btn) btn.onclick = function () {
-    if (!confirm('Migrate your existing Jazz Cash ledger entries into the new Ledger? This only needs to run once.')) return;
-    const result = (typeof migrateJazzCashToLedger === 'function') ? migrateJazzCashToLedger() : { migrated: 0 };
-    Actions.saveFeatureData(JC_MIGRATED_FLAG, '1');
-    toast(`✓ Migrated ${result.migrated} Jazz Cash entries`);
-    _renderLedger();
-  };
+  panel.innerHTML = `<div id="jc-ledger-inner"></div>`;
 
   if (typeof renderLedgerView === 'function') {
     renderLedgerView('jc-ledger-inner', 'jazzcash', '📒 Jazz Cash');
   }
 }
 
+
+// _jcSelectTallyDate — inline onclick/onchange handlers in the HTML
+// below can't assign `_jcTallyDate = ...` directly and have it stick:
+// that HTML executes in global scope, so a bare assignment to a
+// module-scoped variable would silently create an unrelated
+// `window._jcTallyDate` global instead of updating this module's own
+// binding. Route through this bridged function instead.
+function _jcSelectTallyDate(d) { _jcTallyDate = d; _renderTally(); }
 
 // ══════════════════════════════════════════════════════════════════
 function _renderTally() {
@@ -192,7 +200,7 @@ function _renderTally() {
       <div>
         <label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">TALLY DATE</label>
         <input type="date" id="tally-date" value="${_jcTallyDate}"
-          onchange="_jcTallyDate=this.value;_renderTally()"
+          onchange="_jcSelectTallyDate(this.value)"
           style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text);outline:none">
       </div>
       <div>
@@ -247,7 +255,7 @@ function _renderTally() {
       <div style="background:var(--s2);padding:11px 16px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px">🕐 Snapshot History</div>
       ${snaps.map(s=>{
         const sd=s.total-s.appTarget;
-        return `<div onclick="_jcTallyDate='${s.date}';_renderTally()" style="padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:12px;transition:background .1s" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">
+        return `<div onclick="_jcSelectTallyDate('${s.date}')" style="padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:12px;transition:background .1s" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">
           <div style="flex:1">
             <div style="font-weight:700;font-size:13px">${_jcFmtDate(s.date)}</div>
             <div style="font-size:11px;color:var(--muted);margin-top:2px">${s.accounts?.length||0} accounts</div>
@@ -363,10 +371,25 @@ function _tallyDeleteSnap(date) {
   _tallySave(_jcTallyData); _renderTally(); toast('✓ Snapshot deleted');
 }
 
-// ── Hook into Manager page load ───────────────────────────────────
-window.addEventListener('load', function() {
-  if (typeof loadManagerPage==='function') {
-    const _orig=loadManagerPage;
-    loadManagerPage=function() { _orig(); renderJazzCash(); };
-  }
-});
+// renderJazzCash() is called directly from manager-page.js's
+// loadManagerPage() and switchMgrTab() now — see that file. This used
+// to instead monkey-patch `loadManagerPage` from here, which was the
+// reason this file (and manager-page.js, and notes-sheets.js) had to
+// stay classic scripts; see manager-page.js's header comment for the
+// full history of why that's no longer necessary.
+
+// ── Window bridge ────────────────────────────────────────────────
+// renderJazzCash: called by manager-page.js as a bare identifier.
+// Everything else here: called from this file's own generated HTML via
+// inline onclick/onchange attributes, which always run in global
+// scope — a plain module-scoped function declaration is invisible to
+// them without this bridge.
+window.renderJazzCash    = renderJazzCash;
+window.jcSwitchTab       = jcSwitchTab;
+window._jcSelectTallyDate = _jcSelectTallyDate;
+window._tallyLiveCalc    = _tallyLiveCalc;
+window._tallySaveSnapshot = _tallySaveSnapshot;
+window._tallyAddAccount  = _tallyAddAccount;
+window._tallyRenameAcc   = _tallyRenameAcc;
+window._tallyRemoveAcc   = _tallyRemoveAcc;
+window._tallyDeleteSnap  = _tallyDeleteSnap;

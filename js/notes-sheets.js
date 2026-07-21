@@ -7,7 +7,41 @@
  * ║   📊 Sheets — Google Sheets-quality grid with ribbon & formulas      ║
  * ║   🔗 Data   — read-only live view of DAILY / MONTHLY / STAFF        ║
  * ╚═══════════════════════════════════════════════════════════════════════╝
+ *
+ * Module-migration: converted from classic <script defer> to a real ES
+ * module, together with manager-page.js and jazz-cash.js (the three
+ * files were entangled via a monkey-patch, now untangled — see
+ * manager-page.js's header comment). Repository/Actions/STAFF/MONTHLY/
+ * DAILY below are real imports now (Repository/Actions were called
+ * unconditionally before this change, with no `typeof` guard — pure
+ * correctness upgrade, not a behavior change; STAFF/MONTHLY/DAILY did
+ * have guards, left in place since they're harmless once the import
+ * guarantees the value exists). XLSX/toast/pushToSupabase are left as
+ * bare identifiers guarded by `typeof`, same as before.
+ *
+ * This file's own functions are called two ways from outside its own
+ * module scope, both needing an explicit `window.X = X` bridge now
+ * that top-level declarations are module-scoped instead of implicitly
+ * global: (1) manager-page.js calls renderNotesSheets() directly, and
+ * a handful of other classic scripts call a few Sheets-file functions
+ * (see the bridge list at the bottom for exactly which); (2) this
+ * file's own generated HTML — 2700+ lines of it — dispatches almost
+ * everything through inline onclick/onchange/oninput attributes, which
+ * always execute in global scope regardless of where the HTML came
+ * from. Found and fixed 6 real bugs this conversion would otherwise
+ * have introduced: _nsMgsSearch/_nsMgsSort/_nsMgsGroup/_nsNoteSearch/
+ * _nsDataSource/_nsDataSearch were all assigned directly from inline
+ * handlers (e.g. `onchange="_nsDataSource=this.value;..."`), which
+ * would have silently created disconnected `window.*` globals instead
+ * of updating this module's own state, once top-level `var` stopped
+ * being implicitly global. Each now routes through a small setter
+ * function instead (`_nsSetDataSource`, etc.) — same pattern as
+ * jazz-cash.js's `_jcSelectTallyDate`, added for the same reason.
  */
+
+import { Repository } from './repository.js';
+import { Actions } from './actions.js';
+import { STAFF, MONTHLY, DAILY } from './config.js';
 
 /* ══════════════════════════════════════════════════════════════════════
    STYLES
@@ -527,6 +561,15 @@ var _nsMgsSort   = (Repository.getItem('bt_mgs_sort')  || 'created_desc');
 var _nsMgsGroup  = (Repository.getItem('bt_mgs_group') || 'category');
 var _nsMgsSearch = '';
 var _nsMgsCollapsed = {};
+// Setters for the three vars above — inline onchange/oninput handlers in
+// the generated HTML below can't assign these module-scoped vars
+// directly and have it stick (that HTML runs in global scope; a bare
+// assignment would silently create a disconnected window.* global
+// instead). Route through these instead. See jazz-cash.js's
+// _jcSelectTallyDate for the same pattern with the same reasoning.
+function _nsSetMgsSearch(v, host) { _nsMgsSearch = v; _nsRenderManage(host); }
+function _nsSetMgsSort(v, host)   { _nsMgsSort = v; Actions.saveFeatureData('bt_mgs_sort', v); _nsRenderManage(host); }
+function _nsSetMgsGroup(v, host)  { _nsMgsGroup = v; Actions.saveFeatureData('bt_mgs_group', v); _nsRenderManage(host); }
 function _nsEsc(s)       { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -572,6 +615,7 @@ function _nsRenderPanel() {
    NOTES PANEL  (unchanged from original)
 ══════════════════════════════════════════════════════════════════════ */
 var _nsNoteSearch = '';
+function _nsSetNoteSearch(v) { _nsNoteSearch = v; _nsRenderPanel(); } // see _nsSetMgsSearch for why this indirection is needed
 
 function _nsRenderNotes(host) {
   const notes = _nsNotesLoad();
@@ -600,7 +644,7 @@ function _nsRenderNotes(host) {
     <div style="display:flex;flex-direction:column;height:100%">
       <div class="ns-notes-toolbar">
         <input class="ns-search-box" placeholder="Search notes…" value="${_nsEsc(_nsNoteSearch)}"
-          oninput="_nsNoteSearch=this.value;_nsRenderPanel()">
+          oninput="_nsSetNoteSearch(this.value)">
         <button class="ns-btn primary" onclick="_nsNewNote()">+ New Note</button>
       </div>
       <div class="ns-notes-list">${cards}</div>
@@ -2532,8 +2576,8 @@ function _nsRenderManage(host) {
     <div class="ns-mgs">
       <div class="ns-mgs-toolbar">
         <input class="ns-mgs-search" placeholder="🔍 Search files by name or category…"
-          value="${_nsEsc(_nsMgsSearch)}" oninput="_nsMgsSearch=this.value;_nsRenderManage(document.getElementById('ns-panel-host'))">
-        <select class="ns-mgs-select" onchange="_nsMgsSort=this.value;Actions.saveFeatureData('bt_mgs_sort',this.value);_nsRenderManage(document.getElementById('ns-panel-host'))">
+          value="${_nsEsc(_nsMgsSearch)}" oninput="_nsSetMgsSearch(this.value,document.getElementById('ns-panel-host'))">
+        <select class="ns-mgs-select" onchange="_nsSetMgsSort(this.value,document.getElementById('ns-panel-host'))">
           <option value="created_desc" ${_nsMgsSort==='created_desc'?'selected':''}>🕓 Newest Created</option>
           <option value="created_asc"  ${_nsMgsSort==='created_asc' ?'selected':''}>🕓 Oldest Created</option>
           <option value="updated_desc" ${_nsMgsSort==='updated_desc'?'selected':''}>✏ Recently Updated</option>
@@ -2541,7 +2585,7 @@ function _nsRenderManage(host) {
           <option value="name_asc"     ${_nsMgsSort==='name_asc'    ?'selected':''}>🔤 Name A–Z</option>
           <option value="name_desc"    ${_nsMgsSort==='name_desc'   ?'selected':''}>🔤 Name Z–A</option>
         </select>
-        <select class="ns-mgs-select" onchange="_nsMgsGroup=this.value;Actions.saveFeatureData('bt_mgs_group',this.value);_nsRenderManage(document.getElementById('ns-panel-host'))">
+        <select class="ns-mgs-select" onchange="_nsSetMgsGroup(this.value,document.getElementById('ns-panel-host'))">
           <option value="category" ${_nsMgsGroup==='category'?'selected':''}>🗂 Group by Type</option>
           <option value="none"     ${_nsMgsGroup==='none'    ?'selected':''}>📋 No Grouping</option>
         </select>
@@ -2657,19 +2701,21 @@ function _nsMgsCardHTML(f) {
 ══════════════════════════════════════════════════════════════════════ */
 var _nsDataSource = 'monthly';
 var _nsDataSearch = '';
+function _nsSetDataSource(v) { _nsDataSource = v; _nsRenderPanel(); } // see _nsSetMgsSearch for why this indirection is needed
+function _nsSetDataSearch(v) { _nsDataSearch = v; _nsRenderPanel(); }
 
 function _nsRenderData(host) {
   host.innerHTML = `
     <div style="display:flex;flex-direction:column;height:100%">
       <div class="ns-data-toolbar">
-        <select class="ns-data-select" onchange="_nsDataSource=this.value;_nsRenderPanel()">
+        <select class="ns-data-select" onchange="_nsSetDataSource(this.value)">
           <option value="monthly" ${_nsDataSource==='monthly'?'selected':''}>📅 Monthly Summary</option>
           <option value="daily"   ${_nsDataSource==='daily'?'selected':''}>📆 Daily Records</option>
           <option value="staff"   ${_nsDataSource==='staff'?'selected':''}>👤 Staff Registry</option>
         </select>
         <input class="ns-search-box" style="flex:1;min-width:100px" placeholder="Filter…"
           value="${_nsEsc(_nsDataSearch)}"
-          oninput="_nsDataSearch=this.value;_nsRenderPanel()">
+          oninput="_nsSetDataSearch(this.value)">
         <button class="ns-btn" onclick="_nsExportDataXLSX()">⬇ XLSX</button>
       </div>
       <div class="ns-data-table-wrap" id="ns-data-table-host"></div>
@@ -2741,13 +2787,83 @@ function _nsExportDataXLSX() {
   if (typeof toast === 'function') toast('✅ XLSX exported.');
 }
 
-/* ══════════════════════════════════════════════════════════════════════
-   HOOK INTO switchMgrTab
-══════════════════════════════════════════════════════════════════════ */
-var _nsSwitchMgrTabOrig = (typeof switchMgrTab === 'function') ? switchMgrTab : null;
-if (_nsSwitchMgrTabOrig) {
-  switchMgrTab = function(tab) {
-    _nsSwitchMgrTabOrig(tab);
-    if (tab === 'sheets') renderNotesSheets();
-  };
-}
+/* renderNotesSheets() is called directly from manager-page.js's
+   switchMgrTab() now — see that file. This used to instead
+   monkey-patch `switchMgrTab` from here, which was the reason this
+   file (and manager-page.js, and jazz-cash.js) had to stay classic
+   scripts; see manager-page.js's header comment for the full history
+   of why that's no longer necessary. */
+
+// ── Window bridge ────────────────────────────────────────────────
+// renderNotesSheets: called by manager-page.js as a bare identifier.
+// The rest: called from this file's own generated HTML via inline
+// onclick/onchange/oninput, or (a handful) from other still-classic
+// files (commandhub-page.js, ai-bridge.js) — see this file's header
+// comment. All always run in global scope, so a plain module-scoped
+// function declaration is invisible to them without this bridge.
+window._nsCloseEditor = _nsCloseEditor;
+window._nsDeleteNote = _nsDeleteNote;
+window._nsExportDataXLSX = _nsExportDataXLSX;
+window._nsMgsToggleGroup = _nsMgsToggleGroup;
+window._nsNewNote = _nsNewNote;
+window._nsOpenNote = _nsOpenNote;
+window._nsSFCloseManager = _nsSFCloseManager;
+window._nsSFDelete = _nsSFDelete;
+window._nsSFDuplicate = _nsSFDuplicate;
+window._nsSFEditCategory = _nsSFEditCategory;
+window._nsSFExportXLSX = _nsSFExportXLSX;
+window._nsSFLoad = _nsSFLoad;
+window._nsSFLoad_ = _nsSFLoad_;
+window._nsSFOpenManager = _nsSFOpenManager;
+window._nsSFOverwrite = _nsSFOverwrite;
+window._nsSFRename = _nsSFRename;
+window._nsSFSaveAs = _nsSFSaveAs;
+window._nsSaveNote = _nsSaveNote;
+window._nsSetDataSearch = _nsSetDataSearch;
+window._nsSetDataSource = _nsSetDataSource;
+window._nsSetMgsGroup = _nsSetMgsGroup;
+window._nsSetMgsSearch = _nsSetMgsSearch;
+window._nsSetMgsSort = _nsSetMgsSort;
+window._nsSetNoteSearch = _nsSetNoteSearch;
+window._nsSetPanel = _nsSetPanel;
+window._nsSpAddCols = _nsSpAddCols;
+window._nsSpAddRows = _nsSpAddRows;
+window._nsSpAddSheet = _nsSpAddSheet;
+window._nsSpApplyFmt = _nsSpApplyFmt;
+window._nsSpAutoFit = _nsSpAutoFit;
+window._nsSpClearAll = _nsSpClearAll;
+window._nsSpClearFmt = _nsSpClearFmt;
+window._nsSpCloseCtx = _nsSpCloseCtx;
+window._nsSpCloseSort = _nsSpCloseSort;
+window._nsSpCopy = _nsSpCopy;
+window._nsSpDeleteCol = _nsSpDeleteCol;
+window._nsSpDeleteRow = _nsSpDeleteRow;
+window._nsSpDeleteSelection = _nsSpDeleteSelection;
+window._nsSpDeleteSheet = _nsSpDeleteSheet;
+window._nsSpDoSort = _nsSpDoSort;
+window._nsSpDuplicateSheet = _nsSpDuplicateSheet;
+window._nsSpExportXLSX = _nsSpExportXLSX;
+window._nsSpFreezeFirstRow = _nsSpFreezeFirstRow;
+window._nsSpGoToCell = _nsSpGoToCell;
+window._nsSpImportXLSX = _nsSpImportXLSX;
+window._nsSpInsertCol = _nsSpInsertCol;
+window._nsSpInsertCurrentDate = _nsSpInsertCurrentDate;
+window._nsSpInsertFormula = _nsSpInsertFormula;
+window._nsSpInsertNow = _nsSpInsertNow;
+window._nsSpInsertRow = _nsSpInsertRow;
+window._nsSpPaste = _nsSpPaste;
+window._nsSpPickBgColor = _nsSpPickBgColor;
+window._nsSpPickFgColor = _nsSpPickFgColor;
+window._nsSpPrint = _nsSpPrint;
+window._nsSpRedo = _nsSpRedo;
+window._nsSpRenameSheet = _nsSpRenameSheet;
+window._nsSpSelectAll = _nsSpSelectAll;
+window._nsSpSelectCol = _nsSpSelectCol;
+window._nsSpSelectRow = _nsSpSelectRow;
+window._nsSpSetRibbonTab = _nsSpSetRibbonTab;
+window._nsSpShowSort = _nsSpShowSort;
+window._nsSpSwitchSheet = _nsSpSwitchSheet;
+window._nsSpToggleFmt = _nsSpToggleFmt;
+window._nsSpUndo = _nsSpUndo;
+window._nsTogglePin = _nsTogglePin;
+window.renderNotesSheets = renderNotesSheets;

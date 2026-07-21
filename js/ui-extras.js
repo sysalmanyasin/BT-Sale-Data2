@@ -182,8 +182,10 @@
   // 3a. SELF-HEAL: auto-create targets for every month that's missing one
   // ─────────────────────────────────────────────────────────────────────
   // Called on load (and again when Tools tab opens).  Reads window.MONTHLY
-  // (the global sales data array — loaded by data-base.js) and compares
-  // every Month_Year entry against bt_targets.  Any month that exists in
+  // (the global sales data array, populated by config.js/repository.js —
+  // NOT data-base.js, which was unused dead code and has been removed)
+  // and compares every Month_Year entry against bt_targets.  Any month
+  // that exists in
   // the data but has no target gets one created, carrying the nearest
   // chronologically-previous target forward (or 0 if none exists yet).
   // ─────────────────────────────────────────────────────────────────────

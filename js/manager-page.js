@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════════════════
-// MANAGER — PAGE SHELL  (classic script — deliberately NOT an ES module)
+// MANAGER — PAGE SHELL
 //
 // Split out of the old manager.js monolith, along with manager-shared/
 // -staff/-salary/-generic/-credit/-unmatched/-reports/-petty/-incentive.
@@ -7,29 +7,34 @@
 // and the two "save/populate everything" cross-cutting functions that
 // call into every sub-tab.
 //
-// WHY THIS STAYS CLASSIC, NOT A MODULE: switchMgrTab and loadManagerPage
-// are monkey-patched by three other still-classic files — jazz-cash.js
-// and custom-sections.js both reassign loadManagerPage (jazz-cash.js
-// captures the original first, then wraps it to also call
-// renderJazzCash()); notes-sheets.js reassigns switchMgrTab the same
-// way. That patching relies on sloppy-mode global-function semantics:
-// `window.loadManagerPage = wrapped` and the bare identifier
-// `loadManagerPage` are literally the same binding in a classic script's
-// global scope, so every caller — including calls made from *inside*
-// this file — automatically picks up the patched version.
+// UNTANGLED (previously the reason this file, jazz-cash.js, and
+// notes-sheets.js all had to stay classic scripts): jazz-cash.js used
+// to monkey-patch loadManagerPage, and notes-sheets.js used to
+// monkey-patch switchMgrTab, both relying on sloppy-mode global-
+// function semantics that only classic scripts have. Both patches are
+// gone now — this file calls renderJazzCash()/renderNotesSheets()
+// directly instead (guarded with `typeof X === 'function'`, same
+// pattern already used below for renderLedgerView/
+// renderOtherSectionsManager, since jazz-cash.js/notes-sheets.js don't
+// export real ES bindings yet).
 //
-// An ES module does NOT have that property: a module's top-level
-// `function loadManagerPage(){}` is scoped to the module, not to
-// `window`. If this were a module, the three sibling files' patches
-// would only ever update a `window.loadManagerPage` *copy* — any call
-// to the bare `loadManagerPage()` identifier from inside this file (or
-// any other classic script) would keep calling the original, unpatched
-// version, silently breaking Jazz Cash's and Notes-Sheets' hook. staffLoad
-// travels with them for the same reason (loadManagerPage calls it
-// directly). Revisit this once jazz-cash.js/custom-sections.js/
-// notes-sheets.js are themselves migrated to modules that import
-// loadManagerPage directly instead of patching a global.
+// Module-migration: with the untangling above done, this file — and
+// jazz-cash.js and notes-sheets.js — are now converted to real ES
+// modules, in the same pass. Repository is a real import below (was
+// already called unconditionally, no `typeof` guard, so this is a
+// pure correctness upgrade). switchMgrTab/loadManagerPage/
+// saveAllManagerSections/populateDashWorking are called as bare
+// identifiers from 9 other files (ai-bridge.js, ai-context-ui.js,
+// commandhub.js/commandhub-page.js, dashboard.js, hub-actions.js,
+// jazz-cash.js, notes-sheets.js, quick-add.js, ui.js) and once from an
+// inline onclick in index.html — all still classic scripts/HTML, so
+// all four get an explicit `window.X = X` bridge below (previously
+// implicit, since classic-script top-level functions attach to
+// `window` automatically; a module's don't). staffLoad has zero
+// outside callers (checked via grep) so it's left unbridged.
 // ══════════════════════════════════════════════════════════════════════
+
+import { Repository } from './repository.js';
 
 function switchMgrTab(tab) {
   document.querySelectorAll('.mgr-tab').forEach(b => b.classList.toggle('active', b.dataset.mtab === tab));
@@ -44,6 +49,7 @@ function switchMgrTab(tab) {
   } catch(_) {}
   if (tab === 'staff') renderStaffRegistry();
   if (tab === 'jazzcash' && typeof renderJazzCash === 'function') renderJazzCash();
+  if (tab === 'sheets' && typeof renderNotesSheets === 'function') renderNotesSheets();
   if (tab === 'expense' && typeof renderLedgerView === 'function') {
     renderLedgerView('ledger-expense-container', 'expense', 'Expense');
   }
@@ -56,6 +62,7 @@ function switchMgrTab(tab) {
 function loadManagerPage() {
   staffLoad();
   renderStaffRegistry();
+  if (typeof renderJazzCash === 'function') renderJazzCash();
   const mons = mgrMonths();
   const cur = mons[0] || '';
   _mgrPopSel('sal-month-sel', cur);
@@ -123,3 +130,12 @@ function populateDashWorking(mon) {
     el('dw-incentive').textContent = fmt(incNet || '');
   }
 }
+
+// ── Window bridge ────────────────────────────────────────────────
+// See header comment for exactly who calls each of these as a bare
+// identifier and why they need this now that top-level function
+// declarations are module-scoped instead of implicitly global.
+window.switchMgrTab = switchMgrTab;
+window.loadManagerPage = loadManagerPage;
+window.saveAllManagerSections = saveAllManagerSections;
+window.populateDashWorking = populateDashWorking;

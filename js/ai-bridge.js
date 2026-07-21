@@ -4,7 +4,35 @@
 // Groq (Llama 3.3 70B) is the permanent AI — no setup needed.
 // Rule-based parsers run first for instant responses.
 // Groq handles everything else — natural language, analytics, actions.
+//
+// Module-migration: converted from classic <script defer> to a real ES
+// module. Consumers checked via grep: ai-context.js, ai-helpers.js, and
+// commandhub-page.js all call this file's functions as bare identifiers
+// (e.g. `aiBridgeAnswer(text)`, `typeof _callGroqVision === 'function'`)
+// rather than `window.aiBridgeAnswer`. All three are still classic
+// scripts, and a bare-identifier read in ANY script (classic or module)
+// falls back to the global object when nothing local shadows it — so
+// the `window.X = X` bridges at the bottom of this file are kept
+// exactly as before; those three files need no changes.
+//
+// Real imports below replace the `typeof X !== 'undefined'` guards for
+// Repository/BTDate/LedgerStore/LedgerActions/STAFF/MONTHLY — those six
+// now have real module exports. The guards themselves are left in place
+// rather than stripped: unlike the BTSearch/BTFormat/BTDate cleanup in
+// commandhub.js, none of them wrap a duplicate fallback implementation
+// here — they're just defensive early-returns/toasts, so removing them
+// would be pure churn for zero behavior change. getAppContext/
+// getAppContextSummary (app-context.js), showPage/toast (ui.js), and
+// every Manager/print/report function are left as bare identifiers —
+// those source files don't export real ES bindings yet, so they still
+// resolve via their own window bridges, same as before this change.
 // ══════════════════════════════════════════════════════════════════════
+
+import { Repository } from './repository.js';
+import { BTDate } from './bt-date.js';
+import { LedgerStore } from './ledger-store.js';
+import { LedgerActions } from './ledger-actions.js';
+import { STAFF, MONTHLY } from './config.js';
 
 // ── Groq Configuration ────────────────────────────────────────────────
 (function() {
