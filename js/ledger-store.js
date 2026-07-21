@@ -8,9 +8,10 @@
 // calculation, reused everywhere instead of rebuilt per feature.
 //
 // Real ES module from day one — no window-bridge compromise, since
-// nothing in the existing app depends on this yet. Pages/Actions that
-// want to use this import it directly: `import { LedgerStore } from
-// './ledger-store.js'`.
+// nothing in the existing app depends on this yet. This file only has
+// named exports (no default/`LedgerStore` binding) — Pages/Actions that
+// want to use this must import the whole namespace: `import * as
+// LedgerStore from './ledger-store.js'`.
 // ══════════════════════════════════════════════════════════════════════
 
 import { Repository } from './repository.js';

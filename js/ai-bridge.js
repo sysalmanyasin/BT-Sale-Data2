@@ -30,7 +30,7 @@
 
 import { Repository } from './repository.js';
 import { BTDate } from './bt-date.js';
-import { LedgerStore } from './ledger-store.js';
+import * as LedgerStore from './ledger-store.js';
 import { LedgerActions } from './ledger-actions.js';
 import { STAFF, MONTHLY } from './config.js';
 

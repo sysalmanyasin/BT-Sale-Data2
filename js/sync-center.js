@@ -299,7 +299,7 @@ function _sc_showInactivityWarning(graceSec) {
 
   _sc_warningTimer = setTimeout(() => {
     if (_sc_status === STATUS_ACTIVE && _sc_warningShown) {
-      _sc_becomePassive('Inactivity timeout');
+      _sc_becomePassiveImpl('Inactivity timeout');
     }
     banner.remove();
   }, graceSec * 1000 + 200);
@@ -341,7 +341,7 @@ async function _sc_becomeActive(reason) {
   }
 }
 
-async function _sc_becomePassive(reason, pullRemote = false) {
+async function _sc_becomePassiveImpl(reason, pullRemote = false) {
   _sc_status            = STATUS_PASSIVE;
   _sc_activeSince       = null;
   _sc_priorityLock      = false;
@@ -361,7 +361,7 @@ async function _sc_becomePassive(reason, pullRemote = false) {
   }
 }
 // F8: shim passes pullRemote=false (safe default) when called from dynamic HTML.
-window._sc_becomePassive = (reason) => _sc_becomePassive(reason, false);
+window._sc_becomePassive = (reason) => _sc_becomePassiveImpl(reason, false);
 
 // ══════════════════════════════════════════════════════════════════════════
 // PUBLIC ACTIONS
@@ -477,7 +477,7 @@ function _sc_startSessionRealtime() {
           && _sc_status === STATUS_ACTIVE) {
         _sc_addLog(`👑 Ownership taken by ${changed.device_name || changed.device_id} — now PASSIVE`);
         toast(`📱 ${changed.device_name || 'Another device'} took write control`, 'w');
-        await _sc_becomePassive(`Ownership taken by ${changed.device_name || changed.device_id}`, true);
+        await _sc_becomePassiveImpl(`Ownership taken by ${changed.device_name || changed.device_id}`, true);
         return;
       }
       _sc_renderAll();

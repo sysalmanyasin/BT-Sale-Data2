@@ -30,7 +30,7 @@
 
 import { Repository } from './repository.js';
 import { Actions } from './actions.js';
-import { LedgerStore } from './ledger-store.js';
+import * as LedgerStore from './ledger-store.js';
 
 // ─── LEDGER constant — the one-time migration into the unified Ledger
 // has already been run for this app's data. Nothing in this file
