@@ -40,27 +40,27 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 
 <!-- CSS Modules — load order matters -->
-<link rel="stylesheet" href="css/variables.css">
-<link rel="stylesheet" href="css/auth.css">
-<link rel="stylesheet" href="css/nav.css">
-<link rel="stylesheet" href="css/closing-native.css">
-<link rel="stylesheet" href="css/closing-book-print.css">
-<link rel="stylesheet" href="css/audit-native.css">
-<link rel="stylesheet" href="css/inventory-native.css">
-<link rel="stylesheet" href="css/stockledger.css">
-<link rel="stylesheet" href="css/excess-working.css">
-<link rel="stylesheet" href="css/reorder-report.css">
+<link rel="stylesheet" href="css/variables.css?v=20260722a">
+<link rel="stylesheet" href="css/auth.css?v=20260722a">
+<link rel="stylesheet" href="css/nav.css?v=20260722a">
+<link rel="stylesheet" href="css/closing-native.css?v=20260722a">
+<link rel="stylesheet" href="css/closing-book-print.css?v=20260722a">
+<link rel="stylesheet" href="css/audit-native.css?v=20260722a">
+<link rel="stylesheet" href="css/inventory-native.css?v=20260722a">
+<link rel="stylesheet" href="css/stockledger.css?v=20260722a">
+<link rel="stylesheet" href="css/excess-working.css?v=20260722a">
+<link rel="stylesheet" href="css/reorder-report.css?v=20260722a">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,400,0,0">
-<link rel="stylesheet" href="css/components.css">
-<link rel="stylesheet" href="css/modals.css">
-<link rel="stylesheet" href="css/pages.css">
-<link rel="stylesheet" href="css/cover-dashboard.css">
-<link rel="stylesheet" href="css/mobile.css">
-<link rel="stylesheet" href="css/assistant.css">
-<link rel="stylesheet" href="css/assistant-fixes.css">
-  <link rel="stylesheet" href="css/intent-groups.css">
-  <link rel="stylesheet" href="css/ai-instructions.css">
-  <link rel="stylesheet" href="css/ai-context.css">
+<link rel="stylesheet" href="css/components.css?v=20260722a">
+<link rel="stylesheet" href="css/modals.css?v=20260722a">
+<link rel="stylesheet" href="css/pages.css?v=20260722a">
+<link rel="stylesheet" href="css/cover-dashboard.css?v=20260722a">
+<link rel="stylesheet" href="css/mobile.css?v=20260722a">
+<link rel="stylesheet" href="css/assistant.css?v=20260722a">
+<link rel="stylesheet" href="css/assistant-fixes.css?v=20260722a">
+  <link rel="stylesheet" href="css/intent-groups.css?v=20260722a">
+  <link rel="stylesheet" href="css/ai-instructions.css?v=20260722a">
+  <link rel="stylesheet" href="css/ai-context.css?v=20260722a">
 
 <!-- Service Worker registration -->
 <script>
@@ -1823,23 +1823,23 @@ if ('serviceWorker' in navigator) {
 -->
 
 <!-- 1b. Shared service layer -->
-<script type="module" src="js/bt-format.js"></script>
-<script type="module" src="js/print.js"></script>
-<script type="module" src="js/bt-date.js"></script>
-<script type="module" src="js/bt-search.js"></script>
-<script type="module" src="js/app-context.js"></script>
+<script type="module" src="js/bt-format.js?v=20260722a"></script>
+<script type="module" src="js/print.js?v=20260722a"></script>
+<script type="module" src="js/bt-date.js?v=20260722a"></script>
+<script type="module" src="js/bt-search.js?v=20260722a"></script>
+<script type="module" src="js/app-context.js?v=20260722a"></script>
 
 <!-- 2. Config: Floor 2 state store — protected MONTHLY/DAILY/STAFF + utils -->
-<script type="module" src="js/config.js"></script>
+<script type="module" src="js/config.js?v=20260722a"></script>
 
 <!-- 2b. Floor 3: event bus, then Repository (Floor 1), then Actions (Floor 3)
      — strict order, and ALL FOUR of these must load before anything else,
      because auth.js/storage.js/ui.js/sync-center.js reference
      Repository/Actions/EventBus immediately (not just inside deferred
      event-listener callbacks), so they need these already executed. -->
-<script type="module" src="js/event-bus.js"></script>
-<script type="module" src="js/repository.js"></script>
-<script type="module" src="js/actions.js"></script>
+<script type="module" src="js/event-bus.js?v=20260722a"></script>
+<script type="module" src="js/repository.js?v=20260722a"></script>
+<script type="module" src="js/actions.js?v=20260722a"></script>
 
 <!-- Boot guard — classic defer script placed right here on purpose: it
      runs after the module block above (module + defer scripts share one
@@ -1848,7 +1848,7 @@ if ('serviceWorker' in navigator) {
      globals aren't on window by the time this runs, the load order
      broke somewhere and this fails loud instead of every page silently
      showing blank/wrong data. See js/boot-guard.js for the full reasoning. -->
-<script defer src="js/boot-guard.js"></script>
+<script defer src="js/boot-guard.js?v=20260722a"></script>
 
 <!-- Ledger — generalized module (config.js/repository.js/event-bus.js
      dependency). Wired into Manager's Expense tab, Other Sections, and
@@ -1864,146 +1864,146 @@ if ('serviceWorker' in navigator) {
      sync-center.js, which was too late for these bridges.) -->
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 
-<script type="module" src="js/ledger-store.js"></script>
-<script type="module" src="js/ledger-actions.js"></script>
-<script type="module" src="js/ledger-migration.js"></script>
-<script type="module" src="js/ledger-page.js"></script>
-<script type="module" src="js/cover-dashboard.js"></script>
-<script type="module" src="js/staff-notes.js"></script>
-<script type="module" src="js/closing-bridge.js"></script>
-<script type="module" src="js/closing-native.js"></script>
-<script type="module" src="js/audit-bridge.js"></script>
-<script type="module" src="js/audit-native.js"></script>
-<script type="module" src="js/inventory-bridge.js"></script>
-<script type="module" src="js/inventory-native.js"></script>
-<script defer src="js/stockledger.js"></script>
-<script defer src="js/excess-working.js"></script>
-<script defer src="js/reorder-report.js"></script>
+<script type="module" src="js/ledger-store.js?v=20260722a"></script>
+<script type="module" src="js/ledger-actions.js?v=20260722a"></script>
+<script type="module" src="js/ledger-migration.js?v=20260722a"></script>
+<script type="module" src="js/ledger-page.js?v=20260722a"></script>
+<script type="module" src="js/cover-dashboard.js?v=20260722a"></script>
+<script type="module" src="js/staff-notes.js?v=20260722a"></script>
+<script type="module" src="js/closing-bridge.js?v=20260722a"></script>
+<script type="module" src="js/closing-native.js?v=20260722a"></script>
+<script type="module" src="js/audit-bridge.js?v=20260722a"></script>
+<script type="module" src="js/audit-native.js?v=20260722a"></script>
+<script type="module" src="js/inventory-bridge.js?v=20260722a"></script>
+<script type="module" src="js/inventory-native.js?v=20260722a"></script>
+<script defer src="js/stockledger.js?v=20260722a"></script>
+<script defer src="js/excess-working.js?v=20260722a"></script>
+<script defer src="js/reorder-report.js?v=20260722a"></script>
 
 <!-- 3. Auth: Google Sign-In -->
-<script defer src="js/auth.js"></script>
+<script defer src="js/auth.js?v=20260722a"></script>
 
 <!-- 4. Storage: IndexedDB + render cache + nav state -->
-<script defer src="js/storage.js"></script>
+<script defer src="js/storage.js?v=20260722a"></script>
 
 <!-- 5. UI: showPage, toast, clock, rebuild, dropdowns -->
-<script defer src="js/ui.js"></script>
+<script defer src="js/ui.js?v=20260722a"></script>
 
 <!-- 6b. Sync center (needs EventBus). Supabase client lib itself now
      loads much earlier above — see comment there. -->
-<script defer src="js/sync-center.js"></script>
+<script defer src="js/sync-center.js?v=20260722a"></script>
 
 <!-- 6c2. Conflict UI (Floor 4/5) — DOM code that reacts to Repository/Actions -->
-<script defer src="js/conflict-ui.js"></script>
+<script defer src="js/conflict-ui.js?v=20260722a"></script>
 
 <!-- 6d. Supabase sync (Floor 1 extension — needs Repository + Actions) -->
-<script defer src="js/supabase.js"></script>
+<script defer src="js/supabase.js?v=20260722a"></script>
 
 <!-- 7. Targets: monthly target management -->
-<script defer src="js/targets.js"></script>
+<script defer src="js/targets.js?v=20260722a"></script>
 
 <!-- 8. Analytics: Floor 3 KPI computation — must load before dashboard.js -->
-<script defer src="js/analytics.js"></script>
+<script defer src="js/analytics.js?v=20260722a"></script>
 
 <!-- 8b. Dashboard: Floor 5 pure renderer -->
-<script defer src="js/dashboard.js"></script>
+<script defer src="js/dashboard.js?v=20260722a"></script>
 
 <!-- 8b. Dashboard Insights: briefing card, target pace, rotating insight strip, diff badge (Phase 3) -->
-<script defer src="js/dashboard-insights.js"></script>
+<script defer src="js/dashboard-insights.js?v=20260722a"></script>
 
 <!-- 9. Index page: year/month grid rendering -->
-<script defer src="js/index-page.js"></script>
+<script defer src="js/index-page.js?v=20260722a"></script>
 
 <!-- 10. Reports: day modal, month modal, all print helpers -->
-<script defer src="js/reports.js"></script>
+<script defer src="js/reports.js?v=20260722a"></script>
 
 <!-- 11. Data page: daily table + entry form -->
-<script defer src="js/data-page.js"></script>
-<script defer src="js/diff-report.js"></script>
-<script defer src="js/commandhub-page.js"></script>
-<script type="module" src="js/commandhub.js"></script>
+<script defer src="js/data-page.js?v=20260722a"></script>
+<script defer src="js/diff-report.js?v=20260722a"></script>
+<script defer src="js/commandhub-page.js?v=20260722a"></script>
+<script type="module" src="js/commandhub.js?v=20260722a"></script>
 
 <!-- 11b. Reports print helpers (extracted from manager.js — Step 8) -->
-<script defer src="js/reports-print.js"></script>
+<script defer src="js/reports-print.js?v=20260722a"></script>
 
 <!-- 11c. Manager Summary Export (Phase 5) -->
-<script defer src="js/manager-export.js"></script>
+<script defer src="js/manager-export.js?v=20260722a"></script>
 
 <!-- 11d. AI Helpers: scan/OCR pipeline extracted from ai-page.js (Phase 6) -->
-<script defer src="js/ai-helpers.js"></script>
+<script defer src="js/ai-helpers.js?v=20260722a"></script>
 
 <!-- 11e. Notes & Sheets workspace (Phase 6) -->
-<script type="module" src="js/notes-sheets.js"></script>
+<script type="module" src="js/notes-sheets.js?v=20260722a"></script>
 
 <!-- 11e-patch. Sheets enhancements: copy/paste, File menu, Supabase sync -->
-<script defer src="js/sheets-patch.js"></script>
+<script defer src="js/sheets-patch.js?v=20260722a"></script>
 
 <!-- 12. Manager: salary, generic, expense, credit, petty, incentive.
      Split from one 1906-line manager.js monolith into focused modules
      (see each file's own header comment for why it's shaped the way
      it is). manager-shared.js first — everything else depends on it. -->
-<script type="module" src="js/manager-shared.js"></script>
-<script type="module" src="js/manager-staff.js"></script>
-<script type="module" src="js/manager-salary.js"></script>
-<script type="module" src="js/manager-generic.js"></script>
-<script type="module" src="js/manager-credit.js"></script>
-<script type="module" src="js/manager-unmatched.js"></script>
-<script type="module" src="js/manager-reports.js"></script>
-<script type="module" src="js/manager-petty.js"></script>
-<script type="module" src="js/manager-incentive.js"></script>
+<script type="module" src="js/manager-shared.js?v=20260722a"></script>
+<script type="module" src="js/manager-staff.js?v=20260722a"></script>
+<script type="module" src="js/manager-salary.js?v=20260722a"></script>
+<script type="module" src="js/manager-generic.js?v=20260722a"></script>
+<script type="module" src="js/manager-credit.js?v=20260722a"></script>
+<script type="module" src="js/manager-unmatched.js?v=20260722a"></script>
+<script type="module" src="js/manager-reports.js?v=20260722a"></script>
+<script type="module" src="js/manager-petty.js?v=20260722a"></script>
+<script type="module" src="js/manager-incentive.js?v=20260722a"></script>
 <!-- app-init.js: the actual whole-app bootstrap (was misplaced at the
      bottom of manager.js despite having nothing to do with Manager —
      see its header comment). Needs everything above (renderStaffRegistry
      etc.) available on window before it can safely run, and everything
      below (rebuildAll, showPage, renderEntryList, etc.) too — same
      reasoning as boot-guard.js placement. -->
-<script type="module" src="js/app-init.js"></script>
+<script type="module" src="js/app-init.js?v=20260722a"></script>
 <!-- manager-page.js: tab switching + page-load orchestration. Deliberately
      classic, not a module — jazz-cash.js/custom-sections.js/notes-sheets.js
      monkey-patch its functions and depend on sloppy-mode global semantics
      to do it. See the file's own header comment before changing this. -->
-<script type="module" src="js/manager-page.js"></script>
+<script type="module" src="js/manager-page.js?v=20260722a"></script>
 
 <!-- 13. Custom spreadsheet sections (manager add-on) -->
-<script defer src="js/custom-sections.js"></script>
+<script defer src="js/custom-sections.js?v=20260722a"></script>
 
 <!-- 13b. Jazz Cash — Balance Tally (Daily Ledger now runs on the generalized Ledger, see ledger-page.js) -->
-<script type="module" src="js/jazz-cash.js"></script>
+<script type="module" src="js/jazz-cash.js?v=20260722a"></script>
 
-<script defer src="js/quick-add.js"></script>
+<script defer src="js/quick-add.js?v=20260722a"></script>
 
 <!-- 13c. Hub Quick Actions — headless print/report triggers for CommandHub chips -->
-<script defer src="js/hub-actions.js"></script>
+<script defer src="js/hub-actions.js?v=20260722a"></script>
 
 <!-- UI extras: left-edge tab strip, floating Dashboard FAB, month→target patch -->
-<script defer src="js/ui-extras.js"></script>
+<script defer src="js/ui-extras.js?v=20260722a"></script>
 
 <!-- 14. Field manager modal -->
-<script defer src="js/fields.js"></script>
+<script defer src="js/fields.js?v=20260722a"></script>
 
 <!-- 15. Google Drive backup / restore -->
-<script defer src="js/drive.js"></script>
+<script defer src="js/drive.js?v=20260722a"></script>
 
 <!-- AI Memory — persistent memory, custom rules, training, section AI config -->
-<script defer src="js/ai-memory.js"></script>
+<script defer src="js/ai-memory.js?v=20260722a"></script>
 
 <!-- AI Bridge — powers the dedicated AI page only (no floating widget) -->
 <!-- AI Instructions System -->
-<script defer src="js/ai-instructions.js"></script>
-<script defer src="js/ai-instructions-ui.js"></script>
+<script defer src="js/ai-instructions.js?v=20260722a"></script>
+<script defer src="js/ai-instructions-ui.js?v=20260722a"></script>
 
 <!-- 11f. Knowledge Base sheet — ported from retired ai-page.js (Phase 7) -->
-<script defer src="js/knowledge-sheet.js"></script>
+<script defer src="js/knowledge-sheet.js?v=20260722a"></script>
 
 <!-- Context Engine — Phase 3 -->
-<script defer src="js/ai-context.js"></script>
-<script defer src="js/ai-context-ui.js"></script>
+<script defer src="js/ai-context.js?v=20260722a"></script>
+<script defer src="js/ai-context-ui.js?v=20260722a"></script>
 
 <!-- Intent Group Registry — must load before ai-bridge -->
-<script defer src="js/intent-groups.js"></script>
+<script defer src="js/intent-groups.js?v=20260722a"></script>
 
 <!-- AI Bridge -->
-<script type="module" src="js/ai-bridge.js"></script>
+<script type="module" src="js/ai-bridge.js?v=20260722a"></script>
 
 <!-- Staff Card Popup Modal -->
 <div class="sc-bg" id="sc-bg" onclick="if(event.target===this)closeStaffCard()">
