@@ -39,6 +39,14 @@ import { LedgerStore } from './ledger-store.js';
 // a safety net — do not remove until those two files stop referencing
 // it too. ───
 const JC_KEY = 'bt_jazzcash_v2';
+// Bridge to window: drive.js and supabase.js are classic (non-module)
+// scripts that reference the bare identifier JC_KEY directly. Since
+// this file is a real ES module, its top-level `const` is module-scoped
+// and never reaches global/window scope on its own — without this
+// bridge those two files throw "JC_KEY is not defined" on every
+// pull/push/backup (exactly the pattern called out in ledger-store.js's
+// window-bridge comment).
+window.JC_KEY = JC_KEY;
 
 // ─── TALLY constants ─────────────────────────────────────────────
 const JC_TALLY_KEY = 'bt_jc_tally_v1';
