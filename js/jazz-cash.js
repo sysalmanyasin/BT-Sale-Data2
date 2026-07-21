@@ -50,6 +50,9 @@ window.JC_KEY = JC_KEY;
 
 // ─── TALLY constants ─────────────────────────────────────────────
 const JC_TALLY_KEY = 'bt_jc_tally_v1';
+// Same classic-script bridge as JC_KEY above — drive.js and supabase.js
+// also reference this bare identifier directly.
+window.JC_TALLY_KEY = JC_TALLY_KEY;
 // Default account set (user can add/remove/rename)
 const JC_TALLY_DEFAULTS = [
   { id:'jc_balance',  name:'Jazz Cash Balance (Ledger)', amount:0, locked:true  },
