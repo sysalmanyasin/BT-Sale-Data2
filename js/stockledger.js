@@ -944,6 +944,10 @@ window.StockLedgerApp = (function(){
       // closures capture `computed`/`state` by reference, so they always
       // return whatever this page most recently computed, live.
       window.StockLedgerApp.getExcessRows = function(){ return (computed.excess || []).slice(); };
+      // Reorder Report needs every loaded item (not just the already-excess
+      // ones) since it's judging LOW cover, not high — same live source of
+      // truth, no separate load.
+      window.StockLedgerApp.getRawRows = function(){ return (state.raw || []).slice(); };
       window.StockLedgerApp.hasData = function(){ return state.raw.length > 0; };
       window.StockLedgerApp.getRawCount = function(){ return state.raw.length; };
       window.StockLedgerApp.getAsOfLabel = function(){
