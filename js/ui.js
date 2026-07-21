@@ -49,7 +49,7 @@ function showPage(id) {
     const _managerDomainPages = ['manager', 'manager-dashboard'];
     const _notesheetsDomainPages = ['notesheets'];
     const _closingDomainPages = ['closing-book', 'credit-ledger'];
-    const _auditDomainPages = ['assignments', 'inventory', 'stockledger', 'excess'];
+    const _auditDomainPages = ['assignments', 'inventory', 'stockledger', 'excess', 'reorder'];
     const _domain = _salesDomainPages.indexOf(id) !== -1 ? 'sales'
                   : _managerDomainPages.indexOf(id) !== -1 ? 'manager'
                   : _notesheetsDomainPages.indexOf(id) !== -1 ? 'notesheets'
@@ -84,6 +84,9 @@ function showPage(id) {
     // js/excess-working.js) — same "safe to call every visit" pattern,
     // it just re-pulls and re-renders from whatever Stock Ledger currently has.
     if (id === 'excess' && window.ExcessWorkingApp && typeof window.ExcessWorkingApp.init === 'function') window.ExcessWorkingApp.init();
+    // Reorder Report is downstream of Stock Ledger's raw inventory rows
+    // (see js/reorder-report.js) — same "safe to call every visit" pattern.
+    if (id === 'reorder' && window.ReorderReportApp && typeof window.ReorderReportApp.init === 'function') window.ReorderReportApp.init();
     if (id==='commandhub') {
       document.querySelectorAll('.ntab[data-group="commandhub"],.bnav-item[data-group="commandhub"]').forEach(t=>t.classList.add('active'));
     }
