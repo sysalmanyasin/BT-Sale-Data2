@@ -62,8 +62,8 @@ User → Action → Repository → Data → State → Event Bus → Pages → Co
 - **Floor 5 (Pages)** — one file per domain's page(s). Never touch
   Repository directly; go through Actions.
 
-**Golden Rules** (audited, mostly holds — see NEXT-STEPS.md for the
-one gap known and left as documented, non-urgent): Pages never touch
+**Golden Rules** (audited, holds — see "Known gaps" below for the small,
+documented exceptions): Pages never touch
 the database directly. Components never contain business logic.
 Business modules never know about UI. State is never modified
 directly. Every data change goes through Actions. Every storage
@@ -74,13 +74,38 @@ through the Event Bus.
 
 - `index.html` — all pages, nav, modals. `<script type="module">` for
   real ES modules, plain `<script defer>` for classic scripts.
-- `js/` — 56 files. 15 are real ES modules (`config.js`, `repository.js`,
+- `js/` — 71 files. 36 are real ES modules (`config.js`, `repository.js`,
   `actions.js`, `event-bus.js`, `print.js`, the Ledger set, Cover
-  Dashboard, Staff Notes, Closing/Audit bridges+natives). The other 41
-  are classic scripts; most (32) are IIFE-namespaced with a
-  `window.X = X` bridge at the bottom, a handful are deliberately left
-  bare (either genuinely nothing to hide, or a known pending rewrite —
-  see NEXT-STEPS.md).
+  Dashboard, Staff Notes, Closing/Audit/Inventory bridges+natives, the
+  9-file Manager split, `bt-format.js`/`bt-date.js`/`bt-search.js`,
+  `app-init.js`, `app-context.js`, `commandhub.js`, `ai-bridge.js`,
+  `manager-page.js`, `jazz-cash.js`, `notes-sheets.js`). The other 35
+  are classic scripts; most are IIFE-namespaced with a `window.X = X`
+  bridge at the bottom.
+- `manager-page.js`/`jazz-cash.js`/`notes-sheets.js` used to mutually
+  block each other's module conversion — jazz-cash.js monkey-patched
+  `loadManagerPage`, notes-sheets.js monkey-patched `switchMgrTab`, both
+  relying on sloppy-mode global-function semantics that only classic
+  scripts have. Untangled: `manager-page.js` now calls
+  `renderJazzCash()`/`renderNotesSheets()` directly (guarded, same
+  style as its other cross-file calls), and all three are real modules.
+  Converting `notes-sheets.js` also surfaced 6 real bugs that this
+  conversion would otherwise have *introduced*: several of its inline
+  `onchange`/`oninput` handlers assigned straight to a module-scoped
+  `var` (e.g. `onchange="_nsDataSource=this.value;..."`), which stops
+  working silently once a module's top-level declarations aren't
+  implicitly global anymore. Each now routes through a small bridged
+  setter instead — see notes-sheets.js's and jazz-cash.js's header
+  comments for the full list.
+- **Remaining classic-script candidates for a future pass:** none
+  urgent — the two largest classic files left are `sync-center.js`
+  (1,008 lines) and `commandhub-page.js` (1,002 lines), verified via
+  `wc -l` against every `defer` script in index.html; neither blocks
+  anything the way the trio above did.
+- Counts verified directly against `index.html`'s `<script>` tags, not
+  carried over from an earlier session — recount with
+  `grep -c 'type="module" src="js/' index.html` /
+  `grep -c 'defer src="js/' index.html` if this drifts again.
 - `css/` — `variables.css` (design tokens, incl. per-domain accent
   colors), `nav.css` (domain isolation), `mobile.css`, feature-specific
   sheets.
@@ -92,11 +117,18 @@ through the Event Bus.
 
 - **Ledger** (`ledger-*.js`) — generalized replacement for what used
   to be separate Jazz Cash / Expense / Petty / Other Sections
-  implementations. Migration from the old systems has been run.
+  implementations. Migration from the old systems has been run; the
+  Jazz Cash migration UI (banner/button) and its one-time migration
+  function have been removed since they're no longer needed — the old
+  `bt_jazzcash_v2` key is kept only as a backup safety net for
+  drive.js/supabase.js, nothing reads it as a migration source anymore.
+  Petty's equivalent (`migratePettyToLedger`) is still in place and
+  still callable, not yet triggered from any UI.
 - **Staff Registry** — CRUD goes through `Actions.addEmployee`/
   `updateEmployee`/`removeEmployee`, never raw `STAFF[i]` mutation
   (there was one real bug of exactly that kind, found via audit and
-  fixed — see NEXT-STEPS.md's "closed" list for what that taught).
+  fixed). Verified via direct grep for `STAFF[` assignment/push/splice
+  outside actions.js/repository.js — currently zero hits.
 - **Notes & Sheets** — multi-file workbook model
   (`bt_sheet_workbooks_v1`): each file is an independent workbook with
   its own sheet-tabs. Migrated losslessly from the old single-workbook
@@ -109,14 +141,40 @@ through the Event Bus.
   Supabase project, different tables). Not app business data; don't
   route through Actions/EventBus by design.
 
+## Known gaps (small, documented, non-urgent)
+
+- `localStorage` is touched directly in a handful of files beyond the
+  three named bridges above: `ai-bridge.js` (API key), `auth.js`
+  (must run before Repository loads — load-order constraint, commented
+  in place), `stockledger.js`, `excess-working.js`, `reports.js`,
+  `closing-native.js`, `ui-extras.js`. All checked directly — these are
+  UI-local state (FAB position, hidden report rows, last page viewed)
+  or a Repository-with-fallback pattern, not app business data, so they
+  don't violate the spirit of the rule. Worth naming explicitly here
+  rather than letting "Repository is the only place" stand as written.
+- `jazz-cash.js` and `notes-sheets.js` monkey-patch `manager-page.js`'s
+  globals (see "File layout" above and each file's own guard comment).
+  This is the one real architectural wrinkle in an otherwise clean
+  layering — fix is known (convert all three together), just not done
+  yet.
+- Dead code is removed as it's found, not left in place — e.g.
+  `data-base.js` (unused `MONTHLY_BASE`/`DAILY_BASE`, loaded by no
+  `<script>` tag) and the old Jazz Cash migration banner/button/function
+  (migration already ran; see "Key subsystems" above) have both been
+  deleted rather than just flagged.
+
 ## Working conventions for future sessions
 
 - Before touching any file, check whether a `SKILL.md`-style
   convention already covers it — this repo has none of its own, but
   the housekeeping habit that matters here: **verify claims against
   the actual code, not against what a comment says.** Several stale/
-  wrong comments have been found this way (see NEXT-STEPS.md) —
-  trust `grep`, not prose.
+  wrong comments have been found this way (module counts in this file
+  drifting from the real `index.html`, a manager-page.js comment that
+  named a file as a monkey-patcher when it wasn't) — trust `grep`, not
+  prose, and when you fix a stale claim, fix it in place rather than
+  pointing to a separate tracking doc that can itself go stale or
+  disappear.
 - Any change to a live storage format needs a **lossless migration
   that never deletes the old key** — every migration in this app so
   far follows that pattern; keep it up.

@@ -1900,7 +1900,7 @@ if ('serviceWorker' in navigator) {
 <script defer src="js/ai-helpers.js"></script>
 
 <!-- 11e. Notes & Sheets workspace (Phase 6) -->
-<script defer src="js/notes-sheets.js"></script>
+<script type="module" src="js/notes-sheets.js"></script>
 
 <!-- 11e-patch. Sheets enhancements: copy/paste, File menu, Supabase sync -->
 <script defer src="js/sheets-patch.js"></script>
@@ -1929,13 +1929,13 @@ if ('serviceWorker' in navigator) {
      classic, not a module — jazz-cash.js/custom-sections.js/notes-sheets.js
      monkey-patch its functions and depend on sloppy-mode global semantics
      to do it. See the file's own header comment before changing this. -->
-<script defer src="js/manager-page.js"></script>
+<script type="module" src="js/manager-page.js"></script>
 
 <!-- 13. Custom spreadsheet sections (manager add-on) -->
 <script defer src="js/custom-sections.js"></script>
 
 <!-- 13b. Jazz Cash — Balance Tally (Daily Ledger now runs on the generalized Ledger, see ledger-page.js) -->
-<script defer src="js/jazz-cash.js"></script>
+<script type="module" src="js/jazz-cash.js"></script>
 
 <script defer src="js/quick-add.js"></script>
 
@@ -1970,7 +1970,7 @@ if ('serviceWorker' in navigator) {
 <script defer src="js/intent-groups.js"></script>
 
 <!-- AI Bridge -->
-<script defer src="js/ai-bridge.js"></script>
+<script type="module" src="js/ai-bridge.js"></script>
 
 <!-- Staff Card Popup Modal -->
 <div class="sc-bg" id="sc-bg" onclick="if(event.target===this)closeStaffCard()">
