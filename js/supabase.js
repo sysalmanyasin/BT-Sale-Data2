@@ -527,10 +527,14 @@ async function pullFromSupabase(silent = false) {
     if (error) throw new Error(error.message);
 
     const { mN, dN, mU, dU } = mergeIncomingData(data.payload, true);
+    sbLog('  [checkpoint A: after merge] MONTHLY=' + MONTHLY.length + ' DAILY=' + DAILY.length, 'mu');
     recomputeAllMonths();
+    sbLog('  [checkpoint B: after recomputeAllMonths] MONTHLY=' + MONTHLY.length + ' DAILY=' + DAILY.length, 'mu');
     rebuildAll();
+    sbLog('  [checkpoint C: after rebuildAll] MONTHLY=' + MONTHLY.length + ' DAILY=' + DAILY.length, 'mu');
     idbSaveData();
     Repository.markSynced();
+    sbLog('  [checkpoint D: after idbSaveData/markSynced] MONTHLY=' + MONTHLY.length + ' DAILY=' + DAILY.length, 'mu');
 
     const pendingConflicts = Repository.getPendingConflicts().length;
     const summary = `+${mN} new months / ${mU} updated · +${dN} new daily / ${dU} updated`
