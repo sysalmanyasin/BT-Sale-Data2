@@ -130,18 +130,8 @@ function _initEventBusSubscribers() {
     }
 
     // ── Navigation change ──────────────────────────────────────
-    // When the user switches to the cover dashboard, re-render it so
-    // any data that arrived while another page was open is visible.
-    // showPage() already calls renderCoverDashboard() on navigation,
-    // but this EventBus path handles the case where data loads while
-    // cover is already the active page (e.g. auto-pull on unlock).
-    if (eventName === 'nav:changed' && payload && payload.page === 'cover') {
-      if (typeof renderCoverDashboard === 'function') renderCoverDashboard();
-      return;
-    }
-
-    // When the user switches to the sales dashboard, rebuild to pick up
-    // any data that arrived while another page was shown.
+    // When the user switches to the dashboard, rebuild to pick up any
+    // data that arrived while another page was shown.
     if (eventName === 'nav:changed' && payload && payload.page === 'dashboard') {
       if (typeof buildDashboard === 'function') buildDashboard();
       return;

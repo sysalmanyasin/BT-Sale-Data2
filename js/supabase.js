@@ -467,52 +467,6 @@ async function _doPush() {
     );
     if (error) throw new Error(error.message);
 
-    // ── Also upsert to normalized tables (bt_monthly, bt_daily, bt_manager) ──
-    // These were introduced as part of a db migration. We write to both the
-    // legacy monolithic row AND the normalized tables so any device pulling
-    // from either path always gets current data.
-    const _now = new Date().toISOString();
-
-    // bt_monthly — one row per Month_Year
-    if (MONTHLY.length) {
-      const mUpserts = MONTHLY.map(m => {
-        const { Month_Year, ...rest } = m;
-        return { month_year: Month_Year, data: rest, updated_at: _now };
-      });
-      const { error: mErr } = await db.from('bt_monthly')
-        .upsert(mUpserts, { onConflict: 'month_year' });
-      if (mErr) console.warn('[Supabase] bt_monthly upsert:', mErr.message);
-    }
-
-    // bt_daily — one row per date+month_year; chunked to avoid request size limits
-    if (DAILY.length) {
-      const CHUNK = 400;
-      for (let i = 0; i < DAILY.length; i += CHUNK) {
-        const chunk = DAILY.slice(i, i + CHUNK).map(d => {
-          const { Date: date, Month_Year: month_year, ...rest } = d;
-          return { date, month_year, data: rest, updated_at: _now };
-        });
-        const { error: dErr } = await db.from('bt_daily')
-          .upsert(chunk, { onConflict: 'date,month_year' });
-        if (dErr) console.warn('[Supabase] bt_daily upsert:', dErr.message);
-      }
-    }
-
-    // bt_manager — one row per section+month combo
-    const _mgr = JSON.parse(Repository.getItem(MGR_KEY) || '{}');
-    const _mgrUpserts = [];
-    Object.entries(_mgr).forEach(([section, months]) => {
-      if (!months || typeof months !== 'object') return;
-      Object.entries(months).forEach(([month, data]) => {
-        _mgrUpserts.push({ section, month, data });
-      });
-    });
-    if (_mgrUpserts.length) {
-      const { error: mgErr } = await db.from('bt_manager')
-        .upsert(_mgrUpserts, { onConflict: 'section,month' });
-      if (mgErr) console.warn('[Supabase] bt_manager upsert:', mgErr.message);
-    }
-
     _clearPending();
     idbSaveData();
     rebuildAll();
@@ -562,76 +516,17 @@ async function pullFromSupabase(silent = false) {
   if (!silent) sbLog('Fetching from Supabase…');
   try {
     const db = _sb();
-    let mN = 0, dN = 0, mU = 0, dU = 0;
-    let anyData = false;
-
-    // ── 1. Legacy monolithic table (bt_salesdata) ──────────────────────
-    // Still read this for staff, custom sections, and other non-migrated
-    // data. If the row is missing (PGRST116) skip silently and fall
-    // through to the normalized tables — do NOT return early.
-    const { data: sbData, error: sbError } = await db
+    const { data, error } = await db
       .from(SB_TABLE).select('payload').eq('id', SB_ID).single();
 
-    if (sbError && sbError.code !== 'PGRST116') throw new Error(sbError.message);
-
-    if (sbData && sbData.payload) {
-      anyData = true;
-      const r = mergeIncomingData(sbData.payload, true);
-      mN += r.mN; dN += r.dN; mU += r.mU; dU += r.dU;
-    }
-
-    // ── 2. Normalized bt_monthly table ────────────────────────────────
-    // Primary source for monthly sales data after the db migration.
-    // Error code 42P01 = table does not exist; skip gracefully.
-    const { data: monthRows, error: monthErr } = await db
-      .from('bt_monthly').select('month_year, data');
-    if (monthErr && monthErr.code !== '42P01') {
-      console.warn('[Supabase] bt_monthly read error:', monthErr.message);
-    }
-    if (monthRows && monthRows.length) {
-      anyData = true;
-      const arr = monthRows.map(r => ({ Month_Year: r.month_year, ...(r.data || {}) }));
-      const r = Repository.mergePulledMonthly(arr);
-      mN += r.added; mU += r.updated;
-    }
-
-    // ── 3. Normalized bt_daily table ──────────────────────────────────
-    const { data: dailyRows, error: dailyErr } = await db
-      .from('bt_daily').select('date, month_year, data');
-    if (dailyErr && dailyErr.code !== '42P01') {
-      console.warn('[Supabase] bt_daily read error:', dailyErr.message);
-    }
-    if (dailyRows && dailyRows.length) {
-      anyData = true;
-      const arr = dailyRows.map(r => ({ Date: r.date, Month_Year: r.month_year, ...(r.data || {}) }));
-      const r = Repository.mergePulledDaily(arr);
-      dN += r.added; dU += r.updated;
-    }
-
-    // ── 4. Normalized bt_manager table ────────────────────────────────
-    const { data: mgrRows, error: mgrErr } = await db
-      .from('bt_manager').select('section, month, data');
-    if (mgrErr && mgrErr.code !== '42P01') {
-      console.warn('[Supabase] bt_manager read error:', mgrErr.message);
-    }
-    if (mgrRows && mgrRows.length) {
-      anyData = true;
-      const cur = JSON.parse(Repository.getItem(MGR_KEY) || '{}');
-      mgrRows.forEach(r => {
-        if (!r.section || !r.month) return;
-        if (!cur[r.section]) cur[r.section] = {};
-        cur[r.section][r.month] = r.data;
-      });
-      Actions.saveFeatureData(MGR_KEY, JSON.stringify(cur));
-    }
-
-    // ── Nothing found anywhere ─────────────────────────────────────────
-    if (!anyData) {
+    if (error && error.code === 'PGRST116') {
       sbLog('No data in Supabase yet — push first.', 'info');
       setSyncBadge('ok');
       return;
     }
+    if (error) throw new Error(error.message);
 
+    const { mN, dN, mU, dU } = mergeIncomingData(data.payload, true);
     recomputeAllMonths();
     rebuildAll();
     idbSaveData();
@@ -670,33 +565,25 @@ async function pullFromSupabase(silent = false) {
 function _startRealtime() {
   const db = _sb();
   if (_sbChannel) { try { db.removeChannel(_sbChannel); } catch(_) {} }
-
-  function _onRemoteChange(payload) {
-    // FIX 1: Ignore events triggered by our own push.
-    // Legacy table stores device_id inside the JSON payload column.
-    const remoteDeviceId = payload?.new?.payload?.device_id;
-    const ownUDID = (typeof _sc_getUDID === 'function') ? _sc_getUDID()
-                  : Repository.getItem('bt_device_udid');
-    if (remoteDeviceId && ownUDID && remoteDeviceId === ownUDID) {
-      sbLog('⏭ Real-time: own push — skipping self-pull', 'info');
-      return;
-    }
-    sbLog('⚡ Remote update from another device — syncing…', 'info');
-    pullFromSupabase(true).then(() => {
-      toast('⚡ Synced from another device');
-      _recordHistory({ type: 'realtime', status: 'ok', msg: 'Received update from another device' });
-      _updateLastPollDisplay();
-    });
-  }
-
   _sbChannel = db
     .channel('bt-sync')
-    // Legacy monolithic table
-    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: SB_TABLE }, _onRemoteChange)
-    // Normalized tables — any INSERT or UPDATE on these also triggers a pull
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'bt_monthly' }, _onRemoteChange)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'bt_daily' }, _onRemoteChange)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'bt_manager' }, _onRemoteChange)
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: SB_TABLE }, (payload) => {
+      // FIX 1: Ignore events that were triggered by our own push.
+      // The payload row stores device_id inside the JSON payload column.
+      const remoteDeviceId = payload?.new?.payload?.device_id;
+      const ownUDID = (typeof _sc_getUDID === 'function') ? _sc_getUDID()
+                    : Repository.getItem('bt_device_udid');
+      if (remoteDeviceId && ownUDID && remoteDeviceId === ownUDID) {
+        sbLog('⏭ Real-time: own push — skipping self-pull', 'info');
+        return;
+      }
+      sbLog('⚡ Remote update from another device — syncing…', 'info');
+      pullFromSupabase(true).then(() => {
+        toast('⚡ Synced from another device');
+        _recordHistory({ type: 'realtime', status: 'ok', msg: 'Received update from another device' });
+        _updateLastPollDisplay();
+      });
+    })
     .subscribe((status, err) => {
       if (status === 'SUBSCRIBED') {
         _updateRealtimeStatus(true);
