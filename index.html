@@ -1176,16 +1176,6 @@ if ('serviceWorker' in navigator) {
       <!-- Test Connection results -->
       <div id="test-conn-result" style="margin-bottom:10px"></div>
 
-      <!-- Recovery: backfills Sales/Manager from the legacy bt_monthly/bt_manager
-           tables into the bt_salesdata blob this app actually syncs from —
-           see recoverFromSplitTables() in supabase.js for why this exists. -->
-      <div style="margin-bottom:14px;padding:10px 14px;background:rgba(255,180,0,.06);border-radius:8px;border:1px solid rgba(255,180,0,.25)">
-        <div style="font-size:11px;color:var(--text);line-height:1.6;margin-bottom:8px">
-          ⚠ <strong>Sales / Manager showing empty?</strong> Older data may still be sitting in the legacy <code>bt_monthly</code> / <code>bt_manager</code> tables instead of the one this app syncs from. This pulls it in without overwriting anything already on this device.
-        </div>
-        <button class="btn" style="background:#a15c00;color:#fff;border:1px solid rgba(255,255,255,.15)" onclick="recoverFromSplitTables()">🔧 Recover from Legacy Tables</button>
-      </div>
-
       <!-- Sync log -->
       <div class="ghlog" id="ghlog">Supabase sync ready…</div>
 
