@@ -430,7 +430,9 @@ window.StockLedgerApp = (function(){
         // normally happens at app boot, before this page's baked-Supabase
         // auto-load (async) has resolved. Same pattern AuditBridge/
         // ClosingBridge already use after their own async refreshes.
-        if (typeof window.renderCoverDashboard === 'function') window.renderCoverDashboard();
+        if (typeof window.renderCoverDashboard === 'function') {
+          try { window.renderCoverDashboard(); } catch (e) { console.error('renderCoverDashboard() failed after Stock Ledger render:', e); }
+        }
       }
     
       // ---------- Tabs ----------

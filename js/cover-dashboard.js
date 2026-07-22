@@ -274,12 +274,19 @@ function _closingLatestMisc() {
 // see stockledger.js/excess-working.js/reorder-report.js's own comments
 // on their getCoverStats()/getSummary()/getSummaryFor() functions.
 function _inventoryHeroStats() {
-  const SL = window.StockLedgerApp;
-  const slStats = (SL && typeof SL.getCoverStats === 'function') ? SL.getCoverStats() : null;
-  const EW = window.ExcessWorkingApp;
-  const ewSummary = (EW && typeof EW.getSummary === 'function') ? EW.getSummary() : null;
-  const RR = window.ReorderReportApp;
-  const rrSummary = (RR && typeof RR.getSummaryFor === 'function') ? RR.getSummaryFor(30, 7, 500) : null;
+  let slStats = null, ewSummary = null, rrSummary = null;
+  try {
+    const SL = window.StockLedgerApp;
+    slStats = (SL && typeof SL.getCoverStats === 'function') ? SL.getCoverStats() : null;
+  } catch (e) { console.error('Cover Dashboard: StockLedgerApp.getCoverStats() failed', e); }
+  try {
+    const EW = window.ExcessWorkingApp;
+    ewSummary = (EW && typeof EW.getSummary === 'function') ? EW.getSummary() : null;
+  } catch (e) { console.error('Cover Dashboard: ExcessWorkingApp.getSummary() failed', e); }
+  try {
+    const RR = window.ReorderReportApp;
+    rrSummary = (RR && typeof RR.getSummaryFor === 'function') ? RR.getSummaryFor(30, 7, 500) : null;
+  } catch (e) { console.error('Cover Dashboard: ReorderReportApp.getSummaryFor() failed', e); }
   return { slStats, ewSummary, rrSummary };
 }
 
@@ -394,7 +401,9 @@ export function renderCoverDashboard() {
 
   const invStats = _inventoryHeroStats();
   const invSl = invStats.slStats, invEw = invStats.ewSummary, invRr = invStats.rrSummary;
-  const inventoryHeroHtml = (invSl && invSl.dataReady) ? `
+  let inventoryHeroHtml;
+  try {
+    inventoryHeroHtml = (invSl && invSl.dataReady) ? `
     <div class="cover-hero-row">
       ${heroCard({ label: 'Total Inventory Level', value: 'Rs. ' + fc(invSl.totalInventoryValue), sub: 'as of ' + invSl.asOf })}
       ${heroCard({ label: 'Negative Value', value: 'Rs. ' + fc(invSl.negativeValue), sub: 'negative qty × retail price' })}
@@ -409,6 +418,13 @@ export function renderCoverDashboard() {
     <div class="cover-hero-row cover-hero-row-single">
       ${heroCard({ label: 'Inventory', value: 'Waiting for Stock Ledger…', sub: 'loads automatically at startup — give it a moment and reopen this tab' })}
     </div>`;
+  } catch (e) {
+    console.error('Cover Dashboard: building Inventory hero HTML failed', e);
+    inventoryHeroHtml = `
+    <div class="cover-hero-row cover-hero-row-single">
+      ${heroCard({ label: 'Inventory', value: 'Unavailable', sub: 'something went wrong reading Inventory stats — Sales/Manager/Closing are unaffected' })}
+    </div>`;
+  }
 
   const tileCardHtml = (t, i) => `
     <div class="cover-tile${t.enabled ? '' : ' cover-tile-disabled'}"
