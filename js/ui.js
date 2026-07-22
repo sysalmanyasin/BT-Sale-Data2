@@ -310,7 +310,12 @@ function rebuildAll() {
     // "No sales data loaded yet" placeholders even though DAILY/MONTHLY
     // had already updated. Mirror the report/diff pattern above.
     if(_curPage==='cover' && typeof renderCoverDashboard==='function') renderCoverDashboard();
-    if(_curPage==='manager' && typeof loadManagerPage==='function') loadManagerPage();
+    // refreshManagerPage() (not loadManagerPage()) — loadManagerPage()
+    // always snaps every month selector to the newest month and reloads
+    // from storage, which would yank a manager off whatever older month
+    // they had open and discard unsaved edits. refreshManagerPage() keeps
+    // each sub-tab on its current month and only pulls in fresh data for it.
+    if(_curPage==='manager' && typeof refreshManagerPage==='function') refreshManagerPage();
   } catch(err) {
     if (typeof toast === 'function') toast('\u26a0 Rebuild error: ' + err.message, 'e');
     console.error('[rebuildAll] error:', err);

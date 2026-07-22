@@ -534,6 +534,7 @@ async function pullFromSupabase(silent = false) {
 
     const pendingConflicts = Repository.getPendingConflicts().length;
     const summary = `+${mN} new months / ${mU} updated · +${dN} new daily / ${dU} updated`
+      + ` · [in-memory: MONTHLY=${MONTHLY.length} DAILY=${DAILY.length}]`
       + (pendingConflicts ? ` · ⚠ ${pendingConflicts} conflict(s) need your review` : '');
     if (!silent) {
       sbLog('✓ Pulled. ' + summary, pendingConflicts ? 'w' : 'ok');
