@@ -298,6 +298,12 @@ function rebuildAll() {
     invalidateRenderCache();
     rebuildDropdowns();
     buildDashboard();
+    // Cover dashboard — re-render whenever it is the active page so that
+    // fresh data from a Supabase pull or local edit is immediately visible.
+    // Previously this case was missing, so the cover page stayed frozen on
+    // "No entries yet" / "No sales data loaded yet" even after MONTHLY/DAILY
+    // were fully populated by the pull.
+    if(_curPage==='cover') { if(typeof renderCoverDashboard==='function') renderCoverDashboard(); }
     if(_curPage==='index') renderIndex();
     if(_curPage==='data') renderDataTable();
     buildDateList();
