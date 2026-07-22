@@ -77,6 +77,58 @@ function loadManagerPage() {
   loadIncentiveMonth(cur);
 }
 
+// ── Live refresh (background sync) ──────────────────────────────────────
+// loadManagerPage() above is the PAGE-LOAD path: it deliberately snaps
+// every month selector to the newest month (`mons[0]`) and reloads all
+// five sub-tabs from scratch, which is exactly right the first time the
+// Manager tab is opened but wrong to run again mid-session — e.g. from
+// rebuildAll() after a background Supabase pull. Doing that would yank a
+// manager away from whatever older month they had open (say, back-filling
+// March) to the current month, and reload each sub-tab's rows straight
+// from storage, discarding any typed-but-not-yet-saved edit in the
+// process.
+//
+// refreshManagerPage() is the sync-safe counterpart: it re-populates each
+// dropdown's OPTION LIST (so a month that just arrived via sync shows up
+// at all) while preserving whatever month is currently selected, and then
+// reloads only that same month for each — so newly synced data for the
+// month you're already looking at appears, but you're never moved off it.
+// Falls back to the newest month only for a selector that has no value
+// yet (i.e. genuinely unopened this session).
+function refreshManagerPage() {
+  staffLoad();
+  renderStaffRegistry();
+  if (typeof renderJazzCash === 'function') renderJazzCash();
+
+  const mons = mgrMonths();
+  const newest = mons[0] || '';
+  const _refreshOne = (selId, loadFn) => {
+    const el = document.getElementById(selId);
+    const keep = (el && el.value) || newest;
+    _mgrPopSel(selId, keep);
+    if (typeof loadFn === 'function') loadFn(keep);
+  };
+  _refreshOne('sal-month-sel',   window.loadSalaryMonth);
+  _refreshOne('gen-month-sel',   window.loadGenericMonth);
+  _refreshOne('crd-month-sel',   window.loadCreditMonth);
+  _refreshOne('petty-month-sel', window.loadPettyMonth);
+  _refreshOne('inc-month-sel',   window.loadIncentiveMonth);
+
+  // The click-only sub-tabs (sheets/expense/custom/unmatched) are only
+  // ever rendered by switchMgrTab() when the user opens them, so only
+  // refresh whichever one is currently visible — anything hidden gets a
+  // fresh render for free the next time it's opened anyway.
+  const activeTab = document.querySelector('.mgr-tab.active')?.dataset.mtab;
+  if (activeTab === 'sheets' && typeof renderNotesSheets === 'function') renderNotesSheets();
+  if (activeTab === 'expense' && typeof renderLedgerView === 'function') {
+    renderLedgerView('ledger-expense-container', 'expense', 'Expense');
+  }
+  if (activeTab === 'custom' && typeof renderOtherSectionsManager === 'function') {
+    renderOtherSectionsManager('ledger-sections-container');
+  }
+  if (activeTab === 'unmatched' && typeof renderUnmatchedTab === 'function') renderUnmatchedTab();
+}
+
 function staffLoad() {
   Repository.loadStaff();
 }
@@ -137,5 +189,6 @@ function populateDashWorking(mon) {
 // declarations are module-scoped instead of implicitly global.
 window.switchMgrTab = switchMgrTab;
 window.loadManagerPage = loadManagerPage;
+window.refreshManagerPage = refreshManagerPage;
 window.saveAllManagerSections = saveAllManagerSections;
 window.populateDashWorking = populateDashWorking;
