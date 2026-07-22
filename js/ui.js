@@ -304,6 +304,13 @@ function rebuildAll() {
     // If report tab is open and a date was already selected, re-render so fresh data shows
     if(_curPage==='report' && _selDate && _selMy) renderReport();
     if(_curPage==='diff') renderDiffReport();
+    // Cover Dashboard and Manager tabs were previously only rendered on
+    // navigateTo() — a background Supabase pull/push while sitting on
+    // either tab never refreshed them, leaving stale "No entries yet" /
+    // "No sales data loaded yet" placeholders even though DAILY/MONTHLY
+    // had already updated. Mirror the report/diff pattern above.
+    if(_curPage==='cover' && typeof renderCoverDashboard==='function') renderCoverDashboard();
+    if(_curPage==='manager' && typeof loadManagerPage==='function') loadManagerPage();
   } catch(err) {
     if (typeof toast === 'function') toast('\u26a0 Rebuild error: ' + err.message, 'e');
     console.error('[rebuildAll] error:', err);
