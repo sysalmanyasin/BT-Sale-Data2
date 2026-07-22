@@ -530,5 +530,32 @@ window.ReorderReportApp = (function () {
     render();
   }
 
-  return { init: init };
+  // ── Cover Dashboard hero stats ──────────────────────────────────────
+  // Safe to call cold (this page's own tab never opened this session) —
+  // pulls straight from Stock Ledger and runs the exact same
+  // computeRows()/topRows() engine the Top N tab uses, just with
+  // whatever window/coverDays/topN the caller asks for (e.g. Cover's
+  // "<7 days, Top 500 by 30d sale value" stat), independent of this
+  // page's own persisted settings so visiting Reorder Report and
+  // changing its controls never affects Cover's fixed stat.
+  function getSummaryFor(windowDays, coverDaysThreshold, topN) {
+    const SL = window.StockLedgerApp;
+    const rawRows = (SL && typeof SL.hasData === 'function' && SL.hasData() && typeof SL.getRawRows === 'function')
+      ? SL.getRawRows() : null;
+    if (!rawRows) return null;
+    const w = WINDOWS.indexOf(windowDays) !== -1 ? windowDays : 30;
+    const flagged = computeRows(rawRows, w, coverDaysThreshold || 7);
+    const shown = topRows(flagged, topN || 500);
+    return {
+      window: w,
+      coverDaysThreshold: coverDaysThreshold || 7,
+      itemsFlagged: flagged.length,
+      itemsShown: shown.length,
+      totalSaleValue: shown.reduce((s, r) => s + r.saleValueP, 0),
+      totalReorderQty: shown.reduce((s, r) => s + r.demandQtyP, 0),
+      totalReorderValue: shown.reduce((s, r) => s + r.demandValueP, 0),
+    };
+  }
+
+  return { init: init, getSummaryFor: getSummaryFor };
 })();

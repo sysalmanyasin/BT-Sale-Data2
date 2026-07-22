@@ -557,6 +557,87 @@ async function pullFromSupabase(silent = false) {
   }
 }
 
+// ══════════════════════════════════════════════════════════════════
+// RECOVER FROM LEGACY SPLIT TABLES  (one-time repair)
+//
+// BUG: this app's sync used to write Monthly/Manager data one-record-
+// per-row into two separate tables — `bt_monthly` (row per month_year)
+// and `bt_manager` (row per section+month) — before it was consolidated
+// onto the single `bt_salesdata` JSON-blob row that pullFromSupabase()/
+// pushToSupabase() above actually read/write today. That consolidation
+// never backfilled the blob FROM the old tables, so `bt_salesdata` can
+// legitimately contain 0 months / 0 manager records — a correct, empty
+// pull — while `bt_monthly`/`bt_manager` still hold every real month of
+// history. That's why Cover/Manager show "No entries yet" even though
+// data is visibly sitting in the Supabase dashboard: the app was never
+// wrong about what it pulled, it was just pulling from the wrong (now
+// orphaned) place.
+//
+// This reads both legacy tables and gap-fills MONTHLY / the manager
+// blob (MGR_KEY) the same way a push's "local wins, remote fills gaps"
+// merge already does elsewhere in this file — never overwrites a month
+// that's already present locally. Safe to run more than once. Doesn't
+// touch bt_monthly/bt_manager themselves (read-only), and doesn't push
+// automatically — run "Push All Data" afterwards once you've checked
+// the numbers, so the recovered data finally lands in bt_salesdata too
+// and every other device stops needing this button.
+// ══════════════════════════════════════════════════════════════════
+async function recoverFromSplitTables() {
+  sbLog('Recovering data from legacy tables (bt_monthly / bt_manager)…');
+  setSyncBadge('syncing');
+  let monthlyAdded = 0, mgrAdded = 0;
+  try {
+    const db = _sb();
+
+    // ── bt_monthly → MONTHLY (Repository.gapFillMonthly = add-only) ──
+    const { data: monthlyRows, error: mErr } = await db.from('bt_monthly').select('month_year, data');
+    if (mErr) throw new Error('bt_monthly: ' + mErr.message);
+    if (monthlyRows && monthlyRows.length) {
+      const incoming = monthlyRows
+        .filter(r => r.month_year)
+        .map(r => Object.assign({ Month_Year: r.month_year }, r.data || {}));
+      monthlyAdded = Repository.gapFillMonthly(incoming).added;
+    }
+
+    // ── bt_manager → MGR_KEY blob ({section: {month: data}}, add-only) ──
+    const { data: mgrRows, error: gErr } = await db.from('bt_manager').select('section, month, data');
+    if (gErr) throw new Error('bt_manager: ' + gErr.message);
+    if (mgrRows && mgrRows.length) {
+      const cur = JSON.parse(Repository.getItem(MGR_KEY) || '{}');
+      mgrRows.forEach(row => {
+        if (!row.section || !row.month) return;
+        if (!cur[row.section]) cur[row.section] = {};
+        if (!(row.month in cur[row.section])) {   // gap-fill only — never overwrite a local edit
+          cur[row.section][row.month] = row.data;
+          mgrAdded++;
+        }
+      });
+      if (mgrAdded) Actions.saveFeatureData(MGR_KEY, JSON.stringify(cur));
+    }
+
+    recomputeAllMonths();
+    rebuildAll();
+    idbSaveData();
+
+    const summary = `${monthlyAdded} month(s), ${mgrAdded} manager record(s)`;
+    if (monthlyAdded || mgrAdded) {
+      _markPending(); // remote bt_salesdata still needs a push to pick this up
+      sbLog('✓ Recovered ' + summary + ' from legacy tables. Push All Data to save it to Supabase.', 'ok');
+      toast('✓ Recovered ' + summary + ' — now tap "Push All Data" to save it');
+    } else {
+      sbLog('Nothing new to recover — legacy tables empty, or already merged.', 'info');
+      toast('Nothing new found in bt_monthly / bt_manager');
+    }
+    setSyncBadge('ok');
+    _recordHistory({ type: 'migration', status: 'ok', monthly: monthlyAdded, daily: mgrAdded, msg: 'Recovered from bt_monthly/bt_manager' });
+  } catch (e) {
+    sbLog('✕ Recovery failed: ' + e.message, 'err');
+    toast('✕ Recovery failed: ' + e.message.slice(0, 60), 'e');
+    setSyncBadge('err');
+    _recordHistory({ type: 'migration', status: 'err', msg: e.message.slice(0, 60) });
+  }
+}
+window.recoverFromSplitTables = recoverFromSplitTables;
 
 // ══════════════════════════════════════════════════════════════════
 // REAL-TIME SUBSCRIPTION
