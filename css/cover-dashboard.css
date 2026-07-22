@@ -65,7 +65,6 @@
 .cover-group[data-group="notes"]{--g-accent:var(--purple);--g-bg:var(--purple-lt);}
 .cover-group[data-group="closing"]{--g-accent:var(--amber);--g-bg:var(--alt2);}
 .cover-group[data-group="audit"]{--g-accent:var(--red);--g-bg:var(--rlt);}
-.cover-group[data-group="inventory"]{--g-accent:var(--pink);--g-bg:var(--pink-lt);}
 .cover-group[data-group="reports"]{--g-accent:var(--teal);--g-bg:var(--tlt);}
 
 /* ── Hero KPI cards inside groups ── */

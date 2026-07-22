@@ -263,10 +263,10 @@ if ('serviceWorker' in navigator) {
     <a class="ntab" href="#closing-book" data-page="closing-book" data-group="closing" data-domain-group="closing">📖 Closing Book</a>
     <a class="ntab" href="#credit-ledger" data-page="credit-ledger" data-group="closing" data-domain-group="closing">💳 Credit Ledger</a>
     <a class="ntab" href="#assignments" data-page="assignments" data-group="audit" data-domain-group="audit">🧾 Assignments</a>
-    <a class="ntab" href="#inventory" data-page="inventory" data-group="inventory" data-domain-group="inventory">📦 BT Inventory</a>
-    <a class="ntab" href="#stockledger" data-page="stockledger" data-group="inventory" data-domain-group="inventory">📒 Stock Ledger</a>
-    <a class="ntab" href="#excess" data-page="excess" data-group="inventory" data-domain-group="inventory">📉 Excess Working</a>
-    <a class="ntab" href="#reorder" data-page="reorder" data-group="inventory" data-domain-group="inventory">🛒 Reorder Report</a>
+    <a class="ntab" href="#inventory" data-page="inventory" data-group="audit" data-domain-group="audit">📦 BT Inventory</a>
+    <a class="ntab" href="#stockledger" data-page="stockledger" data-group="audit" data-domain-group="audit">📒 Stock Ledger</a>
+    <a class="ntab" href="#excess" data-page="excess" data-group="audit" data-domain-group="audit">📉 Excess Working</a>
+    <a class="ntab" href="#reorder" data-page="reorder" data-group="audit" data-domain-group="audit">🛒 Reorder Report</a>
     <a class="ntab" href="#tools" data-page="tools" data-group="tools">Tools</a>
   </div>
   <div class="ntabs subnav" id="saledata-subnav" style="display:none">
@@ -297,10 +297,10 @@ if ('serviceWorker' in navigator) {
   <a class="bnav-item" href="#closing-book" data-page="closing-book" data-group="closing" data-domain-group="closing"><span class="bicon">📖</span><span class="blabel">Closing Book</span></a>
   <a class="bnav-item" href="#credit-ledger" data-page="credit-ledger" data-group="closing" data-domain-group="closing"><span class="bicon">💳</span><span class="blabel">Credit Ledger</span></a>
   <a class="bnav-item" href="#assignments" data-page="assignments" data-group="audit" data-domain-group="audit"><span class="bicon">🧾</span><span class="blabel">Assignments</span></a>
-  <a class="bnav-item" href="#inventory" data-page="inventory" data-group="inventory" data-domain-group="inventory"><span class="bicon">📦</span><span class="blabel">BT Inventory</span></a>
-  <a class="bnav-item" href="#stockledger" data-page="stockledger" data-group="inventory" data-domain-group="inventory"><span class="bicon">📒</span><span class="blabel">Stock Ledger</span></a>
-  <a class="bnav-item" href="#excess" data-page="excess" data-group="inventory" data-domain-group="inventory"><span class="bicon">📉</span><span class="blabel">Excess</span></a>
-  <a class="bnav-item" href="#reorder" data-page="reorder" data-group="inventory" data-domain-group="inventory"><span class="bicon">🛒</span><span class="blabel">Reorder</span></a>
+  <a class="bnav-item" href="#inventory" data-page="inventory" data-group="audit" data-domain-group="audit"><span class="bicon">📦</span><span class="blabel">BT Inventory</span></a>
+  <a class="bnav-item" href="#stockledger" data-page="stockledger" data-group="audit" data-domain-group="audit"><span class="bicon">📒</span><span class="blabel">Stock Ledger</span></a>
+  <a class="bnav-item" href="#excess" data-page="excess" data-group="audit" data-domain-group="audit"><span class="bicon">📉</span><span class="blabel">Excess</span></a>
+  <a class="bnav-item" href="#reorder" data-page="reorder" data-group="audit" data-domain-group="audit"><span class="bicon">🛒</span><span class="blabel">Reorder</span></a>
   <a class="bnav-item" href="#tools" data-page="tools" data-group="tools"><span class="bicon">⚙️</span><span class="blabel">Tools</span></a>
 </div>
 <!-- Sale Data sub-nav (mobile) -->
@@ -843,7 +843,7 @@ if ('serviceWorker' in navigator) {
       <div class="dbxstep">
         <p class="dbxlabel">Table name</p>
         <div class="dbxrow">
-          <input type="text" id="sl-sbTable" value="inventory_products">
+          <input type="text" id="sl-sbTable" value="inventory">
           <button class="filebtn" id="sl-sbFetchBtn">Load from Supabase</button>
         </div>
       </div>
