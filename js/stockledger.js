@@ -768,7 +768,12 @@ window.StockLedgerApp = (function(){
           for (let from = 0; ; from += PAGE_SIZE) {
             const to = from + PAGE_SIZE - 1;
             if(!silent) sbSetStatus('Loading from Supabase… (' + data.length.toLocaleString() + ' rows so far)');
-            const { data: page, error } = await client.from(table).select('*').range(from, to);
+            // .order() is required here, not optional — .range() only
+            // returns stable, non-overlapping pages if every page is
+            // drawn from the same fixed ordering. Without it Postgres is
+            // free to hand back rows in a different order per request,
+            // which can silently duplicate or skip rows across pages.
+            const { data: page, error } = await client.from(table).select('*').order('id', { ascending: true }).range(from, to);
             if(error) throw new Error(error.message);
             if(!page || page.length === 0) break;
             data = data.concat(page);
