@@ -53,6 +53,19 @@ function initApp() {
   // regardless of the current page call rebuildAll() directly.
   _initEventBusSubscribers();
 
+  // Stock Ledger (Audit domain: BT Inventory / Stock Ledger / Excess Working /
+  // Reorder Report) used to only pull its inventory data the first time its
+  // own tab was opened. Now that its Supabase source is baked-in (see
+  // js/stockledger.js's STOCKLEDGER_SUPABASE_URL/ANON_KEY), start that pull
+  // here at real boot instead, same "auto, no clicks needed" treatment
+  // AuditBridge/ClosingBridge/InventoryBridge already get via Cover
+  // Dashboard's renderCoverDashboard(). init() is idempotent (see its own
+  // `initialized` guard) so ui.js's existing call when the tab is opened
+  // just becomes a harmless no-op once this has already run.
+  if (window.StockLedgerApp && typeof window.StockLedgerApp.init === 'function') {
+    try { window.StockLedgerApp.init(); } catch (e) { console.error('StockLedgerApp startup init failed:', e); }
+  }
+
   let target = 'cover';
   let _routed = false;
   try {

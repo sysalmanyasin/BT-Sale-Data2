@@ -2,6 +2,16 @@ window.StockLedgerApp = (function(){
   "use strict";
   let initialized = false;
 
+  // Same project + anon/publishable key already baked into js/audit-bridge.js
+  // (itself sourced from js/actions/auth-actions.js's DEFAULT_SUPABASE_ANON_KEY
+  // in the standalone "Random"/BT Sale IC app) — safe to ship, RLS is what
+  // actually protects the data, not key secrecy. Used only as the last
+  // resort in the resolution order below, so an explicit options.supabaseClient
+  // or window.supabaseClient (e.g. a differently-scoped client some other
+  // integration already set up) still wins if present.
+  const STOCKLEDGER_SUPABASE_URL = 'https://vtcrdkqhuvxatclobsby.supabase.co';
+  const STOCKLEDGER_SUPABASE_ANON_KEY = 'sb_publishable_h-Z3ldRXyb18HEjF68cJ0g_tmRgbrAy';
+
   function init(options){
     if(initialized){ console.warn('StockLedgerApp.init() called again — skipping (already initialized).'); return; }
     if(!document.getElementById('page-stockledger')){
@@ -11,9 +21,15 @@ window.StockLedgerApp = (function(){
     initialized = true;
     options = options || {};
 
+      let _bakedClient = null;
+      if(!options.supabaseClient && !window.supabaseClient && window.supabase && window.supabase.createClient){
+        try { _bakedClient = window.supabase.createClient(STOCKLEDGER_SUPABASE_URL, STOCKLEDGER_SUPABASE_ANON_KEY); }
+        catch(e){ _bakedClient = null; /* supabase-js not ready yet — Dropbox/manual entry still work as fallback */ }
+      }
+
       const sbConfig = {
-        client: options.supabaseClient || window.supabaseClient || null,
-        table: options.table || 'inventory',
+        client: options.supabaseClient || window.supabaseClient || _bakedClient,
+        table: options.table || 'inventory_products',
         autoLoad: options.autoLoad !== false
       };
 
@@ -409,6 +425,12 @@ window.StockLedgerApp = (function(){
         $('#sl-main').style.display = 'block';
         $('#sl-emptyState').style.display = 'none';
         $('#sl-footerNote').textContent = 'Calculated client-side in your browser as of ' + state.today.toLocaleString('en-GB') + '. Nothing is uploaded anywhere.';
+        // Cover Dashboard's Inventory hero row (getCoverStats() above) is
+        // stale until this fires at least once — its very first render
+        // normally happens at app boot, before this page's baked-Supabase
+        // auto-load (async) has resolved. Same pattern AuditBridge/
+        // ClosingBridge already use after their own async refreshes.
+        if (typeof window.renderCoverDashboard === 'function') window.renderCoverDashboard();
       }
     
       // ---------- Tabs ----------
@@ -720,14 +742,25 @@ window.StockLedgerApp = (function(){
       }
 
       async function fetchFromSupabase(silent){
-        const table = ($('#sl-sbTable').value || sbConfig.table || 'inventory').trim();
+        // inventory_products is the SAME table the Random/BT Sale IC app
+        // already reads for its own inventory view — not a separate
+        // table. Its columns are named differently (qty/price/
+        // conversion_factor, snake_case dates/windows) than what the rest
+        // of this file expects (stock/unitPrice/conversionFactor,
+        // camelCase), so normalizeSupabaseRow() below bridges that,
+        // rather than changing either side's naming convention. See the
+        // matching edge-function update (sync-inventory-from-dropbox)
+        // and the ALTER TABLE that added last_receive_date/
+        // last_sale_date/net_qty_30/60/90_days to this table.
+        const table = ($('#sl-sbTable').value || sbConfig.table || 'inventory_products').trim();
         try{
           const client = getSupabaseClient();
           if(!silent) sbSetStatus('Loading from Supabase…');
           const { data, error } = await client.from(table).select('*');
           if(error) throw new Error(error.message);
           if(!data || data.length === 0) throw new Error('table "' + table + '" returned no rows');
-          if(loadRawArray(data, table + ' (Supabase)')){
+          const normalized = (table === 'inventory_products') ? data.map(normalizeSupabaseRow) : data;
+          if(loadRawArray(normalized, table + ' (Supabase)')){
             sbSetStatus('Loaded ' + data.length.toLocaleString() + ' rows from Supabase ✓', 'ok');
           }
           return true;
@@ -735,6 +768,30 @@ window.StockLedgerApp = (function(){
           sbSetStatus((silent ? 'Supabase unavailable (' : 'Load failed: ') + err.message + (silent ? ') — use Dropbox or upload a file below.' : ''), 'err');
           return false;
         }
+      }
+
+      // inventory_products (snake_case, qty/price/conversion_factor) →
+      // this file's internal shape (camelCase, stock/unitPrice/
+      // conversionFactor) — the exact same field set loadRawJSON already
+      // expects from a raw inventory.json upload, so both paths converge
+      // on one shape before anything downstream (computeAll, getRawRows,
+      // getCoverStats, Excess Working, Reorder Report) ever sees a row.
+      function normalizeSupabaseRow(r){
+        return {
+          code: r.code || '',
+          name: r.name || '',
+          stock: Number(r.qty) || 0,
+          unitPrice: Number(r.price) || 0,
+          company: r.company || '',
+          generic: r.generic || '',
+          supplier: r.supplier || '',
+          conversionFactor: r.conversion_factor,
+          lastReceiveDate: r.last_receive_date || null,
+          lastSaleDate: r.last_sale_date || null,
+          netQty30Days: Number(r.net_qty_30_days) || 0,
+          netQty60Days: Number(r.net_qty_60_days) || 0,
+          netQty90Days: Number(r.net_qty_90_days) || 0,
+        };
       }
 
       $('#sl-sbFetchBtn').addEventListener('click', ()=> fetchFromSupabase(false));
@@ -952,6 +1009,43 @@ window.StockLedgerApp = (function(){
       window.StockLedgerApp.getRawCount = function(){ return state.raw.length; };
       window.StockLedgerApp.getAsOfLabel = function(){
         return state.today.toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+      };
+
+      // ── Cover Dashboard hero stats ──────────────────────────────────
+      // Total inventory level + negative-stock value read state.raw
+      // directly (no day-window logic involved). Dead Stock reuses
+      // computed.deadStock as-is (already a 60-day window by default —
+      // see state.deadDays above). Never Sold is recomputed here at a
+      // fixed 60 days, deliberately independent of whatever
+      // state.neverSoldDays the Stock Ledger tab itself is currently set
+      // to (that's a separate, user-adjustable view; this cover stat is
+      // always the same 60-day definition) — same predicate as
+      // computeAll() section 1, just a different window and returning a
+      // running total instead of a row list.
+      window.StockLedgerApp.getCoverStats = function(){
+        const items = state.raw || [];
+        let totalInventoryValue = 0, negativeValue = 0, neverSold60Value = 0;
+        items.forEach(it => {
+          const stock = Number(it.stock) || 0;
+          const unitPrice = Number(it.unitPrice) || 0;
+          const val = stock * unitPrice;
+          totalInventoryValue += val;
+          if (stock < 0) negativeValue += val;
+          if (stock > 0 && isPackValid(it.conversionFactor)) {
+            const recDays = daysSince(it.lastReceiveDate);
+            const hasSale = !!it.lastSaleDate;
+            if (!hasSale && recDays != null && recDays > 60) {
+              const dr = downRound(stock, Number(it.conversionFactor));
+              if (dr.qty > 0) neverSold60Value += dr.qty * unitPrice;
+            }
+          }
+        });
+        const deadStock60Value = (computed.deadStock || []).reduce((s, r) => s + (r.value || 0), 0);
+        return {
+          dataReady: items.length > 0,
+          totalInventoryValue, negativeValue, neverSold60Value, deadStock60Value,
+          asOf: state.today.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}),
+        };
       };
 
   }

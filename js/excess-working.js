@@ -602,5 +602,28 @@ window.ExcessWorkingApp = (function () {
     render();
   }
 
-  return { init: init };
+  // ── Cover Dashboard hero stats ──────────────────────────────────────
+  // Safe to call even if this page's own tab was never opened this
+  // session (init() never ran) — loads the same three localStorage
+  // settings init() would, then pulls + recomputes fresh from Stock
+  // Ledger, same one-source-of-truth rule as everywhere else in this
+  // file. Returns null only if Stock Ledger itself has no data loaded.
+  function getSummary() {
+    if (!initialized) {
+      state.retainList = loadRetain();
+      state.misc = loadMisc();
+      state.hoValue = loadHoValue();
+    }
+    refreshFromStockLedger(true);
+    if (!state.dataReady) return null;
+    return {
+      rawExcessValue: state.summary.totalExcess,
+      correctedExcessValue: state.summary.correctedExcessStockValue,
+      retainedValue: state.summary.totalRetained,
+      looseValue: state.summary.totalLoose,
+      asOf: state.asOf,
+    };
+  }
+
+  return { init: init, getSummary: getSummary };
 })();
