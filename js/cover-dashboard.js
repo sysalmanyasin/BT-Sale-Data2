@@ -266,30 +266,6 @@ function _closingLatestMisc() {
   return { label: 'Latest Misc / Ongoing', value: 'Rs. ' + fc(total), sub: `${_clFmtDate(date)} · ${shift}` };
 }
 
-// Inventory domain hero stats — all three come from bridge functions on
-// the (classic-script, window-exposed) Stock Ledger / Excess Working /
-// Reorder Report apps, same "read the one existing computation, don't
-// re-derive it" rule as AuditBridge/ClosingBridge above. Each bridge call
-// is itself cheap (pure re-read of already-computed in-memory state) —
-// see stockledger.js/excess-working.js/reorder-report.js's own comments
-// on their getCoverStats()/getSummary()/getSummaryFor() functions.
-function _inventoryHeroStats() {
-  let slStats = null, ewSummary = null, rrSummary = null;
-  try {
-    const SL = window.StockLedgerApp;
-    slStats = (SL && typeof SL.getCoverStats === 'function') ? SL.getCoverStats() : null;
-  } catch (e) { console.error('Cover Dashboard: StockLedgerApp.getCoverStats() failed', e); }
-  try {
-    const EW = window.ExcessWorkingApp;
-    ewSummary = (EW && typeof EW.getSummary === 'function') ? EW.getSummary() : null;
-  } catch (e) { console.error('Cover Dashboard: ExcessWorkingApp.getSummary() failed', e); }
-  try {
-    const RR = window.ReorderReportApp;
-    rrSummary = (RR && typeof RR.getSummaryFor === 'function') ? RR.getSummaryFor(30, 7, 500) : null;
-  } catch (e) { console.error('Cover Dashboard: ReorderReportApp.getSummaryFor() failed', e); }
-  return { slStats, ewSummary, rrSummary };
-}
-
 function _tiles() {
   return [
     { page: 'dashboard', icon: '📊', title: 'Sales',           status: _salesStatus(),   enabled: true, group: 'Sales' },
@@ -300,24 +276,23 @@ function _tiles() {
     { page: 'credit-ledger',  icon: '💳', title: 'Credit Ledger', status: 'Credit + Misc/Ongoing snapshot history',           enabled: true, group: 'Closing' },
     { href: 'https://random.duapharma.com',  icon: '🧾', title: 'Audit',   status: _auditStatus(),   enabled: true, group: 'Audit' },
     { page: 'assignments', icon: '📋', title: 'Assignments', status: 'Auditor progress + company coverage, every engagement', enabled: true, group: 'Audit' },
-    { page: 'inventory', icon: '📦', title: 'BT Inventory',    status: _inventoryStatus(), enabled: true, group: 'Inventory' },
-    { page: 'stockledger', icon: '📒', title: 'Stock Ledger', status: 'Never-sold, dead stock, excess & pack-issue analysis', enabled: true, group: 'Inventory' },
-    { page: 'excess', icon: '📉', title: 'Excess Working', status: 'Corrected excess value, retain list & Top N export', enabled: true, group: 'Inventory' },
-    { page: 'reorder', icon: '🛒', title: 'Reorder Report', status: 'Low stock-cover items ranked by sale value, Top N + export', enabled: true, group: 'Inventory' },
+    { page: 'inventory', icon: '📦', title: 'BT Inventory',    status: _inventoryStatus(), enabled: true, group: 'Stock Tools' },
+    { page: 'stockledger', icon: '📒', title: 'Stock Ledger', status: 'Never-sold, dead stock, excess & pack-issue analysis', enabled: true, group: 'Stock Tools' },
+    { page: 'excess', icon: '📉', title: 'Excess Working', status: 'Corrected excess value, retain list & Top N export', enabled: true, group: 'Stock Tools' },
     { href: 'https://reports.duapharma.com/daily_report.html', icon: '✅', title: 'Daily Check List', status: 'Fazal Din\'s Pharma Plus — standalone checklist app', enabled: true, group: 'Reports' },
     { href: 'https://reports.duapharma.com/excess-stock-control.html', icon: '📦', title: 'Excess Stock Control', status: 'Fazal Din\'s Pharma Plus — excess stock control', enabled: true, group: 'Reports' },
     { href: 'https://reports.duapharma.com/invoice-desk.html', icon: '🧮', title: 'Branch Invoice Desk', status: 'Fazal Din\'s Pharma Plus — branch invoice desk', enabled: true, group: 'Reports' },
   ];
 }
 
-const GROUP_ORDER = ['Sales', 'Manager', 'Notes & Sheets', 'Closing', 'Audit', 'Inventory', 'Reports'];
+const GROUP_ORDER = ['Sales', 'Manager', 'Notes & Sheets', 'Closing', 'Audit', 'Stock Tools', 'Reports'];
 const GROUP_META = {
   'Sales':           { slug: 'sales',   icon: '📊' },
   'Manager':         { slug: 'manager', icon: '👔' },
   'Notes & Sheets':  { slug: 'notes',   icon: '📑' },
   'Closing':         { slug: 'closing', icon: '🔒' },
   'Audit':           { slug: 'audit',   icon: '🧾' },
-  'Inventory':       { slug: 'inventory', icon: '📦' },
+  'Stock Tools':     { slug: 'stock-tools', icon: '📦' },
   'Reports':         { slug: 'reports', icon: '📚' },
 };
 
@@ -399,33 +374,6 @@ export function renderCoverDashboard() {
       ${heroCard(closingLatestMisc)}
     </div>`;
 
-  const invStats = _inventoryHeroStats();
-  const invSl = invStats.slStats, invEw = invStats.ewSummary, invRr = invStats.rrSummary;
-  let inventoryHeroHtml;
-  try {
-    inventoryHeroHtml = (invSl && invSl.dataReady) ? `
-    <div class="cover-hero-row">
-      ${heroCard({ label: 'Total Inventory Level', value: 'Rs. ' + fc(invSl.totalInventoryValue), sub: 'as of ' + invSl.asOf })}
-      ${heroCard({ label: 'Negative Value', value: 'Rs. ' + fc(invSl.negativeValue), sub: 'negative qty × retail price' })}
-      ${heroCard({ label: 'Never Sold (60D)', value: 'Rs. ' + fc(invSl.neverSold60Value), sub: '>60 days received, zero sales' })}
-      ${heroCard({ label: 'Dead Stock (60D)', value: 'Rs. ' + fc(invSl.deadStock60Value), sub: 'quiet 60+ days' })}
-    </div>
-    <div class="cover-hero-row">
-      ${heroCard({ label: 'Excess Stock Total', value: invEw ? 'Rs. ' + fc(invEw.rawExcessValue) : '—', sub: 'raw, before correction' })}
-      ${heroCard({ label: 'Corrected Excess Stock', value: invEw ? 'Rs. ' + fc(invEw.correctedExcessValue) : '—', sub: 'after retain list + misc buffer' })}
-      ${heroCard({ label: 'Reorder Alert (<7d cover · Top 500 by 30d value)', value: invRr ? fc(invRr.totalReorderQty) + ' units' : '—', sub: invRr ? invRr.itemsShown + ' items · Rs. ' + fc(invRr.totalReorderValue) + ' to reorder' : 'no data yet' })}
-    </div>` : `
-    <div class="cover-hero-row cover-hero-row-single">
-      ${heroCard({ label: 'Inventory', value: 'Waiting for Stock Ledger…', sub: 'loads automatically at startup — give it a moment and reopen this tab' })}
-    </div>`;
-  } catch (e) {
-    console.error('Cover Dashboard: building Inventory hero HTML failed', e);
-    inventoryHeroHtml = `
-    <div class="cover-hero-row cover-hero-row-single">
-      ${heroCard({ label: 'Inventory', value: 'Unavailable', sub: 'something went wrong reading Inventory stats — Sales/Manager/Closing are unaffected' })}
-    </div>`;
-  }
-
   const tileCardHtml = (t, i) => `
     <div class="cover-tile${t.enabled ? '' : ' cover-tile-disabled'}"
          ${t.enabled ? `data-goto-idx="${i}" role="button" tabindex="0"` : ''}>
@@ -435,7 +383,7 @@ export function renderCoverDashboard() {
       ${t.bridgeAction ? `<button class="cover-tile-bridge" data-bridge-idx="${i}">Bridge</button>` : ''}
     </div>`;
 
-  const GROUP_HERO = { Sales: heroHtml, Manager: managerHeroHtml, Closing: closingHeroHtml, Inventory: inventoryHeroHtml };
+  const GROUP_HERO = { Sales: heroHtml, Manager: managerHeroHtml, Closing: closingHeroHtml };
   const groupsHtml = GROUP_ORDER.map(groupName => {
     const members = tiles.map((t, i) => ({ t, i })).filter(x => x.t.group === groupName);
     if (!members.length) return '';
