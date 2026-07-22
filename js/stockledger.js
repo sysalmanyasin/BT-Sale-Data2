@@ -756,9 +756,23 @@ window.StockLedgerApp = (function(){
         try{
           const client = getSupabaseClient();
           if(!silent) sbSetStatus('Loading from Supabase…');
-          const { data, error } = await client.from(table).select('*');
-          if(error) throw new Error(error.message);
-          if(!data || data.length === 0) throw new Error('table "' + table + '" returned no rows');
+          // A single .select('*') caps at 1000 rows — that's PostgREST's
+          // own default limit, not this table's actual row count, so it
+          // silently truncates any inventory bigger than 1000 SKUs
+          // instead of erroring. Page through with .range() until a page
+          // comes back smaller than PAGE_SIZE.
+          const PAGE_SIZE = 1000;
+          let data = [];
+          for (let from = 0; ; from += PAGE_SIZE) {
+            const to = from + PAGE_SIZE - 1;
+            if(!silent) sbSetStatus('Loading from Supabase… (' + data.length.toLocaleString() + ' rows so far)');
+            const { data: page, error } = await client.from(table).select('*').range(from, to);
+            if(error) throw new Error(error.message);
+            if(!page || page.length === 0) break;
+            data = data.concat(page);
+            if(page.length < PAGE_SIZE) break;
+          }
+          if(data.length === 0) throw new Error('table "' + table + '" returned no rows');
           const normalized = (table === 'inventory_products') ? data.map(normalizeSupabaseRow) : data;
           if(loadRawArray(normalized, table + ' (Supabase)')){
             sbSetStatus('Loaded ' + data.length.toLocaleString() + ' rows from Supabase ✓', 'ok');
