@@ -1012,6 +1012,38 @@ window.StockLedgerApp = (function(){
         }
       })();
 
+      // ---------- Keep-fresh: periodic auto-refresh + refresh-on-foreground ----------
+      // The boot-time auto-load above only ever fires once. Left open for a
+      // while, the session would keep showing whatever it loaded at boot even
+      // as the sync-inventory-from-dropbox Edge Function moves Supabase's
+      // `inventory_products` table forward underneath it — exactly the drift
+      // that caused Cover Dashboard numbers to mismatch a fresh Dropbox pull
+      // during a long-open session. Both paths below reuse fetchFromSupabase(true),
+      // the same silent call the boot-time load already makes, so a refresh
+      // here behaves identically — just re-triggered instead of one-shot.
+      const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // matches Supabase's own ~5 min lag behind Dropbox
+      let _lastAutoRefresh = Date.now();
+
+      function _autoRefreshTick(){
+        if(!(sbConfig.autoLoad && sbConfig.client)) return;
+        _lastAutoRefresh = Date.now();
+        fetchFromSupabase(true).catch(()=>{ /* silent — same as boot-time auto-load */ });
+      }
+
+      setInterval(_autoRefreshTick, REFRESH_INTERVAL_MS);
+
+      // Also refresh whenever the app/tab comes back to the foreground —
+      // covers "opened the app, left it in the background for an hour,
+      // came back" without waiting for the next interval tick. Skipped if
+      // a refresh already happened recently (interval tick or boot load)
+      // so switching tabs quickly doesn't spam Supabase.
+      document.addEventListener('visibilitychange', ()=>{
+        if(document.visibilityState !== 'visible') return;
+        if(Date.now() - _lastAutoRefresh > 60 * 1000){
+          _autoRefreshTick();
+        }
+      });
+
       // ---------- Init ----------
       $('#sl-asofLine').textContent = 'Reference date: ' + state.today.toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'}) + ' — all "days since" figures are measured against this.';
 
