@@ -321,6 +321,7 @@ if ('serviceWorker' in navigator) {
     <div class="cover-page-hero-row">
       <div>
         <div class="cover-page-hero-badge">🏠 Intelligence Centre</div>
+        <div class="cover-page-hero-greeting" id="cover-greeting"></div>
         <div class="cover-page-hero-title">Bahria Town Sales IC</div>
         <div class="cover-page-hero-sub">Everything at a glance — sales, manager, closing &amp; audit</div>
       </div>
@@ -329,7 +330,21 @@ if ('serviceWorker' in navigator) {
     <div id="cover-online-pill" onclick="showOnlineStaffDetail()"
       style="display:none;margin-top:8px;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;background:rgba(34,197,94,.15);color:#16a34a;font-size:0.78rem;font-weight:600;cursor:pointer;"></div>
   </div>
+
+  <div class="cover-search-row">
+    <span class="cover-search-icon">🔍</span>
+    <input type="text" id="cover-search" class="cover-search-input" placeholder="Jump to anything — Sales, Inventory, Audit…" autocomplete="off">
+  </div>
+
+  <div id="cover-attention-strip"></div>
+  <div id="cover-pins-row"></div>
+
   <div id="cover-container">Loading…</div>
+
+  <button id="cover-fab" class="cover-fab" title="Add today's sale" onclick="showPage('entry')">
+    <span class="cover-fab-plus">+</span>
+    <span class="cover-fab-label">Add Sale</span>
+  </button>
 </div>
 
 <!-- COMMANDHUB PAGE -->
