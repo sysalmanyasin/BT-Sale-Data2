@@ -15,7 +15,7 @@ import { STAFF } from './config.js';
 import { _ni, _fc2 } from './manager-shared.js';
 import { _salRows_cur, renderSalaryTable } from './manager-salary.js';
 import { _genRows_cur, renderGenericTable } from './manager-generic.js';
-import { _crdData_cur, _crdNet, renderCreditLedger } from './manager-credit.js';
+import { _crdData_cur, _crdNet, renderCreditLedger, thisMonthNetFor, renderStaffCreditCurrent } from './manager-credit.js';
 
 function staffSave() {
   Repository.saveStaff();
@@ -24,6 +24,12 @@ function staffSave() {
 function activeStaff() {
   return STAFF.filter(e => e.active !== false)
     .sort((a, b) => (Number(a.srNum)||999) - (Number(b.srNum)||999));
+}
+
+let _staffShowInactive = false;
+function staffToggleShowInactive(checked) {
+  _staffShowInactive = !!checked;
+  renderStaffRegistry();
 }
 
 // ── Staff Registry UI ──────────────────────────────────
@@ -35,15 +41,23 @@ function renderStaffRegistry() {
   setK('staff-k-total', STAFF.length);
   setK('staff-k-active', active);
   setK('staff-k-inactive', STAFF.length - active);
+  const toggleEl = document.getElementById('staff-show-inactive');
+  if (toggleEl) toggleEl.checked = _staffShowInactive;
   if (!STAFF.length) {
     cont.innerHTML = '<div style="text-align:center;color:var(--muted);padding:32px">No employees yet — click <strong>+ Add Employee</strong></div>';
     return;
   }
-  // Sort by srNum for display (STAFF array order unchanged)
+  // Sort by srNum for display (STAFF array order unchanged); active-only
+  // by default, matching how Salary/Generic/Credit sheets already work.
   const _srSorted = STAFF.map((emp, origIdx) => ({emp, origIdx}))
+    .filter(({emp}) => _staffShowInactive || emp.active !== false)
     .sort((a, b) => (Number(a.emp.srNum)||999) - (Number(b.emp.srNum)||999));
+  if (!_srSorted.length) {
+    cont.innerHTML = '<div style="text-align:center;color:var(--muted);padding:32px">No active employees — check "Show inactive employees too" below, or add one.</div>';
+    return;
+  }
   cont.innerHTML = `<div style="overflow-x:auto">
-  <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:980px;border:2px solid var(--border)">
+  <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:1080px;border:2px solid var(--border)">
     <thead>
       <tr style="background:var(--accent);color:#fff">
         <th style="padding:9px 8px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em" title="Editable Sr# — controls row order in Salary, Generic & Credit sheets">Sr#</th>
@@ -54,6 +68,7 @@ function renderStaffRegistry() {
         <th style="padding:9px 10px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">CNIC</th>
         <th style="padding:9px 10px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Blood Group</th>
         <th style="padding:9px 10px;text-align:left;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Phone</th>
+        <th style="padding:9px 10px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em" title="This calendar month's credit balance — tap a name to add or edit">This Month</th>
         <th style="padding:9px 10px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Active</th>
         <th style="padding:9px 10px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Actions</th>
       </tr>
@@ -97,6 +112,11 @@ function renderStaffRegistry() {
         </td>
         <td style="padding:7px 10px;border:1px solid var(--border);color:var(--t2)">
           ${emp.phone||'<span style="color:var(--muted)">—</span>'}
+        </td>
+        <td style="padding:7px 10px;border:1px solid var(--border);text-align:center">
+          <button onclick="openStaffCard(${i})" style="border:none;background:none;cursor:pointer;font-weight:700;font-family:var(--mono);font-size:12px;color:${(() => { const nv = thisMonthNetFor(emp.name); return nv > 0 ? 'var(--green)' : nv < 0 ? 'var(--red)' : 'var(--muted)'; })()}" title="Tap to add/edit this month's credit">
+            ₨${_fc2(thisMonthNetFor(emp.name))}
+          </button>
         </td>
         <td style="padding:7px 10px;border:1px solid var(--border);text-align:center">
           <input type="checkbox" ${emp.active!==false?'checked':''} onchange="staffToggleActive(${i},this.checked)" title="Active/Inactive">
@@ -233,6 +253,7 @@ function openStaffCard(i) {
   if (activeEl) activeEl.checked = emp.active !== false;
   // Load credit history
   renderStaffCreditHistory(emp.name);
+  renderStaffCreditCurrent(emp.name);
   modal.classList.add('on');
   switchStaffCardTab('details');
 }
@@ -383,12 +404,12 @@ Object.assign(window, {
   activeStaff, renderStaffRegistry, staffFieldChange, staffSrNumChange,
   staffToggleActive, staffDelete, addStaffEmployee, saveStaffRegistry, staffSave,
   openStaffCard, closeStaffCard, setStaffLogin, saveStaffCard, switchStaffCardTab,
-  renderStaffCreditHistory,
+  renderStaffCreditHistory, staffToggleShowInactive,
 });
 
 export {
   activeStaff, renderStaffRegistry, staffFieldChange, staffSrNumChange,
   staffToggleActive, staffDelete, addStaffEmployee, saveStaffRegistry, staffSave,
   openStaffCard, closeStaffCard, setStaffLogin, saveStaffCard, switchStaffCardTab,
-  renderStaffCreditHistory,
+  renderStaffCreditHistory, staffToggleShowInactive,
 };
