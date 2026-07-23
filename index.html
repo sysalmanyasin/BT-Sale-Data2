@@ -1542,6 +1542,10 @@ if ('serviceWorker' in navigator) {
       <div class="kpi"><div class="klbl">Inactive</div><div class="kval" id="staff-k-inactive" style="color:var(--muted)">0</div></div>
     </div>
     <div id="staff-list"></div>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12px;color:var(--muted);cursor:pointer;user-select:none">
+      <input type="checkbox" id="staff-show-inactive" onchange="staffToggleShowInactive(this.checked)" style="width:auto;margin:0">
+      Show inactive employees too
+    </label>
     <div style="margin-top:14px;padding:12px 16px;background:var(--s2);border-radius:8px;font-size:11px;color:var(--muted);line-height:1.7">
       💡 <strong>How it works:</strong> Saving the staff list here automatically updates Salary Sheet, Generic Working, and Staff Credit for the current month. Inactive employees are hidden from new months but their historical data stays intact. Changes sync to Supabase automatically.
     </div>
@@ -2106,6 +2110,8 @@ if ('serviceWorker' in navigator) {
 
       <!-- Credit Ledger Panel -->
       <div id="sc-panel-credit" style="display:none">
+        <div id="sc-credit-current"></div>
+        <div class="sccc-history-title">Previous Months</div>
         <div id="sc-credit-history">
           <p style="text-align:center;color:var(--muted);padding:32px">Select an employee to view credit history.</p>
         </div>
