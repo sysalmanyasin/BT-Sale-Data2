@@ -45,6 +45,119 @@ function _getTargets() {
   try { return JSON.parse(Repository.getItem(TGT_KEY) || '{}'); } catch (e) { return {}; }
 }
 
+const PIN_KEY = 'bt_cover_pins_v1';
+const COLLAPSE_KEY = 'bt_cover_collapsed_v1';
+function _getPins() { try { return JSON.parse(Repository.getItem(PIN_KEY) || '[]'); } catch (e) { return []; } }
+function _setPins(arr) { try { Repository.setItem(PIN_KEY, JSON.stringify(arr)); } catch (e) {} }
+function _getCollapsed() { try { return JSON.parse(Repository.getItem(COLLAPSE_KEY) || '[]'); } catch (e) { return []; } }
+function _setCollapsed(arr) { try { Repository.setItem(COLLAPSE_KEY, JSON.stringify(arr)); } catch (e) {} }
+
+function _greetingText() {
+  const h = new Date().getHours();
+  const part = h < 5 ? 'Working late' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : h < 21 ? 'Good evening' : 'Working late';
+  const online = ClosingBridge.getOnlineStaff();
+  return part + ' 👋' + (online.length ? ' · ' + online.length + ' online now' : '');
+}
+
+// Last 7 filled-day totals (oldest→newest), for the sales headline sparkline + trend arrow.
+function _last7DayTotals() {
+  const filled = DAILY.filter(d => n(d.TOTAL) > 0)
+    .sort((a, b) => _dailyDateVal(a.Date) - _dailyDateVal(b.Date));
+  return filled.slice(-7).map(d => n(d.TOTAL));
+}
+
+function _sparklineSvg(values) {
+  if (!values || values.length < 2) return '';
+  const w = 84, hgt = 28, pad = 3;
+  const max = Math.max(...values), min = Math.min(...values);
+  const range = (max - min) || 1;
+  const step = (w - pad * 2) / (values.length - 1);
+  const pts = values.map((v, i) => `${(pad + i * step).toFixed(1)},${(hgt - pad - ((v - min) / range) * (hgt - pad * 2)).toFixed(1)}`).join(' ');
+  const up = values[values.length - 1] >= values[0];
+  return `<svg class="cover-hero-spark" width="${w}" height="${hgt}" viewBox="0 0 ${w} ${hgt}">
+    <polyline points="${pts}" fill="none" stroke="${up ? '#059669' : '#dc2626'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+}
+
+function _trendBadge(values) {
+  if (!values || values.length < 2) return '';
+  const prev = values[values.length - 2], cur = values[values.length - 1];
+  if (!prev) return '';
+  const pct = Math.round(((cur - prev) / prev) * 100);
+  const up = pct >= 0;
+  return `<span class="cover-hero-trend ${up ? 'up' : 'down'}">${up ? '▲' : '▼'} ${Math.abs(pct)}%</span>`;
+}
+
+// Aggregates only genuinely actionable items across modules — the whole
+// point is that this stays short; a quiet day should show almost nothing.
+function _needsAttention() {
+  const items = [];
+  try {
+    const pace = _targetPace();
+    if (/behind pace/.test(pace.sub || '')) {
+      items.push({ icon: '📉', text: 'Behind sales target this month', cls: 'amber', page: 'dashboard' });
+    }
+  } catch (e) {}
+  try {
+    const credits = _totalOutstandingCredits();
+    const v = parseFloat(String(credits.value || '').replace(/[^0-9.-]/g, ''));
+    if (v > 0) items.push({ icon: '💳', text: 'Rs. ' + fc(v) + ' outstanding credit', cls: 'amber', page: 'manager' });
+  } catch (e) {}
+  try {
+    const inv = _inventoryHeroStats();
+    if (inv.slStats && inv.slStats.dataReady && n(inv.slStats.negativeValue) > 0) {
+      items.push({ icon: '⚠️', text: 'Negative-value stock in Inventory', cls: 'red', page: 'inventory' });
+    }
+    if (inv.rrSummary && n(inv.rrSummary.totalReorderValue) > 0) {
+      items.push({ icon: '🛒', text: inv.rrSummary.itemsShown + ' items need reorder', cls: 'amber', page: 'reorder' });
+    }
+  } catch (e) {}
+  return items;
+}
+
+function _renderAttentionStrip() {
+  const el = document.getElementById('cover-attention-strip');
+  if (!el) return;
+  const items = _needsAttention();
+  if (!items.length) {
+    el.innerHTML = '<div class="cover-attn-empty">✅ All clear — nothing needs attention right now.</div>';
+    return;
+  }
+  el.innerHTML = `<div class="cover-attn-row">
+    ${items.map((it, i) => `<div class="cover-attn-chip cls-${it.cls}" data-attn-idx="${i}">${it.icon} ${_esc(it.text)}</div>`).join('')}
+  </div>`;
+  el.querySelectorAll('[data-attn-idx]').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const it = items[+chip.dataset.attnIdx];
+      if (it && typeof window.showPage === 'function') window.showPage(it.page);
+    });
+  });
+}
+
+function _renderPinsRow(tiles) {
+  const el = document.getElementById('cover-pins-row');
+  if (!el) return;
+  const pins = _getPins();
+  const pinned = pins.map(p => tiles.find(t => t.page === p || t.href === p)).filter(Boolean);
+  if (!pinned.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="cover-pins-title">📌 Your Shortcuts</div>
+    <div class="cover-pins-row">
+      ${pinned.map(t => `<div class="cover-pin-tile" data-pin-goto="${_esc(t.page || t.href)}">
+        <div class="cover-pin-icon">${t.icon}</div>
+        <div class="cover-pin-label">${_esc(t.title)}</div>
+      </div>`).join('')}
+    </div>`;
+  el.querySelectorAll('[data-pin-goto]').forEach(card => {
+    card.addEventListener('click', () => {
+      const key = card.dataset.pinGoto;
+      const t = tiles.find(x => x.page === key || x.href === key);
+      if (!t) return;
+      if (t.href) window.open(t.href, '_blank', 'noopener');
+      else if (t.page && typeof window.showPage === 'function') window.showPage(t.page);
+    });
+  });
+}
+
 function _salesHeadline() {
   const filled = DAILY.filter(d => n(d.TOTAL) > 0);
   if (!filled.length) return { label: 'Latest sale', value: 'No entries yet', sub: '' };
@@ -323,6 +436,8 @@ const GROUP_META = {
 
 function _updateHeroDate() {
   const el = document.getElementById('cover-hero-date');
+  const greetEl = document.getElementById('cover-greeting');
+  if (greetEl) greetEl.textContent = _greetingText();
   if (!el) return;
   const d = new Date();
   const dayName = d.toLocaleDateString('en-PK', { weekday: 'long' });
@@ -340,6 +455,28 @@ function _updateOnlinePill() {
   pill.style.display = 'inline-flex';
 }
 
+function _wireCoverSearch(tiles) {
+  const input = document.getElementById('cover-search');
+  if (!input || input.dataset.wired) return;
+  input.dataset.wired = '1';
+  input.addEventListener('input', () => {
+    const q = input.value.trim().toLowerCase();
+    document.querySelectorAll('#cover-container .cover-group').forEach(groupEl => {
+      let anyVisible = false;
+      groupEl.querySelectorAll('.cover-tile').forEach(tileEl => {
+        const title = (tileEl.querySelector('.cover-tile-title')?.textContent || '').toLowerCase();
+        const status = (tileEl.querySelector('.cover-tile-status')?.textContent || '').toLowerCase();
+        const match = !q || title.includes(q) || status.includes(q);
+        tileEl.classList.toggle('cover-tile-hidden', !match);
+        tileEl.classList.toggle('cover-tile-match', !!q && match);
+        if (match) anyVisible = true;
+      });
+      groupEl.classList.toggle('cover-group-hidden', !!q && !anyVisible);
+      if (q && anyVisible) groupEl.classList.remove('collapsed');
+    });
+  });
+}
+
 export function renderCoverDashboard() {
   const container = document.getElementById('cover-container');
   if (!container) return;
@@ -347,6 +484,9 @@ export function renderCoverDashboard() {
   _updateOnlinePill();
 
   const headline = _salesHeadline();
+  const week = _last7DayTotals();
+  headline.spark = _sparklineSvg(week);
+  headline.trend = _trendBadge(week);
   const pace = _targetPace();
   const credits = _totalOutstandingCredits();
   const tiles = _tiles();
@@ -354,8 +494,9 @@ export function renderCoverDashboard() {
   const heroCard = h => `
     <div class="cover-hero-card">
       <div class="cover-hero-label">${_esc(h.label)}</div>
-      <div class="cover-hero-value">${_esc(h.value)}</div>
+      <div class="cover-hero-value">${_esc(h.value)}${h.trend || ''}</div>
       <div class="cover-hero-sub">${_esc(h.sub)}</div>
+      ${h.spark || ''}
     </div>`;
 
   const closingSummaryCard = h => `
@@ -415,8 +556,9 @@ export function renderCoverDashboard() {
       ${heroCard({ label: 'Corrected Excess Stock', value: invEw ? 'Rs. ' + fc(invEw.correctedExcessValue) : '—', sub: 'after retain list + misc buffer' })}
       ${heroCard({ label: 'Reorder Alert (<7d cover · Top 500 by 30d value)', value: invRr ? fc(invRr.totalReorderQty) + ' units' : '—', sub: invRr ? invRr.itemsShown + ' items · Rs. ' + fc(invRr.totalReorderValue) + ' to reorder' : 'no data yet' })}
     </div>` : `
-    <div class="cover-hero-row cover-hero-row-single">
-      ${heroCard({ label: 'Inventory', value: 'Waiting for Stock Ledger…', sub: 'loads automatically at startup — give it a moment and reopen this tab' })}
+    <div class="cover-skel-row">
+      <div class="cover-skel-card"></div><div class="cover-skel-card"></div>
+      <div class="cover-skel-card"></div><div class="cover-skel-card"></div>
     </div>`;
   } catch (e) {
     console.error('Cover Dashboard: building Inventory hero HTML failed', e);
@@ -426,9 +568,12 @@ export function renderCoverDashboard() {
     </div>`;
   }
 
+  const pins = _getPins();
+  const collapsed = _getCollapsed();
   const tileCardHtml = (t, i) => `
     <div class="cover-tile${t.enabled ? '' : ' cover-tile-disabled'}"
          ${t.enabled ? `data-goto-idx="${i}" role="button" tabindex="0"` : ''}>
+      <button class="cover-tile-pin${pins.includes(t.page || t.href) ? ' pinned' : ''}" data-pin-key="${_esc(t.page || t.href)}" title="Pin to shortcuts">📌</button>
       <div class="cover-tile-icon">${t.icon}</div>
       <div class="cover-tile-title">${_esc(t.title)}${t.href ? ' <span class="ext">↗</span>' : ''}</div>
       <div class="cover-tile-status">${_esc(t.status)}</div>
@@ -440,26 +585,56 @@ export function renderCoverDashboard() {
     const members = tiles.map((t, i) => ({ t, i })).filter(x => x.t.group === groupName);
     if (!members.length) return '';
     const meta = GROUP_META[groupName] || { slug: 'sales', icon: '•' };
+    const isCollapsed = collapsed.includes(meta.slug);
     return `
-      <div class="cover-group" data-group="${meta.slug}">
-        <div class="cover-group-header">
+      <div class="cover-group${isCollapsed ? ' collapsed' : ''}" data-group="${meta.slug}">
+        <div class="cover-group-header" data-group-toggle="${meta.slug}">
           <div class="cover-group-icon">${meta.icon}</div>
           <div class="cover-group-title">${_esc(groupName)}</div>
           <div class="cover-group-line"></div>
+          <div class="cover-group-chevron">▾</div>
         </div>
-        ${GROUP_HERO[groupName] || ''}
-        ${groupName === 'Manager' ? '<div id="qa-panel-cover"></div>' : ''}
-        <div class="cover-tile-grid">
-          ${members.map(({ t, i }) => tileCardHtml(t, i)).join('')}
-        </div>
+        <div class="cover-group-body"><div>
+          ${GROUP_HERO[groupName] || ''}
+          ${groupName === 'Manager' ? '<div id="qa-panel-cover"></div>' : ''}
+          <div class="cover-tile-grid">
+            ${members.map(({ t, i }) => tileCardHtml(t, i)).join('')}
+          </div>
+        </div></div>
       </div>`;
   }).join('');
 
   container.innerHTML = groupsHtml;
+  _renderAttentionStrip();
+  _renderPinsRow(tiles);
   _updateHeroDate();
   if (document.getElementById('qa-panel-cover') && typeof window.renderQuickAdd === 'function') {
     window.renderQuickAdd('qa-panel-cover');
   }
+  container.querySelectorAll('[data-pin-key]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const key = btn.dataset.pinKey;
+      let pinsNow = _getPins();
+      if (pinsNow.includes(key)) pinsNow = pinsNow.filter(p => p !== key);
+      else pinsNow = [...pinsNow, key];
+      _setPins(pinsNow);
+      renderCoverDashboard();
+    });
+  });
+  container.querySelectorAll('[data-group-toggle]').forEach(header => {
+    header.addEventListener('click', () => {
+      const slug = header.dataset.groupToggle;
+      const groupEl = header.closest('.cover-group');
+      if (groupEl) groupEl.classList.toggle('collapsed');
+      let coll = _getCollapsed();
+      coll = (groupEl && groupEl.classList.contains('collapsed'))
+        ? [...new Set([...coll, slug])]
+        : coll.filter(s => s !== slug);
+      _setCollapsed(coll);
+    });
+  });
+  _wireCoverSearch(tiles);
   container.querySelectorAll('[data-goto-idx]').forEach(card => {
     const goTo = () => {
       const t = tiles[+card.dataset.gotoIdx];
