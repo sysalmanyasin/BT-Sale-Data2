@@ -50,6 +50,7 @@
 <link rel="stylesheet" href="css/stockledger.css?v=20260722a">
 <link rel="stylesheet" href="css/excess-working.css?v=20260722a">
 <link rel="stylesheet" href="css/reorder-report.css?v=20260722a">
+<link rel="stylesheet" href="css/pdf-library.css?v=20260725a">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,400,0,0">
 <link rel="stylesheet" href="css/components.css?v=20260722a">
 <link rel="stylesheet" href="css/modals.css?v=20260722a">
@@ -268,6 +269,7 @@ if ('serviceWorker' in navigator) {
     <a class="ntab" href="#excess" data-page="excess" data-group="inventory" data-domain-group="inventory">📉 Excess Working</a>
     <a class="ntab" href="#reorder" data-page="reorder" data-group="inventory" data-domain-group="inventory">🛒 Reorder Report</a>
     <a class="ntab" href="#tools" data-page="tools" data-group="tools">Tools</a>
+    <a class="ntab" href="#pdf-library" data-page="pdf-library" data-group="pdf-library">📚 PDF Library</a>
   </div>
   <div class="ntabs subnav" id="saledata-subnav" style="display:none">
     <a class="ntab sub" href="#index" data-page="index">Index</a>
@@ -302,6 +304,7 @@ if ('serviceWorker' in navigator) {
   <a class="bnav-item" href="#excess" data-page="excess" data-group="inventory" data-domain-group="inventory"><span class="bicon">📉</span><span class="blabel">Excess</span></a>
   <a class="bnav-item" href="#reorder" data-page="reorder" data-group="inventory" data-domain-group="inventory"><span class="bicon">🛒</span><span class="blabel">Reorder</span></a>
   <a class="bnav-item" href="#tools" data-page="tools" data-group="tools"><span class="bicon">⚙️</span><span class="blabel">Tools</span></a>
+  <a class="bnav-item" href="#pdf-library" data-page="pdf-library" data-group="pdf-library"><span class="bicon">📚</span><span class="blabel">PDF Library</span></a>
 </div>
 <!-- Sale Data sub-nav (mobile) -->
 <div class="bnav-sub no-print" id="bnav-saledata-sub" style="display:none">
@@ -1386,6 +1389,28 @@ if ('serviceWorker' in navigator) {
   </div>
 </div>
 
+<!-- ══ PDF LIBRARY ══ (see js/pdf-library.js) -->
+<div class="page" id="page-pdf-library">
+  <div class="hero"><div class="hlabel">PDF Library</div><div class="htitle">📚 Saved Reports</div><div class="hsub">Every report you've printed, synced across devices — saved from the print prompt, auto-cleared once expired unless pinned.</div></div>
+  <div class="pl-toolbar">
+    <input type="search" id="pl-search" placeholder="🔎 Search by title or filename…">
+    <select id="pl-filter-category">
+      <option value="">All categories</option>
+      <option value="sales">📊 Sales</option>
+      <option value="manager">👔 Manager</option>
+      <option value="inventory">📦 Inventory</option>
+      <option value="closing">📖 Closing</option>
+      <option value="audit">🧾 Audit</option>
+      <option value="notesheets">📑 Notes & Sheets</option>
+      <option value="other">🗂️ Other</option>
+    </select>
+    <button class="btn btn-s" id="pl-refresh" type="button">↻ Refresh</button>
+  </div>
+  <div class="pl-grid" id="pl-grid">
+    <div class="pl-empty">Loading…</div>
+  </div>
+</div>
+
 <!-- FIELD MANAGER MODAL -->
 <div class="fmbg" id="fmbg" onclick="if(event.target===this)closeFieldManager()">
   <div class="fmbox">
@@ -1918,6 +1943,7 @@ if ('serviceWorker' in navigator) {
 
 <!-- 6d. Supabase sync (Floor 1 extension — needs Repository + Actions) -->
 <script defer src="js/supabase.js?v=20260722a"></script>
+<script defer src="js/pdf-library.js?v=20260725a"></script>
 
 <!-- 7. Targets: monthly target management -->
 <script defer src="js/targets.js?v=20260722a"></script>
