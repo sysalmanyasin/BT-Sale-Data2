@@ -140,6 +140,7 @@ function renderPettyGroups() {
       </div>
       <div class="petty-group-foot">
         <button class="btn btn-p" style="font-size:11px;padding:5px 12px" onclick="addPettyRow(${gi})">＋ Add Item</button>
+        <button class="btn" style="font-size:11px;padding:5px 12px;background:var(--accent);color:#fff" onclick="printPettyGroup(${gi})">🖨 Print Group</button>
         <div style="font-family:var(--mono);font-weight:700;font-size:13px">
           Total: <span id="petty-sub-${gi}" style="color:var(--accent)">₨${_fc2(sub)}</span>
         </div>
@@ -153,38 +154,43 @@ function pettyRowChange_period(gi, val) {
   _pettyData.groups[gi].period = val;
 }
 
+// Shared per-group print block — used by both the full-month report
+// (printPettyReport) and the single-group print (printPettyGroup), so
+// the two never drift apart in formatting.
+function _pettyGroupBlockHTML(g, gi) {
+  const sub = _pettyGroupTotal(g);
+  const rows = g.rows.map((r,ri) => `<tr>
+    <td style="padding:4px 8px;border-bottom:1px solid #eee">${ri+1}</td>
+    <td style="padding:4px 8px;border-bottom:1px solid #eee">${r.desc||'—'}</td>
+    <td style="padding:4px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${_fc2(r.amount)}</td>
+  </tr>`).join('');
+  return `
+  <div style="margin-bottom:18px;border:1px solid #d1d5db;border-radius:8px;overflow:hidden">
+    <div style="background:#eff6ff;padding:8px 14px;display:flex;justify-content:space-between;align-items:center">
+      <strong style="font-size:12px;color:#1e40af">Group ${gi+1} — ${g.period||'No period'}</strong>
+      <span style="font-size:11px;color:#6b7280">Sub-total: <strong style="color:#1e40af">₨${_fc2(sub)}</strong></span>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr style="background:#f8fafc">
+        <th style="padding:5px 8px;text-align:left;border-bottom:1px solid #d1d5db;font-size:10px">#</th>
+        <th style="padding:5px 8px;text-align:left;border-bottom:1px solid #d1d5db;font-size:10px">Description</th>
+        <th style="padding:5px 8px;text-align:right;border-bottom:1px solid #d1d5db;font-size:10px">Amount</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr style="background:#eff6ff">
+        <td colspan="2" style="padding:6px 8px;font-weight:700;font-size:11px">Total Petty Detail:</td>
+        <td style="padding:6px 8px;text-align:right;font-weight:700;font-family:monospace;color:#1e40af">₨${_fc2(sub)}</td>
+      </tr></tfoot>
+    </table>
+  </div>`;
+}
+
 function printPettyReport() {
   const my = document.getElementById('petty-month-sel').value;
   const gs = _pettyData.groups;
   const today = new Date().toLocaleDateString('en-PK',{day:'2-digit',month:'short',year:'numeric'});
   const grand = gs.reduce((s,g) => s + _pettyGroupTotal(g), 0);
-  const groupBlocks = gs.map((g, gi) => {
-    const sub = _pettyGroupTotal(g);
-    const rows = g.rows.map((r,ri) => `<tr>
-      <td style="padding:4px 8px;border-bottom:1px solid #eee">${ri+1}</td>
-      <td style="padding:4px 8px;border-bottom:1px solid #eee">${r.desc||'—'}</td>
-      <td style="padding:4px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${_fc2(r.amount)}</td>
-    </tr>`).join('');
-    return `
-    <div style="margin-bottom:18px;border:1px solid #d1d5db;border-radius:8px;overflow:hidden">
-      <div style="background:#eff6ff;padding:8px 14px;display:flex;justify-content:space-between;align-items:center">
-        <strong style="font-size:12px;color:#1e40af">Group ${gi+1} — ${g.period||'No period'}</strong>
-        <span style="font-size:11px;color:#6b7280">Sub-total: <strong style="color:#1e40af">₨${_fc2(sub)}</strong></span>
-      </div>
-      <table style="width:100%;border-collapse:collapse;font-size:12px">
-        <thead><tr style="background:#f8fafc">
-          <th style="padding:5px 8px;text-align:left;border-bottom:1px solid #d1d5db;font-size:10px">#</th>
-          <th style="padding:5px 8px;text-align:left;border-bottom:1px solid #d1d5db;font-size:10px">Description</th>
-          <th style="padding:5px 8px;text-align:right;border-bottom:1px solid #d1d5db;font-size:10px">Amount</th>
-        </tr></thead>
-        <tbody>${rows}</tbody>
-        <tfoot><tr style="background:#eff6ff">
-          <td colspan="2" style="padding:6px 8px;font-weight:700;font-size:11px">Total Petty Detail:</td>
-          <td style="padding:6px 8px;text-align:right;font-weight:700;font-family:monospace;color:#1e40af">₨${_fc2(sub)}</td>
-        </tr></tfoot>
-      </table>
-    </div>`;
-  }).join('');
+  const groupBlocks = gs.map((g, gi) => _pettyGroupBlockHTML(g, gi)).join('');
   _mgrPrint(`<div style="max-width:620px;margin:0 auto;font-family:Arial,sans-serif">
     <div style="background:#1e40af;color:#fff;padding:14px 20px;border-radius:8px;margin-bottom:16px">
       <h2 style="margin:0;font-size:16px">PETTY CASH DETAIL — ${my}</h2>
@@ -198,14 +204,35 @@ function printPettyReport() {
   </div>`);
 }
 
+// Print a single group's voucher — reuses the exact same block markup
+// as the full report (see _pettyGroupBlockHTML above). Called from the
+// "🖨 Print Group" button rendered in every group's footer, so any group
+// added later via addPettyGroup() gets this for free — no per-group
+// wiring needed.
+function printPettyGroup(gi) {
+  const my = document.getElementById('petty-month-sel').value || _pettyMonth;
+  const g = _pettyData.groups[gi];
+  if (!g) { toast('⚠ Group not found','w'); return; }
+  const today = new Date().toLocaleDateString('en-PK',{day:'2-digit',month:'short',year:'numeric'});
+  _mgrPrint(`<div style="max-width:620px;margin:0 auto;font-family:Arial,sans-serif">
+    <div style="background:#1e40af;color:#fff;padding:14px 20px;border-radius:8px;margin-bottom:16px">
+      <h2 style="margin:0;font-size:16px">PETTY CASH DETAIL — ${my}</h2>
+      <p style="margin:4px 0 0;font-size:11px;opacity:.7">Bahria Town Fazal Din Pharma Plus · Printed: ${today}</p>
+    </div>
+    ${_pettyGroupBlockHTML(g, gi)}
+  </div>`);
+}
+
 Object.assign(window, {
   _pettyKey, _pettyData, _pettyMonth, loadPettyMonth, savePettyData, _pettyTotalForMonth,
   addPettyGroup, deletePettyGroup, addPettyRow, deletePettyRow, pettyRowChange,
   pettyRowChange_period, recalcPettyKpis, renderPettyGroups, printPettyReport,
+  _pettyGroupBlockHTML, printPettyGroup,
 });
 
 export {
   _pettyKey, _pettyData, _pettyMonth, loadPettyMonth, savePettyData, _pettyTotalForMonth,
   addPettyGroup, deletePettyGroup, addPettyRow, deletePettyRow, pettyRowChange,
   pettyRowChange_period, recalcPettyKpis, renderPettyGroups, printPettyReport,
+  _pettyGroupBlockHTML, printPettyGroup,
 };
