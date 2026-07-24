@@ -18,7 +18,7 @@
 // ══════════════════════════════════════════════════════════════════════
 import { Repository } from './repository.js';
 import { STAFF } from './config.js';
-import { _ni, _fc2, _inp, mgrLoad, mgrSave } from './manager-shared.js';
+import { _ni, _fc2, _inp, mgrLoad, mgrSave, reconcileStaffRows } from './manager-shared.js';
 import { activeStaff } from './manager-staff.js';
 import { _crdData, _crdData_cur } from './manager-credit.js';
 import { _genRows, _genRows_cur, _genFinal } from './manager-generic.js';
@@ -26,7 +26,11 @@ import { _genRows, _genRows_cur, _genFinal } from './manager-generic.js';
 function _salRows(my) {
   const data = mgrLoad();
   const stored = data.salary && data.salary[my];
-  return stored || activeStaff().map(e => ({name:e.name, desig:e.designation, days:31, hoSal:0, advance:0, generic:0}));
+  // Reconcile against the Staff Registry every load: drops rows for
+  // anyone no longer active/in the registry, merges accidental
+  // duplicates, and adds a blank row for anyone missing one.
+  return reconcileStaffRows(activeStaff(), stored, e =>
+    ({staffId: e.staffId, name: e.name, desig: e.designation, days: 31, hoSal: 0, advance: 0, generic: 0}));
 }
 
 function _salNet(r) { return _ni(r.hoSal) - _ni(r.advance) + _ni(r.generic); }

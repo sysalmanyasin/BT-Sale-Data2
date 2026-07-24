@@ -9,7 +9,7 @@
 // ══════════════════════════════════════════════════════════════════════
 import { Repository } from './repository.js';
 import { STAFF } from './config.js';
-import { _ni, _fc2, _inp, mgrLoad, mgrSave } from './manager-shared.js';
+import { _ni, _fc2, _inp, mgrLoad, mgrSave, reconcileStaffRows } from './manager-shared.js';
 import { activeStaff } from './manager-staff.js';
 import { _salRows_cur, _salNet, _salUpdateFooter } from './manager-salary.js';
 
@@ -18,7 +18,11 @@ let _genRows_cur = [];
 function _genRows(my) {
   const data = mgrLoad();
   const stored = data.generic && data.generic[my];
-  return stored || activeStaff().map(e => ({name:e.name, desig:e.designation, genericSale:0, extra:0}));
+  // Reconcile against the Staff Registry every load: drops rows for
+  // anyone no longer active/in the registry, merges accidental
+  // duplicates, and adds a blank row for anyone missing one.
+  return reconcileStaffRows(activeStaff(), stored, e =>
+    ({staffId: e.staffId, name: e.name, desig: e.designation, genericSale: 0, extra: 0}));
 }
 
 function _genIncentive(r) { return Math.round(_ni(r.genericSale) * 0.04); }

@@ -90,6 +90,50 @@ function _inp(type, val, cls, oninput, ph) {
   return `<input type="${type}" value="${val}" class="mgr-inp${cls ? ' ' + cls : ''}" placeholder="${ph||''}" ${oninput ? 'oninput="' + oninput + '"' : ''}>`;
 }
 
-Object.assign(window, { MGR_KEY, mgrLoad, mgrSave, mgrMonths, _mgrPopSel, _ni, _fc2, _inp });
+// ─── staff-row reconciliation ─────────────────────────────────────
+// Every per-staff month sheet (Salary / Generic / Credit) stores its own
+// snapshot of rows, keyed loosely by name. Over time that snapshot can
+// drift from the Staff Registry: someone gets removed/renamed in the
+// registry but their old row lingers ("orphan"), or the same person ends
+// up with two rows (e.g. one row saved before a rename, one after —
+// "duplicate"). reconcileStaffRows() is the single place that heals this:
+// given the registry's current active list and a sheet's stored rows, it
+// (1) merges any duplicate rows for the same person into one, (2) drops
+// rows that no longer match anyone active in the registry, and (3) adds a
+// fresh blank row for any active staff member missing one — always
+// returned in registry (Sr#) order, so Salary/Generic/Credit and the
+// Staff Registry itself always show the exact same people.
+function _rsrNorm(s) { return (s || '').trim().toLowerCase(); }
+function _mergeStaffRow(a, b) {
+  const out = { ...a };
+  Object.keys(b).forEach(k => {
+    const av = out[k], bv = b[k];
+    if (Array.isArray(bv)) { out[k] = [...(Array.isArray(av) ? av : []), ...bv]; return; }
+    if (typeof bv === 'number') { out[k] = _ni(av) + _ni(bv); return; }
+    if (av === undefined || av === null || av === '') out[k] = bv;
+  });
+  return out;
+}
+function reconcileStaffRows(activeList, storedRows, blankFactory) {
+  const rows = Array.isArray(storedRows) ? storedRows : [];
+  const byId = new Map();
+  const byName = new Map();
+  rows.forEach(r => {
+    if (r.staffId) {
+      byId.set(r.staffId, byId.has(r.staffId) ? _mergeStaffRow(byId.get(r.staffId), r) : r);
+    }
+    const key = _rsrNorm(r.name);
+    if (key) byName.set(key, byName.has(key) ? _mergeStaffRow(byName.get(key), r) : r);
+  });
+  return (activeList || []).map(emp => {
+    const key = _rsrNorm(emp.name);
+    const match = (emp.staffId && byId.get(emp.staffId)) || byName.get(key);
+    return match
+      ? { ...match, name: emp.name, staffId: emp.staffId || match.staffId }
+      : blankFactory(emp);
+  });
+}
 
-export { MGR_KEY, mgrLoad, mgrSave, mgrMonths, _mgrPopSel, _ni, _fc2, _inp };
+Object.assign(window, { MGR_KEY, mgrLoad, mgrSave, mgrMonths, _mgrPopSel, _ni, _fc2, _inp, reconcileStaffRows });
+
+export { MGR_KEY, mgrLoad, mgrSave, mgrMonths, _mgrPopSel, _ni, _fc2, _inp, reconcileStaffRows };

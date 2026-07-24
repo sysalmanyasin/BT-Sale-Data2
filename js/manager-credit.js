@@ -8,7 +8,7 @@
 // ══════════════════════════════════════════════════════════════════════
 import { Repository } from './repository.js';
 import { STAFF } from './config.js';
-import { _ni, _fc2, _mgrPopSel, mgrLoad, mgrSave } from './manager-shared.js';
+import { _ni, _fc2, _mgrPopSel, mgrLoad, mgrSave, reconcileStaffRows } from './manager-shared.js';
 import { activeStaff } from './manager-staff.js';
 
 // ══════════════════════════════
@@ -18,7 +18,12 @@ let _crdData_cur = []; // [{name, prevBal, entries:[{date,desc,amount}], salary,
 
 function _crdData(my) {
   const data = mgrLoad();
-  return (data.credit && data.credit[my]) || activeStaff().map(e => ({name:e.name, prevBal:0, entries:[], salary:0, lessGeneric:0}));
+  const stored = data.credit && data.credit[my];
+  // Reconcile against the Staff Registry every load: drops rows for
+  // anyone no longer active/in the registry, merges accidental
+  // duplicates, and adds a blank row for anyone missing one.
+  return reconcileStaffRows(activeStaff(), stored, e =>
+    ({staffId: e.staffId, name: e.name, prevBal: 0, entries: [], salary: 0, lessGeneric: 0}));
 }
 
 function _crdNet(emp) {
