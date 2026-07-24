@@ -1033,7 +1033,13 @@ function _buildLlmPrompt(question) {
     // limit; the compact all-time MONTHLY BREAKDOWN (one line/month,
     // unbounded) still covers longer-range "yearly"/"compare months"
     // questions cheaply.
-    const snap = (typeof getAppContextSummary === 'function') ? getAppContextSummary({ fullMonths: 3 }) : null;
+    // fullMonths:3 still requested 12095 tokens against the 8000 cap on
+    // an account with typical data density — the fixed ~2300-token
+    // instruction block plus 3 months of daily/manager/ledger detail
+    // didn't leave enough room. Dropping to 1 month of full detail (the
+    // unbounded, cheap MONTHLY BREAKDOWN still gives all-time context
+    // for longer-range questions) keeps this comfortably under the cap.
+    const snap = (typeof getAppContextSummary === 'function') ? getAppContextSummary({ fullMonths: 1 }) : null;
     if (snap) ctx = '\nDATA SNAPSHOT:\n' + snap;
     else if (!_hasDat) ctx = '\nDATA SNAPSHOT: No sales data loaded yet. Ask the user to sync from Supabase (Tools page) before querying totals.';
   } catch (_) {}
@@ -1262,7 +1268,7 @@ async function _callGroq(question) {
   const raw = await callAI({
     kind: 'text',
     messages: [{ role: 'user', content: _buildLlmPrompt(question) }],
-    maxTokens: 700,
+    maxTokens: 500,
     temperature: 0.1,
   });
   return _parseLlmResponse(raw);
