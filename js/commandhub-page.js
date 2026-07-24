@@ -311,6 +311,19 @@ var _chQuickGroups = [
   },
 ];
 
+// Inventory Domain (V2 plan §2.4) — appended rather than built into the
+// literal array above, since InventoryDomain lives in a real ES module
+// (js/ai/domains/inventory-domain.js, loaded earlier as <script
+// type="module">) and this file is still a classic <script defer>; the
+// bare identifier resolves via that module's `window.InventoryDomain`
+// bridge. Guarded in case load order ever changes.
+if (typeof InventoryDomain !== 'undefined') {
+  _chQuickGroups.push({
+    id: 'inventory', icon: '📦', label: 'Inventory',
+    items: InventoryDomain.quickActions,
+  });
+}
+
 /* ══════════════════════════════════════════════════════════════════════
    INIT / LOAD
 ══════════════════════════════════════════════════════════════════════ */
@@ -875,6 +888,9 @@ function chpOpenSettings() {
   var cur = (typeof getAiSettings === 'function') ? getAiSettings().apiKey : '';
   var masked = cur ? (cur.slice(0, 8) + '…' + cur.slice(-4)) : '';
 
+  var curCerebras = (typeof aiGetProviderKey === 'function') ? aiGetProviderKey('cerebras') : '';
+  var maskedCerebras = curCerebras ? (curCerebras.slice(0, 6) + '…' + curCerebras.slice(-4)) : '';
+
   modal.style.display = 'block';
   modal.innerHTML = [
     '<div style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:flex;align-items:flex-end;justify-content:center"',
@@ -917,15 +933,36 @@ function chpOpenSettings() {
     '        style="color:var(--accent)">console.groq.com</a> — stored locally, never sent anywhere except Groq.',
     '    </div>',
 
+    // Cerebras fallback key (optional) — only used if a Groq text call fails
+    '    <div style="height:1px;background:var(--border,#e2e8f0);margin:16px 0"></div>',
+
+    '    <label style="display:block;font-size:12px;font-weight:600;color:var(--muted);',
+    '      letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px">',
+    '      Cerebras API Key <span style="text-transform:none;font-weight:400">(optional fallback)</span></label>',
+    '    <input id="chp-cerebras-key-input" type="password"',
+    '      placeholder="csk-…"',
+    '      value="' + (curCerebras || '') + '"',
+    '      style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:9px;',
+    '        border:1.5px solid var(--border,#e2e8f0);font-size:14px;',
+    '        font-family:var(--mono,monospace);outline:none;background:var(--s2,#f8fafc);color:var(--text)">',
+
+    '    <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5">',
+    curCerebras
+      ? ('Active (' + maskedCerebras + '). Used only if Groq\'s text call fails — photo scan always uses Groq. '
+         + '<a onclick="chpClearCerebrasSettings()" style="color:#dc2626;cursor:pointer">Remove</a>')
+      : ('Free key at <a href="https://cloud.cerebras.ai" target="_blank" style="color:var(--accent)">cloud.cerebras.ai</a> — '
+         + 'used only as a backup if Groq\'s text call fails. Photo scan always uses Groq.'),
+    '    </div>',
+
     // Buttons
     '    <div style="display:flex;gap:8px;margin-top:16px">',
     '      <button onclick="chpSaveSettings()" style="flex:1;padding:10px;border-radius:9px;',
     '        border:none;background:var(--accent,#2563eb);color:#fff;',
-    '        font-size:13px;font-weight:700;cursor:pointer">Save Key</button>',
+    '        font-size:13px;font-weight:700;cursor:pointer">Save</button>',
     cur
       ? '<button onclick="chpClearSettings()" style="padding:10px 16px;border-radius:9px;'
         + 'border:1.5px solid #fca5a5;background:#fff;color:#dc2626;'
-        + 'font-size:13px;cursor:pointer">Remove</button>'
+        + 'font-size:13px;cursor:pointer">Remove Groq</button>'
       : '',
     '    </div>',
     '  </div>',
@@ -952,16 +989,25 @@ function chpSaveSettings() {
   var inp = document.getElementById('chp-key-input');
   var val = inp ? inp.value.trim() : '';
   if (typeof saveAiSettings === 'function') saveAiSettings(val);
+
+  var cerebrasInp = document.getElementById('chp-cerebras-key-input');
+  var cerebrasVal = cerebrasInp ? cerebrasInp.value.trim() : '';
+  if (typeof aiSaveProviderKey === 'function') aiSaveProviderKey('cerebras', cerebrasVal);
+
   chpCloseSettings();
   _chUpdateSettingsIndicator();
   // Confirm in thread
-  _chHistory.push({
-    role: 'bot',
-    text: val
-      ? '✅ <strong>Groq API key saved.</strong> Full AI responses are now active for questions I can\'t answer locally.'
-      : '⚠️ API key removed. Local parsers still work for all direct commands.'
-  });
+  var msg = val
+    ? '✅ <strong>Groq API key saved.</strong> Full AI responses are now active for questions I can\'t answer locally.'
+    : '⚠️ Groq API key removed. Local parsers still work for all direct commands.';
+  if (cerebrasVal) msg += ' Cerebras fallback key saved too.';
+  _chHistory.push({ role: 'bot', text: msg });
   _chRenderThread();
+}
+
+function chpClearCerebrasSettings() {
+  if (typeof aiSaveProviderKey === 'function') aiSaveProviderKey('cerebras', '');
+  chpOpenSettings(); // refresh the modal in place, Groq key/section untouched
 }
 
 function chpClearSettings() {
@@ -998,5 +1044,6 @@ window.chpCloseQuick = chpCloseQuick;
 window.chpCloseSettings = chpCloseSettings;
 window.chpSaveSettings = chpSaveSettings;
 window.chpClearSettings = chpClearSettings;
+window.chpClearCerebrasSettings = chpClearCerebrasSettings;
 
 })();

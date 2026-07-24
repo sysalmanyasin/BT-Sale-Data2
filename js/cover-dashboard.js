@@ -6,11 +6,20 @@ import * as LedgerStore from './ledger-store.js';
 import * as ClosingBridge from './closing-bridge.js';
 import * as AuditBridge from './audit-bridge.js';
 import * as InventoryBridge from './inventory-bridge.js';
+import { computeInventoryHealth } from './shared/summary-calc.js';
 
 const TGT_KEY = 'bt_targets';
 let _closingRefreshInFlight = false;
 let _auditRefreshInFlight = false;
 let _inventoryRefreshInFlight = false;
+// Phase 3.1 — current-state inventory doughnut. Held at module scope (not
+// local to renderCoverDashboard) so re-renders (every showPage('cover'),
+// every closing/audit/inventory bridge refresh — see call sites) destroy
+// the previous Chart.js instance before building a new one on the fresh
+// canvas; container.innerHTML replacement below orphans the old <canvas>
+// element itself, but not the Chart.js object bound to it, which keeps
+// its RAF loop / listeners alive unless explicitly destroyed.
+let _invChart = null;
 const MONTH_NAMES = ['January','February','March','April','May','June',
                       'July','August','September','October','November','December'];
 const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -379,6 +388,63 @@ function _closingLatestMisc() {
   return { label: 'Latest Misc / Ongoing', value: 'Rs. ' + fc(total), sub: `${_clFmtDate(date)} · ${shift}` };
 }
 
+// Phase 3.1 — Current-state Inventory doughnut: Never Sold / Dead Stock /
+// Excess / Healthy, as a % of totalInventoryValue, right now. Single
+// snapshot only — no history, no time axis, per the build plan's scope.
+//
+// Data source: the same getCoverStats() + ExcessWorkingApp.getSummary()
+// already read below for the hero cards — no separate calc, no re-derive.
+// "Excess" uses correctedExcessValue (after retain-list + misc buffer),
+// matching the "Corrected Excess Stock" hero card rather than the raw
+// figure. Never Sold and Dead Stock are mutually exclusive by definition
+// (see stockledger.js computeAll(), section 2's own comment); Excess is a
+// separate 90-day-velocity calc that in rare edge cases could overlap a
+// day or two with Dead Stock — negligible for a share-of-total visual,
+// not worth a cross-filter re-derivation the plan didn't ask for.
+// Colors match Stock Ledger's own category tags (stockledger.css
+// .card.rust/.amber/.indigo) so the same category reads the same color
+// on both pages.
+// ══════════════════════════════════════════════════════════════════════
+function _renderInventoryChart(invSl, invEw) {
+  const canvas = document.getElementById('cover-inventory-chart');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  // Phase 4.1 — bucket math now lives in shared/summary-calc.js so the
+  // WhatsApp briefing (Phase 4.2) computes the identical figures instead
+  // of a second hand-rolled copy. No behavior change from the inline
+  // version this replaces.
+  const { total, never, dead, excess, healthy } = computeInventoryHealth({
+    totalInventoryValue:  invSl.totalInventoryValue,
+    neverSold60Value:     invSl.neverSold60Value,
+    deadStock60Value:     invSl.deadStock60Value,
+    correctedExcessValue: invEw ? invEw.correctedExcessValue : 0,
+  });
+
+  if (_invChart) { _invChart.destroy(); _invChart = null; }
+  if (total <= 0) return; // nothing to show a share-of-total slice against
+
+  const pct = v => total ? Math.round(v / total * 1000) / 10 : 0;
+
+  _invChart = new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      labels: ['Never Sold (60D)', 'Dead Stock (60D)', 'Excess (corrected)', 'Healthy'],
+      datasets: [{
+        data: [never, dead, excess, healthy],
+        backgroundColor: ['#AE3B2C', '#A8762A', '#33507D', '#059669'],
+        borderWidth: 2, borderColor: '#fff',
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { color: '#334155', font: { size: 10 }, boxWidth: 10, padding: 5 } },
+        tooltip: { callbacks: { label: c => c.label + ': Rs. ' + fc(c.raw) + ' (' + pct(c.raw) + '%)' } },
+      },
+    },
+  });
+}
+
 // Inventory domain hero stats — all three come from bridge functions on
 // the (classic-script, window-exposed) Stock Ledger / Excess Working /
 // Reorder Report apps, same "read the one existing computation, don't
@@ -555,6 +621,12 @@ export function renderCoverDashboard() {
       ${heroCard({ label: 'Excess Stock Total', value: invEw ? 'Rs. ' + fc(invEw.rawExcessValue) : '—', sub: 'raw, before correction' })}
       ${heroCard({ label: 'Corrected Excess Stock', value: invEw ? 'Rs. ' + fc(invEw.correctedExcessValue) : '—', sub: 'after retain list + misc buffer' })}
       ${heroCard({ label: 'Reorder Alert (<7d cover · Top 500 by 30d value)', value: invRr ? fc(invRr.totalReorderQty) + ' units' : '—', sub: invRr ? invRr.itemsShown + ' items · Rs. ' + fc(invRr.totalReorderValue) + ' to reorder' : 'no data yet' })}
+    </div>
+    <div class="cover-hero-row cover-hero-row-single">
+      <div class="card">
+        <div class="ctitle"><span class="cdot" style="background:#33507D"></span>Inventory Health — right now</div>
+        <div style="height:220px"><canvas id="cover-inventory-chart"></canvas></div>
+      </div>
     </div>` : `
     <div class="cover-skel-row">
       <div class="cover-skel-card"></div><div class="cover-skel-card"></div>
@@ -608,6 +680,7 @@ export function renderCoverDashboard() {
   _renderAttentionStrip();
   _renderPinsRow(tiles);
   _updateHeroDate();
+  if (invSl && invSl.dataReady) _renderInventoryChart(invSl, invEw);
   if (document.getElementById('qa-panel-cover') && typeof window.renderQuickAdd === 'function') {
     window.renderQuickAdd('qa-panel-cover');
   }

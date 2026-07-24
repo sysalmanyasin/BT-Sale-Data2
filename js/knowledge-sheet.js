@@ -87,8 +87,7 @@ function kshOpen() {
           '<div>',
             '<div style="font-size:14px;font-weight:700;color:#6d28d9">Memory</div>',
             '<div style="font-size:12px;color:#7c3aed;margin-top:2px;line-height:1.45">',
-              'AI\u2019s learned facts, IF\u2192THEN rules, correction training &amp; voice log.',
-              '<br>Say \u201cRemember: Usman handles jazz cash\u201d to add here.',
+              'Today\u2019s AI-narrated briefing, plus everything you\u2019ve saved in Instructions.',
             '</div>',
           '</div>',
         '</button>',
@@ -97,8 +96,7 @@ function kshOpen() {
 
       /* hint footer */
       '<div style="padding:4px 20px 18px;font-size:11px;color:#94a3b8;text-align:center">',
-        'Tip: say \u201cRemember \u2026\u201d in chat to add a memory instantly &nbsp;\u00b7&nbsp; ',
-        'say \u201cForget \u2026\u201d to remove one',
+        'Tip: ask \u201cgive me briefing\u201d in chat for an instant AI summary',
       '</div>',
 
     '</div>',

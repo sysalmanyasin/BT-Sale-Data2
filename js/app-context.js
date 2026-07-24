@@ -32,6 +32,14 @@ import { MONTHLY, DAILY, STAFF, CLIENT_COLS, BANK_COLS, RETURN_FIELDS,
 import { BTFormat } from './bt-format.js';
 import { Repository } from './repository.js';
 import { getAllLedgerTypes, getEntries, getCategoryList, getCurrentBalance } from './ledger-store.js';
+// Phase 5 domain registry: import each domain file for its registration
+// side-effect (each domain file's own bottom line calls registerDomain()),
+// then read back through the registry rather than any single domain
+// directly, so a future domain needs no edit here at all.
+import './ai/domains/inventory-domain.js';
+import './ai/domains/manager-domain.js';
+import './ai/domains/sales-domain.js';
+import { allContextSummaries } from './ai/core/registry.js';
 
 const MGR_STORAGE_KEY = 'BT_ManagerWork_v1';
 
@@ -285,6 +293,16 @@ function getAppContextSummary(opts) {
       });
       lines.push('');
     }
+  } catch (_) {}
+
+  // ── 7. DOMAIN REGISTRY (V2 plan §5.3) — every registered domain's own
+  // getContextSummary(), concatenated. Today that's only Inventory (V2
+  // plan §2.3) — Manager and Sales domains don't implement
+  // getContextSummary() yet (see their domain-descriptor footer
+  // comments) — but this call site needs no edit when they do.
+  try {
+    const domainSummaries = allContextSummaries();
+    if (domainSummaries) { lines.push(domainSummaries); lines.push(''); }
   } catch (_) {}
 
   // ── 8. NOTES — titles, pinned, today's notes ──────────────────────
