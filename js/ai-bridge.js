@@ -64,6 +64,43 @@ import {
   _aiParseTargetCommand
 } from './ai/domains/sales-domain.js';
 
+// ── Field alias map (must be a top-level export — `export` is illegal
+// inside the IIFE below, which caused this whole module to fail to
+// parse/load, which in turn left window.aiBridgeAnswer undefined) ────
+export const _AI_FIELD_ALIASES = {
+  'jazz cash':        'Meezan_Bank',
+  'jazzcash':         'Meezan_Bank',
+  'jazz':             'Meezan_Bank',
+  'paysa':            'Meezan_Bank',
+  'meezan':           'Meezan_Bank',
+  'meezan bank':      'Meezan_Bank',
+  'hbl':              'HBL',
+  'mcb':              'MCB',
+  'alfalah':          'Alfala_Bank',
+  'bank alfalah':     'Alfala_Bank',
+  'alfala':           'Alfala_Bank',
+  'al habib':         'Bank_Al_Habib',
+  'bank al habib':    'Bank_Al_Habib',
+  'habib':            'Bank_Al_Habib',
+  'askari':           'Askari_Bank',
+  'pso':              'PSO',
+  'pso returns':      'PSO_Returns',
+  'nespak':           'NESPAK',
+  'parco':            'PARCO',
+  'tepa':             'TEPA',
+  'lda':              'LDA',
+  'gourmet':          'Gourmet',
+  'cash':             'Cash_Sale',
+  'cash sale':        'Cash_Sale',
+  'cash returns':     'Cash_Returns',
+  'customers':        'Customers',
+  'fdpp':             'FDPP',
+  'fdpp consumer':    'FDPP_Con',
+  'load sale':        'Load_Sale',
+  'amount received':  'Amount_Received',
+  'comp sale':        'COMP_SALE',
+};
+
 // ── Groq key storage (Settings-panel key; read by ai-client.js) ───────
 (function() {
 'use strict';
@@ -200,41 +237,6 @@ const AI_DESTRUCTIVE_INTENTS = new Set([
 
 // ── Staff fuzzy match ─────────────────────────────────────────────────
 
-
-// ── Field alias map ───────────────────────────────────────────────────
-export const _AI_FIELD_ALIASES = {
-  'jazz cash':        'Meezan_Bank',
-  'jazzcash':         'Meezan_Bank',
-  'jazz':             'Meezan_Bank',
-  'paysa':            'Meezan_Bank',
-  'meezan':           'Meezan_Bank',
-  'meezan bank':      'Meezan_Bank',
-  'hbl':              'HBL',
-  'mcb':              'MCB',
-  'alfalah':          'Alfala_Bank',
-  'bank alfalah':     'Alfala_Bank',
-  'alfala':           'Alfala_Bank',
-  'al habib':         'Bank_Al_Habib',
-  'bank al habib':    'Bank_Al_Habib',
-  'habib':            'Bank_Al_Habib',
-  'askari':           'Askari_Bank',
-  'pso':              'PSO',
-  'pso returns':      'PSO_Returns',
-  'nespak':           'NESPAK',
-  'parco':            'PARCO',
-  'tepa':             'TEPA',
-  'lda':              'LDA',
-  'gourmet':          'Gourmet',
-  'cash':             'Cash_Sale',
-  'cash sale':        'Cash_Sale',
-  'cash returns':     'Cash_Returns',
-  'customers':        'Customers',
-  'fdpp':             'FDPP',
-  'fdpp consumer':    'FDPP_Con',
-  'load sale':        'Load_Sale',
-  'amount received':  'Amount_Received',
-  'comp sale':        'COMP_SALE',
-};
 
 // ══════════════════════════════════════════════════════════════════════
 // RULE-BASED PARSERS (instant — no API call needed)
