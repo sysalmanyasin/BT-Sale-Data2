@@ -90,6 +90,7 @@ function showPage(id) {
     // Reorder Report is downstream of Stock Ledger's raw inventory rows
     // (see js/reorder-report.js) — same "safe to call every visit" pattern.
     if (id === 'reorder' && window.ReorderReportApp && typeof window.ReorderReportApp.init === 'function') window.ReorderReportApp.init();
+    if (id === 'pdf-library' && window.PdfLibrary && typeof window.PdfLibrary.onShow === 'function') window.PdfLibrary.onShow();
     if (id==='commandhub') {
       document.querySelectorAll('.ntab[data-group="commandhub"],.bnav-item[data-group="commandhub"]').forEach(t=>t.classList.add('active'));
     }

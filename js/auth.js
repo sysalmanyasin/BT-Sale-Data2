@@ -19,6 +19,9 @@ function unlockApp() {
   window._appInited = true;
   initApp();
   if (typeof startSupabaseSync === 'function') startSupabaseSync();
+  if (window.PdfLibrary && typeof window.PdfLibrary.runExpirySweep === 'function') {
+    window.PdfLibrary.runExpirySweep(); // silent — no UI, best-effort, see js/pdf-library.js
+  }
   idbLoadData().then(loaded => {
     if (loaded) { rebuildAll(); }
     if(ghCfg()&&Repository.getItem('bt_auto_load')==='1') manualSync(true);

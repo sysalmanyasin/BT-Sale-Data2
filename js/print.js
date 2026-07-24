@@ -189,6 +189,18 @@ async function _generateAndDeliver(html, opts, previewWin) {
     }
     doc.save(filename);
     setTimeout(() => URL.revokeObjectURL(url), 60000);
+
+    // ── PDF Library hook (central capture point — see js/pdf-library.js) ──
+    // Every report funnels through here already, so this is the one place
+    // that needs to know the library exists. Fire-and-forget: never blocks
+    // or affects the preview-tab/download behavior above, and any failure
+    // here (library unavailable, Supabase not ready, etc.) is swallowed so
+    // it can never break the actual print/PDF flow.
+    try {
+      if (window.PdfLibrary && typeof window.PdfLibrary.captureFromPrint === 'function') {
+        window.PdfLibrary.captureFromPrint(blob, { filename, title });
+      }
+    } catch (e) { /* best-effort — see comment above */ }
   } catch (err) {
     console.error('PDF generation failed:', err);
     if (previewWin && !previewWin.closed) previewWin.close();
