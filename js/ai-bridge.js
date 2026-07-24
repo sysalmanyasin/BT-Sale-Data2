@@ -1023,7 +1023,17 @@ function _buildLlmPrompt(question) {
     // string-building function and can cause race conditions. If data isn't loaded,
     // tell the LLM plainly; the user can trigger a manual sync.
     const _hasDat = (typeof MONTHLY !== 'undefined' && MONTHLY && MONTHLY.length > 0);
-    const snap = (typeof getAppContextSummary === 'function') ? getAppContextSummary({ fullMonths: 'all' }) : null;
+    // Was `fullMonths: 'all'` — sent every daily record + every Manager
+    // (credit/salary/generic/ledger/petty) entry ever recorded on EVERY
+    // AI call, regardless of question. On an account with enough history
+    // that alone requested ~99,869 tokens against Groq's 8000 TPM cap
+    // (413 Request too large), even for something as simple as an
+    // inventory question. Bounding to the last few months keeps normal
+    // "today/this month" questions accurate while staying under the
+    // limit; the compact all-time MONTHLY BREAKDOWN (one line/month,
+    // unbounded) still covers longer-range "yearly"/"compare months"
+    // questions cheaply.
+    const snap = (typeof getAppContextSummary === 'function') ? getAppContextSummary({ fullMonths: 3 }) : null;
     if (snap) ctx = '\nDATA SNAPSHOT:\n' + snap;
     else if (!_hasDat) ctx = '\nDATA SNAPSHOT: No sales data loaded yet. Ask the user to sync from Supabase (Tools page) before querying totals.';
   } catch (_) {}

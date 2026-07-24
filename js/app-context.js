@@ -169,10 +169,22 @@ function getAppContextSummary(opts) {
     }
   }
 
+  // ── Month window — shared by sections 4, 5, 5b, 6 below. Previously
+  // only the daily-records section (4) respected `fullMonths`; the
+  // Manager sections (credit/salary/generic/ledger/petty) always dumped
+  // EVERY month ever recorded regardless of this option, unboundedly
+  // growing the prompt as history accumulates. That's what blew past
+  // Groq's 8000 TPM limit (one 413 requested 99869 tokens) even for a
+  // simple one-line question — the full-history dump gets attached to
+  // every single AI call via _buildLlmPrompt(), not just ones that need
+  // long history. Bounding all of them the same way fixes that at the
+  // source rather than only trimming the biggest offender.
+  const useAll = fullMonths === 'all' || fullMonths >= M.length;
+  const monthNames = useAll ? null : M.slice(-fullMonths).map(function (m) { return m.Month_Year; });
+  const _inWindow = function (my) { return useAll || !monthNames || monthNames.includes(my); };
+
   // ── 4. EVERY DAILY RECORD (Daily Data page) ────────────────────────
   if (D.length) {
-    const useAll = fullMonths === 'all' || fullMonths >= M.length;
-    const monthNames = useAll ? null : M.slice(-fullMonths).map(function (m) { return m.Month_Year; });
     const dailySet = monthNames ? D.filter(function (d) { return monthNames.includes(d.Month_Year); }) : D;
 
     lines.push('=== DAILY RECORDS \u2014 ' + (useAll ? 'ALL ' + dailySet.length + ' DAYS ON RECORD' : 'last ' + fullMonths + ' months') + ' (Data page) ===');
@@ -208,8 +220,8 @@ function getAppContextSummary(opts) {
   const mgr = _acMgrLoad();
 
   if (mgr.credit && Object.keys(mgr.credit).length) {
-    lines.push('=== MANAGER > STAFF CREDIT LEDGER (every month, every staff entry) ===');
-    Object.entries(mgr.credit).forEach(function (e) {
+    lines.push('=== MANAGER > STAFF CREDIT LEDGER (' + (useAll ? 'every month' : 'last ' + fullMonths + ' months') + ', every staff entry) ===');
+    Object.entries(mgr.credit).filter(function (e) { return _inWindow(e[0]); }).forEach(function (e) {
       const my = e[0], emps = e[1] || [];
       emps.forEach(function (emp) {
         const entryTotal = (emp.entries || []).reduce(function (s, en) { return s + n(en.amount); }, 0);
@@ -225,8 +237,8 @@ function getAppContextSummary(opts) {
   }
 
   if (mgr.salary && Object.keys(mgr.salary).length) {
-    lines.push('=== MANAGER > SALARY SHEET (every month) ===');
-    Object.entries(mgr.salary).forEach(function (e) {
+    lines.push('=== MANAGER > SALARY SHEET (' + (useAll ? 'every month' : 'last ' + fullMonths + ' months') + ') ===');
+    Object.entries(mgr.salary).filter(function (e) { return _inWindow(e[0]); }).forEach(function (e) {
       const my = e[0], rows = e[1] || [];
       rows.forEach(function (r) {
         const net = n(r.hoSal) - n(r.advance) + n(r.generic);
@@ -237,8 +249,8 @@ function getAppContextSummary(opts) {
   }
 
   if (mgr.generic && Object.keys(mgr.generic).length) {
-    lines.push('=== MANAGER > GENERIC WORKING (every month) ===');
-    Object.entries(mgr.generic).forEach(function (e) {
+    lines.push('=== MANAGER > GENERIC WORKING (' + (useAll ? 'every month' : 'last ' + fullMonths + ' months') + ') ===');
+    Object.entries(mgr.generic).filter(function (e) { return _inWindow(e[0]); }).forEach(function (e) {
       const my = e[0], rows = e[1] || [];
       rows.forEach(function (r) {
         const incentive = Math.round(n(r.genericSale) * 0.04);
@@ -261,15 +273,24 @@ function getAppContextSummary(opts) {
   // namespace via ES export, only individual named functions) — now
   // imports those functions directly. ──
   try {
+    // Ledger entries are date-stamped (YYYY-MM-DD), not Month_Year-keyed
+    // like the sections above — derive "<Month> <Year>" the same way
+    // MONTHLY/DAILY format it so `_inWindow` can filter these too.
+    const _monthYearOfIso = function (iso) {
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return null;
+      return d.toLocaleString('en-US', { month: 'long', timeZone: 'UTC' }) + ' ' + d.getUTCFullYear();
+    };
     const types = getAllLedgerTypes();
     const withEntries = types.filter(t => getEntries(t.id).length);
     if (withEntries.length) {
-      lines.push('=== MANAGER > LEDGER (Expense / Jazz Cash / Other Sections) ===');
+      lines.push('=== MANAGER > LEDGER (Expense / Jazz Cash / Other Sections' + (useAll ? '' : ', last ' + fullMonths + ' months') + ') ===');
       withEntries.forEach(function (t) {
         const cats = getCategoryList(t.id);
-        const entries = getEntries(t.id);
+        const allEntries = getEntries(t.id);
+        const entries = useAll ? allEntries : allEntries.filter(function (e) { return _inWindow(_monthYearOfIso(e.date)); });
         const bal = getCurrentBalance(t.id);
-        lines.push('  ' + t.label + ' — current balance: ₨' + fc(bal) + ' (' + entries.length + ' entries)');
+        lines.push('  ' + t.label + ' — current balance: ₨' + fc(bal) + ' (' + entries.length + (useAll ? '' : ' of ' + allEntries.length) + ' entries shown)');
         entries.forEach(function (e) {
           const cat = cats.find(function (c) { return c.id === e.categoryId; });
           const signed = (cat && cat.sign < 0 ? '-' : '') + '₨' + fc(e.amount);
@@ -284,9 +305,10 @@ function getAppContextSummary(opts) {
   // ── 6. PETTY CASH (every month, scanning via Repository) ─────────────
   try {
     const pettyMonths = Repository.getKeysByPrefix('mw_petty_')
-      .map(function (k) { return k.replace('mw_petty_', ''); });
+      .map(function (k) { return k.replace('mw_petty_', ''); })
+      .filter(_inWindow);
     if (pettyMonths.length) {
-      lines.push('=== MANAGER > PETTY CASH (every month) ===');
+      lines.push('=== MANAGER > PETTY CASH (' + (useAll ? 'every month' : 'last ' + fullMonths + ' months') + ') ===');
       pettyMonths.forEach(function (my) {
         const p = _acPettyTotalForMonth(my);
         if (p.count) lines.push('  ' + my + ': ₨' + fc(p.total) + ' (' + p.count + ' items)');
