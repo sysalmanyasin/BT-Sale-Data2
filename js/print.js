@@ -6,16 +6,20 @@
 // CommandHub quick-print chips, Manager Summary export) funnels through
 // Print.render() or Print.renderNewTab() — both engines live ONLY here.
 //
-// Both now build a real PDF (jsPDF + html2canvas, already loaded globally
-// in index.html) instead of calling window.print():
+// Both build a real PDF (jsPDF + html2canvas, already loaded globally in
+// index.html) instead of calling window.print():
 //   1. The report HTML is captured to a print-quality image.
 //   2. It's paginated onto Letter pages — landscape for any block marked
 //      .pr-landscape (the wide daily-breakdown tables), portrait for the
 //      rest, sliced across extra pages automatically if content is tall.
-//   3. The finished PDF opens in a new tab as an overview (the browser's
-//      built-in PDF viewer — Print/Download buttons live right there),
-//      and is also saved to the user's Downloads so a copy is ready for
-//      printing without needing to revisit the app.
+//   3. The whole thing lives inside ONE popup owned by js/pdf-library.js:
+//      shown immediately (beginPrint) with a "Generating…" state so there's
+//      no dead time while html2canvas/jsPDF do their (CPU-bound) work, then
+//      swapped (finishPrint) to View / Download / Save-to-Library buttons
+//      once the blob exists. No forced new tab, no silent auto-download —
+//      the user picks what they want from that one popup. If pdf-library.js
+//      isn't loaded for some reason, falls back to the old blank-tab +
+//      auto-download behavior so printing never fully breaks.
 //
 // No other file may call window.print(), document.write(), or touch
 // #print-area directly. A future report just builds its HTML and calls
@@ -171,40 +175,49 @@ async function _buildPdf(html, opts) {
   return { doc, title };
 }
 
-// ── Shared finish step for both public entry points: open the PDF as an
-// overview in the tab reserved before the async work started (dodges
-// popup blockers, same trick the old renderNewTab used for window.open),
-// and save a copy for printing. ──────────────────────────────────────
-async function _generateAndDeliver(html, opts, previewWin) {
+// ── Shared finish step for both public entry points. Normally the
+// ENTIRE user-facing experience lives in js/pdf-library.js's single
+// popup (beginPrint → finishPrint, with View/Download/Save-to-Library
+// buttons on it) — no forced new tab, no silent auto-download. If that
+// module somehow isn't loaded, falls back to the old behavior (blank
+// tab reserved up front + auto-download) so printing never fully
+// breaks. ──────────────────────────────────────────────────────────
+async function _generateAndDeliver(html, opts) {
+  const hasLib = window.PdfLibrary && typeof window.PdfLibrary.beginPrint === 'function'
+    && typeof window.PdfLibrary.finishPrint === 'function';
+
+  let previewWin = null;
+  if (hasLib) {
+    window.PdfLibrary.beginPrint();
+  } else {
+    previewWin = _reservePreviewTab(); // fallback only — see header comment
+  }
+
   try {
     const { doc, title } = await _buildPdf(html, opts);
     const filename = _safeFilename(title, opts);
     const blob = doc.output('blob');
-    const url = URL.createObjectURL(blob);
 
-    if (previewWin && !previewWin.closed) {
-      previewWin.location.href = url;
-    } else if (typeof window.toast === 'function') {
-      window.toast('⚠️ Pop-up blocked — allow pop-ups to see the PDF overview. Downloading it instead.', 'w');
-    }
-    doc.save(filename);
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
-
-    // ── PDF Library hook (central capture point — see js/pdf-library.js) ──
-    // Every report funnels through here already, so this is the one place
-    // that needs to know the library exists. Fire-and-forget: never blocks
-    // or affects the preview-tab/download behavior above, and any failure
-    // here (library unavailable, Supabase not ready, etc.) is swallowed so
-    // it can never break the actual print/PDF flow.
-    try {
-      if (window.PdfLibrary && typeof window.PdfLibrary.captureFromPrint === 'function') {
-        window.PdfLibrary.captureFromPrint(blob, { filename, title });
+    if (hasLib) {
+      window.PdfLibrary.finishPrint({ blob, filename, title });
+    } else {
+      const url = URL.createObjectURL(blob);
+      if (previewWin && !previewWin.closed) {
+        previewWin.location.href = url;
+      } else if (typeof window.toast === 'function') {
+        window.toast('⚠️ Pop-up blocked — allow pop-ups to see the PDF overview. Downloading it instead.', 'w');
       }
-    } catch (e) { /* best-effort — see comment above */ }
+      doc.save(filename);
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    }
   } catch (err) {
     console.error('PDF generation failed:', err);
     if (previewWin && !previewWin.closed) previewWin.close();
-    if (typeof window.toast === 'function') window.toast('⚠️ Could not generate PDF: ' + (err && err.message || err), 'e');
+    if (hasLib && typeof window.PdfLibrary.failPrint === 'function') {
+      window.PdfLibrary.failPrint(err);
+    } else if (typeof window.toast === 'function') {
+      window.toast('⚠️ Could not generate PDF: ' + (err && err.message || err), 'e');
+    }
   }
 }
 
@@ -222,19 +235,17 @@ function _reservePreviewTab() {
 // Same signatures as before, so every existing caller (reports.js,
 // reports-print.js, manager.js, manager-export.js, dashboard.js,
 // hub-actions.js, notes-sheets.js, sheets-patch.js) keeps working
-// unchanged — they just get a PDF overview + download now instead of
-// the native print dialog.
+// unchanged — they get the single PdfLibrary popup (View/Download/Save
+// to Library) instead of a forced new tab + auto-download now.
 export function render(html, opts) {
   opts = opts || {};
-  const previewWin = _reservePreviewTab();
-  _generateAndDeliver(html, opts, previewWin);
+  _generateAndDeliver(html, opts);
   return true;
 }
 
 export function renderNewTab(html, opts) {
   opts = opts || {};
-  const previewWin = _reservePreviewTab();
-  _generateAndDeliver(html, opts, previewWin);
+  _generateAndDeliver(html, opts);
   return true;
 }
 

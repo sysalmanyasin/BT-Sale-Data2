@@ -4,20 +4,29 @@
 // already funnels through: js/print.js's _generateAndDeliver().
 //
 // Flow:
-//   1. print.js builds a PDF blob (as it always did) and opens the
-//      preview tab / triggers the local download (unchanged).
-//   2. It then calls window.PdfLibrary.captureFromPrint(blob, meta) —
-//      this is the "central hook" the save-prompt hangs off of. Nothing
-//      else in the app needs to know the library exists.
-//   3. The prompt asks for a category + an expiry preset (3d default,
-//      7d, 30d, or Keep/pinned), then uploads the blob to the
-//      `pdf-library` Storage bucket and inserts one metadata row into
-//      `bt_pdf_library` (same Supabase project as everything else —
-//      see js/supabase.js for SB_URL/SB_KEY).
-//   4. Once per app boot (see auth.js's unlockApp()), runExpirySweep()
+//   1. The instant a print is requested, print.js calls
+//      window.PdfLibrary.beginPrint() — this owns the ENTIRE popup for
+//      the print, replacing the old blank-tab-plus-silent-download
+//      combo. Shows a "Generating…" state immediately, before the
+//      (CPU-bound) html2canvas/jsPDF work even starts.
+//   2. Once the PDF blob exists, print.js calls
+//      window.PdfLibrary.finishPrint({blob, filename, title}), which
+//      swaps the same popup to show View / Download buttons plus a
+//      category + expiry picker. View/Download are real clicks inside
+//      an already-open popup, so they're never popup-blocked and never
+//      trigger an unasked-for tab or Downloads-folder write on their
+//      own — the user picks what they want.
+//   3. "Save to Library" uploads the blob to the `pdf-library` Storage
+//      bucket and inserts one metadata row into `bt_pdf_library` (same
+//      Supabase project as everything else — see js/supabase.js for
+//      SB_URL/SB_KEY). Expiry: 3d default, or 7d/30d/Keep(pinned).
+//   4. If PDF generation itself throws, print.js calls
+//      window.PdfLibrary.failPrint(err) so the popup doesn't get stuck
+//      on "Generating…" forever.
+//   5. Once per app boot (see auth.js's unlockApp()), runExpirySweep()
 //      silently deletes any non-pinned row (+ its storage object) whose
 //      expires_at has passed — no UI, no toast, just cleanup.
-//   5. #page-pdf-library (wired by init()/onShow()) lists every row
+//   6. #page-pdf-library (wired by init()/onShow()) lists every row
 //      across every device, with search + category filter + view +
 //      download.
 //
@@ -95,8 +104,22 @@ window.PdfLibrary = (function () {
   }
 
   // ══════════════════════════════════════════════════════════════════
-  // SAVE PROMPT  (shown from captureFromPrint, called by print.js)
+  // PRINT POPUP  —  one popup per print, two states:
+  //   "generating"  shown the instant Print.render()/renderNewTab() is
+  //                 called (beginPrint) — replaces the old blank-tab
+  //                 trick, since a popup we already own can't be
+  //                 blocked and gives instant feedback.
+  //   "ready"       shown once the PDF blob exists (finishPrint) — View
+  //                 opens it in a new tab (a real click inside this
+  //                 popup, so never popup-blocked), Download saves it
+  //                 straight to disk, and the category/expiry controls
+  //                 below optionally also save a copy to the library.
+  // View/Download and the library save are independent: closing the
+  // popup without hitting Save just discards the library copy, it
+  // never blocks or undoes a View/Download the user already did.
   // ══════════════════════════════════════════════════════════════════
+  let _blobUrl = null; // the object URL backing View/Download in the current popup, revoked on close
+
   function _buildPromptOnce() {
     if (document.getElementById('pl-save-bg')) return;
     const catOptions = CATEGORIES.map(c => `<option value="${c.id}">${c.label}</option>`).join('');
@@ -107,68 +130,121 @@ window.PdfLibrary = (function () {
       <div class="plbg" id="pl-save-bg">
         <div class="plbox">
           <div class="plhdr">
-            <h3>Save to PDF Library<small id="pl-save-filename"></small></h3>
+            <h3 id="pl-save-heading">Generating PDF…<small id="pl-save-filename"></small></h3>
             <button class="plclose" id="pl-save-close" type="button">✕</button>
           </div>
           <div class="plbody">
-            <div class="pl-fg">
-              <label>Report category</label>
-              <select id="pl-save-category">${catOptions}</select>
+            <div class="pl-gen-state" id="pl-gen-state">
+              <div class="pl-spinner"></div>
+              <div class="pl-gen-msg">Rendering your report to PDF — this takes a moment for longer reports…</div>
             </div>
-            <div class="pl-fg">
-              <label>Auto-expiry</label>
-              <div class="pl-presets" id="pl-save-presets">${presetBtns}</div>
+            <div class="pl-ready-state" id="pl-ready-state" style="display:none">
+              <div class="pl-quick-actions">
+                <button class="btn btn-s" id="pl-quick-view" type="button">👁 View PDF</button>
+                <button class="btn btn-s" id="pl-quick-download" type="button">⬇ Download</button>
+              </div>
+              <div class="pl-fg">
+                <label>Save a copy to the library? — Report category</label>
+                <select id="pl-save-category">${catOptions}</select>
+              </div>
+              <div class="pl-fg">
+                <label>Auto-expiry</label>
+                <div class="pl-presets" id="pl-save-presets">${presetBtns}</div>
+              </div>
             </div>
           </div>
-          <div class="plftr">
+          <div class="plftr" id="pl-save-ftr" style="display:none">
             <button class="pl-skip" id="pl-save-skip" type="button">Don't save</button>
-            <button class="btn btn-s" id="pl-save-cancel-btn" type="button">Cancel</button>
-            <button class="btn btn-p" id="pl-save-confirm" type="button">Save</button>
+            <button class="btn btn-p" id="pl-save-confirm" type="button">Save to Library</button>
           </div>
         </div>
       </div>`;
     document.body.insertAdjacentHTML('beforeend', html);
 
     document.getElementById('pl-save-close').addEventListener('click', _closePrompt);
-    document.getElementById('pl-save-cancel-btn').addEventListener('click', _closePrompt);
     document.getElementById('pl-save-skip').addEventListener('click', _closePrompt);
     document.getElementById('pl-save-confirm').addEventListener('click', _confirmSave);
+    document.getElementById('pl-quick-view').addEventListener('click', () => {
+      if (_blobUrl) window.open(_blobUrl, '_blank');
+    });
+    document.getElementById('pl-quick-download').addEventListener('click', () => {
+      if (!_pending) return;
+      const a = document.createElement('a');
+      a.href = _blobUrl;
+      a.download = _pending.filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    });
     document.getElementById('pl-save-presets').addEventListener('click', (e) => {
       const el = e.target.closest('.pl-preset');
       if (!el) return;
       _selectedPreset = el.dataset.preset;
       document.querySelectorAll('#pl-save-presets .pl-preset').forEach(b => b.classList.toggle('active', b === el));
     });
+    // No backdrop-click-to-close while generating — closing mid-build would
+    // strand the popup in a state with nothing to show; once ready, a
+    // backdrop click behaves like "Don't save" (View/Download already done
+    // are unaffected either way).
     document.getElementById('pl-save-bg').addEventListener('click', (e) => {
-      if (e.target.id === 'pl-save-bg') _closePrompt();
+      if (e.target.id === 'pl-save-bg' && document.getElementById('pl-ready-state').style.display !== 'none') _closePrompt();
     });
   }
 
   function _closePrompt() {
     const bg = document.getElementById('pl-save-bg');
     if (bg) bg.classList.remove('on');
+    if (_blobUrl) { URL.revokeObjectURL(_blobUrl); _blobUrl = null; }
     _pending = null;
   }
 
-  // Called by print.js right after a PDF blob is built. Fire-and-forget
-  // from print.js's point of view — this never blocks or affects the
-  // existing preview-tab/download behavior, it only ever adds to it.
-  function captureFromPrint(blob, meta) {
+  // Called by print.js the instant a print is requested — shows the
+  // "Generating…" state immediately, before the (slow, CPU-bound)
+  // html2canvas/jsPDF work even starts, so there's no dead time with no
+  // feedback at all. Safe to call with no PDF yet in hand.
+  function beginPrint() {
+    _buildPromptOnce();
+    _pending = null;
+    if (_blobUrl) { URL.revokeObjectURL(_blobUrl); _blobUrl = null; }
+    document.getElementById('pl-save-heading').firstChild.textContent = 'Generating PDF…';
+    document.getElementById('pl-save-filename').textContent = '';
+    document.getElementById('pl-gen-state').style.display = '';
+    document.getElementById('pl-ready-state').style.display = 'none';
+    document.getElementById('pl-save-ftr').style.display = 'none';
+    document.getElementById('pl-save-bg').classList.add('on');
+  }
+
+  // Called by print.js once the blob exists — swaps the popup from
+  // "Generating…" to the finished View/Download/Save-to-library state.
+  function finishPrint(payload) {
     try {
+      payload = payload || {};
+      const { blob, filename, title } = payload;
       if (!blob) return;
-      meta = meta || {};
-      _buildPromptOnce();
-      _pending = { blob, filename: meta.filename || 'BT-Report.pdf', title: meta.title || '' };
+      _buildPromptOnce(); // in case finishPrint is ever called without a prior beginPrint
+      _pending = { blob, filename: filename || 'BT-Report.pdf', title: title || '' };
+      _blobUrl = URL.createObjectURL(blob);
       _selectedPreset = DEFAULT_PRESET;
       document.querySelectorAll('#pl-save-presets .pl-preset').forEach(b =>
         b.classList.toggle('active', b.dataset.preset === DEFAULT_PRESET));
+      document.getElementById('pl-save-heading').firstChild.textContent = 'PDF ready';
       document.getElementById('pl-save-filename').textContent = _pending.filename;
       const catSel = document.getElementById('pl-save-category');
       catSel.value = _guessCategory(_pending.title + ' ' + _pending.filename);
+      document.getElementById('pl-gen-state').style.display = 'none';
+      document.getElementById('pl-ready-state').style.display = '';
+      document.getElementById('pl-save-ftr').style.display = '';
       document.getElementById('pl-save-bg').classList.add('on');
     } catch (e) {
-      console.error('PdfLibrary.captureFromPrint failed:', e);
+      console.error('PdfLibrary.finishPrint failed:', e);
     }
+  }
+
+  // Called by print.js if PDF generation itself throws — closes the
+  // popup rather than leaving it stuck on "Generating…" forever.
+  function failPrint(err) {
+    _closePrompt();
+    _toast('⚠️ Could not generate PDF: ' + (err && err.message || err), 'e');
   }
 
   async function _confirmSave() {
@@ -215,7 +291,7 @@ window.PdfLibrary = (function () {
       _toast('⚠️ Could not save to PDF Library: ' + (e && e.message || e), 'e');
     } finally {
       confirmBtn.disabled = false;
-      confirmBtn.textContent = 'Save';
+      confirmBtn.textContent = 'Save to Library';
     }
   }
 
@@ -370,5 +446,5 @@ window.PdfLibrary = (function () {
     if (_pageInitialized) _fetchAndRender();
   }
 
-  return { captureFromPrint, runExpirySweep, onShow };
+  return { beginPrint, finishPrint, failPrint, runExpirySweep, onShow };
 })();
