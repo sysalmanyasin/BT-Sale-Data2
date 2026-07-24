@@ -202,7 +202,7 @@ const AI_DESTRUCTIVE_INTENTS = new Set([
 
 
 // ── Field alias map ───────────────────────────────────────────────────
-const _AI_FIELD_ALIASES = {
+export const _AI_FIELD_ALIASES = {
   'jazz cash':        'Meezan_Bank',
   'jazzcash':         'Meezan_Bank',
   'jazz':             'Meezan_Bank',
