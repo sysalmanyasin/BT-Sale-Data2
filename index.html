@@ -387,7 +387,7 @@ if ('serviceWorker' in navigator) {
       <button style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--border,#e2e8f0);background:var(--s2,#f8fafc);font-size:12px;color:var(--muted,#64748b);cursor:pointer"
         onclick="chpClear()">🗑 Clear</button>
       <button style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--border,#e2e8f0);background:var(--s2,#f8fafc);font-size:12px;color:var(--muted,#64748b);cursor:pointer;font-weight:600"
-        onclick="if(typeof aimOpenPanel==='function')aimOpenPanel()" title="AI Memory, Rules & Training">🧠 Memory</button>
+        onclick="if(typeof aimOpenPanel==='function')aimOpenPanel()" title="Today's briefing &amp; saved instructions">🧠 Memory</button>
     </div>
 
     <!-- ── Settings modal (Phase 4) ── -->
@@ -1895,6 +1895,7 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/audit-native.js"></script>
 <script type="module" src="js/inventory-bridge.js"></script>
 <script type="module" src="js/inventory-native.js"></script>
+<script type="module" src="js/ai/domains/inventory-domain.js"></script>
 <script defer src="js/stockledger.js?v=20260722a"></script>
 <script defer src="js/excess-working.js?v=20260722a"></script>
 <script defer src="js/reorder-report.js?v=20260722a"></script>
@@ -2003,8 +2004,8 @@ if ('serviceWorker' in navigator) {
 <!-- 15. Google Drive backup / restore -->
 <script defer src="js/drive.js?v=20260722a"></script>
 
-<!-- AI Memory — persistent memory, custom rules, training, section AI config -->
-<script defer src="js/ai-memory.js?v=20260722a"></script>
+<!-- AI Memory — daily briefing (cached, callAI-backed) + read-only Memory panel -->
+<script type="module" src="js/ai-memory.js?v=20260722a"></script>
 
 <!-- AI Bridge — powers the dedicated AI page only (no floating widget) -->
 <!-- AI Instructions System -->
