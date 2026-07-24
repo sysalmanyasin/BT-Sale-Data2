@@ -9,6 +9,7 @@ import { Repository } from '../../repository.js';
 import { BTDate } from '../../bt-date.js';
 import { _aiTodayStr, _aiCurrentMonthYear } from '../core/ai-datetime.js';
 import { registerDomain } from '../core/registry.js';
+import { _AI_FIELD_ALIASES } from '../../ai-bridge.js';
 
 export function _aiParseDailyFieldCommand(text) {
   for (const [alias, fieldId] of Object.entries(_AI_FIELD_ALIASES)) {
