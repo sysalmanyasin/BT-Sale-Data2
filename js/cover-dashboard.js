@@ -1,6 +1,6 @@
 // COVER DASHBOARD — Floor 5
 
-import { MONTHLY, DAILY, n, fc } from './config.js';
+import { MONTHLY, DAILY, STAFF, n, fc } from './config.js';
 import { Repository } from './repository.js';
 import * as LedgerStore from './ledger-store.js';
 import * as ClosingBridge from './closing-bridge.js';
@@ -195,10 +195,30 @@ function _targetPace() {
   return { label: 'Target pace — ' + my, value: pct + '% of target', sub };
 }
 
+// Picks the chronologically-latest MONTHLY record — comparing by Month_Year
+// itself rather than trusting array order, since MONTHLY can arrive from
+// Supabase in whatever order it was last upserted in, not necessarily
+// sorted. Used as a fallback when the current calendar month has no
+// MONTHLY record yet (e.g. first entry of the month not saved yet).
+function _latestMonthlyRecord() {
+  if (!MONTHLY.length) return null;
+  return MONTHLY.reduce((best, m) => {
+    const [bn, by] = String(best.Month_Year || '').split(' ');
+    const [mn, my] = String(m.Month_Year || '').split(' ');
+    const bVal = (parseInt(by, 10) || 0) * 100 + MONTH_NAMES.indexOf(bn);
+    const mVal = (parseInt(my, 10) || 0) * 100 + MONTH_NAMES.indexOf(mn);
+    return mVal > bVal ? m : best;
+  });
+}
+
 function _salesStatus() {
   if (!MONTHLY.length) return 'No sales data loaded yet';
-  const lat = MONTHLY[MONTHLY.length - 1];
-  return lat.Month_Year + ' · ₨' + fc(n(lat.TOTAL)) + ' so far';
+  const my = _currentMonthYear();
+  const rec = MONTHLY.find(m => m.Month_Year === my) || _latestMonthlyRecord();
+  if (!rec) return 'No sales data loaded yet';
+  const lastDay = _lastFilledDay(rec.Month_Year);
+  const till = lastDay ? ' (till ' + lastDay + ' ' + rec.Month_Year.split(' ')[0].slice(0, 3) + ')' : '';
+  return rec.Month_Year + till + ' · ₨' + fc(n(rec.TOTAL)) + ' so far';
 }
 
 function _managerStatus() {
@@ -469,6 +489,39 @@ function _inventoryHeroStats() {
   return { slStats, ewSummary, rrSummary };
 }
 
+// ── Staff Registry strip (Manager group) ──────────────────────────────
+// Replaces the old Quick Add panel on the cover page. Shows every active
+// employee as a small horizontally-scrollable card; tapping one opens the
+// same Staff Card modal used by Manager → Staff Registry (openStaffCard,
+// from manager-staff.js — index must match the live STAFF array, so we
+// carry origIdx through the sort exactly like activeStaff() does there).
+function _staffRegistryHtml() {
+  const active = STAFF.map((emp, i) => ({ emp, i }))
+    .filter(({ emp }) => emp && emp.active !== false)
+    .sort((a, b) => (Number(a.emp.srNum) || 999) - (Number(b.emp.srNum) || 999));
+  if (!active.length) {
+    return `
+    <div class="cover-staff-strip-title">👥 Staff Registry</div>
+    <div class="cover-staff-empty">No staff yet — add employees in Manager → Staff Registry.</div>`;
+  }
+  const initials = name => (String(name || '?').trim().match(/\S+/g) || ['?'])
+    .slice(0, 2).map(w => w[0].toUpperCase()).join('');
+  return `
+    <div class="cover-staff-strip-title">👥 Staff Registry <span class="cover-staff-count">${active.length}</span></div>
+    <div class="cover-staff-strip" id="cover-staff-strip">
+      ${active.map(({ emp, i }) => {
+        const sid = emp.staffId || ('EMP-' + String(i + 1).padStart(3, '0'));
+        return `
+        <div class="cover-staff-card" data-staff-idx="${i}" role="button" tabindex="0" title="Open Staff Card">
+          <div class="cover-staff-avatar">${_esc(initials(emp.name))}</div>
+          <div class="cover-staff-name">${_esc(emp.name || '(unnamed)')}</div>
+          <div class="cover-staff-desig">${_esc(emp.designation || '—')}</div>
+          <div class="cover-staff-id">${_esc(sid)}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
 function _tiles() {
   return [
     { page: 'dashboard', icon: '📊', title: 'Sales',           status: _salesStatus(),   enabled: true, group: 'Sales' },
@@ -668,7 +721,7 @@ export function renderCoverDashboard() {
         </div>
         <div class="cover-group-body"><div>
           ${GROUP_HERO[groupName] || ''}
-          ${groupName === 'Manager' ? '<div id="qa-panel-cover"></div>' : ''}
+          ${groupName === 'Manager' ? _staffRegistryHtml() : ''}
           <div class="cover-tile-grid">
             ${members.map(({ t, i }) => tileCardHtml(t, i)).join('')}
           </div>
@@ -681,9 +734,13 @@ export function renderCoverDashboard() {
   _renderPinsRow(tiles);
   _updateHeroDate();
   if (invSl && invSl.dataReady) _renderInventoryChart(invSl, invEw);
-  if (document.getElementById('qa-panel-cover') && typeof window.renderQuickAdd === 'function') {
-    window.renderQuickAdd('qa-panel-cover');
-  }
+  container.querySelectorAll('[data-staff-idx]').forEach(card => {
+    const openIt = () => {
+      if (typeof window.openStaffCard === 'function') window.openStaffCard(+card.dataset.staffIdx);
+    };
+    card.addEventListener('click', openIt);
+    card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openIt(); } });
+  });
   container.querySelectorAll('[data-pin-key]').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();

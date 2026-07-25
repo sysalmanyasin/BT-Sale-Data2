@@ -2,7 +2,7 @@
 // UI EXTRAS  —  loaded last so all other scripts are available
 //
 //  1. Left-edge coloured tab strip  (always visible, 5 main tabs)
-//  2. Floating 📊 Dashboard FAB     (draggable, Ctrl+D shortcut)
+//  2. (Floating 📊 Dashboard FAB removed — Ctrl+D shortcut still works)
 //  3. "Add New Month" → auto-creates matching target entry
 // ═══════════════════════════════════════════════════════════════════════
 (function () {
@@ -451,7 +451,6 @@
   function _init() {
     _injectStyles();
     _buildEdgeStrip();
-    _buildFab();
     _patchShowPage();
     _addKeyboard();
     _patchAddNewMonth(); // targets.js already loaded by this point

@@ -224,8 +224,7 @@ function qaSubmitCredit(container) {
 
 document.addEventListener('DOMContentLoaded', () => {
   // Manager page's copy is static markup, present from the start.
+  // (The cover page no longer hosts a Quick Add panel — its Manager group
+  // shows a Staff Registry strip instead; see cover-dashboard.js.)
   if (document.getElementById('qa-panel-mgr')) renderQuickAdd('qa-panel-mgr');
-  // Cover page's copy lives inside cover-dashboard.js's own render cycle
-  // (its container is rebuilt every time Cover is shown) — see the
-  // renderQuickAdd('qa-panel-cover') call added there.
 });

@@ -882,17 +882,58 @@ async function scCheckTable() {
 // ── Top status pill ──
 function updateSyncCenterStatusBar() {
   const pill = document.getElementById('sc-status-pill');
-  if (!pill) return;
-  if (_sc_status === STATUS_ACTIVE) {
-    pill.textContent = '✏ ACTIVE';
-    pill.style.background = 'var(--green)';
-    pill.style.color = '#000';
-  } else {
-    pill.textContent = '◐ PASSIVE';
-    pill.style.background = 'rgba(245,158,11,.15)';
-    pill.style.color = 'var(--amber,#f59e0b)';
+  if (pill) {
+    if (_sc_status === STATUS_ACTIVE) {
+      pill.textContent = '✏ ACTIVE';
+      pill.style.background = 'var(--green)';
+      pill.style.color = '#000';
+    } else {
+      pill.textContent = '◐ PASSIVE';
+      pill.style.background = 'rgba(245,158,11,.15)';
+      pill.style.color = 'var(--amber,#f59e0b)';
+    }
+  }
+  _updateNavTakeControlBtn();
+}
+
+// Nav bar's own Take Control button (beside the Supabase sync badge) —
+// separate element from Sync Center's sc-take-ctrl-btn (Tools → Sync
+// Center → Controls), but reflects the same _sc_status so it never goes
+// out of sync with the source of truth.
+function _updateNavTakeControlBtn() {
+  const btn = document.getElementById('nav-take-ctrl-btn');
+  if (!btn) return;
+  const icon = document.getElementById('nav-tc-icon');
+  const text = document.getElementById('nav-tc-text');
+  const isActive = _sc_status === STATUS_ACTIVE;
+  btn.disabled = isActive;
+  btn.classList.remove('busy');
+  if (icon) icon.textContent = isActive ? '✓' : '⚔';
+  if (text) text.textContent = isActive ? 'In Control' : 'Take Control';
+  btn.title = isActive
+    ? 'You have write access — all saves go to Supabase'
+    : 'Take control — claim write access & sync now';
+}
+
+// Click handler for the nav button: takes control (same door as Sync
+// Center's own Take Control), then immediately pulls the latest data so
+// the tap doubles as a manual sync — this is the "click/touch to sync"
+// behaviour the nav badge itself doesn't offer (it just opens Tools).
+async function navTakeControl() {
+  const btn = document.getElementById('nav-take-ctrl-btn');
+  if (btn) { btn.disabled = true; btn.classList.add('busy'); }
+  try {
+    await scTakeControl();
+    if (typeof pullFromSupabase === 'function') await pullFromSupabase(false);
+    else if (typeof manualSync === 'function') await manualSync(false);
+    if (typeof toast === 'function') toast('✓ In control — synced');
+  } catch (e) {
+    if (typeof toast === 'function') toast('✕ Take control / sync failed', 'e');
+  } finally {
+    _updateNavTakeControlBtn();
   }
 }
+window.navTakeControl = navTakeControl;
 
 // ── Full render ──
 function _sc_renderAll() {
