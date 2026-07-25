@@ -20,7 +20,7 @@
 (function () {
   'use strict';
 
-  let _cdrRows = [];             // every day on record, chronological (oldest → newest)
+  let _cdrRows = [];             // every day on record, latest date on top
   const _cdrSelected = new Set(); // selected Date strings
 
   // ---------- data ----------
@@ -39,7 +39,7 @@
     // keeps blank template rows out without inventing a new rule.
     return DAILY.filter(d => n(d.TOTAL) !== 0 || d['Low Sale Reason'])
       .map(d => Object.assign({ Date: d.Date, Month_Year: d.Month_Year }, _cdrCompute(d)))
-      .sort((a, b) => _dateVal(a.Date) - _dateVal(b.Date)); // start → now
+      .sort((a, b) => _dateVal(b.Date) - _dateVal(a.Date)); // latest on top
   }
 
   // ---------- init / filters ----------
