@@ -21,13 +21,19 @@ function esc(str) {
   return String(str ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 }
 
-const biState = { search: '', groupBy: 'none', page: 1 };
+const biState = { search: '', groupBy: 'none', page: 1, negativeOnly: false };
 let _searchDebounce = null;
 
 function _visibleProducts(products) {
+  let list = products;
+  // Negative Stock Only: qty < 0 means the POS oversold past zero (a
+  // shrinkage/data-entry signal), so this is a strict "less than zero"
+  // check, not "zero or below" — a 0-stock item is just sold out, not
+  // an anomaly.
+  if (biState.negativeOnly) list = list.filter(p => (p.qty || 0) < 0);
   const q = biState.search.toLowerCase().trim();
-  if (!q) return products;
-  return products.filter(p =>
+  if (!q) return list;
+  return list.filter(p =>
     (p.name || '').toLowerCase().includes(q) ||
     (p.code || '').toLowerCase().includes(q) ||
     (p.generic || '').toLowerCase().includes(q) ||
@@ -58,12 +64,13 @@ function _groupSubtotal(products, key, groupName) {
 }
 
 function _rowHtml(p) {
+  const isNegative = (p.qty || 0) < 0;
   return `<tr class="bti-row">
     <td>
       <div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.3">${esc(p.name)}</div>
       <div style="font-size:10px;color:var(--muted);margin-top:2px">${p.code ? esc(p.code) : 'No SKU'} · ${esc(p.generic || '—')}</div>
     </td>
-    <td style="text-align:right;font-weight:700;color:var(--text);font-size:13px">${p.qty.toLocaleString()}</td>
+    <td style="text-align:right;font-weight:700;font-size:13px;color:${isNegative ? '#dc2626' : 'var(--text)'}">${isNegative ? '⚠️ ' : ''}${p.qty.toLocaleString()}</td>
     <td style="text-align:right;font-size:13px">Rs ${Number(p.price || 0).toLocaleString()}</td>
     <td style="font-size:11px;color:var(--muted)">${esc(p.company || '—')}</td>
     <td style="font-size:11px;color:var(--muted)">${esc(p.supplier || '—')}</td>
@@ -127,7 +134,12 @@ function renderInventoryPage() {
 
   const visible = _visibleProducts(data.products);
   if (!visible.length) {
-    if (emptyEl) { emptyEl.style.display = 'block'; emptyEl.textContent = '🔍 No matching items found.'; }
+    if (emptyEl) {
+      emptyEl.style.display = 'block';
+      emptyEl.textContent = biState.negativeOnly
+        ? '✅ No negative-stock items — nothing oversold right now.'
+        : '🔍 No matching items found.';
+    }
     if (wrapEl) wrapEl.style.display = 'none';
     if (topPager) topPager.innerHTML = '';
     if (botPager) botPager.innerHTML = '';
@@ -190,6 +202,13 @@ function biSetGroupBy(mode) {
   renderInventoryPage();
 }
 
+function biToggleNegativeOnly() {
+  biState.negativeOnly = !biState.negativeOnly;
+  biState.page = 1;
+  document.getElementById('bti-negative-toggle')?.classList.toggle('bti-group-btn-active', biState.negativeOnly);
+  renderInventoryPage();
+}
+
 function biGoToPage(page) {
   biState.page = page;
   renderInventoryPage();
@@ -212,6 +231,7 @@ export function onBridgeRefresh() { renderInventoryPage(); }
 
 window.biSetSearch = biSetSearch;
 window.biSetGroupBy = biSetGroupBy;
+window.biToggleNegativeOnly = biToggleNegativeOnly;
 window.biGoToPage = biGoToPage;
 window.biRefresh = biRefresh;
 window.inventoryNativeOnRefresh = onBridgeRefresh;

@@ -847,6 +847,7 @@ if ('serviceWorker' in navigator) {
     <button class="bti-group-btn bti-group-btn-active" data-group="none" onclick="biSetGroupBy('none')">No Grouping</button>
     <button class="bti-group-btn" data-group="company" onclick="biSetGroupBy('company')">By Manufacturer</button>
     <button class="bti-group-btn" data-group="supplier" onclick="biSetGroupBy('supplier')">By Supplier</button>
+    <button class="bti-group-btn" id="bti-negative-toggle" onclick="biToggleNegativeOnly()">⚠️ Negative Stock Only</button>
   </div>
   <div class="bti-empty" id="bti-empty-state">⏳ Loading inventory from Random…</div>
   <div id="bti-pagination-top"></div>
