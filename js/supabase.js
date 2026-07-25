@@ -149,6 +149,12 @@ function _buildPayload() {
     // Staff Card Notes tab (V2 plan §4) — same id-merge convention as
     // the Notes & Sheets `notes` key above.
     staffNotes: JSON.parse(Repository.getItem('bt_staff_notes_v1') || '[]'),
+    // Excess Working's Retain Stock List (js/excess-working.js) — plain
+    // list of SKU names, no per-item id. Was local-only (localStorage/
+    // Repository, no Supabase leg) until now, so a name retained on one
+    // device silently reverted to "Excess" on every other device on
+    // next pull. Union-merged below (never dropped, only added-to).
+    excessRetain: JSON.parse(Repository.getItem('bt_excess_retain_v1') || '[]'),
     colConfig: {
       hidden: JSON.parse(Repository.getItem('bt_col_config')  || '[]'),
       custom: JSON.parse(Repository.getItem('bt_custom_cols') || '[]')
@@ -418,6 +424,27 @@ function mergeIncomingData(data, isPull = false) {
       const key = document.getElementById('sc-notes-key')?.value;
       const panel = document.getElementById('sc-panel-notes');
       if (key && panel && panel.style.display !== 'none') renderStaffNotesPanel(key);
+    }
+  }
+
+  // ── Excess Working's Retain Stock List — plain SKU-name list, no
+  // per-item id to key a gap-fill/overwrite merge on. Union it instead
+  // (case-insensitive, first-seen casing wins) on BOTH push and pull so
+  // an item retained on either device is never silently lost or
+  // reverted to "Excess" — the one thing this list must never do. ──
+  if (data.excessRetain && data.excessRetain.length) {
+    const RETAIN_KEY = 'bt_excess_retain_v1';
+    const local  = JSON.parse(Repository.getItem(RETAIN_KEY) || '[]');
+    const byKey  = {};
+    (Array.isArray(local) ? local : []).forEach(name => { if (name) byKey[String(name).toLowerCase()] = name; });
+    data.excessRetain.forEach(name => {
+      if (!name) return;
+      const key = String(name).toLowerCase();
+      if (!(key in byKey)) byKey[key] = name;
+    });
+    Actions.saveFeatureData(RETAIN_KEY, JSON.stringify(Object.values(byKey)));
+    if (typeof window.ExcessWorkingApp !== 'undefined' && window.ExcessWorkingApp && typeof window.ExcessWorkingApp.reloadRetain === 'function') {
+      window.ExcessWorkingApp.reloadRetain();
     }
   }
 

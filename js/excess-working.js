@@ -694,5 +694,17 @@ window.ExcessWorkingApp = (function () {
     };
   }
 
-  return { init: init, getSummary: getSummary };
+  // ── Called by supabase.js after a sync merges in a remote Retain Stock
+  // List — reloads state.retainList from storage (already union-merged
+  // by mergeIncomingData) and recomputes/re-renders if this page happens
+  // to be open, so a name retained on another device shows up here
+  // immediately instead of waiting for a manual refresh/reopen.
+  function reloadRetain() {
+    state.retainList = loadRetain();
+    recompute();
+    const root = document.getElementById('page-excess');
+    if (root && root.offsetParent !== null) render();
+  }
+
+  return { init: init, getSummary: getSummary, reloadRetain: reloadRetain };
 })();
