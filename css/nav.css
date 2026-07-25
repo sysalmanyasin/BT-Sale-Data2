@@ -26,6 +26,19 @@ nav{position:sticky;top:22px;z-index:200;background:rgba(255,255,255,.96);backdr
 .lockbtn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--s2);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;color:var(--muted);transition:all .15s;}
 .lockbtn:hover{border-color:var(--accent);color:var(--accent);}
 
+/* ── Take Control button (nav, beside Supabase sync badge) ── */
+.takectrlbtn{
+  display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;font-family:var(--sans);
+  padding:3px 10px;border-radius:20px;cursor:pointer;
+  border:1px solid var(--purple,#7c3aed);background:var(--s2);color:var(--purple,#7c3aed);
+  transition:all .15s;
+}
+.takectrlbtn:hover{background:var(--purple,#7c3aed);color:#fff;}
+.takectrlbtn:disabled{cursor:default;opacity:.55;background:var(--glt);color:var(--green);border-color:#bbf7d0;}
+.takectrlbtn:disabled:hover{background:var(--glt);color:var(--green);}
+.takectrlbtn.busy{opacity:.65;cursor:wait;animation:pulse .8s infinite;}
+@media(max-width:640px){ #nav-tc-text{display:none;} .takectrlbtn{padding:6px;border-radius:50%;} }
+
 
 /* ── Sale Data sub-nav (Phase 1 reshape) ── */
 .ntabs.subnav {
