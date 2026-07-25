@@ -287,6 +287,8 @@ window.StockLedgerApp = (function(){
             {key:'excessQty', label:'Excess Qty', num:true},
             {key:'unitPrice', label:'Unit Price', num:true, money:true},
             {key:'excessValue', label:'Excess Value', num:true, money:true, strong:true},
+            {key:'daysOld', label:'Days Old', num:true},
+            {key:'stockDays', label:'Stock Days', num:true},
           ],
           sub:(it)=> it.generic || it.supplier || ''
         },
@@ -323,6 +325,32 @@ window.StockLedgerApp = (function(){
       };
     
       let computed = { neverSold:[], deadStock:[], excess:[], packIssues:[], zeroStock:[] };
+      // Raw (unfiltered) 100-Day Excess eligibility list — every row that
+      // passed computeAll()'s base checks (net90>0, excessQty>0, stock>=4),
+      // before the age/stock-cover recalculation below. getExcessRows()
+      // hands this raw list to Excess Working so its own toggles (which
+      // default to the same 90/200 thresholds, see excess-working.js) can
+      // still widen the view independently without Stock Ledger having
+      // already thrown rows away.
+      let rawExcess = [];
+    
+      // Same recalculation Excess Working applies, with the same defaults
+      // (90+ days since creation, 200+ days of stock cover at the current
+      // 90-day sale rate) — kept here as fixed constants rather than a
+      // toggle, since Stock Ledger's own 100-Day Excess card/table/export
+      // is meant to always agree with Excess Working's default numbers.
+      // A missing creationDate is treated as "old enough" rather than
+      // excluded, same reasoning as excess-working.js: absence of data
+      // isn't evidence a SKU is new.
+      const EXCESS_MIN_AGE_DAYS = 90;
+      const EXCESS_MIN_STOCK_DAYS = 200;
+      function applyExcessRecalc(rows){
+        return rows.filter(r=>{
+          if(r.daysOld != null && r.daysOld < EXCESS_MIN_AGE_DAYS) return false;
+          if(r.stockDays == null || r.stockDays < EXCESS_MIN_STOCK_DAYS) return false;
+          return true;
+        });
+      }
     
       function applyFilterSort(panelKey){
         const def = TABLE_DEFS[panelKey];
@@ -433,6 +461,8 @@ window.StockLedgerApp = (function(){
     
       function render(){
         computed = computeAll();
+        rawExcess = computed.excess;                    // preserve unfiltered list for getExcessRows()
+        computed.excess = applyExcessRecalc(rawExcess);  // Stock Ledger's own display uses the recalculated set
         renderSummary();
         ['neverSold','deadStock','excess','packIssues','zeroStock'].forEach(renderTable);
         $('#sl-main').style.display = 'block';
@@ -550,7 +580,7 @@ window.StockLedgerApp = (function(){
           ['The five report tabs link back to specific Data rows with formulas, so cell VALUES stay live if you edit Data. Their ROW MEMBERSHIP was fixed when this file was exported — re-export from the app after changing thresholds or loading new data to refresh which SKUs appear on each tab.'],
           ['Never Sold: no sale on record at all, received more than the threshold days ago.'],
           ['Dead Stock: HAS a sale on record, but not within the threshold window, and received more than that same window ago. Requiring a sale history keeps this mutually exclusive with Never Sold.'],
-          ['100-Day Excess: netQty90Days is a 90-day net sold quantity (see source SQL). Target 100d Stock = that 90-day quantity × (100/90) — the amount needed to cover 100 days at the current rate. Excess = stock beyond that target, only for items that sold something in the last 90 days AND have a stock quantity of 4 or more. No pack rounding.'],
+          ['100-Day Excess: netQty90Days is a 90-day net sold quantity (see source SQL). Target 100d Stock = that 90-day quantity × (100/90) — the amount needed to cover 100 days at the current rate. Excess = stock beyond that target, only for items that sold something in the last 90 days AND have a stock quantity of 4 or more. No pack rounding. Recalculated further: only SKUs created 90+ days ago (unknown creation date counts as old enough) AND with 200+ days of stock on hand at the current rate — same defaults as the Excess Working page, so both agree.'],
           ['Pack Size Issues: stock > 0 but conversionFactor is missing, zero, or invalid — excluded from Never Sold / Dead Stock, but still eligible for Excess.'],
           ['Zero Stock: stock = 0, reference only, excluded from all three calculated reports.'],
           ['Never Sold / Dead Stock quantities are down-rounded to full packs: INT(stock / pack) * pack.'],
@@ -608,7 +638,7 @@ window.StockLedgerApp = (function(){
         const summaryDefs = [
           ['Never Sold','U','Q', `No sale ever, received >${state.neverSoldDays}d ago`],
           ['Dead Stock','V','Q', `Sold before, quiet >${state.deadDays}d, received >${state.deadDays}d ago`],
-          ['100-Day Excess','W','T', 'Stock beyond a 100-day target derived from the 90-day sale rate (stock qty ≥ 4 only)'],
+          ['100-Day Excess','W','T', 'Stock beyond a 100-day target derived from the 90-day sale rate (stock qty ≥ 4 only), further limited to SKUs 90+ days old with 200+ days of stock cover'],
           ['Pack Size Issues','X','R', 'Invalid/missing pack size (reference)'],
           ['Zero Stock','Y',null, 'Stock = 0 (reference)'],
         ];
@@ -1068,12 +1098,17 @@ window.StockLedgerApp = (function(){
       $('#sl-asofLine').textContent = 'Reference date: ' + state.today.toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'}) + ' — all "days since" figures are measured against this.';
 
       // ---------- Read-only bridge for other pages (e.g. Excess Working) ----------
-      // Excess Working reuses the exact same "100-Day Excess" rows this page
-      // computes (see computeAll(), section 3) instead of re-loading or
-      // re-deriving them — one inventory load, one source of truth. These
-      // closures capture `computed`/`state` by reference, so they always
-      // return whatever this page most recently computed, live.
-      window.StockLedgerApp.getExcessRows = function(){ return (computed.excess || []).slice(); };
+      // Excess Working reuses the exact same "100-Day Excess" eligibility
+      // rows this page computes (see computeAll(), section 3) instead of
+      // re-loading or re-deriving them — one inventory load, one source of
+      // truth. This returns the RAW list (before the age/stock-cover
+      // recalculation below), since Excess Working applies that same
+      // recalculation itself with its own independently-toggleable UI
+      // (defaulting to the same 90/200 thresholds — see excess-working.js).
+      // Stock Ledger's own card/table/export (computed.excess) applies the
+      // recalculation directly with fixed defaults, so both pages show
+      // matching numbers unless someone widens Excess Working's toggles.
+      window.StockLedgerApp.getExcessRows = function(){ return (rawExcess || []).slice(); };
       // Reorder Report needs every loaded item (not just the already-excess
       // ones) since it's judging LOW cover, not high — same live source of
       // truth, no separate load.
