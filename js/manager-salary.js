@@ -48,10 +48,7 @@ function renderSalaryTable(rows) {
     const _crdEmp = _crdForAdv.find(c => _salNorm(c.name) === _salNorm(r.name));
     let _advTitle = '';
     if (_crdEmp && _crdEmp.entries && _crdEmp.entries.length) {
-      const pos = _crdEmp.entries.filter(e => _ni(e.amount) > 0);
-      if (pos.length) {
-        _advTitle = 'Credit entries:\n' + pos.map(e => e.date + ': ' + (e.desc||'') + ' Rs' + _fc2(e.amount)).join('\n');
-      }
+      _advTitle = 'Credit entries:\n' + _crdEmp.entries.map(e => e.date + ': ' + (e.desc||'') + ' Rs' + _fc2(e.amount)).join('\n');
     }
     // FIX 2: Clickable Staff ID in salary
     const _sIdx = STAFF.findIndex(s => _salNorm(s.name) === _salNorm(r.name));
@@ -101,8 +98,11 @@ function loadSalaryMonth(my) {
     if (!rName) return row;
     const crd = crdRows.find(c => norm(c.name) === rName);
     const gen = genRowsData.find(g => norm(g.name) === rName);
-    // Sum only positive credit entries (advances drawn by employee)
-    const entryTotal = crd ? crd.entries.reduce((s,e) => { const v=_ni(e.amount); return s+(v>0?v:0); }, 0) : 0;
+    // Sum ALL credit entries (advances drawn minus deductions/repayments),
+    // so this matches the same total the Credit ledger's Net already uses
+    // — a negative entry there must also reduce Advance here, or the two
+    // sheets drift apart the moment any deduction is logged.
+    const entryTotal = crd ? crd.entries.reduce((s,e) => s + _ni(e.amount), 0) : 0;
     return {
       ...row,
       // Advance: only auto-fill if salary not yet saved for this month
@@ -172,11 +172,12 @@ function autoFillSalaryFromSheets() {
   _salRows_cur = _salRows_cur.map(row => {
     const rName = norm(row.name);
     if (!rName) return row;
-    // Sum only positive entries (advances/credits given to employee)
+    // Sum ALL entries, signed — advances given minus deductions/repayments —
+    // matching the Credit ledger's Net (see loadSalaryMonth for details).
     const crd = crdRows.find(c => norm(c.name) === rName);
     let advance = row.advance;
     if (crd) {
-      const entryTotal = crd.entries.reduce((s, e) => { const v=_ni(e.amount); return s+(v>0?v:0); }, 0);
+      const entryTotal = crd.entries.reduce((s, e) => s + _ni(e.amount), 0);
       advance = entryTotal;
       filledAdv++;
     }
