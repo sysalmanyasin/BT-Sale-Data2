@@ -218,10 +218,23 @@ window.StockLedgerApp = (function(){
           const dailyRate = net100 / 90;
           const target100 = dailyRate * 100;
           const excessQty = stock - target100;
+          // daysOld: how long ago this SKU was first created in Candela (per
+          // Creation_Date). Used downstream (Excess Working) to filter out
+          // recently-added products — a SKU added last week hasn't had time
+          // to build 90 days of sale history, so it can look artificially
+          // "excess" simply for being new, not for being genuinely overstocked.
+          const daysOld = daysSince(it.creationDate);
+          // stockDays: at the current 90-day daily sale rate, how many days
+          // will the stock on hand actually last? This is the same "future
+          // stock days" idea as Candela's own C-19 report, computed here so
+          // Excess Working can filter for SKUs with an extreme (e.g. 200+ day)
+          // supply on hand, not just anything past the 100-day target.
+          const stockDays = dailyRate > 0 ? (stock / dailyRate) : null;
           if(net100 > 0 && excessQty > 0 && stock >= 4){
             excess.push({
               ...it, stock, unitPrice, net100, target100, _row,
-              excessQty, excessValue: excessQty * unitPrice
+              excessQty, excessValue: excessQty * unitPrice,
+              daysOld, stockDays
             });
           }
         });
@@ -807,11 +820,18 @@ window.StockLedgerApp = (function(){
           generic: r.generic || '',
           supplier: r.supplier || '',
           conversionFactor: r.conversion_factor,
+          creationDate: r.creation_date || null,
           lastReceiveDate: r.last_receive_date || null,
           lastSaleDate: r.last_sale_date || null,
           netQty30Days: Number(r.net_qty_30_days) || 0,
           netQty60Days: Number(r.net_qty_60_days) || 0,
           netQty90Days: Number(r.net_qty_90_days) || 0,
+          saleValueInclTax30Days: Number(r.sale_value_incl_tax_30_days) || 0,
+          saleValueInclTax60Days: Number(r.sale_value_incl_tax_60_days) || 0,
+          saleValueInclTax90Days: Number(r.sale_value_incl_tax_90_days) || 0,
+          saleValueExclTax30Days: Number(r.sale_value_excl_tax_30_days) || 0,
+          saleValueExclTax60Days: Number(r.sale_value_excl_tax_60_days) || 0,
+          saleValueExclTax90Days: Number(r.sale_value_excl_tax_90_days) || 0,
         };
       }
 

@@ -43,6 +43,17 @@ window.ExcessWorkingApp = (function () {
     summary: null,
     asOf: '',
     dataReady: false,
+    // Recalculation filters (2026-07-25): narrow the Excess list to SKUs
+    // old enough to trust (90+ days since creation, so they've had a full
+    // sale window to prove out) AND genuinely oversupplied (200+ days of
+    // stock on hand at the current sale rate, not just past the 100-day
+    // target). Both default ON since that's the recalculation being asked
+    // for; each can be switched off independently to fall back to the
+    // original, unfiltered 100-Day Excess list.
+    minAgeDays: 90,
+    minAgeOn: true,
+    minStockDays: 200,
+    minStockDaysOn: true,
   };
 
   // ---------- helpers ----------
@@ -100,7 +111,8 @@ window.ExcessWorkingApp = (function () {
       const excessContribution = status === 'Excess' ? correctedValue : 0;
       return {
         code: r.code, name: r.name, company: r.company || r.supplier || '',
-        qty, value, factor, packUnreliable, packQty, correctedValue, status, excessContribution
+        qty, value, factor, packUnreliable, packQty, correctedValue, status, excessContribution,
+        creationDate: r.creationDate || null, daysOld: r.daysOld, stockDays: r.stockDays
       };
     });
   }
@@ -122,9 +134,31 @@ window.ExcessWorkingApp = (function () {
     return { totalRawValue, totalExcess, totalRetained, totalLoose, top10, correctedExcessStockValue, variance, misc: misc || 0, hoValue };
   }
 
+  // Recalculation filters — applied before pack/retain classification, at
+  // the same tier as stockledger.js's own eligibility checks (net100>0,
+  // excessQty>0, stock>=4). A row failing either check here was never a
+  // trustworthy "excess" candidate in the first place: either too new to
+  // have proven a sale pattern, or not actually oversupplied by enough to
+  // matter.
+  function applyRecalcFilters(rawExcess) {
+    return rawExcess.filter(r => {
+      if (state.minAgeOn) {
+        // Unknown creation date (older sync data, or a SKU predating this
+        // field) is treated as "old enough" rather than silently dropped —
+        // absence of data isn't evidence the SKU is new.
+        if (r.daysOld != null && r.daysOld < state.minAgeDays) return false;
+      }
+      if (state.minStockDaysOn) {
+        if (r.stockDays == null || r.stockDays < state.minStockDays) return false;
+      }
+      return true;
+    });
+  }
+
   function recompute() {
     const retainSet = new Set(state.retainList.map(x => x.toLowerCase()));
-    state.computed = computeRows(state.rawExcess, retainSet);
+    const filtered = applyRecalcFilters(state.rawExcess);
+    state.computed = computeRows(filtered, retainSet);
     state.summary = summarize(state.computed, Number(state.misc) || 0, state.hoValue);
   }
 
@@ -332,6 +366,8 @@ window.ExcessWorkingApp = (function () {
         <td class="num">${fmt(r.qty)}</td>
         <td class="num">${fmt(r.packQty)}</td>
         <td class="num">${fmt(r.correctedValue)}</td>
+        <td class="num">${r.daysOld == null ? '—' : fmt(r.daysOld)}</td>
+        <td class="num">${r.stockDays == null ? '—' : fmt(r.stockDays)}</td>
         <td><span class="status-pill ${r.status}">${r.status}</span></td>
         <td class="retain-col">${retainBtnHtml(r)}</td>
       </tr>`;
@@ -350,7 +386,7 @@ window.ExcessWorkingApp = (function () {
         const collapsed = state.collapsedGroups.has(g.company);
         const header = `
       <tr class="group-header" data-action="ew-group-toggle" data-company="${esc(g.company)}">
-        <td colspan="7">
+        <td colspan="9">
           <span class="material-symbols-outlined group-chev">${collapsed ? 'chevron_right' : 'expand_more'}</span>
           <span class="group-name">${esc(g.company)}</span>
           <span class="hint group-count">${g.items.length} item${g.items.length === 1 ? '' : 's'}</span>
@@ -364,7 +400,7 @@ window.ExcessWorkingApp = (function () {
 
     const tableBody = rows.length
       ? (state.groupByCompany ? groupedBody(rows) : rows.map(rowHtml).join(''))
-      : '<tr class="empty-row"><td colspan="7" class="no-data-note">No rows match.</td></tr>';
+      : '<tr class="empty-row"><td colspan="9" class="no-data-note">No rows match.</td></tr>';
 
     return `
       <div class="stat-grid">
@@ -396,9 +432,20 @@ window.ExcessWorkingApp = (function () {
             <button class="${state.groupByCompany ? 'active' : ''}" data-action="ew-group" data-group="1">By Company</button>
           </div>
         </div>
+        <div class="filter-row" style="margin-top:8px;">
+          <label class="field-label" style="display:flex; align-items:center; gap:6px; margin:0; font-weight:400;">
+            <input type="checkbox" id="ewMinAgeToggle" ${state.minAgeOn ? 'checked' : ''}>
+            Created more than <input type="number" id="ewMinAgeInput" value="${state.minAgeDays}" min="0" step="1" style="width:64px; padding:4px 6px; border:1px solid var(--line); border-radius:5px; font-family:var(--mono);"> days ago
+          </label>
+          <label class="field-label" style="display:flex; align-items:center; gap:6px; margin:0; font-weight:400;">
+            <input type="checkbox" id="ewMinStockDaysToggle" ${state.minStockDaysOn ? 'checked' : ''}>
+            Stock covers more than <input type="number" id="ewMinStockDaysInput" value="${state.minStockDays}" min="0" step="1" style="width:64px; padding:4px 6px; border:1px solid var(--line); border-radius:5px; font-family:var(--mono);"> days
+          </label>
+          <span class="hint">Recalculates the 100-Day Excess list; both apply on top of the existing eligibility rules.</span>
+        </div>
         <div class="tablewrap">
           <table>
-            <thead><tr><th>Code</th><th>Product Name</th><th class="num">Excess Qty</th><th class="num">Pack Qty</th><th class="num">Value</th><th>Status</th><th class="retain-col-h">Retain</th></tr></thead>
+            <thead><tr><th>Code</th><th>Product Name</th><th class="num">Excess Qty</th><th class="num">Pack Qty</th><th class="num">Value</th><th class="num">Days Old</th><th class="num">Stock Days</th><th>Status</th><th class="retain-col-h">Retain</th></tr></thead>
             <tbody id="ewTableBody">${tableBody}</tbody>
           </table>
         </div>
@@ -582,6 +629,28 @@ window.ExcessWorkingApp = (function () {
         const v = parseInt(e.target.value, 10);
         state.topN = (v && v > 0) ? v : 20;
         render();
+        return;
+      }
+      if (e.target.id === 'ewMinAgeToggle') {
+        state.minAgeOn = !!e.target.checked;
+        recompute(); render();
+        return;
+      }
+      if (e.target.id === 'ewMinAgeInput') {
+        const v = parseInt(e.target.value, 10);
+        state.minAgeDays = (v && v >= 0) ? v : 0;
+        recompute(); render();
+        return;
+      }
+      if (e.target.id === 'ewMinStockDaysToggle') {
+        state.minStockDaysOn = !!e.target.checked;
+        recompute(); render();
+        return;
+      }
+      if (e.target.id === 'ewMinStockDaysInput') {
+        const v = parseInt(e.target.value, 10);
+        state.minStockDays = (v && v >= 0) ? v : 0;
+        recompute(); render();
         return;
       }
     });
