@@ -89,6 +89,9 @@ function _fc2(v) { return _ni(v).toLocaleString('en-PK'); }
 function _inp(type, val, cls, oninput, ph) {
   return `<input type="${type}" value="${val}" class="mgr-inp${cls ? ' ' + cls : ''}" placeholder="${ph||''}" ${oninput ? 'oninput="' + oninput + '"' : ''}>`;
 }
+function _mgrEsc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
 
 // ─── staff-row reconciliation ─────────────────────────────────────
 // Every per-staff month sheet (Salary / Generic / Credit) stores its own
@@ -134,6 +137,6 @@ function reconcileStaffRows(activeList, storedRows, blankFactory) {
   });
 }
 
-Object.assign(window, { MGR_KEY, mgrLoad, mgrSave, mgrMonths, _mgrPopSel, _ni, _fc2, _inp, reconcileStaffRows });
+Object.assign(window, { MGR_KEY, mgrLoad, mgrSave, mgrMonths, _mgrPopSel, _ni, _fc2, _inp, _mgrEsc, reconcileStaffRows });
 
-export { MGR_KEY, mgrLoad, mgrSave, mgrMonths, _mgrPopSel, _ni, _fc2, _inp, reconcileStaffRows };
+export { MGR_KEY, mgrLoad, mgrSave, mgrMonths, _mgrPopSel, _ni, _fc2, _inp, _mgrEsc, reconcileStaffRows };

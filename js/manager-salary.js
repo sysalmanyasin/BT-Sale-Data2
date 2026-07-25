@@ -18,7 +18,7 @@
 // ══════════════════════════════════════════════════════════════════════
 import { Repository } from './repository.js';
 import { STAFF } from './config.js';
-import { _ni, _fc2, _inp, mgrLoad, mgrSave, reconcileStaffRows } from './manager-shared.js';
+import { _ni, _fc2, _inp, _mgrEsc, mgrLoad, mgrSave, reconcileStaffRows } from './manager-shared.js';
 import { activeStaff } from './manager-staff.js';
 import { _crdData, _crdData_cur } from './manager-credit.js';
 import { _genRows, _genRows_cur, _genFinal } from './manager-generic.js';
@@ -50,22 +50,26 @@ function renderSalaryTable(rows) {
     if (_crdEmp && _crdEmp.entries && _crdEmp.entries.length) {
       _advTitle = 'Credit entries:\n' + _crdEmp.entries.map(e => e.date + ': ' + (e.desc||'') + ' Rs' + _fc2(e.amount)).join('\n');
     }
-    // FIX 2: Clickable Staff ID in salary
-    const _sIdx = STAFF.findIndex(s => _salNorm(s.name) === _salNorm(r.name));
+    // Sr#/ID/Name/Designation are always read live off the active Staff
+    // Registry (STAFF) — never off the stored row's own name/desig/srNum —
+    // so this sheet can never drift out of sync with the Registry, which
+    // is the single source of truth for who staff are and what they're called.
+    const _sIdx = STAFF.findIndex(s => (r.staffId && s.staffId === r.staffId) || _salNorm(s.name) === _salNorm(r.name));
     const _sEmp = _sIdx >= 0 ? STAFF[_sIdx] : null;
     const _sSid = _sEmp ? (_sEmp.staffId || ('EMP-' + String(_sIdx+1).padStart(3,'0'))) : null;
-    const _sNameInp = _inp('text', r.name||'', '', "salRowChange("+i+",'name',this.value)", 'Name');
-    const _sDesigInp = _inp('text', r.desig||'', '', "salRowChange("+i+",'desig',this.value)", 'Designation');
-    const _sNameCell = _sSid
-      ? '<div style="display:flex;align-items:center;gap:5px">'
-        + '<button onclick="openStaffCard('+_sIdx+')" title="Open '+(r.name||'Staff')+' Card"'
-        + ' style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:10px;font-weight:700;font-family:monospace;flex-shrink:0">'+_sSid+'</button>'
-        + _sNameInp + '</div>'
-      : _sNameInp;
+    const _sSrNum = _sEmp && _sEmp.srNum != null ? Number(_sEmp.srNum) : (i+1);
+    const _sName = _sEmp ? _sEmp.name : (r.name || '');
+    const _sDesig = _sEmp ? _sEmp.designation : r.desig;
+    const _sNameCell = '<div style="display:flex;align-items:center;gap:5px">'
+      + (_sSid
+          ? '<button onclick="openStaffCard('+_sIdx+')" title="Open '+_mgrEsc(_sName||'Staff')+' Card"'
+            + ' style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:10px;font-weight:700;font-family:monospace;flex-shrink:0">'+_sSid+'</button>'
+          : '')
+      + '<span style="font-weight:600">'+(_mgrEsc(_sName) || '<em style="color:var(--muted)">(unnamed)</em>')+'</span></div>';
     return `<tr class="mgr-tr">
-      <td class="mgr-td sal-c" style="font-size:11px;color:var(--muted)">${i+1}</td>
+      <td class="mgr-td sal-c" style="font-size:11px;color:var(--muted);font-weight:700">${_sSrNum}</td>
       <td class="mgr-td">${_sNameCell}</td>
-      <td class="mgr-td">${_sDesigInp}</td>
+      <td class="mgr-td" style="color:var(--t2)">${_mgrEsc(_sDesig) || '<span style="color:var(--muted)">—</span>'}</td>
       <td class="mgr-td sal-c" style="width:60px"><input type="number" value="${r.days||31}" class="mgr-inp sal-num" placeholder="31" oninput="salRowChange(${i},'days',this.value)"></td>
       <td class="mgr-td"><input type="number" value="${r.hoSal||0}" class="mgr-inp sal-num" placeholder="0" oninput="salRowChange(${i},'hoSal',this.value);recalcSalNet(${i})"></td>
       <td class="mgr-td" ${_advTitle ? 'title="'+_advTitle+'" style="position:relative"' : ''}><input type="number" value="${r.advance||0}" class="mgr-inp sal-num${_advTitle?' sal-adv-linked':''}" placeholder="0" oninput="salRowChange(${i},'advance',this.value);recalcSalNet(${i})">${_advTitle ? '<span style="position:absolute;top:2px;right:3px;font-size:9px;color:var(--accent);pointer-events:none" title="'+_advTitle+'">💳</span>' : ''}</td>

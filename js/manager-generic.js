@@ -9,7 +9,7 @@
 // ══════════════════════════════════════════════════════════════════════
 import { Repository } from './repository.js';
 import { STAFF } from './config.js';
-import { _ni, _fc2, _inp, mgrLoad, mgrSave, reconcileStaffRows } from './manager-shared.js';
+import { _ni, _fc2, _inp, _mgrEsc, mgrLoad, mgrSave, reconcileStaffRows } from './manager-shared.js';
 import { activeStaff } from './manager-staff.js';
 import { _salRows_cur, _salNet, _salUpdateFooter } from './manager-salary.js';
 
@@ -33,23 +33,28 @@ function renderGenericTable(rows) {
   if (!tbody) return;
   const _genNorm = s => (s||'').trim().toLowerCase();
   tbody.innerHTML = rows.map((r, i) => {
-    const _gIdx = STAFF.findIndex(s => _genNorm(s.name) === _genNorm(r.name));
+    // Sr#/ID/Name/Designation are always read live off the active Staff
+    // Registry (STAFF) — never off the stored row's own name/desig/srNum —
+    // so this sheet can never drift out of sync with the Registry, which
+    // is the single source of truth for who staff are and what they're called.
+    const _gIdx = STAFF.findIndex(s => (r.staffId && s.staffId === r.staffId) || _genNorm(s.name) === _genNorm(r.name));
     const _gEmp = _gIdx >= 0 ? STAFF[_gIdx] : null;
     const _gSid = _gEmp ? (_gEmp.staffId || ('EMP-' + String(_gIdx+1).padStart(3,'0'))) : null;
-    const _gNameInp  = _inp('text',   r.name||'',        '', "genRowChange("+i+",'name',this.value)", 'Name');
-    const _gDesigInp = _inp('text',   r.desig||'',       '', "genRowChange("+i+",'desig',this.value)", 'Designation');
+    const _gSrNum = _gEmp && _gEmp.srNum != null ? Number(_gEmp.srNum) : (i+1);
+    const _gName = _gEmp ? _gEmp.name : (r.name || '');
+    const _gDesig = _gEmp ? _gEmp.designation : r.desig;
     const _gSaleInp  = _inp('number', r.genericSale||0,  'sal-num', "genRowChange("+i+",'genericSale',this.value);recalcGenRow("+i+")", '0');
     const _gExtraInp = _inp('number', r.extra||0,        'sal-num', "genRowChange("+i+",'extra',this.value);recalcGenRow("+i+")", '0');
-    const _gNameCell = _gSid
-      ? '<div style="display:flex;align-items:center;gap:5px">'
-        + '<button onclick="openStaffCard('+_gIdx+')" title="Open '+(r.name||'Staff')+' Card"'
-        + ' style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:10px;font-weight:700;font-family:monospace;flex-shrink:0">'+_gSid+'</button>'
-        + _gNameInp + '</div>'
-      : _gNameInp;
+    const _gNameCell = '<div style="display:flex;align-items:center;gap:5px">'
+      + (_gSid
+          ? '<button onclick="openStaffCard('+_gIdx+')" title="Open '+_mgrEsc(_gName||'Staff')+' Card"'
+            + ' style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:10px;font-weight:700;font-family:monospace;flex-shrink:0">'+_gSid+'</button>'
+          : '')
+      + '<span style="font-weight:600">'+(_mgrEsc(_gName) || '<em style="color:var(--muted)">(unnamed)</em>')+'</span></div>';
     return `<tr class="mgr-tr">
-      <td class="mgr-td sal-c" style="font-size:11px;color:var(--muted)">${i+1}</td>
+      <td class="mgr-td sal-c" style="font-size:11px;color:var(--muted);font-weight:700">${_gSrNum}</td>
       <td class="mgr-td">${_gNameCell}</td>
-      <td class="mgr-td">${_gDesigInp}</td>
+      <td class="mgr-td" style="color:var(--t2)">${_mgrEsc(_gDesig) || '<span style="color:var(--muted)">—</span>'}</td>
       <td class="mgr-td">${_gSaleInp}</td>
       <td class="mgr-td"><input type="number" id="gen-inc-${i}" class="mgr-inp calc sal-num" value="${_genIncentive(r)}" readonly></td>
       <td class="mgr-td">${_gExtraInp}</td>
