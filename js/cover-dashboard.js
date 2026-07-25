@@ -56,9 +56,20 @@ function _getTargets() {
 
 const PIN_KEY = 'bt_cover_pins_v1';
 const COLLAPSE_KEY = 'bt_cover_collapsed_v1';
+// Every group slug that exists today (must mirror GROUP_META's .slug values
+// below). Used only to seed the very first render — once a user has
+// expanded/collapsed anything, their real stored preference (even an empty
+// array, meaning "everything expanded") always wins over this default.
+const ALL_GROUP_SLUGS = ['sales', 'manager', 'notes', 'closing', 'audit', 'inventory', 'reports'];
 function _getPins() { try { return JSON.parse(Repository.getItem(PIN_KEY) || '[]'); } catch (e) { return []; } }
 function _setPins(arr) { try { Repository.setItem(PIN_KEY, JSON.stringify(arr)); } catch (e) {} }
-function _getCollapsed() { try { return JSON.parse(Repository.getItem(COLLAPSE_KEY) || '[]'); } catch (e) { return []; } }
+function _getCollapsed() {
+  try {
+    const raw = Repository.getItem(COLLAPSE_KEY);
+    if (raw == null) { _setCollapsed(ALL_GROUP_SLUGS); return ALL_GROUP_SLUGS.slice(); }
+    return JSON.parse(raw || '[]');
+  } catch (e) { return ALL_GROUP_SLUGS.slice(); }
+}
 function _setCollapsed(arr) { try { Repository.setItem(COLLAPSE_KEY, JSON.stringify(arr)); } catch (e) {} }
 
 function _greetingText() {
@@ -259,6 +270,24 @@ function _notesheetsStatus() {
            sheetFiles.length + ' file' + (sheetFiles.length === 1 ? '' : 's');
   } catch (e) {
     return 'Notes & Sheets status unavailable';
+  }
+}
+
+// Most-recently-updated pinned note, for the Notes & Sheets group subtitle.
+// Reads the same bt_notes_v1 list notes-sheets.js itself owns (.pinned flag
+// toggled by its own _nsTogglePin) — no separate pin store, so it can never
+// drift from what the Notes page actually shows as pinned.
+function _pinnedNoteSubtitle() {
+  try {
+    const notes = JSON.parse(Repository.getItem('bt_notes_v1') || '[]');
+    const pinned = notes.filter(n => n && n.pinned);
+    if (!pinned.length) return 'No pinned note';
+    const top = pinned.slice().sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0))[0];
+    const text = (top.title && top.title.trim()) || (top.body || '').trim() || 'Untitled note';
+    const snippet = text.length > 46 ? text.slice(0, 46).trim() + '…' : text;
+    return '📌 ' + snippet;
+  } catch (e) {
+    return '';
   }
 }
 
@@ -522,6 +551,46 @@ function _staffRegistryHtml() {
     </div>`;
 }
 
+// One-line, live "what's inside" teaser shown under each group's title in
+// the collapsed header — so a collapsed section still tells you something
+// real instead of just a label. Every branch re-reads the same helper the
+// section's own hero card already uses, so the collapsed teaser can never
+// show a different number than what you'd see on expanding it.
+function _groupSubtitle(groupName) {
+  try {
+    switch (groupName) {
+      case 'Sales': {
+        const p = _targetPace();
+        return p.value + (p.sub ? ' · ' + p.sub : '');
+      }
+      case 'Manager': {
+        const c = _totalOutstandingCredits();
+        return c.value + ' outstanding credit';
+      }
+      case 'Notes & Sheets':
+        return _pinnedNoteSubtitle();
+      case 'Closing': {
+        const s = _closingLatestSummary();
+        return s.value + (s.sub ? ' · ' + s.sub : '');
+      }
+      case 'Audit':
+        return _auditStatus();
+      case 'Inventory': {
+        const { slStats } = _inventoryHeroStats();
+        if (!slStats || !slStats.dataReady) return 'Syncing inventory…';
+        return 'Rs. ' + fc(slStats.totalInventoryValue) + ' total · Rs. ' + fc(slStats.negativeValue) + ' negative';
+      }
+      case 'Reports':
+        return '3 reports — Daily Check List · Excess Stock Control · Branch Invoice Desk';
+      default:
+        return '';
+    }
+  } catch (e) {
+    console.error('Cover Dashboard: _groupSubtitle(' + groupName + ') failed', e);
+    return '';
+  }
+}
+
 function _tiles() {
   return [
     { page: 'dashboard', icon: '📊', title: 'Sales',           status: _salesStatus(),   enabled: true, group: 'Sales' },
@@ -711,11 +780,15 @@ export function renderCoverDashboard() {
     if (!members.length) return '';
     const meta = GROUP_META[groupName] || { slug: 'sales', icon: '•' };
     const isCollapsed = collapsed.includes(meta.slug);
+    const subtitle = _groupSubtitle(groupName);
     return `
       <div class="cover-group${isCollapsed ? ' collapsed' : ''}" data-group="${meta.slug}">
         <div class="cover-group-header" data-group-toggle="${meta.slug}">
           <div class="cover-group-icon">${meta.icon}</div>
-          <div class="cover-group-title">${_esc(groupName)}</div>
+          <div class="cover-group-head-text">
+            <div class="cover-group-title">${_esc(groupName)}</div>
+            ${subtitle ? `<div class="cover-group-subtitle">${_esc(subtitle)}</div>` : ''}
+          </div>
           <div class="cover-group-line"></div>
           <div class="cover-group-chevron">▾</div>
         </div>
