@@ -51,6 +51,7 @@
 <link rel="stylesheet" href="css/excess-working.css?v=20260722a">
 <link rel="stylesheet" href="css/reorder-report.css?v=20260722a">
 <link rel="stylesheet" href="css/pdf-library.css?v=20260725a">
+<link rel="stylesheet" href="css/cash-deposit-report.css?v=20260725b">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,400,0,0">
 <link rel="stylesheet" href="css/components.css?v=20260722a">
 <link rel="stylesheet" href="css/modals.css?v=20260722a">
@@ -276,6 +277,7 @@ if ('serviceWorker' in navigator) {
     <a class="ntab sub" href="#data" data-page="data">Daily Data</a>
     <a class="ntab sub" href="#entry" data-page="entry">Add Entry</a>
     <a class="ntab sub" href="#report" data-page="report">Sale Report</a>
+    <a class="ntab sub" href="#cashdeposit" data-page="cashdeposit">Cash Deposit</a>
     <a class="ntab sub" href="#diff" data-page="diff">DIFF Report</a>
   </div>
   <div class="nright">
@@ -312,6 +314,7 @@ if ('serviceWorker' in navigator) {
   <a class="bnav-sub-item" href="#data" data-page="data">Daily Data</a>
   <a class="bnav-sub-item" href="#entry" data-page="entry">Add Entry</a>
   <a class="bnav-sub-item" href="#report" data-page="report">Report</a>
+  <a class="bnav-sub-item" href="#cashdeposit" data-page="cashdeposit">Cash Deposit</a>
   <a class="bnav-sub-item" href="#diff" data-page="diff">DIFF</a>
 </div>
 
@@ -674,6 +677,54 @@ if ('serviceWorker' in navigator) {
     </div>
     <div class="card" id="rpt-card">
       <div style="text-align:center;padding:40px;color:var(--muted);font-size:13px">Select a date to generate the report</div>
+    </div>
+  </div>
+</div>
+
+<!-- CASH TO BE DEPOSITED — derived report (Cash Sale − Cash Returns +
+     FDPP POS + FDPP Consumer) for every day on record. Tick any set of
+     days to get a combined total + day-by-day popup, printable to a
+     72mm thermal receipt. See js/cash-deposit-report.js. -->
+<div class="page" id="page-cashdeposit">
+  <div class="hero"><div class="hlabel">Sale Data</div><div class="htitle">💰 Cash to be Deposited</div><div class="hsub">Cash Sale − Cash Returns + FDPP POS + FDPP Consumer, for every day on record. Tick the days you need, then view the combined report.</div></div>
+  <div class="frow no-print">
+    <input type="text" id="cdr-search" placeholder="Search date, month…" oninput="cdrRender()">
+    <select id="cdr-month" onchange="cdrRender()"><option value="">All Months</option></select>
+  </div>
+  <div class="card">
+    <div class="twrap tscroll" style="max-height:480px">
+      <table id="tbl-cdr">
+        <thead><tr>
+          <th style="width:34px"><input type="checkbox" id="cdr-check-all" onchange="cdrToggleAll(this.checked)" style="width:16px;height:16px;accent-color:var(--accent)"></th>
+          <th style="text-align:left">Date</th>
+          <th style="text-align:left">Month</th>
+          <th>Cash Sale</th>
+          <th>Cash Returns</th>
+          <th>FDPP POS</th>
+          <th>FDPP Consumer</th>
+          <th>Cash to Deposit</th>
+        </tr></thead>
+        <tbody id="cdr-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="cdr-selbar no-print" id="cdr-selbar" style="display:none">
+    <span id="cdr-sel-label">0 days selected</span>
+    <span id="cdr-sel-total" style="font-family:var(--mono);font-weight:700"></span>
+    <button class="btn btn-p" onclick="cdrOpenPopup()">View Report</button>
+  </div>
+</div>
+
+<!-- CASH DEPOSIT POPUP — totals + per-day detail, with a 72mm thermal
+     print button. Same .mbg/.modal shell as every other modal. -->
+<div class="mbg" id="cdrbg" onclick="if(event.target===this)closeCdrPopup()">
+  <div class="modal" style="width:min(96vw,480px)">
+    <div class="sheet-handle"></div>
+    <div class="mhdr"><h2 id="cdr-modal-title">Cash to be Deposited</h2><button class="mclose" onclick="closeCdrPopup()">✕</button></div>
+    <div class="mbody" id="cdr-modal-body"></div>
+    <div class="dmprint-btn no-print">
+      <button class="btn btn-p" style="flex:1" onclick="cdrPrintPopup()">🖨 Print (72mm Thermal)</button>
+      <button class="btn btn-s" onclick="closeCdrPopup()">Close</button>
     </div>
   </div>
 </div>
@@ -1962,6 +2013,7 @@ if ('serviceWorker' in navigator) {
 
 <!-- 10. Reports: day modal, month modal, all print helpers -->
 <script defer src="js/reports.js?v=20260722a"></script>
+<script defer src="js/cash-deposit-report.js?v=20260725a"></script>
 
 <!-- 11. Data page: daily table + entry form -->
 <script defer src="js/data-page.js?v=20260722a"></script>
