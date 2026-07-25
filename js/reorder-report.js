@@ -557,5 +557,20 @@ window.ReorderReportApp = (function () {
     };
   }
 
-  return { init: init, getSummaryFor: getSummaryFor };
+  // Rows using this page's own persisted window/coverDays/topN settings
+  // (unlike getSummaryFor, which is deliberately independent of them for
+  // Cover's fixed stat). Safe to call cold — same as getSummaryFor, pulls
+  // fresh from Stock Ledger rather than relying on this tab having been
+  // opened this session. Returns [] only if Stock Ledger itself has no
+  // data loaded.
+  function getFlaggedRows() {
+    const SL = window.StockLedgerApp;
+    const rawRows = (SL && typeof SL.hasData === 'function' && SL.hasData() && typeof SL.getRawRows === 'function')
+      ? SL.getRawRows() : null;
+    if (!rawRows) return [];
+    const flagged = computeRows(rawRows, state.window, Number(state.coverDays) || 15);
+    return topRows(flagged, state.topN);
+  }
+
+  return { init: init, getSummaryFor: getSummaryFor, getFlaggedRows: getFlaggedRows };
 })();

@@ -132,4 +132,5 @@ Object.assign(window, {
 
 export {
   _incKey, loadIncentiveMonth, saveIncentiveData, recalcIncentive, printIncentiveReport,
+  INCEN_PFX, _INC_FIELDS, _incData, _incMonth,
 };

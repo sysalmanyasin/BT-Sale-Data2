@@ -144,4 +144,5 @@ Object.assign(window, {
 
 export {
   renderUnmatchedTab, resolveUnmatchedToStaff, resolveUnmatchedToCategory, dismissUnmatched,
+  unmatchedLoad,
 };
