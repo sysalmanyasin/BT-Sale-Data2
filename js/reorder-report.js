@@ -21,6 +21,17 @@
 // in that window) and which sale value ranks the Top N. All three
 // windows are still shown side-by-side in the table for comparison —
 // the primary window's three columns are highlighted.
+//
+// 2026-07-25 update: saleValue_w now comes from the real historical
+// saleValueExclTax field (qty × pack-aware, discount-adjusted price,
+// VAT stripped out — computed server-side in sync.ps1), not qty ×
+// current unit price. Tax-exempt products are unaffected either way
+// (their inclTax and exclTax values are already identical), so this is
+// a pure accuracy improvement on taxed items, not a per-product branch
+// anyone needs to configure. Falls back to the old qty × unitPrice
+// estimate only for rows that predate this field. demandValueP (the
+// cost to buy MORE stock) intentionally still uses current unitPrice —
+// that's a forward-looking purchase cost, not a historical sale value.
 // ══════════════════════════════════════════════════════════════════════
 
 window.ReorderReportApp = (function () {
@@ -94,7 +105,17 @@ window.ReorderReportApp = (function () {
       };
       WINDOWS.forEach(w => {
         const saleQty = Number(r['netQty' + w + 'Days']) || 0;
-        const saleValue = saleQty * unitPrice;
+        // Prefer the real historical sale value (qty × pack-aware,
+        // discount-adjusted price, VAT stripped out) computed server-side
+        // in sync.ps1. Falls back to qty × current unit price only for
+        // rows that predate this field (e.g. an older cached Dropbox
+        // upload) — undefined/null means "field never existed on this
+        // row", not "zero sales", so it's checked explicitly rather than
+        // with a falsy check (0 is a legitimate real value here).
+        const rawSaleValue = r['saleValueExclTax' + w + 'Days'];
+        const saleValue = (rawSaleValue !== undefined && rawSaleValue !== null)
+          ? Number(rawSaleValue)
+          : saleQty * unitPrice;
         const dailyRate = saleQty / w;
         const daysCover = dailyRate > 0 ? (stock / dailyRate) : null;
         const demandQty = dailyRate > 0 ? Math.max(0, Math.ceil(dailyRate * coverDays - stock)) : 0;
