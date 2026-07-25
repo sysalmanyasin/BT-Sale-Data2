@@ -689,6 +689,11 @@ if ('serviceWorker' in navigator) {
     <input type="text" id="cdr-search" placeholder="Search date, month…" oninput="cdrRender()">
     <select id="cdr-month" onchange="cdrRender()"><option value="">All Months</option></select>
   </div>
+  <div class="cdr-selbar no-print" id="cdr-selbar" style="display:none">
+    <span id="cdr-sel-label">0 days selected</span>
+    <span id="cdr-sel-total" style="font-family:var(--mono);font-weight:700"></span>
+    <button class="btn btn-p" onclick="cdrOpenPopup()">🧾 Generate Report</button>
+  </div>
   <div class="card">
     <div class="twrap tscroll" style="max-height:480px">
       <table id="tbl-cdr">
@@ -705,11 +710,6 @@ if ('serviceWorker' in navigator) {
         <tbody id="cdr-tbody"></tbody>
       </table>
     </div>
-  </div>
-  <div class="cdr-selbar no-print" id="cdr-selbar" style="display:none">
-    <span id="cdr-sel-label">0 days selected</span>
-    <span id="cdr-sel-total" style="font-family:var(--mono);font-weight:700"></span>
-    <button class="btn btn-p" onclick="cdrOpenPopup()">View Report</button>
   </div>
 </div>
 
