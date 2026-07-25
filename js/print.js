@@ -175,6 +175,49 @@ async function _buildPdf(html, opts) {
   return { doc, title };
 }
 
+// ── Thermal (receipt-printer) builder — single page sized exactly to
+// the content's height instead of paginating onto Letter pages. Used
+// for narrow 72mm-roll reports (e.g. Cash to be Deposited) where a
+// continuous receipt is expected, not a multi-page document. ─────────
+const THERMAL_WIDTH_MM = 72;
+const THERMAL_CAPTURE_W_PX = 560; // crisp capture width for a 72mm roll
+
+async function _buildThermalPdf(html, opts) {
+  if (!window.jspdf || !window.jspdf.jsPDF) throw new Error('jsPDF failed to load — check your connection.');
+  if (!window.html2canvas) throw new Error('html2canvas failed to load — check your connection.');
+
+  const { bodyHTML, styleCSS, title } = _extractDoc(html);
+  const widthMM = (opts && opts.widthMM) || THERMAL_WIDTH_MM;
+
+  const styleTag = document.createElement('style');
+  styleTag.textContent = (styleCSS || '') + _CAPTURE_SAFE_CSS;
+  document.head.appendChild(styleTag);
+
+  const host = document.createElement('div');
+  host.style.cssText = 'position:fixed;top:0;left:-99999px;background:#fff;z-index:-1;width:' + THERMAL_CAPTURE_W_PX + 'px;';
+  const inner = document.createElement('div');
+  inner.style.cssText = 'background:#fff;';
+  inner.innerHTML = bodyHTML;
+  host.appendChild(inner);
+  document.body.appendChild(host);
+
+  let doc = null;
+  try {
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const canvas = await window.html2canvas(inner, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    const pxPerMM = canvas.width / widthMM;
+    const heightMM = canvas.height / pxPerMM;
+    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+    const { jsPDF } = window.jspdf;
+    doc = new jsPDF({ unit: 'mm', format: [widthMM, heightMM], orientation: 'portrait' });
+    doc.addImage(imgData, 'JPEG', 0, 0, widthMM, heightMM);
+  } finally {
+    host.remove();
+    styleTag.remove();
+  }
+  return { doc, title };
+}
+
 // ── Shared finish step for both public entry points. Normally the
 // ENTIRE user-facing experience lives in js/pdf-library.js's single
 // popup (beginPrint → finishPrint, with View/Download/Save-to-Library
@@ -182,7 +225,8 @@ async function _buildPdf(html, opts) {
 // module somehow isn't loaded, falls back to the old behavior (blank
 // tab reserved up front + auto-download) so printing never fully
 // breaks. ──────────────────────────────────────────────────────────
-async function _generateAndDeliver(html, opts) {
+async function _generateAndDeliver(html, opts, builder) {
+  builder = builder || _buildPdf;
   const hasLib = window.PdfLibrary && typeof window.PdfLibrary.beginPrint === 'function'
     && typeof window.PdfLibrary.finishPrint === 'function';
 
@@ -194,7 +238,7 @@ async function _generateAndDeliver(html, opts) {
   }
 
   try {
-    const { doc, title } = await _buildPdf(html, opts);
+    const { doc, title } = await builder(html, opts);
     const filename = _safeFilename(title, opts);
     const blob = doc.output('blob');
 
@@ -249,7 +293,15 @@ export function renderNewTab(html, opts) {
   return true;
 }
 
-export const Print = { render, renderNewTab };
+// 72mm thermal receipt printer — single page sized to content, no
+// Letter-page pagination. opts.widthMM overrides the default 72mm.
+export function renderThermal(html, opts) {
+  opts = opts || {};
+  _generateAndDeliver(html, opts, _buildThermalPdf);
+  return true;
+}
+
+export const Print = { render, renderNewTab, renderThermal };
 
 // Bridged — see header note. Remove once every consumer imports Print
 // directly (blocked on the same ui.js/manager.js circular-dependency
