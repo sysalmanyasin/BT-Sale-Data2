@@ -2045,6 +2045,7 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/manager-salary.js"></script>
 <script type="module" src="js/manager-generic.js"></script>
 <script type="module" src="js/manager-credit.js"></script>
+<script type="module" src="js/manager-payslip.js"></script>
 <script type="module" src="js/manager-unmatched.js"></script>
 <script type="module" src="js/manager-reports.js"></script>
 <script type="module" src="js/manager-petty.js"></script>
@@ -2116,6 +2117,7 @@ if ('serviceWorker' in navigator) {
     <div class="sc-tabs">
       <button class="sc-tab active" data-sctab="details" onclick="switchStaffCardTab('details')">👤 Details</button>
       <button class="sc-tab" data-sctab="credit" onclick="switchStaffCardTab('credit')">💳 Credit Ledger</button>
+      <button class="sc-tab" data-sctab="payslip" onclick="switchStaffCardTab('payslip')">🧾 Payslip</button>
       <button class="sc-tab" data-sctab="notes" onclick="switchStaffCardTab('notes')">🗒 Notes</button>
     </div>
     <div class="sc-body">
@@ -2193,6 +2195,17 @@ if ('serviceWorker' in navigator) {
         <div class="sccc-history-title">Previous Months</div>
         <div id="sc-credit-history">
           <p style="text-align:center;color:var(--muted);padding:32px">Select an employee to view credit history.</p>
+        </div>
+      </div>
+
+      <!-- Payslip Panel -->
+      <div id="sc-panel-payslip" style="display:none">
+        <div class="sc-fg" style="margin-bottom:10px">
+          <label>Month</label>
+          <select id="sc-slip-month-sel" class="mgr-inp" onchange="loadStaffPayslipMonth()"></select>
+        </div>
+        <div id="sc-slip-body">
+          <p style="text-align:center;color:var(--muted);padding:32px">Select an employee to view their payslip.</p>
         </div>
       </div>
 
