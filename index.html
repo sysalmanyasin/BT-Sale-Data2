@@ -284,6 +284,9 @@ if ('serviceWorker' in navigator) {
     <div class="syncbadge" id="synci" onclick="showPage('tools')" title="Supabase sync">
       <span id="sync-icon">☁</span><span id="sync-text">Supabase</span>
     </div>
+    <button class="takectrlbtn" id="nav-take-ctrl-btn" onclick="navTakeControl()" title="Take control — claim write access &amp; sync now">
+      <span id="nav-tc-icon">⚔</span><span id="nav-tc-text">Take Control</span>
+    </button>
     <div class="nclock" id="clock"></div>
     <button class="lockbtn" onclick="lockApp()" title="Sign Out" style="width:auto;padding:0 10px;font-size:12px;font-weight:600;letter-spacing:.3px;color:var(--muted);">Sign Out</button>
   </div>
@@ -346,11 +349,6 @@ if ('serviceWorker' in navigator) {
   <div id="cover-pins-row"></div>
 
   <div id="cover-container">Loading…</div>
-
-  <button id="cover-fab" class="cover-fab" title="Add today's sale" onclick="showPage('entry')">
-    <span class="cover-fab-plus">+</span>
-    <span class="cover-fab-label">Add Sale</span>
-  </button>
 </div>
 
 <!-- COMMANDHUB PAGE -->
