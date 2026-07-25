@@ -336,12 +336,16 @@ function saveStaffCard() {
 
 function switchStaffCardTab(tab) {
   document.querySelectorAll('.sc-tab').forEach(b => b.classList.toggle('active', b.dataset.sctab === tab));
-  document.querySelectorAll('#sc-panel-details,#sc-panel-credit,#sc-panel-notes').forEach(p => { p.style.display = 'none'; });
+  document.querySelectorAll('#sc-panel-details,#sc-panel-credit,#sc-panel-payslip,#sc-panel-notes').forEach(p => { p.style.display = 'none'; });
   const panel = document.getElementById('sc-panel-' + tab);
   if (panel) panel.style.display = '';
   if (tab === 'notes') {
     const key = document.getElementById('sc-notes-key')?.value;
     if (key && typeof renderStaffNotesPanel === 'function') renderStaffNotesPanel(key);
+  }
+  if (tab === 'payslip') {
+    const name = document.getElementById('sc-title-name')?.textContent;
+    if (name && typeof initStaffPayslipTab === 'function') initStaffPayslipTab(name);
   }
 }
 
