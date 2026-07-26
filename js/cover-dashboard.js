@@ -1,6 +1,6 @@
 // COVER DASHBOARD — Floor 5
 
-import { MONTHLY, DAILY, STAFF, n, fc, ff, years, CC } from './config.js';
+import { MONTHLY, DAILY, STAFF, n, fc, ff } from './config.js';
 import { Repository } from './repository.js';
 import * as LedgerStore from './ledger-store.js';
 import * as ClosingBridge from './closing-bridge.js';
@@ -20,15 +20,9 @@ let _inventoryRefreshInFlight = false;
 // element itself, but not the Chart.js object bound to it, which keeps
 // its RAF loop / listeners alive unless explicitly destroyed.
 let _invChart = null;
-// New chart instance holders (see _renderSalesTrendChart / _renderWeekdayChart /
-// _renderYoyChart / _renderExpenseChart / _renderInvTrendChart below) — same
-// destroy-before-rebuild rule as _invChart above, one instance per canvas id.
-let _salesTrendChart = null;
+// Sales-by-weekday chart instance holder (see _renderWeekdayChart below) —
+// same destroy-before-rebuild rule as _invChart above.
 let _weekdayChart = null;
-let _yoyChart = null;
-let _expenseChart = null;
-let _invTrendChart = null;
-const INV_TREND_KEY = 'bt_inv_health_trend_v1';
 const MONTH_NAMES = ['January','February','March','April','May','June',
                       'July','August','September','October','November','December'];
 const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -504,75 +498,14 @@ function _renderInventoryChart(invSl, invEw) {
 }
 
 // ══════════════════════════════════════════════════════════════════════
-// Additional Cover charts (Sales / Manager / Inventory) — same
-// destroy-before-rebuild + "if no Chart.js / no canvas / no data, bail
-// quietly" pattern as _renderInventoryChart above. Nothing here re-derives
-// figures the hero cards don't already trust: sales trend reuses
-// _targetPace()'s own target lookup, expense breakdown reuses
-// LedgerStore's category config, inventory trend reuses
-// computeInventoryHealth() from shared/summary-calc.js.
+// Sales by Weekday chart — same destroy-before-rebuild + "if no Chart.js /
+// no canvas / no data, bail quietly" pattern as _renderInventoryChart above.
 // ══════════════════════════════════════════════════════════════════════
 
 function _currentMonthDailyFilled() {
   const my = _currentMonthYear();
   return DAILY.filter(d => d.Month_Year === my && n(d.TOTAL) > 0)
     .sort((a, b) => _dailyDateVal(a.Date) - _dailyDateVal(b.Date));
-}
-
-// Cumulative actual sales (this month, day 1 → last filled day) vs a
-// linear cumulative target-pace line (target × day/totalDays) — the same
-// "ahead/behind pace" math _targetPace() already does for the hero card,
-// just plotted across every day instead of collapsed to one number.
-function _renderSalesTrendChart() {
-  const canvas = document.getElementById('cover-sales-trend-chart');
-  if (!canvas || typeof Chart === 'undefined') return;
-  if (_salesTrendChart) { _salesTrendChart.destroy(); _salesTrendChart = null; }
-
-  const my = _currentMonthYear();
-  const days = _currentMonthDailyFilled();
-  if (!days.length) return;
-
-  const d = new Date();
-  const totalDays = _daysInMonth(d.getFullYear(), d.getMonth());
-  const target = n(_getTargets()[my]);
-  const lastFilled = _lastFilledDay(my);
-
-  const dayTotals = new Array(totalDays).fill(0);
-  days.forEach(rec => {
-    const dd = parseInt((rec.Date || '').split('/')[0], 10);
-    if (dd >= 1 && dd <= totalDays) dayTotals[dd - 1] = n(rec.TOTAL);
-  });
-
-  const labels = Array.from({ length: totalDays }, (_, i) => String(i + 1));
-  let running = 0;
-  const cumActual = labels.map((_, i) => {
-    if (i + 1 > lastFilled) return null;
-    running += dayTotals[i];
-    return running;
-  });
-  const cumTarget = target ? labels.map((_, i) => Math.round(target * (i + 1) / totalDays)) : null;
-
-  _salesTrendChart = new Chart(canvas, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [
-        { label: 'Actual (cumulative)', data: cumActual, borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,.08)', tension: .3, fill: true, pointRadius: 2, spanGaps: false },
-        ...(cumTarget ? [{ label: 'Target pace', data: cumTarget, borderColor: '#dc2626', borderDash: [5, 4], tension: 0, pointRadius: 0, fill: false }] : []),
-      ],
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { labels: { color: '#334155', font: { size: 10 } } },
-        tooltip: { callbacks: { label: c => c.dataset.label + ': ₨' + fc(c.raw) } },
-      },
-      scales: {
-        x: { title: { display: true, text: 'Day of month', color: '#64748b', font: { size: 9 } }, ticks: { color: '#64748b', font: { size: 9 }, maxTicksLimit: 10 }, grid: { color: '#f1f5f9' } },
-        y: { ticks: { color: '#64748b', font: { size: 9 }, callback: v => '₨' + ff(v) }, grid: { color: '#e2e8f0' } },
-      },
-    },
-  });
 }
 
 // Sum of this month's daily TOTAL grouped by weekday (Sun→Sat) — spots
@@ -610,135 +543,6 @@ function _renderWeekdayChart() {
       scales: {
         x: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: '#f1f5f9' } },
         y: { ticks: { color: '#64748b', font: { size: 9 }, callback: v => '₨' + ff(v) }, grid: { color: '#e2e8f0' } },
-      },
-    },
-  });
-}
-
-// One line per year, Jan→Dec, from MONTHLY — identical shape to
-// dashboard.js's own ch-yoy chart, just re-derived here (MONTHLY/years()/CC
-// are the same shared arrays/helpers dashboard.js reads, no new data path).
-function _renderYoyChart() {
-  const canvas = document.getElementById('cover-yoy-chart');
-  if (!canvas || typeof Chart === 'undefined') return;
-  if (_yoyChart) { _yoyChart.destroy(); _yoyChart = null; }
-  if (!MONTHLY.length) return;
-
-  const yrs = years();
-  _yoyChart = new Chart(canvas, {
-    type: 'line',
-    data: {
-      labels: MONTH_SHORT,
-      datasets: yrs.map((yr, i) => ({
-        label: yr,
-        data: MONTH_NAMES.map(mn => { const r = MONTHLY.find(m => m.Month_Year === mn + ' ' + yr); return r ? n(r.TOTAL) : null; }),
-        borderColor: CC[i % CC.length], backgroundColor: CC[i % CC.length] + '18',
-        tension: .4, fill: false, pointRadius: 2, spanGaps: true,
-      })),
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { labels: { color: '#334155', font: { size: 10 } } },
-        tooltip: { callbacks: { label: c => c.dataset.label + ': ₨' + fc(c.raw) } },
-      },
-      scales: {
-        x: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: '#f1f5f9' } },
-        y: { ticks: { color: '#64748b', font: { size: 9 }, callback: v => '₨' + ff(v) }, grid: { color: '#e2e8f0' } },
-      },
-    },
-  });
-}
-
-// Current-month "Patty / Expenses" (LedgerStore's 'expense' ledger only —
-// Jazz Cash and Other Sections are intentionally excluded, per request)
-// grouped by category. `amount` on every entry is always stored as a
-// positive magnitude (see ledger-store.js's own comment on this), so
-// summing it directly gives a true spend breakdown regardless of each
-// category's sign in the running-balance calc.
-function _renderExpenseChart() {
-  const canvas = document.getElementById('cover-expense-chart');
-  if (!canvas || typeof Chart === 'undefined') return;
-  if (_expenseChart) { _expenseChart.destroy(); _expenseChart = null; }
-
-  let rows = [];
-  try {
-    const monthPrefix = _isoMonthPrefix();
-    const entries = LedgerStore.getEntries('expense').filter(e => (e.date || '').slice(0, 7) === monthPrefix);
-    const byCat = {};
-    entries.forEach(e => {
-      const cat = LedgerStore.getCategory('expense', e.categoryId);
-      const label = cat ? cat.label : (e.categoryId || 'Other');
-      byCat[label] = (byCat[label] || 0) + (parseFloat(e.amount) || 0);
-    });
-    rows = Object.entries(byCat).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
-  } catch (e) { console.error('Cover Dashboard: expense breakdown chart failed', e); }
-  if (!rows.length) return;
-
-  _expenseChart = new Chart(canvas, {
-    type: 'doughnut',
-    data: { labels: rows.map(r => r[0]), datasets: [{ data: rows.map(r => r[1]), backgroundColor: CC, borderWidth: 2, borderColor: '#fff' }] },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { position: 'right', labels: { color: '#334155', font: { size: 10 }, boxWidth: 10, padding: 5 } },
-        tooltip: { callbacks: { label: c => c.label + ': ₨' + fc(c.raw) } },
-      },
-    },
-  });
-}
-
-// Inventory health has no history — _renderInventoryChart above is
-// explicitly a single current-state snapshot (see its own comment). This
-// records one snapshot per calendar day into Repository (localStorage),
-// overwriting same-day entries so re-renders don't pile up duplicates,
-// and caps the list so it never grows unbounded. It only starts
-// accumulating from whenever this ships — there is no way to backfill
-// past weeks that were never recorded.
-function _recordInventoryHealthSnapshot(health) {
-  try {
-    const todayIso = new Date().toISOString().slice(0, 10);
-    const point = { date: todayIso, pctNever: health.pctNever, pctDead: health.pctDead, pctExcess: health.pctExcess, pctHealthy: health.pctHealthy };
-    const list = JSON.parse(Repository.getItem(INV_TREND_KEY) || '[]');
-    if (list.length && list[list.length - 1].date === todayIso) {
-      list[list.length - 1] = point;
-    } else {
-      list.push(point);
-    }
-    while (list.length > 120) list.shift();
-    Repository.setItem(INV_TREND_KEY, JSON.stringify(list));
-  } catch (e) { console.error('Cover Dashboard: recording inventory health snapshot failed', e); }
-}
-
-function _renderInvTrendChart() {
-  const canvas = document.getElementById('cover-invtrend-chart');
-  if (!canvas || typeof Chart === 'undefined') return;
-  if (_invTrendChart) { _invTrendChart.destroy(); _invTrendChart = null; }
-
-  let list = [];
-  try { list = JSON.parse(Repository.getItem(INV_TREND_KEY) || '[]'); } catch (e) {}
-  if (list.length < 2) return; // needs at least two recorded days before a "trend" means anything
-
-  _invTrendChart = new Chart(canvas, {
-    type: 'line',
-    data: {
-      labels: list.map(p => p.date.slice(5)),
-      datasets: [
-        { label: 'Healthy %', data: list.map(p => p.pctHealthy), borderColor: '#059669', backgroundColor: '#05966918', tension: .3, pointRadius: 2 },
-        { label: 'Excess %', data: list.map(p => p.pctExcess), borderColor: '#33507D', backgroundColor: '#33507D18', tension: .3, pointRadius: 2 },
-        { label: 'Dead Stock %', data: list.map(p => p.pctDead), borderColor: '#A8762A', backgroundColor: '#A8762A18', tension: .3, pointRadius: 2 },
-        { label: 'Never Sold %', data: list.map(p => p.pctNever), borderColor: '#AE3B2C', backgroundColor: '#AE3B2C18', tension: .3, pointRadius: 2 },
-      ],
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { labels: { color: '#334155', font: { size: 10 } } },
-        tooltip: { callbacks: { label: c => c.dataset.label + ': ' + c.raw + '%' } },
-      },
-      scales: {
-        x: { ticks: { color: '#64748b', font: { size: 9 }, maxTicksLimit: 10 }, grid: { color: '#f1f5f9' } },
-        y: { min: 0, max: 100, ticks: { color: '#64748b', font: { size: 9 }, callback: v => v + '%' }, grid: { color: '#e2e8f0' } },
       },
     },
   });
@@ -1090,32 +894,14 @@ export function renderCoverDashboard() {
     </div>
     <div class="cover-hero-row-single">
       <div class="card">
-        <div class="ctitle"><span class="cdot" style="background:#2563eb"></span>Sales Trend — ${_esc(_currentMonthYear())} (actual vs target pace)</div>
-        <div style="height:200px"><canvas id="cover-sales-trend-chart"></canvas></div>
-      </div>
-    </div>
-    <div class="cover-hero-row-single">
-      <div class="card">
         <div class="ctitle"><span class="cdot" style="background:#d97706"></span>Sales by Weekday — ${_esc(_currentMonthYear())}</div>
         <div style="height:200px"><canvas id="cover-weekday-chart"></canvas></div>
-      </div>
-    </div>
-    <div class="cover-hero-row-single">
-      <div class="card">
-        <div class="ctitle"><span class="cdot" style="background:#7c3aed"></span>Month-over-Month / Year-over-Year</div>
-        <div style="height:200px"><canvas id="cover-yoy-chart"></canvas></div>
       </div>
     </div>`;
 
   const managerHeroHtml = `
     <div class="cover-hero-row">
       ${heroCard(credits)}
-    </div>
-    <div class="cover-hero-row-single">
-      <div class="card">
-        <div class="ctitle"><span class="cdot" style="background:#be185d"></span>Patty / Expenses — category breakdown (this month)</div>
-        <div style="height:200px"><canvas id="cover-expense-chart"></canvas></div>
-      </div>
     </div>`;
 
   const closingLatestSummary = _closingLatestSummary();
@@ -1139,13 +925,6 @@ export function renderCoverDashboard() {
       <div class="card">
         <div class="ctitle"><span class="cdot" style="background:#33507D"></span>Inventory Health — right now</div>
         <div style="height:220px"><canvas id="cover-inventory-chart"></canvas></div>
-      </div>
-    </div>
-    <div class="cover-hero-row-single">
-      <div class="card">
-        <div class="ctitle"><span class="cdot" style="background:#059669"></span>Stock Health Trend</div>
-        <div style="height:200px"><canvas id="cover-invtrend-chart"></canvas></div>
-        <div class="cover-hero-sub" style="margin-top:6px">Recorded once per day from today onward — builds up over time, no backfill of past weeks</div>
       </div>
     </div>
     <div class="cover-hero-row">
@@ -1217,19 +996,7 @@ export function renderCoverDashboard() {
   _renderPinsRow(tiles);
   _updateHeroDate();
   if (invSl && invSl.dataReady) _renderInventoryChart(invSl, invEw);
-  _renderSalesTrendChart();
   _renderWeekdayChart();
-  _renderYoyChart();
-  _renderExpenseChart();
-  if (invSl && invSl.dataReady) {
-    _recordInventoryHealthSnapshot(computeInventoryHealth({
-      totalInventoryValue:  invSl.totalInventoryValue,
-      neverSold60Value:     invSl.neverSold60Value,
-      deadStock60Value:     invSl.deadStock60Value,
-      correctedExcessValue: invEw ? invEw.correctedExcessValue : 0,
-    }));
-    _renderInvTrendChart();
-  }
   container.querySelectorAll('[data-staff-idx]').forEach(card => {
     const openIt = () => {
       if (typeof window.openStaffCard === 'function') window.openStaffCard(+card.dataset.staffIdx);
