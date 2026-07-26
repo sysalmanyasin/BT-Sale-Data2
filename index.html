@@ -739,6 +739,18 @@ if ('serviceWorker' in navigator) {
   </div>
 </div>
 
+<!-- ALL SECTIONS DRAWER — long-press Cover to open. Full directory of
+     every top-level section + its sub-sections, unlike the Recents
+     drawer above which only shows what's actually been visited. Same
+     .mbg/.modal shell. Populated by js/nav-sections.js. -->
+<div class="mbg" id="sectionsbg" onclick="if(event.target===this)closeSectionsDrawer()">
+  <div class="modal" style="width:min(96vw,440px)">
+    <div class="sheet-handle"></div>
+    <div class="mhdr"><h2>All Sections</h2><button class="mclose" onclick="closeSectionsDrawer()">✕</button></div>
+    <div class="mbody" id="sections-list"></div>
+  </div>
+</div>
+
 <!-- CLOSING BOOK — native port of Closing's own Closing Book page,
      including the full paginated print-register reader (ps-* pages,
      cover, placeholders, pinch/zoom/swipe, PDF export). Reads the full
@@ -2024,6 +2036,7 @@ if ('serviceWorker' in navigator) {
 <script defer src="js/reports.js?v=20260722a"></script>
 <script defer src="js/cash-deposit-report.js?v=20260725a"></script>
 <script defer src="js/nav-recents.js?v=20260726a"></script>
+<script defer src="js/nav-sections.js?v=20260726a"></script>
 
 <!-- 11. Data page: daily table + entry form -->
 <script defer src="js/data-page.js?v=20260722a"></script>
