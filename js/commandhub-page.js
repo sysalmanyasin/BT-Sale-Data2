@@ -891,6 +891,9 @@ function chpOpenSettings() {
   var curCerebras = (typeof aiGetProviderKey === 'function') ? aiGetProviderKey('cerebras') : '';
   var maskedCerebras = curCerebras ? (curCerebras.slice(0, 6) + '…' + curCerebras.slice(-4)) : '';
 
+  var curGemini = (typeof aiGetProviderKey === 'function') ? aiGetProviderKey('gemini') : '';
+  var maskedGemini = curGemini ? (curGemini.slice(0, 6) + '…' + curGemini.slice(-4)) : '';
+
   modal.style.display = 'block';
   modal.innerHTML = [
     '<div style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:flex;align-items:flex-end;justify-content:center"',
@@ -954,6 +957,28 @@ function chpOpenSettings() {
          + 'used only as a backup if Groq\'s text call fails. Photo scan always uses Groq.'),
     '    </div>',
 
+    // Gemini fallback key (optional) — second fallback in the text chain,
+    // tried after Groq and before Cerebras (see ai-providers.config.js)
+    '    <div style="height:1px;background:var(--border,#e2e8f0);margin:16px 0"></div>',
+
+    '    <label style="display:block;font-size:12px;font-weight:600;color:var(--muted);',
+    '      letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px">',
+    '      Gemini API Key <span style="text-transform:none;font-weight:400">(optional fallback)</span></label>',
+    '    <input id="chp-gemini-key-input" type="password"',
+    '      placeholder="AIza…"',
+    '      value="' + (curGemini || '') + '"',
+    '      style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:9px;',
+    '        border:1.5px solid var(--border,#e2e8f0);font-size:14px;',
+    '        font-family:var(--mono,monospace);outline:none;background:var(--s2,#f8fafc);color:var(--text)">',
+
+    '    <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5">',
+    curGemini
+      ? ('Active (' + maskedGemini + '). Used if Groq\'s text call fails, before Cerebras is tried. '
+         + '<a onclick="chpClearGeminiSettings()" style="color:#dc2626;cursor:pointer">Remove</a>')
+      : ('Free key at <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--accent)">aistudio.google.com</a> — '
+         + 'no credit card needed. Used only as a text-call fallback, same as Cerebras.'),
+    '    </div>',
+
     // Buttons
     '    <div style="display:flex;gap:8px;margin-top:16px">',
     '      <button onclick="chpSaveSettings()" style="flex:1;padding:10px;border-radius:9px;',
@@ -994,6 +1019,10 @@ function chpSaveSettings() {
   var cerebrasVal = cerebrasInp ? cerebrasInp.value.trim() : '';
   if (typeof aiSaveProviderKey === 'function') aiSaveProviderKey('cerebras', cerebrasVal);
 
+  var geminiInp = document.getElementById('chp-gemini-key-input');
+  var geminiVal = geminiInp ? geminiInp.value.trim() : '';
+  if (typeof aiSaveProviderKey === 'function') aiSaveProviderKey('gemini', geminiVal);
+
   chpCloseSettings();
   _chUpdateSettingsIndicator();
   // Confirm in thread
@@ -1001,6 +1030,7 @@ function chpSaveSettings() {
     ? '✅ <strong>Groq API key saved.</strong> Full AI responses are now active for questions I can\'t answer locally.'
     : '⚠️ Groq API key removed. Local parsers still work for all direct commands.';
   if (cerebrasVal) msg += ' Cerebras fallback key saved too.';
+  if (geminiVal) msg += ' Gemini fallback key saved too.';
   _chHistory.push({ role: 'bot', text: msg });
   _chRenderThread();
 }
@@ -1008,6 +1038,11 @@ function chpSaveSettings() {
 function chpClearCerebrasSettings() {
   if (typeof aiSaveProviderKey === 'function') aiSaveProviderKey('cerebras', '');
   chpOpenSettings(); // refresh the modal in place, Groq key/section untouched
+}
+
+function chpClearGeminiSettings() {
+  if (typeof aiSaveProviderKey === 'function') aiSaveProviderKey('gemini', '');
+  chpOpenSettings(); // refresh the modal in place, Groq/Cerebras sections untouched
 }
 
 function chpClearSettings() {
@@ -1045,5 +1080,6 @@ window.chpCloseSettings = chpCloseSettings;
 window.chpSaveSettings = chpSaveSettings;
 window.chpClearSettings = chpClearSettings;
 window.chpClearCerebrasSettings = chpClearCerebrasSettings;
+window.chpClearGeminiSettings = chpClearGeminiSettings;
 
 })();
