@@ -14,6 +14,13 @@
 'use strict';
 
 let _dashCreditMonthOverride = '';
+// Patty/Expenses card on Overview — its own date-range filter (independent
+// of the Staff Credit month picker above) plus which category rows are
+// currently expanded to show individual entries. In-memory only, same as
+// the credit-month override — resets on page reload.
+let _dashPattyDateFrom = '';
+let _dashPattyDateTo = '';
+const _dashPattyExpanded = new Set();
 
 // Called by the month <select> inside the credit section on the dashboard.
 // Re-renders the credit block and the Working Summary for the chosen month.
@@ -22,6 +29,17 @@ function dashSetCreditMonth(my) {
   const resolved = my || _dashRunningMonth();
   buildCreditSection(resolved);
   if (typeof populateDashWorking === 'function') populateDashWorking(resolved || '');
+}
+
+// Patty/Expenses card's own From/To filter — re-renders just the credit
+// section (not the whole dashboard) against whichever month/credit-month
+// is currently selected, same as dashSetCreditMonth above.
+function dashSetPattyDateFrom(v) { _dashPattyDateFrom = v; buildCreditSection(_dashCreditMonthOverride || _dashRunningMonth()); }
+function dashSetPattyDateTo(v)   { _dashPattyDateTo = v; buildCreditSection(_dashCreditMonthOverride || _dashRunningMonth()); }
+function dashClearPattyDates()   { _dashPattyDateFrom = ''; _dashPattyDateTo = ''; buildCreditSection(_dashCreditMonthOverride || _dashRunningMonth()); }
+function dashTogglePattyCat(catId) {
+  if (_dashPattyExpanded.has(catId)) _dashPattyExpanded.delete(catId); else _dashPattyExpanded.add(catId);
+  buildCreditSection(_dashCreditMonthOverride || _dashRunningMonth());
 }
 
 // The default month for every "current" dashboard card — always the
@@ -170,12 +188,15 @@ function buildCreditSection(lat) {
 
   const my = typeof lat === 'string' ? lat : lat.Month_Year;
 
-  // All data aggregation lives in Analytics (Floor 3)
-  const d = Analytics.getCreditSectionData(my);
+  // All data aggregation lives in Analytics (Floor 3). Patty/Expenses'
+  // own date filter is passed through here — every other section stays
+  // all-time regardless of it (see _ledgerBreakdown's own comment).
+  const d = Analytics.getCreditSectionData(my, _dashPattyDateFrom, _dashPattyDateTo);
 
   // ── Pure render helpers ────────────────────────────────────────
   const fmtAmt  = v => (v < 0 ? '−' : '') + '₨' + _fc2(Math.abs(v));
   const amtColor = v => v > 0 ? 'var(--green)' : v < 0 ? 'var(--red)' : 'var(--muted)';
+  const _esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
   const detailRows = rows => rows.map(r => `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
@@ -192,6 +213,50 @@ function buildCreditSection(lat) {
         <div style="font-size:15px;font-weight:700;font-family:var(--mono);color:${amtColor(total)}">${fmtAmt(total)}</div>
       </div>
       <div style="border-top:1px solid var(--border);padding-top:8px">${detailRows(rows)}</div>
+    </div>`;
+
+  // ── Patty/Expenses card — its own expandable-by-category rows ────────
+  // Each category row (Bill Amount, Fuel/HO, ...) is clickable; expanding
+  // it lists that category's individual entries (date, description,
+  // signed amount) directly underneath, using the same filtered `entries`
+  // _ledgerBreakdown already attached per row — no second data pass.
+  const pattyEntryRow = e => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0 4px 16px;border-bottom:1px dashed var(--border)">
+      <span style="font-size:10.5px;color:var(--muted)">${_esc(e.date || '—')}${e.desc ? ' · ' + _esc(e.desc) : ''}</span>
+      <span style="font-size:10.5px;font-family:var(--mono);color:${amtColor(e.sign * e.amount)}">${fmtAmt(e.sign * e.amount)}</span>
+    </div>`;
+
+  const pattyDetailRows = rows => rows.map(r => {
+    const expandable = !!r.catId && r.entries && r.entries.length;
+    const isOpen = expandable && _dashPattyExpanded.has(r.catId);
+    return `
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);${expandable ? 'cursor:pointer' : ''}"
+        ${expandable ? `onclick="dashTogglePattyCat('${r.catId}')"` : ''}>
+        <span style="font-size:11px;color:var(--t2)">${expandable ? (isOpen ? '▾ ' : '▸ ') : ''}${r.name}${expandable ? ` <span style="color:var(--muted);font-weight:400">(${r.entries.length})</span>` : ''}</span>
+        <span style="font-size:11px;font-family:var(--mono);font-weight:600;color:${amtColor(r.net)}">${fmtAmt(r.net)}</span>
+      </div>
+      ${isOpen ? r.entries.map(pattyEntryRow).join('') : ''}
+    </div>`;
+  }).join('') || `<div style="font-size:11px;color:var(--muted);padding:4px 0">${(_dashPattyDateFrom || _dashPattyDateTo) ? 'No entries in this date range' : 'No activity yet'}</div>`;
+
+  const pattyCardHtml = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:14px 16px;box-shadow:var(--sh)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px">
+        <div style="font-size:12px;font-weight:700;color:var(--t2)">🧾 Patty / Expenses ${d.pattyIsFiltered ? '(filtered)' : '(all-time)'}
+          <span onclick="navigateTo('manager');setTimeout(()=>{switchMgrTab('expense');},200)" style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:4px;margin-left:6px;cursor:pointer;font-weight:700">OPEN ↗</span>
+        </div>
+        <div style="font-size:15px;font-weight:700;font-family:var(--mono);color:${amtColor(d.pattyTotal)}">${fmtAmt(d.pattyTotal)}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+        <input type="date" value="${_esc(_dashPattyDateFrom)}" onchange="dashSetPattyDateFrom(this.value)"
+          style="font-size:11px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;background:var(--s2);color:var(--text)">
+        <span style="font-size:10px;color:var(--muted)">to</span>
+        <input type="date" value="${_esc(_dashPattyDateTo)}" onchange="dashSetPattyDateTo(this.value)"
+          style="font-size:11px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;background:var(--s2);color:var(--text)">
+        ${(_dashPattyDateFrom || _dashPattyDateTo) ? `<span onclick="dashClearPattyDates()" style="font-size:10px;color:var(--red,#dc2626);cursor:pointer;text-decoration:underline">✕ Clear</span>` : ''}
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:8px">${pattyDetailRows(d.pattyRows)}</div>
     </div>`;
 
   // Build month picker options — sorted newest-first, limited to 6 months
@@ -212,7 +277,7 @@ function buildCreditSection(lat) {
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:10px">
       ${sectionCard('👥', 'Staff Credit — ' + my, d.staffRows, d.staffTotal)}
       ${sectionCard('💚', 'Jazz Cash (all-time)', d.jazzCashRows, d.jazzCashTotal, 'jazzcash')}
-      ${sectionCard('🧾', 'Patty / Expenses (all-time)', d.pattyRows, d.pattyTotal, 'expense')}
+      ${pattyCardHtml}
     </div>
     ${d.otherSections.length ? `
     <div style="margin:14px 0 8px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">📋 Other Sections (all-time)</div>
@@ -579,6 +644,10 @@ window.dc = dc;
 window.buildTop10Days = buildTop10Days;
 window.buildBestWorstPerYear = buildBestWorstPerYear;
 window.dashSetCreditMonth = dashSetCreditMonth;
+window.dashSetPattyDateFrom = dashSetPattyDateFrom;
+window.dashSetPattyDateTo = dashSetPattyDateTo;
+window.dashClearPattyDates = dashClearPattyDates;
+window.dashTogglePattyCat = dashTogglePattyCat;
 window.printDashboardReport = printDashboardReport;
 
 })();

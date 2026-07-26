@@ -145,21 +145,47 @@ const Analytics = (function () {
   // ledger's real running balance (LedgerStore.getCurrentBalance), not a
   // re-derived sum, so this always matches what the Ledger page itself
   // shows.
-  function _ledgerBreakdown(ledgerType) {
+  //
+  // `dateFrom`/`dateTo` (both optional, ISO "YYYY-MM-DD") restrict which
+  // entries feed the category sums — used by the Overview page's
+  // Patty/Expenses card. When either is set, this necessarily switches
+  // `total` from the true all-time running balance (a single global
+  // number, meaningless to "filter") to the net of just the rows shown —
+  // callers get that back as `isFiltered` so the UI can label it
+  // accordingly instead of implying it's still the running balance. Each
+  // row also carries its own filtered `entries` (date/desc/amount) so a
+  // caller can expand a category into its individual postings.
+  function _ledgerBreakdown(ledgerType, dateFrom, dateTo) {
     const LS = (typeof window !== 'undefined') ? window.LedgerStore : null;
-    if (!LS) return { rows: [], total: 0 };
+    if (!LS) return { rows: [], total: 0, isFiltered: false };
     const categories = LS.getCategoryList(ledgerType) || [];
-    const entries = LS.getEntries(ledgerType) || [];
+    const allEntries = LS.getEntries(ledgerType) || [];
+    const isFiltered = !!(dateFrom || dateTo);
+    const entries = isFiltered
+      ? allEntries.filter(e => (!dateFrom || e.date >= dateFrom) && (!dateTo || e.date <= dateTo))
+      : allEntries;
     const sums = {};
-    entries.forEach(e => { sums[e.categoryId] = (sums[e.categoryId] || 0) + (parseFloat(e.amount) || 0); });
+    const byCat = {};
+    entries.forEach(e => {
+      sums[e.categoryId] = (sums[e.categoryId] || 0) + (parseFloat(e.amount) || 0);
+      (byCat[e.categoryId] = byCat[e.categoryId] || []).push(e);
+    });
     const opening = LS.getOpeningBalance(ledgerType) || 0;
     const rows = [];
-    if (opening) rows.push({ name: '🏦 Opening Balance', net: opening });
+    if (opening && !isFiltered) rows.push({ name: '🏦 Opening Balance', net: opening });
     categories.forEach(c => {
       const sum = sums[c.id] || 0;
-      if (sum) rows.push({ name: (c.icon ? c.icon + ' ' : '') + c.label, net: c.sign * sum });
+      if (sum) rows.push({
+        name: (c.icon ? c.icon + ' ' : '') + c.label,
+        net: c.sign * sum,
+        catId: c.id,
+        entries: (byCat[c.id] || []).slice()
+          .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+          .map(e => ({ date: e.date, desc: e.desc, amount: parseFloat(e.amount) || 0, sign: c.sign })),
+      });
     });
-    return { rows, total: LS.getCurrentBalance(ledgerType) };
+    const total = isFiltered ? rows.reduce((s, r) => s + r.net, 0) : LS.getCurrentBalance(ledgerType);
+    return { rows, total, isFiltered };
   }
 
   // Aggregates all data needed by buildCreditSection — a pure data
@@ -172,7 +198,7 @@ const Analytics = (function () {
   // continuous, running balances, same source of truth as the Ledger
   // tabs themselves — replacing the old month-scoped Expense-tab math
   // and the old per-section custom-sections store entirely.
-  function getCreditSectionData(my) {
+  function getCreditSectionData(my, pattyDateFrom, pattyDateTo) {
     const _ni = v => Math.round(Number(v) || 0);
     const mgrData = typeof mgrLoad === 'function' ? mgrLoad() : {};
 
@@ -185,11 +211,14 @@ const Analytics = (function () {
     }).filter(r => r.net !== 0);
     const staffTotal = staffRows.reduce((s, r) => s + r.net, 0);
 
-    // 2. Jazz Cash ledger (continuous, all-time — not month-scoped)
+    // 2. Jazz Cash ledger (continuous, all-time — not month-scoped, and
+    // not affected by the Patty/Expenses date filter)
     const jazzCash = _ledgerBreakdown('jazzcash');
 
-    // 3. Patty / Expenses ledger (continuous, all-time — not month-scoped)
-    const patty = _ledgerBreakdown('expense');
+    // 3. Patty / Expenses ledger — optionally date-filtered (Overview
+    // page's own From/To picker on this card only; every other card
+    // here stays all-time).
+    const patty = _ledgerBreakdown('expense', pattyDateFrom, pattyDateTo);
 
     // 4. Every user-created "Other Section", each with its own category
     // breakdown, plus a combined total across all of them.
@@ -204,7 +233,7 @@ const Analytics = (function () {
       my,
       staffRows, staffTotal,
       jazzCashRows: jazzCash.rows, jazzCashTotal: jazzCash.total,
-      pattyRows: patty.rows, pattyTotal: patty.total,
+      pattyRows: patty.rows, pattyTotal: patty.total, pattyIsFiltered: patty.isFiltered,
       otherSections, otherSectionsTotal,
       grandTotal: staffTotal + jazzCash.total + patty.total + otherSectionsTotal,
     };
