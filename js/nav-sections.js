@@ -32,6 +32,14 @@
     return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
+  // Pages that used to live in #bnav and now live as Cover tiles instead
+  // (Manager <-> Notes & Sheets "Quick Access" group) — the bnav scan
+  // below can't find them anymore, so they're added back in explicitly.
+  const _MOVED_TO_COVER = [
+    { id: 'commandhub',   label: 'Hub',         icon: '🧭' },
+    { id: 'pdf-library',  label: 'PDF Library', icon: '📚' },
+  ];
+
   function _buildGroups() {
     const groups = [];
     document.querySelectorAll('#bnav > .bnav-item[data-page]').forEach(el => {
@@ -44,6 +52,10 @@
         href: el.getAttribute('href'),
         subs: [],
       });
+    });
+    _MOVED_TO_COVER.forEach(m => {
+      if (!document.getElementById('page-' + m.id)) return;
+      groups.push({ id: m.id, label: m.label, icon: m.icon, href: '#' + m.id, subs: [] });
     });
     Object.keys(_SUB_GROUPS).forEach(parentId => {
       const g = groups.find(x => x.id === parentId);

@@ -32,10 +32,19 @@
     catch (_) { /* storage unavailable — recents just won't persist across reload */ }
   }
 
+  // Pages that used to live in #bnav and now live as Cover tiles instead
+  // (moved there so the bottom bar stays short) — .bnav-item lookup below
+  // can't find them anymore, so give them a fixed fallback here.
+  const _MOVED_TO_COVER = {
+    commandhub:   { label: 'Hub',         icon: '🧭' },
+    'pdf-library': { label: 'PDF Library', icon: '📚' },
+  };
+
   // Pull the label/icon straight off whichever nav element already
   // advertises this page (bnav-item first, then sub-items/ntabs) so
   // the drawer never drifts out of sync with the real nav labels.
   function _labelFor(id) {
+    if (_MOVED_TO_COVER[id]) return _MOVED_TO_COVER[id].label;
     const el = document.querySelector(
       '.bnav-item[data-page="' + id + '"] .blabel, ' +
       '.bnav-sub-item[data-page="' + id + '"], ' +
@@ -45,6 +54,7 @@
   }
 
   function _iconFor(id) {
+    if (_MOVED_TO_COVER[id]) return _MOVED_TO_COVER[id].icon;
     const el = document.querySelector('.bnav-item[data-page="' + id + '"] .bicon');
     return el ? el.textContent.trim() : '📄';
   }

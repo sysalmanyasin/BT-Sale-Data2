@@ -595,6 +595,8 @@ function _tiles() {
   return [
     { page: 'dashboard', icon: '📊', title: 'Sales',           status: _salesStatus(),   enabled: true, group: 'Sales' },
     { page: 'manager',   icon: '👔', title: 'Manager',          status: _managerStatus(), enabled: true, group: 'Manager' },
+    { page: 'commandhub', icon: '🧭', title: 'Hub', status: 'AI assistant + command routing across every domain', enabled: true, group: 'Quick Access' },
+    { page: 'pdf-library', icon: '📚', title: 'PDF Library', status: 'Every generated report, cross-device, search + category filter', enabled: true, group: 'Quick Access' },
     { page: 'notesheets',icon: '📑', title: 'Notes & Sheets',   status: _notesheetsStatus(), enabled: true, group: 'Notes & Sheets' },
     { href: 'https://closing.duapharma.com', icon: '🔒', title: 'Closing', status: _closingStatus(), enabled: true, group: 'Closing' },
     { page: 'closing-book',   icon: '📖', title: 'Closing Book',  status: 'Every closing, laid out like a printed register', enabled: true, group: 'Closing' },
@@ -611,10 +613,11 @@ function _tiles() {
   ];
 }
 
-const GROUP_ORDER = ['Sales', 'Manager', 'Notes & Sheets', 'Closing', 'Audit', 'Inventory', 'Reports'];
+const GROUP_ORDER = ['Sales', 'Manager', 'Quick Access', 'Notes & Sheets', 'Closing', 'Audit', 'Inventory', 'Reports'];
 const GROUP_META = {
   'Sales':           { slug: 'sales',   icon: '📊' },
   'Manager':         { slug: 'manager', icon: '👔' },
+  'Quick Access':    { slug: 'quickaccess', icon: '🧭' },
   'Notes & Sheets':  { slug: 'notes',   icon: '📑' },
   'Closing':         { slug: 'closing', icon: '🔒' },
   'Audit':           { slug: 'audit',   icon: '🧾' },
