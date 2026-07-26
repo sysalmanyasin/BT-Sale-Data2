@@ -162,17 +162,24 @@
     const now = new Date();
     const stamp = now.toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })
       + ' ' + now.toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' });
-    const line = (l, v, bold) => `<tr><td style="padding:1px 0;font-size:11px;${bold ? 'font-weight:700' : ''}">${l}</td><td style="padding:1px 0;font-size:11px;text-align:right;font-family:monospace;${bold ? 'font-weight:700' : ''}">${fv(v)}</td></tr>`;
+    // NOTE: rows below are flexbox, not a <table> — html2canvas (the
+    // capture engine print.js hands this HTML to for the thermal PDF)
+    // is unreliable with table/grid layout and silently clips or
+    // collapses the right-hand column, which is exactly why the numeric
+    // values were disappearing off the printed 72mm receipt. Same fix
+    // print.js's own _CAPTURE_SAFE_CSS already applies elsewhere
+    // (forcing flex over grid) for the same html2canvas limitation.
+    const line = (l, v, bold) => `<div style="display:flex;justify-content:space-between;gap:8px;padding:1px 0;font-size:11px;${bold ? 'font-weight:700' : ''}"><span>${l}</span><span style="text-align:right;font-family:monospace;white-space:nowrap;${bold ? 'font-weight:700' : ''}">${fv(v)}</span></div>`;
     const dayBlocks = rows.map(r => `
       <div style="border-top:1px dashed #000;margin-top:5px;padding-top:4px">
         <div style="font-size:12px;font-weight:700">${r.Date}</div>
-        <table style="width:100%;border-collapse:collapse">
+        <div style="width:100%;box-sizing:border-box">
           ${line('Cash Sale', r.cashSale)}
           ${line('Cash Returns', r.cashRet)}
           ${line('FDPP POS', r.fdpp)}
           ${line('FDPP Consumer', r.fdppCon)}
           ${line('Cash to Deposit', r.total, true)}
-        </table>
+        </div>
       </div>`).join('');
     return `
       <div style="width:100%;box-sizing:border-box;padding:6px 10px;font-family:Arial,sans-serif;color:#000">

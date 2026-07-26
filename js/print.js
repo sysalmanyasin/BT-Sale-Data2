@@ -196,7 +196,11 @@ async function _buildThermalPdf(html, opts) {
   const host = document.createElement('div');
   host.style.cssText = 'position:fixed;top:0;left:-99999px;background:#fff;z-index:-1;width:' + THERMAL_CAPTURE_W_PX + 'px;';
   const inner = document.createElement('div');
-  inner.style.cssText = 'background:#fff;';
+  // Explicit width (not inherited 'auto') — off-screen fixed-position
+  // ancestors can otherwise leave html2canvas guessing the capture
+  // width, which was clipping the right-aligned value column out of
+  // the printed receipt entirely.
+  inner.style.cssText = 'background:#fff;width:' + THERMAL_CAPTURE_W_PX + 'px;box-sizing:border-box;overflow:hidden;';
   inner.innerHTML = bodyHTML;
   host.appendChild(inner);
   document.body.appendChild(host);
@@ -204,7 +208,15 @@ async function _buildThermalPdf(html, opts) {
   let doc = null;
   try {
     await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-    const canvas = await window.html2canvas(inner, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+    const canvas = await window.html2canvas(inner, {
+      scale: 2,
+      backgroundColor: '#ffffff',
+      useCORS: true,
+      width: THERMAL_CAPTURE_W_PX,
+      windowWidth: THERMAL_CAPTURE_W_PX,
+      scrollX: 0,
+      scrollY: 0,
+    });
     const pxPerMM = canvas.width / widthMM;
     const heightMM = canvas.height / pxPerMM;
     const imgData = canvas.toDataURL('image/jpeg', 0.92);
