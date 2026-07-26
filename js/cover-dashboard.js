@@ -613,7 +613,13 @@ function _tiles() {
   ];
 }
 
-const GROUP_ORDER = ['Sales', 'Manager', 'Quick Access', 'Notes & Sheets', 'Closing', 'Audit', 'Inventory', 'Reports'];
+// Ordered by decision-urgency, not by module — things that need action
+// today (stock problems, cash/credit) come before performance tracking,
+// which comes before compliance, which comes before pure navigation/
+// reference material. The "Needs Attention" strip above still surfaces
+// the single most urgent items regardless of this order; this just makes
+// the full scroll match the same priority.
+const GROUP_ORDER = ['Inventory', 'Manager', 'Closing', 'Sales', 'Audit', 'Quick Access', 'Notes & Sheets', 'Reports'];
 const GROUP_META = {
   'Sales':           { slug: 'sales',   icon: '📊' },
   'Manager':         { slug: 'manager', icon: '👔' },
@@ -674,6 +680,94 @@ function _wireCollapseToggle() {
     const allCollapsed = slugs.length > 0 && slugs.every(s => collapsed.includes(s));
     _setCollapsed(allCollapsed ? [] : slugs.slice());
     renderCoverDashboard();
+  });
+}
+
+// ── KPI header row ─────────────────────────────────────────────────────
+// The four numbers that actually drive today's decisions, in one glance
+// row above everything else: are we on pace, is cash/credit under
+// control, is inventory healthy, does anything need reordering. Each
+// tile is tappable straight through to the page that explains it. Reuses
+// the exact same helpers the hero cards below already call — no second
+// derivation of any figure, so this row can never disagree with the
+// detail underneath it.
+function _kpiTiles() {
+  const out = [];
+
+  try {
+    const pace = _targetPace();
+    const m = /^(-?\d+)% of target$/.exec(pace.value || '');
+    const pct = m ? parseInt(m[1], 10) : null;
+    out.push({
+      icon: '📊', label: 'Sales vs Target',
+      value: pct == null ? '—' : pct + '%',
+      cls: pct == null ? 'neutral' : (pct >= 95 ? 'green' : pct >= 75 ? 'amber' : 'red'),
+      page: 'dashboard',
+    });
+  } catch (e) { out.push({ icon: '📊', label: 'Sales vs Target', value: '—', cls: 'neutral', page: 'dashboard' }); }
+
+  try {
+    const credits = _totalOutstandingCredits();
+    const v = parseFloat(String(credits.value || '').replace(/[^0-9.-]/g, ''));
+    out.push({
+      icon: '💳', label: 'Outstanding Credit',
+      value: isNaN(v) ? '—' : 'Rs. ' + fc(v),
+      cls: isNaN(v) ? 'neutral' : (v <= 0 ? 'green' : v < 50000 ? 'amber' : 'red'),
+      page: 'manager',
+    });
+  } catch (e) { out.push({ icon: '💳', label: 'Outstanding Credit', value: '—', cls: 'neutral', page: 'manager' }); }
+
+  try {
+    const { slStats, ewSummary } = _inventoryHeroStats();
+    if (slStats && slStats.dataReady) {
+      const health = computeInventoryHealth({
+        totalInventoryValue:  slStats.totalInventoryValue,
+        neverSold60Value:     slStats.neverSold60Value,
+        deadStock60Value:     slStats.deadStock60Value,
+        correctedExcessValue: ewSummary ? ewSummary.correctedExcessValue : 0,
+      });
+      out.push({
+        icon: '📦', label: 'Inventory Health',
+        value: health.pctHealthy + '%',
+        cls: health.pctHealthy >= 90 ? 'green' : health.pctHealthy >= 75 ? 'amber' : 'red',
+        page: 'inventory',
+      });
+    } else {
+      out.push({ icon: '📦', label: 'Inventory Health', value: '—', cls: 'neutral', page: 'inventory' });
+    }
+  } catch (e) { out.push({ icon: '📦', label: 'Inventory Health', value: '—', cls: 'neutral', page: 'inventory' }); }
+
+  try {
+    const { rrSummary } = _inventoryHeroStats();
+    const items = rrSummary ? n(rrSummary.itemsShown) : null;
+    out.push({
+      icon: '🛒', label: 'Items to Reorder',
+      value: items == null ? '—' : String(items),
+      cls: items == null ? 'neutral' : (items === 0 ? 'green' : items < 100 ? 'amber' : 'red'),
+      page: 'reorder',
+    });
+  } catch (e) { out.push({ icon: '🛒', label: 'Items to Reorder', value: '—', cls: 'neutral', page: 'reorder' }); }
+
+  return out;
+}
+
+function _renderKpiRow() {
+  const el = document.getElementById('cover-kpi-row');
+  if (!el) return;
+  const tiles = _kpiTiles();
+  el.innerHTML = tiles.map((t, i) => `
+    <div class="cover-kpi-tile cls-${t.cls}" data-kpi-idx="${i}" role="button" tabindex="0">
+      <div class="cover-kpi-icon">${t.icon}</div>
+      <div class="cover-kpi-value">${_esc(t.value)}</div>
+      <div class="cover-kpi-label">${_esc(t.label)}</div>
+    </div>`).join('');
+  el.querySelectorAll('[data-kpi-idx]').forEach(tile => {
+    const goTo = () => {
+      const t = tiles[+tile.dataset.kpiIdx];
+      if (t && t.page && typeof window.showPage === 'function') window.showPage(t.page);
+    };
+    tile.addEventListener('click', goTo);
+    tile.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goTo(); } });
   });
 }
 
@@ -767,6 +861,12 @@ export function renderCoverDashboard() {
   let inventoryHeroHtml;
   try {
     inventoryHeroHtml = (invSl && invSl.dataReady) ? `
+    <div class="cover-hero-row cover-hero-row-single">
+      <div class="card">
+        <div class="ctitle"><span class="cdot" style="background:#33507D"></span>Inventory Health — right now</div>
+        <div style="height:220px"><canvas id="cover-inventory-chart"></canvas></div>
+      </div>
+    </div>
     <div class="cover-hero-row">
       ${heroCard({ label: 'Total Inventory Level', value: 'Rs. ' + fc(invSl.totalInventoryValue), sub: 'as of ' + invSl.asOf })}
       ${heroCard({ label: 'Negative Value', value: 'Rs. ' + fc(invSl.negativeValue), sub: 'negative qty × retail price' })}
@@ -777,12 +877,6 @@ export function renderCoverDashboard() {
       ${heroCard({ label: 'Excess Stock Total', value: invEw ? 'Rs. ' + fc(invEw.rawExcessValue) : '—', sub: 'raw, before correction' })}
       ${heroCard({ label: 'Corrected Excess Stock', value: invEw ? 'Rs. ' + fc(invEw.correctedExcessValue) : '—', sub: 'after retain list + misc buffer' })}
       ${heroCard({ label: 'Reorder Alert (<7d cover · Top 500 by 30d value)', value: invRr ? fc(invRr.totalReorderQty) + ' units' : '—', sub: invRr ? invRr.itemsShown + ' items · Rs. ' + fc(invRr.totalReorderValue) + ' to reorder' : 'no data yet' })}
-    </div>
-    <div class="cover-hero-row cover-hero-row-single">
-      <div class="card">
-        <div class="ctitle"><span class="cdot" style="background:#33507D"></span>Inventory Health — right now</div>
-        <div style="height:220px"><canvas id="cover-inventory-chart"></canvas></div>
-      </div>
     </div>` : `
     <div class="cover-skel-row">
       <div class="cover-skel-card"></div><div class="cover-skel-card"></div>
@@ -837,6 +931,7 @@ export function renderCoverDashboard() {
   }).join('');
 
   container.innerHTML = groupsHtml;
+  _renderKpiRow();
   _renderAttentionStrip();
   _renderPinsRow(tiles);
   _updateHeroDate();
