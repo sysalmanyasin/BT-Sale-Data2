@@ -19,6 +19,20 @@ function _fmt(n) {
   return Math.round(Math.abs(n)).toLocaleString('en-PK');
 }
 
+// ── Per-view filter/group state ─────────────────────────────────────────
+// Keyed by containerId+ledgerType (not global) so Expense's filter doesn't
+// leak into a custom "Other Section" ledger rendered into a different
+// container, and switching sections inside the same container still
+// starts each section with its own remembered state rather than a shared
+// one. Lives only in memory (not persisted) — a fresh filter each app
+// load, same as every other "view" toggle in this app (e.g. Cover's
+// collapse state is the only exception, and that's explicitly persisted).
+const _ledgerViewState = {};
+function _viewState(key) {
+  if (!_ledgerViewState[key]) _ledgerViewState[key] = { dateFrom: '', dateTo: '', groupByCategory: false };
+  return _ledgerViewState[key];
+}
+
 // ── Ledger entry view (Expense, Jazz Cash, any custom section) ─────────
 // `editingId`, if set, renders that one row as an inline edit form
 // instead of a static row — same component drives Expense, Jazz Cash's
@@ -27,6 +41,9 @@ function _fmt(n) {
 export function renderLedgerView(containerId, ledgerType, label, editingId) {
   const container = document.getElementById(containerId);
   if (!container) return;
+
+  const stateKey = containerId + ':' + ledgerType;
+  const state = _viewState(stateKey);
 
   const categories = LedgerStore.getCategoryList(ledgerType);
   const entries = LedgerStore.getEntriesWithBalance(ledgerType);
@@ -39,7 +56,21 @@ export function renderLedgerView(containerId, ledgerType, label, editingId) {
   const shiftOptionsFor = (selected) => LedgerStore.SHIFTS.map(s =>
     `<option${s === selected ? ' selected' : ''}>${_esc(s)}</option>`).join('');
 
-  const rows = entries.slice().reverse().map(e => {
+  // Date-range filter — applied against each entry's own `date` (an ISO
+  // "YYYY-MM-DD" string, same format as the <input type="date"> filter
+  // fields below, so plain string comparison sorts/bounds correctly
+  // without parsing). Filtering only changes which rows are *shown* —
+  // every entry's `_balance` was already computed by getEntriesWithBalance
+  // against the *complete*, unfiltered history above, so a filtered view
+  // still shows each row's true running balance, never a recomputed one
+  // that would misrepresent the real ledger.
+  const visible = entries.filter(e =>
+    (!state.dateFrom || e.date >= state.dateFrom) && (!state.dateTo || e.date <= state.dateTo));
+
+  // Renders a single entry as either its inline edit form or a static row
+  // — factored out of the old inline .map() so both the flat view and the
+  // grouped-by-category view below can share it unchanged.
+  const rowHtml = (e) => {
     if (e.id === editingId) {
       return `<tr data-entry-id="${_esc(e.id)}" class="ledger-edit-row">
         <td><input type="date" class="ledger-edit-date" value="${_esc(e.date)}"></td>
@@ -70,7 +101,33 @@ export function renderLedgerView(containerId, ledgerType, label, editingId) {
         <button type="button" class="btn-icon ledger-del-btn" data-id="${_esc(e.id)}" title="Delete">🗑</button>
       </td>
     </tr>`;
-  }).join('');
+  };
+
+  const colspan = showShift ? 7 : 6;
+  let rows;
+  if (state.groupByCategory) {
+    // One group per category that has at least one visible entry, in the
+    // ledger's own category order (not alphabetical) — newest entry first
+    // within each group, matching the flat view's own newest-first order.
+    const byCat = {};
+    visible.forEach(e => { (byCat[e.categoryId] = byCat[e.categoryId] || []).push(e); });
+    rows = categories
+      .filter(c => byCat[c.id] && byCat[c.id].length)
+      .map(c => {
+        const group = byCat[c.id].slice().reverse();
+        const subtotal = group.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+        return `<tr class="ledger-group-header">
+          <td colspan="${colspan}" style="background:var(--s2,#f8fafc);font-weight:700;padding:8px 10px">
+            ${_esc(c.icon || '')} ${_esc(c.label)}
+            <span style="font-weight:400;color:var(--muted);font-size:11px">— ${group.length} entr${group.length === 1 ? 'y' : 'ies'} · ₨${_fmt(subtotal)}</span>
+          </td>
+        </tr>` + group.map(rowHtml).join('');
+      }).join('');
+  } else {
+    rows = visible.slice().reverse().map(rowHtml).join('');
+  }
+
+  const filterActive = !!(state.dateFrom || state.dateTo);
 
   container.innerHTML = `
     <div class="ledger-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;flex-wrap:wrap">
@@ -89,10 +146,23 @@ export function renderLedgerView(containerId, ledgerType, label, editingId) {
       <input type="text" class="ledger-desc" placeholder="Description">
       <button type="submit" class="btn">+ Add</button>
     </form>
+    <div class="ledger-filter-bar" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px;padding:8px 10px;background:var(--s2,#f8fafc);border-radius:8px">
+      <label style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px">From
+        <input type="date" class="ledger-filter-from" value="${_esc(state.dateFrom)}" style="font-size:12px">
+      </label>
+      <label style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px">To
+        <input type="date" class="ledger-filter-to" value="${_esc(state.dateTo)}" style="font-size:12px">
+      </label>
+      ${filterActive ? `<button type="button" class="btn ledger-filter-clear" style="font-size:11px;padding:4px 9px">✕ Clear dates</button>` : ''}
+      <label style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:5px;margin-left:auto">
+        <input type="checkbox" class="ledger-group-toggle" ${state.groupByCategory ? 'checked' : ''}> Group by category
+      </label>
+      ${filterActive ? `<span style="font-size:11px;color:var(--muted);width:100%">${visible.length} of ${entries.length} entries shown</span>` : ''}
+    </div>
     <div class="ledger-table-wrap" style="max-height:420px;overflow:auto">
       <table class="ledger-table" style="width:100%">
         <thead><tr><th>Date</th>${showShift ? '<th>Shift</th>' : ''}<th>Category</th><th>Description</th><th>Amount</th><th>Balance</th><th></th></tr></thead>
-        <tbody>${rows || `<tr><td colspan="${showShift ? 7 : 6}" style="text-align:center;color:var(--muted)">No entries yet</td></tr>`}</tbody>
+        <tbody>${rows || `<tr><td colspan="${colspan}" style="text-align:center;color:var(--muted)">${filterActive ? 'No entries in this date range' : 'No entries yet'}</td></tr>`}</tbody>
       </table>
     </div>
   `;
@@ -104,6 +174,24 @@ export function renderLedgerView(containerId, ledgerType, label, editingId) {
     const p = parseFloat(v);
     if (isNaN(p)) { if (typeof toast === 'function') toast('⚠ Invalid amount', 'w'); return; }
     LedgerStore.setOpeningBalance(ledgerType, p);
+    renderLedgerView(containerId, ledgerType, label, editingId);
+  });
+
+  container.querySelector('.ledger-filter-from').addEventListener('change', (e) => {
+    state.dateFrom = e.target.value;
+    renderLedgerView(containerId, ledgerType, label, editingId);
+  });
+  container.querySelector('.ledger-filter-to').addEventListener('change', (e) => {
+    state.dateTo = e.target.value;
+    renderLedgerView(containerId, ledgerType, label, editingId);
+  });
+  const clearBtn = container.querySelector('.ledger-filter-clear');
+  if (clearBtn) clearBtn.addEventListener('click', () => {
+    state.dateFrom = ''; state.dateTo = '';
+    renderLedgerView(containerId, ledgerType, label, editingId);
+  });
+  container.querySelector('.ledger-group-toggle').addEventListener('change', (e) => {
+    state.groupByCategory = e.target.checked;
     renderLedgerView(containerId, ledgerType, label, editingId);
   });
 
