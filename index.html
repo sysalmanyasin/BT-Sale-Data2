@@ -296,6 +296,7 @@ if ('serviceWorker' in navigator) {
 <div class="bnav no-print" id="bnav" role="navigation" aria-label="Page navigation">
   <a class="bnav-item" href="#cover" data-page="cover" data-group="cover"><span class="bicon">🏠</span><span class="blabel">Cover</span></a>
   <a class="bnav-item bnav-ai" href="#commandhub" data-page="commandhub" data-group="commandhub"><span class="bicon">🧭</span><span class="blabel">Hub</span></a>
+  <a class="bnav-item" href="#" data-page="recents" onclick="openRecentsDrawer();return false;"><span class="bicon">🕘</span><span class="blabel">Recents</span></a>
   <a class="bnav-item" href="#dashboard" data-page="dashboard" data-group="dashboard" data-domain-group="sales"><span class="bicon">📊</span><span class="blabel">Home</span></a>
   <a class="bnav-item" href="#index" data-page="index" data-group="saledata" data-domain-group="sales"><span class="bicon">🗂️</span><span class="blabel">Sale Data</span></a>
   <a class="bnav-item" href="#manager" data-page="manager" data-group="manager" data-domain-group="manager"><span class="bicon">👔</span><span class="blabel">Manager</span></a>
@@ -724,6 +725,17 @@ if ('serviceWorker' in navigator) {
       <button class="btn btn-p" style="flex:1" onclick="cdrPrintPopup()">🖨 Print (72mm Thermal)</button>
       <button class="btn btn-s" onclick="closeCdrPopup()">Close</button>
     </div>
+  </div>
+</div>
+
+<!-- RECENTS DRAWER — "recently used sections" this session, tap to
+     jump straight back. Same .mbg/.modal shell as every other modal.
+     Populated by js/nav-recents.js from EventBus's 'nav:changed'. -->
+<div class="mbg" id="recentsbg" onclick="if(event.target===this)closeRecentsDrawer()">
+  <div class="modal" style="width:min(96vw,420px)">
+    <div class="sheet-handle"></div>
+    <div class="mhdr"><h2>Recently Used</h2><button class="mclose" onclick="closeRecentsDrawer()">✕</button></div>
+    <div class="mbody" id="recents-list"></div>
   </div>
 </div>
 
@@ -2011,6 +2023,7 @@ if ('serviceWorker' in navigator) {
 <!-- 10. Reports: day modal, month modal, all print helpers -->
 <script defer src="js/reports.js?v=20260722a"></script>
 <script defer src="js/cash-deposit-report.js?v=20260725a"></script>
+<script defer src="js/nav-recents.js?v=20260726a"></script>
 
 <!-- 11. Data page: daily table + entry form -->
 <script defer src="js/data-page.js?v=20260722a"></script>

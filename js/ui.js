@@ -100,12 +100,20 @@ function showPage(id) {
     if (typeof EventBus !== 'undefined') EventBus.notify('nav:changed', { page: id });
     // ── URL hash routing ── keep the address bar in sync with the page
     // (#manager, #dashboard, ...) so links can be bookmarked, shared, or
-    // opened in a second browser tab. replaceState (not location.hash=)
-    // is used so this never itself fires a 'hashchange' event — only a
-    // real link click / typed URL / back-forward navigation should.
+    // opened in a second browser tab, AND so the native back
+    // button/gesture works. pushState (not replaceState) is used so
+    // every real navigation — including the many places in this app
+    // that call showPage()/navigateTo() directly from JS rather than
+    // through a <a href="#..."> link — leaves a genuine history entry.
+    // Anchor-tag clicks already push their own entry before hashchange
+    // fires _routeFromHash → showPage, so by the time we get here
+    // window.location.hash already equals _newHash and this is a no-op
+    // for those — no double entries. Back/forward then just changes
+    // window.location.hash, which fires 'hashchange' again and routes
+    // through the exact same _routeFromHash path already wired below.
     try {
       const _newHash = '#' + id;
-      if (window.location.hash !== _newHash) history.replaceState(null, '', _newHash);
+      if (window.location.hash !== _newHash) history.pushState(null, '', _newHash);
     } catch(_) {}
     if(id==='cover') { if(typeof renderCoverDashboard==='function') renderCoverDashboard(); }
     if(id==='notesheets') { if(typeof renderNotesSheets==='function') renderNotesSheets(); }

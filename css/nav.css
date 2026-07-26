@@ -161,3 +161,27 @@ body[data-domain="inventory"] {
   --accent: var(--pink);
   --alt: var(--pink-lt);
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   RECENTS DRAWER  —  "recently used sections" this session (nav combo
+   part 3 of 3, alongside the bottom tab bar above and the pushState
+   back-button fix in ui.js's showPage()). Reuses .mbg/.modal/.mhdr/
+   .mbody/.mclose from modals.css and .sheet-handle from mobile.css —
+   only the row styling below is new.
+   ══════════════════════════════════════════════════════════════════ */
+.recents-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 8px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background .15s;
+}
+.recents-row:last-child { border-bottom: none; }
+.recents-row:hover, .recents-row:active { background: var(--s2); }
+.recents-icon { font-size: 18px; flex-shrink: 0; width: 24px; text-align: center; }
+.recents-label { flex: 1; font-size: 13px; font-weight: 500; }
+.recents-time { font-size: 11px; color: var(--muted); flex-shrink: 0; }
+.recents-empty { text-align: center; padding: 28px 12px; color: var(--muted); font-size: 13px; }
