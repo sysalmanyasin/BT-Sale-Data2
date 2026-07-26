@@ -4,7 +4,7 @@
 // callAI({ kind: 'text'|'vision', messages, maxTokens, temperature })
 //
 // Loops AI_PROVIDERS[kind] (see ai-providers.config.js) in order. On a
-// retryable failure — HTTP 400, HTTP 429, or an error body naming
+// retryable failure — HTTP 400, HTTP 404, HTTP 429, or an error body naming
 // `model_decommissioned` — moves on to the next configured entry instead
 // of failing the whole call. Any other failure (auth, 5xx, etc.) is
 // thrown immediately rather than masked by a silent fallback. Logs which
@@ -48,7 +48,7 @@ export function saveProviderKey(provider, key) {
 }
 
 function _isRetryable(status, errBody) {
-  if (status === 400 || status === 429) return true;
+  if (status === 400 || status === 404 || status === 429) return true;
   const msg  = ((errBody && errBody.error && errBody.error.message) || '').toLowerCase();
   const code = ((errBody && errBody.error && errBody.error.code) || '').toLowerCase();
   return msg.indexOf('model_decommissioned') !== -1 || code.indexOf('model_decommissioned') !== -1;

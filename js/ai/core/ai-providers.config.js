@@ -9,7 +9,7 @@
 export const AI_PROVIDERS = {
   text: [
     { provider: 'groq',     model: 'openai/gpt-oss-120b', endpoint: 'https://api.groq.com/openai/v1/chat/completions' },
-    { provider: 'gemini',   model: 'gemini-2.5-flash',     endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions' },
+    { provider: 'gemini',   model: 'gemini-3.6-flash',     endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions' },
     { provider: 'cerebras', model: 'gpt-oss-120b',         endpoint: 'https://api.cerebras.ai/v1/chat/completions' },
   ],
   vision: [
