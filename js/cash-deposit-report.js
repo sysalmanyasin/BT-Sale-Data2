@@ -177,7 +177,17 @@
     const line = (l, v, bold) => `<div style="width:100%;overflow:hidden;padding:1px 0;font-size:11px;${bold ? 'font-weight:700' : ''}"><span style="display:inline-block;width:62%;box-sizing:border-box;vertical-align:top;">${l}</span><span style="display:inline-block;width:38%;box-sizing:border-box;text-align:right;font-family:monospace;white-space:nowrap;vertical-align:top;${bold ? 'font-weight:700' : ''}">${fv(v)}</span></div>`;
     const dayBlocks = rows.map(r => `
       <div style="border-top:1px dashed #000;margin-top:5px;padding-top:4px">
-        <div style="font-size:12px;font-weight:700">${r.Date}</div>
+        <!-- Date header uses the SAME two-span row structure as line()
+             below (empty second span, not run through fv()) rather than
+             a plain single-span div. Verified against a real headless-
+             Chromium html2canvas 1.4.1 reproduction: a plain text div
+             sitting immediately before this rows wrapper reliably made
+             html2canvas drop the FIRST row's value span specifically
+             (Cash Sale's number vanished while every later row —
+             Cash Returns, FDPP POS, etc. — rendered fine). Matching the
+             two-span pattern here eliminates it; the empty right-hand
+             span costs nothing since it's blank either way. -->
+        <div style="width:100%;overflow:hidden;padding:1px 0;font-size:12px;font-weight:700"><span style="display:inline-block;width:62%;box-sizing:border-box;vertical-align:top;">${r.Date}</span><span style="display:inline-block;width:38%;box-sizing:border-box;vertical-align:top;"></span></div>
         <div style="width:100%;box-sizing:border-box">
           ${line('Cash Sale', r.cashSale)}
           ${line('Cash Returns', r.cashRet)}
