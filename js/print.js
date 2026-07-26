@@ -116,16 +116,31 @@ async function _buildPdf(html, opts) {
   document.head.appendChild(styleTag);
 
   const host = document.createElement('div');
-  // Kept inside the actual viewport (top:0;left:0) rather than pushed
-  // far off-screen — extreme negative offsets like -99999px can cause
-  // mobile Chrome/WebView to skip painting parts of the element before
-  // html2canvas snapshots it, silently dropping edges of the content
-  // (this is what was clipping the value column on the thermal receipt
-  // below, and can affect any report using this same host pattern).
-  // opacity:0 + pointer-events:none keeps it invisible and inert to the
-  // user without relying on off-screen positioning to hide it.
+  // Kept inside the actual viewport (top:0;left:0) and hidden via opacity
+  // rather than pushed off-screen (see git history) — but note that
+  // on/off-screen positioning was NEVER actually the root cause of
+  // content getting clipped. The real cause: variables.css sets
+  // `overflow-x:hidden` on both <html> and <body> site-wide, and this
+  // host is deliberately WIDER than a phone's real viewport (860–1300px
+  // vs ~360–400px) for a crisp capture. overflow-x:hidden on the root
+  // clips the entire viewport's rendering to its own width — so anything
+  // wider than the phone screen gets silently cut off on the right,
+  // regardless of the host's own left/position values. That's what was
+  // dropping the value column and header/footer text. Fixed below by
+  // temporarily neutralizing that root clipping for the duration of the
+  // capture, then restoring it.
   host.style.cssText = 'position:fixed;top:0;left:0;background:#fff;z-index:-1;opacity:0;pointer-events:none;';
   document.body.appendChild(host);
+
+  // Temporarily lift the site-wide horizontal clip (variables.css:
+  // html/body{overflow-x:hidden}) so the wider-than-viewport capture
+  // host isn't cut off at the phone's real screen width. Inline styles
+  // beat the stylesheet rule with no !important needed; restored in the
+  // finally block below regardless of outcome.
+  const _htmlEl = document.documentElement, _bodyEl = document.body;
+  const _prevHtmlOX = _htmlEl.style.overflowX, _prevBodyOX = _bodyEl.style.overflowX;
+  _htmlEl.style.overflowX = 'visible';
+  _bodyEl.style.overflowX = 'visible';
 
   const { jsPDF } = window.jspdf;
   let doc = null;
@@ -178,6 +193,8 @@ async function _buildPdf(html, opts) {
   } finally {
     host.remove();
     styleTag.remove();
+    _htmlEl.style.overflowX = _prevHtmlOX;
+    _bodyEl.style.overflowX = _prevBodyOX;
   }
 
   return { doc, title };
@@ -202,11 +219,10 @@ async function _buildThermalPdf(html, opts) {
   document.head.appendChild(styleTag);
 
   const host = document.createElement('div');
-  // See _buildPdf's identical fix above: kept in-viewport and hidden via
-  // opacity rather than pushed off-screen, since -99999px was the likely
-  // cause of the header/footer/value-column dropping off the printed
-  // 72mm receipt — mobile Chrome/WebView can skip painting content that
-  // far outside the viewport before html2canvas captures it.
+  // Kept in-viewport, hidden via opacity. As with _buildPdf above, the
+  // real cause of content getting clipped is variables.css's site-wide
+  // `overflow-x:hidden` on html/body, not this host's position — see the
+  // overflow-x override right below.
   host.style.cssText = 'position:fixed;top:0;left:0;background:#fff;z-index:-1;opacity:0;pointer-events:none;width:' + THERMAL_CAPTURE_W_PX + 'px;';
   const inner = document.createElement('div');
   // Explicit width (not inherited 'auto') — off-screen fixed-position
@@ -217,6 +233,14 @@ async function _buildThermalPdf(html, opts) {
   inner.innerHTML = bodyHTML;
   host.appendChild(inner);
   document.body.appendChild(host);
+
+  // See _buildPdf's identical fix — temporarily lift the site-wide
+  // horizontal clip so this 560px-wide host isn't cut off at the phone's
+  // real (~360–400px) viewport width before html2canvas can capture it.
+  const _htmlEl = document.documentElement, _bodyEl = document.body;
+  const _prevHtmlOX = _htmlEl.style.overflowX, _prevBodyOX = _bodyEl.style.overflowX;
+  _htmlEl.style.overflowX = 'visible';
+  _bodyEl.style.overflowX = 'visible';
 
   let doc = null;
   try {
@@ -239,6 +263,8 @@ async function _buildThermalPdf(html, opts) {
   } finally {
     host.remove();
     styleTag.remove();
+    _htmlEl.style.overflowX = _prevHtmlOX;
+    _bodyEl.style.overflowX = _prevBodyOX;
   }
   return { doc, title };
 }
