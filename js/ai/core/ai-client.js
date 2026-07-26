@@ -14,10 +14,12 @@
 // `BT_AI_Key_<provider>_v1`. The 'groq' provider also reads the existing
 // `BT_Groq_Key_v1` slot (the one the ⚙ AI Settings panel in
 // commandhub-page.js already writes to), so existing users need to do
-// nothing. There is no Settings-panel UI for a Cerebras key yet — if
-// that slot is empty, the cerebras entry is skipped silently rather than
+// nothing. There is no Settings-panel UI for a Cerebras or Gemini key yet —
+// if either slot is empty, that entry is skipped silently rather than
 // thrown, so a lone-Groq-key setup behaves exactly as before this file
-// existed.
+// existed. Set one via console until the Settings panel grows a field:
+// `saveProviderKey('gemini', 'AIza...')` (key from aistudio.google.com/app/apikey,
+// free tier, no credit card).
 // ══════════════════════════════════════════════════════════════════════
 
 import { AI_PROVIDERS } from './ai-providers.config.js';
