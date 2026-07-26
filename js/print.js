@@ -116,7 +116,15 @@ async function _buildPdf(html, opts) {
   document.head.appendChild(styleTag);
 
   const host = document.createElement('div');
-  host.style.cssText = 'position:fixed;top:0;left:-99999px;background:#fff;z-index:-1;';
+  // Kept inside the actual viewport (top:0;left:0) rather than pushed
+  // far off-screen — extreme negative offsets like -99999px can cause
+  // mobile Chrome/WebView to skip painting parts of the element before
+  // html2canvas snapshots it, silently dropping edges of the content
+  // (this is what was clipping the value column on the thermal receipt
+  // below, and can affect any report using this same host pattern).
+  // opacity:0 + pointer-events:none keeps it invisible and inert to the
+  // user without relying on off-screen positioning to hide it.
+  host.style.cssText = 'position:fixed;top:0;left:0;background:#fff;z-index:-1;opacity:0;pointer-events:none;';
   document.body.appendChild(host);
 
   const { jsPDF } = window.jspdf;
@@ -194,7 +202,12 @@ async function _buildThermalPdf(html, opts) {
   document.head.appendChild(styleTag);
 
   const host = document.createElement('div');
-  host.style.cssText = 'position:fixed;top:0;left:-99999px;background:#fff;z-index:-1;width:' + THERMAL_CAPTURE_W_PX + 'px;';
+  // See _buildPdf's identical fix above: kept in-viewport and hidden via
+  // opacity rather than pushed off-screen, since -99999px was the likely
+  // cause of the header/footer/value-column dropping off the printed
+  // 72mm receipt — mobile Chrome/WebView can skip painting content that
+  // far outside the viewport before html2canvas captures it.
+  host.style.cssText = 'position:fixed;top:0;left:0;background:#fff;z-index:-1;opacity:0;pointer-events:none;width:' + THERMAL_CAPTURE_W_PX + 'px;';
   const inner = document.createElement('div');
   // Explicit width (not inherited 'auto') — off-screen fixed-position
   // ancestors can otherwise leave html2canvas guessing the capture
