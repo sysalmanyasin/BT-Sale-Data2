@@ -162,14 +162,19 @@
     const now = new Date();
     const stamp = now.toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })
       + ' ' + now.toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' });
-    // NOTE: rows below are flexbox, not a <table> — html2canvas (the
-    // capture engine print.js hands this HTML to for the thermal PDF)
-    // is unreliable with table/grid layout and silently clips or
-    // collapses the right-hand column, which is exactly why the numeric
-    // values were disappearing off the printed 72mm receipt. Same fix
-    // print.js's own _CAPTURE_SAFE_CSS already applies elsewhere
-    // (forcing flex over grid) for the same html2canvas limitation.
-    const line = (l, v, bold) => `<div style="display:flex;justify-content:space-between;gap:8px;padding:1px 0;font-size:11px;${bold ? 'font-weight:700' : ''}"><span>${l}</span><span style="text-align:right;font-family:monospace;white-space:nowrap;${bold ? 'font-weight:700' : ''}">${fv(v)}</span></div>`;
+    // NOTE: rows below use explicit-width inline-block columns, NOT
+    // flexbox. An earlier version used display:flex;justify-content:
+    // space-between to push the value to the right — that's what was
+    // actually dropping the numeric column off the printed receipt.
+    // flexbox alignment properties (justify-content, align-items, gap)
+    // are a known weak spot in html2canvas (the capture engine print.js
+    // hands this HTML to): the label span would render but the second,
+    // space-between-positioned value span routinely got measured with
+    // zero width or painted outside its own box. Explicit width + plain
+    // inline-block (no flex at all) is the reliable pattern instead —
+    // both spans get a real, fixed pixel-percentage box html2canvas can
+    // actually measure.
+    const line = (l, v, bold) => `<div style="width:100%;overflow:hidden;padding:1px 0;font-size:11px;${bold ? 'font-weight:700' : ''}"><span style="display:inline-block;width:62%;box-sizing:border-box;vertical-align:top;">${l}</span><span style="display:inline-block;width:38%;box-sizing:border-box;text-align:right;font-family:monospace;white-space:nowrap;vertical-align:top;${bold ? 'font-weight:700' : ''}">${fv(v)}</span></div>`;
     const dayBlocks = rows.map(r => `
       <div style="border-top:1px dashed #000;margin-top:5px;padding-top:4px">
         <div style="font-size:12px;font-weight:700">${r.Date}</div>
@@ -187,8 +192,8 @@
         <div style="text-align:center;font-size:11px;font-weight:600;margin-bottom:2px">CASH TO BE DEPOSITED</div>
         <div style="text-align:center;font-size:10px;color:#333;margin-bottom:2px">${rows.length} ${rows.length === 1 ? 'day' : 'days'} · ${rows[0].Date}${rows.length > 1 ? ' – ' + rows[rows.length - 1].Date : ''}</div>
         ${dayBlocks}
-        <div style="border-top:1px solid #000;margin-top:6px;padding-top:5px;display:flex;justify-content:space-between;font-size:13px;font-weight:700">
-          <span>TOTAL</span><span style="font-family:monospace">₨${fv(total)}</span>
+        <div style="border-top:1px solid #000;margin-top:6px;padding-top:5px;font-size:13px;font-weight:700">
+          <span style="display:inline-block;width:55%;box-sizing:border-box;vertical-align:top;">TOTAL</span><span style="display:inline-block;width:45%;box-sizing:border-box;text-align:right;font-family:monospace;vertical-align:top;">₨${fv(total)}</span>
         </div>
         <div style="text-align:center;font-size:9px;color:#555;margin-top:8px">Printed ${stamp}</div>
       </div>`;
