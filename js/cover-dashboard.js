@@ -646,6 +646,37 @@ function _updateOnlinePill() {
   pill.style.display = 'inline-flex';
 }
 
+// Every group slug currently rendered on the page — read live from the DOM
+// rather than ALL_GROUP_SLUGS so the toggle only ever affects groups that
+// actually exist for this user (no dangling slugs from removed groups).
+function _renderedGroupSlugs() {
+  return Array.from(document.querySelectorAll('#cover-container .cover-group'))
+    .map(el => el.dataset.group)
+    .filter(Boolean);
+}
+
+function _updateCollapseToggleLabel() {
+  const btn = document.getElementById('cover-collapse-toggle');
+  if (!btn) return;
+  const slugs = _renderedGroupSlugs();
+  const collapsed = _getCollapsed();
+  const allCollapsed = slugs.length > 0 && slugs.every(s => collapsed.includes(s));
+  btn.textContent = allCollapsed ? 'Expand all' : 'Collapse all';
+}
+
+function _wireCollapseToggle() {
+  const btn = document.getElementById('cover-collapse-toggle');
+  if (!btn || btn.dataset.wired) return;
+  btn.dataset.wired = '1';
+  btn.addEventListener('click', () => {
+    const slugs = _renderedGroupSlugs();
+    const collapsed = _getCollapsed();
+    const allCollapsed = slugs.length > 0 && slugs.every(s => collapsed.includes(s));
+    _setCollapsed(allCollapsed ? [] : slugs.slice());
+    renderCoverDashboard();
+  });
+}
+
 function _wireCoverSearch(tiles) {
   const input = document.getElementById('cover-search');
   if (!input || input.dataset.wired) return;
@@ -841,6 +872,8 @@ export function renderCoverDashboard() {
     });
   });
   _wireCoverSearch(tiles);
+  _wireCollapseToggle();
+  _updateCollapseToggleLabel();
   container.querySelectorAll('[data-goto-idx]').forEach(card => {
     const goTo = () => {
       const t = tiles[+card.dataset.gotoIdx];
