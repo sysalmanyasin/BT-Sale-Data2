@@ -7,6 +7,7 @@ import * as ClosingBridge from './closing-bridge.js';
 import * as AuditBridge from './audit-bridge.js';
 import * as InventoryBridge from './inventory-bridge.js';
 import { computeInventoryHealth } from './shared/summary-calc.js';
+import { aibGetBriefings, aibTimeAgo } from './ai/core/ai-briefings.js';
 
 const TGT_KEY = 'bt_targets';
 let _closingRefreshInFlight = false;
@@ -861,6 +862,28 @@ export function renderCoverDashboard() {
   const credits = _totalOutstandingCredits();
   const tiles = _tiles();
 
+  const briefings = aibGetBriefings();
+  const briefingItems = briefings
+    ? [
+        briefings.sales     ? { label: '📈 Sales',     value: briefings.sales }     : null,
+        briefings.manager   ? { label: '👥 Manager',   value: briefings.manager }   : null,
+        briefings.inventory ? { label: '📦 Inventory', value: briefings.inventory } : null,
+      ].filter(Boolean)
+    : [];
+  const briefingsHtml = briefingItems.length ? `
+    <div class="cover-hero-row-single">
+      <div class="card cover-ai-briefing-card" data-ai-briefing-refresh="1" role="button" tabindex="0" title="Tap to refresh">
+        <div class="ctitle"><span class="cdot" style="background:#7c3aed"></span>🧠 Today's Briefing
+          <span class="cover-ai-briefing-time">${briefings.ts ? _esc(aibTimeAgo(briefings.ts)) : ''}</span>
+        </div>
+        ${briefingItems.map(b => `
+          <div class="cover-ai-briefing-item">
+            <span class="cover-ai-briefing-label">${_esc(b.label)}</span>
+            <span class="cover-ai-briefing-text">${_esc(b.value)}</span>
+          </div>`).join('')}
+      </div>
+    </div>` : '';
+
   const heroCard = h => `
     <div class="cover-hero-card">
       <div class="cover-hero-label">${_esc(h.label)}</div>
@@ -990,11 +1013,18 @@ export function renderCoverDashboard() {
       </div>`;
   }).join('');
 
-  container.innerHTML = groupsHtml;
+  container.innerHTML = briefingsHtml + groupsHtml;
   _renderKpiRow();
   _renderAttentionStrip();
   _renderPinsRow(tiles);
   _updateHeroDate();
+  const briefingCard = container.querySelector('[data-ai-briefing-refresh]');
+  if (briefingCard) {
+    briefingCard.addEventListener('click', () => {
+      aibGetBriefings(true);
+      setTimeout(renderCoverDashboard, 2500);
+    });
+  }
   if (invSl && invSl.dataReady) _renderInventoryChart(invSl, invEw);
   _renderWeekdayChart();
   container.querySelectorAll('[data-staff-idx]').forEach(card => {

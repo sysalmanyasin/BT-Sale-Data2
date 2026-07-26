@@ -311,3 +311,11 @@
   .cover-page-hero-date{text-align:left;}
   .cover-group{padding:16px 14px 18px;}
 }
+
+/* AI Daily Briefing card (ai-briefings.js) */
+.cover-ai-briefing-card{border-left:3px solid #7c3aed;cursor:pointer;}
+.cover-ai-briefing-time{float:right;font-size:11px;font-weight:400;color:#94a3b8;}
+.cover-ai-briefing-item{display:flex;gap:8px;padding:6px 0;font-size:13px;border-bottom:1px solid #f1f5f9;}
+.cover-ai-briefing-item:last-child{border-bottom:none;}
+.cover-ai-briefing-label{font-weight:700;color:#6d28d9;white-space:nowrap;}
+.cover-ai-briefing-text{color:#334155;}
