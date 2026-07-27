@@ -15,10 +15,10 @@
 
   const MAX_RECENTS = 8;
   const STORAGE_KEY = 'bt_nav_recents';
-  // Cover/CommandHub are the hub you navigate FROM, not sections you
-  // "used" — recording them would just clutter the drawer with the
-  // entry point itself every time.
-  const _SKIP = new Set(['cover', 'commandhub']);
+  // Cover is the hub you navigate FROM, not a section you "used" —
+  // recording it would just clutter the drawer with the entry point
+  // itself every time.
+  const _SKIP = new Set(['cover']);
 
   let _recents = [];
 
@@ -36,7 +36,6 @@
   // (moved there so the bottom bar stays short) — .bnav-item lookup below
   // can't find them anymore, so give them a fixed fallback here.
   const _MOVED_TO_COVER = {
-    commandhub:   { label: 'Hub',         icon: '🧭' },
     'pdf-library': { label: 'PDF Library', icon: '📚' },
   };
 

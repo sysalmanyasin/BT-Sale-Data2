@@ -12,7 +12,6 @@
   // TAB DEFINITIONS
   // ─────────────────────────────────────────────────────────────────────
   var TABS = [
-    { page: 'commandhub', group: 'commandhub', icon: '🧭', label: 'Hub',       color: '#7c3aed' },
     { page: 'dashboard',  group: 'dashboard',  icon: '📊', label: 'Dashboard', color: '#2563eb' },
     { page: 'index',      group: 'saledata',   icon: '🗂️', label: 'Sales',     color: '#059669' },
     { page: 'manager',    group: 'manager',    icon: '👔', label: 'Manager',   color: '#d97706' },
@@ -21,7 +20,6 @@
 
   // Map every sub-page to its parent group colour
   var PAGE_GROUP = {
-    commandhub: 'commandhub',
     dashboard:  'dashboard',
     index: 'saledata', data: 'saledata', entry: 'saledata',
     report: 'saledata', diff: 'saledata',

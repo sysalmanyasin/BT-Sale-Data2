@@ -173,9 +173,6 @@ export const Actions = (function () {
   function saveSheets(json)            { return saveFeatureData('bt_sheets_v2', json); } // v2 = new format with cell formatting — was hardcoded to v1, a stale key (audit-caught bug)
   function saveSheetFiles(json)        { return saveFeatureData('bt_sheet_files_v1', json); }
   function saveSheetWorkbooks(json)    { return saveFeatureData('bt_sheet_workbooks_v1', json); } // V2 plan §5 — multi-sheet workbook model (one file, many named sheets)
-  function saveAiInstructions(json)    { return saveFeatureData('bt_ai_instructions_v1', json); }
-  function saveAiMemoryItem(key, val)  { return saveFeatureData(key, val); }
-  function saveCommandHubRecents(json) { return saveFeatureData('bt_cmdhub_recent', json); }
   function saveAppSetting(key, value)  { return saveFeatureData(key, value); }
 
   // ── NAVIGATION ───────────────────────────────────────────────────────
@@ -214,8 +211,8 @@ export const Actions = (function () {
     // feature data
     saveFeatureData, loadFeatureData, clearFeatureData,
     saveManagerWork, saveTargets, saveCustomSections, saveFieldConfig,
-    saveNotes, saveStaffNotes, saveSheets, saveSheetFiles, saveSheetWorkbooks, saveAiInstructions,
-    saveAiMemoryItem, saveCommandHubRecents, saveAppSetting,
+    saveNotes, saveStaffNotes, saveSheets, saveSheetFiles, saveSheetWorkbooks,
+    saveAppSetting,
     // navigation
     navigate,
     // derived-data recompute

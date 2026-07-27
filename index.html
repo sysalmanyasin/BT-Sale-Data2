@@ -58,11 +58,6 @@
 <link rel="stylesheet" href="css/pages.css?v=20260722a">
 <link rel="stylesheet" href="css/cover-dashboard.css?v=20260725b">
 <link rel="stylesheet" href="css/mobile.css?v=20260722a">
-<link rel="stylesheet" href="css/assistant.css?v=20260722a">
-<link rel="stylesheet" href="css/assistant-fixes.css?v=20260722a">
-  <link rel="stylesheet" href="css/intent-groups.css?v=20260722a">
-  <link rel="stylesheet" href="css/ai-instructions.css?v=20260722a">
-  <link rel="stylesheet" href="css/ai-context.css?v=20260722a">
 
 <!-- Service Worker registration -->
 <script>
@@ -256,7 +251,6 @@ if ('serviceWorker' in navigator) {
   </div>
   <div class="ntabs">
     <a class="ntab" href="#cover" data-page="cover" data-group="cover">🏠 Cover</a>
-    <a class="ntab ntab-ai" href="#commandhub" data-page="commandhub" data-group="commandhub">🧭 CommandHub</a>
     <a class="ntab" href="#dashboard" data-page="dashboard" data-group="dashboard" data-domain-group="sales">Dashboard</a>
     <a class="ntab" href="#index" data-page="index" data-group="saledata" data-domain-group="sales">Sale Data</a>
     <a class="ntab" href="#manager" data-page="manager" data-group="manager" data-domain-group="manager">👔 Manager</a>
@@ -353,60 +347,6 @@ if ('serviceWorker' in navigator) {
   <div id="cover-container">Loading…</div>
 </div>
 
-<!-- COMMANDHUB PAGE -->
-<div class="page" id="page-commandhub">
-  <div class="chp-layout">
-
-    <!-- ── Live state banner ── -->
-    <div class="chp-live-banner" id="chp-live-banner" style="padding:10px 12px 0"></div>
-
-    <!-- ── Context strip (Phase 5 — migrated from page-ai) ── -->
-    <div id="actx-strip" class="actx-strip" style="flex-shrink:0;padding:0 12px"><span class="actx-strip-empty" onclick="actxOpen()" title="Tap to set active context">🗺 No context — tap to set</span></div>
-
-    <!-- ── Conversation thread ── -->
-    <div class="chp-thread" id="chp-thread" data-placeholder="Ask anything about your sales, staff, or finances…"></div>
-
-    <!-- ── Quick action chips ── -->
-    <div class="chp-chips-wrap" id="chp-chips-wrap" style="padding:6px 12px 0"></div>
-
-    <!-- ── Sticky input bar ── -->
-    <div class="chp-inputbar">
-      <button class="chp-icon-btn" onclick="chpOpenScan()" title="Scan image / receipt">📎</button>
-      <input id="chp-input" type="text"
-        placeholder='Ask or command… "Jazz Cash 5000 for Ali", "today total?"'
-        onkeydown="if(event.key==='Enter')chpSend()">
-      <button class="chp-icon-btn" id="chp-mic" onclick="chpToggleMic()" title="Voice input">🎤</button>
-      <button class="chp-send-btn" id="chp-send-btn" onclick="chpSend()" title="Send">&#10148;</button>
-    </div>
-
-    <!-- ── Toolbar row: Ctrl+K search + clear + settings ── -->
-    <div style="display:flex;gap:8px;padding:4px 12px 8px;flex-shrink:0">
-      <button style="flex:1;padding:6px;border-radius:8px;border:1.5px solid var(--border,#e2e8f0);background:var(--s2,#f8fafc);font-size:12px;color:var(--muted,#64748b);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px"
-        onclick="if(typeof CommandHub!=='undefined')CommandHub.open()">
-        🔍 <span>Search &amp; Navigate</span>
-        <kbd style="font-size:10px;background:#e2e8f0;padding:1px 5px;border-radius:4px;font-family:monospace">Ctrl+K</kbd>
-      </button>
-      <button id="chp-settings-btn" style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--border,#e2e8f0);background:var(--s2,#f8fafc);font-size:12px;color:var(--muted,#64748b);cursor:pointer;display:flex;align-items:center;gap:4px"
-        onclick="chpOpenSettings()" title="AI Settings (Groq API key)">⚙ AI</button>
-      <button style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--border,#e2e8f0);background:var(--s2,#f8fafc);font-size:12px;color:var(--muted,#64748b);cursor:pointer"
-        onclick="kshOpen()" title="Knowledge Base (Instructions &amp; Memory)">📚</button>
-      <button style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--border,#e2e8f0);background:var(--s2,#f8fafc);font-size:12px;color:var(--muted,#64748b);cursor:pointer"
-        onclick="chpClear()">🗑 Clear</button>
-      <button style="padding:6px 12px;border-radius:8px;border:1.5px solid var(--border,#e2e8f0);background:var(--s2,#f8fafc);font-size:12px;color:var(--muted,#64748b);cursor:pointer;font-weight:600"
-        onclick="if(typeof aimOpenPanel==='function')aimOpenPanel()" title="Today's briefing &amp; saved instructions">🧠 Memory</button>
-    </div>
-
-    <!-- ── Settings modal (Phase 4) ── -->
-    <div id="chp-settings-modal" style="display:none"></div>
-
-    <!-- ── AI Memory Panel modal (Phase 5) ── -->
-    <div id="aim-panel-modal"></div>
-
-    <!-- ── Hidden file input for scan ── -->
-    <input type="file" id="chp-scan-file" accept="image/*" capture="environment"
-      style="display:none" onchange="chpHandleScanFile(this.files[0])">
-  </div>
-</div>
 
 
 <!-- DASHBOARD -->
@@ -1944,7 +1884,6 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/print.js?v=20260726e"></script>
 <script type="module" src="js/bt-date.js"></script>
 <script type="module" src="js/bt-search.js"></script>
-<script type="module" src="js/app-context.js"></script>
 
 <!-- 2. Config: Floor 2 state store — protected MONTHLY/DAILY/STAFF + utils -->
 <script type="module" src="js/config.js"></script>
@@ -1993,7 +1932,6 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/audit-native.js"></script>
 <script type="module" src="js/inventory-bridge.js"></script>
 <script type="module" src="js/inventory-native.js"></script>
-<script type="module" src="js/ai/domains/inventory-domain.js"></script>
 <script defer src="js/stockledger.js?v=20260722a"></script>
 <script defer src="js/excess-working.js?v=20260722a"></script>
 <script defer src="js/reorder-report.js?v=20260722a"></script>
@@ -2042,17 +1980,12 @@ if ('serviceWorker' in navigator) {
 <!-- 11. Data page: daily table + entry form -->
 <script defer src="js/data-page.js?v=20260722a"></script>
 <script defer src="js/diff-report.js?v=20260722a"></script>
-<script defer src="js/commandhub-page.js?v=20260722a"></script>
-<script type="module" src="js/commandhub.js"></script>
 
 <!-- 11b. Reports print helpers (extracted from manager.js — Step 8) -->
 <script defer src="js/reports-print.js?v=20260722a"></script>
 
 <!-- 11c. Manager Summary Export (Phase 5) -->
 <script defer src="js/manager-export.js?v=20260722a"></script>
-
-<!-- 11d. AI Helpers: scan/OCR pipeline extracted from ai-page.js (Phase 6) -->
-<script defer src="js/ai-helpers.js?v=20260722a"></script>
 
 <!-- 11e. Notes & Sheets workspace (Phase 6) -->
 <script type="module" src="js/notes-sheets.js"></script>
@@ -2095,9 +2028,6 @@ if ('serviceWorker' in navigator) {
 
 <script defer src="js/quick-add.js?v=20260722a"></script>
 
-<!-- 13c. Hub Quick Actions — headless print/report triggers for CommandHub chips -->
-<script defer src="js/hub-actions.js?v=20260722a"></script>
-
 <!-- UI extras: left-edge tab strip, floating Dashboard FAB, month→target patch -->
 <script defer src="js/ui-extras.js?v=20260722a"></script>
 
@@ -2106,27 +2036,6 @@ if ('serviceWorker' in navigator) {
 
 <!-- 15. Google Drive backup / restore -->
 <script defer src="js/drive.js?v=20260722a"></script>
-
-<!-- AI Memory — daily briefing (cached, callAI-backed) + read-only Memory panel -->
-<script type="module" src="js/ai/core/ai-memory.js?v=20260722a"></script>
-
-<!-- AI Bridge — powers the dedicated AI page only (no floating widget) -->
-<!-- AI Instructions System -->
-<script defer src="js/ai-instructions.js?v=20260722a"></script>
-<script defer src="js/ai-instructions-ui.js?v=20260722a"></script>
-
-<!-- 11f. Knowledge Base sheet — ported from retired ai-page.js (Phase 7) -->
-<script defer src="js/knowledge-sheet.js?v=20260722a"></script>
-
-<!-- Context Engine — Phase 3 -->
-<script defer src="js/ai-context.js?v=20260722a"></script>
-<script defer src="js/ai-context-ui.js?v=20260722a"></script>
-
-<!-- Intent Group Registry — must load before ai-bridge -->
-<script defer src="js/intent-groups.js?v=20260722a"></script>
-
-<!-- AI Bridge -->
-<script type="module" src="js/ai-bridge.js"></script>
 
 <!-- Staff Card Popup Modal -->
 <div class="sc-bg" id="sc-bg" onclick="if(event.target===this)closeStaffCard()">
@@ -2245,8 +2154,5 @@ if ('serviceWorker' in navigator) {
   </div>
 </div>
 
-<!-- ai-page.js retired in Phase 5, deleted in Phase 7 — its only still-useful
-     piece (Knowledge Base sheet) now lives in knowledge-sheet.js.
-     CommandHub is the sole AI interface. -->
 </body>
 </html>

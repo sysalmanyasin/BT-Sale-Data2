@@ -30,7 +30,7 @@ function showPage(id) {
     // Closing, and Audit are separate peer dashboards, not nested tabs.
     // body[data-domain] drives the CSS that hides every other domain's
     // nav tabs and re-themes the current domain's accent color (see
-    // nav.css). Cover/CommandHub/Tools aren't owned by any domain, so
+    // nav.css). Cover/Tools aren't owned by any domain, so
     // they don't set one — both stay visible from anywhere, including
     // from Cover itself, which is the only place you switch domains
     // (via its tiles) rather than by picking from a long row of
@@ -91,9 +91,6 @@ function showPage(id) {
     // (see js/reorder-report.js) — same "safe to call every visit" pattern.
     if (id === 'reorder' && window.ReorderReportApp && typeof window.ReorderReportApp.init === 'function') window.ReorderReportApp.init();
     if (id === 'pdf-library' && window.PdfLibrary && typeof window.PdfLibrary.onShow === 'function') window.PdfLibrary.onShow();
-    if (id==='commandhub') {
-      document.querySelectorAll('.ntab[data-group="commandhub"],.bnav-item[data-group="commandhub"]').forEach(t=>t.classList.add('active'));
-    }
     _curPage = id;
     // Announce navigation through EventBus so any subscriber can react
     // (closes MF-03 — _curPage was previously a silent bare `let`).
@@ -117,7 +114,6 @@ function showPage(id) {
     } catch(_) {}
     if(id==='cover') { if(typeof renderCoverDashboard==='function') renderCoverDashboard(); }
     if(id==='notesheets') { if(typeof renderNotesSheets==='function') renderNotesSheets(); }
-    if(id==='commandhub') { if(typeof loadCommandHubPage==='function') loadCommandHubPage(); }
     if(id==='tools') { loadToolsPage(); }
     if(id==='manager') { loadManagerPage(); }
     if(id==='manager-dashboard') { if (typeof buildDashboard === 'function') buildDashboard(); }

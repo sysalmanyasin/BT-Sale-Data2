@@ -36,7 +36,6 @@
   // (Manager <-> Notes & Sheets "Quick Access" group) — the bnav scan
   // below can't find them anymore, so they're added back in explicitly.
   const _MOVED_TO_COVER = [
-    { id: 'commandhub',   label: 'Hub',         icon: '🧭' },
     { id: 'pdf-library',  label: 'PDF Library', icon: '📚' },
   ];
 

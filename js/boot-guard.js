@@ -36,7 +36,7 @@
       missing.join(', ') + '. This means a script ran before ' +
       'config.js/repository.js/actions.js finished loading. Check ' +
       '<script> order in index.html — the module block (bt-format, ' +
-      'print, bt-date, bt-search, app-context, config, event-bus, ' +
+      'print, bt-date, bt-search, config, event-bus, ' +
       'repository, actions) must stay above every classic <script defer> ' +
       'feature file. Every page will show wrong/blank data until this ' +
       'is fixed.';
