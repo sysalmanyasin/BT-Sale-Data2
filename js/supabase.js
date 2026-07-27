@@ -24,6 +24,12 @@ let _lastPullTime  = 0;       // FIX 3: timestamp of most recent pull start
 function _sbGetChannel() { return _sbChannel; }
 window._sbGetChannel = _sbGetChannel;
 
+// Same reasoning — closing-ledger-marks.js (ES module) needs the actual
+// authenticated client to read/write bt_closing_ledger_marks, but must
+// not duplicate SB_URL/SB_KEY inline (drift risk if this file's ever
+// re-pointed at a different project). This is the one door for that.
+window.btGetSupabaseClient = function () { return _sb(); };
+
 function _sb() {
   if (!_sbClient) _sbClient = supabase.createClient(SB_URL, SB_KEY);
   return _sbClient;

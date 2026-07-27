@@ -37,6 +37,8 @@
 // ══════════════════════════════════════════════════════════════════════
 
 import * as ClosingBridge from './closing-bridge.js';
+import { openLedgerQuickAdd } from './ledger-quick-add.js';
+import { fetchMarks, getMark } from './closing-ledger-marks.js';
 
 function n(v) { return parseFloat(v) || 0; }
 function esc(str) {
@@ -907,7 +909,13 @@ function clSetFilter(v) { clState.filter = v || ''; renderCreditLedgerPage(); }
 function clBuildShiftBlock(snap, activeFilter) {
   const isFinal = snap.mode === 'final';
   const badge = isFinal ? `<span class="cl-badge-final">🟡 Final</span>` : `<span class="cl-badge-shift">🔵 Shift</span>`;
-  let displayLines = snap.lines;
+  const snapKey = snap.key || `${snap.date}_${snap.shift}`;
+  // Stable per-line id for the "already added to Ledger" mark — snap.lines
+  // is an immutable saved snapshot (never re-ordered after the shift is
+  // closed), so index-into-the-full-array is a safe, stable key even
+  // though individual lines carry no id of their own.
+  const linesWithIdx = snap.lines.map((l, i) => ({ ...l, _rowKey: `${snapKey}::L${i}` }));
+  let displayLines = linesWithIdx;
   if (activeFilter) displayLines = displayLines.filter(l => l.lbl === activeFilter);
   const named = displayLines.filter(l => l.category === 'named');
   const tier = displayLines.filter(l => l.category === 'tier');
@@ -915,7 +923,14 @@ function clBuildShiftBlock(snap, activeFilter) {
 
   let linesHtml = '';
   if (!activeFilter) linesHtml += `<div class="cl-opening-row"><span>Opening Credit (carried in)</span><span>${clFmt(snap.openingCredit)}</span></div>`;
-  const renderGroup = (items, label) => !items.length ? '' : `<div class="cl-cat-label">${esc(label)}</div>` + items.map(l => `<div class="cl-line"><span class="cl-lbl">${esc(l.lbl)}${l.desc ? ` <span class="cl-lbl-desc">(${esc(l.desc)})</span>` : ''}</span><span class="cl-val">${clFmt(l.val)}</span></div>`).join('');
+  const renderGroup = (items, label) => !items.length ? '' : `<div class="cl-cat-label">${esc(label)}</div>` + items.map(l => {
+    const descStr = l.desc ? `${l.lbl} — ${l.desc}` : l.lbl;
+    const mark = getMark(l._rowKey);
+    const rightSide = mark
+      ? `<span class="cl-added-badge" title="Added to ${esc(mark.ledgerType)} · ${mark.addedAt ? new Date(mark.addedAt).toLocaleDateString() : ''}">✓ Added</span>`
+      : `<button type="button" class="cl-qa-btn" title="Add to BT Ledger" onclick="clnQuickAdd('${l._rowKey}','${esc(snap.date)}','${esc(snap.shift)}',${l.val},'${esc(descStr).replace(/'/g, "&#39;")}')">+ Ledger</button>`;
+    return `<div class="cl-line${mark ? ' cl-line-added' : ''}"><span class="cl-lbl">${esc(l.lbl)}${l.desc ? ` <span class="cl-lbl-desc">(${esc(l.desc)})</span>` : ''}</span><span class="cl-line-right"><span class="cl-val">${clFmt(l.val)}</span>${rightSide}</span></div>`;
+  }).join('');
   linesHtml += renderGroup(named, 'Named Accounts') + renderGroup(tier, 'Staff / Tier Credits') + renderGroup(aux, 'Free Entries');
   if (!activeFilter && snap.creditAdj !== 0) linesHtml += `<div class="cl-line cl-adj-row"><span class="cl-lbl">Credit Adjustment</span><span class="cl-val">${clFmtSigned(snap.creditAdj)}</span></div>`;
   const totalRow = !activeFilter
@@ -1004,7 +1019,15 @@ function renderCreditLedgerPage() {
 
 // ── Page-show hooks — called from ui.js's showPage() ────────────────
 export function onShowClosingBook() { ClosingBridge.refresh(false); renderClosingBookPage(); }
-export function onShowCreditLedger() { ClosingBridge.refresh(false); renderCreditLedgerPage(); }
+export function onShowCreditLedger() {
+  ClosingBridge.refresh(false);
+  renderCreditLedgerPage();
+  // Marks are fetched async and re-render once loaded — first paint
+  // doesn't wait on them, same "cheap idempotent rebuild" pattern as
+  // onBridgeRefresh below. Rows just show their "+ Ledger" button until
+  // this resolves, then flip to "✓ Added" for anything already marked.
+  fetchMarks().then(() => renderCreditLedgerPage());
+}
 
 // Re-render whichever of these pages exists whenever the bridge finishes
 // a background sync (see closing-bridge.js's refresh()). Both render
@@ -1013,6 +1036,17 @@ export function onShowCreditLedger() { ClosingBridge.refresh(false); renderCredi
 export function onBridgeRefresh() {
   renderClosingBookPage();
   renderCreditLedgerPage();
+}
+
+// Opens the manual Quick Add modal (ledger-quick-add.js) for one Credit
+// Ledger row. Date/shift/amount/description arrive pre-filled from the
+// row; Ledger + Category are always left blank inside the modal itself —
+// see ledger-quick-add.js's header for why. On save, re-fetches marks
+// (force) and re-renders so the row flips to "✓ Added".
+function clQuickAddFromRow(rowKey, date, shift, amount, desc) {
+  openLedgerQuickAdd({ rowKey, date, shift, amount, desc }, () => {
+    fetchMarks(true).then(() => renderCreditLedgerPage());
+  });
 }
 
 // Bridged for onclick="" handlers in the generated HTML above.
@@ -1030,6 +1064,7 @@ window.clnToggleDateCard = clToggleDateCard;
 window.clnToggleAll = clToggleAll;
 window.clnShowMore = clShowMore;
 window.clnSetFilter = clSetFilter;
+window.clnQuickAdd = clQuickAddFromRow;
 window.closingNativeOnRefresh = onBridgeRefresh;
 window.clnOnShowClosingBook = onShowClosingBook;
 window.clnOnShowCreditLedger = onShowCreditLedger;

@@ -107,3 +107,9 @@
 .cl-show-more { width: 100%; padding: 10px; border-radius: 9px; background: var(--s2); border: 1px dashed var(--border); color: var(--muted); font-size: 12px; cursor: pointer; text-align: center; margin-top: 4px; }
 .cl-show-more:hover { border-color: var(--teal); color: #0f766e; background: var(--tlt); }
 .cl-show-more.hidden { display: none; }
+
+.cl-line-right { display: flex; align-items: center; gap: 8px; }
+.cl-qa-btn { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 8px; border: 1px solid var(--teal, #0d9488); background: var(--tlt, #f0fdfa); color: #0f766e; cursor: pointer; white-space: nowrap; }
+.cl-qa-btn:hover { background: var(--teal, #0d9488); color: #fff; }
+.cl-added-badge { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 8px; background: #ecfdf5; color: #059669; white-space: nowrap; cursor: default; }
+.cl-line-added .cl-lbl, .cl-line-added .cl-val { text-decoration: line-through; text-decoration-color: var(--muted, #999); opacity: .65; }
