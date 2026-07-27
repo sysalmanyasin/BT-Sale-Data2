@@ -179,7 +179,20 @@
         ],
       })),
       totalLabel: 'TOTAL',
-      totalValue: '₨' + fv(total),
+      // jsPDF's built-in fonts (Helvetica/Courier, used by the vector
+      // PDF renderer this feeds) are WinAnsi-only and have no glyph for
+      // ₨ (U+20A8) — hitting it mid-string doesn't just drop the
+      // character, it silently corrupts the ENTIRE string into a
+      // spaced-out, garbled mess (confirmed against the real jsPDF
+      // build: the string gets encoded 2-bytes-per-character, which the
+      // standard font can't decode, and the mis-measured width pushes
+      // the right-aligned text off the page edge — exactly what showed
+      // up as "¨ 6 9 6 ," cut off on a real printed receipt). Plain "Rs"
+      // is ordinary ASCII and renders correctly; the in-app HTML preview
+      // elsewhere in this file keeps using ₨ since browsers handle
+      // Unicode normally — this substitution is only needed for text
+      // that actually goes through jsPDF's text()/autoTable() calls.
+      totalValue: 'Rs ' + fv(total),
       footer: `Printed ${stamp}`,
     };
   }
