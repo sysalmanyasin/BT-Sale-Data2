@@ -880,7 +880,7 @@ document.addEventListener('keydown', (e) => {
 // CREDIT LEDGER  (Credit tab + Misc/Ongoing tab)
 // ═══════════════════════════════════════════════════════════════════
 
-const clState = { activeMode: 'credit', visibleCount: 3, mlVisibleCount: 3, filter: '' };
+const clState = { activeMode: 'credit', visibleCount: 3, mlVisibleCount: 3, filter: '', expanded: new Set() };
 
 function clSwitchMode(mode) {
   clState.activeMode = mode;
@@ -901,8 +901,27 @@ function clSwitchMode(mode) {
   renderCreditLedgerPage();
 }
 
-function clToggleDateCard(el) { el.closest('.cl-date-card')?.classList.toggle('open'); }
-function clToggleAll(open) { document.querySelectorAll('#cln-cl-cards .cl-date-card').forEach(c => c.classList.toggle('open', open)); }
+// Expand state now lives in clState.expanded (a Set of "mode:date" keys),
+// not just the DOM's 'open' class — closing-bridge.js polls every 15s and
+// fully rebuilds this page's HTML on every poll (see its MIN_REFRESH_MS),
+// which was silently collapsing every open card back to closed on every
+// poll. Toggling here updates both the visible DOM and the persisted set;
+// the render templates below read from the set so a rebuild restores
+// whatever was open instead of resetting it.
+function clToggleDateCard(el) {
+  const card = el.closest('.cl-date-card');
+  if (!card) return;
+  const key = card.dataset.key;
+  const nowOpen = card.classList.toggle('open');
+  if (key) { if (nowOpen) clState.expanded.add(key); else clState.expanded.delete(key); }
+}
+function clToggleAll(open) {
+  document.querySelectorAll('#cln-cl-cards .cl-date-card').forEach(c => {
+    c.classList.toggle('open', open);
+    const key = c.dataset.key;
+    if (key) { if (open) clState.expanded.add(key); else clState.expanded.delete(key); }
+  });
+}
 function clShowMore() { if (clState.activeMode === 'misc') clState.mlVisibleCount += 10; else clState.visibleCount += 10; renderCreditLedgerPage(); }
 function clSetFilter(v) { clState.filter = v || ''; renderCreditLedgerPage(); }
 
@@ -946,7 +965,8 @@ function clBuildShiftBlock(snap, activeFilter) {
 function clBuildDateCard(cdb, group, activeFilter) {
   const latestTotal = group.snaps[0]?.totalCredit || 0;
   const shiftLabels = group.snaps.map(s => s.shift).join(' · ');
-  return `<div class="cl-date-card">
+  const key = `credit:${group.date}`;
+  return `<div class="cl-date-card${clState.expanded.has(key) ? ' open' : ''}" data-key="${esc(key)}">
     <div class="cl-date-head" onclick="clnToggleDateCard(this)">
       <span class="cl-date-icon">📅</span>
       <div style="flex:1"><div class="cl-date-label">${clFmtDate(group.date)}</div><div class="cl-date-sub">${esc(shiftLabels)}</div></div>
@@ -960,7 +980,8 @@ function clBuildDateCard(cdb, group, activeFilter) {
 function mlBuildDateCard(group) {
   const total = group.snaps.reduce((s, sn) => s + sn.total, 0);
   const shiftLabels = group.snaps.map(s => s.shift).join(' · ');
-  return `<div class="cl-date-card">
+  const key = `misc:${group.date}`;
+  return `<div class="cl-date-card${clState.expanded.has(key) ? ' open' : ''}" data-key="${esc(key)}">
     <div class="cl-date-head" onclick="clnToggleDateCard(this)">
       <span class="cl-date-icon">📅</span>
       <div style="flex:1"><div class="cl-date-label">${clFmtDate(group.date)}</div><div class="cl-date-sub">${esc(shiftLabels)}</div></div>
