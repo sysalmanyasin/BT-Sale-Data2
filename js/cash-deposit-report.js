@@ -12,9 +12,9 @@
 // Every day is listed with a checkbox. Ticking one or more opens a
 // popup showing the combined total plus a day-by-day breakdown, with a
 // Print button that renders straight to a 72mm thermal receipt via
-// Print.renderThermal() (js/print.js) — a single page sized to the
-// content, not a paginated Letter-size document like every other
-// report in this app.
+// Print.renderThermalTable() (js/print.js) — jsPDF/autoTable vector
+// text, not an html2canvas-captured image, sized to the content, not a
+// paginated Letter-size document like every other report in this app.
 // ══════════════════════════════════════════════════════════════════════
 
 (function () {
@@ -157,65 +157,40 @@
       ${days}`;
   }
 
-  // ---------- print: 72mm thermal ----------
-  function _cdrThermalHTML(rows, total) {
+  // ---------- print: 72mm thermal (vector — see print.js's
+  // _buildThermalTablePdf for why this doesn't build HTML/use
+  // html2canvas anymore) ----------
+  function _cdrThermalSpec(rows, total) {
     const now = new Date();
     const stamp = now.toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })
       + ' ' + now.toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' });
-    // NOTE: rows below use explicit-width inline-block columns, NOT
-    // flexbox. An earlier version used display:flex;justify-content:
-    // space-between to push the value to the right — that's what was
-    // actually dropping the numeric column off the printed receipt.
-    // flexbox alignment properties (justify-content, align-items, gap)
-    // are a known weak spot in html2canvas (the capture engine print.js
-    // hands this HTML to): the label span would render but the second,
-    // space-between-positioned value span routinely got measured with
-    // zero width or painted outside its own box. Explicit width + plain
-    // inline-block (no flex at all) is the reliable pattern instead —
-    // both spans get a real, fixed pixel-percentage box html2canvas can
-    // actually measure.
-    const line = (l, v, bold) => `<div style="width:100%;overflow:hidden;padding:1px 0;font-size:11px;${bold ? 'font-weight:700' : ''}"><span style="display:inline-block;width:62%;box-sizing:border-box;vertical-align:top;">${l}</span><span style="display:inline-block;width:38%;box-sizing:border-box;text-align:right;font-family:monospace;white-space:nowrap;vertical-align:top;${bold ? 'font-weight:700' : ''}">${fv(v)}</span></div>`;
-    const dayBlocks = rows.map(r => `
-      <div style="border-top:1px dashed #000;margin-top:5px;padding-top:4px">
-        <!-- Date header uses the SAME two-span row structure as line()
-             below (empty second span, not run through fv()) rather than
-             a plain single-span div. Verified against a real headless-
-             Chromium html2canvas 1.4.1 reproduction: a plain text div
-             sitting immediately before this rows wrapper reliably made
-             html2canvas drop the FIRST row's value span specifically
-             (Cash Sale's number vanished while every later row —
-             Cash Returns, FDPP POS, etc. — rendered fine). Matching the
-             two-span pattern here eliminates it; the empty right-hand
-             span costs nothing since it's blank either way. -->
-        <div style="width:100%;overflow:hidden;padding:1px 0;font-size:12px;font-weight:700"><span style="display:inline-block;width:62%;box-sizing:border-box;vertical-align:top;">${r.Date}</span><span style="display:inline-block;width:38%;box-sizing:border-box;vertical-align:top;"></span></div>
-        <div style="width:100%;box-sizing:border-box">
-          ${line('Cash Sale', r.cashSale)}
-          ${line('Cash Returns', r.cashRet)}
-          ${line('FDPP POS', r.fdpp)}
-          ${line('FDPP Consumer', r.fdppCon)}
-          ${line('Cash to Deposit', r.total, true)}
-        </div>
-      </div>`).join('');
-    return `
-      <div style="width:100%;box-sizing:border-box;padding:6px 10px;font-family:Arial,sans-serif;color:#000">
-        <div style="text-align:center;font-size:13px;font-weight:700;letter-spacing:.03em">BAHRIA TOWN</div>
-        <div style="text-align:center;font-size:11px;font-weight:600;margin-bottom:2px">CASH TO BE DEPOSITED</div>
-        <div style="text-align:center;font-size:10px;color:#333;margin-bottom:2px">${rows.length} ${rows.length === 1 ? 'day' : 'days'} · ${rows[0].Date}${rows.length > 1 ? ' – ' + rows[rows.length - 1].Date : ''}</div>
-        ${dayBlocks}
-        <div style="border-top:1px solid #000;margin-top:6px;padding-top:5px;font-size:13px;font-weight:700">
-          <span style="display:inline-block;width:55%;box-sizing:border-box;vertical-align:top;">TOTAL</span><span style="display:inline-block;width:45%;box-sizing:border-box;text-align:right;font-family:monospace;vertical-align:top;">₨${fv(total)}</span>
-        </div>
-        <div style="text-align:center;font-size:9px;color:#555;margin-top:8px">Printed ${stamp}</div>
-      </div>`;
+    return {
+      title: 'BAHRIA TOWN',
+      subtitle: 'CASH TO BE DEPOSITED',
+      meta: `${rows.length} ${rows.length === 1 ? 'day' : 'days'} · ${rows[0].Date}${rows.length > 1 ? ' – ' + rows[rows.length - 1].Date : ''}`,
+      blocks: rows.map(r => ({
+        header: r.Date,
+        lines: [
+          { label: 'Cash Sale', value: fv(r.cashSale) },
+          { label: 'Cash Returns', value: fv(r.cashRet) },
+          { label: 'FDPP POS', value: fv(r.fdpp) },
+          { label: 'FDPP Consumer', value: fv(r.fdppCon) },
+          { label: 'Cash to Deposit', value: fv(r.total), bold: true },
+        ],
+      })),
+      totalLabel: 'TOTAL',
+      totalValue: '₨' + fv(total),
+      footer: `Printed ${stamp}`,
+    };
   }
 
   function cdrPrintPopup() {
     const rows = _cdrSelectedRows();
     if (!rows.length) { toast('⚠ Select at least one day first', 'w'); return; }
     const total = rows.reduce((s, r) => s + r.total, 0);
-    const html = _cdrThermalHTML(rows, total);
-    if (window.Print && typeof window.Print.renderThermal === 'function') {
-      window.Print.renderThermal(html, { filename: 'Cash-Deposit-Report' });
+    const spec = _cdrThermalSpec(rows, total);
+    if (window.Print && typeof window.Print.renderThermalTable === 'function') {
+      window.Print.renderThermalTable(spec, { filename: 'Cash-Deposit-Report' });
     } else {
       toast('⚠ Print engine unavailable', 'e');
     }

@@ -326,6 +326,103 @@ function _reservePreviewTab() {
   return win;
 }
 
+// ── Vector (no html2canvas) thermal table renderer ────────────────────
+// js/cash-deposit-report.js's html2canvas-captured receipt was patched
+// four separate times (v10.21-v10.24, see sw.js's own changelog) for a
+// clipped/missing value column and, on the latest report, clipped title
+// text too — each patch was a real, verified html2canvas/CSS interaction
+// bug, but they kept recurring on real devices despite passing a real-
+// Chromium repro every time. Rather than chase a fifth CSS theory, this
+// renders the exact same label/value receipt shape with jsPDF's own
+// text()/autoTable() calls — vector output, never a captured raster image
+// — which removes html2canvas (and every bug that comes with it) from
+// this report entirely. jspdf-autotable is already loaded globally
+// (index.html, alongside jsPDF itself).
+//
+// Renders in two passes: the first, into an oversized throwaway page,
+// exists purely to measure the real content height via autoTable's own
+// `finalY` (autoTable lays out real text with real font metrics, so this
+// is exact — not a guess); the second draws the identical content into a
+// page sized to precisely that height, so the page is never too short
+// (which would clip the bottom the way the old path clipped the right
+// edge) or wastefully tall.
+//
+// spec = {
+//   title, subtitle, meta,             // centered header lines (meta optional)
+//   blocks: [{ header, lines: [{ label, value, bold? }] }],
+//   totalLabel, totalValue,            // final bold row, ruled off above it
+//   footer,                            // small centered line at the very bottom
+//   widthMM,                           // defaults to 72 (THERMAL_WIDTH_MM)
+// }
+function _cdrTableBody(spec) {
+  const body = [];
+  spec.blocks.forEach(b => {
+    body.push([{ content: b.header, colSpan: 2, styles: { fontStyle: 'bold', fontSize: 9.5, fillColor: [246, 246, 246] } }]);
+    b.lines.forEach(ln => {
+      const cellStyle = ln.bold ? { fontStyle: 'bold' } : {};
+      body.push([{ content: ln.label, styles: cellStyle }, { content: String(ln.value), styles: cellStyle }]);
+    });
+  });
+  body.push([
+    { content: spec.totalLabel || 'TOTAL', styles: { fontStyle: 'bold', fontSize: 11, lineWidth: { top: 0.3 }, lineColor: [0, 0, 0] } },
+    { content: String(spec.totalValue), styles: { fontStyle: 'bold', fontSize: 11, lineWidth: { top: 0.3 }, lineColor: [0, 0, 0] } },
+  ]);
+  return body;
+}
+
+function _drawCdrHeader(doc, spec, widthMM, marginMM) {
+  let y = marginMM + 3;
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
+  doc.text(spec.title, widthMM / 2, y, { align: 'center' }); y += 5;
+  if (spec.subtitle) { doc.setFontSize(10); doc.text(spec.subtitle, widthMM / 2, y, { align: 'center' }); y += 4.4; }
+  if (spec.meta) {
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(90);
+    doc.text(spec.meta, widthMM / 2, y, { align: 'center' }); doc.setTextColor(0); y += 4;
+  }
+  return y + 1;
+}
+
+function _drawCdrBody(doc, spec, startY, widthMM, marginMM) {
+  const usableW = widthMM - marginMM * 2;
+  doc.autoTable({
+    startY,
+    margin: { left: marginMM, right: marginMM, top: marginMM, bottom: 0 },
+    tableWidth: usableW,
+    theme: 'plain',
+    styles: { font: 'helvetica', fontSize: 9.5, cellPadding: { top: 1, bottom: 1, left: 0, right: 0 }, textColor: [0, 0, 0] },
+    columnStyles: {
+      0: { halign: 'left', cellWidth: usableW * 0.6 },
+      1: { halign: 'right', cellWidth: usableW * 0.4, font: 'courier' },
+    },
+    body: _cdrTableBody(spec),
+  });
+  return doc.lastAutoTable.finalY;
+}
+
+function _buildThermalTablePdf(spec) {
+  if (!window.jspdf || !window.jspdf.jsPDF) throw new Error('jsPDF failed to load — check your connection.');
+  const { jsPDF } = window.jspdf;
+  const widthMM = spec.widthMM || THERMAL_WIDTH_MM;
+  const marginMM = 4;
+
+  // Pass 1 — measure real content height on an oversized throwaway page.
+  let doc = new jsPDF({ unit: 'mm', format: [widthMM, 400], orientation: 'portrait' });
+  let y = _drawCdrHeader(doc, spec, widthMM, marginMM);
+  y = _drawCdrBody(doc, spec, y, widthMM, marginMM);
+  const heightMM = y + (spec.footer ? 9 : 5);
+
+  // Pass 2 — redraw identically into a page sized exactly to that height.
+  doc = new jsPDF({ unit: 'mm', format: [widthMM, heightMM], orientation: 'portrait' });
+  y = _drawCdrHeader(doc, spec, widthMM, marginMM);
+  y = _drawCdrBody(doc, spec, y, widthMM, marginMM);
+  if (spec.footer) {
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(100);
+    doc.text(spec.footer, widthMM / 2, y + 6, { align: 'center' });
+    doc.setTextColor(0);
+  }
+  return { doc, title: spec.title || 'Report' };
+}
+
 // ── Public API ──────────────────────────────────────────────────────
 // Same signatures as before, so every existing caller (reports.js,
 // reports-print.js, manager.js, manager-export.js, dashboard.js,
@@ -352,7 +449,16 @@ export function renderThermal(html, opts) {
   return true;
 }
 
-export const Print = { render, renderNewTab, renderThermal };
+// Vector (no html2canvas) thermal receipt printer — see
+// _buildThermalTablePdf's own comment above for why this exists
+// alongside renderThermal. spec.widthMM overrides the default 72mm.
+export function renderThermalTable(spec, opts) {
+  opts = opts || {};
+  _generateAndDeliver(spec, opts, _buildThermalTablePdf);
+  return true;
+}
+
+export const Print = { render, renderNewTab, renderThermal, renderThermalTable };
 
 // Bridged — see header note. Remove once every consumer imports Print
 // directly (blocked on the same ui.js/manager.js circular-dependency
