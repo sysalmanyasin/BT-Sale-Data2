@@ -42,7 +42,7 @@
 <!-- CSS Modules — load order matters -->
 <link rel="stylesheet" href="css/variables.css?v=20260722a">
 <link rel="stylesheet" href="css/auth.css?v=20260722a">
-<link rel="stylesheet" href="css/nav.css?v=20260728a">
+<link rel="stylesheet" href="css/nav.css?v=20260728b">
 <link rel="stylesheet" href="css/closing-native.css?v=20260728a">
 <link rel="stylesheet" href="css/closing-book-print.css?v=20260722a">
 <link rel="stylesheet" href="css/audit-native.css?v=20260722a">
@@ -288,6 +288,7 @@ if ('serviceWorker' in navigator) {
 
 <!-- ══ BOTTOM TAB BAR (mobile) ══ -->
 <div class="bnav no-print" id="bnav" role="navigation" aria-label="Page navigation">
+  <button type="button" class="bnav-item side-menu-btn" onclick="openSectionsDrawer()" title="All Sections" aria-label="Open All Sections menu"><span class="bicon">☰</span><span class="blabel">Menu</span></button>
   <a class="bnav-item" href="#cover" data-page="cover" data-group="cover"><span class="bicon">🏠</span><span class="blabel">Cover</span></a>
   <a class="bnav-item" href="#" data-page="recents" onclick="openRecentsDrawer();return false;"><span class="bicon">🕘</span><span class="blabel">Recents</span></a>
   <a class="bnav-item" href="#dashboard" data-page="dashboard" data-group="dashboard" data-domain-group="sales"><span class="bicon">📊</span><span class="blabel">Home</span></a>
@@ -679,11 +680,6 @@ if ('serviceWorker' in navigator) {
     <div class="mbody" id="recents-list"></div>
   </div>
 </div>
-
-<!-- Permanent trigger for the All Sections drawer below — same drawer
-     long-press on Cover has always opened; this makes it reachable
-     without the gesture too. Visible on every page. -->
-<button type="button" class="side-menu-btn no-print" onclick="openSectionsDrawer()" title="All Sections" aria-label="Open All Sections menu">☰</button>
 
 <!-- ALL SECTIONS DRAWER — long-press Cover to open. Full directory of
      every top-level section + its sub-sections, unlike the Recents
@@ -1982,7 +1978,7 @@ if ('serviceWorker' in navigator) {
 <script defer src="js/reports.js?v=20260722a"></script>
 <script defer src="js/cash-deposit-report.js?v=20260727a"></script>
 <script defer src="js/nav-recents.js?v=20260726a"></script>
-<script defer src="js/nav-sections.js?v=20260728a"></script>
+<script defer src="js/nav-sections.js?v=20260728b"></script>
 
 <!-- 11. Data page: daily table + entry form -->
 <script defer src="js/data-page.js?v=20260722a"></script>

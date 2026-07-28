@@ -1,10 +1,15 @@
 // ══════════════════════════════════════════════════════════════════════
 // ALL SECTIONS DRAWER  —  long-press Cover (bottom nav) OR the permanent
-// ☰ button pinned to the left edge (see index.html/css/nav.css) opens a
-// full directory of every section + sub-section, as opposed to
-// js/nav-recents.js's drawer which only shows what's actually been
-// visited. Complements the bottom tab bar + back button + recents
-// drawer combo already in place.
+// ☰ "Menu" item pinned as the left-most entry of the bottom nav bar
+// (see index.html/css/nav.css) opens a full directory of every section
+// + sub-section, as opposed to js/nav-recents.js's drawer which only
+// shows what's actually been visited. Complements the bottom tab bar +
+// back button + recents drawer combo already in place.
+//
+// Every group (and its sub-sections) renders collapsed by default each
+// time the drawer opens; tapping a group's ▸ chevron expands/collapses
+// just that group, while tapping the label/icon still navigates
+// straight to the page, same as before.
 //
 // Content is read straight from the DOM every time it opens (bnav-items
 // for top-level sections, plus the three known sub-tab groups: Sale
@@ -100,20 +105,37 @@
     return groups;
   }
 
+  // Sections start collapsed every time the drawer opens (see _render).
+  // Tapping the chevron toggles a group open/closed without navigating;
+  // tapping the rest of the header row still jumps straight to that
+  // section's page, same as before.
+  function _toggleGroup(btn) {
+    const group = btn.closest('.sections-group');
+    if (!group) return;
+    const open = group.classList.toggle('sections-group-open');
+    btn.textContent = open ? '▾' : '▸';
+    btn.setAttribute('aria-label', (open ? 'Collapse ' : 'Expand ') + (group.dataset.label || ''));
+  }
+
   function _render() {
     const list = document.getElementById('sections-list');
     if (!list) return;
     const groups = _buildGroups();
     list.innerHTML = groups.map(g => `
-      <div class="sections-group">
-        <div class="sections-row sections-row-main" onclick="location.hash='${_esc(g.href)}';closeSectionsDrawer();">
-          <span class="recents-icon">${_esc(g.icon)}</span>
-          <span class="recents-label">${_esc(g.label)}</span>
+      <div class="sections-group" data-label="${_esc(g.label)}">
+        <div class="sections-row sections-row-main">
+          <span class="sections-nav-hit" onclick="location.hash='${_esc(g.href)}';closeSectionsDrawer();">
+            <span class="recents-icon">${_esc(g.icon)}</span>
+            <span class="recents-label">${_esc(g.label)}</span>
+          </span>
+          ${g.subs.length ? `<button type="button" class="sections-toggle" aria-label="Expand ${_esc(g.label)}" onclick="event.stopPropagation();BTNavSections._toggle(this);">▸</button>` : ''}
         </div>
-        ${g.subs.map(s => `
-          <div class="sections-row sections-row-sub" onclick="location.hash='${_esc(s.href)}';closeSectionsDrawer();">
-            <span class="sections-sub-label">${_esc(s.label)}</span>
-          </div>`).join('')}
+        ${g.subs.length ? `<div class="sections-subs">
+          ${g.subs.map(s => `
+            <div class="sections-row sections-row-sub" onclick="location.hash='${_esc(s.href)}';closeSectionsDrawer();">
+              <span class="sections-sub-label">${_esc(s.label)}</span>
+            </div>`).join('')}
+        </div>` : ''}
       </div>`).join('');
   }
 
@@ -166,5 +188,6 @@
 
   window.openSectionsDrawer = openSectionsDrawer;
   window.closeSectionsDrawer = closeSectionsDrawer;
+  window.BTNavSections = { _toggle: _toggleGroup };
 
 })();
