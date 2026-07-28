@@ -195,4 +195,35 @@ body[data-domain="inventory"] {
 .sections-row:hover, .sections-row:active { background: var(--s2); }
 .sections-row-main { font-weight: 600; }
 .sections-row-sub { padding-left: 42px; }
+
+/* Permanent trigger for the All Sections drawer — same drawer long-press
+   on the Cover nav item has always opened (js/nav-sections.js); this
+   just makes it reachable without the gesture too. Fixed to the left
+   edge at every viewport size, sits above the bottom nav (z-index 400)
+   but below any modal (z-index 500+). */
+.side-menu-btn {
+  position: fixed; left: 0; top: 50%; transform: translateY(-50%);
+  z-index: 410;
+  width: 28px; height: 62px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent); color: #fff;
+  border: none; border-radius: 0 12px 12px 0;
+  box-shadow: 2px 0 10px rgba(0,0,0,.18);
+  cursor: pointer; font-size: 16px;
+  -webkit-tap-highlight-color: transparent;
+}
+.side-menu-btn:active { transform: translateY(-50%) scale(.94); }
+
+/* All Sections drawer — docked as a true left sidebar (full height,
+   slides in from the edge) rather than the generic .mbg's centered
+   desktop / bottom-sheet mobile behavior every other modal uses. Scoped
+   to #sectionsbg only so nothing else is affected. */
+#sectionsbg { justify-content: flex-start !important; padding: 0 !important; }
+#sectionsbg .modal {
+  width: min(84vw, 320px); max-height: 100vh; height: 100%;
+  border-radius: 0 14px 14px 0;
+  animation: sideMenuSlideIn .22s ease-out;
+}
+#sectionsbg .sheet-handle { display: none !important; }
+@keyframes sideMenuSlideIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }
 .sections-sub-label { font-size: 12.5px; color: var(--t2); }

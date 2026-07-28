@@ -684,6 +684,81 @@ const GROUP_META = {
   'Reports':         { slug: 'reports', icon: '📚' },
 };
 
+// Custom drag-to-reorder position for Cover's own dashboard groups (the
+// big Inventory/Manager/Closing/Sales/Audit/... cards) — separate from
+// COLLAPSE_KEY (open/closed) and PIN_KEY (shortcut tiles), same
+// mirrored getter/setter/Repository pattern as both of those.
+const ORDER_KEY = 'bt_cover_order_v1';
+function _defaultOrderSlugs() { return GROUP_ORDER.map(name => (GROUP_META[name] || {}).slug).filter(Boolean); }
+function _getOrder() {
+  try {
+    const raw = Repository.getItem(ORDER_KEY);
+    if (raw == null) return _defaultOrderSlugs();
+    const saved = JSON.parse(raw || '[]');
+    // A group that's shipped since this was last saved won't be in the
+    // saved array — append it at the end rather than dropping it
+    // silently, same "never lose a group" reasoning as _getCollapsed's
+    // ALL_GROUP_SLUGS seeding above.
+    const known = new Set(saved);
+    _defaultOrderSlugs().forEach(slug => { if (!known.has(slug)) saved.push(slug); });
+    return saved;
+  } catch (e) { return _defaultOrderSlugs(); }
+}
+function _setOrder(arr) { try { Repository.setItem(ORDER_KEY, JSON.stringify(arr)); } catch (e) {} }
+// Resolves the saved slug order back to group names for renderCoverDashboard's
+// own iteration — GROUP_ORDER itself is left untouched as the permanent
+// "this is the full known set" default/reconciliation source, same role
+// ALL_GROUP_SLUGS plays for collapse state.
+function _orderedGroupNames() {
+  const order = _getOrder();
+  const bySlug = {};
+  Object.keys(GROUP_META).forEach(name => { bySlug[GROUP_META[name].slug] = name; });
+  const names = order.map(slug => bySlug[slug]).filter(Boolean);
+  GROUP_ORDER.forEach(name => { if (!names.includes(name)) names.push(name); }); // defensive; _getOrder already reconciles this
+  return names;
+}
+
+// Drag-to-reorder for .cover-group cards — grabbed only via the small
+// ⠿ handle in each header (not the whole header, which still needs to
+// toggle collapse/expand on a plain tap). Pointer events cover mouse +
+// touch in one code path; touch-action:none on the handle (css) stops
+// the page from also trying to scroll underneath a touch-drag.
+function _wireGroupDragReorder() {
+  const container = document.getElementById('cover-container');
+  if (!container) return;
+  const allGroups = () => Array.from(container.querySelectorAll(':scope > .cover-group'));
+
+  container.querySelectorAll('[data-drag-handle]').forEach(handle => {
+    handle.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      const groupEl = handle.closest('.cover-group');
+      if (!groupEl) return;
+      groupEl.classList.add('dragging');
+      if (navigator.vibrate) { try { navigator.vibrate(10); } catch (_) {} }
+
+      const onMove = (ev) => {
+        const y = ev.clientY;
+        let target = null;
+        for (const sib of allGroups()) {
+          if (sib === groupEl) continue;
+          const r = sib.getBoundingClientRect();
+          if (y < r.top + r.height / 2) { target = sib; break; }
+        }
+        if (target) container.insertBefore(groupEl, target);
+        else container.appendChild(groupEl);
+      };
+      const onUp = () => {
+        groupEl.classList.remove('dragging');
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        _setOrder(allGroups().map(g => g.dataset.group).filter(Boolean));
+      };
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp, { once: true });
+    });
+  });
+}
+
 function _updateHeroDate() {
   const el = document.getElementById('cover-hero-date');
   const greetEl = document.getElementById('cover-greeting');
@@ -962,7 +1037,7 @@ export function renderCoverDashboard() {
     </div>`;
 
   const GROUP_HERO = { Sales: heroHtml, Manager: managerHeroHtml, Closing: closingHeroHtml, Inventory: inventoryHeroHtml };
-  const groupsHtml = GROUP_ORDER.map(groupName => {
+  const groupsHtml = _orderedGroupNames().map(groupName => {
     const members = tiles.map((t, i) => ({ t, i })).filter(x => x.t.group === groupName);
     if (!members.length) return '';
     const meta = GROUP_META[groupName] || { slug: 'sales', icon: '•' };
@@ -971,6 +1046,7 @@ export function renderCoverDashboard() {
     return `
       <div class="cover-group${isCollapsed ? ' collapsed' : ''}" data-group="${meta.slug}">
         <div class="cover-group-header" data-group-toggle="${meta.slug}">
+          <div class="cover-group-drag" data-drag-handle="${meta.slug}" title="Drag to reorder" onclick="event.stopPropagation()">⠿</div>
           <div class="cover-group-icon">${meta.icon}</div>
           <div class="cover-group-head-text">
             <div class="cover-group-title">${_esc(groupName)}</div>
@@ -1029,6 +1105,7 @@ export function renderCoverDashboard() {
   _wireCoverSearch(tiles);
   _wireCollapseToggle();
   _updateCollapseToggleLabel();
+  _wireGroupDragReorder();
   container.querySelectorAll('[data-goto-idx]').forEach(card => {
     const goTo = () => {
       const t = tiles[+card.dataset.gotoIdx];
@@ -1064,3 +1141,7 @@ export function renderCoverDashboard() {
 }
 
 window.renderCoverDashboard = renderCoverDashboard;
+// nav-sections.js (classic script, not a module) reads this to mirror
+// Cover's own drag-reordered group sequence in the All Sections menu —
+// see its header comment for the domain-group -> Cover-slug mapping.
+window.btGetCoverOrder = _getOrder;

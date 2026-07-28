@@ -42,7 +42,7 @@
 <!-- CSS Modules — load order matters -->
 <link rel="stylesheet" href="css/variables.css?v=20260722a">
 <link rel="stylesheet" href="css/auth.css?v=20260722a">
-<link rel="stylesheet" href="css/nav.css?v=20260722a">
+<link rel="stylesheet" href="css/nav.css?v=20260728a">
 <link rel="stylesheet" href="css/closing-native.css?v=20260728a">
 <link rel="stylesheet" href="css/closing-book-print.css?v=20260722a">
 <link rel="stylesheet" href="css/audit-native.css?v=20260722a">
@@ -56,7 +56,7 @@
 <link rel="stylesheet" href="css/components.css?v=20260722a">
 <link rel="stylesheet" href="css/modals.css?v=20260722a">
 <link rel="stylesheet" href="css/pages.css?v=20260722a">
-<link rel="stylesheet" href="css/cover-dashboard.css?v=20260725b">
+<link rel="stylesheet" href="css/cover-dashboard.css?v=20260728a">
 <link rel="stylesheet" href="css/mobile.css?v=20260722a">
 
 <!-- Service Worker registration -->
@@ -680,12 +680,17 @@ if ('serviceWorker' in navigator) {
   </div>
 </div>
 
+<!-- Permanent trigger for the All Sections drawer below — same drawer
+     long-press on Cover has always opened; this makes it reachable
+     without the gesture too. Visible on every page. -->
+<button type="button" class="side-menu-btn no-print" onclick="openSectionsDrawer()" title="All Sections" aria-label="Open All Sections menu">☰</button>
+
 <!-- ALL SECTIONS DRAWER — long-press Cover to open. Full directory of
      every top-level section + its sub-sections, unlike the Recents
      drawer above which only shows what's actually been visited. Same
      .mbg/.modal shell. Populated by js/nav-sections.js. -->
 <div class="mbg" id="sectionsbg" onclick="if(event.target===this)closeSectionsDrawer()">
-  <div class="modal" style="width:min(96vw,440px)">
+  <div class="modal">
     <div class="sheet-handle"></div>
     <div class="mhdr"><h2>All Sections</h2><button class="mclose" onclick="closeSectionsDrawer()">✕</button></div>
     <div class="mbody" id="sections-list"></div>
@@ -1924,7 +1929,7 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/ledger-actions.js"></script>
 <script type="module" src="js/ledger-migration.js"></script>
 <script type="module" src="js/ledger-page.js?v=20260726d"></script>
-<script type="module" src="js/cover-dashboard.js?v=20260726d"></script>
+<script type="module" src="js/cover-dashboard.js?v=20260728a"></script>
 <script type="module" src="js/staff-notes.js"></script>
 <script type="module" src="js/closing-bridge.js"></script>
 <script type="module" src="js/closing-ledger-marks.js"></script>
@@ -1977,7 +1982,7 @@ if ('serviceWorker' in navigator) {
 <script defer src="js/reports.js?v=20260722a"></script>
 <script defer src="js/cash-deposit-report.js?v=20260727a"></script>
 <script defer src="js/nav-recents.js?v=20260726a"></script>
-<script defer src="js/nav-sections.js?v=20260726a"></script>
+<script defer src="js/nav-sections.js?v=20260728a"></script>
 
 <!-- 11. Data page: daily table + entry form -->
 <script defer src="js/data-page.js?v=20260722a"></script>

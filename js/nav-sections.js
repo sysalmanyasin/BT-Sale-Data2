@@ -1,14 +1,25 @@
 // ══════════════════════════════════════════════════════════════════════
-// ALL SECTIONS DRAWER  —  long-press Cover (bottom nav) to open a full
-// directory of every section + sub-section, as opposed to js/nav-recents.js's
-// drawer which only shows what's actually been visited. Complements the
-// bottom tab bar + back button + recents drawer combo already in place.
+// ALL SECTIONS DRAWER  —  long-press Cover (bottom nav) OR the permanent
+// ☰ button pinned to the left edge (see index.html/css/nav.css) opens a
+// full directory of every section + sub-section, as opposed to
+// js/nav-recents.js's drawer which only shows what's actually been
+// visited. Complements the bottom tab bar + back button + recents
+// drawer combo already in place.
 //
 // Content is read straight from the DOM every time it opens (bnav-items
 // for top-level sections, plus the three known sub-tab groups: Sale
 // Data's secondary row, Manager's mgr-tabs, Credit Ledger's mode tabs)
 // so it can never drift out of sync with the real nav — no hardcoded
 // duplicate list to maintain.
+//
+// Ordering: top-level rows mirror whatever order the user last dragged
+// Cover's own dashboard groups into (js/cover-dashboard.js's ⠿ handles),
+// via each bnav-item's existing data-domain-group attribute (already
+// used by nav.css's domain-isolation rules) mapped onto Cover's group
+// slugs — see _DOMAIN_TO_COVER_SLUG below. "Cover" itself always stays
+// pinned first (it's the hub the drawer opens from, not a domain).
+// Sub-section rows (the three groups above) are always listed in their
+// fixed, original order — they're never reordered, per request.
 //
 // Every row just sets window.location.hash, reusing ui.js's existing
 // hashchange -> _routeFromHash -> showPage routing (including its
@@ -27,6 +38,9 @@
     manager: '.mgr-tab[href]',
     'credit-ledger': '.cl-mode-tab[href]',
   };
+  // bnav-item's data-domain-group value -> Cover dashboard's GROUP_META
+  // slug (js/cover-dashboard.js). Identical strings except notesheets/notes.
+  const _DOMAIN_TO_COVER_SLUG = { sales: 'sales', manager: 'manager', notesheets: 'notes', closing: 'closing', audit: 'audit', inventory: 'inventory' };
 
   function _esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -49,12 +63,13 @@
         label: (el.querySelector('.blabel') || {}).textContent || id,
         icon: (el.querySelector('.bicon') || {}).textContent || '📄',
         href: el.getAttribute('href'),
+        domainGroup: el.dataset.domainGroup || null,
         subs: [],
       });
     });
     _MOVED_TO_COVER.forEach(m => {
       if (!document.getElementById('page-' + m.id)) return;
-      groups.push({ id: m.id, label: m.label, icon: m.icon, href: '#' + m.id, subs: [] });
+      groups.push({ id: m.id, label: m.label, icon: m.icon, href: '#' + m.id, domainGroup: null, subs: [] });
     });
     Object.keys(_SUB_GROUPS).forEach(parentId => {
       const g = groups.find(x => x.id === parentId);
@@ -68,6 +83,20 @@
         g.subs.push({ label: label, href: href });
       });
     });
+
+    // Mirror Cover's own drag-reordered sequence. Array.prototype.sort is
+    // spec-stable (ES2019+), so groups sharing a sort key (e.g. every
+    // Inventory sub-page, or every group with no domain-group at all)
+    // keep their original mutual order — only whole domain clusters move.
+    const coverOrder = (typeof window.btGetCoverOrder === 'function') ? window.btGetCoverOrder() : [];
+    const orderIndex = slug => { const i = coverOrder.indexOf(slug); return i === -1 ? null : i; };
+    groups.forEach((g, i) => {
+      if (g.id === 'cover') { g._sortKey = -1; return; } // hub, always first
+      const coverSlug = g.domainGroup ? _DOMAIN_TO_COVER_SLUG[g.domainGroup] : null;
+      const idx = coverSlug ? orderIndex(coverSlug) : null;
+      g._sortKey = idx != null ? idx : 1000 + i; // unmapped/unknown -> keep at the end, original order
+    });
+    groups.sort((a, b) => a._sortKey - b._sortKey);
     return groups;
   }
 
