@@ -1,75 +1,18 @@
 // ═══════════════════════════════════════════════════════════════════════
 // UI EXTRAS  —  loaded last so all other scripts are available
 //
-//  1. Left-edge coloured tab strip  (always visible, 5 main tabs)
+//  1. (Left-edge coloured tab strip REMOVED per request — it duplicated
+//     the permanent ☰ button + "All Sections" sidebar drawer added in
+//     js/nav-sections.js/index.html, which covers every page, not just
+//     the 4 this strip knew about, and doesn't cost 8px of every page's
+//     left edge permanently. TABS/PAGE_GROUP, _buildEdgeStrip(),
+//     _updateStrip(), and #uex-strip's injected CSS all removed together
+//     — nothing else in this file depended on any of them.)
 //  2. (Floating 📊 Dashboard FAB removed — Ctrl+D shortcut still works)
 //  3. "Add New Month" → auto-creates matching target entry
 // ═══════════════════════════════════════════════════════════════════════
 (function () {
   'use strict';
-
-  // ─────────────────────────────────────────────────────────────────────
-  // TAB DEFINITIONS
-  // ─────────────────────────────────────────────────────────────────────
-  var TABS = [
-    { page: 'dashboard',  group: 'dashboard',  icon: '📊', label: 'Dashboard', color: '#2563eb' },
-    { page: 'index',      group: 'saledata',   icon: '🗂️', label: 'Sales',     color: '#059669' },
-    { page: 'manager',    group: 'manager',    icon: '👔', label: 'Manager',   color: '#d97706' },
-    { page: 'tools',      group: 'tools',      icon: '⚙️', label: 'Tools',     color: '#64748b' },
-  ];
-
-  // Map every sub-page to its parent group colour
-  var PAGE_GROUP = {
-    dashboard:  'dashboard',
-    index: 'saledata', data: 'saledata', entry: 'saledata',
-    report: 'saledata', diff: 'saledata',
-    manager: 'manager',
-    tools:   'tools',
-  };
-
-  // ─────────────────────────────────────────────────────────────────────
-  // 1. LEFT-EDGE COLOUR STRIP
-  // ─────────────────────────────────────────────────────────────────────
-  // A slim (8 px) vertical band fixed to the left viewport edge, divided
-  // into 5 equal coloured sections — one per main tab.  The active section
-  // glows white on its right edge.  Hovering expands it (CSS transition)
-  // to reveal icon + label.  Clicking navigates to that tab.
-  // ─────────────────────────────────────────────────────────────────────
-
-  function _buildEdgeStrip() {
-    if (document.getElementById('uex-strip')) return;
-
-    var strip = document.createElement('div');
-    strip.id = 'uex-strip';
-
-    TABS.forEach(function (tab) {
-      var seg = document.createElement('div');
-      seg.className   = 'uex-seg';
-      seg.dataset.group = tab.group;
-      seg.dataset.page  = tab.page;
-      seg.title = tab.label + '  (click to open)';
-      seg.style.background = tab.color;
-      seg.innerHTML =
-        '<span class="uex-icon">' + tab.icon + '</span>' +
-        '<span class="uex-lbl">'  + tab.label + '</span>';
-
-      seg.addEventListener('click', function () {
-        if (typeof showPage === 'function') showPage(tab.page);
-      });
-
-      strip.appendChild(seg);
-    });
-
-    document.body.appendChild(strip);
-  }
-
-  function _updateStrip(page) {
-    var group = PAGE_GROUP[page] || page;
-    document.querySelectorAll('.uex-seg').forEach(function (seg) {
-      var active = (seg.dataset.group === group);
-      seg.classList.toggle('uex-active', active);
-    });
-  }
 
   // ─────────────────────────────────────────────────────────────────────
   // 2. FLOATING DASHBOARD FAB
@@ -360,7 +303,9 @@
   }
 
   // ─────────────────────────────────────────────────────────────────────
-  // 5. PATCH showPage SO THE STRIP STAYS IN SYNC
+  // 5. PATCH showPage — self-heal targets whenever Tools opens
+  //    (used to also keep the left-edge strip's active segment in sync;
+  //    that call was removed along with the strip itself)
   // ─────────────────────────────────────────────────────────────────────
   function _patchShowPage() {
     if (window._uexSpPatched || typeof showPage !== 'function') return;
@@ -369,7 +314,6 @@
     var orig = window.showPage;
     window.showPage = function (page) {
       var r = orig.apply(this, arguments);
-      _updateStrip(page);
       // Self-heal targets silently whenever the Tools tab opens
       if (page === 'tools') {
         setTimeout(function () { _autoHealTargets(true); }, 600);
@@ -387,39 +331,6 @@
     var s = document.createElement('style');
     s.id = 'uex-css';
     s.textContent = [
-
-      /* ── Edge strip container ── */
-      '#uex-strip{',
-        'position:fixed;left:0;top:0;width:8px;height:100vh;',
-        'z-index:500;display:flex;flex-direction:column;',
-        'box-shadow:2px 0 8px rgba(0,0,0,.18);',
-      '}',
-
-      /* ── Individual segment ── */
-      '.uex-seg{',
-        'flex:1;display:flex;align-items:center;gap:7px;',
-        'padding-left:7px;overflow:hidden;white-space:nowrap;',
-        'cursor:pointer;opacity:.72;',
-        'transition:width .22s ease,opacity .22s ease,box-shadow .2s ease;',
-        'width:8px;',
-      '}',
-      '.uex-seg:hover{width:88px;opacity:1;}',
-
-      /* ── Active segment ── */
-      '.uex-seg.uex-active{',
-        'opacity:1;',
-        'box-shadow:inset -4px 0 0 rgba(255,255,255,.75);',
-        'width:10px;',           /* just slightly wider than inactive */
-      '}',
-      '.uex-seg.uex-active:hover{width:88px;}',
-
-      /* ── Icon & label ── */
-      '.uex-icon{font-size:13px;flex-shrink:0;pointer-events:none;line-height:1;}',
-      '.uex-lbl{',
-        'font-size:10px;font-weight:700;color:#fff;',
-        'letter-spacing:.06em;pointer-events:none;',
-        'text-shadow:0 1px 3px rgba(0,0,0,.5);',
-      '}',
 
       /* ── Floating Dashboard FAB ── */
       '#uex-fab{',
@@ -448,18 +359,9 @@
   // ─────────────────────────────────────────────────────────────────────
   function _init() {
     _injectStyles();
-    _buildEdgeStrip();
     _patchShowPage();
     _addKeyboard();
     _patchAddNewMonth(); // targets.js already loaded by this point
-
-    // Detect the initially-visible page
-    var visible = document.querySelector('.page:not([style*="display: none"]):not([style*="display:none"])');
-    if (visible && visible.id) {
-      _updateStrip(visible.id.replace('page-', ''));
-    } else {
-      _updateStrip('dashboard'); // sensible default
-    }
 
     // Self-heal on startup: silently fill any months that are missing targets.
     // Delayed 2 s so MONTHLY data and Actions are fully settled before we read them.
