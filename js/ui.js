@@ -202,15 +202,30 @@ const _PAGE_SUBROUTES = {
   'credit-ledger': function(sub) {
     if (typeof clnSwitchMode === 'function') clnSwitchMode(sub);
   },
+  notesheets: function(sub) {
+    // Notes & Sheets' pill nav (notes/sheets/manage/data) is a sub-route:
+    // #notesheets/<panel> — see js/notes-sheets.js's _nsSetPanel.
+    if (typeof _nsSetPanel === 'function') _nsSetPanel(sub);
+  },
   tools: function(sub) {
     // Sync Center is a collapsible card inside Tools; its own tabs
     // (session/devices/controls/health) are a sub-sub-route:
     // #tools/synccenter/<tab>
     const parts = sub.split('/');
-    if (parts[0] !== 'synccenter') return;
-    const card = document.getElementById('tc-sync-center');
-    if (card && !card.classList.contains('open')) card.classList.add('open');
-    if (parts[1] && typeof scSwitchTab === 'function') scSwitchTab(parts[1]);
+    if (parts[0] === 'synccenter') {
+      const card = document.getElementById('tc-sync-center');
+      if (card && !card.classList.contains('open')) card.classList.add('open');
+      if (parts[1] && typeof scSwitchTab === 'function') scSwitchTab(parts[1]);
+      return;
+    }
+    // Every other Tools settings card gets its own deep-link too:
+    // #tools/card/<id-without-tc-> opens + scrolls to that card.
+    if (parts[0] === 'card' && parts[1]) {
+      const card = document.getElementById('tc-' + parts[1]);
+      if (!card) return;
+      if (typeof toggleTcard === 'function' && !card.classList.contains('open')) toggleTcard(card.id);
+      card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   }
 };
 

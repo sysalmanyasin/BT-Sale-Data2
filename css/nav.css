@@ -212,8 +212,12 @@ body[data-domain="inventory"] {
 }
 .sections-toggle:hover, .sections-toggle:active { background: var(--s2); color: var(--text); }
 .sections-subs { display: none; }
-.sections-group-open .sections-subs { display: block; }
-.sections-group-open .sections-toggle { color: var(--accent); }
+/* Child (not descendant) combinators: groups now nest inside groups
+   (e.g. Closing > Credit Ledger > Credit/Misc-Ongoing, Tools > Sync
+   Center > its own tabs), so an ancestor being open must not force a
+   nested group's own — independently toggled — subs open too. */
+.sections-group-open > .sections-subs { display: block; }
+.sections-group-open > .sections-row-main .sections-toggle { color: var(--accent); }
 
 /* Permanent trigger for the All Sections drawer — same drawer long-press
    on the Cover nav item has always opened (js/nav-sections.js); this

@@ -88,6 +88,7 @@ import { getFullData as _invGetFullData } from './inventory-bridge.js';
   border: 1px solid var(--border); border-bottom: none;
   font-size: 12px; font-weight: 600; color: var(--muted);
   background: var(--s2); cursor: pointer; transition: all .15s;
+  text-decoration: none; display: inline-block;
 }
 .ns-pill.active {
   background: var(--s1, #fff); color: var(--text);
@@ -608,10 +609,10 @@ function renderNotesSheets() {
   host.innerHTML = `
     <div class="ns-shell">
       <div class="ns-nav">
-        <button class="ns-pill ${_nsActivePanel==='notes'?'active':''}" data-panel="notes" onclick="_nsSetPanel('notes')">📝 Notes</button>
-        <button class="ns-pill ${_nsActivePanel==='sheets'?'active':''}" data-panel="sheets" onclick="_nsSetPanel('sheets')">📊 Sheets</button>
-        <button class="ns-pill ${_nsActivePanel==='manage'?'active':''}" data-panel="manage" onclick="_nsSetPanel('manage')">🗂 Manage Sheets</button>
-        <button class="ns-pill ${_nsActivePanel==='data'?'active':''}" data-panel="data" onclick="_nsSetPanel('data')">🔗 Live Data</button>
+        <a class="ns-pill ${_nsActivePanel==='notes'?'active':''}" data-panel="notes" href="#notesheets/notes">📝 Notes</a>
+        <a class="ns-pill ${_nsActivePanel==='sheets'?'active':''}" data-panel="sheets" href="#notesheets/sheets">📊 Sheets</a>
+        <a class="ns-pill ${_nsActivePanel==='manage'?'active':''}" data-panel="manage" href="#notesheets/manage">🗂 Manage Sheets</a>
+        <a class="ns-pill ${_nsActivePanel==='data'?'active':''}" data-panel="data" href="#notesheets/data">🔗 Live Data</a>
       </div>
       <div class="ns-panel" id="ns-panel-host"></div>
     </div>`;
