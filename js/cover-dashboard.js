@@ -23,6 +23,9 @@ let _invChart = null;
 // Sales-by-weekday chart instance holder (see _renderWeekdayChart below) —
 // same destroy-before-rebuild rule as _invChart above.
 let _weekdayChart = null;
+// Closing trend chart instance holder (see _renderClosingChart below) —
+// same destroy-before-rebuild rule.
+let _closingChart = null;
 const MONTH_NAMES = ['January','February','March','April','May','June',
                       'July','August','September','October','November','December'];
 const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -548,7 +551,68 @@ function _renderWeekdayChart() {
   });
 }
 
-// Inventory domain hero stats — all three come from bridge functions on
+// ══════════════════════════════════════════════════════════════════════
+// Closing Trend chart — Credit / Misc-Ongoing / Deposits across the last
+// N real (non-draft) closings, oldest→newest. First real chart the
+// Closing group has had beyond single-latest snapshot cards; more
+// graphs/data land here later as Closing's own dashboard grows.
+// Same "read the one existing computation, don't re-derive it" rule as
+// every other hero stat on this page — reuses ClosingBridge.getFullDb()
+// and the exact same per-sheet math as _closingLatestCredit/_closingLatestMisc.
+// ══════════════════════════════════════════════════════════════════════
+function _closingTrendSeries(limit) {
+  const cdb = ClosingBridge.getFullDb();
+  if (!cdb) return null;
+  const keys = Object.keys(cdb.sheets || {}).filter(k => { const r = cdb.sheets[k]; return !!r && r.draft !== true; });
+  if (!keys.length) return null;
+  keys.sort((a, b) => _sheetSortKey(cdb, a).localeCompare(_sheetSortKey(cdb, b)));
+  return keys.slice(-limit).map(k => {
+    const rec = cdb.sheets[k];
+    const parts = k.split('_');
+    const misc = (rec.miscRows || []).reduce((s, r) => s + (parseFloat(r.val) || 0), 0);
+    const shortDate = _clFmtDate(parts[0]).replace(/,? \d{4}$/, ''); // "28 Jul" (drop the year)
+    return {
+      label: shortDate + ' ' + (parts[1] || '').slice(0, 1), // e.g. "28 Jul N"
+      credit: n(rec.outTotalE),
+      misc: misc,
+      deposits: n(rec.outTotalF),
+    };
+  });
+}
+
+function _renderClosingChart() {
+  const canvas = document.getElementById('cover-closing-chart');
+  if (!canvas || typeof Chart === 'undefined') return;
+  if (_closingChart) { _closingChart.destroy(); _closingChart = null; }
+
+  const series = _closingTrendSeries(14);
+  if (!series || !series.length) return;
+
+  _closingChart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: series.map(s => s.label),
+      datasets: [
+        { label: 'Credit', data: series.map(s => s.credit), borderColor: '#AE3B2C', backgroundColor: 'rgba(174,59,44,.12)', tension: .3, fill: true, pointRadius: 2 },
+        { label: 'Misc / Ongoing', data: series.map(s => s.misc), borderColor: '#A8762A', backgroundColor: 'rgba(168,118,42,.12)', tension: .3, fill: true, pointRadius: 2 },
+        { label: 'Deposits', data: series.map(s => s.deposits), borderColor: '#33507D', backgroundColor: 'rgba(51,80,125,.1)', tension: .3, fill: true, pointRadius: 2 },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { color: '#334155', font: { size: 10 }, boxWidth: 10, padding: 6 } },
+        tooltip: { callbacks: { label: c => c.dataset.label + ': Rs. ' + fc(c.raw) } },
+      },
+      scales: {
+        x: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: '#f1f5f9' } },
+        y: { ticks: { color: '#64748b', font: { size: 9 }, callback: v => '₨' + ff(v) }, grid: { color: '#e2e8f0' } },
+      },
+    },
+  });
+}
+
+
 // the (classic-script, window-exposed) Stock Ledger / Excess Working /
 // Reorder Report apps, same "read the one existing computation, don't
 // re-derive it" rule as AuditBridge/ClosingBridge above. Each bridge call
@@ -899,24 +963,18 @@ function _renderKpiRow() {
   });
 }
 
-function _wireCoverSearch(tiles) {
+function _wireCoverSearch() {
   const input = document.getElementById('cover-search');
   if (!input || input.dataset.wired) return;
   input.dataset.wired = '1';
   input.addEventListener('input', () => {
     const q = input.value.trim().toLowerCase();
     document.querySelectorAll('#cover-container .cover-group').forEach(groupEl => {
-      let anyVisible = false;
-      groupEl.querySelectorAll('.cover-tile').forEach(tileEl => {
-        const title = (tileEl.querySelector('.cover-tile-title')?.textContent || '').toLowerCase();
-        const status = (tileEl.querySelector('.cover-tile-status')?.textContent || '').toLowerCase();
-        const match = !q || title.includes(q) || status.includes(q);
-        tileEl.classList.toggle('cover-tile-hidden', !match);
-        tileEl.classList.toggle('cover-tile-match', !!q && match);
-        if (match) anyVisible = true;
-      });
-      groupEl.classList.toggle('cover-group-hidden', !!q && !anyVisible);
-      if (q && anyVisible) groupEl.classList.remove('collapsed');
+      const title = (groupEl.querySelector('.cover-group-title')?.textContent || '').toLowerCase();
+      const subtitle = (groupEl.querySelector('.cover-group-subtitle')?.textContent || '').toLowerCase();
+      const match = !q || title.includes(q) || subtitle.includes(q);
+      groupEl.classList.toggle('cover-group-hidden', !!q && !match);
+      if (q && match) groupEl.classList.remove('collapsed');
     });
   });
 }
@@ -988,6 +1046,12 @@ export function renderCoverDashboard() {
     <div class="cover-hero-row">
       ${heroCard(closingLatestCredit)}
       ${heroCard(closingLatestMisc)}
+    </div>
+    <div class="cover-hero-row-single">
+      <div class="card">
+        <div class="ctitle"><span class="cdot" style="background:#AE3B2C"></span>Closing Trend — last 14 closings</div>
+        <div style="height:200px"><canvas id="cover-closing-chart"></canvas></div>
+      </div>
     </div>`;
 
   const invStats = _inventoryHeroStats();
@@ -1024,25 +1088,32 @@ export function renderCoverDashboard() {
     </div>`;
   }
 
-  const pins = _getPins();
   const collapsed = _getCollapsed();
-  const tileCardHtml = (t, i) => `
-    <div class="cover-tile${t.enabled ? '' : ' cover-tile-disabled'}"
-         ${t.enabled ? `data-goto-idx="${i}" role="button" tabindex="0"` : ''}>
-      <button class="cover-tile-pin${pins.includes(t.page || t.href) ? ' pinned' : ''}" data-pin-key="${_esc(t.page || t.href)}" title="Pin to shortcuts">📌</button>
-      <div class="cover-tile-icon">${t.icon}</div>
-      <div class="cover-tile-title">${_esc(t.title)}${t.href ? ' <span class="ext">↗</span>' : ''}</div>
-      <div class="cover-tile-status">${_esc(t.status)}</div>
-      ${t.bridgeAction ? `<button class="cover-tile-bridge" data-bridge-idx="${i}">Bridge</button>` : ''}
-    </div>`;
 
+  // Every group card still leads with its own live header (icon, title,
+  // one-line status, drag-to-reorder) exactly as before — this only
+  // removes the per-tile "leading to a page" grid that used to sit
+  // inside the body. Sections themselves (including ones with no hero
+  // content of their own yet, like Audit/Notes & Sheets/Reports/Quick
+  // Access) stay exactly as-is, collapse/expand included, ready for
+  // hero cards to land in them later.
   const GROUP_HERO = { Sales: heroHtml, Manager: managerHeroHtml, Closing: closingHeroHtml, Inventory: inventoryHeroHtml };
+  // New home for the old per-tile "Bridge" button: one ↻ on each
+  // bridge-backed group's own header, force-refreshing past the normal
+  // 5-min cache — available regardless of whether that group's body is
+  // collapsed, instead of being buried inside a tile that no longer exists.
+  const GROUP_BRIDGE_REFRESH = {
+    Closing: () => ClosingBridge.refresh(true),
+    Audit: () => AuditBridge.refresh(true),
+    Inventory: () => InventoryBridge.refreshFullData(true),
+  };
   const groupsHtml = _orderedGroupNames().map(groupName => {
-    const members = tiles.map((t, i) => ({ t, i })).filter(x => x.t.group === groupName);
+    const members = tiles.filter(t => t.group === groupName);
     if (!members.length) return '';
     const meta = GROUP_META[groupName] || { slug: 'sales', icon: '•' };
     const isCollapsed = collapsed.includes(meta.slug);
     const subtitle = _groupSubtitle(groupName);
+    const refreshFn = GROUP_BRIDGE_REFRESH[groupName];
     return `
       <div class="cover-group${isCollapsed ? ' collapsed' : ''}" data-group="${meta.slug}">
         <div class="cover-group-header" data-group-toggle="${meta.slug}">
@@ -1052,15 +1123,13 @@ export function renderCoverDashboard() {
             <div class="cover-group-title">${_esc(groupName)}</div>
             ${subtitle ? `<div class="cover-group-subtitle">${_esc(subtitle)}</div>` : ''}
           </div>
+          ${refreshFn ? `<button type="button" class="cover-group-refresh" data-bridge-refresh="${_esc(groupName)}" title="Refresh ${_esc(groupName)} data now" onclick="event.stopPropagation()">↻</button>` : ''}
           <div class="cover-group-line"></div>
           <div class="cover-group-chevron">▾</div>
         </div>
         <div class="cover-group-body"><div>
           ${GROUP_HERO[groupName] || ''}
           ${groupName === 'Manager' ? _staffRegistryHtml() : ''}
-          <div class="cover-tile-grid">
-            ${members.map(({ t, i }) => tileCardHtml(t, i)).join('')}
-          </div>
         </div></div>
       </div>`;
   }).join('');
@@ -1072,23 +1141,13 @@ export function renderCoverDashboard() {
   _updateHeroDate();
   if (invSl && invSl.dataReady) _renderInventoryChart(invSl, invEw);
   _renderWeekdayChart();
+  _renderClosingChart();
   container.querySelectorAll('[data-staff-idx]').forEach(card => {
     const openIt = () => {
       if (typeof window.openStaffCard === 'function') window.openStaffCard(+card.dataset.staffIdx);
     };
     card.addEventListener('click', openIt);
     card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openIt(); } });
-  });
-  container.querySelectorAll('[data-pin-key]').forEach(btn => {
-    btn.addEventListener('click', e => {
-      e.stopPropagation();
-      const key = btn.dataset.pinKey;
-      let pinsNow = _getPins();
-      if (pinsNow.includes(key)) pinsNow = pinsNow.filter(p => p !== key);
-      else pinsNow = [...pinsNow, key];
-      _setPins(pinsNow);
-      renderCoverDashboard();
-    });
   });
   container.querySelectorAll('[data-group-toggle]').forEach(header => {
     header.addEventListener('click', () => {
@@ -1102,25 +1161,17 @@ export function renderCoverDashboard() {
       _setCollapsed(coll);
     });
   });
-  _wireCoverSearch(tiles);
+  _wireCoverSearch();
   _wireCollapseToggle();
   _updateCollapseToggleLabel();
   _wireGroupDragReorder();
-  container.querySelectorAll('[data-goto-idx]').forEach(card => {
-    const goTo = () => {
-      const t = tiles[+card.dataset.gotoIdx];
-      if (!t) return;
-      if (t.href) window.open(t.href, '_blank', 'noopener');
-      else if (t.page && typeof window.showPage === 'function') window.showPage(t.page);
-    };
-    card.addEventListener('click', goTo);
-    card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goTo(); } });
-  });
-  container.querySelectorAll('[data-bridge-idx]').forEach(btn => {
+  container.querySelectorAll('[data-bridge-refresh]').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
-      const t = tiles[+btn.dataset.bridgeIdx];
-      if (t && typeof window[t.bridgeAction] === 'function') window[t.bridgeAction]();
+      const fn = GROUP_BRIDGE_REFRESH[btn.dataset.bridgeRefresh];
+      if (!fn) return;
+      btn.classList.add('spinning');
+      Promise.resolve(fn()).finally(() => renderCoverDashboard());
     });
   });
 

@@ -163,6 +163,15 @@
 .cover-group-header{cursor:pointer;user-select:none;}
 .cover-group-chevron{margin-left:auto;font-size:12px;color:var(--muted);transition:transform .2s;flex-shrink:0;}
 .cover-group.collapsed .cover-group-chevron{transform:rotate(-90deg);}
+.cover-group-refresh{
+  flex-shrink:0;width:26px;height:26px;border:none;border-radius:8px;
+  background:var(--s2);color:var(--muted);font-size:13px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s,color .15s;
+}
+.cover-group-refresh:hover{background:var(--g-bg,var(--alt));color:var(--g-accent,var(--accent));}
+.cover-group-refresh.spinning{animation:coverGroupRefreshSpin .7s linear;pointer-events:none;opacity:.6;}
+@keyframes coverGroupRefreshSpin{to{transform:rotate(360deg);}}
 .cover-group-body{overflow:hidden;transition:grid-template-rows .25s ease;display:grid;grid-template-rows:1fr;}
 .cover-group-body>div{overflow:hidden;min-height:0;}
 .cover-group.collapsed .cover-group-body{grid-template-rows:0fr;}
