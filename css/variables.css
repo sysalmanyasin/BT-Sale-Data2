@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
 :root{
   --bg:#eef1f7;--surface:#fff;--s2:#f7f8fb;--s3:#eef0f5;--border:#e5e8f0;--border-strong:#d7dbe6;
   --r-xs:6px;--r-sm:9px;--r-md:12px;--r-lg:16px;--r-xl:22px;--r-pill:999px;
@@ -8,11 +8,16 @@
   --focus-ring:0 0 0 3px rgba(58,97,247,.16);
   --accent:#3a61f7;--accent-dk:#2543c9;--alt:#eef2ff;--purple:#8b5cf6;--purple-lt:#f4f1ff;
   --mgrblue:#0369a1;--mgrblue-lt:#f0f9ff;
-  --teal:#0d9488;--tlt:#f0fdfa;
+  --teal:#0d9488;--teal-dk:#0f766e;--tlt:#f0fdfa;
   --green:#0ea968;--glt:#ecfdf5;--amber:#d97706;--alt2:#fffbeb;
   --red:#e0392f;--rlt:#fef2f2;--pink:#db2777;--pink-lt:#fdf2f8;
   --text:#12172b;--t2:#3c4360;--muted:#71789a;
   --mono:'IBM Plex Mono',monospace;--sans:'Inter',system-ui,sans-serif;
+  /* Shared brand header gradient - same stops as .hero/.ledger-header,
+     used anywhere a dark brand-blue banner is needed (modal headers,
+     dialog chrome) so those surfaces stay on-brand instead of each
+     hand-rolling a slightly-different navy/blue gradient. */
+  --grad-header:linear-gradient(135deg,#141b3d,var(--accent-dk) 65%,var(--accent));
 }
 *{margin:0;padding:0;box-sizing:border-box;}
 html{scroll-behavior:smooth;overflow-x:hidden;overflow-y:auto;width:100%;}

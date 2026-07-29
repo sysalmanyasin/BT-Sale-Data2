@@ -167,7 +167,7 @@
     border-radius:5px;
     font-family:var(--mono);
     font-size:12.5px;
-    background:#fff;
+    background:var(--panel);
   }
 .stockledger-app .dbxrow .btn-ghost, .stockledger-app .dbxrow .filebtn {white-space:nowrap;}
 .stockledger-app .dbxstatus {

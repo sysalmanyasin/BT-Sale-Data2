@@ -167,7 +167,7 @@
     border-radius:5px;
     font-family:var(--mono);
     font-size:12.5px;
-    background:#fff;
+    background:var(--panel);
   }
 .reorder-app .dbxrow .btn-ghost, .reorder-app .dbxrow .filebtn {white-space:nowrap;}
 .reorder-app .dbxstatus {
@@ -460,7 +460,7 @@
 .reorder-app .add-row {display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
 .reorder-app .add-row input[type="text"] {
   flex:1; min-width:200px; padding:9px 12px; border:1px solid var(--line); border-radius:5px;
-  font-family:var(--sans); font-size:13.5px; background:#fff;
+  font-family:var(--sans); font-size:13.5px; background:var(--panel);
 }
 .reorder-app .btn {
   border:1px solid var(--line); background:var(--panel); padding:9px 15px; border-radius:5px;
@@ -489,7 +489,7 @@
 .reorder-app .field-label {display:block; font-size:12px; font-weight:600; color:var(--ink-soft); margin-bottom:5px;}
 .reorder-app .field input {
   width:100%; padding:9px 12px; border:1px solid var(--line); border-radius:5px;
-  font-family:var(--mono); font-size:13.5px; background:#fff;
+  font-family:var(--mono); font-size:13.5px; background:var(--panel);
 }
 
 .reorder-app .card-head {display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; flex-wrap:wrap;}
@@ -561,7 +561,7 @@
 .reorder-app .window-seg button.active {background:var(--indigo); color:#fff;}
 .reorder-app .num-input {
   width:78px; padding:8px 10px; border:1px solid var(--line); border-radius:5px;
-  font-family:var(--mono); font-size:13px; background:#fff;
+  font-family:var(--mono); font-size:13px; background:var(--panel);
 }
 .reorder-app .status-pill.Flagged {background:var(--rust-bg); color:var(--rust);}
 .reorder-app th.sortable {cursor:pointer;}

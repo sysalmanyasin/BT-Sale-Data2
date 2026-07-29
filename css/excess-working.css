@@ -167,7 +167,7 @@
     border-radius:5px;
     font-family:var(--mono);
     font-size:12.5px;
-    background:#fff;
+    background:var(--panel);
   }
 .excessworking-app .dbxrow .btn-ghost, .excessworking-app .dbxrow .filebtn {white-space:nowrap;}
 .excessworking-app .dbxstatus {
@@ -460,7 +460,7 @@
 .excessworking-app .add-row {display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
 .excessworking-app .add-row input[type="text"] {
   flex:1; min-width:200px; padding:9px 12px; border:1px solid var(--line); border-radius:5px;
-  font-family:var(--sans); font-size:13.5px; background:#fff;
+  font-family:var(--sans); font-size:13.5px; background:var(--panel);
 }
 .excessworking-app .btn {
   border:1px solid var(--line); background:var(--panel); padding:9px 15px; border-radius:5px;
@@ -489,7 +489,7 @@
 .excessworking-app .field-label {display:block; font-size:12px; font-weight:600; color:var(--ink-soft); margin-bottom:5px;}
 .excessworking-app .field input {
   width:100%; padding:9px 12px; border:1px solid var(--line); border-radius:5px;
-  font-family:var(--mono); font-size:13.5px; background:#fff;
+  font-family:var(--mono); font-size:13.5px; background:var(--panel);
 }
 
 .excessworking-app .card-head {display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; flex-wrap:wrap;}
