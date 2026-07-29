@@ -205,6 +205,15 @@ const _PAGE_SUBROUTES = {
   notesheets: function(sub) {
     // Notes & Sheets' pill nav (notes/sheets/manage/data) is a sub-route:
     // #notesheets/<panel> — see js/notes-sheets.js's _nsSetPanel.
+    // A specific note is one level deeper: #notesheets/note/<id> switches
+    // to the Notes panel and opens that note straight into its editor
+    // (used by Cover's own note-preview tiles).
+    const parts = sub.split('/');
+    if (parts[0] === 'note') {
+      if (typeof _nsSetPanel === 'function') _nsSetPanel('notes');
+      if (typeof _nsOpenNote === 'function') _nsOpenNote(decodeURIComponent(parts[1] || ''));
+      return;
+    }
     if (typeof _nsSetPanel === 'function') _nsSetPanel(sub);
   },
   tools: function(sub) {

@@ -1097,7 +1097,7 @@ export function renderCoverDashboard() {
     const snippet = text.length > 60 ? text.slice(0, 60).trim() + '…' : text;
     const when = nt.updatedAt ? new Date(nt.updatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '';
     return `
-      <div class="cover-hero-card">
+      <div class="cover-hero-card" data-note-goto="${_esc(nt.id || '')}" role="button" tabindex="0" style="cursor:pointer">
         <div class="cover-hero-label">${nt.pinned ? '📌 Pinned Note' : '📝 Recent Note'}</div>
         <div class="cover-hero-value" style="font-size:14.5px;font-family:inherit;font-weight:600;line-height:1.35;margin-top:6px">${_esc(snippet)}</div>
         ${when ? `<div class="cover-hero-sub">${_esc(when)}</div>` : ''}
@@ -1235,6 +1235,15 @@ export function renderCoverDashboard() {
     };
     card.addEventListener('click', openIt);
     card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openIt(); } });
+  });
+  container.querySelectorAll('[data-note-goto]').forEach(card => {
+    const goTo = () => {
+      const id = card.dataset.noteGoto;
+      if (!id) return;
+      location.hash = '#notesheets/note/' + encodeURIComponent(id);
+    };
+    card.addEventListener('click', goTo);
+    card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goTo(); } });
   });
   container.querySelectorAll('[data-pin-key]').forEach(btn => {
     btn.addEventListener('click', e => {
