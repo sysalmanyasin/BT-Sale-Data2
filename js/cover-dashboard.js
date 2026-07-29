@@ -297,6 +297,22 @@ function _pinnedNoteSubtitle() {
   }
 }
 
+// Up to 3 notes for the Notes & Sheets group's own hero preview — pinned
+// notes first (most-recently-updated first among those), then filled out
+// with the most-recently-updated remaining notes. Same bt_notes_v1 list
+// as _pinnedNoteSubtitle above, so it can never drift from the real Notes
+// page.
+function _noteTiles() {
+  try {
+    const notes = JSON.parse(Repository.getItem('bt_notes_v1') || '[]');
+    if (!notes.length) return [];
+    const byRecency = (a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0);
+    const pinned = notes.filter(n => n && n.pinned).sort(byRecency);
+    const rest = notes.filter(n => n && !n.pinned).sort(byRecency);
+    return pinned.concat(rest).slice(0, 3);
+  } catch (e) { return []; }
+}
+
 const SHIFT_ICON = { pending: '⚪', draft: '🟡', closed: '✅' };
 
 // Turns a Closing shift key ("2026-07-19_Night") into "19 Jul · Night".
@@ -736,11 +752,13 @@ function _tiles() {
 // reference material. The "Needs Attention" strip above still surfaces
 // the single most urgent items regardless of this order; this just makes
 // the full scroll match the same priority.
-const GROUP_ORDER = ['Inventory', 'Manager', 'Closing', 'Sales', 'Audit', 'Quick Access', 'Notes & Sheets', 'Reports'];
+// "Quick Access" (PDF Library) was dropped entirely — it had no hero
+// content of its own, just a single shortcut tile, which Cover no longer
+// renders; PDF Library still lives in the bottom nav / All Sections menu.
+const GROUP_ORDER = ['Inventory', 'Manager', 'Closing', 'Sales', 'Reports', 'Notes & Sheets', 'Audit'];
 const GROUP_META = {
   'Sales':           { slug: 'sales',   icon: '📊' },
   'Manager':         { slug: 'manager', icon: '👔' },
-  'Quick Access':    { slug: 'quickaccess', icon: '🧭' },
   'Notes & Sheets':  { slug: 'notes',   icon: '📑' },
   'Closing':         { slug: 'closing', icon: '🔒' },
   'Audit':           { slug: 'audit',   icon: '🧾' },
@@ -753,18 +771,37 @@ const GROUP_META = {
 // COLLAPSE_KEY (open/closed) and PIN_KEY (shortcut tiles), same
 // mirrored getter/setter/Repository pattern as both of those.
 const ORDER_KEY = 'bt_cover_order_v1';
+// One-time flag: Audit and Reports swapped priority, and Quick Access was
+// retired (July 2026). Devices that already have a saved drag-order from
+// before that change need a single migration pass — see _getOrder below —
+// rather than a blanket reset, so any other custom position someone has
+// already dragged into place (e.g. Manager ahead of Inventory) is left
+// exactly as they set it.
+const ORDER_MIGRATION_KEY = 'bt_cover_order_migrated_v2';
 function _defaultOrderSlugs() { return GROUP_ORDER.map(name => (GROUP_META[name] || {}).slug).filter(Boolean); }
 function _getOrder() {
   try {
     const raw = Repository.getItem(ORDER_KEY);
-    if (raw == null) return _defaultOrderSlugs();
-    const saved = JSON.parse(raw || '[]');
+    let saved = raw == null ? _defaultOrderSlugs() : JSON.parse(raw || '[]');
     // A group that's shipped since this was last saved won't be in the
     // saved array — append it at the end rather than dropping it
     // silently, same "never lose a group" reasoning as _getCollapsed's
-    // ALL_GROUP_SLUGS seeding above.
+    // ALL_GROUP_SLUGS seeding above. A group that's since been retired
+    // (e.g. Quick Access) is the mirror case — drop it so it doesn't
+    // linger forever in a saved order it can no longer resolve back to
+    // a name (_orderedGroupNames already filters it, this just keeps
+    // what gets re-saved clean too).
+    const defaults = _defaultOrderSlugs();
     const known = new Set(saved);
-    _defaultOrderSlugs().forEach(slug => { if (!known.has(slug)) saved.push(slug); });
+    defaults.forEach(slug => { if (!known.has(slug)) saved.push(slug); });
+    saved = saved.filter(slug => defaults.includes(slug));
+
+    if (!Repository.getItem(ORDER_MIGRATION_KEY)) {
+      const ai = saved.indexOf('audit'), ri = saved.indexOf('reports');
+      if (ai !== -1 && ri !== -1 && ai < ri) { const tmp = saved[ai]; saved[ai] = saved[ri]; saved[ri] = tmp; }
+      Repository.setItem(ORDER_MIGRATION_KEY, '1');
+      _setOrder(saved);
+    }
     return saved;
   } catch (e) { return _defaultOrderSlugs(); }
 }
@@ -1036,6 +1073,23 @@ export function renderCoverDashboard() {
       ${heroCard(credits)}
     </div>`;
 
+  const noteTiles = _noteTiles();
+  const noteHeroCard = nt => {
+    const text = (nt.title && nt.title.trim()) || (nt.body || '').trim() || 'Untitled note';
+    const snippet = text.length > 60 ? text.slice(0, 60).trim() + '…' : text;
+    const when = nt.updatedAt ? new Date(nt.updatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '';
+    return `
+      <div class="cover-hero-card">
+        <div class="cover-hero-label">${nt.pinned ? '📌 Pinned Note' : '📝 Recent Note'}</div>
+        <div class="cover-hero-value" style="font-size:14.5px;font-family:inherit;font-weight:600;line-height:1.35;margin-top:6px">${_esc(snippet)}</div>
+        ${when ? `<div class="cover-hero-sub">${_esc(when)}</div>` : ''}
+      </div>`;
+  };
+  const notesHeroHtml = noteTiles.length ? `
+    <div class="cover-hero-row">
+      ${noteTiles.map(noteHeroCard).join('')}
+    </div>` : '';
+
   const closingLatestSummary = _closingLatestSummary();
   const closingLatestCredit = _closingLatestCredit();
   const closingLatestMisc = _closingLatestMisc();
@@ -1093,11 +1147,10 @@ export function renderCoverDashboard() {
   // Every group card still leads with its own live header (icon, title,
   // one-line status, drag-to-reorder) exactly as before — this only
   // removes the per-tile "leading to a page" grid that used to sit
-  // inside the body. Sections themselves (including ones with no hero
-  // content of their own yet, like Audit/Notes & Sheets/Reports/Quick
-  // Access) stay exactly as-is, collapse/expand included, ready for
-  // hero cards to land in them later.
-  const GROUP_HERO = { Sales: heroHtml, Manager: managerHeroHtml, Closing: closingHeroHtml, Inventory: inventoryHeroHtml };
+  // inside the body. Sections with no hero content of their own yet
+  // (Audit, Reports) stay exactly as-is, collapse/expand included, ready
+  // for hero cards to land in them later.
+  const GROUP_HERO = { Sales: heroHtml, Manager: managerHeroHtml, Closing: closingHeroHtml, Inventory: inventoryHeroHtml, 'Notes & Sheets': notesHeroHtml };
   // New home for the old per-tile "Bridge" button: one ↻ on each
   // bridge-backed group's own header, force-refreshing past the normal
   // 5-min cache — available regardless of whether that group's body is

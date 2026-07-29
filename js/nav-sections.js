@@ -65,11 +65,16 @@
   const _VIRTUAL = {
     pdfLibrary: { label: 'PDF Library', icon: '📚', href: '#pdf-library' },
     auditExternal: { label: 'Audit', icon: '🧾', href: 'https://random.duapharma.com', external: true },
+    reports: [
+      { label: 'Daily Check List', icon: '✅', href: 'https://reports.duapharma.com/daily_report.html', external: true },
+      { label: 'Excess Stock Control', icon: '📦', href: 'https://reports.duapharma.com/excess-stock-control.html', external: true },
+      { label: 'Branch Invoice Desk', icon: '🧮', href: 'https://reports.duapharma.com/invoice-desk.html', external: true },
+    ],
   };
 
   // bnav-item's data-domain-group value (or this file's synthetic group
   // key) -> Cover dashboard's GROUP_META slug (js/cover-dashboard.js).
-  const _DOMAIN_TO_COVER_SLUG = { sales: 'sales', manager: 'manager', notesheets: 'notes', closing: 'closing', audit: 'audit', inventory: 'inventory' };
+  const _DOMAIN_TO_COVER_SLUG = { sales: 'sales', manager: 'manager', notesheets: 'notes', closing: 'closing', audit: 'audit', inventory: 'inventory', reports: 'reports' };
 
   function _esc(s) {
     return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -199,6 +204,11 @@
     } else if (flat.notesheets) {
       groups.push({ label: 'Notes & Sheets', icon: flat.notesheets.icon, href: flat.notesheets.href, kids: [], _domainGroup: 'notesheets' });
     }
+
+    // New: Reports umbrella over the 3 external report links (none of
+    // these have a bnav item — same "external, no page behind it"
+    // pattern as Audit's own external tile above).
+    groups.push(_customGroup('reports', 'Reports', '📚', _VIRTUAL.reports.map(r => ({ label: r.label, icon: r.icon, href: r.href, external: true, kids: [] }))));
 
     // Tools: its own Sync Center collapses into a nested group (with its
     // 6 tabs as sub-subs), followed by every other settings card.
