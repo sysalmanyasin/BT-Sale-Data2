@@ -212,8 +212,8 @@ export function openLedgerQuickAdd(prefill, onSaved) {
           try {
             await saveMark({ rowKey: prefill.rowKey, ledgerType: 'staff_credit:' + staffName, entryId: monthKey + ':' + newIndex, amount: parseFloat(amount) || 0, description: desc });
           } catch (markErr) {
-            console.warn('ledger-quick-add: mark save failed (entry itself saved fine) —', markErr.message);
-            if (typeof toast === 'function') toast('✓ Added — but the "already added" marker failed to save, the row may still show + Ledger', 'w');
+            console.warn('ledger-quick-add: mark save failed, queued for retry (entry itself saved fine) —', markErr.message);
+            if (typeof toast === 'function') toast('✓ Added — receipt will finish syncing in the background', 'w');
             close();
             if (typeof _onSaved === 'function') _onSaved();
             return;
@@ -246,13 +246,13 @@ export function openLedgerQuickAdd(prefill, onSaved) {
         try {
           await saveMark({ rowKey: prefill.rowKey, ledgerType, entryId: entry.id, amount: entry.amount, description: desc });
         } catch (markErr) {
-          // The real ledger entry above DID save — only the "already added"
-          // receipt failed. Don't roll anything back or block the user;
-          // just say so, since the row may still show "+ Ledger" elsewhere
-          // until this is retried (tapping it again just adds a second
-          // entry, so surfacing this clearly matters).
-          console.warn('ledger-quick-add: mark save failed (entry itself saved fine) —', markErr.message);
-          if (typeof toast === 'function') toast('✓ Added — but the "already added" marker failed to save, the row may still show + Ledger', 'w');
+          // The real ledger entry above DID save. The receipt write below
+          // failed, but saveMark() already queued it locally and flipped
+          // this row to Added in memory — a retry tap won't double-add,
+          // and flushPendingMarks() will retry the receipt in the
+          // background (on next load and on 'online').
+          console.warn('ledger-quick-add: mark save failed, queued for retry (entry itself saved fine) —', markErr.message);
+          if (typeof toast === 'function') toast('✓ Added — receipt will finish syncing in the background', 'w');
           close();
           if (typeof _onSaved === 'function') _onSaved();
           return;
