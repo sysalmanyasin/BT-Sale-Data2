@@ -181,7 +181,18 @@ body[data-domain="inventory"] {
 }
 .recents-row:last-child { border-bottom: none; }
 .recents-row:hover, .recents-row:active { background: var(--s2); }
-.recents-icon { font-size: 18px; flex-shrink: 0; width: 24px; text-align: center; }
+.recents-icon {
+  font-size: 15px; flex-shrink: 0; width: 28px; height: 28px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 9px; background: var(--s2); border: 1px solid var(--border);
+}
+/* Nested rows (depth ≥ 1 in the All Sections drawer) get a smaller,
+   softer-tinted chip — reinforces hierarchy instead of every row at
+   every depth looking like the exact same size/weight. */
+.recents-icon-sub {
+  width: 24px; height: 24px; font-size: 13px; border-radius: 7px;
+  background: var(--alt, var(--s2)); border-color: transparent;
+}
 .recents-label { flex: 1; font-size: 13px; font-weight: 500; }
 .recents-time { font-size: 11px; color: var(--muted); flex-shrink: 0; }
 .recents-empty { text-align: center; padding: 28px 12px; color: var(--muted); font-size: 13px; }

@@ -138,8 +138,27 @@
   function _leaf(f) {
     return f ? { label: f.label, icon: f.icon, href: f.href, kids: [] } : null;
   }
+
+  // Every *.mgr-tab/.cl-mode-tab/.ns-pill/.sc-tab/.tcard label in this app
+  // is already written as "🖐 Some Label" — the emoji lives inline in the
+  // text, there's no separate icon markup to read. Rendering these
+  // straight through a generic icon slot doubled it up: the same flat
+  // white 📄/📁 placeholder next to a label that already has its own
+  // colorful icon baked in. This pulls that leading emoji out into the
+  // real icon slot instead, so it renders once, properly.
+  const _LEADING_EMOJI_RE = /^(\p{Extended_Pictographic}(\uFE0F|\u200D\p{Extended_Pictographic})*)\s*/u;
+  // Sale Data's own sub-tabs (Index/Daily Data/...) are the one set of
+  // labels with no emoji of their own at all — curated real icons here
+  // instead of every one of them falling back to the same generic 📄.
+  const _CURATED_ICONS = {
+    '#index': '📇', '#data': '🗓️', '#entry': '➕', '#report': '📄', '#cashdeposit': '💵', '#diff': '🧮',
+  };
   function _leafFromList(item) {
-    return { label: item.label, icon: null, href: item.href, kids: [] };
+    if (item.icon) return { label: item.label, icon: item.icon, href: item.href, kids: [] };
+    const m = _LEADING_EMOJI_RE.exec(item.label);
+    const icon = (m && m[0].trim()) ? m[0].trim() : (_CURATED_ICONS[item.href] || null);
+    const label = (m && m[0].trim()) ? (item.label.slice(m[0].length).trim() || item.label) : item.label;
+    return { label: label, icon: icon, href: item.href, kids: [] };
   }
   function _customGroup(domainGroup, label, icon, kids) {
     const filtered = (kids || []).filter(Boolean);
@@ -268,7 +287,7 @@
       <div class="sections-group" data-label="${_esc(node.label)}">
         <div class="sections-row ${rowClass}" style="padding-left:${_indent(depth)}px">
           <span class="sections-nav-hit" onclick="${hitClick}">
-            <span class="recents-icon">${_esc(node.icon || (isGroup ? '📁' : '📄'))}</span>
+            <span class="recents-icon${depth > 0 ? ' recents-icon-sub' : ''}">${_esc(node.icon || (isGroup ? '📁' : '📄'))}</span>
             ${labelSpan}
           </span>
           ${isGroup ? `<button type="button" class="sections-toggle" aria-label="Expand ${_esc(node.label)}" onclick="event.stopPropagation();BTNavSections._toggle(this);">▸</button>` : ''}
