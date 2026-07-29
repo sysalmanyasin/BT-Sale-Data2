@@ -124,7 +124,7 @@ function renderQuickAdd(containerId) {
       if (!sections.length) {
         fieldsWrap.innerHTML = `
           <div style="font-size:12px;color:var(--muted)">
-            No custom sections yet — <a href="#manager/custom" style="color:var(--accent);font-weight:600">create one in "＋ C. New Sections"</a> first, then it'll show up here.
+            No custom sections yet — <a href="#manager/custom" style="color:var(--accent);font-weight:600">create one in "🗂️ C. Misc Sections"</a> first, then it'll show up here.
           </div>`;
         return;
       }
