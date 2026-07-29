@@ -32,6 +32,29 @@
 // estimate only for rows that predate this field. demandValueP (the
 // cost to buy MORE stock) intentionally still uses current unitPrice —
 // that's a forward-looking purchase cost, not a historical sale value.
+//
+// 2026-07-29 fix: filter ORDER was backwards for the Top N tab (and for
+// Cover Dashboard's "<7d cover · Top 500 by 30d value" stat, which reads
+// from the same engine via getSummaryFor). It used to filter every row
+// for daysCover < coverDays FIRST, then rank the survivors by sale value
+// and cap at Top N — so the N cap only ever trimmed an already-filtered
+// pool instead of first narrowing to "the N items that actually matter
+// by sale value." Verified against Candela's own C-19 report (which
+// runs the full, unfiltered item universe, ranks by 30-day Sale Amount,
+// takes the top 500, and only THEN applies the <7-day filter): the old
+// order flagged ~474 items against Candela's 48 for the same data,
+// because it let plenty of low-value slow-movers into the flagged set
+// that never would have made the top-500-by-value cut in the first
+// place. Fixed by splitting the pipeline into three stages — compute
+// every row's metrics (computeAllRows), rank ALL of them by sale value
+// and cap at Top N (topNByValue), THEN filter that capped pool by cover
+// days (lowCoverWithin) — reproduced Candela's 48-item list exactly.
+// The "All Flagged" tab intentionally keeps the old unranked, uncapped
+// view (every item under the cover threshold, regardless of value) —
+// that's a broader diagnostic view for exploration, not meant to match
+// Candela's own report, so it still runs lowCoverWithin() directly over
+// computeAllRows() with no Top N stage. Only the Top N tab and
+// getSummaryFor() (Candela-equivalent paths) got the ordering fix.
 // ══════════════════════════════════════════════════════════════════════
 
 window.ReorderReportApp = (function () {
@@ -93,7 +116,11 @@ window.ReorderReportApp = (function () {
   function saveGroup() { repoSet(GROUP_KEY, state.groupBySupplier ? '1' : '0'); }
 
   // ---------- CALCULATION ENGINE ----------
-  function computeRows(rawRows, primaryWindow, coverDays) {
+  // Computes every window's metrics for every raw row, unfiltered.
+  // coverDays is still needed here even though nothing gets filtered on
+  // it in this function — demandQty (how much to buy to reach the
+  // target cover) is computed per-row against it.
+  function computeAllRows(rawRows, primaryWindow, coverDays) {
     const rows = rawRows.map(r => {
       const stock = Number(r.stock) || 0;
       const unitPrice = Number(r.unitPrice) || 0;
@@ -131,14 +158,29 @@ window.ReorderReportApp = (function () {
       out.demandValueP = out.demandQtyP * unitPrice;
       return out;
     });
-    // Qualifies only if it actually sold something in the primary window
-    // (no rate, no meaningful "days cover") AND that cover is under the
-    // threshold — zero stock included on purpose, that's the most urgent case.
+    return rows;
+  }
+
+  // Cover-days filter, applied as its own explicit stage so callers can
+  // choose whether to run it before or after ranking/capping. Qualifies
+  // only if it actually sold something in the primary window (no rate,
+  // no meaningful "days cover") AND that cover is under the threshold —
+  // zero (or negative, e.g. a backorder) stock included on purpose,
+  // that's the most urgent case.
+  function lowCoverWithin(rows, coverDays) {
     return rows.filter(r => r.saleQtyP > 0 && r.daysCoverP != null && r.daysCoverP < coverDays);
   }
 
   function recompute() {
-    state.computed = computeRows(state.rawRows, state.window, Number(state.coverDays) || 15);
+    const coverDays = Number(state.coverDays) || 15;
+    const allRows = computeAllRows(state.rawRows, state.window, coverDays);
+    // "All Flagged" tab: every item under the cover threshold, unranked
+    // and uncapped — a broader diagnostic view, not meant to reproduce
+    // Candela's own report (see header comment).
+    state.computed = lowCoverWithin(allRows, coverDays);
+    // "Top N" tab: Candela's own order — rank ALL items by sale value,
+    // cap at Top N, THEN filter that capped pool by cover days.
+    state.topNFlagged = lowCoverWithin(topNByValue(allRows, state.topN), coverDays);
   }
 
   function refreshFromStockLedger(silent) {
@@ -155,8 +197,15 @@ window.ReorderReportApp = (function () {
     if (!silent) say(state.dataReady ? ('Pulled ' + state.rawRows.length + ' items from Stock Ledger') : 'No Stock Ledger data loaded yet');
   }
 
-  function topRows(rows, n) {
-    return [...rows].sort((a, b) => b.saleValueP - a.saleValueP).slice(0, Math.max(1, n || 50));
+  // Ranks by sale value and caps at N. Only items that actually sold in
+  // the primary window are eligible to be ranked — previously this was
+  // guaranteed upstream by computeRows()'s own filter; now that ranking
+  // can run over the full unfiltered row set (see recompute()), the
+  // guard has to live here instead.
+  function topNByValue(rows, n) {
+    return rows.filter(r => r.saleQtyP > 0)
+      .sort((a, b) => b.saleValueP - a.saleValueP)
+      .slice(0, Math.max(1, n || 50));
   }
 
   function sortRows(rows, sort) {
@@ -294,7 +343,7 @@ window.ReorderReportApp = (function () {
   }
 
   function exportTopNExcel() {
-    const rows = topRows(state.computed, state.topN);
+    const rows = state.topNFlagged;
     if (!rows.length) { say('No flagged items to export yet', 'e'); return; }
     const cols = allCols();
     const aoa = [
@@ -310,7 +359,7 @@ window.ReorderReportApp = (function () {
   }
 
   function exportTopNPdf() {
-    const rows = topRows(state.computed, state.topN);
+    const rows = state.topNFlagged;
     if (!rows.length) { say('No flagged items to export yet', 'e'); return; }
     const cols = allCols();
     const body = rows.map((r, i) => rowToPdf(r, cols, i + 1));
@@ -421,7 +470,7 @@ window.ReorderReportApp = (function () {
   }
 
   function renderTopNTab() {
-    const top = topRows(state.computed, state.topN);
+    const top = state.topNFlagged;
     const cols = allCols();
     const { rows: shownAfterSearch, html: tableHtmlStr } = tableHtml(top, cols);
     return `
@@ -439,7 +488,7 @@ window.ReorderReportApp = (function () {
     return `
       ${statsHtml(shownAfterSearch, state.computed.length)}
       <div class="card">
-        <div class="card-head"><h3>All Flagged Items</h3><span class="hint">no Top N cap — every item under the cover threshold</span></div>
+        <div class="card-head"><h3>All Flagged Items</h3><span class="hint">no Top N cap — every item under the cover threshold, unranked by value (broader than the Top N tab; not what Candela's own report shows)</span></div>
         ${controlsHtml(false)}
         ${tableHtmlStr}
       </div>`;
@@ -554,23 +603,29 @@ window.ReorderReportApp = (function () {
   // ── Cover Dashboard hero stats ──────────────────────────────────────
   // Safe to call cold (this page's own tab never opened this session) —
   // pulls straight from Stock Ledger and runs the exact same
-  // computeRows()/topRows() engine the Top N tab uses, just with
-  // whatever window/coverDays/topN the caller asks for (e.g. Cover's
-  // "<7 days, Top 500 by 30d sale value" stat), independent of this
-  // page's own persisted settings so visiting Reorder Report and
-  // changing its controls never affects Cover's fixed stat.
+  // computeAllRows()/topNByValue()/lowCoverWithin() pipeline the Top N
+  // tab uses, just with whatever window/coverDays/topN the caller asks
+  // for (e.g. Cover's "<7 days, Top 500 by 30d sale value" stat),
+  // independent of this page's own persisted settings so visiting
+  // Reorder Report and changing its controls never affects Cover's
+  // fixed stat. Ranks by sale value and caps at topN FIRST, then
+  // applies the cover-days filter — this is what makes the number here
+  // match Candela's own C-19 report (see header comment for why the old
+  // order was wrong).
   function getSummaryFor(windowDays, coverDaysThreshold, topN) {
     const SL = window.StockLedgerApp;
     const rawRows = (SL && typeof SL.hasData === 'function' && SL.hasData() && typeof SL.getRawRows === 'function')
       ? SL.getRawRows() : null;
     if (!rawRows) return null;
     const w = WINDOWS.indexOf(windowDays) !== -1 ? windowDays : 30;
-    const flagged = computeRows(rawRows, w, coverDaysThreshold || 7);
-    const shown = topRows(flagged, topN || 500);
+    const cd = coverDaysThreshold || 7;
+    const allRows = computeAllRows(rawRows, w, cd);
+    const pool = topNByValue(allRows, topN || 500);
+    const shown = lowCoverWithin(pool, cd);
     return {
       window: w,
-      coverDaysThreshold: coverDaysThreshold || 7,
-      itemsFlagged: flagged.length,
+      coverDaysThreshold: cd,
+      itemsFlagged: shown.length,
       itemsShown: shown.length,
       totalSaleValue: shown.reduce((s, r) => s + r.saleValueP, 0),
       totalReorderQty: shown.reduce((s, r) => s + r.demandQtyP, 0),
@@ -589,8 +644,9 @@ window.ReorderReportApp = (function () {
     const rawRows = (SL && typeof SL.hasData === 'function' && SL.hasData() && typeof SL.getRawRows === 'function')
       ? SL.getRawRows() : null;
     if (!rawRows) return [];
-    const flagged = computeRows(rawRows, state.window, Number(state.coverDays) || 15);
-    return topRows(flagged, state.topN);
+    const cd = Number(state.coverDays) || 15;
+    const allRows = computeAllRows(rawRows, state.window, cd);
+    return lowCoverWithin(topNByValue(allRows, state.topN), cd);
   }
 
   return { init: init, getSummaryFor: getSummaryFor, getFlaggedRows: getFlaggedRows };
