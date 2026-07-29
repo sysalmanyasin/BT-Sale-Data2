@@ -40,7 +40,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 
 <!-- CSS Modules — load order matters -->
-<link rel="stylesheet" href="css/variables.css?v=20260722a">
+<link rel="stylesheet" href="css/variables.css?v=20260729a">
 <link rel="stylesheet" href="css/auth.css?v=20260722a">
 <link rel="stylesheet" href="css/nav.css?v=20260728b">
 <link rel="stylesheet" href="css/closing-native.css?v=20260728a">
@@ -53,11 +53,11 @@
 <link rel="stylesheet" href="css/pdf-library.css?v=20260725a">
 <link rel="stylesheet" href="css/cash-deposit-report.css?v=20260725b">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,400,0,0">
-<link rel="stylesheet" href="css/components.css?v=20260722a">
+<link rel="stylesheet" href="css/components.css?v=20260729a">
 <link rel="stylesheet" href="css/modals.css?v=20260722a">
-<link rel="stylesheet" href="css/pages.css?v=20260722a">
+<link rel="stylesheet" href="css/pages.css?v=20260729a">
 <link rel="stylesheet" href="css/cover-dashboard.css?v=20260728a">
-<link rel="stylesheet" href="css/mobile.css?v=20260722a">
+<link rel="stylesheet" href="css/mobile.css?v=20260729a">
 
 <!-- Service Worker registration -->
 <script>
@@ -1536,28 +1536,22 @@ if ('serviceWorker' in navigator) {
        Built by renderQuickAdd() in js/quick-add.js. -->
   <div id="qa-panel-mgr"></div>
 
-  <div style="margin-bottom:18px" id="mgr-tabs">
+  <div id="mgr-tabs">
     <!-- ── Group: Credit Detail ────────────────────── -->
-    <div style="margin-bottom:12px">
-      <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.09em;text-transform:uppercase;margin-bottom:7px;display:flex;align-items:center;gap:9px">
-        <span style="white-space:nowrap">Credit Detail</span>
-        <span style="flex:1;height:1px;background:var(--border);opacity:.5;display:inline-block"></span>
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <a class="btn mgr-tab" href="#manager/staff" data-mtab="staff" style="background:var(--green,#059669);color:#fff">👤 Staff Registry</a>
+    <div class="mgr-tabgroup">
+      <div class="mgr-tabgroup-label"><span>Credit Detail</span></div>
+      <div class="mgr-tabrow">
+        <a class="btn mgr-tab mgr-tab-em em-green" href="#manager/staff" data-mtab="staff">👤 Staff Registry</a>
         <a class="btn mgr-tab" href="#manager/credit" data-mtab="credit">👥 A. Staff Credits</a>
         <a class="btn mgr-tab" href="#manager/expense" data-mtab="expense">🧾 B. Patty/Expenses</a>
-        <a class="btn mgr-tab" href="#manager/custom" data-mtab="custom" id="mgr-tab-custom" style="background:var(--purple,#7c3aed);color:#fff">🗂️ C. Misc Sections</a>
+        <a class="btn mgr-tab mgr-tab-em em-purple" href="#manager/custom" data-mtab="custom" id="mgr-tab-custom">🗂️ C. Misc Sections</a>
         <a class="btn mgr-tab" href="#manager/jazzcash" data-mtab="jazzcash">📒 Jazz Cash</a>
       </div>
     </div>
     <!-- ── Group: Working ──────────────────────────── -->
-    <div>
-      <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.09em;text-transform:uppercase;margin-bottom:7px;display:flex;align-items:center;gap:9px">
-        <span style="white-space:nowrap">Working</span>
-        <span style="flex:1;height:1px;background:var(--border);opacity:.5;display:inline-block"></span>
-      </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
+    <div class="mgr-tabgroup">
+      <div class="mgr-tabgroup-label"><span>Working</span></div>
+      <div class="mgr-tabrow">
         <a class="btn mgr-tab active" href="#manager/salary" data-mtab="salary">💰 a. Salary</a>
         <a class="btn mgr-tab" href="#manager/generic" data-mtab="generic">📈 b. Generic</a>
         <a class="btn mgr-tab" href="#manager/petty" data-mtab="petty">🧮 c. Patty Detail</a>

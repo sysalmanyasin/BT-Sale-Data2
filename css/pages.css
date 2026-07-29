@@ -125,12 +125,32 @@
 .petty-group-body{padding:10px 14px 0;}
 .petty-group-foot{padding:8px 14px;background:var(--s2);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
 .mgr-section{animation:fadein .2s;}
-.mgr-tab{background:var(--s2);color:var(--t2);border:1px solid var(--border);font-size:12px;padding:7px 14px;}
-.mgr-tab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
-.mgr-tab:hover:not(.active){border-color:var(--accent);color:var(--accent);}
-.mgr-inp{background:var(--s2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 7px;font-size:12px;font-family:var(--sans);outline:none;width:100%;}
-.mgr-inp:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(37,99,235,.12);}
-.mgr-inp.calc{background:#f0fdf4;border-color:#bbf7d0;font-weight:700;font-family:var(--mono);color:var(--green);}
+
+/* ── Manager tab groups — soft cards housing a row of pill tabs.
+   Replaces the old ad-hoc inline background colors (var(--green),
+   var(--purple), etc.) that painted whole buttons solid and made the
+   toolbar read as a random rainbow of blocks. Now every tab shares the
+   same quiet resting style; the two "special" destinations (Staff
+   Registry, Misc Sections) get a subtle colored left edge + icon chip
+   instead of a full-saturation fill, so they stay distinguishable
+   without breaking the row's visual rhythm. */
+.mgr-tabgroup{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:14px 16px;margin-bottom:12px;box-shadow:var(--sh);}
+.mgr-tabgroup-label{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.09em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:9px;}
+.mgr-tabgroup-label::after{content:'';flex:1;height:1px;background:var(--border);opacity:.7;}
+.mgr-tabrow{display:flex;gap:7px;flex-wrap:wrap;}
+
+.mgr-tab{background:var(--s2);color:var(--t2);border:1px solid var(--border);font-size:12.5px;font-weight:600;padding:8px 15px;border-radius:var(--r-pill);box-shadow:none;}
+.mgr-tab.active{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 4px 12px -3px rgba(58,97,247,.5);}
+.mgr-tab:hover:not(.active){border-color:var(--accent);color:var(--accent);background:var(--alt);}
+.mgr-tab-em{position:relative;padding-left:13px;}
+.mgr-tab-em::before{content:'';position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:3px;}
+.mgr-tab-em.em-green::before{background:var(--green);}
+.mgr-tab-em.em-purple::before{background:var(--purple);}
+.mgr-tab-em.active::before{background:rgba(255,255,255,.7);}
+
+.mgr-inp{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--r-xs);padding:7px 9px;font-size:12.5px;font-family:var(--sans);outline:none;width:100%;transition:border-color .15s,box-shadow .15s;}
+.mgr-inp:focus{border-color:var(--accent);box-shadow:var(--focus-ring);}
+.mgr-inp.calc{background:var(--glt);border-color:#bbf0d5;font-weight:700;font-family:var(--mono);color:var(--green);}
 .mgr-td{padding:5px 6px;border:1px solid var(--border);vertical-align:middle;}
 .sal-c{text-align:center;}
 .sal-num{text-align:center!important;}
@@ -141,6 +161,38 @@
 .mgr-del{background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:4px;}
 .mgr-del:hover{background:var(--rlt,#fee2e2);}
 .mgr-tfoot td{font-weight:700;color:var(--accent);font-family:var(--mono);padding:7px 10px;border-top:2px solid var(--border);background:var(--s2);}
+/* ── Generalized Ledger view (Jazz Cash / Expense / custom sections) ──
+   Rendered by js/ledger-page.js's renderLedgerView(); the markup only
+   carries stable classnames (.ledger-header, .ledger-add-form, etc.),
+   so all the visual work happens here — no JS changes needed. */
+.ledger-header{background:linear-gradient(135deg,#141b3d,#2543c9 65%,#3a61f7);color:#fff;border-radius:var(--r-md);padding:16px 20px!important;margin-bottom:14px!important;box-shadow:var(--sh-md);}
+.ledger-header strong{font-size:14px;font-weight:700;letter-spacing:-.01em;}
+.ledger-header > div:last-child{font-size:12px;opacity:.85;}
+.ledger-header > div:last-child > div{font-size:22px!important;font-weight:700;font-family:var(--mono);opacity:1;letter-spacing:-.01em;}
+.ledger-opening-btn{background:rgba(255,255,255,.14)!important;color:#fff!important;border:1px solid rgba(255,255,255,.28)!important;font-weight:600!important;border-radius:var(--r-pill)!important;}
+.ledger-opening-btn:hover{background:rgba(255,255,255,.24)!important;}
+
+.ledger-add-form{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:12px 14px!important;box-shadow:var(--sh);align-items:center;}
+.ledger-add-form .btn{background:var(--accent);color:#fff;box-shadow:0 2px 8px -2px rgba(58,97,247,.5);margin-left:auto;}
+.ledger-add-form .btn:hover{background:var(--accent-dk);}
+
+.ledger-filter-bar{background:var(--s2)!important;border:1px solid var(--border);border-radius:var(--r-sm)!important;}
+.ledger-filter-bar .btn{background:var(--surface);border:1px solid var(--border);color:var(--t2);}
+.ledger-filter-bar .btn:hover{border-color:var(--accent);color:var(--accent);}
+
+.ledger-table-wrap{border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;box-shadow:var(--sh);}
+.ledger-table{border-collapse:collapse;font-size:12.5px;}
+.ledger-table thead tr{background:var(--s2);}
+.ledger-table th{padding:10px 12px;text-align:right;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);border-bottom:2px solid var(--border);white-space:nowrap;}
+.ledger-table th:first-child,.ledger-table th:nth-child(2),.ledger-table th:nth-child(3){text-align:left;}
+.ledger-table td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--border);font-family:var(--mono);color:var(--t2);vertical-align:middle;}
+.ledger-table td:first-child,.ledger-table td:nth-child(2),.ledger-table td:nth-child(3){text-align:left;font-family:var(--sans);}
+.ledger-table td:nth-child(4){font-family:var(--sans);color:var(--text);}
+.ledger-table tbody tr:last-child td{border-bottom:none;}
+.ledger-row-clickable:hover td{background:var(--alt);}
+.ledger-group-header td{background:var(--s2)!important;}
+.ledger-edit-row td{background:var(--alt2);}
+
 /* ── Staff Credits — modern Sr#-ordered table (mirrors Staff Registry) ── */
 .crd-table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px;box-shadow:var(--sh);}
 .crd-table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:640px;}
