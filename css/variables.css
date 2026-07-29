@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
 :root{
   --bg:#eef1f7;--surface:#fff;--s2:#f7f8fb;--s3:#eef0f5;--border:#e5e8f0;--border-strong:#d7dbe6;
   --r-xs:6px;--r-sm:9px;--r-md:12px;--r-lg:16px;--r-xl:22px;--r-pill:999px;

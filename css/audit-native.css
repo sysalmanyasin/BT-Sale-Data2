@@ -23,7 +23,7 @@
 .an-val-green { background: #ECFDF5; color: #047857; }
 .an-val-red   { background: #FEF2F2; color: #DC2626; }
 .an-val-gold  { background: #FFFBEB; color: #B45309; }
-.an-val-navy  { background: #EFF3FB; color: #1B3A6B; }
+.an-val-navy  { background: var(--alt); color: var(--accent); }
 
 .an-history-item { border: 1px solid var(--border); border-radius: 9px; margin-bottom: 8px; overflow: hidden; }
 .an-history-item:last-child { margin-bottom: 0; }
@@ -40,9 +40,9 @@
 .an-progress-fill { height: 100%; background: #F59E0B; border-radius: 3px; }
 
 .an-filter-btn { font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--t2); cursor: pointer; }
-.an-filter-btn-active { background: #1B3A6B; color: #fff; border-color: #1B3A6B; }
+.an-filter-btn-active { background: var(--accent); color: #fff; border-color: var(--accent); }
 .an-sort-btn { font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--t2); cursor: pointer; }
-.an-btn-primary { padding: 10px; border-radius: 9px; border: none; background: #1B3A6B; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
+.an-btn-primary { padding: 10px; border-radius: 9px; border: none; background: var(--accent); color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
 .an-btn-primary:hover { background: #16305A; }
 
 /* ── Live Snapshot modal ─────────────────────────────────────────── */

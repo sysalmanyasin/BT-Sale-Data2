@@ -1,24 +1,29 @@
 .stockledger-app {
-    --ink:#1A2226;
-    --ink-soft:#4A565C;
-    --paper:#E9EDEC;
-    --panel:#FFFFFF;
-    --line:#D3D9D7;
-    --teal:#0E6E63;
-    --teal-dark:#0A4F47;
-    --rust:#AE3B2C;
-    --amber:#A8762A;
-    --indigo:#33507D;
-    --rust-bg:#FBEDEA;
-    --amber-bg:#FBF1E2;
-    --indigo-bg:#EAEFF7;
-    --slate:#55606B;
-    --slate-bg:#EAECEE;
-    --stone:#7A6A55;
-    --stone-bg:#F2EDE6;
-    --mono:'IBM Plex Mono', ui-monospace, monospace;
-    --sans:'IBM Plex Sans', -apple-system, sans-serif;
-    --display:'Space Grotesk', var(--sans);
+    /* Unified with app design system (variables.css) — was a standalone
+       earthy/stone palette + IBM Plex Sans/Space Grotesk, now maps onto
+       the same tokens every other page uses so this section matches the
+       app's blue theme instead of looking like a separate product. */
+    --ink:var(--text);
+    --ink-soft:var(--muted);
+    --paper:var(--bg);
+    --panel:var(--surface);
+    --line:var(--border);
+    --teal:var(--accent);
+    --teal-dark:var(--accent-dk);
+    --rust:var(--red);
+    --amber:var(--amber);
+    --indigo:var(--accent);
+    --rust-bg:var(--rlt);
+    --amber-bg:var(--alt2);
+    --indigo-bg:var(--alt);
+    --slate:var(--t2);
+    --slate-bg:var(--s3);
+    --stone:var(--muted);
+    --stone-bg:var(--s2);
+    /* --mono/--sans inherit directly from :root (variables.css) now;
+       --display collapses onto --sans since there's no separate display
+       face in the app's type system. */
+    --display:var(--sans);
   }
 .stockledger-app * {box-sizing:border-box;}
 .stockledger-app {
