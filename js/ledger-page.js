@@ -253,7 +253,7 @@ export function renderLedgerView(containerId, ledgerType, label, editingId) {
   });
 }
 
-// ── Other Sections manager (list + create/edit/delete) ─────────────────
+// ── Misc Sections manager (list + create/edit/delete) ─────────────────
 let _osOpenSection = null;  // which custom section, if any, is currently being viewed
 let _osEditingSection = null; // which custom section, if any, is being renamed/re-categorized ('__new__' for the create form)
 
@@ -333,7 +333,7 @@ function _wireSectionForm(formEl, existing, containerId, onSaved) {
 
   formEl.querySelector('.os-form-cancel').addEventListener('click', () => {
     _osEditingSection = null;
-    renderOtherSectionsManager(containerId);
+    renderMiscSectionsManager(containerId);
   });
 
   formEl.querySelector('.os-form-save').addEventListener('click', () => {
@@ -373,7 +373,7 @@ function _deleteSection(type, label, containerId, afterDelete) {
   }
 }
 
-export function renderOtherSectionsManager(containerId) {
+export function renderMiscSectionsManager(containerId) {
   const container = document.getElementById(containerId);
   if (!container) return;
 
@@ -382,7 +382,7 @@ export function renderOtherSectionsManager(containerId) {
     const type = _osEditingSection;
     const existing = type === '__new__' ? null : { id: type, label: (LedgerStore.getAllLedgerTypes().find(t => t.id === type) || {}).label || type };
     container.innerHTML = `<div style="border:1px dashed var(--border);border-radius:10px;padding:14px">${_sectionFormHtml(existing)}</div>`;
-    _wireSectionForm(container.querySelector('div'), existing, containerId, () => renderOtherSectionsManager(containerId));
+    _wireSectionForm(container.querySelector('div'), existing, containerId, () => renderMiscSectionsManager(containerId));
     return;
   }
 
@@ -403,15 +403,15 @@ export function renderOtherSectionsManager(containerId) {
       <div id="os-ledger-view"></div>`;
     container.querySelector('#os-back-btn').addEventListener('click', () => {
       _osOpenSection = null;
-      renderOtherSectionsManager(containerId);
+      renderMiscSectionsManager(containerId);
     });
     container.querySelector('#os-edit-open-btn').addEventListener('click', () => {
       _osEditingSection = type;
       _osOpenSection = null;
-      renderOtherSectionsManager(containerId);
+      renderMiscSectionsManager(containerId);
     });
     container.querySelector('#os-del-open-btn').addEventListener('click', () => {
-      _deleteSection(type, label, containerId, () => { _osOpenSection = null; renderOtherSectionsManager(containerId); });
+      _deleteSection(type, label, containerId, () => { _osOpenSection = null; renderMiscSectionsManager(containerId); });
     });
     renderLedgerView('os-ledger-view', type, label);
     return;
@@ -439,26 +439,26 @@ export function renderOtherSectionsManager(containerId) {
   container.querySelectorAll('.os-card-open').forEach(el => {
     el.addEventListener('click', () => {
       _osOpenSection = el.dataset.type;
-      renderOtherSectionsManager(containerId);
+      renderMiscSectionsManager(containerId);
     });
   });
   container.querySelectorAll('.os-card-edit').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       _osEditingSection = btn.dataset.type;
-      renderOtherSectionsManager(containerId);
+      renderMiscSectionsManager(containerId);
     });
   });
   container.querySelectorAll('.os-card-delete').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      _deleteSection(btn.dataset.type, btn.dataset.label, containerId, () => renderOtherSectionsManager(containerId));
+      _deleteSection(btn.dataset.type, btn.dataset.label, containerId, () => renderMiscSectionsManager(containerId));
     });
   });
 
   container.querySelector('#os-create-btn').addEventListener('click', () => {
     _osEditingSection = '__new__';
-    renderOtherSectionsManager(containerId);
+    renderMiscSectionsManager(containerId);
   });
 }
 
@@ -467,4 +467,4 @@ export function renderOtherSectionsManager(containerId) {
 // plain, low-risk bridge, same reasoning as every other Floor 4/5 file
 // this session.
 window.renderLedgerView = renderLedgerView;
-window.renderOtherSectionsManager = renderOtherSectionsManager;
+window.renderMiscSectionsManager = renderMiscSectionsManager;

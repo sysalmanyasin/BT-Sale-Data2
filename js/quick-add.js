@@ -195,8 +195,8 @@ function qaSubmitCustom(container) {
     toast('✓ Added');
     container.querySelector('.qa-amount').value = '';
     container.querySelector('.qa-desc').value = '';
-    if (document.getElementById('ledger-sections-container') && typeof renderOtherSectionsManager === 'function') {
-      renderOtherSectionsManager('ledger-sections-container');
+    if (document.getElementById('ledger-sections-container') && typeof renderMiscSectionsManager === 'function') {
+      renderMiscSectionsManager('ledger-sections-container');
     }
   } catch (err) {
     toast('⚠ ' + err.message, 'e');

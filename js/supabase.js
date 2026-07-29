@@ -368,7 +368,7 @@ function mergeIncomingData(data, isPull = false) {
     Actions.saveFeatureData('bt_unmatched_v1', JSON.stringify({ entries: Object.values(byId) }));
   }
 
-  // ── Custom "Other Sections" ledger-type definitions — merged by key,
+  // ── Custom "Misc Sections" ledger-type definitions — merged by key,
   // same convention ──
   if (data.ledgerCustomTypes) {
     const local  = JSON.parse(Repository.getItem(LEDGER_CUSTOM_TYPES_KEY) || 'null') || {};

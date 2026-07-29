@@ -30,7 +30,7 @@ export function ledgerUsesShift(ledgerType) { return !!LEDGER_TYPES_WITH_SHIFT[l
 // stored as a positive magnitude — exactly the pattern already proven in
 // jazz-cash.js's JC_TYPES, not a signed-amount model. New built-in
 // ledgers are added here as a new entry in this config object, not new
-// code. User-created "Other Sections" ledgers go through the persisted
+// code. User-created "Misc Sections" ledgers go through the persisted
 // custom-type registry below instead, since their categories aren't
 // known ahead of time.
 export const LEDGER_CATEGORIES = {
@@ -71,11 +71,11 @@ export const LEDGER_CATEGORIES = {
   ],
 };
 
-// ── Custom ledger types ("Other Sections") — persisted registry ────────
+// ── Custom ledger types ("Misc Sections") — persisted registry ────────
 // Unlike the built-in types above (known ahead of time, defined in code),
 // user-created sections aren't known until the user creates one — so
 // their definitions (label + category list) are stored, not hardcoded,
-// and reloaded on every app start. This is what makes "Other Sections"
+// and reloaded on every app start. This is what makes "Misc Sections"
 // genuinely add-able from the UI without touching this file's code —
 // the actual "add features without breaking existing code" golden rule
 // in practice, not just in principle.
@@ -197,7 +197,7 @@ export function deleteCustomLedgerType(ledgerType, force) {
 }
 
 // Enumerates every ledger type that currently exists — built-in and
-// custom — so a future "Other Sections" navigation page can list them
+// custom — so a future "Misc Sections" navigation page can list them
 // without needing to know their ids ahead of time.
 export function getAllLedgerTypes() {
   _ensureCustomTypesLoaded();

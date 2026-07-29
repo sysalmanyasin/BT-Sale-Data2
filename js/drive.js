@@ -295,7 +295,7 @@ async function _driveRestoreFile(fileId, label) {
       });
       Actions.saveFeatureData(LEDGER_KEY, JSON.stringify(cur));
     }
-    // Restore custom "Other Sections" ledger-type definitions (fill gaps only)
+    // Restore custom "Misc Sections" ledger-type definitions (fill gaps only)
     if (data.ledgerCustomTypes && typeof data.ledgerCustomTypes === 'object') {
       const cur = JSON.parse(Repository.getItem(LEDGER_CUSTOM_TYPES_KEY)||'null') || {};
       Object.keys(data.ledgerCustomTypes).forEach(t => { if (!cur[t]) cur[t] = data.ledgerCustomTypes[t]; });

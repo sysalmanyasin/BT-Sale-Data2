@@ -260,7 +260,7 @@ function _totalOutstandingCredits() {
     return {
       label: 'Total Outstanding Credits',
       value: sign + '₨' + fc(Math.abs(v)),
-      sub: 'Staff (' + (my || '—') + ') + Jazz Cash + Patty/Expenses + Other Sections, all-time',
+      sub: 'Staff (' + (my || '—') + ') + Jazz Cash + Patty/Expenses + Misc Sections, all-time',
     };
   } catch (e) {
     return { label: 'Total Outstanding Credits', value: 'Unavailable', sub: '' };

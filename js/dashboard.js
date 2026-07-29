@@ -280,14 +280,14 @@ function buildCreditSection(lat) {
       ${pattyCardHtml}
     </div>
     ${d.otherSections.length ? `
-    <div style="margin:14px 0 8px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">📋 Other Sections (all-time)</div>
+    <div style="margin:14px 0 8px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">📋 Misc Sections (all-time)</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:10px">
       ${d.otherSections.map(sec => sectionCard('📋', sec.label, sec.rows, sec.total, 'custom')).join('')}
     </div>` : ''}
     <div style="background:linear-gradient(135deg,#0f172a,#1e3a5f);border-radius:11px;padding:14px 20px;display:flex;align-items:center;justify-content:space-between">
       <div>
         <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:3px">Total Outstanding Credits</div>
-        <div style="font-size:10px;color:rgba(255,255,255,.4)">Staff (${my}) + Jazz Cash + Patty/Expenses + Other Sections, all-time</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.4)">Staff (${my}) + Jazz Cash + Patty/Expenses + Misc Sections, all-time</div>
       </div>
       <div style="font-size:24px;font-weight:700;font-family:var(--mono);color:${d.grandTotal >= 0 ? '#4ade80' : '#f87171'}">${fmtAmt(d.grandTotal)}</div>
     </div>`;

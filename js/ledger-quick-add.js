@@ -58,7 +58,7 @@ function ddMonYyyy(iso) {
 // getAllLedgerTypes() labels built-ins with their raw id (e.g. "jazzcash")
 // — accurate but not what you'd want to read in a picker. Purely
 // cosmetic override for the known built-ins; anything else (custom
-// "Other Sections") already carries a real human label from LedgerStore.
+// "Misc Sections") already carries a real human label from LedgerStore.
 const BUILTIN_DISPLAY_NAMES = { jazzcash: 'Jazz Cash', petty: 'Patty / Expenses', expense: 'Expense' };
 
 function esc(s) {

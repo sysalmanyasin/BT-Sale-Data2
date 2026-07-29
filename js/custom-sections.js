@@ -67,7 +67,7 @@ function salaryNextMonth() {
 // Kept only for drive.js/supabase.js, which still directly back up and
 // sync whatever old data may exist under this key — the feature that
 // used to write to it (Custom Sections) is retired in favor of the
-// Ledger's "Other Sections" (see ledger-page.js), but the key itself
+// Ledger's "Misc Sections" (see ledger-page.js), but the key itself
 // isn't deleted, so anything already backed up stays backed up.
 const CSEC_KEY = 'mw_custom_sections_v1';
 
@@ -108,8 +108,8 @@ function pettyNextMonth() {
 // Bridge what's used externally, from index.html, or via a same-file
 // onclick attribute. The Custom Sections feature itself (_csecLoad,
 // loadCustomSections, csecAddRow, etc.) was retired in favor of the
-// generalized Ledger's "Other Sections" (ledger-page.js,
-// renderOtherSectionsManager) — this file now only owns the two
+// generalized Ledger's "Misc Sections" (ledger-page.js,
+// renderMiscSectionsManager) — this file now only owns the two
 // Copy-to-Next-Month helpers, which are unrelated to Custom Sections
 // and still needed by the Salary/Petty tabs.
 window.salaryNextMonth = salaryNextMonth;

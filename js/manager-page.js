@@ -15,7 +15,7 @@
 // gone now — this file calls renderJazzCash()/renderNotesSheets()
 // directly instead (guarded with `typeof X === 'function'`, same
 // pattern already used below for renderLedgerView/
-// renderOtherSectionsManager, since jazz-cash.js/notes-sheets.js don't
+// renderMiscSectionsManager, since jazz-cash.js/notes-sheets.js don't
 // export real ES bindings yet).
 //
 // Module-migration: with the untangling above done, this file — and
@@ -53,8 +53,8 @@ function switchMgrTab(tab) {
   if (tab === 'expense' && typeof renderLedgerView === 'function') {
     renderLedgerView('ledger-expense-container', 'expense', 'Expense');
   }
-  if (tab === 'custom' && typeof renderOtherSectionsManager === 'function') {
-    renderOtherSectionsManager('ledger-sections-container');
+  if (tab === 'custom' && typeof renderMiscSectionsManager === 'function') {
+    renderMiscSectionsManager('ledger-sections-container');
   }
   if (tab === 'unmatched') renderUnmatchedTab();
 }
@@ -123,8 +123,8 @@ function refreshManagerPage() {
   if (activeTab === 'expense' && typeof renderLedgerView === 'function') {
     renderLedgerView('ledger-expense-container', 'expense', 'Expense');
   }
-  if (activeTab === 'custom' && typeof renderOtherSectionsManager === 'function') {
-    renderOtherSectionsManager('ledger-sections-container');
+  if (activeTab === 'custom' && typeof renderMiscSectionsManager === 'function') {
+    renderMiscSectionsManager('ledger-sections-container');
   }
   if (activeTab === 'unmatched' && typeof renderUnmatchedTab === 'function') renderUnmatchedTab();
 }
