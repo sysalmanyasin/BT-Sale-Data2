@@ -1009,7 +1009,25 @@ function _wireCoverSearch() {
     document.querySelectorAll('#cover-container .cover-group').forEach(groupEl => {
       const title = (groupEl.querySelector('.cover-group-title')?.textContent || '').toLowerCase();
       const subtitle = (groupEl.querySelector('.cover-group-subtitle')?.textContent || '').toLowerCase();
-      const match = !q || title.includes(q) || subtitle.includes(q);
+      let match = !q || title.includes(q) || subtitle.includes(q);
+
+      // Audit/Reports still have real tiles (see TILE_GRID_GROUPS) — also
+      // match/highlight against each tile's own title+status, same as
+      // every group used to before the rest went hero-only.
+      const tileEls = groupEl.querySelectorAll('.cover-tile');
+      if (tileEls.length) {
+        let anyTileVisible = false;
+        tileEls.forEach(tileEl => {
+          const tTitle = (tileEl.querySelector('.cover-tile-title')?.textContent || '').toLowerCase();
+          const tStatus = (tileEl.querySelector('.cover-tile-status')?.textContent || '').toLowerCase();
+          const tMatch = !q || tTitle.includes(q) || tStatus.includes(q);
+          tileEl.classList.toggle('cover-tile-hidden', !tMatch);
+          tileEl.classList.toggle('cover-tile-match', !!q && tMatch);
+          if (tMatch) anyTileVisible = true;
+        });
+        match = match || anyTileVisible;
+      }
+
       groupEl.classList.toggle('cover-group-hidden', !!q && !match);
       if (q && match) groupEl.classList.remove('collapsed');
     });
@@ -1143,13 +1161,27 @@ export function renderCoverDashboard() {
   }
 
   const collapsed = _getCollapsed();
+  const pins = _getPins();
 
   // Every group card still leads with its own live header (icon, title,
-  // one-line status, drag-to-reorder) exactly as before — this only
-  // removes the per-tile "leading to a page" grid that used to sit
-  // inside the body. Sections with no hero content of their own yet
-  // (Audit, Reports) stay exactly as-is, collapse/expand included, ready
-  // for hero cards to land in them later.
+  // one-line status, drag-to-reorder) exactly as before. Sections with
+  // real hero content (Sales/Manager/Closing/Inventory/Notes & Sheets)
+  // stay hero-only, no page tiles. Audit and Reports have no hero
+  // content of their own yet, so — per request — they keep their old
+  // tile-grid (page/external links) exactly as it was before; every
+  // other group had its tile-grid removed in favor of the glance-only
+  // hero treatment.
+  const TILE_GRID_GROUPS = new Set(['Audit', 'Reports']);
+  const tileCardHtml = (t, i) => `
+    <div class="cover-tile${t.enabled ? '' : ' cover-tile-disabled'}"
+         ${t.enabled ? `data-goto-idx="${i}" role="button" tabindex="0"` : ''}>
+      <button class="cover-tile-pin${pins.includes(t.page || t.href) ? ' pinned' : ''}" data-pin-key="${_esc(t.page || t.href)}" title="Pin to shortcuts">📌</button>
+      <div class="cover-tile-icon">${t.icon}</div>
+      <div class="cover-tile-title">${_esc(t.title)}${t.href ? ' <span class="ext">↗</span>' : ''}</div>
+      <div class="cover-tile-status">${_esc(t.status)}</div>
+      ${t.bridgeAction ? `<button class="cover-tile-bridge" data-bridge-idx="${i}">Bridge</button>` : ''}
+    </div>`;
+
   const GROUP_HERO = { Sales: heroHtml, Manager: managerHeroHtml, Closing: closingHeroHtml, Inventory: inventoryHeroHtml, 'Notes & Sheets': notesHeroHtml };
   // New home for the old per-tile "Bridge" button: one ↻ on each
   // bridge-backed group's own header, force-refreshing past the normal
@@ -1161,12 +1193,13 @@ export function renderCoverDashboard() {
     Inventory: () => InventoryBridge.refreshFullData(true),
   };
   const groupsHtml = _orderedGroupNames().map(groupName => {
-    const members = tiles.filter(t => t.group === groupName);
+    const members = tiles.map((t, i) => ({ t, i })).filter(x => x.t.group === groupName);
     if (!members.length) return '';
     const meta = GROUP_META[groupName] || { slug: 'sales', icon: '•' };
     const isCollapsed = collapsed.includes(meta.slug);
     const subtitle = _groupSubtitle(groupName);
     const refreshFn = GROUP_BRIDGE_REFRESH[groupName];
+    const showTiles = TILE_GRID_GROUPS.has(groupName);
     return `
       <div class="cover-group${isCollapsed ? ' collapsed' : ''}" data-group="${meta.slug}">
         <div class="cover-group-header" data-group-toggle="${meta.slug}">
@@ -1183,6 +1216,7 @@ export function renderCoverDashboard() {
         <div class="cover-group-body"><div>
           ${GROUP_HERO[groupName] || ''}
           ${groupName === 'Manager' ? _staffRegistryHtml() : ''}
+          ${showTiles ? `<div class="cover-tile-grid">${members.map(({ t, i }) => tileCardHtml(t, i)).join('')}</div>` : ''}
         </div></div>
       </div>`;
   }).join('');
@@ -1201,6 +1235,34 @@ export function renderCoverDashboard() {
     };
     card.addEventListener('click', openIt);
     card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openIt(); } });
+  });
+  container.querySelectorAll('[data-pin-key]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const key = btn.dataset.pinKey;
+      let pinsNow = _getPins();
+      if (pinsNow.includes(key)) pinsNow = pinsNow.filter(p => p !== key);
+      else pinsNow = [...pinsNow, key];
+      _setPins(pinsNow);
+      renderCoverDashboard();
+    });
+  });
+  container.querySelectorAll('[data-goto-idx]').forEach(card => {
+    const goTo = () => {
+      const t = tiles[+card.dataset.gotoIdx];
+      if (!t) return;
+      if (t.href) window.open(t.href, '_blank', 'noopener');
+      else if (t.page && typeof window.showPage === 'function') window.showPage(t.page);
+    };
+    card.addEventListener('click', goTo);
+    card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goTo(); } });
+  });
+  container.querySelectorAll('[data-bridge-idx]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const t = tiles[+btn.dataset.bridgeIdx];
+      if (t && typeof window[t.bridgeAction] === 'function') window[t.bridgeAction]();
+    });
   });
   container.querySelectorAll('[data-group-toggle]').forEach(header => {
     header.addEventListener('click', () => {
