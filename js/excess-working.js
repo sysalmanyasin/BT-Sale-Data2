@@ -348,8 +348,12 @@ window.ExcessWorkingApp = (function () {
     ]);
     let rows = state.computed;
     if (state.filter !== 'All') rows = rows.filter(r => r.status === state.filter);
-    const q = (state.search || '').toLowerCase();
-    if (q) rows = rows.filter(r => (r.code || '').toLowerCase().includes(q) || (r.name || '').toLowerCase().includes(q));
+    const q = (state.search || '').trim();
+    if (q) {
+      rows = (typeof window.BTSearch !== 'undefined')
+        ? window.BTSearch.filterAndRank(rows, q, ['code', 'name'])
+        : rows.filter(r => (r.code || '').toLowerCase().includes(q.toLowerCase()) || (r.name || '').toLowerCase().includes(q.toLowerCase()));
+    }
     rows = [...rows].sort((a, b) => b.correctedValue - a.correctedValue);
 
     function retainBtnHtml(r) {

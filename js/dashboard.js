@@ -14,6 +14,15 @@
 'use strict';
 
 let _dashCreditMonthOverride = '';
+// Monthly Total chart's own preset/compare state (Rule-Based Intelligence
+// Plan §2/§3.1) — independent of the #dash-year select above it, which
+// still governs the rest of buildCharts()'s KPI-driven charts (Cash vs
+// Bank, Top Clients, Customers, YoY). Only the Monthly Total chart uses
+// DashboardControls; the rest are unchanged this round (see plan's own
+// "built once, reused per domain" — reusing here is a follow-up, not a
+// rewrite of every chart in one pass).
+let _dashTotalPreset = '12M';
+let _dashTotalCompareOn = false;
 // Patty/Expenses card on Overview — its own date-range filter (independent
 // of the Staff Credit month picker above) plus which category rows are
 // currently expanded to show individual entries. In-memory only, same as
@@ -299,12 +308,75 @@ const CHART_OPTS = {responsive:true,maintainAspectRatio:false,
           y:{ticks:{color:'#64748b',font:{size:9},callback:v=>'₨'+ff(v)},grid:{color:'#e2e8f0'}}}};
 function dc(id){if(_charts[id]){_charts[id].destroy();delete _charts[id];}}
 
+// Monthly Total chart — preset + compare + drill (plan §3.1's explicit
+// example of what dashboard-controls.js is for). Independent of the
+// #dash-year select and of buildCharts(data)'s year-filtered `data` —
+// this chart always resolves its own slice straight from MONTHLY via
+// DashboardControls, so switching its preset never disturbs the rest
+// of the dashboard.
+function _dashSetTotalPreset(p) { _dashTotalPreset = p; buildTotalChart(); }
+function _dashSetTotalCompare(on) { _dashTotalCompareOn = on; buildTotalChart(); }
+
+function buildTotalChart() {
+  if (typeof window.DashboardControls === 'undefined') return; // script not loaded — degrade silently, rest of dashboard still works
+  const DCon = window.DashboardControls;
+  const controlsEl = document.getElementById('ch-total-controls');
+  if (controlsEl) {
+    DCon.renderRangeBar(controlsEl, {
+      active: _dashTotalPreset,
+      onChange: _dashSetTotalPreset,
+      compareEnabled: true,
+      compareOn: _dashTotalCompareOn,
+      onCompareToggle: _dashSetTotalCompare,
+    });
+  }
+
+  const cur = DCon.resolvePreset(MONTHLY, _dashTotalPreset);
+  if (!cur.length) return;
+  const shortLbl = m => { const [mn, yr] = m.Month_Year.split(' '); return mn.slice(0, 3) + ' ' + yr.slice(2); };
+  const lbl = cur.map(shortLbl);
+
+  const datasets = [{
+    label: 'Total', data: cur.map(m => n(m.TOTAL)),
+    backgroundColor: 'rgba(37,99,235,.6)', borderColor: '#2563eb', borderWidth: 1.5, borderRadius: 3,
+  }];
+
+  if (_dashTotalCompareOn) {
+    const prev = DCon.getComparePeriod(MONTHLY, _dashTotalPreset);
+    if (prev.length) {
+      // Compare series plotted against the SAME x-axis positions (this
+      // month vs the equivalent month last period), not appended after —
+      // pads the shorter side with nulls so Chart.js doesn't misalign
+      // when a compare period is a different length near the edges of
+      // available history.
+      const len = Math.max(cur.length, prev.length);
+      const prevPadded = Array(len - prev.length).fill(null).concat(prev.map(m => n(m.TOTAL)));
+      datasets[0].data = Array(len - cur.length).fill(null).concat(datasets[0].data);
+      datasets.push({
+        label: 'Previous period', data: prevPadded,
+        backgroundColor: 'rgba(148,163,184,.5)', borderColor: '#94a3b8', borderWidth: 1.5, borderRadius: 3,
+      });
+    }
+  }
+
+  dc('ch-total');
+  _charts['ch-total'] = new Chart(document.getElementById('ch-total'), {
+    type: 'bar',
+    data: { labels: lbl, datasets },
+    options: { ...CHART_OPTS, plugins: { legend: { display: datasets.length > 1 }, tooltip: { callbacks: { label: c => (c.dataset.label + ': ₨' + fc(c.raw)) } } } },
+  });
+
+  // Drill — click a bar to open that month's detail modal. Only the
+  // primary "Total" dataset's months are drillable (compare-period bars
+  // don't map 1:1 to a real month click target in the same way).
+  DCon.attachDrilldown(_charts['ch-total'], cur, m => {
+    if (typeof window.openMonthModal === 'function') window.openMonthModal(m.Month_Year);
+  });
+}
+
 function buildCharts(data) {
   const lbl=data.map(m=>{ const[mn,yr]=m.Month_Year.split(' '); return mn.slice(0,3)+' '+yr.slice(2); });
-  dc('ch-total');
-  _charts['ch-total']=new Chart(document.getElementById('ch-total'),{type:'bar',
-    data:{labels:lbl,datasets:[{label:'Total',data:data.map(m=>n(m.TOTAL)),backgroundColor:'rgba(37,99,235,.6)',borderColor:'#2563eb',borderWidth:1.5,borderRadius:3}]},
-    options:{...CHART_OPTS,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'₨'+fc(c.raw)}}}}});
+  buildTotalChart();
 
   dc('ch-cashbank');
   _charts['ch-cashbank']=new Chart(document.getElementById('ch-cashbank'),{type:'bar',
@@ -321,6 +393,14 @@ function buildCharts(data) {
   _charts['ch-cust']=new Chart(document.getElementById('ch-cust'),{type:'line',
     data:{labels:lbl,datasets:[{label:'Customers',data:data.map(m=>n(m.Customers)),borderColor:'#7c3aed',backgroundColor:'rgba(124,58,237,.07)',tension:.4,fill:true,pointRadius:2}]},
     options:{...CHART_OPTS,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#64748b',font:{size:9}},grid:{color:'#f1f5f9'}},y:{ticks:{color:'#64748b',font:{size:9}},grid:{color:'#e2e8f0'}}}}});
+  // Click-to-drill (plan §3.1: "Customer footfall — click-to-drill into
+  // Daily Data") — reuses the existing month detail modal rather than a
+  // new navigation path.
+  if (typeof window.DashboardControls !== 'undefined') {
+    window.DashboardControls.attachDrilldown(_charts['ch-cust'], data, m => {
+      if (typeof window.openMonthModal === 'function') window.openMonthModal(m.Month_Year);
+    });
+  }
 
   // YoY
   const yrs=years();

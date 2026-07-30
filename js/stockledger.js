@@ -355,13 +355,13 @@ window.StockLedgerApp = (function(){
       function applyFilterSort(panelKey){
         const def = TABLE_DEFS[panelKey];
         let rows = computed[panelKey].slice();
-        const q = state.search[panelKey].trim().toLowerCase();
+        const q = state.search[panelKey].trim();
         if(q){
-          rows = rows.filter(it=>{
-            return ['code','name','generic','company','supplier'].some(f=>
-              String(it[f]||'').toLowerCase().includes(q)
-            );
-          });
+          rows = (typeof window.BTSearch !== 'undefined')
+            ? window.BTSearch.filterAndRank(rows, q, ['code','name','generic','company','supplier'])
+            : rows.filter(it => ['code','name','generic','company','supplier'].some(f =>
+                String(it[f]||'').toLowerCase().includes(q.toLowerCase())
+              ));
         }
         const s = state.sort[panelKey];
         rows.sort((a,b)=>{

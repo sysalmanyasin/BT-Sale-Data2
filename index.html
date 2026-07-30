@@ -374,7 +374,7 @@ if ('serviceWorker' in navigator) {
   <div id="dash-dow" style="margin-bottom:14px"></div>
   <div id="dash-best-worst" style="margin-bottom:14px"></div>
   <div class="g2">
-    <div class="card"><div class="ctitle"><span class="cdot" style="background:var(--accent)"></span>Monthly Total Sales</div><div style="height:220px"><canvas id="ch-total"></canvas></div></div>
+    <div class="card"><div class="ctitle"><span class="cdot" style="background:var(--accent)"></span>Monthly Total Sales</div><div id="ch-total-controls"></div><div style="height:220px"><canvas id="ch-total"></canvas></div></div>
     <div class="card"><div class="ctitle"><span class="cdot" style="background:var(--amber)"></span>Cash vs Bank</div><div style="height:220px"><canvas id="ch-cashbank"></canvas></div></div>
   </div>
   <div class="g2">
@@ -1960,6 +1960,7 @@ if ('serviceWorker' in navigator) {
 <script defer src="js/analytics.js?v=20260726d"></script>
 
 <!-- 8b. Dashboard: Floor 5 pure renderer -->
+<script defer src="js/dashboard-controls.js"></script>
 <script defer src="js/dashboard.js?v=20260726d"></script>
 
 <!-- 8b. Dashboard Insights: briefing card, target pace, rotating insight strip, diff badge (Phase 3) -->

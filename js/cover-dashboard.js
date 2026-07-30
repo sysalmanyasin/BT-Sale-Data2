@@ -138,6 +138,41 @@ function _needsAttention() {
       items.push({ icon: '🛒', text: inv.rrSummary.itemsShown + ' items need reorder', cls: 'amber', page: 'reorder' });
     }
   } catch (e) {}
+
+  // Rule-Based Intelligence Plan §3.4: "Alert banner area fed by the
+  // shared rule engine, one line per fired rule, click-through to the
+  // relevant table." Appended after the checks above rather than
+  // replacing them — those pre-date the rule engine (which didn't
+  // exist as a working function until this pass; see rules-engine.js's
+  // header) and cover slightly different ground (e.g. negative-value
+  // stock isn't one of the registered rules). Both sets can coexist;
+  // consolidating the older ones into registered rules is a clean
+  // follow-up, not required for this banner to do its job today.
+  try {
+    if (typeof window.aimRulesCheckAll === 'function') {
+      const fired = window.aimRulesCheckAll();
+      const PAGE_BY_RULE = {
+        'inventory.lowCoverValue': 'reorder',
+        'inventory.excessItem': 'inventory',
+        'inventory.deadStockAggregate': 'inventory',
+        'manager.advanceExceedsSalary': 'manager',
+        'manager.salarySwing': 'manager',
+        'sales.diffTolerance': 'dashboard',
+        'sales.paceAtRisk': 'dashboard',
+      };
+      const ICON_BY_SEVERITY = { red: '🔴', amber: '🟠', info: 'ℹ️' };
+      fired.forEach(a => {
+        const page = PAGE_BY_RULE[a.domain + '.' + a.id] || 'dashboard';
+        // Strip the rule's own leading emoji (already has one per
+        // rules-registrations.js) — the chip supplies its own severity
+        // icon instead, keeping this strip visually consistent with
+        // the hand-rolled chips above it.
+        const text = String(a.msg || '').replace(/^\S+\s*/, '').replace(/<\/?b>/g, '');
+        items.push({ icon: ICON_BY_SEVERITY[a.severity] || '🟠', text, cls: a.severity === 'red' ? 'red' : 'amber', page });
+      });
+    }
+  } catch (e) { /* one broken domain's alerts must not blank the whole strip */ }
+
   return items;
 }
 
@@ -265,6 +300,149 @@ function _totalOutstandingCredits() {
   } catch (e) {
     return { label: 'Total Outstanding Credits', value: 'Unavailable', sub: '' };
   }
+}
+
+// ── Manager dashboard extras (Rule-Based Intelligence Plan §3.3) ──────
+// Ranked Staff Credit table, Salary trend + swing flags, Advance aging —
+// built into the Manager group's existing hero section, same reasoning
+// as the Inventory extras above (Cover's group sections already ARE
+// this app's per-domain dashboard; a separate route would duplicate it).
+
+function _currentMgrMonthYear() {
+  const d = new Date();
+  const MN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  return MN[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+// "Staff Credit Ledger, ranked" — cross-staff, sorted by net descending,
+// directly answering "who owes the most" (plan §3.3) without narration.
+function _managerCreditRanked() {
+  try {
+    if (typeof window._crdData !== 'function' || typeof window._crdNet !== 'function') return [];
+    const emps = window._crdData(_currentMgrMonthYear()) || [];
+    return emps
+      .map(e => ({ name: e.name, net: window._crdNet(e) }))
+      .filter(e => e.net !== 0)
+      .sort((a, b) => b.net - a.net);
+  } catch (e) { console.error('Cover Dashboard: _managerCreditRanked failed', e); return []; }
+}
+
+// Advance aging, bucketed by how many CONSECUTIVE recent months
+// (walking back from the current one via mgrMonths(), which already
+// handles gaps) this employee's net has stayed positive — a positive
+// prevBal each month means last month's net rolled forward unpaid
+// (see manager-credit.js's copyToNextMonth()), so consecutive positive
+// months is a reasonable proxy for "how long has this been outstanding"
+// without needing a new dedicated aging field in the data model.
+function _managerAgingBuckets() {
+  const buckets = { thisMonth: 0, oneToTwo: 0, threePlus: 0 };
+  try {
+    if (typeof window._crdData !== 'function' || typeof window._crdNet !== 'function' || typeof window.mgrMonths !== 'function') return buckets;
+    const months = window.mgrMonths().slice(0, 12); // newest-first, capped — this is a glance stat, not a full audit trail
+    if (!months.length) return buckets;
+    const current = window._crdData(months[0]) || [];
+    current.forEach(emp => {
+      const curNet = window._crdNet(emp);
+      if (curNet <= 0) return;
+      let streak = 1;
+      for (let i = 1; i < months.length; i++) {
+        const prior = (window._crdData(months[i]) || []).find(e => e.name === emp.name);
+        if (!prior || window._crdNet(prior) <= 0) break;
+        streak++;
+      }
+      if (streak <= 1) buckets.thisMonth += curNet;
+      else if (streak <= 2) buckets.oneToTwo += curNet;
+      else buckets.threePlus += curNet;
+    });
+  } catch (e) { console.error('Cover Dashboard: _managerAgingBuckets failed', e); }
+  return buckets;
+}
+
+// Salary trend, last 6 months side by side per staff, with a swing flag
+// on any month-over-month move beyond SALARY_SWING_PCT — same threshold
+// as rules-registrations.js's manager.salarySwing rule, so the flag here
+// and the alert on Cover's attention strip always agree.
+const _MGR_SALARY_SWING_PCT = 30;
+function _managerSalaryTrend() {
+  try {
+    if (typeof window._salRows !== 'function' || typeof window._salNet !== 'function' || typeof window.mgrMonths !== 'function') return { months: [], rows: [] };
+    const months = window.mgrMonths().slice(0, 6); // newest-first
+    if (!months.length) return { months: [], rows: [] };
+    const byMonth = months.map(my => window._salRows(my) || []);
+    const names = new Set();
+    byMonth[0].forEach(r => names.add(r.name));
+    const rows = Array.from(names).map(name => {
+      const nets = byMonth.map(rowsForMonth => {
+        const r = rowsForMonth.find(x => x.name === name);
+        return r ? window._salNet(r) : null;
+      });
+      // Swing = biggest single month-over-month % move across the window,
+      // reading oldest→newest (nets/months arrays are newest-first).
+      let maxSwingPct = 0;
+      for (let i = 0; i < nets.length - 1; i++) {
+        const cur = nets[i], prev = nets[i + 1];
+        if (cur == null || prev == null || Math.abs(prev) < 1000) continue;
+        const pct = Math.abs((cur - prev) / prev) * 100;
+        if (pct > Math.abs(maxSwingPct)) maxSwingPct = pct;
+      }
+      return { name, nets, flagged: maxSwingPct >= _MGR_SALARY_SWING_PCT };
+    });
+    return { months, rows };
+  } catch (e) { console.error('Cover Dashboard: _managerSalaryTrend failed', e); return { months: [], rows: [] }; }
+}
+
+function _managerCreditRankedHtml() {
+  const rows = _managerCreditRanked().slice(0, 8);
+  if (!rows.length) return `<div style="font-size:11px;color:var(--muted);padding:8px 0">No outstanding credit this month.</div>`;
+  return rows.map(r => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="showPage('manager')">
+      <span style="font-size:11.5px;color:var(--text);font-weight:600">${_esc(r.name)}</span>
+      <span style="font-size:11.5px;font-weight:700;font-family:var(--mono);color:${r.net > 0 ? '#AE3B2C' : '#15803d'}">₨${fc(Math.abs(r.net))}</span>
+    </div>`).join('');
+}
+
+function _managerSalaryTrendHtml() {
+  const { months, rows } = _managerSalaryTrend();
+  if (!months.length || !rows.length) return `<div style="font-size:11px;color:var(--muted);padding:8px 0">No salary data yet.</div>`;
+  const shortMonths = months.map(m => m.split(' ')[0].slice(0, 3) + ' ' + m.split(' ')[1].slice(2));
+  const header = `<div style="display:grid;grid-template-columns:1.3fr repeat(${months.length},1fr);gap:4px;font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding-bottom:4px;border-bottom:1px solid var(--border)">
+    <div>Staff</div>${shortMonths.map(m => `<div style="text-align:right">${m}</div>`).join('')}
+  </div>`;
+  const body = rows.map(r => `
+    <div style="display:grid;grid-template-columns:1.3fr repeat(${months.length},1fr);gap:4px;font-size:11px;padding:5px 0;border-bottom:1px solid var(--border)">
+      <div style="color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.flagged ? '🔻 ' : ''}${_esc(r.name)}</div>
+      ${r.nets.map(v => `<div style="text-align:right;font-family:var(--mono);color:var(--t2)">${v == null ? '—' : fc(v)}</div>`).join('')}
+    </div>`).join('');
+  return header + body;
+}
+
+let _agingChart = null;
+function _renderAgingChart() {
+  const canvas = document.getElementById('cover-aging-chart');
+  if (!canvas || typeof Chart === 'undefined') return;
+  if (_agingChart) { _agingChart.destroy(); _agingChart = null; }
+  const b = _managerAgingBuckets();
+  if (!b.thisMonth && !b.oneToTwo && !b.threePlus) return;
+  _agingChart = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: ['This month', '1–2 months', '3+ months'],
+      datasets: [{
+        label: 'Outstanding advance',
+        data: [b.thisMonth, b.oneToTwo, b.threePlus],
+        backgroundColor: ['#33507D', '#A8762A', '#AE3B2C'],
+        borderRadius: 4,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => '₨' + fc(c.raw) } } },
+      scales: {
+        x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { display: false } },
+        y: { ticks: { color: '#64748b', font: { size: 9 }, callback: v => '₨' + ff(v) }, grid: { color: '#e2e8f0' } },
+      },
+    },
+  });
 }
 
 function _notesheetsStatus() {
@@ -650,6 +828,114 @@ function _inventoryHeroStats() {
     rrSummary = (RR && typeof RR.getSummaryFor === 'function') ? RR.getSummaryFor(30, 7, 500) : null;
   } catch (e) { console.error('Cover Dashboard: ReorderReportApp.getSummaryFor() failed', e); }
   return { slStats, ewSummary, rrSummary };
+}
+
+// ── Inventory dashboard extras (Rule-Based Intelligence Plan §3.2) ────
+// Reorder Now / Dead Stock compact tables + a velocity chart, built into
+// the Inventory group's own hero section (above) rather than a new page
+// — Cover already IS this app's "dashboard per domain" pattern (see the
+// Sales/Manager/Closing hero sections alongside this one), so a second,
+// separate "Inventory Dashboard" route would just duplicate this one.
+
+function _reorderNowRows() {
+  try {
+    const RR = window.ReorderReportApp;
+    if (!RR || typeof RR.getFlaggedRows !== 'function') return [];
+    return RR.getFlaggedRows()
+      .slice()
+      .sort((a, b) => (a.daysCoverP ?? Infinity) - (b.daysCoverP ?? Infinity))
+      .slice(0, 8);
+  } catch (e) { console.error('Cover Dashboard: _reorderNowRows failed', e); return []; }
+}
+
+function _deadStockRows() {
+  try {
+    const EW = window.ExcessWorkingApp;
+    if (!EW || typeof EW.getRows !== 'function') return [];
+    return EW.getRows()
+      .filter(r => r.status === 'Excess')
+      .sort((a, b) => n(b.excessContribution) - n(a.excessContribution))
+      .slice(0, 8);
+  } catch (e) { console.error('Cover Dashboard: _deadStockRows failed', e); return []; }
+}
+
+// One shared compact-table renderer for both cards — `kind` picks which
+// columns matter (cover/demand for Reorder, value/age for Dead Stock).
+// Click-through per row jumps straight to that item's full page; the
+// item name isn't independently searchable there today, so this opens
+// the report rather than pre-filtering to the single row — still far
+// faster than hunting for it manually.
+function _inventoryMiniTableHtml(rows, kind) {
+  if (!rows || !rows.length) {
+    return `<div style="font-size:11px;color:var(--muted);padding:8px 0">No items to show right now.</div>`;
+  }
+  const row = r => {
+    if (kind === 'reorder') {
+      const cover = r.daysCoverP != null ? r.daysCoverP.toFixed(1) + 'd' : '—';
+      return `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="showPage('reorder')">
+          <div style="min-width:0">
+            <div style="font-size:11.5px;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px">${_esc(r.name || r.code)}</div>
+            <div style="font-size:10px;color:var(--muted)">${cover} cover · reorder ${fc(r.demandQtyP)} units</div>
+          </div>
+          <div style="font-size:11.5px;font-weight:700;font-family:var(--mono);color:#AE3B2C;flex-shrink:0">Rs. ${fc(r.demandValueP)}</div>
+        </div>`;
+    }
+    return `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="showPage('excess')">
+        <div style="min-width:0">
+          <div style="font-size:11.5px;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px">${_esc(r.name)}</div>
+          <div style="font-size:10px;color:var(--muted)">${_esc(r.company || 'Unspecified')}${r.daysOld != null ? ' · ' + r.daysOld + 'd old' : ''}</div>
+        </div>
+        <div style="font-size:11.5px;font-weight:700;font-family:var(--mono);color:#A8762A;flex-shrink:0">Rs. ${fc(r.excessContribution)}</div>
+      </div>`;
+  };
+  return rows.map(row).join('');
+}
+
+let _velocityChart = null;
+// Velocity comparison (plan §3.2): 30/60/90-day sale RATE (units/day,
+// not raw qty — makes windows of different lengths visually comparable)
+// for the top items by 30-day sale value. No new calc engine — reuses
+// the exact saleQty30/60/90 fields ReorderReportApp.getFlaggedRows()
+// already computes per item.
+function _renderVelocityChart() {
+  const canvas = document.getElementById('cover-velocity-chart');
+  if (!canvas || typeof Chart === 'undefined') return;
+  if (_velocityChart) { _velocityChart.destroy(); _velocityChart = null; }
+
+  let rows = [];
+  try {
+    const RR = window.ReorderReportApp;
+    if (RR && typeof RR.getFlaggedRows === 'function') rows = RR.getFlaggedRows();
+  } catch (e) { console.error('Cover Dashboard: _renderVelocityChart data fetch failed', e); return; }
+  if (!rows || !rows.length) return;
+
+  const top = rows.slice().sort((a, b) => n(b.saleValue30) - n(a.saleValue30)).slice(0, 8);
+  const labels = top.map(r => (r.name || r.code || '').slice(0, 18));
+
+  _velocityChart = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: '30-day rate', data: top.map(r => +(n(r.saleQty30) / 30).toFixed(2)), backgroundColor: 'rgba(51,80,125,.7)', borderRadius: 3 },
+        { label: '60-day rate', data: top.map(r => +(n(r.saleQty60) / 60).toFixed(2)), backgroundColor: 'rgba(168,118,42,.7)', borderRadius: 3 },
+        { label: '90-day rate', data: top.map(r => +(n(r.saleQty90) / 90).toFixed(2)), backgroundColor: 'rgba(174,59,44,.7)', borderRadius: 3 },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { color: '#334155', font: { size: 10 }, boxWidth: 10, padding: 6 } },
+        tooltip: { callbacks: { label: c => c.dataset.label + ': ' + c.raw + ' units/day' } },
+      },
+      scales: {
+        x: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { display: false } },
+        y: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: '#e2e8f0' } },
+      },
+    },
+  });
 }
 
 // ── Staff Registry strip (Manager group) ──────────────────────────────
@@ -1089,6 +1375,26 @@ export function renderCoverDashboard() {
   const managerHeroHtml = `
     <div class="cover-hero-row">
       ${heroCard(credits)}
+    </div>
+    <div class="cover-hero-row">
+      <div class="card">
+        <div class="ctitle"><span class="cdot" style="background:#AE3B2C"></span>Staff Credit — ranked, who owes the most
+          <span onclick="showPage('manager')" style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:4px;margin-left:6px;cursor:pointer;font-weight:700">OPEN ↗</span>
+        </div>
+        <div id="cover-credit-ranked-table">${_managerCreditRankedHtml()}</div>
+      </div>
+      <div class="card">
+        <div class="ctitle"><span class="cdot" style="background:#33507D"></span>Advance Aging</div>
+        <div style="height:200px"><canvas id="cover-aging-chart"></canvas></div>
+      </div>
+    </div>
+    <div class="cover-hero-row-single">
+      <div class="card">
+        <div class="ctitle"><span class="cdot" style="background:#A8762A"></span>Salary Trend — last 6 months
+          <span style="font-size:9px;color:var(--muted);font-weight:400;margin-left:6px">🔻 = ≥${_MGR_SALARY_SWING_PCT}% swing vs prior month</span>
+        </div>
+        <div id="cover-salary-trend-table">${_managerSalaryTrendHtml()}</div>
+      </div>
     </div>`;
 
   const noteTiles = _noteTiles();
@@ -1147,6 +1453,26 @@ export function renderCoverDashboard() {
       ${heroCard({ label: 'Excess Stock Total', value: invEw ? 'Rs. ' + fc(invEw.rawExcessValue) : '—', sub: 'raw, before correction' })}
       ${heroCard({ label: 'Corrected Excess Stock', value: invEw ? 'Rs. ' + fc(invEw.correctedExcessValue) : '—', sub: 'after retain list + misc buffer' })}
       ${heroCard({ label: 'Reorder Alert (<7d cover · Top 500 by 30d value)', value: invRr ? fc(invRr.totalReorderQty) + ' units' : '—', sub: invRr ? invRr.itemsShown + ' items · Rs. ' + fc(invRr.totalReorderValue) + ' to reorder' : 'no data yet' })}
+    </div>
+    <div class="cover-hero-row">
+      <div class="card">
+        <div class="ctitle"><span class="cdot" style="background:#AE3B2C"></span>Reorder Now — most urgent
+          <span onclick="showPage('reorder')" style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:4px;margin-left:6px;cursor:pointer;font-weight:700">FULL REPORT ↗</span>
+        </div>
+        <div id="cover-reorder-now-table">${_inventoryMiniTableHtml(_reorderNowRows(), 'reorder')}</div>
+      </div>
+      <div class="card">
+        <div class="ctitle"><span class="cdot" style="background:#A8762A"></span>Dead Stock — highest value
+          <span onclick="showPage('excess')" style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:4px;margin-left:6px;cursor:pointer;font-weight:700">FULL REPORT ↗</span>
+        </div>
+        <div id="cover-dead-stock-table">${_inventoryMiniTableHtml(_deadStockRows(), 'excess')}</div>
+      </div>
+    </div>
+    <div class="cover-hero-row cover-hero-row-single">
+      <div class="card">
+        <div class="ctitle"><span class="cdot" style="background:#33507D"></span>Sale Velocity — top items by 30-day value (units/day)</div>
+        <div style="height:220px"><canvas id="cover-velocity-chart"></canvas></div>
+      </div>
     </div>` : `
     <div class="cover-skel-row">
       <div class="cover-skel-card"></div><div class="cover-skel-card"></div>
@@ -1226,7 +1552,8 @@ export function renderCoverDashboard() {
   _renderAttentionStrip();
   _renderPinsRow(tiles);
   _updateHeroDate();
-  if (invSl && invSl.dataReady) _renderInventoryChart(invSl, invEw);
+  if (invSl && invSl.dataReady) { _renderInventoryChart(invSl, invEw); _renderVelocityChart(); }
+  _renderAgingChart();
   _renderWeekdayChart();
   _renderClosingChart();
   container.querySelectorAll('[data-staff-idx]').forEach(card => {

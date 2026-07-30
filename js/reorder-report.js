@@ -454,8 +454,12 @@ window.ReorderReportApp = (function () {
   }
 
   function tableHtml(rows, cols) {
-    const q = (state.search || '').toLowerCase();
-    if (q) rows = rows.filter(r => (r.code || '').toLowerCase().includes(q) || (r.name || '').toLowerCase().includes(q));
+    const q = (state.search || '').trim();
+    if (q) {
+      rows = (typeof window.BTSearch !== 'undefined')
+        ? window.BTSearch.filterAndRank(rows, q, ['code', 'name'])
+        : rows.filter(r => (r.code || '').toLowerCase().includes(q.toLowerCase()) || (r.name || '').toLowerCase().includes(q.toLowerCase()));
+    }
     rows = sortRows(rows, state.sort);
     const body = rows.length
       ? (state.groupBySupplier ? groupedBody(rows, cols, state.window) : rows.map(r => rowHtml(r, cols, state.window)).join(''))
