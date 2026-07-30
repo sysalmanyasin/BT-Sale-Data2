@@ -901,16 +901,34 @@ window.ReorderReportApp = (function () {
   // behavior) since Cover's stat is deliberately independent of the
   // page's own Include Today toggle too — pass false explicitly if a
   // caller wants Cover's stat to match the historical-only view instead.
-  function getSummaryFor(windowDays, coverDaysThreshold, topN, includeToday) {
+  // Rows for an explicit (windowDays, coverDaysThreshold, topN, includeToday)
+  // combination, independent of this page's own persisted controls — same
+  // pipeline as recompute()'s Top N tab (rank ALL items by sale value, cap
+  // at topN, THEN filter by cover days) so a caller passing (30, 7, 500,
+  // true) always gets exactly what the Top N tab shows with those same
+  // filters, and exactly the rows getSummaryFor()'s stats are built from —
+  // no separate re-derivation to drift out of sync.
+  function getFlaggedRowsFor(windowDays, coverDaysThreshold, topN, includeToday) {
     const SL = window.StockLedgerApp;
     const rawRows = (SL && typeof SL.hasData === 'function' && SL.hasData() && typeof SL.getRawRows === 'function')
       ? SL.getRawRows() : null;
-    if (!rawRows) return null;
+    if (!rawRows) return [];
     const w = WINDOWS.indexOf(windowDays) !== -1 ? windowDays : 30;
     const cd = coverDaysThreshold || 7;
     const allRows = computeAllRows(rawRows, w, cd, includeToday !== false);
-    const pool = topNByValue(allRows, topN || 500);
-    const shown = lowCoverWithin(pool, cd);
+    return lowCoverWithin(topNByValue(allRows, topN || 500), cd);
+  }
+
+  // Aggregate stats for the same explicit-params rows above (e.g. Cover's
+  // "<7 days, Top 500 by 30d sale value" hero stat) — now just a reduce
+  // over getFlaggedRowsFor()'s own rows, so the summary and the row list
+  // it's describing can never disagree.
+  function getSummaryFor(windowDays, coverDaysThreshold, topN, includeToday) {
+    const SL = window.StockLedgerApp;
+    if (!(SL && typeof SL.hasData === 'function' && SL.hasData())) return null;
+    const w = WINDOWS.indexOf(windowDays) !== -1 ? windowDays : 30;
+    const cd = coverDaysThreshold || 7;
+    const shown = getFlaggedRowsFor(w, cd, topN, includeToday);
     return {
       window: w,
       coverDaysThreshold: cd,
@@ -923,11 +941,11 @@ window.ReorderReportApp = (function () {
   }
 
   // Rows using this page's own persisted window/coverDays/topN/
-  // includeToday settings (unlike getSummaryFor, which is deliberately
-  // independent of them for Cover's fixed stat). Safe to call cold —
-  // same as getSummaryFor, pulls fresh from Stock Ledger rather than
-  // relying on this tab having been opened this session. Returns []
-  // only if Stock Ledger itself has no data loaded.
+  // includeToday settings (unlike getSummaryFor/getFlaggedRowsFor, which
+  // are deliberately independent of them for Cover's fixed stats). Safe to
+  // call cold — pulls fresh from Stock Ledger rather than relying on this
+  // tab having been opened this session. Returns [] only if Stock Ledger
+  // itself has no data loaded.
   function getFlaggedRows() {
     const SL = window.StockLedgerApp;
     const rawRows = (SL && typeof SL.hasData === 'function' && SL.hasData() && typeof SL.getRawRows === 'function')
@@ -938,5 +956,42 @@ window.ReorderReportApp = (function () {
     return lowCoverWithin(topNByValue(allRows, state.topN), cd);
   }
 
-  return { init: init, getSummaryFor: getSummaryFor, getFlaggedRows: getFlaggedRows };
+  // Top-selling items by sale value over a window, NOT limited to
+  // reorder-flagged/low-cover items (no lowCoverWithin filter) — used by
+  // Cover's Sale Velocity chart, which wants the best sellers overall,
+  // "including today" by default so it always matches the Reorder
+  // Report's own default view rather than the page's persisted toggle.
+  function getTopSellersFor(windowDays, topN, includeToday) {
+    const SL = window.StockLedgerApp;
+    const rawRows = (SL && typeof SL.hasData === 'function' && SL.hasData() && typeof SL.getRawRows === 'function')
+      ? SL.getRawRows() : null;
+    if (!rawRows) return [];
+    const w = WINDOWS.indexOf(windowDays) !== -1 ? windowDays : 30;
+    const allRows = computeAllRows(rawRows, w, 7, includeToday !== false);
+    return topNByValue(allRows, topN || 8);
+  }
+
+  // Total flagged count for explicit (windowDays, coverDaysThreshold), with
+  // NO Top N cap — the "of 449 flagged in total" half of the Reorder
+  // Report's own "Items Shown: 42 of 449 flagged in total" stat, so Cover's
+  // header can quote the identical two numbers.
+  function getFlaggedTotalFor(windowDays, coverDaysThreshold, includeToday) {
+    const SL = window.StockLedgerApp;
+    const rawRows = (SL && typeof SL.hasData === 'function' && SL.hasData() && typeof SL.getRawRows === 'function')
+      ? SL.getRawRows() : null;
+    if (!rawRows) return 0;
+    const w = WINDOWS.indexOf(windowDays) !== -1 ? windowDays : 30;
+    const cd = coverDaysThreshold || 7;
+    const allRows = computeAllRows(rawRows, w, cd, includeToday !== false);
+    return lowCoverWithin(allRows, cd).length;
+  }
+
+  return {
+    init: init,
+    getSummaryFor: getSummaryFor,
+    getFlaggedRows: getFlaggedRows,
+    getFlaggedRowsFor: getFlaggedRowsFor,
+    getFlaggedTotalFor: getFlaggedTotalFor,
+    getTopSellersFor: getTopSellersFor,
+  };
 })();

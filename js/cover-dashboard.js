@@ -23,9 +23,6 @@ let _invChart = null;
 // Sales-by-weekday chart instance holder (see _renderWeekdayChart below) —
 // same destroy-before-rebuild rule as _invChart above.
 let _weekdayChart = null;
-// Closing trend chart instance holder (see _renderClosingChart below) —
-// same destroy-before-rebuild rule.
-let _closingChart = null;
 const MONTH_NAMES = ['January','February','March','April','May','June',
                       'July','August','September','October','November','December'];
 const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -327,70 +324,10 @@ function _managerCreditRanked() {
   } catch (e) { console.error('Cover Dashboard: _managerCreditRanked failed', e); return []; }
 }
 
-// Advance aging, bucketed by how many CONSECUTIVE recent months
-// (walking back from the current one via mgrMonths(), which already
-// handles gaps) this employee's net has stayed positive — a positive
-// prevBal each month means last month's net rolled forward unpaid
-// (see manager-credit.js's copyToNextMonth()), so consecutive positive
-// months is a reasonable proxy for "how long has this been outstanding"
-// without needing a new dedicated aging field in the data model.
-function _managerAgingBuckets() {
-  const buckets = { thisMonth: 0, oneToTwo: 0, threePlus: 0 };
-  try {
-    if (typeof window._crdData !== 'function' || typeof window._crdNet !== 'function' || typeof window.mgrMonths !== 'function') return buckets;
-    const months = window.mgrMonths().slice(0, 12); // newest-first, capped — this is a glance stat, not a full audit trail
-    if (!months.length) return buckets;
-    const current = window._crdData(months[0]) || [];
-    current.forEach(emp => {
-      const curNet = window._crdNet(emp);
-      if (curNet <= 0) return;
-      let streak = 1;
-      for (let i = 1; i < months.length; i++) {
-        const prior = (window._crdData(months[i]) || []).find(e => e.name === emp.name);
-        if (!prior || window._crdNet(prior) <= 0) break;
-        streak++;
-      }
-      if (streak <= 1) buckets.thisMonth += curNet;
-      else if (streak <= 2) buckets.oneToTwo += curNet;
-      else buckets.threePlus += curNet;
-    });
-  } catch (e) { console.error('Cover Dashboard: _managerAgingBuckets failed', e); }
-  return buckets;
-}
-
 // Salary trend, last 6 months side by side per staff, with a swing flag
 // on any month-over-month move beyond SALARY_SWING_PCT — same threshold
 // as rules-registrations.js's manager.salarySwing rule, so the flag here
 // and the alert on Cover's attention strip always agree.
-const _MGR_SALARY_SWING_PCT = 30;
-function _managerSalaryTrend() {
-  try {
-    if (typeof window._salRows !== 'function' || typeof window._salNet !== 'function' || typeof window.mgrMonths !== 'function') return { months: [], rows: [] };
-    const months = window.mgrMonths().slice(0, 6); // newest-first
-    if (!months.length) return { months: [], rows: [] };
-    const byMonth = months.map(my => window._salRows(my) || []);
-    const names = new Set();
-    byMonth[0].forEach(r => names.add(r.name));
-    const rows = Array.from(names).map(name => {
-      const nets = byMonth.map(rowsForMonth => {
-        const r = rowsForMonth.find(x => x.name === name);
-        return r ? window._salNet(r) : null;
-      });
-      // Swing = biggest single month-over-month % move across the window,
-      // reading oldest→newest (nets/months arrays are newest-first).
-      let maxSwingPct = 0;
-      for (let i = 0; i < nets.length - 1; i++) {
-        const cur = nets[i], prev = nets[i + 1];
-        if (cur == null || prev == null || Math.abs(prev) < 1000) continue;
-        const pct = Math.abs((cur - prev) / prev) * 100;
-        if (pct > Math.abs(maxSwingPct)) maxSwingPct = pct;
-      }
-      return { name, nets, flagged: maxSwingPct >= _MGR_SALARY_SWING_PCT };
-    });
-    return { months, rows };
-  } catch (e) { console.error('Cover Dashboard: _managerSalaryTrend failed', e); return { months: [], rows: [] }; }
-}
-
 function _managerCreditRankedHtml() {
   const rows = _managerCreditRanked().slice(0, 8);
   if (!rows.length) return `<div style="font-size:11px;color:var(--muted);padding:8px 0">No outstanding credit this month.</div>`;
@@ -399,50 +336,6 @@ function _managerCreditRankedHtml() {
       <span style="font-size:11.5px;color:var(--text);font-weight:600">${_esc(r.name)}</span>
       <span style="font-size:11.5px;font-weight:700;font-family:var(--mono);color:${r.net > 0 ? '#AE3B2C' : '#15803d'}">₨${fc(Math.abs(r.net))}</span>
     </div>`).join('');
-}
-
-function _managerSalaryTrendHtml() {
-  const { months, rows } = _managerSalaryTrend();
-  if (!months.length || !rows.length) return `<div style="font-size:11px;color:var(--muted);padding:8px 0">No salary data yet.</div>`;
-  const shortMonths = months.map(m => m.split(' ')[0].slice(0, 3) + ' ' + m.split(' ')[1].slice(2));
-  const header = `<div style="display:grid;grid-template-columns:1.3fr repeat(${months.length},1fr);gap:4px;font-size:9.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding-bottom:4px;border-bottom:1px solid var(--border)">
-    <div>Staff</div>${shortMonths.map(m => `<div style="text-align:right">${m}</div>`).join('')}
-  </div>`;
-  const body = rows.map(r => `
-    <div style="display:grid;grid-template-columns:1.3fr repeat(${months.length},1fr);gap:4px;font-size:11px;padding:5px 0;border-bottom:1px solid var(--border)">
-      <div style="color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.flagged ? '🔻 ' : ''}${_esc(r.name)}</div>
-      ${r.nets.map(v => `<div style="text-align:right;font-family:var(--mono);color:var(--t2)">${v == null ? '—' : fc(v)}</div>`).join('')}
-    </div>`).join('');
-  return header + body;
-}
-
-let _agingChart = null;
-function _renderAgingChart() {
-  const canvas = document.getElementById('cover-aging-chart');
-  if (!canvas || typeof Chart === 'undefined') return;
-  if (_agingChart) { _agingChart.destroy(); _agingChart = null; }
-  const b = _managerAgingBuckets();
-  if (!b.thisMonth && !b.oneToTwo && !b.threePlus) return;
-  _agingChart = new Chart(canvas, {
-    type: 'bar',
-    data: {
-      labels: ['This month', '1–2 months', '3+ months'],
-      datasets: [{
-        label: 'Outstanding advance',
-        data: [b.thisMonth, b.oneToTwo, b.threePlus],
-        backgroundColor: ['#33507D', '#A8762A', '#AE3B2C'],
-        borderRadius: 4,
-      }],
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => '₨' + fc(c.raw) } } },
-      scales: {
-        x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { display: false } },
-        y: { ticks: { color: '#64748b', font: { size: 9 }, callback: v => '₨' + ff(v) }, grid: { color: '#e2e8f0' } },
-      },
-    },
-  });
 }
 
 function _notesheetsStatus() {
@@ -745,68 +638,6 @@ function _renderWeekdayChart() {
   });
 }
 
-// ══════════════════════════════════════════════════════════════════════
-// Closing Trend chart — Credit / Misc-Ongoing / Deposits across the last
-// N real (non-draft) closings, oldest→newest. First real chart the
-// Closing group has had beyond single-latest snapshot cards; more
-// graphs/data land here later as Closing's own dashboard grows.
-// Same "read the one existing computation, don't re-derive it" rule as
-// every other hero stat on this page — reuses ClosingBridge.getFullDb()
-// and the exact same per-sheet math as _closingLatestCredit/_closingLatestMisc.
-// ══════════════════════════════════════════════════════════════════════
-function _closingTrendSeries(limit) {
-  const cdb = ClosingBridge.getFullDb();
-  if (!cdb) return null;
-  const keys = Object.keys(cdb.sheets || {}).filter(k => { const r = cdb.sheets[k]; return !!r && r.draft !== true; });
-  if (!keys.length) return null;
-  keys.sort((a, b) => _sheetSortKey(cdb, a).localeCompare(_sheetSortKey(cdb, b)));
-  return keys.slice(-limit).map(k => {
-    const rec = cdb.sheets[k];
-    const parts = k.split('_');
-    const misc = (rec.miscRows || []).reduce((s, r) => s + (parseFloat(r.val) || 0), 0);
-    const shortDate = _clFmtDate(parts[0]).replace(/,? \d{4}$/, ''); // "28 Jul" (drop the year)
-    return {
-      label: shortDate + ' ' + (parts[1] || '').slice(0, 1), // e.g. "28 Jul N"
-      credit: n(rec.outTotalE),
-      misc: misc,
-      deposits: n(rec.outTotalF),
-    };
-  });
-}
-
-function _renderClosingChart() {
-  const canvas = document.getElementById('cover-closing-chart');
-  if (!canvas || typeof Chart === 'undefined') return;
-  if (_closingChart) { _closingChart.destroy(); _closingChart = null; }
-
-  const series = _closingTrendSeries(14);
-  if (!series || !series.length) return;
-
-  _closingChart = new Chart(canvas, {
-    type: 'line',
-    data: {
-      labels: series.map(s => s.label),
-      datasets: [
-        { label: 'Credit', data: series.map(s => s.credit), borderColor: '#AE3B2C', backgroundColor: 'rgba(174,59,44,.12)', tension: .3, fill: true, pointRadius: 2 },
-        { label: 'Misc / Ongoing', data: series.map(s => s.misc), borderColor: '#A8762A', backgroundColor: 'rgba(168,118,42,.12)', tension: .3, fill: true, pointRadius: 2 },
-        { label: 'Deposits', data: series.map(s => s.deposits), borderColor: '#33507D', backgroundColor: 'rgba(51,80,125,.1)', tension: .3, fill: true, pointRadius: 2 },
-      ],
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { position: 'top', labels: { color: '#334155', font: { size: 10 }, boxWidth: 10, padding: 6 } },
-        tooltip: { callbacks: { label: c => c.dataset.label + ': Rs. ' + fc(c.raw) } },
-      },
-      scales: {
-        x: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: '#f1f5f9' } },
-        y: { ticks: { color: '#64748b', font: { size: 9 }, callback: v => '₨' + ff(v) }, grid: { color: '#e2e8f0' } },
-      },
-    },
-  });
-}
-
-
 // the (classic-script, window-exposed) Stock Ledger / Excess Working /
 // Reorder Report apps, same "read the one existing computation, don't
 // re-derive it" rule as AuditBridge/ClosingBridge above. Each bridge call
@@ -831,32 +662,48 @@ function _inventoryHeroStats() {
 }
 
 // ── Inventory dashboard extras (Rule-Based Intelligence Plan §3.2) ────
-// Reorder Now / Dead Stock compact tables + a velocity chart, built into
+// Reorder Now / Excess Stock compact tables + a velocity chart, built into
 // the Inventory group's own hero section (above) rather than a new page
 // — Cover already IS this app's "dashboard per domain" pattern (see the
 // Sales/Manager/Closing hero sections alongside this one), so a second,
 // separate "Inventory Dashboard" route would just duplicate this one.
 
+// Same (30d window, <7d cover, Top 500 by sale value, includeToday) params
+// as Cover's own "Reorder Alert" hero stat and ReorderReportApp.getSummaryFor()
+// — so the count here always equals that stat's itemsShown (e.g. "42 of 449
+// flagged"), matching the Reorder Report's Top N tab with those filters
+// exactly, not this page's own persisted (possibly different) settings.
+// Same explicit params, uncapped — the "of 449 flagged in total" half of
+// the header count next to Reorder Now's "N flagged" (itemsShown).
+function _reorderTotalFlagged() {
+  try {
+    const RR = window.ReorderReportApp;
+    if (!RR || typeof RR.getFlaggedTotalFor !== 'function') return 0;
+    return RR.getFlaggedTotalFor(30, 7, true);
+  } catch (e) { console.error('Cover Dashboard: _reorderTotalFlagged failed', e); return 0; }
+}
+
 function _reorderNowRows() {
   try {
     const RR = window.ReorderReportApp;
-    if (!RR || typeof RR.getFlaggedRows !== 'function') return [];
-    return RR.getFlaggedRows()
-      .slice()
-      .sort((a, b) => (a.daysCoverP ?? Infinity) - (b.daysCoverP ?? Infinity))
-      .slice(0, 8);
+    if (!RR || typeof RR.getFlaggedRowsFor !== 'function') return [];
+    return RR.getFlaggedRowsFor(30, 7, 500, true);
   } catch (e) { console.error('Cover Dashboard: _reorderNowRows failed', e); return []; }
 }
 
-function _deadStockRows() {
+// This is Excess Stock (status === 'Excess'), not Dead Stock — Dead Stock
+// is a separate 60-day-quiet metric already shown as its own hero card
+// ("Dead Stock (60D)") above. excessContribution sums to exactly
+// ExcessWorkingApp.getSummary().rawExcessValue (the "Excess Stock Total"
+// hero card), confirming this table is Excess Stock, highest value first.
+function _excessStockRows() {
   try {
     const EW = window.ExcessWorkingApp;
     if (!EW || typeof EW.getRows !== 'function') return [];
     return EW.getRows()
       .filter(r => r.status === 'Excess')
-      .sort((a, b) => n(b.excessContribution) - n(a.excessContribution))
-      .slice(0, 8);
-  } catch (e) { console.error('Cover Dashboard: _deadStockRows failed', e); return []; }
+      .sort((a, b) => n(b.excessContribution) - n(a.excessContribution));
+  } catch (e) { console.error('Cover Dashboard: _excessStockRows failed', e); return []; }
 }
 
 // One shared compact-table renderer for both cards — `kind` picks which
@@ -890,28 +737,28 @@ function _inventoryMiniTableHtml(rows, kind) {
         <div style="font-size:11.5px;font-weight:700;font-family:var(--mono);color:#A8762A;flex-shrink:0">Rs. ${fc(r.excessContribution)}</div>
       </div>`;
   };
-  return rows.map(row).join('');
+  return `<div style="max-height:280px;overflow-y:auto">${rows.map(row).join('')}</div>`;
 }
 
 let _velocityChart = null;
 // Velocity comparison (plan §3.2): 30/60/90-day sale RATE (units/day,
 // not raw qty — makes windows of different lengths visually comparable)
-// for the top items by 30-day sale value. No new calc engine — reuses
-// the exact saleQty30/60/90 fields ReorderReportApp.getFlaggedRows()
-// already computes per item.
+// for the overall top-selling items by 30-day sale value (not just
+// reorder-flagged ones). No new calc engine — reuses the exact
+// saleQty30/60/90 fields ReorderReportApp.getTopSellersFor() already
+// computes per item.
 function _renderVelocityChart() {
   const canvas = document.getElementById('cover-velocity-chart');
   if (!canvas || typeof Chart === 'undefined') return;
   if (_velocityChart) { _velocityChart.destroy(); _velocityChart = null; }
 
-  let rows = [];
+  let top = [];
   try {
     const RR = window.ReorderReportApp;
-    if (RR && typeof RR.getFlaggedRows === 'function') rows = RR.getFlaggedRows();
+    if (RR && typeof RR.getTopSellersFor === 'function') top = RR.getTopSellersFor(30, 8, true);
   } catch (e) { console.error('Cover Dashboard: _renderVelocityChart data fetch failed', e); return; }
-  if (!rows || !rows.length) return;
+  if (!top || !top.length) return;
 
-  const top = rows.slice().sort((a, b) => n(b.saleValue30) - n(a.saleValue30)).slice(0, 8);
   const labels = top.map(r => (r.name || r.code || '').slice(0, 18));
 
   _velocityChart = new Chart(canvas, {
@@ -1376,24 +1223,12 @@ export function renderCoverDashboard() {
     <div class="cover-hero-row">
       ${heroCard(credits)}
     </div>
-    <div class="cover-hero-row">
+    <div class="cover-hero-row-single">
       <div class="card">
         <div class="ctitle"><span class="cdot" style="background:#AE3B2C"></span>Staff Credit — ranked, who owes the most
           <span onclick="showPage('manager')" style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:4px;margin-left:6px;cursor:pointer;font-weight:700">OPEN ↗</span>
         </div>
         <div id="cover-credit-ranked-table">${_managerCreditRankedHtml()}</div>
-      </div>
-      <div class="card">
-        <div class="ctitle"><span class="cdot" style="background:#33507D"></span>Advance Aging</div>
-        <div style="height:200px"><canvas id="cover-aging-chart"></canvas></div>
-      </div>
-    </div>
-    <div class="cover-hero-row-single">
-      <div class="card">
-        <div class="ctitle"><span class="cdot" style="background:#A8762A"></span>Salary Trend — last 6 months
-          <span style="font-size:9px;color:var(--muted);font-weight:400;margin-left:6px">🔻 = ≥${_MGR_SALARY_SWING_PCT}% swing vs prior month</span>
-        </div>
-        <div id="cover-salary-trend-table">${_managerSalaryTrendHtml()}</div>
       </div>
     </div>`;
 
@@ -1424,12 +1259,6 @@ export function renderCoverDashboard() {
     <div class="cover-hero-row">
       ${heroCard(closingLatestCredit)}
       ${heroCard(closingLatestMisc)}
-    </div>
-    <div class="cover-hero-row-single">
-      <div class="card">
-        <div class="ctitle"><span class="cdot" style="background:#AE3B2C"></span>Closing Trend — last 14 closings</div>
-        <div style="height:200px"><canvas id="cover-closing-chart"></canvas></div>
-      </div>
     </div>`;
 
   const invStats = _inventoryHeroStats();
@@ -1456,16 +1285,16 @@ export function renderCoverDashboard() {
     </div>
     <div class="cover-hero-row">
       <div class="card">
-        <div class="ctitle"><span class="cdot" style="background:#AE3B2C"></span>Reorder Now — most urgent
+        <div class="ctitle"><span class="cdot" style="background:#AE3B2C"></span>Reorder Now — most urgent${invRr ? ` (${invRr.itemsShown} of ${_reorderTotalFlagged()} flagged)` : ''}
           <span onclick="showPage('reorder')" style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:4px;margin-left:6px;cursor:pointer;font-weight:700">FULL REPORT ↗</span>
         </div>
         <div id="cover-reorder-now-table">${_inventoryMiniTableHtml(_reorderNowRows(), 'reorder')}</div>
       </div>
       <div class="card">
-        <div class="ctitle"><span class="cdot" style="background:#A8762A"></span>Dead Stock — highest value
+        <div class="ctitle"><span class="cdot" style="background:#A8762A"></span>Excess Stock — highest value
           <span onclick="showPage('excess')" style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:4px;margin-left:6px;cursor:pointer;font-weight:700">FULL REPORT ↗</span>
         </div>
-        <div id="cover-dead-stock-table">${_inventoryMiniTableHtml(_deadStockRows(), 'excess')}</div>
+        <div id="cover-excess-stock-table">${_inventoryMiniTableHtml(_excessStockRows(), 'excess')}</div>
       </div>
     </div>
     <div class="cover-hero-row cover-hero-row-single">
@@ -1553,9 +1382,7 @@ export function renderCoverDashboard() {
   _renderPinsRow(tiles);
   _updateHeroDate();
   if (invSl && invSl.dataReady) { _renderInventoryChart(invSl, invEw); _renderVelocityChart(); }
-  _renderAgingChart();
   _renderWeekdayChart();
-  _renderClosingChart();
   container.querySelectorAll('[data-staff-idx]').forEach(card => {
     const openIt = () => {
       if (typeof window.openStaffCard === 'function') window.openStaffCard(+card.dataset.staffIdx);
