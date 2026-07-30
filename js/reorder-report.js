@@ -73,6 +73,34 @@
 // normalizeSupabaseRow() to map net_qty_today /
 // sale_value_excl_tax_today (added the same day) — falls back to 0 for
 // any row loaded from a source that predates those fields.
+//
+// 2026-07-30 fix: every saleValue{w}/saleValueToday figure (and so
+// saleValueP, and the export/summary totals built on it) used to
+// always read the *_excl_tax field, even for taxable products — so a
+// taxed item's ranking/reorder-value understated what it actually
+// rings up as, while an exempt item's number happened to already be
+// correct (its inclTax and exclTax fields are identical, since there's
+// no tax to strip out). Now picks the field per row based on
+// isTaxable: tax-exempt items (e.g. Panadol) read *_excl_tax as
+// before — same number, right field name — while taxable items now
+// read *_incl_tax, so their sale value matches what was actually
+// charged including sales tax. Purely a field-selection change; the
+// underlying qty/pack/discount math server-side is unchanged.
+//
+// 2026-07-30 (later) update: whether today's live sales fold into the
+// w-day window is now a UI toggle ("+ Today" / "Historical Only" in
+// the filter row), not fixed on. Reason: folding today in (the
+// previous, only behavior) can drift from Candela's own C-19 report,
+// which ranks/filters off historical windows only — "Historical Only"
+// reproduces that exactly; "+ Today" (still the default) keeps the
+// most current demand signal for day-to-day buying decisions. Persisted
+// per-device (bt_reorder_includetoday_v1). Only affects the filtered/
+// ranked math (saleQty/saleValue/daysCover/demandQty per window); the
+// "Sold Today" column always shows real today's activity regardless,
+// since that's an informational figure, not part of the toggle.
+// getSummaryFor() (Cover Dashboard's fixed stat) is unaffected by this
+// page's own toggle by design — it takes its own includeToday param,
+// defaulting to true (pre-toggle behavior) same as before.
 // ══════════════════════════════════════════════════════════════════════
 
 window.ReorderReportApp = (function () {
@@ -83,6 +111,7 @@ window.ReorderReportApp = (function () {
   const COVERDAYS_KEY = 'bt_reorder_coverdays_v1';
   const TOPN_KEY = 'bt_reorder_topn_v1';
   const GROUP_KEY = 'bt_reorder_group_v1';
+  const INCLUDETODAY_KEY = 'bt_reorder_includetoday_v1';
 
   const WINDOWS = [30, 60, 90];
 
@@ -93,6 +122,7 @@ window.ReorderReportApp = (function () {
     topN: 50,
     search: '',
     groupBySupplier: false,
+    includeToday: true,      // fold today's live sales into the w-day window (toggle) — see header note
     collapsedGroups: new Set(),
     sort: { key: 'saleValueP', dir: -1 },
     rawRows: [],
@@ -127,11 +157,14 @@ window.ReorderReportApp = (function () {
     const tn = parseInt(repoGet(TOPN_KEY), 10);
     state.topN = (tn && tn > 0) ? tn : 50;
     state.groupBySupplier = repoGet(GROUP_KEY) === '1';
+    const it = repoGet(INCLUDETODAY_KEY);
+    state.includeToday = (it === null) ? true : (it === '1'); // default on, matches pre-toggle behavior
   }
   function saveWindow() { repoSet(WINDOW_KEY, String(state.window)); }
   function saveCoverDays() { repoSet(COVERDAYS_KEY, String(state.coverDays)); }
   function saveTopN() { repoSet(TOPN_KEY, String(state.topN)); }
   function saveGroup() { repoSet(GROUP_KEY, state.groupBySupplier ? '1' : '0'); }
+  function saveIncludeToday() { repoSet(INCLUDETODAY_KEY, state.includeToday ? '1' : '0'); }
 
   // ---------- CALCULATION ENGINE ----------
   // Computes every window's metrics for every raw row, unfiltered.
@@ -156,24 +189,54 @@ window.ReorderReportApp = (function () {
   // goes on. This is what "daysCover"/"demandQty" are computed from, so
   // this is the fix that makes the actual buy-quantity recommendation
   // correct, not just the sale-qty/value columns.
-  function computeAllRows(rawRows, primaryWindow, coverDays) {
+  //
+  // includeToday (toggle added after user feedback that this should be
+  // switchable, not fixed on): when true, behaves exactly as described
+  // above. When false, every window's saleQty/saleValue/daysCover/
+  // demandQty is the clean historical figure only (today's activity
+  // excluded from the fold-in, effectiveDays back to plain w) — this is
+  // what matches Candela's own C-19 report, which runs off historical
+  // windows only. The "Sold Today" column (saleQtyToday/saleValueToday)
+  // always reflects real today's activity regardless of this toggle —
+  // it's an informational figure, not part of the filtered/ranked math.
+  function computeAllRows(rawRows, primaryWindow, coverDays, includeToday) {
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const todayFraction = Math.min(1, Math.max(0, (now - startOfToday) / 86400000));
+    const foldToday = includeToday !== false; // default true — matches pre-toggle behavior
 
     const rows = rawRows.map(r => {
       const stock = Number(r.stock) || 0;
       const unitPrice = Number(r.unitPrice) || 0;
+      const isTaxable = !!r.isTaxable;
+
+      // Which historical field is the "real" sale value for this row:
+      // taxable items should show the customer-facing, tax-inclusive
+      // figure; tax-exempt items show the (identical either way, but
+      // named correctly) tax-exclusive figure. Non-taxable rows have
+      // InclTax === ExclTax anyway (see inventory-bridge.js's header
+      // note), so this only changes which field name is read for
+      // taxable rows — it's not a numeric change for exempt items like
+      // Panadol, just the correct field for ones that do carry VAT.
+      const valueField = isTaxable ? 'saleValueInclTax' : 'saleValueExclTax';
 
       const todayQty = Number(r.netQtyToday) || 0;
       // Same "prefer real computed value, fall back to qty × unitPrice
       // only if the field is genuinely absent" pattern as the w-day
       // windows below — undefined/null means "field predates this sync",
-      // not "zero sales today".
-      const rawTodayValue = r.saleValueExclTaxToday;
+      // not "zero sales today". Computed regardless of includeToday —
+      // it's what "Sold Today" always displays, and it's what the
+      // window fold-in adds in when the toggle is on.
+      const rawTodayValue = r[valueField + 'Today'];
       const todayValue = (rawTodayValue !== undefined && rawTodayValue !== null)
         ? Number(rawTodayValue)
         : todayQty * unitPrice;
+
+      // What actually gets folded into the window math — zeroed out
+      // when the toggle is off, so saleQty/saleValue below reduce to
+      // the pure historical figures.
+      const foldQty = foldToday ? todayQty : 0;
+      const foldValue = foldToday ? todayValue : 0;
 
       const out = {
         code: r.code || '', name: r.name || '',
@@ -182,27 +245,29 @@ window.ReorderReportApp = (function () {
         stock, unitPrice,
         saleQtyToday: todayQty,
         saleValueToday: todayValue,
-        isTaxable: !!r.isTaxable,
+        isTaxable,
         taxPercent: Number(r.taxPercent) || 0,
       };
       WINDOWS.forEach(w => {
         const historicalQty = Number(r['netQty' + w + 'Days']) || 0;
         // Prefer the real historical sale value (qty × pack-aware,
-        // discount-adjusted price, VAT stripped out) computed server-side
-        // in sync.ps1. Falls back to qty × current unit price only for
-        // rows that predate this field (e.g. an older cached Dropbox
-        // upload) — undefined/null means "field never existed on this
-        // row", not "zero sales", so it's checked explicitly rather than
-        // with a falsy check (0 is a legitimate real value here).
-        const rawSaleValue = r['saleValueExclTax' + w + 'Days'];
+        // discount-adjusted price) computed server-side in sync.ps1,
+        // reading the incl-tax field for taxable products and the
+        // excl-tax field for exempt ones (see valueField above). Falls
+        // back to qty × current unit price only for rows that predate
+        // this field (e.g. an older cached Dropbox upload) — undefined/
+        // null means "field never existed on this row", not "zero
+        // sales", so it's checked explicitly rather than with a falsy
+        // check (0 is a legitimate real value here).
+        const rawSaleValue = r[valueField + w + 'Days'];
         const historicalValue = (rawSaleValue !== undefined && rawSaleValue !== null)
           ? Number(rawSaleValue)
           : historicalQty * unitPrice;
 
-        const saleQty = historicalQty + todayQty;
-        const saleValue = historicalValue + todayValue;
-        const effectiveDays = w + todayFraction;
-        const dailyRate = saleQty / effectiveDays;
+        const saleQty = historicalQty + foldQty;
+        const saleValue = historicalValue + foldValue;
+        const windowEffectiveDays = w + (foldToday ? todayFraction : 0);
+        const dailyRate = saleQty / windowEffectiveDays;
         const daysCover = dailyRate > 0 ? (stock / dailyRate) : null;
         const demandQty = dailyRate > 0 ? Math.max(0, Math.ceil(dailyRate * coverDays - stock)) : 0;
 
@@ -235,7 +300,7 @@ window.ReorderReportApp = (function () {
 
   function recompute() {
     const coverDays = Number(state.coverDays) || 15;
-    const allRows = computeAllRows(state.rawRows, state.window, coverDays);
+    const allRows = computeAllRows(state.rawRows, state.window, coverDays, state.includeToday);
     // "All Flagged" tab: every item under the cover threshold, unranked
     // and uncapped — a broader diagnostic view, not meant to reproduce
     // Candela's own report (see header comment).
@@ -320,6 +385,12 @@ window.ReorderReportApp = (function () {
       let v = r[c.key];
       let content = c.days ? fmtDays(v) : (c.num ? fmt(v) : esc(v));
       if (c.key === 'name') content = `${esc(v)}<div class="sub">${esc(r.company || '')}</div>`;
+      if (c.key === 'saleValueP') {
+        // Sale Value is tax-aware (2026-07-30 fix): incl-tax for taxable
+        // products, excl-tax (no tax to add) for exempt ones — surface
+        // which one this row is so it's not ambiguous at a glance.
+        content += `<div class="hint" style="font-weight:400">${r.isTaxable ? 'incl. tax' : 'no tax'}</div>`;
+      }
       const cls = (c.num ? 'num ' : '') + (c.strong ? 'val ' : '') + (c.wrap ? 'wrap ' : '') + (isPrimaryWinCol(c, primaryWindow) ? 'win-primary ' : '');
       return `<td class="${cls.trim()}">${content}</td>`;
     }).join('') + '</tr>';
@@ -402,6 +473,7 @@ window.ReorderReportApp = (function () {
     return [
       'Reference date: ' + (state.asOf || '—'),
       'Window: ' + state.window + 'd  ·  Cover threshold: <' + state.coverDays + 'd  ·  Items flagged: ' + state.computed.length,
+      'Sale qty/value basis: ' + (state.includeToday ? 'historical window + today (live)' : 'historical window only'),
     ];
   }
 
@@ -481,6 +553,10 @@ window.ReorderReportApp = (function () {
         <label class="field-label" style="margin:0;">Cover &lt;</label>
         <input type="number" id="rorCoverDaysInput" class="num-input" value="${state.coverDays}" min="1" step="1">
         <span class="hint">days</span>
+        <div class="toggle-group" id="rorIncludeTodayToggle" title="Whether today's live sales are folded into the 30/60/90-day sale qty/value used for filtering and ranking">
+          <button class="${state.includeToday ? 'active' : ''}" data-action="ror-include-today" data-val="1">+ Today</button>
+          <button class="${!state.includeToday ? 'active' : ''}" data-action="ror-include-today" data-val="0">Historical Only</button>
+        </div>
         ${showTopN ? `
         <label class="field-label" style="margin:0 0 0 8px;">Top</label>
         <input type="number" id="rorTopNInput" class="num-input" value="${state.topN}" min="1" step="1">
@@ -623,6 +699,7 @@ window.ReorderReportApp = (function () {
         saveWindow(); recompute(); render(); return;
       }
       if (action === 'ror-group') { state.groupBySupplier = btn.dataset.group === '1'; saveGroup(); render(); return; }
+      if (action === 'ror-include-today') { state.includeToday = btn.dataset.val === '1'; saveIncludeToday(); recompute(); render(); return; }
       if (action === 'ror-group-toggle') {
         const supplier = btn.dataset.supplier || '';
         if (state.collapsedGroups.has(supplier)) state.collapsedGroups.delete(supplier);
@@ -678,15 +755,18 @@ window.ReorderReportApp = (function () {
   // fixed stat. Ranks by sale value and caps at topN FIRST, then
   // applies the cover-days filter — this is what makes the number here
   // match Candela's own C-19 report (see header comment for why the old
-  // order was wrong).
-  function getSummaryFor(windowDays, coverDaysThreshold, topN) {
+  // order was wrong). includeToday defaults to true (pre-toggle
+  // behavior) since Cover's stat is deliberately independent of the
+  // page's own Include Today toggle too — pass false explicitly if a
+  // caller wants Cover's stat to match the historical-only view instead.
+  function getSummaryFor(windowDays, coverDaysThreshold, topN, includeToday) {
     const SL = window.StockLedgerApp;
     const rawRows = (SL && typeof SL.hasData === 'function' && SL.hasData() && typeof SL.getRawRows === 'function')
       ? SL.getRawRows() : null;
     if (!rawRows) return null;
     const w = WINDOWS.indexOf(windowDays) !== -1 ? windowDays : 30;
     const cd = coverDaysThreshold || 7;
-    const allRows = computeAllRows(rawRows, w, cd);
+    const allRows = computeAllRows(rawRows, w, cd, includeToday !== false);
     const pool = topNByValue(allRows, topN || 500);
     const shown = lowCoverWithin(pool, cd);
     return {
@@ -700,19 +780,19 @@ window.ReorderReportApp = (function () {
     };
   }
 
-  // Rows using this page's own persisted window/coverDays/topN settings
-  // (unlike getSummaryFor, which is deliberately independent of them for
-  // Cover's fixed stat). Safe to call cold — same as getSummaryFor, pulls
-  // fresh from Stock Ledger rather than relying on this tab having been
-  // opened this session. Returns [] only if Stock Ledger itself has no
-  // data loaded.
+  // Rows using this page's own persisted window/coverDays/topN/
+  // includeToday settings (unlike getSummaryFor, which is deliberately
+  // independent of them for Cover's fixed stat). Safe to call cold —
+  // same as getSummaryFor, pulls fresh from Stock Ledger rather than
+  // relying on this tab having been opened this session. Returns []
+  // only if Stock Ledger itself has no data loaded.
   function getFlaggedRows() {
     const SL = window.StockLedgerApp;
     const rawRows = (SL && typeof SL.hasData === 'function' && SL.hasData() && typeof SL.getRawRows === 'function')
       ? SL.getRawRows() : null;
     if (!rawRows) return [];
     const cd = Number(state.coverDays) || 15;
-    const allRows = computeAllRows(rawRows, state.window, cd);
+    const allRows = computeAllRows(rawRows, state.window, cd, state.includeToday);
     return lowCoverWithin(topNByValue(allRows, state.topN), cd);
   }
 

@@ -805,7 +805,11 @@ if ('serviceWorker' in navigator) {
   <div class="hero"><div class="hlabel">Audit</div><div class="htitle">📦 BT Inventory</div><div class="hsub">Live product inventory, synced from Pharmacy Audit Hub via Supabase.</div></div>
   <div class="bti-toolbar">
     <span id="bti-status">⏳ Loading…</span>
-    <button class="bti-refresh-btn" onclick="biRefresh()">🔄 Refresh</button>
+    <div style="display:flex;gap:8px;position:relative">
+      <button class="bti-refresh-btn" id="bti-columns-btn" onclick="biToggleColumnsPanel()">☰ Columns</button>
+      <button class="bti-refresh-btn" onclick="biRefresh()">🔄 Refresh</button>
+      <div class="bti-columns-panel" id="bti-columns-panel" style="display:none"></div>
+    </div>
   </div>
   <div class="bti-search-row">
     <input type="text" class="bti-search-input" id="bti-search-input" placeholder="Search code, name, generic, manufacturer, supplier…" oninput="biSetSearch(this.value)">
@@ -820,7 +824,7 @@ if ('serviceWorker' in navigator) {
   <div id="bti-pagination-top"></div>
   <div class="bti-table-wrap" id="bti-table-wrap" style="display:none">
     <table class="bti-table">
-      <thead><tr>
+      <thead><tr id="bti-thead-row">
         <th>Product</th>
         <th class="bti-num">Qty</th>
         <th class="bti-num">Price</th>

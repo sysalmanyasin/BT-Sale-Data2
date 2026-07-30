@@ -21,7 +21,69 @@ function esc(str) {
   return String(str ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 }
 
-const biState = { search: '', groupBy: 'none', page: 1, negativeOnly: false };
+function fmtDate(v) {
+  if (!v) return '—';
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: '2-digit' });
+}
+function fmtQty(v) { return (Number(v) || 0).toLocaleString('en-PK'); }
+function fmtMoney(v) { return 'Rs ' + (Number(v) || 0).toLocaleString('en-PK', { maximumFractionDigits: 0 }); }
+
+// ── Optional column registry ────────────────────────────────────────
+// The bridge (inventory-bridge.js) already maps every column on
+// inventory_products; the base table only ever showed 6 of them. This
+// registry is every remaining column, off by default so the table
+// stays compact, toggleable per-column from the "Columns" picker.
+// Grouped for the picker UI; group labels are cosmetic only.
+const OPTIONAL_COLUMNS = [
+  { key: 'creationDate', label: 'Created', group: 'Dates', num: false, render: p => fmtDate(p.creationDate) },
+  { key: 'lastReceiveDate', label: 'Last Receive', group: 'Dates', num: false, render: p => fmtDate(p.lastReceiveDate) },
+  { key: 'lastSaleDate', label: 'Last Sale', group: 'Dates', num: false, render: p => fmtDate(p.lastSaleDate) },
+
+  { key: 'netQty30Days', label: 'Qty 30d', group: '30-Day Sales', num: true, render: p => fmtQty(p.netQty30Days) },
+  { key: 'saleValueExclTax30Days', label: 'Sale (excl tax) 30d', group: '30-Day Sales', num: true, render: p => fmtMoney(p.saleValueExclTax30Days) },
+  { key: 'saleValueInclTax30Days', label: 'Sale (incl tax) 30d', group: '30-Day Sales', num: true, render: p => fmtMoney(p.saleValueInclTax30Days) },
+
+  { key: 'netQty60Days', label: 'Qty 60d', group: '60-Day Sales', num: true, render: p => fmtQty(p.netQty60Days) },
+  { key: 'saleValueExclTax60Days', label: 'Sale (excl tax) 60d', group: '60-Day Sales', num: true, render: p => fmtMoney(p.saleValueExclTax60Days) },
+  { key: 'saleValueInclTax60Days', label: 'Sale (incl tax) 60d', group: '60-Day Sales', num: true, render: p => fmtMoney(p.saleValueInclTax60Days) },
+
+  { key: 'netQty90Days', label: 'Qty 90d', group: '90-Day Sales', num: true, render: p => fmtQty(p.netQty90Days) },
+  { key: 'saleValueExclTax90Days', label: 'Sale (excl tax) 90d', group: '90-Day Sales', num: true, render: p => fmtMoney(p.saleValueExclTax90Days) },
+  { key: 'saleValueInclTax90Days', label: 'Sale (incl tax) 90d', group: '90-Day Sales', num: true, render: p => fmtMoney(p.saleValueInclTax90Days) },
+
+  { key: 'netQtyToday', label: 'Qty Today', group: 'Today', num: true, render: p => fmtQty(p.netQtyToday) },
+  { key: 'saleValueExclTaxToday', label: 'Sale (excl tax) Today', group: 'Today', num: true, render: p => fmtMoney(p.saleValueExclTaxToday) },
+  { key: 'saleValueInclTaxToday', label: 'Sale (incl tax) Today', group: 'Today', num: true, render: p => fmtMoney(p.saleValueInclTaxToday) },
+
+  { key: 'taxPercent', label: 'Tax %', group: 'Tax', num: true, render: p => (Number(p.taxPercent) || 0).toLocaleString('en-PK') + '%' },
+  { key: 'isTaxable', label: 'Taxable', group: 'Tax', num: false, render: p => (p.isTaxable ? 'Yes' : 'No') },
+];
+const COLUMNS_STORE_KEY = 'bt_biColumns_v1';
+
+function repoGet(key) {
+  try { return window.Repository ? window.Repository.getItem(key) : localStorage.getItem(key); }
+  catch (e) { return null; }
+}
+function repoSet(key, value) {
+  try { if (window.Repository) window.Repository.setItem(key, value); else localStorage.setItem(key, value); }
+  catch (e) { /* ignore */ }
+}
+function loadEnabledColumns() {
+  try {
+    const raw = repoGet(COLUMNS_STORE_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    const valid = new Set(OPTIONAL_COLUMNS.map(c => c.key));
+    return new Set(Array.isArray(arr) ? arr.filter(k => valid.has(k)) : []);
+  } catch (e) { return new Set(); }
+}
+function saveEnabledColumns() {
+  repoSet(COLUMNS_STORE_KEY, JSON.stringify(Array.from(biState.columns)));
+}
+
+const biState = { search: '', groupBy: 'none', page: 1, negativeOnly: false, columns: loadEnabledColumns() };
 let _searchDebounce = null;
 
 function _visibleProducts(products) {
@@ -63,8 +125,15 @@ function _groupSubtotal(products, key, groupName) {
   return { count: items.length, totalQty, totalValue };
 }
 
+function _activeExtraColumns() {
+  return OPTIONAL_COLUMNS.filter(c => biState.columns.has(c.key));
+}
+
 function _rowHtml(p) {
   const isNegative = (p.qty || 0) < 0;
+  const extras = _activeExtraColumns().map(c =>
+    `<td class="bti-extra-td" style="${c.num ? 'text-align:right;' : ''}font-size:11px;color:var(--muted);white-space:nowrap">${esc(c.render(p))}</td>`
+  ).join('');
   return `<tr class="bti-row">
     <td>
       <div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.3">${esc(p.name)}</div>
@@ -75,17 +144,73 @@ function _rowHtml(p) {
     <td style="font-size:11px;color:var(--muted)">${esc(p.company || '—')}</td>
     <td style="font-size:11px;color:var(--muted)">${esc(p.supplier || '—')}</td>
     <td style="text-align:right;font-size:11px;color:var(--muted)">${p.conversionFactor ?? 1}</td>
+    ${extras}
   </tr>`;
 }
 
 function _groupHeaderHtml(groupName, sub, continued) {
+  const colspan = 6 + _activeExtraColumns().length;
   return `<tr class="bti-group-header">
-    <td colspan="6">
+    <td colspan="${colspan}">
       <strong style="color:var(--text);font-size:12.5px">${esc(groupName)}</strong>${continued ? ' <span style="font-weight:600;color:var(--muted)">(cont.)</span>' : ''}
       <span style="color:var(--muted);font-size:11px;margin-left:8px">${sub.count} SKU${sub.count !== 1 ? 's' : ''} · ${sub.totalQty.toLocaleString()} units · Rs ${sub.totalValue.toLocaleString()}</span>
     </td>
   </tr>`;
 }
+
+// ── Column picker ────────────────────────────────────────────────────
+function _columnsPanelHtml() {
+  const groups = [];
+  OPTIONAL_COLUMNS.forEach(c => {
+    let g = groups.find(g => g.name === c.group);
+    if (!g) { g = { name: c.group, cols: [] }; groups.push(g); }
+    g.cols.push(c);
+  });
+  return groups.map(g => `
+    <div class="bti-col-group">
+      <div class="bti-col-group-title">${esc(g.name)}</div>
+      ${g.cols.map(c => `
+        <label class="bti-col-check">
+          <input type="checkbox" ${biState.columns.has(c.key) ? 'checked' : ''} onchange="biToggleColumn('${c.key}', this.checked)">
+          ${esc(c.label)}
+        </label>`).join('')}
+    </div>`).join('');
+}
+
+function _renderColumnHeaders() {
+  const row = document.getElementById('bti-thead-row');
+  if (!row) return;
+  row.querySelectorAll('.bti-extra-th').forEach(el => el.remove());
+  _activeExtraColumns().forEach(c => {
+    const th = document.createElement('th');
+    th.className = 'bti-extra-th' + (c.num ? ' bti-num' : '');
+    th.textContent = c.label;
+    row.appendChild(th);
+  });
+}
+
+function biToggleColumn(key, checked) {
+  if (checked) biState.columns.add(key); else biState.columns.delete(key);
+  saveEnabledColumns();
+  _renderColumnHeaders();
+  renderInventoryPage();
+}
+
+function biToggleColumnsPanel() {
+  const panel = document.getElementById('bti-columns-panel');
+  if (!panel) return;
+  const showing = panel.style.display !== 'none';
+  if (!showing) panel.innerHTML = _columnsPanelHtml();
+  panel.style.display = showing ? 'none' : 'block';
+}
+
+document.addEventListener('click', (e) => {
+  const panel = document.getElementById('bti-columns-panel');
+  const btn = document.getElementById('bti-columns-btn');
+  if (!panel || panel.style.display === 'none') return;
+  if (panel.contains(e.target) || (btn && btn.contains(e.target))) return;
+  panel.style.display = 'none';
+});
 
 function _paginationHtml(totalRows, totalPages) {
   if (totalRows === 0) return '';
@@ -99,6 +224,7 @@ function _paginationHtml(totalRows, totalPages) {
 }
 
 function renderInventoryPage() {
+  _renderColumnHeaders();
   const tbody = document.getElementById('bti-table-body');
   const statusEl = document.getElementById('bti-status');
   const topPager = document.getElementById('bti-pagination-top');
@@ -224,6 +350,7 @@ async function biRefresh() {
 
 // ── Page-show hook — called from ui.js's showPage() ─────────────────
 export function onShowInventory() {
+  _renderColumnHeaders();
   renderInventoryPage();
   InventoryBridge.refreshFullData(false).then(renderInventoryPage);
 }
@@ -234,5 +361,7 @@ window.biSetGroupBy = biSetGroupBy;
 window.biToggleNegativeOnly = biToggleNegativeOnly;
 window.biGoToPage = biGoToPage;
 window.biRefresh = biRefresh;
+window.biToggleColumn = biToggleColumn;
+window.biToggleColumnsPanel = biToggleColumnsPanel;
 window.inventoryNativeOnRefresh = onBridgeRefresh;
 window.invOnShowInventory = onShowInventory;
