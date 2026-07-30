@@ -101,6 +101,17 @@
 // getSummaryFor() (Cover Dashboard's fixed stat) is unaffected by this
 // page's own toggle by design — it takes its own includeToday param,
 // defaulting to true (pre-toggle behavior) same as before.
+//
+// 2026-07-30 (later still) — added a "Columns" dropdown (both tabs) to
+// show/hide any of the table's columns, persisted per-device
+// (bt_reorder_hiddencols_v1). At least one column is always kept
+// visible — the checkbox for the last remaining one silently reverts
+// itself rather than leaving an empty table. Excel/PDF export are
+// unaffected by this and always include every column, same as before;
+// added a new "Print" button that funnels through the app's one shared
+// Print engine (js/print.js, same one every other report uses) and
+// DOES respect the current column selection — the printed table only
+// contains whatever's checked in the Columns dropdown at the time.
 // ══════════════════════════════════════════════════════════════════════
 
 window.ReorderReportApp = (function () {
@@ -112,6 +123,7 @@ window.ReorderReportApp = (function () {
   const TOPN_KEY = 'bt_reorder_topn_v1';
   const GROUP_KEY = 'bt_reorder_group_v1';
   const INCLUDETODAY_KEY = 'bt_reorder_includetoday_v1';
+  const HIDDENCOLS_KEY = 'bt_reorder_hiddencols_v1';
 
   const WINDOWS = [30, 60, 90];
 
@@ -125,6 +137,8 @@ window.ReorderReportApp = (function () {
     includeToday: true,      // fold today's live sales into the w-day window (toggle) — see header note
     collapsedGroups: new Set(),
     sort: { key: 'saleValueP', dir: -1 },
+    hiddenCols: new Set(),    // column keys currently hidden from the table AND the print view
+    colsMenuOpen: false,      // transient (not persisted) — whether the Columns dropdown is open
     rawRows: [],
     computed: [],             // every qualifying row (no Top N cap)
     asOf: '',
@@ -159,12 +173,15 @@ window.ReorderReportApp = (function () {
     state.groupBySupplier = repoGet(GROUP_KEY) === '1';
     const it = repoGet(INCLUDETODAY_KEY);
     state.includeToday = (it === null) ? true : (it === '1'); // default on, matches pre-toggle behavior
+    const hc = repoGet(HIDDENCOLS_KEY);
+    state.hiddenCols = new Set(hc ? hc.split(',').filter(Boolean) : []);
   }
   function saveWindow() { repoSet(WINDOW_KEY, String(state.window)); }
   function saveCoverDays() { repoSet(COVERDAYS_KEY, String(state.coverDays)); }
   function saveTopN() { repoSet(TOPN_KEY, String(state.topN)); }
   function saveGroup() { repoSet(GROUP_KEY, state.groupBySupplier ? '1' : '0'); }
   function saveIncludeToday() { repoSet(INCLUDETODAY_KEY, state.includeToday ? '1' : '0'); }
+  function saveHiddenCols() { repoSet(HIDDENCOLS_KEY, Array.from(state.hiddenCols).join(',')); }
 
   // ---------- CALCULATION ENGINE ----------
   // Computes every window's metrics for every raw row, unfiltered.
@@ -371,6 +388,31 @@ window.ReorderReportApp = (function () {
   function isPrimaryWinCol(c, primaryWindow) {
     return /^(saleQty|daysCover|demandQty)\d+$/.test(c.key) && c.key.endsWith(String(primaryWindow));
   }
+  // Cols actually shown in the on-screen table AND fed into Print — hiding
+  // a column via the Columns dropdown removes it from both in one step.
+  function visibleCols(cols) {
+    return cols.filter(c => !state.hiddenCols.has(c.key));
+  }
+
+  // ---------- COLUMNS DROPDOWN ----------
+  function columnsMenuHtml(allColsList) {
+    return `
+      <div class="colmenu-wrap${state.colsMenuOpen ? ' open' : ''}" id="rorColMenuWrap">
+        <button class="btn btn-sm" type="button" data-action="ror-cols-toggle">
+          <span class="material-symbols-outlined">view_column</span>Columns
+        </button>
+        <div class="colmenu">
+          ${allColsList.map(c => `
+            <label>
+              <input type="checkbox" data-colkey="${esc(c.key)}" ${state.hiddenCols.has(c.key) ? '' : 'checked'}>
+              ${esc(c.label)}
+            </label>`).join('')}
+          <div class="colmenu-foot">
+            <button type="button" data-action="ror-cols-all">Show all</button>
+          </div>
+        </div>
+      </div>`;
+  }
 
   function theadHtml(cols, sort, primaryWindow) {
     return '<tr>' + cols.map(c => {
@@ -539,13 +581,87 @@ window.ReorderReportApp = (function () {
   }
 
   // ---------- RENDER ----------
+  // ---------- PRINT (visible columns only) ----------
+  // Uses the shared Print engine (js/print.js) — same as every other
+  // report in the app — instead of window.print(), so it gets the
+  // standard Generating…/View/Download/Save-to-Library popup. Unlike
+  // Excel/PDF export (which always include every column), this respects
+  // whatever the Columns dropdown currently has checked.
+  function printRowHtml(r, cols) {
+    return '<tr>' + cols.map(c => {
+      let v = r[c.key];
+      let content = c.days ? fmtDays(v) : (c.num ? fmt(v) : esc(v));
+      return `<td${c.num ? ' class="r"' : ''}>${content}</td>`;
+    }).join('') + '</tr>';
+  }
+
+  function printGroupedBody(list, cols) {
+    const groups = new Map();
+    list.forEach(r => {
+      const key = r.supplier || 'Unspecified';
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(r);
+    });
+    const groupArr = Array.from(groups.entries()).map(([supplier, items]) => ({
+      supplier, items, total: items.reduce((s, r) => s + r.saleValueP, 0)
+    })).sort((a, b) => b.total - a.total);
+    return groupArr.map(g => {
+      const header = `<tr><td colspan="${cols.length}" style="font-weight:700;background:#f1f5f9;padding:6px 10px;">${esc(g.supplier)} <span style="font-weight:400;color:#64748b">(${g.items.length} item${g.items.length === 1 ? '' : 's'})</span></td></tr>`;
+      return header + g.items.map(r => printRowHtml(r, cols)).join('');
+    }).join('');
+  }
+
+  function buildPrintHtml(rows, cols, title, subLine) {
+    const q = (state.search || '').trim();
+    let list = rows;
+    if (q) {
+      list = (typeof window.BTSearch !== 'undefined')
+        ? window.BTSearch.filterAndRank(list, q, ['code', 'name'])
+        : list.filter(r => (r.code || '').toLowerCase().includes(q.toLowerCase()) || (r.name || '').toLowerCase().includes(q.toLowerCase()));
+    }
+    list = sortRows(list, state.sort);
+    const today = todayStamp();
+    const theadRow = '<tr>' + cols.map(c => `<th${c.num ? ' class="r"' : ''}>${esc(c.label)}</th>`).join('') + '</tr>';
+    const bodyRows = state.groupBySupplier ? printGroupedBody(list, cols) : list.map(r => printRowHtml(r, cols)).join('');
+    return `<div style="max-width:960px;margin:0 auto">
+      <div class="pr-header">
+        <div><h1>BAHRIA TOWN SALES IC</h1><p>${esc(title)}</p></div>
+        <div class="pr-meta">Printed: ${today}${subLine ? ' · ' + esc(subLine) : ''}</div>
+      </div>
+      <table class="pr-tbl">
+        <thead>${theadRow}</thead>
+        <tbody>${bodyRows}</tbody>
+      </table>
+    </div>`;
+  }
+
+  function printTopN() {
+    const rows = state.topNFlagged || [];
+    if (!rows.length) { say('Nothing to print', 'w'); return; }
+    const cols = visibleCols(allCols());
+    const html = buildPrintHtml(rows, cols, 'Reorder Report — Top ' + state.topN + ' by Sale Value',
+      state.window + 'd window · cover under ' + state.coverDays + 'd');
+    if (window.Print && typeof window.Print.render === 'function') window.Print.render(html);
+    else say('Print engine not loaded', 'e');
+  }
+
+  function printAllFlagged() {
+    const rows = state.computed || [];
+    if (!rows.length) { say('Nothing to print', 'w'); return; }
+    const cols = visibleCols(allCols());
+    const html = buildPrintHtml(rows, cols, 'Reorder Report — All Flagged Items',
+      state.window + 'd window · cover under ' + state.coverDays + 'd');
+    if (window.Print && typeof window.Print.render === 'function') window.Print.render(html);
+    else say('Print engine not loaded', 'e');
+  }
+
   function windowSegHtml() {
     return `<div class="window-seg" id="rorWindowSeg">` +
       WINDOWS.map(w => `<button class="${state.window === w ? 'active' : ''}" data-action="ror-window" data-win="${w}">${w}d</button>`).join('') +
       `</div>`;
   }
 
-  function controlsHtml(showTopN) {
+  function controlsHtml(showTopN, allColsList) {
     return `
       <div class="filter-row">
         <label class="field-label" style="margin:0;">Window</label>
@@ -571,7 +687,9 @@ window.ReorderReportApp = (function () {
           <button class="${!state.groupBySupplier ? 'active' : ''}" data-action="ror-group" data-group="0">List</button>
           <button class="${state.groupBySupplier ? 'active' : ''}" data-action="ror-group" data-group="1">By Supplier</button>
         </div>
+        ${columnsMenuHtml(allColsList)}
         <div class="export-actions">
+          <button class="btn" data-action="${showTopN ? 'ror-print-topn' : 'ror-print-all'}"><span class="material-symbols-outlined">print</span>Print</button>
           <button class="btn btn-primary" data-action="${showTopN ? 'ror-export-topn-excel' : 'ror-export-all-excel'}"><span class="material-symbols-outlined">table_view</span>Excel</button>
           <button class="btn" data-action="${showTopN ? 'ror-export-topn-pdf' : 'ror-export-all-pdf'}"><span class="material-symbols-outlined">picture_as_pdf</span>PDF</button>
         </div>
@@ -614,25 +732,27 @@ window.ReorderReportApp = (function () {
 
   function renderTopNTab() {
     const top = state.topNFlagged;
-    const cols = allCols();
+    const allC = allCols();
+    const cols = visibleCols(allC);
     const { rows: shownAfterSearch, html: tableHtmlStr } = tableHtml(top, cols);
     return `
       ${statsHtml(shownAfterSearch, state.computed.length)}
       <div class="card">
         <div class="card-head"><h3>Top ${state.topN} by Sale Value</h3><span class="hint">${state.window}d window · cover under ${state.coverDays}d</span></div>
-        ${controlsHtml(true)}
+        ${controlsHtml(true, allC)}
         ${tableHtmlStr}
       </div>`;
   }
 
   function renderAllFlaggedTab() {
-    const cols = allCols();
+    const allC = allCols();
+    const cols = visibleCols(allC);
     const { rows: shownAfterSearch, html: tableHtmlStr } = tableHtml(state.computed, cols);
     return `
       ${statsHtml(shownAfterSearch, state.computed.length)}
       <div class="card">
         <div class="card-head"><h3>All Flagged Items</h3><span class="hint">no Top N cap — every item under the cover threshold, unranked by value (broader than the Top N tab; not what Candela's own report shows)</span></div>
-        ${controlsHtml(false)}
+        ${controlsHtml(false, allC)}
         ${tableHtmlStr}
       </div>`;
   }
@@ -711,10 +831,32 @@ window.ReorderReportApp = (function () {
       if (action === 'ror-export-topn-pdf') { exportTopNPdf(); return; }
       if (action === 'ror-export-all-excel') { exportAllExcel(); return; }
       if (action === 'ror-export-all-pdf') { exportAllPdf(); return; }
+      if (action === 'ror-print-topn') { printTopN(); return; }
+      if (action === 'ror-print-all') { printAllFlagged(); return; }
+      if (action === 'ror-cols-toggle') { state.colsMenuOpen = !state.colsMenuOpen; render(); return; }
+      if (action === 'ror-cols-all') { state.hiddenCols.clear(); saveHiddenCols(); render(); return; }
       if (btn.dataset.topnPreset) { state.topN = Number(btn.dataset.topnPreset); saveTopN(); render(); return; }
     });
 
     root.addEventListener('input', function (e) {
+      if (e.target.matches('[data-colkey]')) {
+        const key = e.target.dataset.colkey;
+        if (!e.target.checked) {
+          // Keep at least one column visible — hiding the last one
+          // would leave an empty, useless table.
+          const stillVisible = allCols().filter(c => c.key !== key && !state.hiddenCols.has(c.key));
+          if (!stillVisible.length) {
+            e.target.checked = true;
+            say('At least one column must stay visible', 'w');
+            return;
+          }
+          state.hiddenCols.add(key);
+        } else {
+          state.hiddenCols.delete(key);
+        }
+        saveHiddenCols(); render();
+        return;
+      }
       if (e.target.id === 'rorSearchBox') { state.search = e.target.value; render(); return; }
       if (e.target.id === 'rorCoverDaysInput') {
         const v = parseFloat(e.target.value);
