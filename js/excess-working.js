@@ -706,5 +706,22 @@ window.ExcessWorkingApp = (function () {
     if (root && root.offsetParent !== null) render();
   }
 
-  return { init: init, getSummary: getSummary, reloadRetain: reloadRetain };
+  // ── Item-level rows, cold-callable — same "safe even if this page's own
+  // tab was never opened this session" contract as getSummary(), just
+  // returning the per-item computed rows instead of the totals. Added for
+  // the Inventory dashboard's Dead Stock table and the rule engine's
+  // per-item excess-value alert (see rules-registrations.js), neither of
+  // which can assume the Excess Working tab has been opened this session.
+  function getRows() {
+    if (!initialized) {
+      state.retainList = loadRetain();
+      state.misc = loadMisc();
+      state.hoValue = loadHoValue();
+    }
+    refreshFromStockLedger(true);
+    if (!state.dataReady) return [];
+    return state.computed;
+  }
+
+  return { init: init, getSummary: getSummary, getRows: getRows, reloadRetain: reloadRetain };
 })();

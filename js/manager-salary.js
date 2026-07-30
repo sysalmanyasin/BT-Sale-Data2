@@ -201,11 +201,11 @@ function autoFillSalaryFromSheets() {
 
 
 Object.assign(window, {
-  _salRows_cur, renderSalaryTable, loadSalaryMonth, salRowChange, addSalaryRow,
+  _salRows, _salRows_cur, renderSalaryTable, loadSalaryMonth, salRowChange, addSalaryRow,
   deleteSalRow, saveSalaryData, autoFillSalaryFromSheets, _salNet, _salUpdateFooter,
 });
 
 export {
-  _salRows_cur, renderSalaryTable, loadSalaryMonth, salRowChange, addSalaryRow,
+  _salRows, _salRows_cur, renderSalaryTable, loadSalaryMonth, salRowChange, addSalaryRow,
   deleteSalRow, saveSalaryData, autoFillSalaryFromSheets, _salNet, _salUpdateFooter,
 };
