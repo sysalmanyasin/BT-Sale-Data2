@@ -50,6 +50,7 @@
 <link rel="stylesheet" href="css/stockledger.css?v=20260722a">
 <link rel="stylesheet" href="css/excess-working.css?v=20260722a">
 <link rel="stylesheet" href="css/reorder-report.css?v=20260730a">
+<link rel="stylesheet" href="css/inventory-health-dashboard.css?v=20260730a">
 <link rel="stylesheet" href="css/pdf-library.css?v=20260725a">
 <link rel="stylesheet" href="css/cash-deposit-report.css?v=20260725b">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,400,0,0">
@@ -264,6 +265,7 @@ if ('serviceWorker' in navigator) {
     <a class="ntab" href="#stockledger" data-page="stockledger" data-group="inventory" data-domain-group="inventory">📒 Stock Ledger</a>
     <a class="ntab" href="#excess" data-page="excess" data-group="inventory" data-domain-group="inventory">📉 Excess Working</a>
     <a class="ntab" href="#reorder" data-page="reorder" data-group="inventory" data-domain-group="inventory">🛒 Reorder Report</a>
+    <a class="ntab" href="#inv-health" data-page="inv-health" data-group="inventory" data-domain-group="inventory">🩺 Inventory Health</a>
     <a class="ntab" href="#tools" data-page="tools" data-group="tools">Tools</a>
     <a class="ntab" href="#pdf-library" data-page="pdf-library" data-group="pdf-library">📚 PDF Library</a>
   </div>
@@ -304,6 +306,7 @@ if ('serviceWorker' in navigator) {
   <a class="bnav-item" href="#stockledger" data-page="stockledger" data-group="inventory" data-domain-group="inventory"><span class="bicon">📒</span><span class="blabel">Stock Ledger</span></a>
   <a class="bnav-item" href="#excess" data-page="excess" data-group="inventory" data-domain-group="inventory"><span class="bicon">📉</span><span class="blabel">Excess</span></a>
   <a class="bnav-item" href="#reorder" data-page="reorder" data-group="inventory" data-domain-group="inventory"><span class="bicon">🛒</span><span class="blabel">Reorder</span></a>
+  <a class="bnav-item" href="#inv-health" data-page="inv-health" data-group="inventory" data-domain-group="inventory"><span class="bicon">🩺</span><span class="blabel">Inv Health</span></a>
   <a class="bnav-item" href="#tools" data-page="tools" data-group="tools"><span class="bicon">⚙️</span><span class="blabel">Tools</span></a>
 </div>
 <!-- Sale Data sub-nav (mobile) -->
@@ -1099,6 +1102,75 @@ if ('serviceWorker' in navigator) {
 </main>
 
 <footer>Reorder Report — reads live from Stock Ledger, figures update the moment that page's data changes.</footer>
+</section>
+
+<!-- INVENTORY HEALTH DASHBOARD — standalone overview tab: health mix
+     (never sold/dead/excess/reorder/healthy), top & slow movers, a
+     reorder-value trend, supplier stock breakdown, and one searchable
+     table where any product's status (stock, cover days, 30/60/90d
+     velocity, reorder/excess/dead flag, supplier, last received date)
+     shows up. Same shared source as Stock Ledger/Excess/Reorder — see
+     js/inventory-health-dashboard.js. -->
+<section class="page ihd-app app-page" id="page-inv-health">
+<header>
+  <p class="eyebrow">Inventory</p>
+  <h1>Inventory Health Dashboard</h1>
+  <p class="sub">One place for the whole catalogue's status — health mix, movers, a reorder-value trend, and a searchable table with every product's stock, cover days, sale velocity, and reorder/excess/dead-stock flag.</p>
+</header>
+
+<div class="ihd-toolbar">
+  <input type="search" id="ihd-search" placeholder="Search by product name, code, generic, supplier…" autocomplete="off">
+  <select id="ihd-supplier-select" aria-label="Filter by supplier"></select>
+  <button class="ihd-refresh-btn" id="ihd-refresh-btn" type="button">↻ Refresh</button>
+</div>
+
+<div class="ihd-kpis" id="ihd-kpis"></div>
+
+<div class="ihd-charts">
+  <div class="ihd-chart-card"><h3>Health Breakdown</h3><canvas id="ihd-health-chart" height="130"></canvas></div>
+  <div class="ihd-chart-card">
+    <h3>Movers (30d Sale Value)</h3>
+    <canvas id="ihd-movers-chart" height="130"></canvas>
+    <div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:10px;">SLOW MOVERS</div>
+    <div class="ihd-slow-movers" id="ihd-slow-movers"></div>
+  </div>
+  <div class="ihd-chart-card"><h3>Reorder Value Trend</h3><canvas id="ihd-trend-chart" height="130"></canvas></div>
+  <div class="ihd-chart-card"><h3>Stock Value by Supplier</h3><canvas id="ihd-supplier-chart" height="130"></canvas></div>
+</div>
+
+<div class="ihd-chips">
+  <button class="ihd-chip" data-flag="reorder" type="button">🛒 Reorder</button>
+  <button class="ihd-chip" data-flag="excess" type="button">📦 Excess</button>
+  <button class="ihd-chip" data-flag="dead" type="button">💀 Dead Stock</button>
+  <button class="ihd-chip" data-flag="neverSold" type="button">🕸️ Never Sold</button>
+  <button class="ihd-chip" data-flag="zeroStock" type="button">⭕ Zero Stock</button>
+  <button class="ihd-chip" data-flag="healthy" type="button">✅ Healthy</button>
+</div>
+
+<div class="ihd-table-wrap">
+  <div class="ihd-table-head">
+    <h3>Product Status</h3>
+    <span id="ihd-table-count"></span>
+  </div>
+  <table id="ihd-table">
+    <thead>
+      <tr>
+        <th data-sort="name">Product</th>
+        <th data-sort="supplier">Supplier</th>
+        <th data-sort="stock">Stock</th>
+        <th data-sort="stockValue">Stock Value</th>
+        <th data-sort="coverDays">Cover Days</th>
+        <th>Velocity 30/60/90d</th>
+        <th data-sort="flag">Status</th>
+        <th data-sort="lastReceiveDate">Last Received</th>
+        <th data-sort="reorderValue">Reorder Value</th>
+      </tr>
+    </thead>
+    <tbody id="ihd-table-body"></tbody>
+  </table>
+</div>
+
+<footer>Inventory Health Dashboard — reads live from Stock Ledger; the reorder-value trend records one point per day this page is viewed.</footer>
 </section>
 
 <!-- TOOLS -->
@@ -1936,6 +2008,7 @@ if ('serviceWorker' in navigator) {
 <script defer src="js/stockledger.js?v=20260722a"></script>
 <script defer src="js/excess-working.js?v=20260722a"></script>
 <script defer src="js/reorder-report.js?v=20260730a"></script>
+<script defer src="js/inventory-health-dashboard.js?v=20260730a"></script>
 
 <!-- 3. Auth: Google Sign-In -->
 <script defer src="js/auth.js?v=20260722a"></script>
