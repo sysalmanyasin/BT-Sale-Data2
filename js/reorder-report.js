@@ -55,6 +55,24 @@
 // Candela's own report, so it still runs lowCoverWithin() directly over
 // computeAllRows() with no Top N stage. Only the Top N tab and
 // getSummaryFor() (Candela-equivalent paths) got the ordering fix.
+//
+// 2026-07-30 update: saleQtyWDays / saleValueWDays (and therefore
+// daysCoverWDays / demandQtyWDays / saleQtyP / saleValueP / daysCoverP /
+// demandQtyP — everything the reorder decision is actually based on)
+// now fold in today's live sales (netQtyToday / saleValueExclTaxToday)
+// on top of the w-day historical window, instead of reflecting only
+// "through yesterday." The daily rate divides by w + todayFraction
+// (elapsed fraction of today) rather than plain w, so a big morning
+// rush doesn't get diluted by treating today as a full day before it
+// is one. See computeAllRows() for the detailed reasoning. Pure w-day
+// historical numbers are still available as saleQty{w}Historical /
+// saleValue{w}Historical (e.g. saleQty30Historical) on each computed
+// row for anyone who needs the old "clean window" figure (e.g.
+// exports), just not surfaced as a table column by default. Requires
+// stockledger.js's
+// normalizeSupabaseRow() to map net_qty_today /
+// sale_value_excl_tax_today (added the same day) — falls back to 0 for
+// any row loaded from a source that predates those fields.
 // ══════════════════════════════════════════════════════════════════════
 
 window.ReorderReportApp = (function () {
@@ -120,18 +138,55 @@ window.ReorderReportApp = (function () {
   // coverDays is still needed here even though nothing gets filtered on
   // it in this function — demandQty (how much to buy to reach the
   // target cover) is computed per-row against it.
+  // 2026-07-30 update: sale windows now include today's live activity,
+  // not just the clean w-day historical figure. sync.ps1 / the
+  // inventory sync deliberately keeps netQtyWDays / saleValueExclTaxWDays
+  // ending at yesterday 23:59:59 (so those numbers stay stable no matter
+  // what time of day a sync runs), and reports today's sales separately
+  // as netQtyToday / saleValueExclTaxToday. Reorder Report needs the
+  // opposite property — the most current demand signal, right now — so
+  // it adds the two together here. They never overlap (the w-day window
+  // stops at yesterday, "today" starts at today 00:00), so this is a
+  // straight sum, not double-counting.
+  //
+  // The daily rate then divides by effectiveDays = w + todayFraction
+  // (how much of today has elapsed, e.g. 0.5 at noon) instead of plain
+  // w — dividing today's partial-day sales by a whole extra day would
+  // understate the rate early in the day and overstate it as the day
+  // goes on. This is what "daysCover"/"demandQty" are computed from, so
+  // this is the fix that makes the actual buy-quantity recommendation
+  // correct, not just the sale-qty/value columns.
   function computeAllRows(rawRows, primaryWindow, coverDays) {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayFraction = Math.min(1, Math.max(0, (now - startOfToday) / 86400000));
+
     const rows = rawRows.map(r => {
       const stock = Number(r.stock) || 0;
       const unitPrice = Number(r.unitPrice) || 0;
+
+      const todayQty = Number(r.netQtyToday) || 0;
+      // Same "prefer real computed value, fall back to qty × unitPrice
+      // only if the field is genuinely absent" pattern as the w-day
+      // windows below — undefined/null means "field predates this sync",
+      // not "zero sales today".
+      const rawTodayValue = r.saleValueExclTaxToday;
+      const todayValue = (rawTodayValue !== undefined && rawTodayValue !== null)
+        ? Number(rawTodayValue)
+        : todayQty * unitPrice;
+
       const out = {
         code: r.code || '', name: r.name || '',
         supplier: (r.supplier && String(r.supplier).trim()) || (r.company && String(r.company).trim()) || 'Unspecified',
         company: r.company || '',
         stock, unitPrice,
+        saleQtyToday: todayQty,
+        saleValueToday: todayValue,
+        isTaxable: !!r.isTaxable,
+        taxPercent: Number(r.taxPercent) || 0,
       };
       WINDOWS.forEach(w => {
-        const saleQty = Number(r['netQty' + w + 'Days']) || 0;
+        const historicalQty = Number(r['netQty' + w + 'Days']) || 0;
         // Prefer the real historical sale value (qty × pack-aware,
         // discount-adjusted price, VAT stripped out) computed server-side
         // in sync.ps1. Falls back to qty × current unit price only for
@@ -140,14 +195,21 @@ window.ReorderReportApp = (function () {
         // row", not "zero sales", so it's checked explicitly rather than
         // with a falsy check (0 is a legitimate real value here).
         const rawSaleValue = r['saleValueExclTax' + w + 'Days'];
-        const saleValue = (rawSaleValue !== undefined && rawSaleValue !== null)
+        const historicalValue = (rawSaleValue !== undefined && rawSaleValue !== null)
           ? Number(rawSaleValue)
-          : saleQty * unitPrice;
-        const dailyRate = saleQty / w;
+          : historicalQty * unitPrice;
+
+        const saleQty = historicalQty + todayQty;
+        const saleValue = historicalValue + todayValue;
+        const effectiveDays = w + todayFraction;
+        const dailyRate = saleQty / effectiveDays;
         const daysCover = dailyRate > 0 ? (stock / dailyRate) : null;
         const demandQty = dailyRate > 0 ? Math.max(0, Math.ceil(dailyRate * coverDays - stock)) : 0;
+
         out['saleQty' + w] = saleQty;
+        out['saleQty' + w + 'Historical'] = historicalQty; // pre-today reference, e.g. for exports
         out['saleValue' + w] = saleValue;
+        out['saleValue' + w + 'Historical'] = historicalValue;
         out['daysCover' + w] = daysCover;
         out['demandQty' + w] = demandQty;
       });
@@ -228,6 +290,7 @@ window.ReorderReportApp = (function () {
     { key: 'name', label: 'Product Name', wrap: true },
     { key: 'supplier', label: 'Supplier' },
     { key: 'stock', label: 'Stock', num: true },
+    { key: 'saleQtyToday', label: 'Sold Today', num: true },
   ];
   function windowCols(w) {
     return [

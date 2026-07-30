@@ -45,6 +45,21 @@ function _getLocal(key) { try { return localStorage.getItem(key); } catch (e) { 
 // Row shape matches Pharmacy Audit Hub's own _rowToInventoryProduct
 // (js/repository/supabase.js) exactly, so nothing here re-derives or
 // second-guesses field meaning — it's a straight read.
+//
+// 2026-07-30 update: this used to map only 7 of the ~23 columns on
+// inventory_products (code/name/qty/price/company/generic/supplier/
+// conversionFactor) — every sale/date column, including ones that
+// had existed on the table since 2026-07-25 (creationDate,
+// lastReceiveDate, lastSaleDate, netQty30/60/90Days,
+// saleValueIncl/ExclTax30/60/90Days), was silently dropped on the
+// floor here and never reached inventory-native.js. Now maps every
+// column, including the newest additions: netQtyToday /
+// saleValueIncl/ExclTaxToday (today 00:00 → now, kept separate from
+// the stable 30/60/90 windows) and taxPercent / isTaxable (derived
+// from the product's most recent actual sale line — isTaxable=false
+// means InclTax and ExclTax are the same number for that product,
+// isTaxable=true means taxPercent tells you the VAT rate that
+// applied).
 function _rowToProduct(row) {
   return {
     code: row.code || '',
@@ -55,6 +70,23 @@ function _rowToProduct(row) {
     generic: row.generic || '',
     supplier: row.supplier || 'Unassigned Supplier',
     conversionFactor: row.conversion_factor || 1,
+    creationDate: row.creation_date || null,
+    lastReceiveDate: row.last_receive_date || null,
+    lastSaleDate: row.last_sale_date || null,
+    netQty30Days: row.net_qty_30_days || 0,
+    netQty60Days: row.net_qty_60_days || 0,
+    netQty90Days: row.net_qty_90_days || 0,
+    saleValueInclTax30Days: row.sale_value_incl_tax_30_days || 0,
+    saleValueInclTax60Days: row.sale_value_incl_tax_60_days || 0,
+    saleValueInclTax90Days: row.sale_value_incl_tax_90_days || 0,
+    saleValueExclTax30Days: row.sale_value_excl_tax_30_days || 0,
+    saleValueExclTax60Days: row.sale_value_excl_tax_60_days || 0,
+    saleValueExclTax90Days: row.sale_value_excl_tax_90_days || 0,
+    netQtyToday: row.net_qty_today || 0,
+    saleValueInclTaxToday: row.sale_value_incl_tax_today || 0,
+    saleValueExclTaxToday: row.sale_value_excl_tax_today || 0,
+    taxPercent: row.tax_percent || 0,
+    isTaxable: !!row.is_taxable,
   };
 }
 

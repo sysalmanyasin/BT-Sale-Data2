@@ -862,6 +862,19 @@ window.StockLedgerApp = (function(){
           saleValueExclTax30Days: Number(r.sale_value_excl_tax_30_days) || 0,
           saleValueExclTax60Days: Number(r.sale_value_excl_tax_60_days) || 0,
           saleValueExclTax90Days: Number(r.sale_value_excl_tax_90_days) || 0,
+          // 2026-07-30: added alongside the sync.ps1 / edge-function /
+          // ALTER TABLE update that introduced net_qty_today,
+          // sale_value_incl/excl_tax_today (today 00:00 → now, kept
+          // separate from the stable 30/60/90 windows), and tax_percent/
+          // is_taxable (derived from the product's most recent actual
+          // sale line). Reorder Report adds netQtyToday /
+          // saleValueExclTaxToday onto its w-day windows so its demand
+          // calc reflects live, same-day sales — see reorder-report.js.
+          netQtyToday: Number(r.net_qty_today) || 0,
+          saleValueInclTaxToday: Number(r.sale_value_incl_tax_today) || 0,
+          saleValueExclTaxToday: Number(r.sale_value_excl_tax_today) || 0,
+          taxPercent: Number(r.tax_percent) || 0,
+          isTaxable: !!r.is_taxable,
         };
       }
 
