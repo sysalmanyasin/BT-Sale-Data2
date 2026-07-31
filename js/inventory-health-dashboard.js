@@ -34,7 +34,7 @@ window.InventoryHealthDashboard = (function () {
   const NEVER_SOLD_DAYS = 90;   // matches Stock Ledger's own default
   const DEAD_STOCK_DAYS = 60;   // matches Stock Ledger's own default
   const EXCESS_COVER_DAYS = 90; // stock covers 90+ days of demand
-  const REORDER_COVER_DAYS = 15; // matches Reorder Report's own default
+  const REORDER_COVER_DAYS = 30; // target cover level for reorder-qty, per Cover Dashboard convention
   const TREND_KEY = 'bt_invhealth_trend_v1';
   const TREND_MAX_POINTS = 90;
 
@@ -105,7 +105,11 @@ window.InventoryHealthDashboard = (function () {
     const rate30 = qty30 / 30;
     const rate60 = qty60 / 60;
     const rate90 = qty90 / 90;
-    const primaryRate = rate30 > 0 ? rate30 : (rate60 > 0 ? rate60 : rate90);
+    // Velocity basis for reorder-qty is 60-day sale quantity (a steadier
+    // read than 30d alone) — falls back to 30d then 90d only when 60d
+    // itself had zero sales, same fallback shape used elsewhere in this
+    // app when a preferred window is empty.
+    const primaryRate = rate60 > 0 ? rate60 : (rate30 > 0 ? rate30 : rate90);
 
     const coverDays = primaryRate > 0 ? (stock / primaryRate) : (stock > 0 ? Infinity : 0);
     const lastSaleAge = daysSince(r.lastSaleDate);

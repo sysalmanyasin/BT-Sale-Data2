@@ -668,7 +668,7 @@ function _inventoryHeroStats() {
   } catch (e) { console.error('Cover Dashboard: ExcessWorkingApp.getSummary() failed', e); }
   try {
     const RR = window.ReorderReportApp;
-    rrSummary = (RR && typeof RR.getSummaryFor === 'function') ? RR.getSummaryFor(30, 7, 500) : null;
+    rrSummary = (RR && typeof RR.getSummaryFor === 'function') ? RR.getSummaryFor(60, 30, 500) : null;
   } catch (e) { console.error('Cover Dashboard: ReorderReportApp.getSummaryFor() failed', e); }
   return { slStats, ewSummary, rrSummary };
 }
@@ -680,18 +680,22 @@ function _inventoryHeroStats() {
 // Sales/Manager/Closing hero sections alongside this one), so a second,
 // separate "Inventory Dashboard" route would just duplicate this one.
 
-// Same (30d window, <7d cover, Top 500 by sale value, includeToday) params
+// Same (60d window, <30d cover, Top 500 by sale value, includeToday) params
 // as Cover's own "Reorder Alert" hero stat and ReorderReportApp.getSummaryFor()
 // — so the count here always equals that stat's itemsShown (e.g. "42 of 449
 // flagged"), matching the Reorder Report's Top N tab with those filters
 // exactly, not this page's own persisted (possibly different) settings.
+// Reorder-qty target is deliberately a 30-day cover level computed off
+// 60-day sale quantity (a longer, steadier velocity read than 30d alone),
+// applied consistently everywhere this "Reorder Now"/"Reorder Alert"
+// figure shows up on Cover.
 // Same explicit params, uncapped — the "of 449 flagged in total" half of
 // the header count next to Reorder Now's "N flagged" (itemsShown).
 function _reorderTotalFlagged() {
   try {
     const RR = window.ReorderReportApp;
     if (!RR || typeof RR.getFlaggedTotalFor !== 'function') return 0;
-    return RR.getFlaggedTotalFor(30, 7, true);
+    return RR.getFlaggedTotalFor(60, 30, true);
   } catch (e) { console.error('Cover Dashboard: _reorderTotalFlagged failed', e); return 0; }
 }
 
@@ -699,7 +703,7 @@ function _reorderNowRows() {
   try {
     const RR = window.ReorderReportApp;
     if (!RR || typeof RR.getFlaggedRowsFor !== 'function') return [];
-    return RR.getFlaggedRowsFor(30, 7, 500, true);
+    return RR.getFlaggedRowsFor(60, 30, 500, true);
   } catch (e) { console.error('Cover Dashboard: _reorderNowRows failed', e); return []; }
 }
 
@@ -1304,7 +1308,7 @@ export function renderCoverDashboard() {
     <div class="cover-hero-row">
       ${heroCard({ label: 'Excess Stock Total', value: invEw ? 'Rs. ' + fc(invEw.rawExcessValue) : '—', sub: 'raw, before correction' })}
       ${heroCard({ label: 'Corrected Excess Stock', value: invEw ? 'Rs. ' + fc(invEw.correctedExcessValue) : '—', sub: 'after retain list + misc buffer' })}
-      ${heroCard({ label: 'Reorder Alert (<7d cover · Top 500 by 30d value)', value: invRr ? fc(invRr.totalReorderQty) + ' units' : '—', sub: invRr ? invRr.itemsShown + ' items · Rs. ' + fc(invRr.totalReorderValue) + ' to reorder' : 'no data yet' })}
+      ${heroCard({ label: 'Reorder Alert (<30d cover · Top 500 by 60d value)', value: invRr ? fc(invRr.totalReorderQty) + ' units' : '—', sub: invRr ? invRr.itemsShown + ' items · Rs. ' + fc(invRr.totalReorderValue) + ' to reorder' : 'no data yet' })}
     </div>
     <div class="cover-hero-row">
       <div class="card">
