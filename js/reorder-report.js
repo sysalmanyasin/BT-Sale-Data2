@@ -120,6 +120,7 @@ window.ReorderReportApp = (function () {
 
   const WINDOW_KEY = 'bt_reorder_window_v1';
   const COVERDAYS_KEY = 'bt_reorder_coverdays_v1';
+  const MIGRATED_60_30_KEY = 'bt_reorder_migrated_60_30_v1';
   const TOPN_KEY = 'bt_reorder_topn_v1';
   const GROUP_KEY = 'bt_reorder_group_v1';
   const INCLUDETODAY_KEY = 'bt_reorder_includetoday_v1';
@@ -168,6 +169,21 @@ window.ReorderReportApp = (function () {
     state.window = WINDOWS.indexOf(w) !== -1 ? w : 60;
     const cd = parseFloat(repoGet(COVERDAYS_KEY));
     state.coverDays = (cd && cd > 0) ? cd : 30;
+    // One-time migration (2026-07-31): this page's Window/Cover controls
+    // are user-adjustable and persist per browser, so a browser that had
+    // already saved an old value (e.g. 30d/7d from before Cover's
+    // 60d-velocity/30d-cover convention existed) would otherwise keep
+    // silently diverging from Cover forever — the "different numbers,
+    // same engine" mismatch this was reported for. Runs once per
+    // browser; any Window/Cover change made after this still sticks,
+    // same as before.
+    if (repoGet(MIGRATED_60_30_KEY) !== '1') {
+      state.window = 60;
+      state.coverDays = 30;
+      repoSet(WINDOW_KEY, '60');
+      repoSet(COVERDAYS_KEY, '30');
+      repoSet(MIGRATED_60_30_KEY, '1');
+    }
     const tn = parseInt(repoGet(TOPN_KEY), 10);
     state.topN = (tn && tn > 0) ? tn : 50;
     state.groupBySupplier = repoGet(GROUP_KEY) === '1';
