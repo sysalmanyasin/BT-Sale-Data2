@@ -165,9 +165,9 @@ window.ReorderReportApp = (function () {
 
   function loadSettings() {
     const w = parseInt(repoGet(WINDOW_KEY), 10);
-    state.window = WINDOWS.indexOf(w) !== -1 ? w : 90;
+    state.window = WINDOWS.indexOf(w) !== -1 ? w : 60;
     const cd = parseFloat(repoGet(COVERDAYS_KEY));
-    state.coverDays = (cd && cd > 0) ? cd : 15;
+    state.coverDays = (cd && cd > 0) ? cd : 30;
     const tn = parseInt(repoGet(TOPN_KEY), 10);
     state.topN = (tn && tn > 0) ? tn : 50;
     state.groupBySupplier = repoGet(GROUP_KEY) === '1';
@@ -815,7 +815,7 @@ window.ReorderReportApp = (function () {
       if (action === 'ror-refresh') { refreshFromStockLedger(false); render(); return; }
       if (action === 'ror-goto-stockledger') { if (typeof window.navigateTo === 'function') window.navigateTo('stockledger'); return; }
       if (action === 'ror-window') {
-        state.window = Number(btn.dataset.win) || 90;
+        state.window = Number(btn.dataset.win) || 60;
         saveWindow(); recompute(); render(); return;
       }
       if (action === 'ror-group') { state.groupBySupplier = btn.dataset.group === '1'; saveGroup(); render(); return; }
