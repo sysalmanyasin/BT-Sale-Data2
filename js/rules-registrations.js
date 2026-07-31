@@ -22,10 +22,7 @@
 // schema change (e.g. a saved-at timestamp) before this can be a real
 // rule rather than a guess.
 // ══════════════════════════════════════════════════════════════════════
-(function () {
-  'use strict';
-
-  function n(v) { return Number(v) || 0; }
+function n(v) { return Number(v) || 0; }
   function fmt(v) { return Math.round(n(v)).toLocaleString('en-PK'); }
 
   /* ────────────────────────────────────────────────────────────────
@@ -197,4 +194,3 @@
       };
     });
   });
-})();

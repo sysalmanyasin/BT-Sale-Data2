@@ -1,5 +1,6 @@
 /* ── DIFF REPORT ─────────────────────────────────────────────────── */
 /* Cumulative Difference (Total Sale − COMP SALE) by month + running  */
+import { MONTHLY, n, fc } from './config.js';
 
 function renderDiffReport() {
   const wrap = document.getElementById('diff-report-wrap');
@@ -116,3 +117,9 @@ function renderDiffReport() {
     </style>
   `;
 }
+
+// ui.js (classic script) calls this as a bare global on every 'diff'
+// tab open/rebuild — must stay window-bridged now that this file is a
+// real ES module and no longer leaks a plain global by default.
+window.renderDiffReport = renderDiffReport;
+export { renderDiffReport };

@@ -1,12 +1,13 @@
 // ══════════════════════════════════════════
-(function() {
-'use strict';
+// ══════════════════════════════════════════
 // INDEX  —  Floor 5 pure renderer
 //
 // All filtering/sorting/grouping/aggregation now lives in
 // Analytics.buildIndexViewModel() (Floor 3). This function only maps
 // the resulting view-model to HTML (closes the last CF-03-style gap).
 // ══════════════════════════════════════════
+import { n, fc, ff } from './config.js';
+
 function renderIndex() {
   const q=(document.getElementById('idx-search')?.value||'');
   const yr=document.getElementById('idx-year')?.value||'';
@@ -88,5 +89,4 @@ function iCard(m,maxT,tgts) {
 // one genuinely private helper here.
 window.renderIndex = renderIndex;
 window.toggleYrGroup = toggleYrGroup;
-
-})();
+export { renderIndex, toggleYrGroup };

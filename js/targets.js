@@ -1,6 +1,10 @@
 // ══════════════════════════════════════════
 // TARGETS
 // ══════════════════════════════════════════
+import { Repository } from './repository.js';
+import { Actions } from './actions.js';
+import { MONTHLY, n, fc } from './config.js';
+
 const TGT_K = 'bt_targets';
 function getTgts() { try{return JSON.parse(Repository.getItem(TGT_K)||'{}')}catch{return{}} }
 // Bridged to window: app-context.js is being converted to a real ES
@@ -45,5 +49,14 @@ function renderTargetList() {
     </div>`;
   }).join('');
 }
+
+// saveTarget/delTarget are called via inline onclick="" attributes
+// (index.html's Save button, and this file's own generated ✕ button),
+// which always resolve against the global scope — must stay bridged.
+// renderTargetList is called as a bare global by ui.js (still classic).
+window.saveTarget = saveTarget;
+window.delTarget = delTarget;
+window.renderTargetList = renderTargetList;
+export { getTgts, saveTarget, delTarget, renderTargetList };
 
 // ══════════════════════════════════════════

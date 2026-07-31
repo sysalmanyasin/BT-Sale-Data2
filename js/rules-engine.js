@@ -26,10 +26,7 @@
 //   msg is plain text/HTML fragment (matches existing .dbi-rule-alert
 //   rendering, which just does `${f.msg}` — see dashboard-insights.js).
 // ══════════════════════════════════════════════════════════════════════
-(function () {
-  'use strict';
-
-  const _registry = []; // [{domain, id, fn}]
+const _registry = []; // [{domain, id, fn}]
   const MAX_ALERTS_TOTAL = 8;     // hard ceiling across all domains
   const MAX_ALERTS_PER_RULE = 3;  // one noisy rule (e.g. 40 low-cover items) can't dominate
 
@@ -71,6 +68,6 @@
     return all.slice(0, MAX_ALERTS_TOTAL);
   }
 
-  window.aimRulesRegister = aimRulesRegister;
-  window.aimRulesCheckAll = aimRulesCheckAll;
-})();
+window.aimRulesRegister = aimRulesRegister;
+window.aimRulesCheckAll = aimRulesCheckAll;
+export { aimRulesRegister, aimRulesCheckAll };

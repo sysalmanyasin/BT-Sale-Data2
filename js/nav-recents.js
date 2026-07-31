@@ -10,10 +10,9 @@
 // had open this session", not a permanent history log).
 // ══════════════════════════════════════════════════════════════════════
 
-(function () {
-  'use strict';
+import { EventBus } from './event-bus.js';
 
-  const MAX_RECENTS = 8;
+const MAX_RECENTS = 8;
   const STORAGE_KEY = 'bt_nav_recents';
   // Cover is the hub you navigate FROM, not a section you "used" —
   // recording it would just clutter the drawer with the entry point
@@ -67,11 +66,9 @@
     _save();
   }
 
-  if (typeof EventBus !== 'undefined') {
-    EventBus.onChange(function (evt, payload) {
-      if (evt === 'nav:changed' && payload && payload.page) _record(payload.page);
-    });
-  }
+  EventBus.onChange(function (evt, payload) {
+    if (evt === 'nav:changed' && payload && payload.page) _record(payload.page);
+  });
 
   function _fmtAgo(ts) {
     const s = Math.floor((Date.now() - ts) / 1000);
@@ -92,7 +89,7 @@
     _load();
     const list = document.getElementById('recents-list');
     if (!list) return;
-    const cur = typeof _curPage !== 'undefined' ? _curPage : null;
+    const cur = typeof window.getCurrentPage === 'function' ? window.getCurrentPage() : null;
     const rows = _recents.filter(r => r.id !== cur && document.getElementById('page-' + r.id));
     list.innerHTML = rows.length
       ? rows.map(r => `
@@ -117,5 +114,4 @@
 
   window.openRecentsDrawer = openRecentsDrawer;
   window.closeRecentsDrawer = closeRecentsDrawer;
-
-})();
+  export { openRecentsDrawer, closeRecentsDrawer };
