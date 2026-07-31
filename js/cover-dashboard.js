@@ -61,6 +61,12 @@ const PIN_KEY = 'bt_cover_pins_v1';
 const COLLAPSE_KEY = 'bt_cover_collapsed_v1';
 const TOPRUN_WINDOW_KEY = 'bt_cover_toprun_window_v1';
 const TOPRUN_COUNT_KEY = 'bt_cover_toprun_count_v1';
+const REORDER_THRESHOLD_KEY = 'bt_cover_reorder_threshold_v1';
+function _getReorderThreshold() {
+  const v = parseInt(Repository.getItem(REORDER_THRESHOLD_KEY), 10);
+  return [7, 14, 30].indexOf(v) !== -1 ? v : 30;
+}
+function _setReorderThreshold(v) { try { Repository.setItem(REORDER_THRESHOLD_KEY, String(v)); } catch (e) {} }
 function _getTopRunWindow() {
   const v = parseInt(Repository.getItem(TOPRUN_WINDOW_KEY), 10);
   return [30, 60, 90].indexOf(v) !== -1 ? v : 30;
@@ -691,11 +697,15 @@ function _inventoryHeroStats() {
 // figure shows up on Cover.
 // Same explicit params, uncapped — the "of 449 flagged in total" half of
 // the header count next to Reorder Now's "N flagged" (itemsShown).
+// Reorder-qty target/threshold defaults to 30 days (see convention above)
+// but this widget's cover threshold is user-toggleable (7/14/30d) — the
+// Reorder Alert hero stat above stays fixed at 30d regardless, since
+// that one's meant as a stable headline figure, not a toggled view.
 function _reorderTotalFlagged() {
   try {
     const RR = window.ReorderReportApp;
     if (!RR || typeof RR.getFlaggedTotalFor !== 'function') return 0;
-    return RR.getFlaggedTotalFor(60, 30, true);
+    return RR.getFlaggedTotalFor(60, _getReorderThreshold(), true);
   } catch (e) { console.error('Cover Dashboard: _reorderTotalFlagged failed', e); return 0; }
 }
 
@@ -703,7 +713,7 @@ function _reorderNowRows() {
   try {
     const RR = window.ReorderReportApp;
     if (!RR || typeof RR.getFlaggedRowsFor !== 'function') return [];
-    return RR.getFlaggedRowsFor(60, 30, 500, true);
+    return RR.getFlaggedRowsFor(60, _getReorderThreshold(), 500, true);
   } catch (e) { console.error('Cover Dashboard: _reorderNowRows failed', e); return []; }
 }
 
@@ -715,7 +725,8 @@ function _reorderNowRows() {
 // the 60d-velocity convention used everywhere else on this page.
 function _reorderUrgentStats() {
   try {
-    const rows = _reorderNowRows();
+    const RR = window.ReorderReportApp;
+    const rows = (RR && typeof RR.getFlaggedRowsFor === 'function') ? RR.getFlaggedRowsFor(60, 30, 500, true) : [];
     const urgent = rows.filter(r => r.daysCoverP != null && r.daysCoverP < 7);
     const zeroStock = urgent.filter(r => (Number(r.stock) || 0) <= 0).length;
     return { total: rows.length, urgentCount: urgent.length, zeroStock, critical: urgent.length - zeroStock };
@@ -808,6 +819,31 @@ function _topRunningTableHtml(rows) {
 // touching the rest of the page).
 window._coverSetTopRunWindow = function (w) { _setTopRunWindow(w); _renderTopRunningCard(); };
 window._coverSetTopRunCount = function (n) { _setTopRunCount(n); _renderTopRunningCard(); };
+
+// Reorder Now card — same toggle-pill pattern as Top Running Items,
+// swapping the hardcoded 30-day cover threshold for a 7D/14D/30D toggle
+// (persisted). Rebuilt as one innerHTML block (title + toggle + table)
+// so a click re-renders the whole card in place.
+window._coverSetReorderThreshold = function (d) { _setReorderThreshold(d); _renderReorderNowCard(); };
+
+function _reorderNowCardInnerHtml() {
+  const th = _getReorderThreshold();
+  const rows = _reorderNowRows();
+  const totalFlagged = _reorderTotalFlagged();
+  const pill = (active, label, onclick) => `<span onclick="${onclick}" style="cursor:pointer;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:4px;${active ? 'background:#AE3B2C;color:#fff' : 'background:#e2e8f0;color:#475569'}">${label}</span>`;
+  return `
+    <div class="ctitle" style="flex-wrap:wrap;row-gap:6px">
+      <span class="cdot" style="background:#AE3B2C"></span>Reorder Now — most urgent (${rows.length} of ${totalFlagged} flagged)
+      <span style="margin-left:auto;display:flex;align-items:center">${pill(th === 7, '<7D', '_coverSetReorderThreshold(7)')}${pill(th === 14, '<14D', '_coverSetReorderThreshold(14)')}${pill(th === 30, '<30D', '_coverSetReorderThreshold(30)')}</span>
+      <span onclick="showPage('reorder')" style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:4px;margin-left:6px;cursor:pointer;font-weight:700">FULL REPORT ↗</span>
+    </div>
+    <div id="cover-reorder-now-table">${_inventoryMiniTableHtml(rows, 'reorder')}</div>`;
+}
+
+function _renderReorderNowCard() {
+  const card = document.getElementById('cover-reorder-now-card');
+  if (card) card.innerHTML = _reorderNowCardInnerHtml();
+}
 
 function _topRunningCardInnerHtml() {
   const win = _getTopRunWindow();
@@ -1336,11 +1372,8 @@ export function renderCoverDashboard() {
       })()}
     </div>
     <div class="cover-hero-row">
-      <div class="card">
-        <div class="ctitle"><span class="cdot" style="background:#AE3B2C"></span>Reorder Now — most urgent${invRr ? ` (${invRr.itemsShown} of ${_reorderTotalFlagged()} flagged)` : ''}
-          <span onclick="showPage('reorder')" style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:4px;margin-left:6px;cursor:pointer;font-weight:700">FULL REPORT ↗</span>
-        </div>
-        <div id="cover-reorder-now-table">${_inventoryMiniTableHtml(_reorderNowRows(), 'reorder')}</div>
+      <div class="card" id="cover-reorder-now-card">
+        ${_reorderNowCardInnerHtml()}
       </div>
       <div class="card">
         <div class="ctitle"><span class="cdot" style="background:#A8762A"></span>Excess Stock — highest value
