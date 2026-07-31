@@ -10,6 +10,10 @@ const SB_TABLE   = 'bt_salesdata';
 const SB_ID      = 'main';
 const SB_PENDING = 'bt_sb_pending';    // dirty flag for offline queue
 const SB_HISTORY = 'bt_sync_history'; // last 10 sync events
+// FIX: targets.js was migrated to a real ES module, so its TGT_K constant
+// is now file-scoped and no longer a global. supabase.js is still a classic
+// script, so it needs its own local copy of this key (mirrors cover-dashboard.js).
+const TGT_K      = 'bt_targets';
 
 let _sbClient      = null;
 let _sbChannel     = null;
