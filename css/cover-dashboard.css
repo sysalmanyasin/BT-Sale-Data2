@@ -101,6 +101,7 @@
 .cover-kpi-tile.cls-amber .cover-kpi-value{color:var(--amber);}
 .cover-kpi-tile.cls-red .cover-kpi-value{color:var(--red);}
 .cover-kpi-label{font-size:11px;color:var(--muted);margin-top:2px;}
+.cover-kpi-sub{font-size:9.5px;color:var(--red);margin-top:3px;font-weight:600;}
 
 /* ── Search bar ── */
 .cover-search-row{position:relative;margin-bottom:16px;display:flex;gap:8px;align-items:stretch;}

@@ -707,6 +707,21 @@ function _reorderNowRows() {
   } catch (e) { console.error('Cover Dashboard: _reorderNowRows failed', e); return []; }
 }
 
+// Stricter urgency cut within that same <30d-cover/Top-500-by-60d-value
+// pool: items with under 7 days of cover left, split into already-zero
+// stock (stockout right now) vs still holding some stock but running out
+// inside a week (critical). daysCoverP here is the 60d-based cover
+// (window=60 was passed into getFlaggedRowsFor above), consistent with
+// the 60d-velocity convention used everywhere else on this page.
+function _reorderUrgentStats() {
+  try {
+    const rows = _reorderNowRows();
+    const urgent = rows.filter(r => r.daysCoverP != null && r.daysCoverP < 7);
+    const zeroStock = urgent.filter(r => (Number(r.stock) || 0) <= 0).length;
+    return { total: rows.length, urgentCount: urgent.length, zeroStock, critical: urgent.length - zeroStock };
+  } catch (e) { console.error('Cover Dashboard: _reorderUrgentStats failed', e); return { total: 0, urgentCount: 0, zeroStock: 0, critical: 0 }; }
+}
+
 // This is Excess Stock (status === 'Excess'), not Dead Stock — Dead Stock
 // is a separate 60-day-quiet metric already shown as its own hero card
 // ("Dead Stock (60D)") above. excessContribution sums to exactly
@@ -1129,9 +1144,11 @@ function _kpiTiles() {
   try {
     const { rrSummary } = _inventoryHeroStats();
     const items = rrSummary ? n(rrSummary.itemsShown) : null;
+    const urgent = rrSummary ? _reorderUrgentStats() : null;
     out.push({
       icon: '🛒', label: 'Items to Reorder',
       value: items == null ? '—' : String(items),
+      sub: urgent && urgent.urgentCount > 0 ? `${urgent.urgentCount} <7d cover (${urgent.zeroStock} stockout)` : '',
       cls: items == null ? 'neutral' : (items === 0 ? 'green' : items < 100 ? 'amber' : 'red'),
       page: 'reorder',
     });
@@ -1149,6 +1166,7 @@ function _renderKpiRow() {
       <div class="cover-kpi-icon">${t.icon}</div>
       <div class="cover-kpi-value">${_esc(t.value)}</div>
       <div class="cover-kpi-label">${_esc(t.label)}</div>
+      ${t.sub ? `<div class="cover-kpi-sub">${_esc(t.sub)}</div>` : ''}
     </div>`).join('');
   el.querySelectorAll('[data-kpi-idx]').forEach(tile => {
     const goTo = () => {
@@ -1308,7 +1326,14 @@ export function renderCoverDashboard() {
     <div class="cover-hero-row">
       ${heroCard({ label: 'Excess Stock Total', value: invEw ? 'Rs. ' + fc(invEw.rawExcessValue) : '—', sub: 'raw, before correction' })}
       ${heroCard({ label: 'Corrected Excess Stock', value: invEw ? 'Rs. ' + fc(invEw.correctedExcessValue) : '—', sub: 'after retain list + misc buffer' })}
-      ${heroCard({ label: 'Reorder Alert (<30d cover · Top 500 by 60d value)', value: invRr ? fc(invRr.totalReorderQty) + ' units' : '—', sub: invRr ? invRr.itemsShown + ' items · Rs. ' + fc(invRr.totalReorderValue) + ' to reorder' : 'no data yet' })}
+      ${(() => {
+        const u = invRr ? _reorderUrgentStats() : null;
+        return heroCard({
+          label: 'Reorder Alert (<30d cover · Top 500 by 60d value)',
+          value: u ? u.urgentCount + ' items <7d cover' : '—',
+          sub: u ? `${u.zeroStock} stockout now · ${u.critical} still stocked, <7d left · ${invRr.itemsShown} items <30d total · Rs. ${fc(invRr.totalReorderValue)} to reorder` : 'no data yet',
+        });
+      })()}
     </div>
     <div class="cover-hero-row">
       <div class="card">
