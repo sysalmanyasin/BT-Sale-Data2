@@ -758,8 +758,10 @@ function _nsParseExpr(expr, getCR) {
   // String literal
   if (expr.startsWith('"') && expr.endsWith('"')) return expr.slice(1, -1);
 
-  // Function call: NAME(args)
-  const fnMatch = expr.match(/^([A-Z_][A-Z0-9_]*)(\(.*\))$/s);
+  // Function call: NAME(args) — case-insensitive match (the user can type
+  // =sum(...), =Sum(...), or =SUM(...); _nsCallFn uppercases the captured
+  // name itself, this just has to actually capture it regardless of case).
+  const fnMatch = expr.match(/^([A-Za-z_][A-Za-z0-9_]*)(\(.*\))$/s);
   if (fnMatch) {
     return _nsCallFn(fnMatch[1], fnMatch[2].slice(1, -1), getCR);
   }
@@ -890,14 +892,21 @@ function _nsCallFn(name, argsStr, getCR) {
   // Collect numeric values from range or individual cells
   function numsFrom(a) {
     a = a.trim();
+    if (!a) return [];
     // Range
     const rc = _nsRangeCells(a);
     if (rc) return rc.map(([r,c]) => parseFloat(getCR(r,c))).filter(n => !isNaN(n));
     // Single cell
     const cm = a.match(/^([A-Z]+)(\d+)$/i);
     if (cm) { const v = parseFloat(getCR(parseInt(cm[2],10)-1, _nsColIndex(cm[1]))); return isNaN(v)?[]:[v]; }
-    // Number literal
-    const n = parseFloat(a); return isNaN(n) ? [] : [n];
+    // Plain number literal — matched with a strict pattern rather than a bare
+    // parseFloat, since parseFloat("5+3") would otherwise silently return 5
+    // instead of falling through to the expression branch below.
+    if (/^-?\d+(\.\d+)?$/.test(a)) return [parseFloat(a)];
+    // Compound expression (e.g. "A1+A2", "A1*2", a nested function call) —
+    // previously fell through every check above and silently contributed
+    // nothing, so e.g. SUM(A1+A2) evaluated to 0 instead of the real sum.
+    return [resolveNum(a)];
   }
   function rawsFrom(a) {
     a = a.trim();
