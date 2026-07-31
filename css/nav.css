@@ -254,3 +254,20 @@ body[data-domain="inventory"] {
 #sectionsbg .sheet-handle { display: none !important; }
 @keyframes sideMenuSlideIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }
 .sections-sub-label { font-size: 12.5px; color: var(--t2); }
+
+/* ── Global search (js/global-search.js) — search box pinned atop the
+   All Sections drawer, plus its Staff-match result rows. Hidden
+   sections/sub-sections during an active filter use .gs-hidden rather
+   than touching .sections-group-open, so the collapsed/expanded state
+   nav-sections.js already manages is left alone once the query clears. */
+.gs-search-row { padding: 2px 4px 10px; position: sticky; top: 0; background: var(--surface); z-index: 1; }
+.gs-input {
+  width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 9px;
+  border: 1px solid var(--border); background: var(--s1, var(--surface));
+  color: var(--text); font-size: 13px; font-family: var(--sans);
+}
+.gs-input:focus { outline: none; border-color: var(--accent); }
+.gs-hidden { display: none !important; }
+.gs-group-label { font-size: 11px; font-weight: 700; letter-spacing: .3px; color: var(--muted); text-transform: uppercase; padding: 6px 8px 2px; }
+.gs-sub { display: block; font-size: 11px; font-weight: 400; color: var(--muted); }
+#gs-staff-results { border-bottom: 1px solid var(--border); margin-bottom: 4px; padding-bottom: 4px; }

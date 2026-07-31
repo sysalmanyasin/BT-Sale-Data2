@@ -1,10 +1,14 @@
 // ══════════════════════════════════════════════════════════════════════
 // BTSearch — Step 10 extraction: Fuzzy search engine
 // Extracted from CommandHub. Standalone, no external dependencies.
-// Consumed by (verified via grep): commandhub.js.
 //
-// Module-migration Stage B: now a real ES module. Window bridge below
-// stays until commandhub.js is converted too.
+// commandhub.js (its original consumer) was removed along with the AI
+// layer (see README v10.32) and this went dead for a while. Revived as
+// of this commit by js/global-search.js — a classic (non-module) script
+// that filters the All-Sections drawer + Staff registry. Window bridge
+// below is load-bearing for that: global-search.js reads window.BTSearch
+// directly, so it must stay, and global-search.js's <script> tag must
+// stay after this one in index.html.
 // ══════════════════════════════════════════════════════════════════════
 
 export const BTSearch = Object.freeze({
@@ -51,6 +55,8 @@ export const BTSearch = Object.freeze({
   },
 });
 
-// TEMPORARY WINDOW BRIDGE — remove once commandhub.js (the only consumer,
-// verified via grep) is converted to `import { BTSearch } from './bt-search.js'`.
+// WINDOW BRIDGE — required by js/global-search.js (a classic script, not
+// a module). Keep this even after any future module-migration of that
+// file's other dependencies, unless global-search.js is also converted
+// to `import { BTSearch } from './bt-search.js'`.
 window.BTSearch = BTSearch;

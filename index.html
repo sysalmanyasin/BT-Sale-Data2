@@ -251,7 +251,7 @@ if ('serviceWorker' in navigator) {
     <div><div class="nbrand-text">Bahria Town Sales IC</div><div class="nbrand-sub" id="nbrand-sub-label">Intelligence Centre</div></div>
   </div>
   <div class="ntabs">
-    <button type="button" class="ntab ntab-menu" onclick="openSectionsDrawer()" title="All Sections">☰ Menu</button>
+    <button type="button" class="ntab ntab-menu" onclick="openSectionsDrawer()" title="Search &amp; All Sections">☰ Menu</button>
     <a class="ntab" href="#cover" data-page="cover" data-group="cover">🏠 Cover</a>
     <a class="ntab" href="#dashboard" data-page="dashboard" data-group="dashboard" data-domain-group="sales">Dashboard</a>
     <a class="ntab" href="#index" data-page="index" data-group="saledata" data-domain-group="sales">Sale Data</a>
@@ -291,7 +291,7 @@ if ('serviceWorker' in navigator) {
 
 <!-- ══ BOTTOM TAB BAR (mobile) ══ -->
 <div class="bnav no-print" id="bnav" role="navigation" aria-label="Page navigation">
-  <button type="button" class="bnav-item side-menu-btn" onclick="openSectionsDrawer()" title="All Sections" aria-label="Open All Sections menu"><span class="bicon">☰</span><span class="blabel">Menu</span></button>
+  <button type="button" class="bnav-item side-menu-btn" onclick="openSectionsDrawer()" title="Search &amp; All Sections" aria-label="Open Search and All Sections menu"><span class="bicon">☰</span><span class="blabel">Menu</span></button>
   <a class="bnav-item" href="#cover" data-page="cover" data-group="cover"><span class="bicon">🏠</span><span class="blabel">Cover</span></a>
   <a class="bnav-item" href="#" data-page="recents" onclick="openRecentsDrawer();return false;"><span class="bicon">🕘</span><span class="blabel">Recents</span></a>
   <a class="bnav-item" href="#dashboard" data-page="dashboard" data-group="dashboard" data-domain-group="sales"><span class="bicon">📊</span><span class="blabel">Home</span></a>
@@ -688,12 +688,20 @@ if ('serviceWorker' in navigator) {
 <!-- ALL SECTIONS DRAWER — long-press Cover to open. Full directory of
      every top-level section + its sub-sections, unlike the Recents
      drawer above which only shows what's actually been visited. Same
-     .mbg/.modal shell. Populated by js/nav-sections.js. -->
+     .mbg/.modal shell. Tree populated by js/nav-sections.js; the search
+     box on top of it (fuzzy-filters the tree + ranks Staff matches) is
+     js/global-search.js, reviving the previously-dead js/bt-search.js. -->
 <div class="mbg" id="sectionsbg" onclick="if(event.target===this)closeSectionsDrawer()">
   <div class="modal">
     <div class="sheet-handle"></div>
-    <div class="mhdr"><h2>All Sections</h2><button class="mclose" onclick="closeSectionsDrawer()">✕</button></div>
-    <div class="mbody" id="sections-list"></div>
+    <div class="mhdr"><h2>Search &amp; Sections</h2><button class="mclose" onclick="closeSectionsDrawer()">✕</button></div>
+    <div class="mbody">
+      <div class="gs-search-row">
+        <input type="search" id="gs-input" class="gs-input" placeholder="Search sections, staff…" autocomplete="off" oninput="GlobalSearch.onInput(this.value)">
+      </div>
+      <div id="gs-staff-results" style="display:none"></div>
+      <div id="sections-list"></div>
+    </div>
   </div>
 </div>
 
@@ -1993,7 +2001,6 @@ if ('serviceWorker' in navigator) {
 
 <script type="module" src="js/ledger-store.js"></script>
 <script type="module" src="js/ledger-actions.js"></script>
-<script type="module" src="js/ledger-migration.js"></script>
 <script type="module" src="js/ledger-page.js?v=20260726d"></script>
 <script type="module" src="js/cover-dashboard.js?v=20260731c"></script>
 <script type="module" src="js/staff-notes.js"></script>
@@ -2053,6 +2060,7 @@ if ('serviceWorker' in navigator) {
 <script defer src="js/cash-deposit-report.js?v=20260727a"></script>
 <script type="module" src="js/nav-recents.js?v=20260731a"></script>
 <script defer src="js/nav-sections.js?v=20260731a"></script>
+<script defer src="js/global-search.js?v=20260731a"></script>
 
 <!-- 11. Data page: daily table + entry form -->
 <script defer src="js/data-page.js?v=20260722a"></script>
