@@ -59,6 +59,18 @@ function _getTargets() {
 
 const PIN_KEY = 'bt_cover_pins_v1';
 const COLLAPSE_KEY = 'bt_cover_collapsed_v1';
+const TOPRUN_WINDOW_KEY = 'bt_cover_toprun_window_v1';
+const TOPRUN_COUNT_KEY = 'bt_cover_toprun_count_v1';
+function _getTopRunWindow() {
+  const v = parseInt(Repository.getItem(TOPRUN_WINDOW_KEY), 10);
+  return [30, 60, 90].indexOf(v) !== -1 ? v : 30;
+}
+function _setTopRunWindow(v) { try { Repository.setItem(TOPRUN_WINDOW_KEY, String(v)); } catch (e) {} }
+function _getTopRunCount() {
+  const v = parseInt(Repository.getItem(TOPRUN_COUNT_KEY), 10);
+  return [10, 20].indexOf(v) !== -1 ? v : 10;
+}
+function _setTopRunCount(v) { try { Repository.setItem(TOPRUN_COUNT_KEY, String(v)); } catch (e) {} }
 // Every group slug that exists today (must mirror GROUP_META's .slug values
 // below). Used only to seed the very first render — once a user has
 // expanded/collapsed anything, their real stored preference (even an empty
@@ -724,6 +736,7 @@ function _inventoryMiniTableHtml(rows, kind) {
           <div style="min-width:0">
             <div style="font-size:11.5px;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px">${_esc(r.name || r.code)}</div>
             <div style="font-size:10px;color:var(--muted)">${cover} cover · reorder ${fc(r.demandQtyP)} units</div>
+            <div style="font-size:10px;color:var(--muted)">sold 30d: ${fc(r.saleQty30)} units · Rs. ${fc(r.saleValue30)}</div>
           </div>
           <div style="font-size:11.5px;font-weight:700;font-family:var(--mono);color:#AE3B2C;flex-shrink:0">Rs. ${fc(r.demandValueP)}</div>
         </div>`;
@@ -740,49 +753,59 @@ function _inventoryMiniTableHtml(rows, kind) {
   return `<div style="max-height:280px;overflow-y:auto">${rows.map(row).join('')}</div>`;
 }
 
-let _velocityChart = null;
-// Velocity comparison (plan §3.2): 30/60/90-day sale RATE (units/day,
-// not raw qty — makes windows of different lengths visually comparable)
-// for the overall top-selling items by 30-day sale value (not just
-// reorder-flagged ones). No new calc engine — reuses the exact
-// saleQty30/60/90 fields ReorderReportApp.getTopSellersFor() already
-// computes per item.
-function _renderVelocityChart() {
-  const canvas = document.getElementById('cover-velocity-chart');
-  if (!canvas || typeof Chart === 'undefined') return;
-  if (_velocityChart) { _velocityChart.destroy(); _velocityChart = null; }
-
-  let top = [];
+// Top Running Items (replaces the old Sale Velocity units/day chart per
+// user feedback: a value-ranked list with a window toggle reads faster
+// than a per-item rate comparison). Same underlying data source as
+// before — ReorderReportApp.getTopSellersFor() — just re-run for
+// whichever window (30/60/90d) and Top N (10/20) the user has toggled,
+// both persisted so the choice survives a reload.
+function _topRunningRows() {
   try {
     const RR = window.ReorderReportApp;
-    if (RR && typeof RR.getTopSellersFor === 'function') top = RR.getTopSellersFor(30, 8, true);
-  } catch (e) { console.error('Cover Dashboard: _renderVelocityChart data fetch failed', e); return; }
-  if (!top || !top.length) return;
+    if (!RR || typeof RR.getTopSellersFor !== 'function') return [];
+    return RR.getTopSellersFor(_getTopRunWindow(), _getTopRunCount(), true);
+  } catch (e) { console.error('Cover Dashboard: _topRunningRows failed', e); return []; }
+}
 
-  const labels = top.map(r => (r.name || r.code || '').slice(0, 18));
+function _topRunningTableHtml(rows) {
+  if (!rows || !rows.length) {
+    return `<div style="font-size:11px;color:var(--muted);padding:8px 0">No sales data yet.</div>`;
+  }
+  return `<div style="max-height:280px;overflow-y:auto">${rows.map((r, i) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
+      <div style="min-width:0;display:flex;gap:8px;align-items:center">
+        <span style="font-size:10px;color:var(--muted);width:16px;flex-shrink:0">${i + 1}</span>
+        <div style="min-width:0">
+          <div style="font-size:11.5px;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px">${_esc(r.name || r.code)}</div>
+          <div style="font-size:10px;color:var(--muted)">${fc(r.saleQtyP)} units sold</div>
+        </div>
+      </div>
+      <div style="font-size:11.5px;font-weight:700;font-family:var(--mono);color:#33507D;flex-shrink:0">Rs. ${fc(r.saleValueP)}</div>
+    </div>`).join('')}</div>`;
+}
 
-  _velocityChart = new Chart(canvas, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        { label: '30-day rate', data: top.map(r => +(n(r.saleQty30) / 30).toFixed(2)), backgroundColor: 'rgba(51,80,125,.7)', borderRadius: 3 },
-        { label: '60-day rate', data: top.map(r => +(n(r.saleQty60) / 60).toFixed(2)), backgroundColor: 'rgba(168,118,42,.7)', borderRadius: 3 },
-        { label: '90-day rate', data: top.map(r => +(n(r.saleQty90) / 90).toFixed(2)), backgroundColor: 'rgba(174,59,44,.7)', borderRadius: 3 },
-      ],
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: {
-        legend: { position: 'top', labels: { color: '#334155', font: { size: 10 }, boxWidth: 10, padding: 6 } },
-        tooltip: { callbacks: { label: c => c.dataset.label + ': ' + c.raw + ' units/day' } },
-      },
-      scales: {
-        x: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { display: false } },
-        y: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: '#e2e8f0' } },
-      },
-    },
-  });
+// Toggle buttons call these (must be on window — they're wired via
+// inline onclick so this card can re-render itself in place without
+// touching the rest of the page).
+window._coverSetTopRunWindow = function (w) { _setTopRunWindow(w); _renderTopRunningCard(); };
+window._coverSetTopRunCount = function (n) { _setTopRunCount(n); _renderTopRunningCard(); };
+
+function _topRunningCardInnerHtml() {
+  const win = _getTopRunWindow();
+  const cnt = _getTopRunCount();
+  const pill = (active, label, onclick) => `<span onclick="${onclick}" style="cursor:pointer;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:4px;${active ? 'background:#33507D;color:#fff' : 'background:#e2e8f0;color:#475569'}">${label}</span>`;
+  return `
+    <div class="ctitle" style="flex-wrap:wrap;row-gap:6px">
+      <span class="cdot" style="background:#33507D"></span>Top Running Items — value-wise
+      <span style="margin-left:auto;display:flex;align-items:center">${pill(cnt === 10, 'Top 10', '_coverSetTopRunCount(10)')}${pill(cnt === 20, 'Top 20', '_coverSetTopRunCount(20)')}</span>
+      <span style="display:flex;align-items:center">${pill(win === 30, '30D', '_coverSetTopRunWindow(30)')}${pill(win === 60, '60D', '_coverSetTopRunWindow(60)')}${pill(win === 90, '90D', '_coverSetTopRunWindow(90)')}</span>
+    </div>
+    <div id="cover-top-running-table">${_topRunningTableHtml(_topRunningRows())}</div>`;
+}
+
+function _renderTopRunningCard() {
+  const card = document.getElementById('cover-top-running-card');
+  if (card) card.innerHTML = _topRunningCardInnerHtml();
 }
 
 // ── Staff Registry strip (Manager group) ──────────────────────────────
@@ -1298,9 +1321,8 @@ export function renderCoverDashboard() {
       </div>
     </div>
     <div class="cover-hero-row cover-hero-row-single">
-      <div class="card">
-        <div class="ctitle"><span class="cdot" style="background:#33507D"></span>Sale Velocity — top items by 30-day value (units/day)</div>
-        <div style="height:220px"><canvas id="cover-velocity-chart"></canvas></div>
+      <div class="card" id="cover-top-running-card">
+        ${_topRunningCardInnerHtml()}
       </div>
     </div>` : `
     <div class="cover-skel-row">
@@ -1381,7 +1403,7 @@ export function renderCoverDashboard() {
   _renderAttentionStrip();
   _renderPinsRow(tiles);
   _updateHeroDate();
-  if (invSl && invSl.dataReady) { _renderInventoryChart(invSl, invEw); _renderVelocityChart(); }
+  if (invSl && invSl.dataReady) { _renderInventoryChart(invSl, invEw); }
   _renderWeekdayChart();
   container.querySelectorAll('[data-staff-idx]').forEach(card => {
     const openIt = () => {
