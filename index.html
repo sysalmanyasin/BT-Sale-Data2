@@ -2024,7 +2024,7 @@ if ('serviceWorker' in navigator) {
 <script defer src="js/sync-center.js?v=20260722a"></script>
 
 <!-- 6c2. Conflict UI (Floor 4/5) — DOM code that reacts to Repository/Actions -->
-<script defer src="js/conflict-ui.js?v=20260722a"></script>
+<script type="module" src="js/conflict-ui.js?v=20260731a"></script>
 
 <!-- 6d. Supabase sync (Floor 1 extension — needs Repository + Actions) -->
 <script defer src="js/supabase.js?v=20260728a"></script>
@@ -2091,14 +2091,16 @@ if ('serviceWorker' in navigator) {
      below (rebuildAll, showPage, renderEntryList, etc.) too — same
      reasoning as boot-guard.js placement. -->
 <script type="module" src="js/app-init.js"></script>
-<!-- manager-page.js: tab switching + page-load orchestration. Deliberately
-     classic, not a module — jazz-cash.js/custom-sections.js/notes-sheets.js
-     monkey-patch its functions and depend on sloppy-mode global semantics
-     to do it. See the file's own header comment before changing this. -->
+<!-- manager-page.js: tab switching + page-load orchestration. Real ES
+     module (jazz-cash.js/notes-sheets.js's old monkey-patches of its
+     functions were removed in v10.9 — it calls renderJazzCash()/
+     renderNotesSheets() directly now; custom-sections.js never actually
+     patched it either, per that same changelog's correction). See the
+     file's own header comment for the historical detail. -->
 <script type="module" src="js/manager-page.js"></script>
 
 <!-- 13. Custom spreadsheet sections (manager add-on) -->
-<script defer src="js/custom-sections.js?v=20260722a"></script>
+<script type="module" src="js/custom-sections.js?v=20260731a"></script>
 
 <!-- 13b. Jazz Cash — Balance Tally (Daily Ledger now runs on the generalized Ledger, see ledger-page.js) -->
 <script type="module" src="js/jazz-cash.js"></script>

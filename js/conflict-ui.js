@@ -9,6 +9,8 @@
 // Load order requirement: after event-bus.js + repository.js + actions.js,
 // alongside the other page/UI files.
 // ══════════════════════════════════════════════════════════════════════
+import { EventBus } from './event-bus.js';
+import { Repository } from './repository.js';
 
 // Subscribe once: whenever Repository queues a genuine conflict, open the modal.
 EventBus.onChange(function (eventName) {
@@ -101,3 +103,14 @@ function _conflictChoose(choice) {
     if (typeof toast === 'function') toast('✓ All conflicts resolved');
   }
 }
+
+// _conflictChoose is called via inline onclick="" attributes on the
+// modal's Keep This Device / Keep Cloud Version buttons (index.html) —
+// those always resolve against the global scope. reviewConflicts is a
+// manual entry point meant for a future "Review Conflicts" button;
+// openConflictModal has no external callers today but is bridged too
+// since it's this file's one genuinely public page-glue function.
+window.reviewConflicts = reviewConflicts;
+window.openConflictModal = openConflictModal;
+window._conflictChoose = _conflictChoose;
+export { reviewConflicts, openConflictModal, _conflictChoose };

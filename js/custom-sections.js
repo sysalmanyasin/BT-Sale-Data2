@@ -4,8 +4,10 @@
 // month. Clears Advance and Generic (they vary each month) so the
 // user fills them fresh. Days is reset to 0 as well.
 // ══════════════════════════════════════════════════════════════════
-(function() {
-'use strict';
+import { Repository } from './repository.js';
+import { Actions } from './actions.js';
+import { loadSalaryMonth } from './manager-salary.js';
+import { _pettyMonth, _pettyData, _pettyKey, loadPettyMonth } from './manager-petty.js';
 
 function salaryNextMonth() {
   const sel = document.getElementById('sal-month-sel');
@@ -56,7 +58,7 @@ function salaryNextMonth() {
       sel.insertBefore(opt, sel.firstChild);
     }
     sel.value = nextMon;
-    if (typeof loadSalaryMonth === 'function') loadSalaryMonth(nextMon);
+    loadSalaryMonth(nextMon);
   }
   toast('✓ Salary carried to ' + nextMon + ' — fill in Days, Advance & Generic for ' + nextMon);
 }
@@ -115,5 +117,4 @@ function pettyNextMonth() {
 window.salaryNextMonth = salaryNextMonth;
 window.pettyNextMonth = pettyNextMonth;
 window.CSEC_KEY = CSEC_KEY;
-
-})();
+export { salaryNextMonth, pettyNextMonth, CSEC_KEY };
