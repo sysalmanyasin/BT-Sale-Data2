@@ -317,6 +317,13 @@
 .ccs-stat.ccs-books .ccs-ic{background:var(--alt2);}
 .ccs-stat.ccs-ret .ccs-ic{background:var(--rlt);}
 
+/* ── Latest Month Total Sale — hero card at top of Sales section ── */
+.ccs-stat.ccs-cash .ccs-ic{background:#dcfce7;}
+.ccs-stat.ccs-bank .ccs-ic{background:var(--mgrblue-lt);}
+.ccs-stat.ccs-cashbank .ccs-ic{background:var(--alt2);}
+.ccs-stat.ccs-credit .ccs-ic{background:#fef3c7;}
+.ccs-stat.ccs-cust .ccs-ic{background:#ede9fe;}
+
 @media(max-width:640px){
   .ccs-stat-grid{grid-template-columns:repeat(2,1fr);}
 }

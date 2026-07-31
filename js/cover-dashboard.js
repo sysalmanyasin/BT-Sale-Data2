@@ -1,6 +1,6 @@
 // COVER DASHBOARD — Floor 5
 
-import { MONTHLY, DAILY, STAFF, n, fc, ff } from './config.js';
+import { MONTHLY, DAILY, STAFF, n, fc, ff, negR, mBanks, creditSales } from './config.js';
 import { Repository } from './repository.js';
 import * as LedgerStore from './ledger-store.js';
 import * as ClosingBridge from './closing-bridge.js';
@@ -292,6 +292,27 @@ function _salesStatus() {
   const lastDay = _lastFilledDay(rec.Month_Year);
   const till = lastDay ? ' (till ' + lastDay + ' ' + rec.Month_Year.split(' ')[0].slice(0, 3) + ')' : '';
   return rec.Month_Year + till + ' · ₨' + fc(n(rec.TOTAL)) + ' so far';
+}
+
+// Breaks the latest month's TOTAL down into how it was actually collected —
+// Cash, Banks, Cash & Banks combined, Credit Clients (including free issue),
+// and customer footfall — for the hero card at the top of the Sales section.
+// Mirrors _salesStatus()'s month-record fallback so it stays in sync with
+// whichever month that status line is describing.
+function _monthSaleBreakdown() {
+  if (!MONTHLY.length) return null;
+  const my = _currentMonthYear();
+  const rec = MONTHLY.find(m => m.Month_Year === my) || _latestMonthlyRecord();
+  if (!rec) return null;
+  const cash = n(rec['Cash Sale']) + negR(rec['Cash Returns']);
+  const banks = mBanks(rec);
+  const cashBanks = cash + banks;
+  const credit = creditSales(rec) + n(rec['F/Issue']);
+  const customers = n(rec['Customers']);
+  const lastDay = _lastFilledDay(rec.Month_Year);
+  const label = 'Latest Month Total Sale — ' + rec.Month_Year +
+    (lastDay ? ' (till ' + lastDay + ' ' + rec.Month_Year.split(' ')[0].slice(0, 3) + ')' : '');
+  return { label, value: '₨' + fc(n(rec.TOTAL)), cash, banks, cashBanks, credit, customers };
 }
 
 function _managerStatus() {
@@ -1300,7 +1321,37 @@ export function renderCoverDashboard() {
       </div>` : ''}
     </div>`;
 
+  const monthSale = _monthSaleBreakdown();
+  const monthSaleCard = h => `
+    <div class="cover-hero-card cover-closing-summary-card cover-month-sale-card">
+      <div class="cover-hero-label">${_esc(h.label)}</div>
+      <div class="cover-hero-value">${_esc(h.value)}</div>
+      <div class="ccs-stat-grid">
+        <div class="ccs-stat ccs-cash">
+          <span class="ccs-ic">💵</span>
+          <div class="ccs-text"><div class="ccs-lbl">Cash</div><div class="ccs-val">Rs. ${_esc(fc(h.cash))}</div></div>
+        </div>
+        <div class="ccs-stat ccs-bank">
+          <span class="ccs-ic">🏦</span>
+          <div class="ccs-text"><div class="ccs-lbl">Banks</div><div class="ccs-val">Rs. ${_esc(fc(h.banks))}</div></div>
+        </div>
+        <div class="ccs-stat ccs-cashbank">
+          <span class="ccs-ic">💰</span>
+          <div class="ccs-text"><div class="ccs-lbl">Cash &amp; Banks</div><div class="ccs-val">Rs. ${_esc(fc(h.cashBanks))}</div></div>
+        </div>
+        <div class="ccs-stat ccs-credit">
+          <span class="ccs-ic">📋</span>
+          <div class="ccs-text"><div class="ccs-lbl">Credit Clients (incl. free issue)</div><div class="ccs-val">Rs. ${_esc(fc(h.credit))}</div></div>
+        </div>
+        <div class="ccs-stat ccs-cust">
+          <span class="ccs-ic">👥</span>
+          <div class="ccs-text"><div class="ccs-lbl">Customers</div><div class="ccs-val">${_esc(fc(h.customers))}</div></div>
+        </div>
+      </div>
+    </div>`;
+
   const heroHtml = `
+    ${monthSale ? `<div class="cover-hero-row-single">${monthSaleCard(monthSale)}</div>` : ''}
     <div class="cover-hero-row">
       ${heroCard(headline)}
       ${heroCard(pace)}
