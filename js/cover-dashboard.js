@@ -366,10 +366,26 @@ function _currentMgrMonthYear() {
 
 // "Staff Credit Ledger, ranked" — cross-staff, sorted by net descending,
 // directly answering "who owes the most" (plan §3.3) without narration.
+//
+// Deliberately does NOT use _currentMgrMonthYear() (today's literal
+// calendar month) as its month — same reasoning as _totalOutstandingCredits()
+// and dashboard.js's _dashDefaultCreditMonth(): Staff Credit's own
+// "Copy -> Next Month" rollover lags the calendar by ~10-12 days (salaries
+// settled on the 10th-12th), so on day 1 of a new month this widget would
+// read an empty month and wrongly claim "No outstanding credit this
+// month" even though last month's balances are still genuinely owed.
+// Uses Analytics.latestStaffCreditMonth() (credit-bucket-only, not the
+// broader latestManagerMonth() which also counts Salary/Generic/Petty/
+// Incentive activity — see that function's own header in analytics.js),
+// falling back to the literal current month only if there's no credit
+// data anywhere yet.
 function _managerCreditRanked() {
   try {
     if (typeof window._crdData !== 'function' || typeof window._crdNet !== 'function') return [];
-    const emps = window._crdData(_currentMgrMonthYear()) || [];
+    const A = window.Analytics;
+    const my = (A && typeof A.latestStaffCreditMonth === 'function' && A.latestStaffCreditMonth())
+      || _currentMgrMonthYear();
+    const emps = window._crdData(my) || [];
     return emps
       .map(e => ({ name: e.name, net: window._crdNet(e) }))
       .filter(e => e.net !== 0)
