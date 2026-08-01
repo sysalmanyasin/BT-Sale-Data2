@@ -35,7 +35,7 @@ const _dashPattyExpanded = new Set();
 // Re-renders the credit block and the Working Summary for the chosen month.
 function dashSetCreditMonth(my) {
   _dashCreditMonthOverride = my;
-  const resolved = my || _dashRunningMonth();
+  const resolved = my || _dashDefaultCreditMonth();
   buildCreditSection(resolved);
   if (typeof populateDashWorking === 'function') populateDashWorking(resolved || '');
 }
@@ -43,12 +43,34 @@ function dashSetCreditMonth(my) {
 // Patty/Expenses card's own From/To filter — re-renders just the credit
 // section (not the whole dashboard) against whichever month/credit-month
 // is currently selected, same as dashSetCreditMonth above.
-function dashSetPattyDateFrom(v) { _dashPattyDateFrom = v; buildCreditSection(_dashCreditMonthOverride || _dashRunningMonth()); }
-function dashSetPattyDateTo(v)   { _dashPattyDateTo = v; buildCreditSection(_dashCreditMonthOverride || _dashRunningMonth()); }
-function dashClearPattyDates()   { _dashPattyDateFrom = ''; _dashPattyDateTo = ''; buildCreditSection(_dashCreditMonthOverride || _dashRunningMonth()); }
+function dashSetPattyDateFrom(v) { _dashPattyDateFrom = v; buildCreditSection(_dashCreditMonthOverride || _dashDefaultCreditMonth()); }
+function dashSetPattyDateTo(v)   { _dashPattyDateTo = v; buildCreditSection(_dashCreditMonthOverride || _dashDefaultCreditMonth()); }
+function dashClearPattyDates()   { _dashPattyDateFrom = ''; _dashPattyDateTo = ''; buildCreditSection(_dashCreditMonthOverride || _dashDefaultCreditMonth()); }
 function dashTogglePattyCat(catId) {
   if (_dashPattyExpanded.has(catId)) _dashPattyExpanded.delete(catId); else _dashPattyExpanded.add(catId);
-  buildCreditSection(_dashCreditMonthOverride || _dashRunningMonth());
+  buildCreditSection(_dashCreditMonthOverride || _dashDefaultCreditMonth());
+}
+
+// Staff Credit's own default month — deliberately NOT the same as
+// _dashRunningMonth() below. Staff Credit is the one card that's still
+// genuinely month-scoped (each month starts empty until "Copy → Next
+// Month" is run), and that rollover often lags the calendar by 10-12
+// days (salaries settled on the 10th-12th). Defaulting this card to
+// today's literal date meant it went blank — and Total Outstanding
+// Credits silently dropped to ~0 — for the first ~12 days of every
+// month, even though last month's staff balances were still genuinely
+// owed. This mirrors Analytics.latestManagerMonth(), so it keeps
+// showing the last month with real credit rows until Copy → Next Month
+// actually opens the new one — matching what the Cover page's Total
+// Outstanding Credits tile already does. Falls back to the plain
+// running month only if there's no credit data anywhere yet.
+function _dashDefaultCreditMonth() {
+  try {
+    const A = window.Analytics;
+    const latest = A && typeof A.latestManagerMonth === 'function' ? A.latestManagerMonth() : '';
+    if (latest) return latest;
+  } catch (e) {}
+  return _dashRunningMonth();
 }
 
 // The default month for every "current" dashboard card — always the
@@ -169,10 +191,10 @@ function buildDashboard() {
   buildDayOfWeek();
   buildBestWorstPerYear();
 
-  // Manager month: use user override if set, otherwise the running
-  // calendar month from day 1 (see _dashRunningMonth() for why this no
-  // longer falls back to "last month with manager data" by default).
-  const managerMonth = _dashCreditMonthOverride || _dashRunningMonth();
+  // Manager month: use user override if set, otherwise Staff Credit's
+  // own default (see _dashDefaultCreditMonth() — latest month with real
+  // credit data, since salary rollover lags the calendar by ~10-12 days).
+  const managerMonth = _dashCreditMonthOverride || _dashDefaultCreditMonth();
   buildCreditSection(managerMonth);
   if (typeof populateDashWorking === 'function') populateDashWorking(managerMonth || '');
 }
