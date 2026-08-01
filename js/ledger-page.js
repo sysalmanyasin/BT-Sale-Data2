@@ -90,13 +90,13 @@ export function renderLedgerView(containerId, ledgerType, label, editingId) {
     const signedLabel = (sign > 0 ? '+' : '−') + '₨' + _fmt(e.amount);
     const color = sign > 0 ? 'var(--green,#059669)' : 'var(--red,#dc2626)';
     return `<tr data-entry-id="${_esc(e.id)}" class="ledger-row-clickable">
-      <td data-label="Date">${_esc(e.date)}</td>
-      ${showShift ? `<td data-label="Shift">${_esc(e.shift || '—')}</td>` : ''}
-      <td data-label="Category">${cat ? _esc(cat.icon || '') + ' ' + _esc(cat.label) : '<em>unknown</em>'}</td>
-      <td data-label="Description">${_esc(e.desc)}${e.source === 'closing_app' ? ' <span title="From Closing App" style="font-size:11px;background:var(--blue,#2563eb);color:#fff;padding:1px 6px;border-radius:10px;">📱 Closing</span>' : ''}</td>
-      <td data-label="Amount" style="color:${color};font-weight:600">${signedLabel}</td>
-      <td data-label="Balance">₨${_fmt(e._balance)}</td>
-      <td data-label="" class="ledger-row-actions" style="white-space:nowrap">
+      <td>${_esc(e.date)}</td>
+      ${showShift ? `<td>${_esc(e.shift || '—')}</td>` : ''}
+      <td>${cat ? _esc(cat.icon || '') + ' ' + _esc(cat.label) : '<em>unknown</em>'}</td>
+      <td>${_esc(e.desc)}${e.source === 'closing_app' ? ' <span title="From Closing App" style="font-size:11px;background:var(--blue,#2563eb);color:#fff;padding:1px 6px;border-radius:10px;">📱 Closing</span>' : ''}</td>
+      <td style="color:${color};font-weight:600">${signedLabel}</td>
+      <td>₨${_fmt(e._balance)}</td>
+      <td style="white-space:nowrap">
         <button type="button" class="btn-icon ledger-edit-btn" data-id="${_esc(e.id)}" title="Edit">✎</button>
         <button type="button" class="btn-icon ledger-del-btn" data-id="${_esc(e.id)}" title="Delete">🗑</button>
       </td>
