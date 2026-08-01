@@ -130,6 +130,46 @@ const Analytics = (function () {
       .sort((a, b) => _monthSortVal(b) - _monthSortVal(a))[0] || '';
   }
 
+  // Returns the most recent Month_Year string that has real STAFF CREDIT
+  // data specifically — i.e. at least one employee with a nonzero prevBal/
+  // salary/lessGeneric or a real dated entry (same per-employee test as
+  // managerMonthHasData's own credit.some(...) check above, just isolated
+  // from that function's other five domains).
+  //
+  // latestManagerMonth() above answers "does ANY manager domain (Salary,
+  // Generic, Expense, Petty, Incentive, or Credit) have activity this
+  // month" — which is the wrong question for the Staff Credit card
+  // specifically. A month can easily have real Salary/Generic/Petty/
+  // Incentive entries already (entered day 1, same day sales close) while
+  // Staff Credit is still genuinely empty (its own "Copy -> Next Month"
+  // rollover happens later, once salaries are actually settled ~10th-12th)
+  // — in that case latestManagerMonth() wrongly reports the new month as
+  // "latest with data" and the Staff Credit card jumps to it early, still
+  // showing "No activity yet" instead of last month's real balances.
+  // dashboard.js's Staff-Credit-only default (and cover-dashboard.js's
+  // Total Outstanding Credits tile) should use this instead.
+  function latestStaffCreditMonth() {
+    const found = new Set();
+    try {
+      const mgr = typeof mgrLoad === 'function' ? mgrLoad() : {};
+      Object.keys(mgr.credit || {}).forEach(m => found.add(m));
+    } catch(e) {}
+    const _ni = v => Math.round(Number(v) || 0);
+    const hasCreditData = my => {
+      try {
+        const mgr = typeof mgrLoad === 'function' ? mgrLoad() : {};
+        const credit = (mgr.credit && mgr.credit[my]) || [];
+        return credit.some(emp =>
+          _ni(emp.prevBal) || _ni(emp.salary) || _ni(emp.lessGeneric)
+          || (emp.entries || []).some(e => _ni(e.amount) || e.desc || e.date));
+      } catch(e) { return false; }
+    };
+    const current = _currentMonthVal();
+    return Array.from(found)
+      .filter(m => _monthSortVal(m) <= current && hasCreditData(m))
+      .sort((a, b) => _monthSortVal(b) - _monthSortVal(a))[0] || '';
+  }
+
   // Returns the latest MONTHLY entry that is not in the future.
   function latestSalesMonth(lat) {
     const current = _currentMonthVal();
@@ -366,6 +406,7 @@ const Analytics = (function () {
     getDashboardKPIs,
     getCreditSectionData,
     latestManagerMonth,
+    latestStaffCreditMonth,
     latestSalesMonth,
     managerMonthHasData,
     // Expose helpers so dashboard.js can use them for sub-sections

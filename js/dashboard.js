@@ -59,15 +59,19 @@ function dashTogglePattyCat(catId) {
 // today's literal date meant it went blank — and Total Outstanding
 // Credits silently dropped to ~0 — for the first ~12 days of every
 // month, even though last month's staff balances were still genuinely
-// owed. This mirrors Analytics.latestManagerMonth(), so it keeps
-// showing the last month with real credit rows until Copy → Next Month
-// actually opens the new one — matching what the Cover page's Total
-// Outstanding Credits tile already does. Falls back to the plain
-// running month only if there's no credit data anywhere yet.
+// owed. Uses Analytics.latestStaffCreditMonth() specifically (NOT
+// latestManagerMonth() — that one also counts Salary/Generic/Petty/
+// Incentive activity, any of which can easily exist for the new month
+// already while Staff Credit itself is still empty, which would wrongly
+// jump this card to the new month early). Keeps showing the last month
+// with real credit rows until Copy → Next Month actually opens the new
+// one — matching what the Cover page's Total Outstanding Credits tile
+// does. Falls back to the plain running month only if there's no credit
+// data anywhere yet.
 function _dashDefaultCreditMonth() {
   try {
     const A = window.Analytics;
-    const latest = A && typeof A.latestManagerMonth === 'function' ? A.latestManagerMonth() : '';
+    const latest = A && typeof A.latestStaffCreditMonth === 'function' ? A.latestStaffCreditMonth() : '';
     if (latest) return latest;
   } catch (e) {}
   return _dashRunningMonth();

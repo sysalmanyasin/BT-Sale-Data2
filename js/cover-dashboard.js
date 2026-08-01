@@ -330,7 +330,15 @@ function _totalOutstandingCredits() {
   try {
     const A = window.Analytics;
     if (!A) return { label: 'Total Outstanding Credits', value: 'Unavailable', sub: '' };
-    const my = A.latestManagerMonth();
+    // Staff Credit specifically needs its own latest-month lookup, not
+    // latestManagerMonth() — that one also counts Salary/Generic/Petty/
+    // Incentive activity, any of which can exist for the new month
+    // already while Staff Credit itself is still empty (its own
+    // "Copy -> Next Month" rollover lags the calendar by ~10-12 days).
+    // See analytics.js's latestStaffCreditMonth() header for the full
+    // reasoning — same fix applied on the Manager Dashboard side.
+    const my = (typeof A.latestStaffCreditMonth === 'function' && A.latestStaffCreditMonth())
+      || A.latestManagerMonth();
     const data = A.getCreditSectionData(my);
     const v = data.grandTotal;
     const sign = v < 0 ? '−' : '';
