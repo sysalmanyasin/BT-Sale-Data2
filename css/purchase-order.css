@@ -1,0 +1,92 @@
+.po-app {
+  --ink: var(--text);
+  --ink-soft: var(--muted);
+  --paper: var(--bg);
+  --panel: var(--surface);
+  --line: var(--border);
+}
+.po-app * { box-sizing: border-box; }
+.po-app { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); }
+.po-app header {
+  background: var(--ink); color: #EFEFEA;
+  padding: 28px clamp(16px,4vw,48px) 24px;
+}
+.po-app .eyebrow {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .14em;
+  text-transform: uppercase; color: #8FB8B0; margin: 0 0 6px;
+}
+.po-app h1 { font-family: var(--sans); font-size: 26px; margin: 0 0 6px; }
+.po-app .sub { color: #C7C7BE; font-size: 13.5px; max-width: 720px; line-height: 1.5; margin: 0; }
+.po-app .asof { color: #8FB8B0; font-size: 12px; font-family: var(--mono); margin-top: 8px; }
+
+.po-app main { padding: clamp(14px,3vw,32px); }
+
+#po-controlbar {
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: end;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-md);
+  padding: 14px 16px; margin-bottom: 16px;
+}
+#po-controlbar label {
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: 11px; font-family: var(--mono); text-transform: uppercase;
+  letter-spacing: .04em; color: var(--ink-soft);
+}
+#po-controlbar select, #po-controlbar input[type=number] {
+  font-family: var(--sans); font-size: 13px; padding: 7px 9px;
+  border: 1px solid var(--line); border-radius: var(--r-xs); background: #fff; min-width: 120px;
+}
+#po-controlbar .po-check { flex-direction: row; align-items: center; gap: 6px; }
+#po-controlbar .po-search { min-width: 180px; padding: 7px 9px; border: 1px solid var(--line); border-radius: var(--r-xs); }
+#po-controlbar .asof { align-self: center; margin-left: auto; font-size: 11.5px; color: var(--ink-soft); font-family: var(--mono); }
+
+.po-app .btn-ghost {
+  border: 1px solid var(--line); background: var(--panel); padding: 8px 14px;
+  border-radius: var(--r-xs); font-size: 12.5px; font-family: var(--mono);
+  cursor: pointer; color: var(--ink-soft); white-space: nowrap;
+}
+.po-app .btn-ghost:hover { border-color: var(--accent); color: var(--accent-dk); }
+.po-app .btn-ghost.sm { padding: 5px 10px; font-size: 11.5px; }
+
+.po-summary {
+  display: flex; flex-wrap: wrap; gap: 16px; align-items: center;
+  background: var(--alt); border: 1px solid var(--line); border-radius: var(--r-md);
+  padding: 12px 16px; margin-bottom: 18px; font-size: 13px;
+}
+.po-summary b { color: var(--accent-dk); }
+
+.po-group {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-md);
+  margin-bottom: 18px; overflow: hidden;
+}
+.po-group-head {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  padding: 12px 16px; background: var(--s2); border-bottom: 1px solid var(--line);
+}
+.po-group-head h3 { margin: 0; font-size: 15px; font-family: var(--sans); }
+.po-group-meta { font-size: 12px; color: var(--ink-soft); margin-left: auto; }
+.po-badge {
+  font-size: 10.5px; font-family: var(--mono); padding: 2px 8px; border-radius: var(--r-pill);
+  text-transform: uppercase; letter-spacing: .03em;
+}
+.po-badge-fuzzy { background: var(--alt2); color: var(--amber); }
+.po-badge-none { background: var(--rlt); color: var(--red); }
+
+.po-table-wrap { overflow-x: auto; }
+.po-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.po-tbl th, .po-tbl td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+.po-tbl td.wrap { white-space: normal; min-width: 180px; }
+.po-tbl th.r, .po-tbl td.r { text-align: right; font-family: var(--mono); }
+.po-tbl thead th { background: var(--s3); font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: .03em; color: var(--ink-soft); position: sticky; top: 0; }
+.po-tbl .po-primary-col { background: var(--alt); font-weight: 600; }
+.po-tbl td.po-need { color: var(--red); font-weight: 700; }
+.po-tbl td.po-value { font-weight: 700; color: var(--accent-dk); }
+.po-tbl tbody tr:hover { background: var(--s2); }
+.po-empty { color: var(--ink-soft); font-style: italic; text-align: center !important; padding: 16px !important; }
+.po-empty-state { text-align: center; padding: 40px 20px; color: var(--ink-soft); }
+.po-empty-state .muted { font-size: 12.5px; margin-top: 6px; }
+
+@media (max-width: 720px) {
+  #po-controlbar { flex-direction: column; align-items: stretch; }
+  #po-controlbar .asof { margin-left: 0; }
+  .po-group-meta { margin-left: 0; width: 100%; }
+}

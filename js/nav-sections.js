@@ -194,7 +194,7 @@
     }
 
     // New: Inventory umbrella over the 4 former top-level inventory pages.
-    groups.push(_customGroup('inventory', 'Inventory', '📦', ['inventory', 'stockledger', 'excess', 'reorder', 'inv-health'].map(id => _leaf(flat[id]))));
+    groups.push(_customGroup('inventory', 'Inventory', '📦', ['inventory', 'stockledger', 'excess', 'reorder', 'purchase-order', 'inv-health'].map(id => _leaf(flat[id]))));
 
     // New: Closing umbrella over Closing Book + Credit Ledger (which
     // keeps its own Credit / Misc-Ongoing subs nested one level deeper).
