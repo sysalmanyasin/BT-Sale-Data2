@@ -15,25 +15,28 @@ const DRIVE_FOLDER = 'BT-SALE-DATA';
 const DRIVE_FOLDER_ID = '1qDSFSlrcUA7EoaMx43bG3mxkpS1ESHGn'; // your existing Drive folder
 let _driveTokenClient = null;
 
-// ── Persist the Drive access token across page refreshes ──────────────
+// ── Persist the Drive access token across page refreshes AND new tabs ──
 // Google access tokens are short-lived (~1hr), but there's no reason to
-// force a fresh sign-in/consent on every reload within that window.
-// sessionStorage (not localStorage) is used deliberately: it survives
-// refreshes but clears when the tab/browser closes, so we never hold on
-// to a token longer than the session it was issued for.
+// force a fresh sign-in/consent every time a new tab or app session
+// starts within that window. Uses localStorage (not sessionStorage) so
+// the cache is shared across tabs and survives closing/reopening the
+// browser — the token itself still expires on its own (1min safety
+// margin below) and is cleared on sign-out (gauthClearSession), so this
+// only widens the window from "this one tab" to "however long the token
+// is actually still valid for," never beyond that.
 const DRIVE_TOKEN_K = 'bt_drive_token_cache';
 function _driveSaveToken(token, expiresInSec) {
   if (!token) return;
   const exp = Date.now() + (Math.max(60, (expiresInSec||3300)) * 1000) - 60000; // 1min safety margin
-  try { sessionStorage.setItem(DRIVE_TOKEN_K, JSON.stringify({ token, exp })); } catch(e) {}
+  try { localStorage.setItem(DRIVE_TOKEN_K, JSON.stringify({ token, exp })); } catch(e) {}
 }
 function _driveLoadCachedToken() {
   try {
-    const raw = sessionStorage.getItem(DRIVE_TOKEN_K);
+    const raw = localStorage.getItem(DRIVE_TOKEN_K);
     if (!raw) return null;
     const { token, exp } = JSON.parse(raw);
     if (token && exp > Date.now()) return token;
-    sessionStorage.removeItem(DRIVE_TOKEN_K);
+    localStorage.removeItem(DRIVE_TOKEN_K);
   } catch(e) {}
   return null;
 }

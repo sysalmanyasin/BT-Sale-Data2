@@ -259,7 +259,7 @@ function gauthSetSession(payload) {
 function gauthClearSession() {
   Actions.clearFeatureData(GAUTH_SESS_K);
   _driveAccessToken = '';
-  try { sessionStorage.removeItem('bt_drive_token_cache'); } catch(e) {}
+  try { localStorage.removeItem('bt_drive_token_cache'); } catch(e) {}
 }
 
 function gauthAllowedEmails() {
@@ -435,7 +435,7 @@ function _gauthCheckSession() {
   }
   // Valid session → auto-unlock immediately, no button click required
   unlockApp();
-  // If a still-valid Drive token survived this refresh (sessionStorage cache),
+  // If a still-valid Drive token survived this refresh/new tab (localStorage cache),
   // there's nothing to do — Drive is already ready, no network call needed.
   if (_driveAccessToken) {
     if (typeof driveLog === 'function') driveLog('✓ Drive session restored from this browser session', 'ok');
