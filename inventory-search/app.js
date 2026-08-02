@@ -278,6 +278,98 @@ async function askAI(p, btn) {
   }
 }
 
+// ── Chat assistant ───────────────────────────────────────────────────
+const CHAT_FUNCTION_URL = AI_SUPABASE_URL + '/functions/v1/inventory-chat';
+const chatEls = {
+  fab: document.getElementById('chatFab'),
+  backdrop: document.getElementById('chatBackdrop'),
+  panel: document.getElementById('chatPanel'),
+  close: document.getElementById('chatClose'),
+  log: document.getElementById('chatLog'),
+  form: document.getElementById('chatForm'),
+  input: document.getElementById('chatInput'),
+};
+let chatHistory = []; // [{role:'user'|'assistant', content}] — in-memory only, resets on reload
+
+function openChat() {
+  chatEls.backdrop.hidden = false;
+  chatEls.panel.hidden = false;
+  chatEls.input.focus();
+}
+function closeChat() {
+  chatEls.backdrop.hidden = true;
+  chatEls.panel.hidden = true;
+}
+chatEls.fab.addEventListener('click', openChat);
+chatEls.close.addEventListener('click', closeChat);
+chatEls.backdrop.addEventListener('click', closeChat);
+
+function addChatBubble(text, cls) {
+  const div = document.createElement('div');
+  div.className = 'chat-msg ' + cls;
+  div.textContent = text;
+  chatEls.log.appendChild(div);
+  chatEls.log.scrollTop = chatEls.log.scrollHeight;
+  return div;
+}
+
+// Cheap product -> slice for context payloads, so we're not shipping
+// every field (or the whole PRODUCTS array) to the AI each turn.
+function slice(p) {
+  return { name: p.name, generic: p.generic, company: p.company, qty: p.qty, price: p.price, supplier: p.supplier };
+}
+
+// Builds this turn's inventory context entirely client-side from the
+// already-synced PRODUCTS list — same BTSearch engine as the main
+// search box, plus two small fixed samples (low/out of stock) so
+// "what's running low" works without needing the user to name a
+// product. Capped small on purpose: keeps the prompt fast and cheap.
+function buildChatContext(message) {
+  const matches = BTSearch.filterAndRank(PRODUCTS, message, ['name', 'generic', 'company']).slice(0, 15).map(slice);
+  const lowStock = PRODUCTS.filter(p => p.qty > 0 && p.qty <= 5).sort((a, b) => a.qty - b.qty).slice(0, 10).map(slice);
+  const outOfStock = PRODUCTS.filter(p => p.qty === 0).slice(0, 10).map(slice);
+  return { matches, lowStock, outOfStock, totalProducts: PRODUCTS.length };
+}
+
+async function sendChat(message) {
+  chatHistory.push({ role: 'user', content: message });
+  addChatBubble(message, 'chat-msg-user');
+  const thinking = addChatBubble('Thinking…', 'chat-msg-bot chat-msg-thinking');
+  chatEls.input.value = '';
+  chatEls.input.disabled = true;
+
+  try {
+    const res = await fetch(CHAT_FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': AI_SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + AI_SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ messages: chatHistory, context: buildChatContext(message) }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.reply) throw new Error(data.error || ('HTTP ' + res.status));
+    thinking.remove();
+    addChatBubble(data.reply, 'chat-msg-bot');
+    chatHistory.push({ role: 'assistant', content: data.reply });
+  } catch (e) {
+    thinking.remove();
+    addChatBubble('Could not reach the assistant. ' + (e.message || ''), 'chat-msg-error');
+    chatHistory.pop(); // drop the unanswered user turn so a retry doesn't send it twice
+  } finally {
+    chatEls.input.disabled = false;
+    chatEls.input.focus();
+  }
+}
+
+chatEls.form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const msg = chatEls.input.value.trim();
+  if (!msg) return;
+  sendChat(msg);
+});
+
 // ── Boot ─────────────────────────────────────────────────────────────
 (function boot() {
   const cached = loadCache();

@@ -52,6 +52,23 @@
   <div id="sheetContent" class="sheet-content"></div>
 </section>
 
+<!-- Chat assistant -->
+<button id="chatFab" class="chat-fab" aria-label="Open assistant">💬</button>
+<div id="chatBackdrop" class="sheet-backdrop" hidden></div>
+<section id="chatPanel" class="chat-panel" hidden aria-modal="true" role="dialog">
+  <div class="chat-head">
+    <span>💬 Assistant</span>
+    <button id="chatClose" class="sheet-close" aria-label="Close chat">✕</button>
+  </div>
+  <div id="chatLog" class="chat-log" aria-live="polite">
+    <div class="chat-msg chat-msg-bot">Ask me about stock, prices, or any medicine — e.g. "how much amoxicillin do we have" or "side effects of metformin".</div>
+  </div>
+  <form id="chatForm" class="chat-form">
+    <input id="chatInput" type="text" placeholder="Ask about stock or a medicine…" autocomplete="off" aria-label="Message">
+    <button id="chatSend" type="submit" class="ai-btn">Send</button>
+  </form>
+</section>
+
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script type="module" src="app.js"></script>
 </body>

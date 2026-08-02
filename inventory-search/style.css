@@ -136,3 +136,55 @@ body{
 .ai-btn:disabled{opacity:.6;}
 .ai-text{font-size:13.5px;line-height:1.55;color:#e0e7ff;white-space:pre-wrap;margin-top:8px;}
 .ai-disclaimer{font-size:11px;color:#a5b4fc;margin-top:10px;opacity:.8;}
+
+/* Chat assistant */
+.chat-fab{
+  position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));
+  width:54px;height:54px;border-radius:50%;border:none;z-index:9;
+  background:linear-gradient(160deg,#6366f1,#4338ca);color:#fff;font-size:22px;
+  box-shadow:0 6px 20px rgba(67,56,202,.5);
+  display:flex;align-items:center;justify-content:center;
+}
+.chat-fab:active{transform:scale(.94);}
+
+.chat-panel{
+  position:fixed;left:0;right:0;bottom:0;z-index:11;
+  background:var(--card);border-radius:20px 20px 0 0;
+  height:78vh;display:flex;flex-direction:column;
+  box-shadow:0 -8px 30px rgba(0,0,0,.5);
+  animation:sheetUp .18s ease-out;
+}
+.chat-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:16px 18px 10px;font-weight:800;font-size:15px;
+  border-bottom:1px solid var(--border);position:relative;
+}
+.chat-log{
+  flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px;
+}
+.chat-msg{
+  max-width:85%;padding:10px 13px;border-radius:14px;font-size:13.5px;line-height:1.5;
+  white-space:pre-wrap;
+}
+.chat-msg-bot{
+  align-self:flex-start;background:var(--card-2);color:var(--text);
+  border-bottom-left-radius:4px;
+}
+.chat-msg-user{
+  align-self:flex-end;background:linear-gradient(160deg,#6366f1,#4338ca);color:#fff;
+  border-bottom-right-radius:4px;
+}
+.chat-msg-error{
+  align-self:flex-start;background:rgba(239,68,68,.15);color:#fca5a5;
+  border:1px solid rgba(239,68,68,.3);border-bottom-left-radius:4px;
+}
+.chat-msg-thinking{opacity:.6;font-style:italic;}
+.chat-form{
+  display:flex;gap:8px;padding:12px 14px calc(14px + env(safe-area-inset-bottom));
+  border-top:1px solid var(--border);
+}
+.chat-form input{
+  flex:1;background:var(--card-2);border:1px solid var(--border);border-radius:12px;
+  color:var(--text);padding:11px 14px;font-size:14px;min-width:0;
+}
+.chat-form input:focus{outline:none;border-color:var(--accent);}
