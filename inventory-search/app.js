@@ -294,11 +294,13 @@ let chatHistory = []; // [{role:'user'|'assistant', content}] — in-memory only
 function openChat() {
   chatEls.backdrop.hidden = false;
   chatEls.panel.hidden = false;
+  chatEls.fab.hidden = true;
   chatEls.input.focus();
 }
 function closeChat() {
   chatEls.backdrop.hidden = true;
   chatEls.panel.hidden = true;
+  chatEls.fab.hidden = false;
 }
 chatEls.fab.addEventListener('click', openChat);
 chatEls.close.addEventListener('click', closeChat);
@@ -319,13 +321,36 @@ function slice(p) {
   return { name: p.name, generic: p.generic, company: p.company, qty: p.qty, price: p.price, supplier: p.supplier };
 }
 
+// Chat messages are full sentences ("Panadol tab quantity available?"),
+// but BTSearch's multi-word scoring wants every remaining word to
+// appear in the product text to earn its best score (80) — filler like
+// "quantity"/"available?" was diluting that, so a specific product
+// (e.g. "Panadol Tab") tied with every other loosely-related Panadol
+// variant on a lower single-word-overlap score (60) instead of ranking
+// above them, and often got pushed out of the top-15 cap entirely.
+// Stripping conversational filler + punctuation first lets the real
+// product words ("panadol", "tab") both match, so the specific product
+// actually being asked about sorts to the top.
+const CHAT_STOPWORDS = new Set([
+  'how', 'much', 'many', 'do', 'does', 'did', 'we', 'you', 'i', 'is', 'are', 'was', 'were',
+  'have', 'has', 'had', 'the', 'a', 'an', 'of', 'for', 'in', 'on', 'at', 'to', 'and', 'or',
+  'any', 'some', 'please', 'pls', 'plz', 'stock', 'stocks', 'available', 'availability',
+  'quantity', 'qty', 'price', 'prices', 'cost', 'costs', 'what', "what's", 'whats', 'tell',
+  'me', 'about', 'show', 'find', 'check', 'get', 'need', 'want', 'left', 'remaining',
+  'currently', 'current', 'still', 'there', 'it', 'can', 'could', 'would', 'will',
+]);
+function extractProductQuery(message) {
+  const words = message.toLowerCase().replace(/[?!.,]/g, '').split(/\s+/).filter(w => w && !CHAT_STOPWORDS.has(w));
+  return words.length ? words.join(' ') : message;
+}
+
 // Builds this turn's inventory context entirely client-side from the
 // already-synced PRODUCTS list — same BTSearch engine as the main
 // search box, plus two small fixed samples (low/out of stock) so
 // "what's running low" works without needing the user to name a
 // product. Capped small on purpose: keeps the prompt fast and cheap.
 function buildChatContext(message) {
-  const matches = BTSearch.filterAndRank(PRODUCTS, message, ['name', 'generic', 'company']).slice(0, 15).map(slice);
+  const matches = BTSearch.filterAndRank(PRODUCTS, extractProductQuery(message), ['name', 'generic', 'company']).slice(0, 20).map(slice);
   const lowStock = PRODUCTS.filter(p => p.qty > 0 && p.qty <= 5).sort((a, b) => a.qty - b.qty).slice(0, 10).map(slice);
   const outOfStock = PRODUCTS.filter(p => p.qty === 0).slice(0, 10).map(slice);
   return { matches, lowStock, outOfStock, totalProducts: PRODUCTS.length };

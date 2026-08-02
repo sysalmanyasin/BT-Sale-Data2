@@ -148,9 +148,9 @@ body{
 .chat-fab:active{transform:scale(.94);}
 
 .chat-panel{
-  position:fixed;left:0;right:0;bottom:0;z-index:11;
+  position:fixed;left:0;right:0;bottom:0;top:env(safe-area-inset-top);z-index:11;
   background:var(--card);border-radius:20px 20px 0 0;
-  height:78vh;display:flex;flex-direction:column;
+  height:auto;display:flex;flex-direction:column;
   box-shadow:0 -8px 30px rgba(0,0,0,.5);
   animation:sheetUp .18s ease-out;
 }
