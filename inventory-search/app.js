@@ -228,6 +228,7 @@ function openDetail(p) {
         <button id="aiAskBtn" class="ai-btn">Ask AI</button>
       </div>
       <div id="aiResult" class="ai-text"></div>
+      <div id="aiDisclaimer" class="ai-disclaimer" hidden>⚠ AI-generated general reference only — always verify against the official leaflet / prescribing information before advising a patient.</div>
     </div>
   `;
 
@@ -246,9 +247,12 @@ els.backdrop.addEventListener('click', closeDetail);
 
 async function askAI(p, btn) {
   const out = document.getElementById('aiResult');
+  const disclaimer = document.getElementById('aiDisclaimer');
+  const isRefresh = btn.textContent === 'Refresh';
   btn.disabled = true;
   btn.textContent = 'Thinking…';
   out.textContent = '';
+  disclaimer.hidden = true;
   try {
     const res = await fetch(AI_FUNCTION_URL, {
       method: 'POST',
@@ -257,15 +261,14 @@ async function askAI(p, btn) {
         'apikey': AI_SUPABASE_ANON_KEY,
         'Authorization': 'Bearer ' + AI_SUPABASE_ANON_KEY,
       },
-      body: JSON.stringify({ name: p.name, generic: p.generic, company: p.company }),
+      // Refresh means "ask again, don't just hand me back the same
+      // cached answer" — force bypasses the server-side cache lookup.
+      body: JSON.stringify({ name: p.name, generic: p.generic, company: p.company, force: isRefresh }),
     });
     const data = await res.json();
     if (!res.ok || !data.info) throw new Error(data.error || ('HTTP ' + res.status));
     out.textContent = data.info;
-    const note = document.createElement('div');
-    note.className = 'ai-disclaimer';
-    note.textContent = '⚠ AI-generated general reference only — always verify against the official leaflet / prescribing information before advising a patient.';
-    out.after(note);
+    disclaimer.hidden = false;
     btn.textContent = 'Refresh';
   } catch (e) {
     out.textContent = 'Could not reach AI service. ' + (e.message || '');

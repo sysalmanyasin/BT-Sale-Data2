@@ -122,13 +122,28 @@ async function callGroq(prompt: string): Promise<string | null> {
     body: JSON.stringify({
       model: 'openai/gpt-oss-120b',
       messages: [{ role: 'user', content: prompt }],
-      max_tokens: 350,
+      // openai/gpt-oss-120b is a reasoning model — its hidden
+      // chain-of-thought tokens count against max_tokens too. At
+      // max_tokens:350/default ('medium') reasoning effort, the budget
+      // was getting eaten by reasoning before any of the actual answer
+      // came out, so replies were arriving cut off mid-sentence (and
+      // then getting cached that way for 30 days). Low effort leaves
+      // less for reasoning to consume, and a much bigger budget gives
+      // the real answer room to finish.
+      reasoning_effort: 'low',
+      max_tokens: 1024,
       temperature: 0.3,
     }),
   });
   if (!res.ok) throw new Error('Groq ' + res.status);
   const data = await res.json();
-  return data.choices?.[0]?.message?.content?.trim() || null;
+  const choice = data.choices?.[0];
+  const content = choice?.message?.content?.trim() || null;
+  // Model ran out of token budget mid-answer — don't return/cache a
+  // truncated fragment, treat it as a failure so the caller can fall
+  // back to Gemini instead.
+  if (choice?.finish_reason === 'length') throw new Error('Groq response truncated');
+  return content;
 }
 
 async function callGemini(prompt: string): Promise<string | null> {
@@ -141,20 +156,23 @@ async function callGemini(prompt: string): Promise<string | null> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens: 350, temperature: 0.3 },
+        generationConfig: { maxOutputTokens: 500, temperature: 0.3 },
       }),
     }
   );
   if (!res.ok) throw new Error('Gemini ' + res.status);
   const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
+  const cand = data.candidates?.[0];
+  const content = cand?.content?.parts?.[0]?.text?.trim() || null;
+  if (cand?.finishReason === 'MAX_TOKENS') throw new Error('Gemini response truncated');
+  return content;
 }
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return jsonResponse({ error: 'POST only' }, 405);
 
-  let body: { name?: string; generic?: string; company?: string };
+  let body: { name?: string; generic?: string; company?: string; force?: boolean };
   try { body = await req.json(); } catch (e) { return jsonResponse({ error: 'Invalid JSON body' }, 400); }
 
   const name = (body.name || '').trim();
@@ -162,7 +180,7 @@ Deno.serve(async (req: Request) => {
   const company = (body.company || '').trim();
   if (!name && !generic) return jsonResponse({ error: 'name or generic is required' }, 400);
 
-  const cached = await readCache(name, generic);
+  const cached = body.force ? null : await readCache(name, generic);
   if (cached) return jsonResponse({ info: cached, cached: true });
 
   const prompt = buildPrompt(name, generic, company);
