@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Needed to reach Supabase's REST API directly from the widget. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <application
+        android:allowBackup="true"
+        android:label="@string/app_name"
+        android:theme="@android:style/Theme.DeviceDefault.Light">
+
+        <!--
+          No MainActivity here on purpose — this widget doesn't need one
+          to function; tapping it opens bt.duapharma.com directly in the
+          browser (see APP_URL in InventoryWidgetProvider.kt). If you
+          later add a proper MainActivity/TWA wrapper, this can point at
+          that instead, and Android also requires *some* launchable
+          activity if you want this to show up as an app icon at all
+          (a bare widget-only APK can still exist without one, it just
+          won't have its own icon in the app drawer — only the widget in
+          the widget picker).
+        -->
+
+        <receiver
+            android:name=".InventoryWidgetProvider"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.duapharma.inventorywidget.ACTION_REFRESH" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/inventory_widget_info" />
+        </receiver>
+
+    </application>
+
+</manifest>
