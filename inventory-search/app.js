@@ -18,7 +18,12 @@ import { BTSearch } from '../js/bt-search.js';
 
 const INV_SUPABASE_URL = 'https://vtcrdkqhuvxatclobsby.supabase.co';
 const INV_SUPABASE_ANON_KEY = 'sb_publishable_h-Z3ldRXyb18HEjF68cJ0g_tmRgbrAy';
-const AI_FUNCTION_URL = INV_SUPABASE_URL + '/functions/v1/medicine-ai-info';
+
+// medicine-ai-info is deployed in the BT SALE DATA / Closing project
+// (not the inventory project) — see supabase/functions/medicine-ai-info.
+const AI_SUPABASE_URL = 'https://wetbugzzchkghpzmowod.supabase.co';
+const AI_SUPABASE_ANON_KEY = 'sb_publishable_pPP1QowIcwHFjCGFldrevw_De11RqkD';
+const AI_FUNCTION_URL = AI_SUPABASE_URL + '/functions/v1/medicine-ai-info';
 
 const CACHE_KEY = 'inv_search_products_v1';
 const MIN_REFRESH_MS = 60 * 1000;
@@ -249,8 +254,8 @@ async function askAI(p, btn) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': INV_SUPABASE_ANON_KEY,
-        'Authorization': 'Bearer ' + INV_SUPABASE_ANON_KEY,
+        'apikey': AI_SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + AI_SUPABASE_ANON_KEY,
       },
       body: JSON.stringify({ name: p.name, generic: p.generic, company: p.company }),
     });

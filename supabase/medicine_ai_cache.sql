@@ -1,8 +1,11 @@
--- Run once against the Inventory / Pharmacy Audit Hub Supabase project
--- (the same one inventory_products lives in — vtcrdkqhuvxatclobsby).
--- Optional but recommended: without this table, medicine-ai-info still
--- works, it just calls the AI provider on every single lookup instead
--- of reusing a cached answer for CACHE_DAYS.
+-- STATUS: already applied to project wetbugzzchkghpzmowod (BT SALE
+-- DATA / Closing — where medicine-ai-info is deployed) via Supabase
+-- MCP in this Claude session. Kept here for reference / disaster
+-- recovery, not something you need to run again.
+--
+-- Note this is the Closing project, not the inventory project
+-- (vtcrdkqhuvxatclobsby) that inventory_products lives in — see
+-- supabase/functions/medicine-ai-info/index.ts header for why.
 
 create table if not exists medicine_ai_cache (
   cache_key   text primary key,   -- lowercased generic name (falls back to product name)

@@ -238,8 +238,11 @@ for a free-tier AI-generated overview of that medicine.
   (`supabase/functions/medicine-ai-info/`) — Groq primary, Gemini
   fallback, both free-tier, with a `medicine_ai_cache` table so the
   same medicine isn't re-asked of the AI provider more than once every
-  30 days. See that function's `DEPLOY.md` — it has to be deployed and
-  given API keys separately; it doesn't ship "on" by default.
+  30 days. **Deployed and live** in the BT SALE DATA / Closing project
+  (`wetbugzzchkghpzmowod`) — the cache table there too. The one
+  remaining step is setting `GROQ_API_KEY` (and optionally
+  `GEMINI_API_KEY`) as secrets on that project, since those need your
+  own free account — see that function's `DEPLOY.md`.
 - **Not yet built:** a true native Android home-screen widget (the
   resizable live tile). That needs an Android Studio / Kotlin project,
   which is a separate build from this repo.

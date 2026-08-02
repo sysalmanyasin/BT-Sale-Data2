@@ -3,16 +3,26 @@
 //
 // POST { name, generic, company } → { info: string, cached: boolean }
 //
+// DEPLOYED at: BT SALE DATA / Closing project (wetbugzzchkghpzmowod) —
+// NOT the inventory project (vtcrdkqhuvxatclobsby). That's deliberate:
+// this Claude session only had MCP access to wetbugzzchkghpzmowod and
+// DuaPharmaPos, not the inventory project, and the cache table below
+// doesn't need to live next to inventory_products anyway — it's just
+// AI text keyed by medicine name. inventory-search/app.js's
+// AI_FUNCTION_URL points here accordingly.
+//
 // Same free-tier text-completion pattern as
 // send-daily-whatsapp-briefing/index.ts: Groq first, Gemini as the
 // fallback (both have usable free tiers). Set secrets via
 // `supabase secrets set` — never hardcode keys here:
 //   GROQ_API_KEY    — https://console.groq.com (free tier)
 //   GEMINI_API_KEY  — https://aistudio.google.com/apikey (free tier)
-// At least one of the two must be set.
+// At least one of the two must be set, or every call 502s. Neither is
+// set yet as of this deploy — see DEPLOY.md, only the secrets step
+// remains.
 //
-// Results are cached in a small `medicine_ai_cache` table (see
-// ../../medicine_ai_cache.sql — run that migration once) keyed by the
+// Results are cached in a `medicine_ai_cache` table (already created
+// in this project — see ../../medicine_ai_cache.sql) keyed by the
 // generic name (falling back to product name), so the same medicine
 // looked up by any device/user only calls the AI provider once every
 // CACHE_DAYS days. This is what keeps a free-tier key viable across a
@@ -20,12 +30,11 @@
 // if the table doesn't exist yet, this function still works, it just
 // calls the AI provider every time.
 //
-// Deploy with `--no-verify-jwt` (or pass the anon key as this project
-// already does client-side elsewhere) since Inventory Search has no
-// login step of its own. See DEPLOY.md in this folder.
+// Deployed with verify_jwt=false since Inventory Search has no login
+// step of its own — it calls this function with only the public anon
+// key. See DEPLOY.md in this folder.
 // ══════════════════════════════════════════════════════════════════════
 
-const INV_SUPABASE_URL = 'https://vtcrdkqhuvxatclobsby.supabase.co';
 const CACHE_DAYS = 30;
 
 const CORS_HEADERS = {
@@ -45,12 +54,17 @@ function cacheKeyFor(name: string, generic: string): string {
   return (generic || name || '').trim().toLowerCase();
 }
 
-// Service-role client for the cache table only (read/write past RLS).
-// Falls back to null (cache disabled) if the secret isn't set.
+// Cache table lives in THIS function's own Supabase project (the one
+// it's deployed into), not the inventory project — it's just AI text
+// keyed by medicine name, no reason it needs to live alongside
+// inventory_products. Supabase auto-injects SUPABASE_URL and
+// SUPABASE_SERVICE_ROLE_KEY as reserved env vars for every deployed
+// Edge Function, so no extra secret needs to be set for this part.
 function getServiceClient() {
+  const url = Deno.env.get('SUPABASE_URL');
   const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  if (!key) return null;
-  return { url: INV_SUPABASE_URL, key };
+  if (!url || !key) return null;
+  return { url, key };
 }
 
 async function readCache(name: string, generic: string): Promise<string | null> {
