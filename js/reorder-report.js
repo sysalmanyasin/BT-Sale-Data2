@@ -1009,13 +1009,5 @@ window.ReorderReportApp = (function () {
     getFlaggedRowsFor: getFlaggedRowsFor,
     getFlaggedTotalFor: getFlaggedTotalFor,
     getTopSellersFor: getTopSellersFor,
-    // Exposed (2026-08-02) so other pages — e.g. Purchase Order, which
-    // needs all three windows' demandQty computed against three
-    // *different* coverDays targets (a real 30-day buy, a real 60-day
-    // buy, a real 90-day buy, not one threshold applied to all three) —
-    // can reuse this exact engine instead of re-deriving the same
-    // sale-rate/demand-qty math a second place. Pure function, no
-    // shared state touched; safe to call cold and repeatedly.
-    computeAllRows: computeAllRows,
   };
 })();

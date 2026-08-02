@@ -1008,7 +1008,6 @@ function _tiles() {
     { page: 'stockledger', icon: '📒', title: 'Stock Ledger', status: 'Never-sold, dead stock, excess & pack-issue analysis', enabled: true, group: 'Inventory' },
     { page: 'excess', icon: '📉', title: 'Excess Working', status: 'Corrected excess value, retain list & Top N export', enabled: true, group: 'Inventory' },
     { page: 'reorder', icon: '🛒', title: 'Reorder Report', status: 'Low stock-cover items ranked by sale value, Top N + export', enabled: true, group: 'Inventory' },
-    { page: 'purchase-order', icon: '🧾', title: 'Purchase Order', status: 'Schedule-driven buy list — Top N per supplier at the 30/60/90d level', enabled: true, group: 'Inventory' },
     { href: 'https://reports.duapharma.com/daily_report.html', icon: '✅', title: 'Daily Check List', status: 'Fazal Din\'s Pharma Plus — standalone checklist app', enabled: true, group: 'Reports' },
     { href: 'https://reports.duapharma.com/excess-stock-control.html', icon: '📦', title: 'Excess Stock Control', status: 'Fazal Din\'s Pharma Plus — excess stock control', enabled: true, group: 'Reports' },
     { href: 'https://reports.duapharma.com/invoice-desk.html', icon: '🧮', title: 'Branch Invoice Desk', status: 'Fazal Din\'s Pharma Plus — branch invoice desk', enabled: true, group: 'Reports' },

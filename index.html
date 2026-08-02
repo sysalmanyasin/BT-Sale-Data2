@@ -50,7 +50,6 @@
 <link rel="stylesheet" href="css/stockledger.css?v=20260722a">
 <link rel="stylesheet" href="css/excess-working.css?v=20260722a">
 <link rel="stylesheet" href="css/reorder-report.css?v=20260731a">
-<link rel="stylesheet" href="css/purchase-order.css?v=20260802a">
 <link rel="stylesheet" href="css/inventory-health-dashboard.css?v=20260731a">
 <link rel="stylesheet" href="css/pdf-library.css?v=20260725a">
 <link rel="stylesheet" href="css/cash-deposit-report.css?v=20260725b">
@@ -266,7 +265,6 @@ if ('serviceWorker' in navigator) {
     <a class="ntab" href="#stockledger" data-page="stockledger" data-group="inventory" data-domain-group="inventory">📒 Stock Ledger</a>
     <a class="ntab" href="#excess" data-page="excess" data-group="inventory" data-domain-group="inventory">📉 Excess Working</a>
     <a class="ntab" href="#reorder" data-page="reorder" data-group="inventory" data-domain-group="inventory">🛒 Reorder Report</a>
-    <a class="ntab" href="#purchase-order" data-page="purchase-order" data-group="inventory" data-domain-group="inventory">🧾 Purchase Order</a>
     <a class="ntab" href="#inv-health" data-page="inv-health" data-group="inventory" data-domain-group="inventory">🩺 Inventory Health</a>
     <a class="ntab" href="#tools" data-page="tools" data-group="tools">Tools</a>
     <a class="ntab" href="#pdf-library" data-page="pdf-library" data-group="pdf-library">📚 PDF Library</a>
@@ -308,7 +306,6 @@ if ('serviceWorker' in navigator) {
   <a class="bnav-item" href="#stockledger" data-page="stockledger" data-group="inventory" data-domain-group="inventory"><span class="bicon">📒</span><span class="blabel">Stock Ledger</span></a>
   <a class="bnav-item" href="#excess" data-page="excess" data-group="inventory" data-domain-group="inventory"><span class="bicon">📉</span><span class="blabel">Excess</span></a>
   <a class="bnav-item" href="#reorder" data-page="reorder" data-group="inventory" data-domain-group="inventory"><span class="bicon">🛒</span><span class="blabel">Reorder</span></a>
-  <a class="bnav-item" href="#purchase-order" data-page="purchase-order" data-group="inventory" data-domain-group="inventory"><span class="bicon">🧾</span><span class="blabel">Purchase Order</span></a>
   <a class="bnav-item" href="#inv-health" data-page="inv-health" data-group="inventory" data-domain-group="inventory"><span class="bicon">🩺</span><span class="blabel">Inv Health</span></a>
   <a class="bnav-item" href="#tools" data-page="tools" data-group="tools"><span class="bicon">⚙️</span><span class="blabel">Tools</span></a>
 </div>
@@ -1113,28 +1110,6 @@ if ('serviceWorker' in navigator) {
 </main>
 
 <footer>Reorder Report — reads live from Stock Ledger, figures update the moment that page's data changes.</footer>
-</section>
-
-<!-- PURCHASE ORDER — Day/Warehouse/Supplier picker driven by the
-     supplier ordering calendar (js/po-schedule-data.js, generated from
-     PO_SCHEDULE_04-04-2026.xlsx), Top N items per supplier with order
-     quantities at the 30/60/90-day cover level, reusing
-     ReorderReportApp's engine. Reads live from Stock Ledger, same as
-     Reorder Report — load your inventory file there first. See
-     js/purchase-order.js. -->
-<section class="page po-app app-page" id="page-purchase-order">
-<header>
-  <p class="eyebrow">Replenishment</p>
-  <h1>Purchase Order</h1>
-  <p class="sub">Pick a day and warehouse from the supplier ordering schedule — get the Top N items to buy from each scheduled supplier, with order quantities at the 30/60/90-day cover level side by side.</p>
-</header>
-
-<main>
-  <div id="po-controlbar"></div>
-  <div id="po-body"></div>
-</main>
-
-<footer>Purchase Order — reads live from Stock Ledger; supplier schedule from PO_SCHEDULE_04-04-2026.xlsx.</footer>
 </section>
 
 <!-- INVENTORY HEALTH DASHBOARD — standalone overview tab: health mix
@@ -2041,8 +2016,6 @@ if ('serviceWorker' in navigator) {
 <script defer src="js/stockledger.js?v=20260722a"></script>
 <script defer src="js/excess-working.js?v=20260722a"></script>
 <script defer src="js/reorder-report.js?v=20260731a"></script>
-<script defer src="js/po-schedule-data.js?v=20260802a"></script>
-<script defer src="js/purchase-order.js?v=20260802a"></script>
 <script defer src="js/inventory-health-dashboard.js?v=20260731a"></script>
 
 <!-- 3. Auth: Google Sign-In -->

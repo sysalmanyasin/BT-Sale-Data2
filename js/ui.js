@@ -50,7 +50,7 @@ function showPage(id) {
     const _notesheetsDomainPages = ['notesheets'];
     const _closingDomainPages = ['closing-book', 'credit-ledger'];
     const _auditDomainPages = ['assignments'];
-    const _inventoryDomainPages = ['inventory', 'stockledger', 'excess', 'reorder', 'purchase-order', 'inv-health'];
+    const _inventoryDomainPages = ['inventory', 'stockledger', 'excess', 'reorder', 'inv-health'];
     const _domain = _salesDomainPages.indexOf(id) !== -1 ? 'sales'
                   : _managerDomainPages.indexOf(id) !== -1 ? 'manager'
                   : _notesheetsDomainPages.indexOf(id) !== -1 ? 'notesheets'
@@ -90,7 +90,6 @@ function showPage(id) {
     // Reorder Report is downstream of Stock Ledger's raw inventory rows
     // (see js/reorder-report.js) — same "safe to call every visit" pattern.
     if (id === 'reorder' && window.ReorderReportApp && typeof window.ReorderReportApp.init === 'function') window.ReorderReportApp.init();
-    if (id === 'purchase-order' && window.PurchaseOrderApp && typeof window.PurchaseOrderApp.init === 'function') window.PurchaseOrderApp.init();
     if (id === 'inv-health' && window.InventoryHealthDashboard && typeof window.InventoryHealthDashboard.init === 'function') window.InventoryHealthDashboard.init();
     if (id === 'pdf-library' && window.PdfLibrary && typeof window.PdfLibrary.onShow === 'function') window.PdfLibrary.onShow();
     _curPage = id;
