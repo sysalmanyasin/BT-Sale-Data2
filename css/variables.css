@@ -13,6 +13,10 @@
   --red:#e0392f;--rlt:#fef2f2;--pink:#db2777;--pink-lt:#fdf2f8;
   --text:#12172b;--t2:#3c4360;--muted:#71789a;
   --mono:'IBM Plex Mono',monospace;--sans:'Inter',system-ui,sans-serif;
+  /* Shared spacing scale — layout/design pass (Aug 2026): gives every
+     component a common rhythm to pull from instead of one-off pixel
+     values, so density can be tuned app-wide from one place. */
+  --sp-1:4px;--sp-2:8px;--sp-3:12px;--sp-4:16px;--sp-5:24px;--sp-6:32px;--sp-7:44px;
   /* Shared brand header gradient - same stops as .hero/.ledger-header,
      used anywhere a dark brand-blue banner is needed (modal headers,
      dialog chrome) so those surfaces stay on-brand instead of each
