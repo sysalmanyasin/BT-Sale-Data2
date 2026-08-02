@@ -74,6 +74,19 @@
                 android:resource="@xml/staffcredit_widget_info" />
         </receiver>
 
+        <receiver
+            android:name=".InventoryHealthWidgetProvider"
+            android:label="@string/invhealth_widget_name"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.duapharma.inventorywidget.ACTION_REFRESH_INVHEALTH" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/invhealth_widget_info" />
+        </receiver>
+
     </application>
 
 </manifest>

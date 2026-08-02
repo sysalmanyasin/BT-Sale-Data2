@@ -1,8 +1,8 @@
 # BT Widgets (Android home-screen widgets) — starter scaffold
 
-One native Android app hosting **four** home-screen widgets, each a
+One native Android app hosting **five** home-screen widgets, each a
 thin, read-only glance at data already synced to Supabase — no app
-logic re-hosted server-side, no new backend. All four show up
+logic re-hosted server-side, no new backend. All five show up
 separately in Android's widget picker (long-press home screen →
 Widgets → look for each one by name below) since they're all part of
 the same app/module.
@@ -10,12 +10,14 @@ the same app/module.
 | Widget | Shows | Data source |
 | --- | --- | --- |
 | **Inventory Widget** | Low Stock — 4 lowest-stock items | `inventory_products` table, project `vtcrdkqhuvxatclobsby` (same as `inventory-search` PWA) |
+| **Inventory Health Widget** | Total Inventory Level, Negative Value, Never Sold (60D), Dead Stock (60D), raw Excess Stock | Same `inventory_products` table — every row, paginated |
 | **Sales Widget** | Latest month's sale total, split Cash / Banks / Credit Clients / Customers | `bt_salesdata.payload->monthly` (same project as Closing/Credits below, `wetbugzzchkghpzmowod`) |
 | **Closing Widget** | Latest Closing shift — Carried CC, Deposits, Book Bills, Manual Returns | `sheets` table, same project ClosingBridge reads (`js/closing-bridge.js`) |
 | **Outstanding Credits Widget** | Total Outstanding Credits (Staff + Jazz Cash + Patty/Expenses + Misc Sections) + who owes the most | `bt_salesdata.payload->manager` / `->ledger` / `->ledgerCustomTypes` |
 
-Tapping any widget opens `bt.duapharma.com` (Inventory's opens the
-`inventory-search/` sub-path specifically) in the browser.
+Tapping any widget opens `bt.duapharma.com` (Inventory and Inventory
+Health both open the `inventory-search/` sub-path specifically) in the
+browser.
 
 **Why Sales/Closing/Credits query Supabase directly instead of calling
 the app's own JS**: this app's business data (MONTHLY/DAILY/STAFF/

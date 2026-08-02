@@ -11,4 +11,7 @@
 
     <string name="staffcredit_widget_name">Outstanding Credits Widget</string>
     <string name="staffcredit_widget_description">Total outstanding credits (Staff + Jazz Cash + Patty/Expenses + Misc Sections) and who owes the most</string>
+
+    <string name="invhealth_widget_name">Inventory Health Widget</string>
+    <string name="invhealth_widget_description">Total Inventory Level, Negative Value, Never Sold (60D), Dead Stock (60D), and raw Excess Stock</string>
 </resources>

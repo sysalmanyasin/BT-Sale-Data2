@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/invHealthWidgetRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_background"
+    android:padding="12dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Inventory Health"
+            android:textStyle="bold"
+            android:textSize="15sp"
+            android:textColor="#F9A8D4" />
+
+        <ImageButton
+            android:id="@+id/invHealthWidgetRefreshBtn"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:background="@android:color/transparent"
+            android:src="@android:drawable/ic_popup_sync"
+            android:contentDescription="Refresh" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/invHealthWidgetUpdatedAt"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="10sp"
+        android:textColor="#FBCFE8"
+        android:layout_marginBottom="6dp" />
+
+    <!-- Row 1: Negative Value -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingTop="2dp"
+        android:paddingBottom="2dp">
+        <TextView
+            android:id="@+id/invHealthWidgetRow1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="12sp"
+            android:textColor="#E5E7EB"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:text="Negative Value" />
+        <TextView
+            android:id="@+id/invHealthWidgetRow1Val"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:textColor="#F9A8D4" />
+    </LinearLayout>
+
+    <!-- Row 2: Never Sold (60D) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingTop="2dp"
+        android:paddingBottom="2dp">
+        <TextView
+            android:id="@+id/invHealthWidgetRow2"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="12sp"
+            android:textColor="#E5E7EB"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:text="Never Sold (60D)" />
+        <TextView
+            android:id="@+id/invHealthWidgetRow2Val"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:textColor="#F9A8D4" />
+    </LinearLayout>
+
+    <!-- Row 3: Dead Stock (60D) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingTop="2dp"
+        android:paddingBottom="2dp">
+        <TextView
+            android:id="@+id/invHealthWidgetRow3"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="12sp"
+            android:textColor="#E5E7EB"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:text="Dead Stock (60D)" />
+        <TextView
+            android:id="@+id/invHealthWidgetRow3Val"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:textColor="#F9A8D4" />
+    </LinearLayout>
+
+    <!-- Row 4: Excess Stock (raw) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingTop="2dp"
+        android:paddingBottom="2dp">
+        <TextView
+            android:id="@+id/invHealthWidgetRow4"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textSize="12sp"
+            android:textColor="#E5E7EB"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:text="Excess Stock (raw)" />
+        <TextView
+            android:id="@+id/invHealthWidgetRow4Val"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:textColor="#F9A8D4" />
+    </LinearLayout>
+
+</LinearLayout>
