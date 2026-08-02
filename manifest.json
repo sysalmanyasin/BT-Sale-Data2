@@ -1,7 +1,7 @@
 {
   "name": "Bahria Town Sales IC",
   "short_name": "BT Sales",
-  "description": "Bahria Town Petrol Station Intelligence Centre — daily sales tracking, reporting, and manager tools.",
+  "description": "Bahria Town Sales Intelligence Centre — pharmacy daily sales tracking, reporting, and manager tools.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
