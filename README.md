@@ -212,6 +212,40 @@ expiry sweep on every unlock.
 
 ---
 
+## 🔍 Inventory Search (standalone companion PWA)
+
+`/inventory-search/` is a deliberately separate, lightweight PWA — not
+a page inside the main app — for one-tap medicine lookup: type a
+product/generic/code, tap a result for a detail sheet (stock, price,
+company, supplier, tax, movement stats), and optionally hit "Ask AI"
+for a free-tier AI-generated overview of that medicine.
+
+- **Why separate:** installs to the home screen as its own icon
+  (`Inv Search`, no login screen, no nav chrome) so it opens instantly —
+  the closest practical thing to a native search widget without native
+  Android development. Has its own `manifest.json` and its own
+  `sw.js`, scoped to `/inventory-search/` only, so it doesn't collide
+  with the main app's root-scoped service worker.
+- **Data:** reads `inventory_products` directly — same Supabase
+  project, same anon/publishable key as `inventory-bridge.js`,
+  read-only, RLS-scoped (not key-secrecy-scoped). Reuses `BTFormat`
+  and `BTSearch` from the main app's `js/` folder rather than
+  reimplementing currency formatting or fuzzy ranking.
+  Full product list is cached in `localStorage` and refreshed at most
+  once a minute, so search itself is instant and works offline on
+  stale data if there's no connection.
+- **AI info:** calls the `medicine-ai-info` Supabase Edge Function
+  (`supabase/functions/medicine-ai-info/`) — Groq primary, Gemini
+  fallback, both free-tier, with a `medicine_ai_cache` table so the
+  same medicine isn't re-asked of the AI provider more than once every
+  30 days. See that function's `DEPLOY.md` — it has to be deployed and
+  given API keys separately; it doesn't ship "on" by default.
+- **Not yet built:** a true native Android home-screen widget (the
+  resizable live tile). That needs an Android Studio / Kotlin project,
+  which is a separate build from this repo.
+
+---
+
 ## Architecture — 5 floors, Golden Rules
 
 ```

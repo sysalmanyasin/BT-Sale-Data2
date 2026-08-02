@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#db2777">
+<title>Inventory Search — BT Pharmacy</title>
+<meta name="description" content="Instant medicine lookup — stock, price, and AI drug info.">
+
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/svg+xml" href="../icons/icon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="../icons/favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="../icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Inv Search">
+<meta name="mobile-web-app-capable" content="yes">
+
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-title">
+    <span class="pill-dot"></span>
+    <h1>Inventory Search</h1>
+  </div>
+  <button id="refreshBtn" class="icon-btn" title="Refresh data" aria-label="Refresh data">⟳</button>
+</header>
+
+<div class="search-wrap">
+  <input id="searchInput" type="text" inputmode="search" autocomplete="off" autocorrect="off"
+         spellcheck="false" placeholder="Search product, generic, or code…" aria-label="Search inventory">
+  <span id="resultCount" class="result-count"></span>
+</div>
+
+<div id="statusBar" class="status-bar" hidden></div>
+
+<main id="resultsList" class="results-list" aria-live="polite"></main>
+
+<div id="emptyState" class="empty-state">
+  <div class="empty-icon">💊</div>
+  <p>Start typing to search your live inventory.</p>
+  <p class="empty-sub" id="lastSyncLine"></p>
+</div>
+
+<!-- Detail bottom sheet -->
+<div id="sheetBackdrop" class="sheet-backdrop" hidden></div>
+<section id="detailSheet" class="detail-sheet" hidden aria-modal="true" role="dialog">
+  <div class="sheet-handle"></div>
+  <button id="sheetClose" class="sheet-close" aria-label="Close">✕</button>
+  <div id="sheetContent" class="sheet-content"></div>
+</section>
+
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>
