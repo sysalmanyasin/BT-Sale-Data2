@@ -294,12 +294,16 @@ let chatHistory = []; // [{role:'user'|'assistant', content}] — in-memory only
 function openChat() {
   chatEls.backdrop.hidden = false;
   chatEls.panel.hidden = false;
+  chatEls.backdrop.style.display = 'block';
+  chatEls.panel.style.display = 'flex';
   chatEls.fab.hidden = true;
   chatEls.input.focus();
 }
 function closeChat() {
   chatEls.backdrop.hidden = true;
   chatEls.panel.hidden = true;
+  chatEls.backdrop.style.display = 'none';
+  chatEls.panel.style.display = 'none';
   chatEls.fab.hidden = false;
 }
 chatEls.fab.addEventListener('click', openChat);
