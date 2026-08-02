@@ -65,6 +65,10 @@
   const _VIRTUAL = {
     pdfLibrary: { label: 'PDF Library', icon: '📚', href: '#pdf-library' },
     auditExternal: { label: 'Audit', icon: '🧾', href: 'https://random.duapharma.com', external: true },
+    // Standalone PWA (own index.html/sw.js, own home-screen install) —
+    // opened in a new tab like the other external tiles, so its own
+    // service worker never has to share a tab with this app's.
+    inventorySearch: { label: 'Inventory Search', icon: '🔎', href: '/inventory-search/', external: true },
     reports: [
       { label: 'Daily Check List', icon: '✅', href: 'https://reports.duapharma.com/daily_report.html', external: true },
       { label: 'Excess Stock Control', icon: '📦', href: 'https://reports.duapharma.com/excess-stock-control.html', external: true },
@@ -193,8 +197,12 @@
       groups.push({ label: flat.manager.label, icon: flat.manager.icon, href: flat.manager.href, kids: kids, _domainGroup: 'manager' });
     }
 
-    // New: Inventory umbrella over the 4 former top-level inventory pages.
-    groups.push(_customGroup('inventory', 'Inventory', '📦', ['inventory', 'stockledger', 'excess', 'reorder', 'inv-health'].map(id => _leaf(flat[id]))));
+    // New: Inventory umbrella over the 4 former top-level inventory pages,
+    // plus the standalone Inventory Search PWA (external tile, same
+    // pattern as Audit's own external link above).
+    const invKids = ['inventory', 'stockledger', 'excess', 'reorder', 'inv-health'].map(id => _leaf(flat[id]));
+    invKids.push({ label: _VIRTUAL.inventorySearch.label, icon: _VIRTUAL.inventorySearch.icon, href: _VIRTUAL.inventorySearch.href, external: true, kids: [] });
+    groups.push(_customGroup('inventory', 'Inventory', '📦', invKids));
 
     // New: Closing umbrella over Closing Book + Credit Ledger (which
     // keeps its own Credit / Misc-Ongoing subs nested one level deeper).
