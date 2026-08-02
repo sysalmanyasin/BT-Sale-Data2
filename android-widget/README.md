@@ -7,13 +7,38 @@ project `vtcrdkqhuvxatclobsby`), using the same public/publishable
 anon key already in `inventory-search/app.js`. Tapping the widget
 opens `bt.duapharma.com/inventory-search/` in the browser.
 
-This is **not** built or tested — I don't have Android build tooling
-(Android Studio / a device or emulator / a way to sign & install an
-APK) in the environment I write code in. Everything here is real,
-correctly-structured Kotlin/XML/Gradle written to compile, but the
-first real build is the first time it'll actually be verified.
+I don't have Android build tooling in the environment I write code in
+(no local SDK, emulator, or device), so I can't compile or install
+this myself directly — but the GitHub Actions workflow above does
+build it for real, in a genuine Android build environment, on every
+push. That means this scaffold's actual correctness gets verified by
+a real compiler, not just by me reading the code carefully.
 
-## What you need to actually get a widget on your phone
+## Getting an APK — two ways
+
+### Easiest: let GitHub Actions build it (no Android Studio needed)
+
+Every push touching `android-widget/**` triggers `.github/workflows/android-widget-build.yml`,
+which builds a debug APK in the cloud and attaches it to the run as a
+downloadable artifact:
+
+1. On GitHub: **Actions tab → "Build Inventory Widget APK" → pick the
+   latest run → Artifacts → `inventory-widget-debug-apk`** → download
+   the zip, unzip it to get `app-debug.apk`.
+2. Transfer that APK to your phone (e.g. email it to yourself, or a
+   cloud-drive link) and tap it to install. Android will prompt to
+   allow installing from that source the first time — that's normal
+   for a side-loaded APK not from the Play Store.
+3. Long-press your home screen → Widgets → "Inventory Widget" → drag
+   it onto the screen.
+
+This is a **debug** build (signed with Android's auto-generated debug
+keystore) — right for installing directly on your own phone(s), not
+suitable for a Google Play listing (that needs a release build signed
+with your own keystore — a separate step, only worth doing if you want
+that distribution route later).
+
+### Alternative: build locally in Android Studio
 
 1. **Install Android Studio** (free, from developer.android.com).
 2. **Open this folder** (`android-widget/`) as an existing project —
