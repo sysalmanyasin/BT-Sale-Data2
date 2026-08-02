@@ -4,7 +4,7 @@
 // itself always goes to the network (or localStorage cache in app.js),
 // never through this cache, so stock figures are never served stale
 // from here.
-const CACHE = 'inv-search-shell-v5';
+const CACHE = 'inv-search-shell-v6';
 const SHELL = ['./', './index.html', './style.css', './app.js', './manifest.json'];
 
 self.addEventListener('install', (event) => {

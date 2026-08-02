@@ -154,6 +154,12 @@ body{
   box-shadow:0 -8px 30px rgba(0,0,0,.5);
   animation:sheetUp .18s ease-out;
 }
+/* .chat-panel's own display:flex above has the same specificity as the
+   browser's built-in [hidden]{display:none} rule, and author CSS always
+   wins that tie regardless of source order — so without this, setting
+   .hidden = true in JS did nothing and the panel could never be closed.
+   This selector is more specific, so it actually takes effect. */
+.chat-panel[hidden]{display:none;}
 .chat-head{
   display:flex;align-items:center;justify-content:space-between;
   padding:16px 18px 10px;font-weight:800;font-size:15px;
