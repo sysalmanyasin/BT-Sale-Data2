@@ -1,11 +1,42 @@
-# Inventory Widget (Android home-screen widget) — starter scaffold
+# BT Widgets (Android home-screen widgets) — starter scaffold
 
-A native Android app whose only real job is hosting one home-screen
-widget: **Low Stock**, pulled straight from the same Supabase project
-+ table the `inventory-search` PWA reads (`inventory_products`,
-project `vtcrdkqhuvxatclobsby`), using the same public/publishable
-anon key already in `inventory-search/app.js`. Tapping the widget
-opens `bt.duapharma.com/inventory-search/` in the browser.
+One native Android app hosting **four** home-screen widgets, each a
+thin, read-only glance at data already synced to Supabase — no app
+logic re-hosted server-side, no new backend. All four show up
+separately in Android's widget picker (long-press home screen →
+Widgets → look for each one by name below) since they're all part of
+the same app/module.
+
+| Widget | Shows | Data source |
+| --- | --- | --- |
+| **Inventory Widget** | Low Stock — 4 lowest-stock items | `inventory_products` table, project `vtcrdkqhuvxatclobsby` (same as `inventory-search` PWA) |
+| **Sales Widget** | Latest month's sale total, split Cash / Banks / Credit Clients / Customers | `bt_salesdata.payload->monthly` (same project as Closing/Credits below, `wetbugzzchkghpzmowod`) |
+| **Closing Widget** | Latest Closing shift — Carried CC, Deposits, Book Bills, Manual Returns | `sheets` table, same project ClosingBridge reads (`js/closing-bridge.js`) |
+| **Outstanding Credits Widget** | Total Outstanding Credits (Staff + Jazz Cash + Patty/Expenses + Misc Sections) + who owes the most | `bt_salesdata.payload->manager` / `->ledger` / `->ledgerCustomTypes` |
+
+Tapping any widget opens `bt.duapharma.com` (Inventory's opens the
+`inventory-search/` sub-path specifically) in the browser.
+
+**Why Sales/Closing/Credits query Supabase directly instead of calling
+the app's own JS**: this app's business data (MONTHLY/DAILY/STAFF/
+manager/ledger/etc.) all syncs as one JSON document in `bt_salesdata`'s
+`payload` column (see `js/supabase.js`'s `_buildPayload()`), not
+separate normalized tables. Rather than pull that whole blob, the
+Sales and Credits widgets use a **PostgREST JSON-path select**
+(`?select=payload->monthly`, etc.) so Postgres itself only returns the
+one sub-tree each widget needs. Closing's data (`sheets` table) is
+already normalized, so that widget queries it the same direct way
+Inventory queries `inventory_products`.
+
+Each widget's Kotlin file has its own header comment listing the exact
+simplifications it makes vs. the web app's precise math (things like:
+custom "Manage Fields" columns aren't folded into Sales' Banks/Credit
+totals; Closing's Book-Bills/Manual-Returns lookback is bounded to the
+last 30 shifts; Staff Credit month-selection doesn't fall back through
+every manager domain the way the web tile's fallback chain does).
+None of these change the common case — they're the same kind of
+documented, non-urgent gap this repo already tracks elsewhere — but
+worth reading before trusting a number that looks off.
 
 I don't have Android build tooling in the environment I write code in
 (no local SDK, emulator, or device), so I can't compile or install

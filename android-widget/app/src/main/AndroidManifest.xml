@@ -24,6 +24,7 @@
 
         <receiver
             android:name=".InventoryWidgetProvider"
+            android:label="@string/app_name"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -32,6 +33,45 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/inventory_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".SalesWidgetProvider"
+            android:label="@string/sales_widget_name"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.duapharma.inventorywidget.ACTION_REFRESH_SALES" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/sales_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".ClosingWidgetProvider"
+            android:label="@string/closing_widget_name"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.duapharma.inventorywidget.ACTION_REFRESH_CLOSING" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/closing_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".StaffCreditWidgetProvider"
+            android:label="@string/staffcredit_widget_name"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.duapharma.inventorywidget.ACTION_REFRESH_STAFFCREDIT" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/staffcredit_widget_info" />
         </receiver>
 
     </application>

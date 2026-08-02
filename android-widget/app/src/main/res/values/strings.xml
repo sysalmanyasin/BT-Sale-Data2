@@ -2,4 +2,13 @@
 <resources>
     <string name="app_name">Inventory Widget</string>
     <string name="widget_description">Shows current low-stock items from Inventory Search</string>
+
+    <string name="sales_widget_name">Sales Widget</string>
+    <string name="sales_widget_description">Latest month\'s sale total, split by Cash / Banks / Credit Clients / Customers</string>
+
+    <string name="closing_widget_name">Closing Widget</string>
+    <string name="closing_widget_description">Latest Closing shift summary — Carried CC, Deposits, Book Bills, Manual Returns</string>
+
+    <string name="staffcredit_widget_name">Outstanding Credits Widget</string>
+    <string name="staffcredit_widget_description">Total outstanding credits (Staff + Jazz Cash + Patty/Expenses + Misc Sections) and who owes the most</string>
 </resources>
