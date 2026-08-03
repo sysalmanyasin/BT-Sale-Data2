@@ -36,6 +36,17 @@ function _qaCrdDate(isoVal) {
   return String(d.getDate()).padStart(2, '0') + '-' + ms[d.getMonth()] + '-' + d.getFullYear();
 }
 
+// Staff Credit is bucketed by "Month Year" (e.g. "July 2026"), not by a
+// literal date field — this turns the <input type=date> value into that
+// same label so Quick Add can resolve (and offer) the *right* bucket
+// instead of always writing into whatever month the Credit Ledger sheet
+// currently has loaded.
+const _QA_MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+function _qaMonthLabel(isoVal) {
+  const d = isoVal ? new Date(isoVal + 'T00:00:00') : new Date();
+  return _QA_MONTH_NAMES[d.getMonth()] + ' ' + d.getFullYear();
+}
+
 function _qaEsc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
@@ -103,17 +114,45 @@ function renderQuickAdd(containerId) {
 
     if (type === 'credit') {
       _qaEnsureCreditLoaded();
-      const staff = (window._crdData_cur || []).map((e, i) => `<option value="${i}">${_qaEsc(e.name)}</option>`);
+      // Staff list comes from the full active registry, not whichever
+      // month happens to be loaded in the Credit Ledger sheet — the
+      // employee picked here may belong to a *different* target month.
+      const staffList = (typeof activeStaff === 'function') ? activeStaff() : (window._crdData_cur || []);
+      const staff = staffList.map((e, i) => `<option value="${i}">${_qaEsc(e.name)}</option>`);
+      // Month select: same running list the Credit Ledger sheet's own
+      // dropdown uses (mgrMonths, from manager-shared.js), so every month
+      // that already has data — plus this and last month — is offered.
+      const months = (typeof mgrMonths === 'function') ? mgrMonths() : [];
+      const defaultMonth = _qaMonthLabel(_qaToday());
+      const monthOpts = months.length ? months : [defaultMonth];
       fieldsWrap.innerHTML = `
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <select class="qa-crd-emp mgr-inp" style="width:170px">
             ${staff.length ? staff.join('') : '<option value="">No staff yet</option>'}
           </select>
           <input type="date" class="qa-date mgr-inp" style="width:150px" value="${_qaToday()}">
+          <select class="qa-crd-month mgr-inp" style="width:150px" title="Which month's credit ledger this entry is filed under">
+            ${monthOpts.map(m => `<option value="${_qaEsc(m)}"${m === defaultMonth ? ' selected' : ''}>${_qaEsc(m)}</option>`).join('')}
+          </select>
           <input type="text" class="qa-desc mgr-inp" style="width:170px" placeholder="Description (credit/deduction/…)">
           <input type="number" class="qa-amount mgr-inp" style="width:130px" placeholder="Amount (−ve = deduction)">
           <button type="button" class="btn btn-p qa-submit" style="font-size:12px;padding:7px 16px">+ Add</button>
         </div>`;
+      // Month follows the date automatically — until the person touches
+      // the month select themselves, at which point their choice wins
+      // even if they then go back and nudge the date.
+      const dateEl = fieldsWrap.querySelector('.qa-date');
+      const monthEl = fieldsWrap.querySelector('.qa-crd-month');
+      let monthTouched = false;
+      monthEl.addEventListener('change', () => { monthTouched = true; });
+      dateEl.addEventListener('change', () => {
+        if (monthTouched) return;
+        const label = _qaMonthLabel(dateEl.value);
+        if (![...monthEl.options].some(o => o.value === label)) {
+          monthEl.insertAdjacentHTML('afterbegin', `<option value="${_qaEsc(label)}">${_qaEsc(label)}</option>`);
+        }
+        monthEl.value = label;
+      });
       fieldsWrap.querySelector('.qa-submit').addEventListener('click', () => qaSubmitCredit(container));
       return;
     }
@@ -205,19 +244,41 @@ function qaSubmitCustom(container) {
 
 function qaSubmitCredit(container) {
   const empSel = container.querySelector('.qa-crd-emp');
+  const staffList = (typeof activeStaff === 'function') ? activeStaff() : (window._crdData_cur || []);
   const ei = empSel ? parseInt(empSel.value, 10) : NaN;
   const date = container.querySelector('.qa-date').value;
+  const monthEl = container.querySelector('.qa-crd-month');
+  const my = monthEl ? monthEl.value : _qaMonthLabel(date);
   const desc = container.querySelector('.qa-desc').value;
   const amount = container.querySelector('.qa-amount').value;
-  if (isNaN(ei) || !window._crdData_cur || !window._crdData_cur[ei]) { toast('⚠ Pick a staff member first', 'w'); return; }
+  if (isNaN(ei) || !staffList[ei]) { toast('⚠ Pick a staff member first', 'w'); return; }
   if (!amount) { toast('⚠ Amount is required', 'w'); return; }
-  window._crdData_cur[ei].entries.push({
-    date: _qaCrdDate(date),
-    desc: desc || 'credit',
-    amount: parseFloat(amount) || 0,
-  });
-  if (typeof renderCreditLedger === 'function') renderCreditLedger(window._crdData_cur);
-  if (typeof saveCreditData === 'function') saveCreditData(); // also toasts + syncs, same as the Credits tab's own Save
+  const name = staffList[ei].name;
+  const entry = { date: _qaCrdDate(date), desc: desc || 'credit', amount: parseFloat(amount) || 0 };
+
+  if (typeof _scCreditRow === 'function' && typeof mgrSave === 'function') {
+    // Files straight into data.credit[my] for the chosen month — works
+    // whether or not that month is the one currently loaded in the
+    // Credit Ledger sheet — then nudges that sheet's own in-memory copy
+    // (and Staff Registry's "This Month" figures) if it happens to be
+    // showing an affected month.
+    const { data, emp } = _scCreditRow(name, my);
+    emp.entries.push(entry);
+    mgrSave(data);
+    if (typeof _scCreditSync === 'function') _scCreditSync(my);
+    if (typeof renderStaffRegistry === 'function') renderStaffRegistry();
+    if (window.Repository && window.Repository.getItem('bt_auto_save') === '1' && typeof window.pushToSupabase === 'function') window.pushToSupabase();
+    toast('✓ Added to ' + name + '’s ' + my + ' credit');
+  } else {
+    // Fallback: old behavior, only correct when `my` is the month
+    // currently loaded into window._crdData_cur.
+    _qaEnsureCreditLoaded();
+    if (!window._crdData_cur || !window._crdData_cur[ei]) { toast('⚠ Pick a staff member first', 'w'); return; }
+    window._crdData_cur[ei].entries.push(entry);
+    if (typeof renderCreditLedger === 'function') renderCreditLedger(window._crdData_cur);
+    if (typeof saveCreditData === 'function') saveCreditData();
+  }
+
   container.querySelector('.qa-amount').value = '';
   container.querySelector('.qa-desc').value = '';
 }

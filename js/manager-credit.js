@@ -278,8 +278,14 @@ function thisMonthNetFor(name) {
 // resolved against the real current month, never whatever month the
 // Credit Ledger page happens to have loaded. One source of truth, so
 // Supabase sync doesn't need to know this second UI exists at all.
-function _scCreditRow(name) {
-  const my = currentCreditMonthYear();
+//
+// `my` is optional and defaults to the real current month (unchanged
+// behavior for the Staff Card). Quick Add passes an explicit month so a
+// credit dated into a different month than the one currently open in the
+// Credit Ledger sheet lands in the *correct* month's array instead of
+// whatever happens to be loaded in memory.
+function _scCreditRow(name, my) {
+  my = my || currentCreditMonthYear();
   const data = mgrLoad();
   if (!data.credit) data.credit = {};
   if (!data.credit[my]) data.credit[my] = [];
@@ -389,6 +395,7 @@ Object.assign(window, {
   deleteCrdEntry, addCreditEmployee, deleteCrdEmp, saveCreditData, copyToNextMonth,
   thisMonthNetFor, renderStaffCreditCurrent, scCreditFieldChange, scAddCreditEntry,
   scCreditEntryChange, scDeleteCreditEntry, currentCreditMonthYear,
+  _scCreditRow, _scCreditSync,
 });
 
 export {
@@ -397,4 +404,5 @@ export {
   deleteCrdEntry, addCreditEmployee, deleteCrdEmp, saveCreditData, copyToNextMonth,
   thisMonthNetFor, renderStaffCreditCurrent, scCreditFieldChange, scAddCreditEntry,
   scCreditEntryChange, scDeleteCreditEntry, currentCreditMonthYear,
+  _scCreditRow, _scCreditSync,
 };
