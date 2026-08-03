@@ -108,7 +108,10 @@
     const input = document.getElementById('gs-input');
     if (input) input.value = '';
     onInput('');
-    if (input) setTimeout(function () { input.focus(); }, 150);
+    // Intentionally no auto-focus here: focusing #gs-input on every
+    // drawer open pops the on-screen keyboard immediately, even though
+    // the user hasn't tapped the box. The box should only focus when
+    // the user explicitly taps it.
   }
 
   window.GlobalSearch = { onInput: onInput, reset: reset, _openStaff: _openStaff };
