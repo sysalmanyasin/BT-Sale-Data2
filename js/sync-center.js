@@ -799,9 +799,21 @@ function _sc_renderControls() {
 }
 
 // F12: Settings always re-renders on open (called by scSwitchTab).
+//
+// _sc_renderAll() also calls this on every heartbeat tick (30s) AND on
+// every realtime session-table change from ANY connected device — with
+// several devices open, that can fire every few seconds. Rebuilding
+// el.innerHTML while the person has #sc-timeout-sel focused/open tears
+// the native <select> out of the DOM mid-interaction, which silently
+// closes its option list before a click on an option can register —
+// it *looks* like the dropdown can't be used at all. Skip the rebuild
+// while it's focused; the next non-interactive re-render (or opening
+// the tab fresh) will still pick up the real saved value.
 function _sc_renderSettings() {
   const el = document.getElementById('sc-settings-panel');
   if (!el) return;
+  const existingSel = document.getElementById('sc-timeout-sel');
+  if (existingSel && document.activeElement === existingSel) return;
   const currentTimeout = parseInt(Repository.getItem(SC_TIMEOUT_KEY) || '90', 10);
   const udid = _sc_getUDID();
 
