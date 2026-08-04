@@ -80,6 +80,17 @@ tfoot td{font-weight:700;color:var(--text);background:var(--s2);border-top:2px s
 .btn-sm{padding:5px 11px;font-size:11.5px;border-radius:var(--r-xs);}
 .brow{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
 
+/* Manager section button colors — design pass (Aug 2026): the Manager
+   pages had drifted into 5 unrelated button hues (teal Auto-Fill,
+   green Save, orange Copy->Next Month, blue Print, dark-blue Save All)
+   with no shared logic. One rule now: sky blue (--mgrblue, Manager's
+   own accent) for the actual primary/save action on a panel, neutral
+   outline for everything else (Auto-Fill, Copy -> Next Month, Print). */
+.mgr-btn-primary{background:var(--mgrblue);color:#fff;box-shadow:0 2px 8px -2px rgba(3,105,161,.45);}
+.mgr-btn-primary:hover{background:#025a86;box-shadow:0 4px 14px -3px rgba(3,105,161,.5);}
+.mgr-btn-secondary{background:var(--surface);color:var(--t2);border:1px solid var(--border);}
+.mgr-btn-secondary:hover{border-color:var(--mgrblue);color:var(--mgrblue);background:var(--mgrblue-lt);}
+
 /* Small icon-only actions (ledger row edit/delete/save/cancel) */
 .btn-icon{background:var(--s2);border:1px solid var(--border);color:var(--t2);width:28px;height:28px;border-radius:var(--r-xs);cursor:pointer;font-size:12.5px;display:inline-flex;align-items:center;justify-content:center;transition:all .15s;}
 .btn-icon:hover{border-color:var(--accent);color:var(--accent);background:var(--alt);}

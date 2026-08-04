@@ -135,18 +135,27 @@
    instead of a full-saturation fill, so they stay distinguishable
    without breaking the row's visual rhythm. */
 .mgr-tabgroup{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:14px 16px;margin-bottom:12px;box-shadow:var(--sh);}
+
+/* Wide-table horizontal scroll with a right-edge fade, so a table that
+   runs off the screen (salary table etc.) reads as "scroll for more"
+   instead of looking like its last column got cut off. */
+.mgr-table-scroll{position:relative;overflow-x:auto;}
+.mgr-table-scroll::after{
+  content:'';position:absolute;top:0;right:0;bottom:0;width:24px;
+  background:linear-gradient(90deg,transparent,var(--surface));
+  pointer-events:none;
+}
 .mgr-tabgroup-label{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.09em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:9px;}
 .mgr-tabgroup-label::after{content:'';flex:1;height:1px;background:var(--border);opacity:.7;}
 .mgr-tabrow{display:flex;gap:7px;flex-wrap:wrap;}
 
 .mgr-tab{background:var(--s2);color:var(--t2);border:1px solid var(--border);font-size:12.5px;font-weight:600;padding:8px 15px;border-radius:var(--r-pill);box-shadow:none;}
-.mgr-tab.active{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 4px 12px -3px rgba(58,97,247,.5);}
-.mgr-tab:hover:not(.active){border-color:var(--accent);color:var(--accent);background:var(--alt);}
-.mgr-tab-em{position:relative;padding-left:13px;}
-.mgr-tab-em::before{content:'';position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:3px;}
-.mgr-tab-em.em-green::before{background:var(--green);}
-.mgr-tab-em.em-purple::before{background:var(--purple);}
-.mgr-tab-em.active::before{background:rgba(255,255,255,.7);}
+.mgr-tab.active{background:var(--mgrblue);color:#fff;border-color:var(--mgrblue);box-shadow:0 4px 12px -3px rgba(3,105,161,.45);}
+.mgr-tab:hover:not(.active){border-color:var(--mgrblue);color:var(--mgrblue);background:var(--mgrblue-lt);}
+/* .mgr-tab-em / .em-green / .em-purple removed (Aug 2026 design pass) —
+   those left-border colors carried no real meaning (arbitrary green on
+   Staff Registry, purple on Misc Sections), so they were dropped rather
+   than kept as decoration. */
 
 .mgr-inp{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:var(--r-xs);padding:7px 9px;font-size:12.5px;font-family:var(--sans);outline:none;width:100%;transition:border-color .15s,box-shadow .15s;}
 .mgr-inp:focus{border-color:var(--accent);box-shadow:var(--focus-ring);}

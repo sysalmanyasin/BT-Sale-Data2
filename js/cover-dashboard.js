@@ -265,7 +265,12 @@ function _targetPace() {
   const paceLine = diff >= 0 ? '+₨' + fc(diff) + ' ahead of pace' : '-₨' + fc(Math.abs(diff)) + ' behind pace';
   const sub = paceLine + ' · Day ' + elapsedDays + '/' + totalDays + ' entered' +
               (remainingDays > 0 ? ' · ₨' + fc(neededPerDay) + '/day for remaining ' + remainingDays + ' days' : '');
-  return { label: 'Target pace — ' + my, value: pct + '% of target', sub };
+  // Same red/amber/green thresholds the KPI strip's "Sales vs Target"
+  // tile uses (see _kpiTiles below) — kept in one place logically so
+  // this card and that tile can never disagree about whether a given
+  // % of target counts as on-track, since they're both driven by pct.
+  const cls = pct >= 95 ? 'green' : pct >= 75 ? 'amber' : 'red';
+  return { label: 'Target pace — ' + my, value: pct + '% of target', sub, cls };
 }
 
 // Picks the chronologically-latest MONTHLY record — comparing by Month_Year
@@ -346,6 +351,7 @@ function _totalOutstandingCredits() {
       label: 'Total Outstanding Credits',
       value: sign + '₨' + fc(Math.abs(v)),
       sub: 'Staff (' + (my || '—') + ') + Jazz Cash + Patty/Expenses + Misc Sections, all-time',
+      cls: v > 0 ? 'amber' : 'green',
     };
   } catch (e) {
     return { label: 'Total Outstanding Credits', value: 'Unavailable', sub: '' };
@@ -1320,7 +1326,7 @@ export function renderCoverDashboard() {
   const tiles = _tiles();
 
   const heroCard = h => `
-    <div class="cover-hero-card">
+    <div class="cover-hero-card${h.cls ? ' cls-' + _esc(h.cls) : ''}">
       <div class="cover-hero-label">${_esc(h.label)}</div>
       <div class="cover-hero-value">${_esc(h.value)}${h.trend || ''}</div>
       <div class="cover-hero-sub">${_esc(h.sub)}</div>

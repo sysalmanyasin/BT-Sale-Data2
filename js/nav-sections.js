@@ -175,18 +175,24 @@
   // folded into Manager, and new collapsed umbrella groups (Inventory /
   // Closing / Audit / Notes & Sheets, plus a Sync Center group nested
   // inside Tools) each gathering what used to be separate top-level rows.
+  // Section headers shown above the drawer's top-level rows (design
+  // pass, Aug 2026) — groups the 10 top-level rows into 3 weight
+  // classes so the list reads faster than 10 identical rows in a row.
+  const _SECTION_LABEL = { core: 'Core', data: 'Data', utility: 'Utility' };
+  const _SECTION_RANK = { core: 0, data: 1, utility: 2 };
+
   function _buildTree() {
     const flat = _flatFromBnav();
     const groups = [];
 
-    if (flat.cover) groups.push(_leaf(flat.cover));
+    if (flat.cover) groups.push(Object.assign(_leaf(flat.cover), { _section: 'core', _sortKey: -1 }));
 
     // Sale Data: Home first, then its existing Index/Daily Data/etc subs.
     if (flat.index) {
       const kids = [];
       if (flat.dashboard) kids.push(_leaf(flat.dashboard));
       _domList(_SUB_GROUPS.index).forEach(s => kids.push(_leafFromList(s)));
-      groups.push({ label: flat.index.label, icon: flat.index.icon, href: flat.index.href, kids: kids, _domainGroup: 'sales' });
+      groups.push({ label: flat.index.label, icon: flat.index.icon, href: flat.index.href, kids: kids, _domainGroup: 'sales', _section: 'core' });
     }
 
     // Manager: Overview first, then its existing tab subs.
@@ -194,7 +200,7 @@
       const kids = [];
       if (flat['manager-dashboard']) kids.push(_leaf(flat['manager-dashboard']));
       _domList(_SUB_GROUPS.manager).forEach(s => kids.push(_leafFromList(s)));
-      groups.push({ label: flat.manager.label, icon: flat.manager.icon, href: flat.manager.href, kids: kids, _domainGroup: 'manager' });
+      groups.push({ label: flat.manager.label, icon: flat.manager.icon, href: flat.manager.href, kids: kids, _domainGroup: 'manager', _section: 'core' });
     }
 
     // New: Inventory umbrella over the 4 former top-level inventory pages,
@@ -202,7 +208,7 @@
     // pattern as Audit's own external link above).
     const invKids = ['inventory', 'stockledger', 'excess', 'reorder', 'inv-health'].map(id => _leaf(flat[id]));
     invKids.push({ label: _VIRTUAL.inventorySearch.label, icon: _VIRTUAL.inventorySearch.icon, href: _VIRTUAL.inventorySearch.href, external: true, kids: [] });
-    groups.push(_customGroup('inventory', 'Inventory', '📦', invKids));
+    groups.push(Object.assign(_customGroup('inventory', 'Inventory', '📦', invKids), { _section: 'data' }));
 
     // New: Closing umbrella over Closing Book + Credit Ledger (which
     // keeps its own Credit / Misc-Ongoing subs nested one level deeper).
@@ -213,13 +219,13 @@
         kids: _domList(_SUB_GROUPS['credit-ledger']).map(_leafFromList),
       };
     }
-    groups.push(_customGroup('closing', 'Closing', '🔒', [_leaf(flat['closing-book']), creditLedger]));
+    groups.push(Object.assign(_customGroup('closing', 'Closing', '🔒', [_leaf(flat['closing-book']), creditLedger]), { _section: 'data' }));
 
     // New: Audit umbrella over the external Audit link + Assignments.
-    groups.push(_customGroup('audit', 'Audit', '🧾', [
+    groups.push(Object.assign(_customGroup('audit', 'Audit', '🧾', [
       { label: _VIRTUAL.auditExternal.label, icon: _VIRTUAL.auditExternal.icon, href: _VIRTUAL.auditExternal.href, external: true, kids: [] },
       _leaf(flat.assignments),
-    ]));
+    ]), { _section: 'utility' }));
 
     // New: Notes & Sheets umbrella over its Notes/Sheets/Manage Sheets/
     // Live Data tabs. Those tabs are only in the DOM once the page has
@@ -227,15 +233,15 @@
     // row pointing at the page itself if it hasn't yet.
     const nsSubs = _domList(_SUB_GROUPS.notesheets).map(_leafFromList);
     if (nsSubs.length) {
-      groups.push(_customGroup('notesheets', 'Notes & Sheets', '📑', nsSubs));
+      groups.push(Object.assign(_customGroup('notesheets', 'Notes & Sheets', '📑', nsSubs), { _section: 'data' }));
     } else if (flat.notesheets) {
-      groups.push({ label: 'Notes & Sheets', icon: flat.notesheets.icon, href: flat.notesheets.href, kids: [], _domainGroup: 'notesheets' });
+      groups.push({ label: 'Notes & Sheets', icon: flat.notesheets.icon, href: flat.notesheets.href, kids: [], _domainGroup: 'notesheets', _section: 'data' });
     }
 
     // New: Reports umbrella over the 3 external report links (none of
     // these have a bnav item — same "external, no page behind it"
     // pattern as Audit's own external tile above).
-    groups.push(_customGroup('reports', 'Reports', '📚', _VIRTUAL.reports.map(r => ({ label: r.label, icon: r.icon, href: r.href, external: true, kids: [] }))));
+    groups.push(Object.assign(_customGroup('reports', 'Reports', '📰', _VIRTUAL.reports.map(r => ({ label: r.label, icon: r.icon, href: r.href, external: true, kids: [] }))), { _section: 'data' }));
 
     // Tools: its own Sync Center collapses into a nested group (with its
     // 6 tabs as sub-subs), followed by every other settings card.
@@ -244,10 +250,10 @@
       const kids = [];
       if (scSubs.length) kids.push({ label: 'Sync Center', icon: '🖥', href: null, kids: scSubs });
       _toolCards().forEach(c => kids.push(_leafFromList(c)));
-      groups.push({ label: flat.tools.label, icon: flat.tools.icon, href: flat.tools.href, kids: kids });
+      groups.push({ label: flat.tools.label, icon: flat.tools.icon, href: flat.tools.href, kids: kids, _section: 'utility' });
     }
 
-    if (document.getElementById('page-pdf-library')) groups.push(_leaf(_VIRTUAL.pdfLibrary));
+    if (document.getElementById('page-pdf-library')) groups.push(Object.assign(_leaf(_VIRTUAL.pdfLibrary), { _section: 'utility' }));
 
     return groups;
   }
@@ -260,11 +266,18 @@
     const coverOrder = (typeof window.btGetCoverOrder === 'function') ? window.btGetCoverOrder() : [];
     const orderIndex = slug => { const i = coverOrder.indexOf(slug); return i === -1 ? null : i; };
     rest.forEach((g, i) => {
-      const coverSlug = g._domainGroup ? _DOMAIN_TO_COVER_SLUG[g._domainGroup] : null;
-      const idx = coverSlug ? orderIndex(coverSlug) : null;
-      g._sortKey = idx != null ? idx : 1000 + i;
+      if (g._sortKey == null) {
+        const coverSlug = g._domainGroup ? _DOMAIN_TO_COVER_SLUG[g._domainGroup] : null;
+        const idx = coverSlug ? orderIndex(coverSlug) : null;
+        g._sortKey = idx != null ? idx : 1000 + i;
+      }
     });
-    rest.sort((a, b) => a._sortKey - b._sortKey);
+    rest.sort((a, b) => {
+      const sa = _SECTION_RANK[a._section] != null ? _SECTION_RANK[a._section] : 99;
+      const sb = _SECTION_RANK[b._section] != null ? _SECTION_RANK[b._section] : 99;
+      if (sa !== sb) return sa - sb;
+      return a._sortKey - b._sortKey;
+    });
     return rest;
   }
 
@@ -307,11 +320,17 @@
   function _render() {
     const list = document.getElementById('sections-list');
     if (!list) return;
-    const groups = _buildTree();
-    const cover = groups.length && groups[0] && groups[0].href === '#cover' ? groups.shift() : null;
-    const rest = _sortRest(groups);
-    const ordered = cover ? [cover].concat(rest) : rest;
-    list.innerHTML = ordered.map(g => _renderNode(g, 0)).join('');
+    const ordered = _sortRest(_buildTree());
+    let lastSection = null;
+    const html = ordered.map(g => {
+      let heading = '';
+      if (g._section && g._section !== lastSection) {
+        heading = `<div class="sections-heading">${_esc(_SECTION_LABEL[g._section] || g._section)}</div>`;
+        lastSection = g._section;
+      }
+      return heading + _renderNode(g, 0);
+    }).join('');
+    list.innerHTML = html;
   }
 
   function openSectionsDrawer() {
