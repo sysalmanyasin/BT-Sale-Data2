@@ -4,40 +4,46 @@ plugins {
 }
 
 android {
-    namespace = "com.duapharma.inventorywidget"
+    namespace = "com.duapharma.closingwidget"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.duapharma.inventorywidget"
-        // 26 (Android 8.0) for PendingIntent.FLAG_IMMUTABLE and modern
-        // widget behavior. Lower it if you need to support older
-        // devices, but then piImmutableFlag()'s SDK check in the
-        // provider needs the corresponding fallback path exercised.
-        minSdk = 26
+        applicationId = "com.duapharma.closingwidget"
+        minSdk = 24
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
+
+        // Public anon/publishable key — safe to ship in a client app.
+        // Read access to `sheets` is controlled by Supabase RLS policy, not by keeping this secret.
+        buildConfigField("String", "SUPABASE_URL", "\"https://wetbugzzchkghpzmowod.supabase.co\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndldGJ1Z3p6Y2hrZ2hwem1vd29kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzMDg4OTIsImV4cCI6MjA5Nzg4NDg5Mn0.LXFrvQTOfI3ph4aA8xWYIUo-z1yxdX0znnN5f-KsOPM\"")
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
         }
+        debug {
+            isMinifyEnabled = false
+        }
     }
+
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "17"
     }
 }
 
 dependencies {
-    // Deliberately minimal — org.json and HttpURLConnection are both
-    // built into Android, no networking/JSON library needed for this
-    // starter. Only real dependency is Kotlin coroutines, for the
-    // background fetch in onUpdate().
     implementation("androidx.core:core-ktx:1.13.1")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+    implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
 }

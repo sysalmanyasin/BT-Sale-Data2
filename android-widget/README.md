@@ -1,136 +1,101 @@
-# BT Widgets (Android home-screen widgets) — starter scaffold
+# Closing Summary — Android Home Screen Widgets
 
-One native Android app hosting **five** home-screen widgets, each a
-thin, read-only glance at data already synced to Supabase — no app
-logic re-hosted server-side, no new backend. All five show up
-separately in Android's widget picker (long-press home screen →
-Widgets → look for each one by name below) since they're all part of
-the same app/module.
+A minimal native Android app whose only real purpose is a set of
+home-screen widgets, pulled directly from the **BT SALE DATA** Supabase
+project:
 
-| Widget | Shows | Data source |
-| --- | --- | --- |
-| **Inventory Widget** | Low Stock — 4 lowest-stock items | `inventory_products` table, project `vtcrdkqhuvxatclobsby` (same as `inventory-search` PWA) |
-| **Inventory Health Widget** | Total Inventory Level, Negative Value, Never Sold (60D), Dead Stock (60D), raw Excess Stock | Same `inventory_products` table — every row, paginated |
-| **Sales Widget** | Latest month's sale total, split Cash / Banks / Credit Clients / Customers | `bt_salesdata.payload->monthly` (same project as Closing/Credits below, `wetbugzzchkghpzmowod`) |
-| **Closing Widget** | Latest Closing shift — Carried CC, Deposits, Book Bills, Manual Returns | `sheets` table, same project ClosingBridge reads (`js/closing-bridge.js`) |
-| **Outstanding Credits Widget** | Total Outstanding Credits (Staff + Jazz Cash + Patty/Expenses + Misc Sections) + who owes the most | `bt_salesdata.payload->manager` / `->ledger` / `->ledgerCustomTypes` |
+1. **Closing Summary** — the most recent closing sheet (date, shift,
+   carried CC, deposits, book bills, manual returns).
+2. **Sales & Target Pace** — latest daily sale, day-over-day change,
+   and this month's progress against target.
+3. **Aggregated Final Closing** — Target Net Sales, Pre-date Total, Net
+   Cash Available and Variance for the full period since the last
+   Final Closing, mirroring the amber "🧮 Aggregated Final Closing"
+   strip in the web app. Unlike the other two, its numbers never
+   switch to shift-only figures — same as the web app's strip, it's
+   always the period roll-up.
+4. **Latest Month Total Sale** — the current month's TOTAL broken down
+   into Cash, Banks, Cash & Banks combined, Credit Clients (including
+   free issue), and Customers, mirroring the hero card at the top of
+   the Sales section on the web app's Cover dashboard.
+5. **Total Outstanding Credit** — one number: Staff Credit for the
+   latest month with data, plus Jazz Cash / Patty-Expenses / Misc
+   Sections all-time, mirroring BT Sale Data's Manager > Credit
+   report's bottom total.
+6. **Credit — Section Summary** — the same total broken into its four
+   sections: Staff Credit (latest month), Jazz Cash (all-time),
+   Patty/Expenses (all-time), Misc Sections (all-time — Pharmacy,
+   Miscellaneous, Less Amounts, Extra Credits, Adjustments & Strips,
+   and any other named credit account).
+7. **Staff Credit** — every active staff member from `bt_staff`,
+   ordered by their Sr# (the same field that orders Salary/Generic/
+   Credit sheets in BT Sale Data), with that month's credit amount.
 
-Tapping any widget opens `bt.duapharma.com` (Inventory and Inventory
-Health both open the `inventory-search/` sub-path specifically) in the
-browser.
+## How it works
 
-**Why Sales/Closing/Credits query Supabase directly instead of calling
-the app's own JS**: this app's business data (MONTHLY/DAILY/STAFF/
-manager/ledger/etc.) all syncs as one JSON document in `bt_salesdata`'s
-`payload` column (see `js/supabase.js`'s `_buildPayload()`), not
-separate normalized tables. Rather than pull that whole blob, the
-Sales and Credits widgets use a **PostgREST JSON-path select**
-(`?select=payload->monthly`, etc.) so Postgres itself only returns the
-one sub-tree each widget needs. Closing's data (`sheets` table) is
-already normalized, so that widget queries it the same direct way
-Inventory queries `inventory_products`.
+- `ClosingRepository.kt` / `SalesRepository.kt` / `AggregatedRepository.kt` /
+  `MonthSaleRepository.kt` each do a plain `GET` against the Supabase
+  REST API using the project's anon/publishable key. Read access is
+  governed by each table's Row Level Security policy, not by keeping
+  this key secret — that's expected for a client-side key.
+  - `AggregatedRepository` reads `finalNetSale` / `finalNetCash` /
+    `finalPreTotal` straight off the latest saved sheet — the web app's
+    `calc()` computes and saves these on every closing (Shift or
+    Final), so no re-aggregation happens on the Android side.
+  - `MonthSaleRepository` reads the current month's row from
+    `bt_monthly` (falling back to the chronologically-latest row if
+    the current month hasn't been saved yet, same as the web app's
+    `_latestMonthlyRecord()`), splits it into Cash / Banks / Cash &
+    Banks / Credit Clients / Customers exactly like `_monthSaleBreakdown()`
+    in `js/cover-dashboard.js`, and folds in any custom Bank/Credit
+    Clients fields from `bt_col_config` the same way `mBanks()`/
+    `creditSales()` do in `js/config.js`.
+  - `CreditRepository` powers the three credit widgets. It reads
+    `credit_ledger` (Closing's own `js/ledger-engine.js` snapshots —
+    each shift's Staff/Jazz Cash/Patty/Misc credit lines) plus
+    `bt_staff` (for Sr#-ordered active names), all client-side, no
+    re-implementation of either app's save-time logic. Staff Credit is
+    scoped to the latest month with any snapshot; named credit
+    accounts are bucketed into Jazz Cash / Patty-Expenses / Misc
+    Sections by keyword match on their label (`"jazz"`, `"patty"`/
+    `"expense"`, else Misc) so a renamed or newly added misc account
+    (Pharmacy, Miscellaneous, Less Amounts, Extra Credits, Adjustments
+    & Strips, ...) is never silently dropped from the total.
+- `ClosingWidgetProvider.kt` / `SalesWidgetProvider.kt` /
+  `AggregatedWidgetProvider.kt` / `MonthSaleWidgetProvider.kt` are
+  `AppWidgetProvider`s that render their result into the widget via
+  `RemoteViews`. Each auto-refreshes every 30 minutes (the
+  Android-enforced minimum) and refreshes on tap.
+- `MainActivity.kt` — a placeholder launcher screen with a manual
+  "refresh all widgets" button; not required for the widgets to work,
+  just gives the app something to open from the launcher.
 
-Each widget's Kotlin file has its own header comment listing the exact
-simplifications it makes vs. the web app's precise math (things like:
-custom "Manage Fields" columns aren't folded into Sales' Banks/Credit
-totals; Closing's Book-Bills/Manual-Returns lookback is bounded to the
-last 30 shifts; Staff Credit month-selection doesn't fall back through
-every manager domain the way the web tile's fallback chain does).
-None of these change the common case — they're the same kind of
-documented, non-urgent gap this repo already tracks elsewhere — but
-worth reading before trusting a number that looks off.
+## Building locally
 
-I don't have Android build tooling in the environment I write code in
-(no local SDK, emulator, or device), so I can't compile or install
-this myself directly — but the GitHub Actions workflow above does
-build it for real, in a genuine Android build environment, on every
-push. That means this scaffold's actual correctness gets verified by
-a real compiler, not just by me reading the code carefully.
-
-## Getting an APK — two ways
-
-### Easiest: let GitHub Actions build it (no Android Studio needed)
-
-Every push touching `android-widget/**` triggers `.github/workflows/android-widget-build.yml`,
-which builds a debug APK in the cloud and attaches it to the run as a
-downloadable artifact:
-
-1. On GitHub: **Actions tab → "Build Inventory Widget APK" → pick the
-   latest run → Artifacts → `inventory-widget-debug-apk`** → download
-   the zip, unzip it to get `app-debug.apk`.
-2. Transfer that APK to your phone (e.g. email it to yourself, or a
-   cloud-drive link) and tap it to install. Android will prompt to
-   allow installing from that source the first time — that's normal
-   for a side-loaded APK not from the Play Store.
-3. Long-press your home screen → Widgets → "Inventory Widget" → drag
-   it onto the screen.
-
-This is a **debug** build (signed with Android's auto-generated debug
-keystore) — right for installing directly on your own phone(s), not
-suitable for a Google Play listing (that needs a release build signed
-with your own keystore — a separate step, only worth doing if you want
-that distribution route later).
-
-### Alternative: build locally in Android Studio
-
-1. **Install Android Studio** (free, from developer.android.com).
-2. **Open this folder** (`android-widget/`) as an existing project —
-   File → Open → select this directory. Let Gradle sync (first sync
-   downloads the Android Gradle Plugin + Kotlin plugin, needs internet).
-3. **Run it** on your phone (USB debugging enabled) or an emulator —
-   the green ▶ Run button. This installs the APK.
-4. **Add the widget**: long-press your home screen → Widgets →
-   "Inventory Widget" → drag it onto the screen.
-5. Tap the small refresh icon inside the widget any time you want a
-   read newer than the last automatic update (Android won't run the
-   automatic update more often than every ~30 minutes — that's an OS
-   battery-life rule every app is bound by, not something adjustable).
-
-## Files
+Requires Android Studio (or the command-line SDK) with SDK 34 and
+JDK 17.
 
 ```
-android-widget/
-├── app/
-│   ├── build.gradle.kts
-│   └── src/main/
-│       ├── AndroidManifest.xml
-│       ├── java/com/duapharma/inventorywidget/
-│       │   └── InventoryWidgetProvider.kt   ← the widget's logic
-│       └── res/
-│           ├── layout/inventory_widget.xml  ← the widget's UI
-│           ├── drawable/widget_background.xml
-│           ├── values/strings.xml
-│           └── xml/inventory_widget_info.xml ← size/update-interval config
-├── build.gradle.kts
-└── settings.gradle.kts
+cd android-widget
+./gradlew assembleDebug
 ```
 
-## Known gaps to close before relying on this daily
+The debug APK lands in `app/build/outputs/apk/debug/app-debug.apk`.
 
-- **Background fetch reliability.** `onUpdate()` fetches over the
-  network directly on a coroutine. That's fine for trying it out, but
-  Android can kill background work like this under memory pressure or
-  aggressive battery optimization on some phones (this is a
-  widely-known widget gotcha, not specific to this code). The
-  Android-recommended fix is a `WorkManager` `PeriodicWorkRequest` that
-  does the fetch and caches the result (e.g. in `SharedPreferences`),
-  with the widget provider just reading that cached result instead of
-  fetching itself. Worth doing once the basic version is confirmed
-  working.
-- **Only 4 fixed rows.** A real scrollable list of every low-stock
-  item needs a `ListView` + a `RemoteViewsService` — a separate, more
-  involved API RemoteViews widgets use instead of a normal
-  `RecyclerView`. Skipped here to keep the starter simple.
-- **No app icon.** There's no `MainActivity`, so this APK won't show
-  up in the app drawer — only the widget itself shows up in the widget
-  picker. That's intentional (keeps this small and independent of
-  whether the PWA ever gets wrapped as a Trusted Web Activity), but if
-  you want a normal launchable app icon too, that's a small addition.
-- **Distribution.** Side-loading the APK (via USB/Android Studio, or a
-  direct APK file/link) is enough for personal/internal use. If you
-  want other branch staff to install this easily, that's a Google Play
-  listing — a one-time $25 developer account plus their review
-  process, separate from anything here.
-- **Not tested.** Said above, repeating because it matters: treat the
-  first Gradle sync + first run as the real first check of this code,
-  not something already verified.
+## Building via GitHub Actions
+
+Any push to `main` touching `android-widget/**` triggers
+`.github/workflows/build-widget-apk.yml`, which builds a debug APK and
+uploads it as a workflow artifact (Actions tab → latest run →
+Artifacts). It's unsigned/debug-only — fine for sideloading onto your
+own device, not for the Play Store.
+
+## Installing on your phone
+
+1. Download `app-debug.apk` from the workflow run's Artifacts.
+2. Enable "Install unknown apps" for whatever app you download it
+   with.
+3. Install the APK, open it once, then long-press your home screen →
+   Widgets → **Closing Summary** → drag any of the four widgets
+   (**Closing Summary**, **Sales & Target Pace**, **Aggregated Final
+   Closing**, **Latest Month Total Sale**) onto your home screen.

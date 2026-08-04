@@ -1,17 +1,53 @@
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Inventory Widget</string>
-    <string name="widget_description">Shows current low-stock items from Inventory Search</string>
+    <string name="app_name">Closing Summary</string>
+    <string name="widget_title">📊 LATEST CLOSING SUMMARY</string>
+    <string name="widget_title_label">Closing Summary</string>
+    <string name="sales_widget_title_label">Sales &amp; Target Pace</string>
+    <string name="widget_loading">Loading…</string>
+    <string name="label_carried_cc">Carried CC</string>
+    <string name="label_total_deposits">Total Deposits</string>
+    <string name="label_book_bills">Book Bills</string>
+    <string name="label_manual_returns">Manual Returns</string>
+    <string name="widget_footer">Fazal Din\'s Pharma Plus · Auto-refreshes every 30 min · Tap to refresh now</string>
 
-    <string name="sales_widget_name">Sales Widget</string>
-    <string name="sales_widget_description">Latest month\'s sale total, split by Cash / Banks / Credit Clients / Customers</string>
+    <string name="sales_widget_title">📈 SALES</string>
+    <string name="sales_widget_loading">Loading…</string>
+    <string name="sales_widget_footer">Auto-refreshes every 30 min · Tap to refresh now</string>
 
-    <string name="closing_widget_name">Closing Widget</string>
-    <string name="closing_widget_description">Latest Closing shift summary — Carried CC, Deposits, Book Bills, Manual Returns</string>
+    <string name="agg_widget_title">🧮 AGGREGATED FINAL CLOSING</string>
+    <string name="agg_widget_title_label">Aggregated Final Closing</string>
+    <string name="agg_widget_loading">Loading…</string>
+    <string name="agg_label_target">Target Net Sales</string>
+    <string name="agg_label_predate">Pre-date Total</string>
+    <string name="agg_label_cash">Net Cash Available</string>
+    <string name="agg_label_variance">Variance</string>
+    <string name="agg_widget_footer">Always the full period since last Final · Tap to refresh now</string>
 
-    <string name="staffcredit_widget_name">Outstanding Credits Widget</string>
-    <string name="staffcredit_widget_description">Total outstanding credits (Staff + Jazz Cash + Patty/Expenses + Misc Sections) and who owes the most</string>
+    <string name="month_sale_widget_title">🧾 LATEST MONTH TOTAL SALE</string>
+    <string name="month_sale_widget_title_label">Latest Month Total Sale</string>
+    <string name="month_sale_widget_loading">Loading…</string>
+    <string name="month_sale_label_cash">CASH</string>
+    <string name="month_sale_label_banks">BANKS</string>
+    <string name="month_sale_label_cashbanks">CASH &amp; BANKS</string>
+    <string name="month_sale_label_credit">CREDIT CLIENTS</string>
+    <string name="month_sale_label_customers">CUSTOMERS</string>
+    <string name="month_sale_widget_footer">Auto-refreshes every 30 min · Tap to refresh now</string>
 
-    <string name="invhealth_widget_name">Inventory Health Widget</string>
-    <string name="invhealth_widget_description">Total Inventory Level, Negative Value, Never Sold (60D), Dead Stock (60D), and raw Excess Stock</string>
+    <string name="total_credit_widget_title">💳 TOTAL OUTSTANDING CREDIT</string>
+    <string name="total_credit_widget_title_label">Total Outstanding Credit</string>
+    <string name="total_credit_widget_loading">Loading…</string>
+    <string name="total_credit_widget_footer">Auto-refreshes every 30 min · Tap to refresh now</string>
+
+    <string name="section_summary_widget_title">📋 CREDIT — SECTION SUMMARY</string>
+    <string name="section_summary_widget_title_label">Credit Section Summary</string>
+    <string name="section_summary_widget_loading">Loading…</string>
+    <string name="section_label_staff_credit">Staff Credit</string>
+    <string name="section_label_jazz_cash">Jazz Cash</string>
+    <string name="section_label_patty_expenses">Patty / Expenses</string>
+    <string name="section_label_misc_sections">Misc Sections</string>
+    <string name="section_label_total">Total Outstanding</string>
+
+    <string name="staff_credit_widget_title">👥 STAFF CREDIT</string>
+    <string name="staff_credit_widget_title_label">Staff Credit</string>
+    <string name="staff_credit_widget_loading">Loading…</string>
 </resources>

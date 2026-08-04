@@ -1,60 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Needed to reach Supabase's REST API directly from the widget. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
+        android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"
-        android:theme="@android:style/Theme.DeviceDefault.Light">
+        android:theme="@style/Theme.AppCompat.Light.NoActionBar">
 
-        <!--
-          No MainActivity here on purpose — this widget doesn't need one
-          to function; tapping it opens bt.duapharma.com directly in the
-          browser (see APP_URL in InventoryWidgetProvider.kt). If you
-          later add a proper MainActivity/TWA wrapper, this can point at
-          that instead, and Android also requires *some* launchable
-          activity if you want this to show up as an app icon at all
-          (a bare widget-only APK can still exist without one, it just
-          won't have its own icon in the app drawer — only the widget in
-          the widget picker).
-        -->
-
-        <receiver
-            android:name=".InventoryWidgetProvider"
-            android:label="@string/app_name"
-            android:exported="false">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/app_name">
             <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.duapharma.inventorywidget.ACTION_REFRESH" />
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/inventory_widget_info" />
-        </receiver>
-
-        <receiver
-            android:name=".SalesWidgetProvider"
-            android:label="@string/sales_widget_name"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.duapharma.inventorywidget.ACTION_REFRESH_SALES" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/sales_widget_info" />
-        </receiver>
+        </activity>
 
         <receiver
             android:name=".ClosingWidgetProvider"
-            android:label="@string/closing_widget_name"
+            android:label="@string/widget_title_label"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.duapharma.inventorywidget.ACTION_REFRESH_CLOSING" />
+                <action android:name="com.duapharma.closingwidget.ACTION_REFRESH" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
@@ -62,29 +34,81 @@
         </receiver>
 
         <receiver
-            android:name=".StaffCreditWidgetProvider"
-            android:label="@string/staffcredit_widget_name"
+            android:name=".SalesWidgetProvider"
+            android:label="@string/sales_widget_title_label"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.duapharma.inventorywidget.ACTION_REFRESH_STAFFCREDIT" />
+                <action android:name="com.duapharma.closingwidget.SALES_ACTION_REFRESH" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
-                android:resource="@xml/staffcredit_widget_info" />
+                android:resource="@xml/sales_widget_info" />
         </receiver>
 
         <receiver
-            android:name=".InventoryHealthWidgetProvider"
-            android:label="@string/invhealth_widget_name"
+            android:name=".AggregatedWidgetProvider"
+            android:label="@string/agg_widget_title_label"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-                <action android:name="com.duapharma.inventorywidget.ACTION_REFRESH_INVHEALTH" />
+                <action android:name="com.duapharma.closingwidget.AGG_ACTION_REFRESH" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
-                android:resource="@xml/invhealth_widget_info" />
+                android:resource="@xml/aggregated_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".MonthSaleWidgetProvider"
+            android:label="@string/month_sale_widget_title_label"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.duapharma.closingwidget.MONTHSALE_ACTION_REFRESH" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/month_sale_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".TotalCreditWidgetProvider"
+            android:label="@string/total_credit_widget_title_label"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.duapharma.closingwidget.TOTALCREDIT_ACTION_REFRESH" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/total_credit_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".SectionSummaryWidgetProvider"
+            android:label="@string/section_summary_widget_title_label"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.duapharma.closingwidget.SECTIONSUMMARY_ACTION_REFRESH" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/section_summary_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".StaffCreditWidgetProvider"
+            android:label="@string/staff_credit_widget_title_label"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.duapharma.closingwidget.STAFFCREDIT_ACTION_REFRESH" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/staff_credit_widget_info" />
         </receiver>
 
     </application>
