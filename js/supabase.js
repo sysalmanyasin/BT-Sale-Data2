@@ -95,9 +95,44 @@ function setSyncBadge(state) {
   else if (state === 'ok')      { icon.textContent = '✓';  text.textContent = 'Synced'; }
   else if (state === 'err')     { icon.textContent = '✕';  text.textContent = 'Error'; }
   else if (state === 'queue')   { icon.textContent = '⏳'; text.textContent = 'Queued'; }
-  else                          { icon.textContent = '☁';  text.textContent = 'Supabase'; }
+  else                          { icon.textContent = '☁';  text.textContent = 'Push All Data'; }
   if (state === 'ok' || state === 'err') setTimeout(() => setSyncBadge('idle'), 4000);
 }
+
+// ══════════════════════════════════════════════════════════════════
+// TOP-BAR "Push All Data" BUTTON
+// The badge used to just link to Tools; it's now a direct manual-push
+// trigger (still shows the same syncing/ok/err states via setSyncBadge).
+// Tools' own Sync Center card is unaffected — still reachable via the
+// separate "Tools" nav tab — this only repurposes the badge itself.
+// ══════════════════════════════════════════════════════════════════
+function handleSyncBadgeClick() {
+  if (_pushInFlight) { toast('⏳ Already pushing…', 'w'); return; }
+  toast('↑ Pushing all data to Supabase…');
+  pushToSupabase();
+}
+window.handleSyncBadgeClick = handleSyncBadgeClick;
+
+// ══════════════════════════════════════════════════════════════════
+// AUTO-PUSH EVERY 30s
+// Independent safety-net on top of the existing per-save auto-push
+// (bt_auto_save) — fires on a timer regardless of which action last
+// touched data. Guarded so it stays a no-op where it shouldn't run:
+//   - PASSIVE device (scCanWrite() false)      → skip, no log/toast spam
+//   - tab in background (visibilityState)      → skip, saves battery/data
+//   - offline                                  → skip, pushToSupabase()
+//                                                 already queues on 'online'
+//   - a push already running (_pushInFlight)   → skip, pushToSupabase()
+//                                                 debounces this itself too
+// ══════════════════════════════════════════════════════════════════
+const SB_AUTO_PUSH_MS = 30000;
+setInterval(() => {
+  if (_pushInFlight) return;
+  if (document.visibilityState !== 'visible') return;
+  if (!navigator.onLine) return;
+  if (typeof scCanWrite === 'function' && !scCanWrite()) return;
+  pushToSupabase();
+}, SB_AUTO_PUSH_MS);
 
 function sbLog(msg, cls = 'info') {
   const el = document.getElementById('ghlog');

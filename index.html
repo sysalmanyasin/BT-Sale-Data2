@@ -267,8 +267,8 @@ if ('serviceWorker' in navigator) {
     <a class="ntab sub" href="#diff" data-page="diff">DIFF Report</a>
   </div>
   <div class="nright">
-    <div class="syncbadge" id="synci" onclick="showPage('tools')" title="Supabase sync">
-      <span id="sync-icon">☁</span><span id="sync-text">Supabase</span>
+    <div class="syncbadge" id="synci" onclick="handleSyncBadgeClick()" title="Push all data to Supabase now (auto-pushes every 30s)">
+      <span id="sync-icon">☁</span><span id="sync-text">Push All Data</span>
     </div>
     <button class="takectrlbtn" id="nav-take-ctrl-btn" onclick="navTakeControl()" title="Take control — claim write access &amp; sync now">
       <span id="nav-tc-icon">⚔</span><span id="nav-tc-text">Take Control</span>
@@ -2034,7 +2034,7 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/conflict-ui.js?v=20260731a"></script>
 
 <!-- 6d. Supabase sync (Floor 1 extension — needs Repository + Actions) -->
-<script defer src="js/supabase.js?v=20260728a"></script>
+<script defer src="js/supabase.js?v=20260805a"></script>
 <script defer src="js/pdf-library.js?v=20260725a"></script>
 
 <!-- 7. Targets: monthly target management -->
