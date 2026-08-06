@@ -29,7 +29,7 @@ function _fmt(n) {
 // collapse state is the only exception, and that's explicitly persisted).
 const _ledgerViewState = {};
 function _viewState(key) {
-  if (!_ledgerViewState[key]) _ledgerViewState[key] = { dateFrom: '', dateTo: '', groupByCategory: false };
+  if (!_ledgerViewState[key]) _ledgerViewState[key] = { dateFrom: '', dateTo: '', groupByCategory: false, editingId: null };
   return _ledgerViewState[key];
 }
 
@@ -44,6 +44,40 @@ export function renderLedgerView(containerId, ledgerType, label, editingId) {
 
   const stateKey = containerId + ':' + ledgerType;
   const state = _viewState(stateKey);
+
+  // editingId now lives in `state`, not just this call's parameter — a
+  // background refresh (e.g. refreshManagerPage() after a Supabase sync)
+  // calls renderLedgerView with no 4th argument at all, since it has no
+  // way to know which row, if any, is mid-edit. Previously that silently
+  // exited edit mode and discarded whatever was typed into the inline
+  // edit row. Now: an explicit call (edit/cancel/save buttons below) sets
+  // state.editingId directly and passes it through; an external call with
+  // no editingId falls back to state.editingId, so it keeps whatever edit
+  // was already in progress instead of clobbering it.
+  if (editingId !== undefined) state.editingId = editingId;
+  editingId = state.editingId;
+
+  // Capture any value the user has typed but not yet submitted — the
+  // "+ Add" entry form draft, and/or a live inline edit row — BEFORE we
+  // overwrite container.innerHTML below. Same reasoning as jazz-cash.js's
+  // _renderTally() fix: a background sync landing mid-type would
+  // otherwise silently reset these fields to blank/stale.
+  const _liveAdd = {};
+  const addForm = container.querySelector('.ledger-add-form');
+  if (addForm) {
+    addForm.querySelectorAll('input,select').forEach(el => {
+      if (el.value) _liveAdd[el.className] = el.value;
+    });
+  }
+  const _liveEdit = {};
+  if (editingId) {
+    const editRow = container.querySelector(`tr[data-entry-id="${editingId.replace(/"/g,'')}"].ledger-edit-row`);
+    if (editRow) {
+      editRow.querySelectorAll('input,select').forEach(el => {
+        if (el.value !== '') _liveEdit[el.className] = el.value;
+      });
+    }
+  }
 
   const categories = LedgerStore.getCategoryList(ledgerType);
   const entries = LedgerStore.getEntriesWithBalance(ledgerType);
@@ -167,6 +201,29 @@ export function renderLedgerView(containerId, ledgerType, label, editingId) {
     </div>
   `;
 
+  // Restore whatever the user had typed but not yet submitted, captured
+  // above before the rebuild — the Add Entry draft and/or the open inline
+  // edit row's live values. Restoring by className (not id — these
+  // elements have none) matches how they were captured.
+  if (Object.keys(_liveAdd).length) {
+    const freshAddForm = container.querySelector('.ledger-add-form');
+    if (freshAddForm) {
+      Object.entries(_liveAdd).forEach(([cls, val]) => {
+        const el = freshAddForm.querySelector('.' + cls.split(' ')[0]);
+        if (el) el.value = val;
+      });
+    }
+  }
+  if (Object.keys(_liveEdit).length && editingId) {
+    const freshEditRow = container.querySelector(`tr[data-entry-id="${editingId.replace(/"/g,'')}"].ledger-edit-row`);
+    if (freshEditRow) {
+      Object.entries(_liveEdit).forEach(([cls, val]) => {
+        const el = freshEditRow.querySelector('.' + cls.split(' ')[0]);
+        if (el) el.value = val;
+      });
+    }
+  }
+
   const openingBtn = container.querySelector('.ledger-opening-btn');
   openingBtn.addEventListener('click', () => {
     const v = prompt('Opening balance (current: ₨' + _fmt(opening) + '):', opening);
@@ -228,6 +285,7 @@ export function renderLedgerView(containerId, ledgerType, label, editingId) {
 
   const cancelBtn = container.querySelector('.ledger-cancel-btn');
   if (cancelBtn) cancelBtn.addEventListener('click', () => {
+    state.editingId = null; // must clear explicitly — renderLedgerView now falls back to state.editingId when no id is passed
     renderLedgerView(containerId, ledgerType, label); // discard edits, re-render clean
   });
 
@@ -246,6 +304,7 @@ export function renderLedgerView(containerId, ledgerType, label, editingId) {
       if (shift !== undefined) changes.shift = shift;
       LedgerActions.updateEntry(saveBtn.dataset.id, changes);
       if (typeof toast === 'function') toast('✓ Entry updated', 's');
+      state.editingId = null; // save succeeded — exit edit mode, same reasoning as Cancel above
       renderLedgerView(containerId, ledgerType, label);
     } catch (err) {
       if (typeof toast === 'function') toast('⚠ ' + err.message, 'e');
