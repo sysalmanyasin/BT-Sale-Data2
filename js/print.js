@@ -354,29 +354,40 @@ function _reservePreviewTab() {
 //   footer,                            // small centered line at the very bottom
 //   widthMM,                           // defaults to 72 (THERMAL_WIDTH_MM)
 // }
+// Thermal print heads (typ. 203dpi) render thin/normal-weight glyphs as
+// faint or blurry — bold weight (thicker strokes) is what actually reads
+// crisp on the paper, not point size. Every cell below is bold and pure
+// black ([0,0,0], no gray) for that reason — labels, values, and header
+// rows alike, per request ("all things more bold and more black").
 function _cdrTableBody(spec) {
   const body = [];
   spec.blocks.forEach(b => {
-    body.push([{ content: b.header, colSpan: 2, styles: { fontStyle: 'bold', fontSize: 9.5, fillColor: [246, 246, 246] } }]);
+    body.push([{ content: b.header, colSpan: 2, styles: { fontStyle: 'bold', fontSize: 10, fillColor: [246, 246, 246], textColor: [0, 0, 0] } }]);
     b.lines.forEach(ln => {
-      const cellStyle = ln.bold ? { fontStyle: 'bold' } : {};
+      // Every line bold now, not just the ln.bold ones — thin/normal
+      // weight was the blur culprit on the thermal head.
+      const cellStyle = { fontStyle: 'bold', textColor: [0, 0, 0] };
       body.push([{ content: ln.label, styles: cellStyle }, { content: String(ln.value), styles: cellStyle }]);
     });
   });
   body.push([
-    { content: spec.totalLabel || 'TOTAL', styles: { fontStyle: 'bold', fontSize: 11, lineWidth: { top: 0.3 }, lineColor: [0, 0, 0] } },
-    { content: String(spec.totalValue), styles: { fontStyle: 'bold', fontSize: 11, lineWidth: { top: 0.3 }, lineColor: [0, 0, 0] } },
+    { content: spec.totalLabel || 'TOTAL', styles: { fontStyle: 'bold', fontSize: 12, lineWidth: { top: 0.4 }, lineColor: [0, 0, 0], textColor: [0, 0, 0] } },
+    { content: String(spec.totalValue), styles: { fontStyle: 'bold', fontSize: 12, lineWidth: { top: 0.4 }, lineColor: [0, 0, 0], textColor: [0, 0, 0] } },
   ]);
   return body;
 }
 
 function _drawCdrHeader(doc, spec, widthMM, marginMM) {
   let y = marginMM + 3;
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(0);
   doc.text(spec.title, widthMM / 2, y, { align: 'center' }); y += 5;
-  if (spec.subtitle) { doc.setFontSize(10); doc.text(spec.subtitle, widthMM / 2, y, { align: 'center' }); y += 4.4; }
+  if (spec.subtitle) { doc.setFont('helvetica', 'bold'); doc.setFontSize(10.5); doc.text(spec.subtitle, widthMM / 2, y, { align: 'center' }); y += 4.4; }
   if (spec.meta) {
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(90);
+    // Meta (date range/count) stays bold too, but a touch smaller and a
+    // shade lighter than the body so it visually reads as secondary —
+    // still far darker than the old gray(90), which was part of why it
+    // looked washed out on thermal paper.
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(40);
     doc.text(spec.meta, widthMM / 2, y, { align: 'center' }); doc.setTextColor(0); y += 4;
   }
   return y + 1;
@@ -389,10 +400,15 @@ function _drawCdrBody(doc, spec, startY, widthMM, marginMM) {
     margin: { left: marginMM, right: marginMM, top: marginMM, bottom: 0 },
     tableWidth: usableW,
     theme: 'plain',
-    styles: { font: 'helvetica', fontSize: 9.5, cellPadding: { top: 1, bottom: 1, left: 0, right: 0 }, textColor: [0, 0, 0] },
+    // fontSize bumped 9.5 -> 10.5 and fontStyle forced 'bold' as the
+    // table-wide default — see _cdrTableBody's comment for why.
+    styles: { font: 'helvetica', fontSize: 10.5, fontStyle: 'bold', cellPadding: { top: 1.2, bottom: 1.2, left: 0, right: 0 }, textColor: [0, 0, 0] },
     columnStyles: {
-      0: { halign: 'left', cellWidth: usableW * 0.6 },
-      1: { halign: 'right', cellWidth: usableW * 0.4, font: 'courier' },
+      0: { halign: 'left', cellWidth: usableW * 0.6, fontStyle: 'bold' },
+      // 'courier-bold' (jsPDF's real bold variant of the standard 14
+      // fonts) instead of plain 'courier' — keeps the monospaced digit
+      // alignment in this right-aligned column while fixing the blur.
+      1: { halign: 'right', cellWidth: usableW * 0.4, font: 'courier', fontStyle: 'bold' },
     },
     body: _cdrTableBody(spec),
   });
@@ -416,7 +432,7 @@ function _buildThermalTablePdf(spec) {
   y = _drawCdrHeader(doc, spec, widthMM, marginMM);
   y = _drawCdrBody(doc, spec, y, widthMM, marginMM);
   if (spec.footer) {
-    doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(100);
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); doc.setTextColor(60);
     doc.text(spec.footer, widthMM / 2, y + 6, { align: 'center' });
     doc.setTextColor(0);
   }
