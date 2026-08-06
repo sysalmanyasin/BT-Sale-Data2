@@ -17,12 +17,20 @@ let _pettyMonth = '';
 function _pettyKey(my) { return PETTY_PFX + my; }
 
 function loadPettyMonth(my) {
-  _pettyMonth = my;
-  try {
-    const raw = Repository.getItem(_pettyKey(my));
-    _pettyData = raw ? JSON.parse(raw) : { groups: [] };
-  } catch(e) { _pettyData = { groups: [] }; }
-  if (!_pettyData.groups) _pettyData.groups = [];
+  // A background Supabase pull re-triggers this for the SAME month via
+  // refreshManagerPage() — reloading from storage in that case would
+  // discard any typed-but-unsaved group/row edit, since those live only
+  // in _pettyData until Save is clicked (same class of bug already
+  // fixed in jazz-cash.js/ledger-page.js). Only reload when actually
+  // switching months; a same-month call just re-renders current state.
+  if (my !== _pettyMonth || !_pettyData) {
+    _pettyMonth = my;
+    try {
+      const raw = Repository.getItem(_pettyKey(my));
+      _pettyData = raw ? JSON.parse(raw) : { groups: [] };
+    } catch(e) { _pettyData = { groups: [] }; }
+    if (!_pettyData.groups) _pettyData.groups = [];
+  }
   // Keep the window bridge live — ai-bridge.js's AI assistant and
   // custom-sections.js's "copy petty to next month" both read
   // window._pettyData/_pettyMonth as bare globals directly. A one-time

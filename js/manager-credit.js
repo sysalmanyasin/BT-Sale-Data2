@@ -144,8 +144,23 @@ function addCrdEntryFocused(ei) {
   }, 80);
 }
 
+let _crdLoadedMonth = null;
 function loadCreditMonth(my) {
+  // Preserve any typed-but-unsaved prevBal/salary/lessGeneric/entries
+  // edits before reloading from storage — same class of bug already
+  // fixed in jazz-cash.js/ledger-page.js: a background Supabase pull
+  // re-triggering this for the SAME month via refreshManagerPage() used
+  // to silently discard them.
+  const _prevCrd = (my === _crdLoadedMonth) ? _crdData_cur : null;
   _crdData_cur = _crdData(my);
+  if (_prevCrd) {
+    const _norm = s => (s||'').trim().toLowerCase();
+    _crdData_cur.forEach(emp => {
+      const p = _prevCrd.find(pe => _norm(pe.name) === _norm(emp.name));
+      if (p) { emp.prevBal = p.prevBal; emp.salary = p.salary; emp.lessGeneric = p.lessGeneric; emp.entries = p.entries; }
+    });
+  }
+  _crdLoadedMonth = my;
   window._crdData_cur = _crdData_cur; // keep the window bridge live — it's a snapshot copy otherwise (Quick Add relies on this staying current)
   renderCreditLedger(_crdData_cur);
 }

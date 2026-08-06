@@ -20,6 +20,14 @@ const _INC_FIELDS = ['saleVal','genSale','pilferage','unapproved','tillShort',
 function _incKey(my) { return INCEN_PFX + my; }
 
 function loadIncentiveMonth(my) {
+  // A background Supabase pull re-triggers this for the SAME month via
+  // refreshManagerPage(). Unlike other sub-tabs, typed values here live
+  // only in the DOM until Save is clicked (_incData is only updated at
+  // save time) — reloading from storage and overwriting every input's
+  // .value would silently wipe them (same class of bug already fixed in
+  // jazz-cash.js/ledger-page.js). Only reload when actually switching
+  // months; a same-month call just recalculates off whatever's on screen.
+  if (my === _incMonth) { recalcIncentive(); return; }
   _incMonth = my;
   try {
     const raw = Repository.getItem(_incKey(my));

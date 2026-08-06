@@ -82,10 +82,25 @@ function renderSalaryTable(rows) {
 }
 
 let _salRows_cur = [];
+let _salLoadedMonth = null;
 
 function loadSalaryMonth(my) {
+  // Preserve any typed-but-unsaved days/hoSal edits already applied
+  // in-memory by salRowChange() before this reloads from storage — same
+  // class of bug already fixed in jazz-cash.js/ledger-page.js: a
+  // background Supabase pull re-triggering this for the SAME month via
+  // refreshManagerPage() used to silently discard them. advance/generic
+  // are intentionally left to the auto-pull logic below, unaffected.
+  const _prevSalRows = (my === _salLoadedMonth) ? _salRows_cur : null;
   _salRows_cur = _salRows(my);
   const norm = s => (s||'').trim().toLowerCase();
+  if (_prevSalRows) {
+    _salRows_cur.forEach(r => {
+      const p = _prevSalRows.find(pr => norm(pr.name) === norm(r.name));
+      if (p) { r.days = p.days; r.hoSal = p.hoSal; }
+    });
+  }
+  _salLoadedMonth = my;
   // Use in-memory credit data if credit tab is on the same month
   const crdSel = document.getElementById('crd-month-sel');
   const crdRows = (crdSel && crdSel.value === my && _crdData_cur.length)

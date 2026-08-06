@@ -65,8 +65,27 @@ function renderGenericTable(rows) {
   _genUpdateFooter(rows);
 }
 
+let _genLoadedMonth = null;
 function loadGenericMonth(my) {
+  // Preserve any typed-but-unsaved genericSale/extra edits already
+  // applied in-memory by genRowChange() (fires live, on every keystroke,
+  // well before Save is clicked) — this function used to always replace
+  // _genRows_cur wholesale from storage, silently discarding those edits
+  // whenever a background Supabase pull re-triggered it via
+  // refreshManagerPage() for the SAME month already open. Same class of
+  // bug already fixed in jazz-cash.js/_renderTally() and
+  // ledger-page.js/renderLedgerView() — only applies on a same-month
+  // refresh; an actual month switch intentionally starts fresh.
+  const _prevRows = (my === _genLoadedMonth) ? _genRows_cur : null;
   _genRows_cur = _genRows(my);
+  if (_prevRows) {
+    const _norm = s => (s||'').trim().toLowerCase();
+    _genRows_cur.forEach(r => {
+      const p = _prevRows.find(pr => _norm(pr.name) === _norm(r.name));
+      if (p) { r.genericSale = p.genericSale; r.extra = p.extra; }
+    });
+  }
+  _genLoadedMonth = my;
   window._genRows_cur = _genRows_cur; // keep the window bridge live — ai-bridge.js reads this bare global
   renderGenericTable(_genRows_cur);
 }
