@@ -511,10 +511,20 @@ function pushToSupabase() {
 async function _doPush() {
   // ── Write-lock check: only ACTIVE device may push ───────────────────────
   if (typeof scCanWrite === 'function' && !scCanWrite()) {
-    sbLog('⚠ Push blocked — this device is PASSIVE. Take control in Sync Center first.', 'err');
-    toast('⚠ Read-only mode — open Sync Center → Take Control', 'w');
-    setSyncBadge('err');
-    return;
+    // Don't block outright — a device can be PASSIVE simply because nobody
+    // has reclaimed the lock since the last owner auto-demoted on
+    // inactivity, with no other device actually contesting it. Check live
+    // session state and reclaim before failing the push.
+    const reclaimed = (typeof _sc_tryReclaimIfUncontested === 'function')
+      ? await _sc_tryReclaimIfUncontested('Reclaimed on push attempt — no other device active')
+      : false;
+    if (!reclaimed) {
+      sbLog('⚠ Push blocked — another device is ACTIVE. Take control in Sync Center first.', 'err');
+      toast('⚠ Read-only mode — open Sync Center → Take Control', 'w');
+      setSyncBadge('err');
+      return;
+    }
+    sbLog('✓ Reclaimed write access — no other device was active', 'ok');
   }
 
   // Lock: if a push is already in flight, note that another is wanted

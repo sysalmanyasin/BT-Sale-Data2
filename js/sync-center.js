@@ -56,6 +56,8 @@ let _sc_logs             = [];
 let _sc_initialized      = false;
 let _sc_tableExists      = false;
 let _sc_activeTab        = 'session';
+let _sc_lastReclaimCheck = 0;              // rate-limits the auto-reclaim watchdog below
+const SC_RECLAIM_CHECK_MIN_GAP_MS = 15_000;
 
 // ══════════════════════════════════════════════════════════════════════════
 // UDID — permanent per device, survives page reloads
@@ -206,6 +208,11 @@ function _sc_recordActivity() {
     clearTimeout(_sc_warningTimer);
   }
   if (_sc_status === STATUS_ACTIVE) _sc_resetInactivityTimer();
+  // Gap fix: a PASSIVE device previously had no way back to ACTIVE short of
+  // a full reload or a manual Take Control tap. If the user is actively
+  // using the app and nobody else genuinely holds the lock, reclaim now
+  // instead of leaving them stuck read-only until they notice.
+  else if (_sc_status === STATUS_PASSIVE) _sc_tryReclaimIfUncontested('Auto-reclaimed on activity — no other device active');
 }
 
 function _sc_startActivityTracking() {
@@ -362,6 +369,45 @@ async function _sc_becomePassiveImpl(reason, pullRemote = false) {
 }
 // F8: shim passes pullRemote=false (safe default) when called from dynamic HTML.
 window._sc_becomePassive = (reason) => _sc_becomePassiveImpl(reason, false);
+
+// ══════════════════════════════════════════════════════════════════════════
+// AUTO-RECLAIM WATCHDOG  (fixes: "stuck PASSIVE forever" liveness bug)
+// Previously, once a device auto-demoted to PASSIVE after an inactivity
+// timeout, NOTHING promoted anyone back to ACTIVE except a full page reload
+// (which re-runs _initSyncCenterCore's "no active device found" claim) or a
+// manual Take Control tap. In a PWA that's rarely force-reloaded, this let
+// every device end up PASSIVE simultaneously with none of them holding the
+// lock — auto-push silently no-ops and manual push shows "blocked", even
+// though nobody is actually contesting write access.
+// This re-checks live session state and reclaims if truly uncontested.
+// Rate-limited so repeated callers (activity events, push attempts,
+// heartbeat) never fire more than one fetch per SC_RECLAIM_CHECK_MIN_GAP_MS.
+// ══════════════════════════════════════════════════════════════════════════
+async function _sc_tryReclaimIfUncontested(reason) {
+  if (_sc_status === STATUS_ACTIVE) return true;
+  if (!_sc_tableExists) return true; // standalone mode — scCanWrite() is already true
+
+  const now = Date.now();
+  if (now - _sc_lastReclaimCheck < SC_RECLAIM_CHECK_MIN_GAP_MS) return false;
+  _sc_lastReclaimCheck = now;
+
+  try {
+    await _sc_fetchAllSessions(); // always re-fetch fresh — never decide this from a stale cache
+    const otherActive = _sc_sessions.find(s =>
+      s.status === STATUS_ACTIVE &&
+      s.device_id !== _sc_getUDID() &&
+      (Date.now() - new Date(s.last_seen).getTime()) <= SC_STALE_MS
+    );
+    if (!otherActive) {
+      await _sc_becomeActive(reason);
+      return true;
+    }
+  } catch (e) {
+    console.warn('[SC] reclaim check failed:', e.message);
+  }
+  return false;
+}
+window._sc_tryReclaimIfUncontested = _sc_tryReclaimIfUncontested;
 
 // ══════════════════════════════════════════════════════════════════════════
 // PUBLIC ACTIONS
@@ -527,6 +573,19 @@ function _sc_startHeartbeat() {
             .eq('device_id', s.device_id);
           _sc_addLog(`🧹 Cleaned stale session: ${s.device_name}`);
         }
+      }
+    } else if (_sc_status === STATUS_PASSIVE) {
+      // Self-heal: this reuses the session list we just fetched above, so
+      // it's a guaranteed check every heartbeat (no dependency on the user
+      // touching the screen or attempting a push) — closes the "all devices
+      // stuck PASSIVE with nobody holding the lock" gap within 30s worst case.
+      const otherActive = _sc_sessions.find(s =>
+        s.status === STATUS_ACTIVE &&
+        s.device_id !== _sc_getUDID() &&
+        (Date.now() - new Date(s.last_seen).getTime()) <= SC_STALE_MS
+      );
+      if (!otherActive) {
+        await _sc_becomeActive('Heartbeat reclaim — no active device found');
       }
     }
     _sc_renderAll();
