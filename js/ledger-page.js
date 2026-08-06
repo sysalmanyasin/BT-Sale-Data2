@@ -451,8 +451,20 @@ export function renderMiscSectionsManager(containerId) {
     const allTypes = LedgerStore.getAllLedgerTypes();
     const meta = allTypes.find(t => t.id === type);
     const label = meta ? meta.label : type;
-    container.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+
+    // Only rebuild this wrapper (and the #os-ledger-view div inside it)
+    // when actually navigating to/switching a section. Rebuilding it
+    // unconditionally on every call — including a background Supabase
+    // sync refresh via refreshManagerPage() — recreated #os-ledger-view
+    // as an empty div immediately before renderLedgerView() ran, which
+    // defeated renderLedgerView()'s own typed-but-unsaved-value capture
+    // (same root cause fixed in jazz-cash.js's renderJazzCash()/
+    // _renderLedger()): the real DOM was already gone by the time that
+    // capture logic looked for it.
+    const existingWrap = container.querySelector('[data-os-open-type]');
+    if (!existingWrap || existingWrap.dataset.osOpenType !== type) {
+      container.innerHTML = `
+      <div data-os-open-type="${_esc(type)}" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
         <button type="button" class="btn" id="os-back-btn">← Back to Sections</button>
         <div style="display:flex;gap:8px">
           <button type="button" class="btn" id="os-edit-open-btn">✎ Edit Section</button>
@@ -460,18 +472,19 @@ export function renderMiscSectionsManager(containerId) {
         </div>
       </div>
       <div id="os-ledger-view"></div>`;
-    container.querySelector('#os-back-btn').addEventListener('click', () => {
-      _osOpenSection = null;
-      renderMiscSectionsManager(containerId);
-    });
-    container.querySelector('#os-edit-open-btn').addEventListener('click', () => {
-      _osEditingSection = type;
-      _osOpenSection = null;
-      renderMiscSectionsManager(containerId);
-    });
-    container.querySelector('#os-del-open-btn').addEventListener('click', () => {
-      _deleteSection(type, label, containerId, () => { _osOpenSection = null; renderMiscSectionsManager(containerId); });
-    });
+      container.querySelector('#os-back-btn').addEventListener('click', () => {
+        _osOpenSection = null;
+        renderMiscSectionsManager(containerId);
+      });
+      container.querySelector('#os-edit-open-btn').addEventListener('click', () => {
+        _osEditingSection = type;
+        _osOpenSection = null;
+        renderMiscSectionsManager(containerId);
+      });
+      container.querySelector('#os-del-open-btn').addEventListener('click', () => {
+        _deleteSection(type, label, containerId, () => { _osOpenSection = null; renderMiscSectionsManager(containerId); });
+      });
+    }
     renderLedgerView('os-ledger-view', type, label);
     return;
   }

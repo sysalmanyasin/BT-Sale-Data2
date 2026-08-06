@@ -114,7 +114,19 @@ function renderJazzCash() {
   const cont = document.getElementById('jc-container');
   if (!cont) return;
 
-  cont.innerHTML = `
+  // Only build the tab-switcher shell once. Rebuilding cont.innerHTML on
+  // every call — including a background Supabase sync refresh via
+  // refreshManagerPage() — recreated #jc-panel-tally/#jc-panel-ledger as
+  // fresh empty divs immediately before _renderTally()/_renderLedger()
+  // ran. Those two functions DO capture typed-but-unsaved values before
+  // overwriting their panel's contents, but that capture had nothing
+  // left to read: this function had already wiped the real DOM one step
+  // earlier. The shell's own markup never changes shape between
+  // refreshes (only which tab is active, which jcSwitchTab already
+  // updates directly via style, not innerHTML), so it's safe to build
+  // once and leave it alone.
+  if (!document.getElementById('jc-panel-tally')) {
+    cont.innerHTML = `
     <div style="display:flex;gap:0;margin-bottom:16px;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;background:var(--s2)">
       <button id="jc-tab-ledger" onclick="jcSwitchTab('ledger')"
         style="flex:1;padding:10px;border:none;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;background:${_jcActiveTab==='ledger'?'var(--accent)':'transparent'};color:${_jcActiveTab==='ledger'?'#fff':'var(--muted)'}">
@@ -128,6 +140,7 @@ function renderJazzCash() {
     <div id="jc-panel-ledger" style="display:${_jcActiveTab==='ledger'?'':'none'}"></div>
     <div id="jc-panel-tally"  style="display:${_jcActiveTab==='tally' ?'':'none'}"></div>
   `;
+  }
 
   _renderLedger();
   _renderTally();
@@ -153,7 +166,14 @@ function _renderLedger() {
   const panel = document.getElementById('jc-panel-ledger');
   if (!panel) return;
 
-  panel.innerHTML = `<div id="jc-ledger-inner"></div>`;
+  // Only create the inner wrapper once — recreating it on every call
+  // (see renderJazzCash()'s comment above) would wipe out whatever
+  // renderLedgerView() rendered into it, including any in-progress
+  // add-form typing, before renderLedgerView()'s own capture-before-
+  // overwrite logic (ledger-page.js) ever got to run.
+  if (!document.getElementById('jc-ledger-inner')) {
+    panel.innerHTML = `<div id="jc-ledger-inner"></div>`;
+  }
 
   if (typeof renderLedgerView === 'function') {
     renderLedgerView('jc-ledger-inner', 'jazzcash', '📒 Jazz Cash');
