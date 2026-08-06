@@ -15,7 +15,7 @@ speculatively.
 > **AI has been fully removed from the client app** (as of v10.32).
 > Every AI-facing feature — chat, AI settings, the Context Engine, the
 > AI Daily Briefing — is gone. See [Known gaps](#known-gaps) for the
-> one place AI narration still survives (a server-side Edge Function).
+> one place AI narration still survives (a server-side Edge Function)..
 
 ---
 
