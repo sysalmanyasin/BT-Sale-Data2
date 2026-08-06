@@ -98,7 +98,14 @@ function loadManagerPage() {
 function refreshManagerPage() {
   staffLoad();
   renderStaffRegistry();
-  if (typeof renderJazzCash === 'function') renderJazzCash();
+  // renderJazzCash() used to run unconditionally here, on every single
+  // background sync regardless of which Manager sub-tab was open. That
+  // meant a sync landing while the user was mid-edit on the Jazz Cash
+  // Balance Tally (typed-but-unsaved account amounts, which live only in
+  // the DOM until "Save Today's Snapshot" is clicked) silently wiped
+  // those numbers. Moved below and guarded by activeTab, same pattern as
+  // expense/custom/unmatched right underneath — only re-render the tab
+  // that's actually visible.
 
   const mons = mgrMonths();
   const newest = mons[0] || '';
@@ -114,11 +121,12 @@ function refreshManagerPage() {
   _refreshOne('petty-month-sel', window.loadPettyMonth);
   _refreshOne('inc-month-sel',   window.loadIncentiveMonth);
 
-  // The click-only sub-tabs (sheets/expense/custom/unmatched) are only
-  // ever rendered by switchMgrTab() when the user opens them, so only
+  // The click-only sub-tabs (jazzcash/sheets/expense/custom/unmatched) are
+  // only ever rendered by switchMgrTab() when the user opens them, so only
   // refresh whichever one is currently visible — anything hidden gets a
   // fresh render for free the next time it's opened anyway.
   const activeTab = document.querySelector('.mgr-tab.active')?.dataset.mtab;
+  if (activeTab === 'jazzcash' && typeof renderJazzCash === 'function') renderJazzCash();
   if (activeTab === 'sheets' && typeof renderNotesSheets === 'function') renderNotesSheets();
   if (activeTab === 'expense' && typeof renderLedgerView === 'function') {
     renderLedgerView('ledger-expense-container', 'expense', 'Expense');

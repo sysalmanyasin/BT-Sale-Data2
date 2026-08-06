@@ -172,6 +172,21 @@ function _jcSelectTallyDate(d) { _jcTallyDate = d; _renderTally(); }
 // ══════════════════════════════════════════════════════════════════
 function _renderTally() {
   const panel=document.getElementById('jc-panel-tally'); if(!panel)return;
+
+  // Capture any value the user has typed but not yet saved (e.g. a
+  // background Supabase sync firing mid-edit, via refreshManagerPage() ->
+  // renderJazzCash() -> here) BEFORE we overwrite panel.innerHTML below —
+  // otherwise a sync landing mid-reconciliation silently resets these to
+  // whatever's on disk (or 0), which is exactly the bug this guards
+  // against. The locked 'jc_balance' row is intentionally excluded: it's
+  // always driven live from the ledger, never user-typed.
+  const _liveAmounts={};
+  panel.querySelectorAll('.tally-amt-inp').forEach(inp=>{
+    if (inp.dataset.acid!=='jc_balance' && inp.value!=='') _liveAmounts[inp.dataset.acid]=inp.value;
+  });
+  const _liveAppTargetEl=panel.querySelector('#tally-app-target');
+  const _liveAppTarget=_liveAppTargetEl ? _liveAppTargetEl.value : undefined;
+
   _jcTallyData=_tallyLoad();
   if (!_jcTallyDate) _jcTallyDate=_jcTodayStr();
 
@@ -180,12 +195,18 @@ function _renderTally() {
 
   // Load snapshot for selected date if exists, else use accounts template
   const snap=_jcTallyData.snapshots?.find(s=>s.date===_jcTallyDate);
-  const accounts=snap
+  let accounts=snap
     ? snap.accounts
     : _jcTallyData.accounts.map(a=>a.id==='jc_balance'?{...a,amount:jcBal}:{...a,amount:0});
+  // Re-apply any in-progress typed values captured above, whether or not
+  // a saved snapshot exists for this date — the user's live edit always
+  // wins over whatever was last persisted.
+  accounts=accounts.map(a=>_liveAmounts[a.id]!==undefined ? {...a,amount:parseFloat(_liveAmounts[a.id])||0} : a);
 
   const total=accounts.reduce((s,a)=>s+(parseFloat(a.amount)||0),0);
-  const appTarget=snap?snap.appTarget:0;
+  const appTarget=(_liveAppTarget!==undefined && _liveAppTarget!=='')
+    ? (parseFloat(_liveAppTarget)||0)
+    : (snap?snap.appTarget:0);
   const diff=total-appTarget;
 
   // Snapshot history list
