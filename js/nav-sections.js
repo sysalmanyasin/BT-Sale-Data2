@@ -155,7 +155,7 @@
   // labels with no emoji of their own at all — curated real icons here
   // instead of every one of them falling back to the same generic 📄.
   const _CURATED_ICONS = {
-    '#index': '📇', '#data': '🗓️', '#entry': '➕', '#report': '📄', '#cashdeposit': '💵', '#diff': '🧮',
+    '#index': '📇', '#data': '🗓️', '#entry': '➕', '#report': '📄', '#cashdeposit': '💵', '#sale-payments': '💳', '#diff': '🧮',
   };
   function _leafFromList(item) {
     if (item.icon) return { label: item.label, icon: item.icon, href: item.href, kids: [] };

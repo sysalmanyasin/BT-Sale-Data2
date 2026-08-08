@@ -53,6 +53,7 @@
 <link rel="stylesheet" href="css/inventory-health-dashboard.css?v=20260731a">
 <link rel="stylesheet" href="css/pdf-library.css?v=20260725a">
 <link rel="stylesheet" href="css/cash-deposit-report.css?v=20260725b">
+<link rel="stylesheet" href="css/sale-payments.css?v=20260807a">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,400,0,0">
 <link rel="stylesheet" href="css/components.css?v=20260729a">
 <link rel="stylesheet" href="css/modals.css?v=20260722a">
@@ -264,6 +265,7 @@ if ('serviceWorker' in navigator) {
     <a class="ntab sub" href="#entry" data-page="entry">Add Entry</a>
     <a class="ntab sub" href="#report" data-page="report">Sale Report</a>
     <a class="ntab sub" href="#cashdeposit" data-page="cashdeposit">Cash Deposit</a>
+    <a class="ntab sub" href="#sale-payments" data-page="sale-payments">Payments</a>
     <a class="ntab sub" href="#diff" data-page="diff">DIFF Report</a>
   </div>
   <div class="nright">
@@ -305,6 +307,7 @@ if ('serviceWorker' in navigator) {
   <a class="bnav-sub-item" href="#entry" data-page="entry">Add Entry</a>
   <a class="bnav-sub-item" href="#report" data-page="report">Report</a>
   <a class="bnav-sub-item" href="#cashdeposit" data-page="cashdeposit">Cash Deposit</a>
+  <a class="bnav-sub-item" href="#sale-payments" data-page="sale-payments">Payments</a>
   <a class="bnav-sub-item" href="#diff" data-page="diff">DIFF</a>
 </div>
 
@@ -659,6 +662,55 @@ if ('serviceWorker' in navigator) {
     <div class="dmprint-btn no-print">
       <button class="btn btn-p" style="flex:1" onclick="cdrPrintPopup()">🖨 Print (72mm Thermal)</button>
       <button class="btn btn-s" onclick="closeCdrPopup()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- SALE PAYMENTS — Cash/Card/Credit split per day + credit-by-customer
+     breakdown, read-only from Supabase's sales_payment_summary /
+     sales_credit_by_customer (synced by the same Candela → Dropbox →
+     Supabase pipeline as BT Inventory — see sale-payments-bridge.js's
+     header note). Fixed "today + last 3 days" window, whatever the
+     last sync produced — no manual date range here. -->
+<div class="page" id="page-sale-payments">
+  <div class="hero"><div class="hlabel">Sale Data</div><div class="htitle">💳 Sale Payments</div><div class="hsub">Cash / Card / Credit split for today + last 3 days, plus a per-customer credit breakdown. Synced from Candela POS via Dropbox → Supabase.</div></div>
+  <div class="sp-toolbar">
+    <span id="sp-status">⏳ Loading…</span>
+    <button onclick="spRefresh()">🔄 Refresh</button>
+  </div>
+
+  <div class="sp-section-title">Daily Split</div>
+  <div class="card">
+    <div class="twrap tscroll">
+      <table id="tbl-sp-summary">
+        <thead><tr>
+          <th style="text-align:left">Day</th>
+          <th>Cash Sale</th>
+          <th>Card Sale</th>
+          <th>Credit Sale</th>
+          <th>Total Sale</th>
+        </tr></thead>
+        <tbody id="sp-summary-tbody"></tbody>
+        <tfoot id="sp-summary-tfoot"></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <div class="sp-section-title">Credit Sales by Customer</div>
+  <div class="sp-search-row">
+    <input type="text" id="sp-credit-search" placeholder="Search customer name…" oninput="spSetCustomerSearch(this.value)">
+  </div>
+  <div class="card">
+    <div class="twrap tscroll" style="max-height:480px">
+      <table id="tbl-sp-credit">
+        <thead><tr>
+          <th style="text-align:left">Day / Customer</th>
+          <th>Credit Amount</th>
+          <th>Receipts</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="sp-credit-tbody"></tbody>
+      </table>
     </div>
   </div>
 </div>
@@ -2012,6 +2064,8 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/audit-native.js"></script>
 <script type="module" src="js/inventory-bridge.js"></script>
 <script type="module" src="js/inventory-native.js"></script>
+<script type="module" src="js/sale-payments-bridge.js?v=20260807a"></script>
+<script type="module" src="js/sale-payments-native.js?v=20260807a"></script>
 <script defer src="js/stockledger.js?v=20260722a"></script>
 <script defer src="js/excess-working.js?v=20260722a"></script>
 <script defer src="js/reorder-report.js?v=20260731a"></script>
