@@ -6,12 +6,14 @@ import * as LedgerStore from './ledger-store.js';
 import * as ClosingBridge from './closing-bridge.js';
 import * as AuditBridge from './audit-bridge.js';
 import * as InventoryBridge from './inventory-bridge.js';
+import * as SalePaymentsBridge from './sale-payments-bridge.js';
 import { computeInventoryHealth } from './shared/summary-calc.js';
 
 const TGT_KEY = 'bt_targets';
 let _closingRefreshInFlight = false;
 let _auditRefreshInFlight = false;
 let _inventoryRefreshInFlight = false;
+let _salePaymentsRefreshInFlight = false;
 // Phase 3.1 — current-state inventory doughnut. Held at module scope (not
 // local to renderCoverDashboard) so re-renders (every showPage('cover'),
 // every closing/audit/inventory bridge refresh — see call sites) destroy
@@ -318,6 +320,30 @@ function _monthSaleBreakdown() {
   const label = 'Latest Month Total Sale — ' + rec.Month_Year +
     (lastDay ? ' (till ' + lastDay + ' ' + rec.Month_Year.split(' ')[0].slice(0, 3) + ')' : '');
   return { label, value: '₨' + fc(n(rec.TOTAL)), cash, banks, cashBanks, credit, customers };
+}
+
+// Today's live POS payment split (Cash/Card/Credit), straight from
+// Candela via sale-payments-bridge.js's sales_payment_summary table —
+// deliberately separate from _monthSaleBreakdown() above, which reads
+// the manually-entered Sale Data ledger (Cash Sale/Bank/Credit fields
+// staff type in). This one is what Candela itself recorded for today,
+// synced automatically; no typing involved, and it can legitimately
+// disagree with the manual entry until that day's entry is filled in
+// (or ever, if reconciliation differences exist) — that's expected,
+// not a bug, so no cross-check against MONTHLY/DAILY is attempted here.
+function _todaySaleBreakdown() {
+  const data = SalePaymentsBridge.getFullData();
+  if (!data || !data.paymentSummary || !data.paymentSummary.length) return null;
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const rec = data.paymentSummary.find(r => r.saleDay === todayIso)
+    || data.paymentSummary.slice().sort((a, b) => (a.saleDay < b.saleDay ? 1 : -1))[0];
+  if (!rec) return null;
+  const isToday = rec.saleDay === todayIso;
+  const label = isToday ? "Today's Sale — POS Live" : 'Latest POS Sale — ' + _clFmtDate(rec.saleDay);
+  const syncedLabel = data.fetchedAt
+    ? 'synced ' + new Date(data.fetchedAt).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' })
+    : '';
+  return { label, value: '₨' + fc(n(rec.totalSale)), cash: n(rec.cashSale), card: n(rec.cardSale), credit: n(rec.creditSale), sub: syncedLabel };
 }
 
 function _managerStatus() {
@@ -1380,7 +1406,30 @@ export function renderCoverDashboard() {
       </div>
     </div>`;
 
+  const todaySale = _todaySaleBreakdown();
+  const todaySaleCard = h => `
+    <div class="cover-hero-card cover-closing-summary-card cover-today-sale-card">
+      <div class="cover-hero-label">${_esc(h.label)} <span onclick="showPage('sale-payments')" style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:4px;margin-left:6px;cursor:pointer;font-weight:700">OPEN ↗</span></div>
+      <div class="cover-hero-value">${_esc(h.value)}</div>
+      <div class="ccs-stat-grid">
+        <div class="ccs-stat ccs-cash">
+          <span class="ccs-ic">💵</span>
+          <div class="ccs-text"><div class="ccs-lbl">Cash</div><div class="ccs-val">Rs. ${_esc(fc(h.cash))}</div></div>
+        </div>
+        <div class="ccs-stat ccs-cardpay">
+          <span class="ccs-ic">💳</span>
+          <div class="ccs-text"><div class="ccs-lbl">Card</div><div class="ccs-val">Rs. ${_esc(fc(h.card))}</div></div>
+        </div>
+        <div class="ccs-stat ccs-credit">
+          <span class="ccs-ic">📋</span>
+          <div class="ccs-text"><div class="ccs-lbl">Credit</div><div class="ccs-val">Rs. ${_esc(fc(h.credit))}</div></div>
+        </div>
+      </div>
+      ${h.sub ? `<div class="cover-hero-sub" style="margin-top:8px">${_esc(h.sub)}</div>` : ''}
+    </div>`;
+
   const heroHtml = `
+    ${todaySale ? `<div class="cover-hero-row-single">${todaySaleCard(todaySale)}</div>` : ''}
     ${monthSale ? `<div class="cover-hero-row-single">${monthSaleCard(monthSale)}</div>` : ''}
     <div class="cover-hero-row">
       ${heroCard(headline)}
@@ -1520,6 +1569,7 @@ export function renderCoverDashboard() {
   // 5-min cache — available regardless of whether that group's body is
   // collapsed, instead of being buried inside a tile that no longer exists.
   const GROUP_BRIDGE_REFRESH = {
+    Sales: () => SalePaymentsBridge.refreshFullData(true),
     Closing: () => ClosingBridge.refresh(true),
     Audit: () => AuditBridge.refresh(true),
     Inventory: () => InventoryBridge.refreshFullData(true),
@@ -1643,6 +1693,11 @@ export function renderCoverDashboard() {
   if (!_inventoryRefreshInFlight) {
     _inventoryRefreshInFlight = true;
     InventoryBridge.refreshFullData(false).finally(() => { _inventoryRefreshInFlight = false; });
+  }
+
+  if (!_salePaymentsRefreshInFlight) {
+    _salePaymentsRefreshInFlight = true;
+    SalePaymentsBridge.refreshFullData(false).finally(() => { _salePaymentsRefreshInFlight = false; });
   }
 }
 

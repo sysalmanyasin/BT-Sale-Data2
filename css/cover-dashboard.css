@@ -336,6 +336,7 @@
 .ccs-stat.ccs-bank .ccs-ic{background:var(--mgrblue-lt);}
 .ccs-stat.ccs-cashbank .ccs-ic{background:var(--alt2);}
 .ccs-stat.ccs-credit .ccs-ic{background:#fef3c7;}
+.ccs-stat.ccs-cardpay .ccs-ic{background:var(--purple-lt);}
 .ccs-stat.ccs-cust .ccs-ic{background:#ede9fe;}
 
 @media(max-width:640px){

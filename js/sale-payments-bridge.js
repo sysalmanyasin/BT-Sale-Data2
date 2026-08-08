@@ -114,6 +114,7 @@ export async function refreshFullData(force) {
       _fullData = data;
       try { _setLocal(SP_FULLDATA_CACHE_KEY, JSON.stringify(data)); } catch (e) { /* best-effort */ }
       if (typeof window.salePaymentsBridgeOnRefresh === 'function') window.salePaymentsBridgeOnRefresh();
+      if (typeof window.renderCoverDashboard === 'function') window.renderCoverDashboard();
       return data;
     } catch (e) {
       return _fullData || cached;
