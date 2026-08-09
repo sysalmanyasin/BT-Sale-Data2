@@ -1439,6 +1439,19 @@ if ('serviceWorker' in navigator) {
     </div>
   </div>
 
+  <div class="tcard" id="tc-security">
+    <div class="tcard-hdr" onclick="toggleTcard('tc-security')">
+      <div class="ttitle">🔒 Security</div>
+      <span class="tcard-chevron">▶</span>
+    </div>
+    <div class="tcard-body">
+      <div class="tdesc">Ends every active session for your account — every phone, browser, or tab it's currently signed into. Use this if a device was lost, shared, or you're unsure who still has access.</div>
+      <div class="brow">
+        <button id="logout-all-btn" class="btn" style="background:var(--red);border-color:var(--red);color:#fff" onclick="if(confirm('Sign out on ALL devices where this account is logged in? You will need to sign in again here too.')) gauthSignOutAllDevices()">🚪 Log out of all devices</button>
+      </div>
+    </div>
+  </div>
+
   <div class="tcard" id="tc-targets">
     <div class="tcard-hdr" onclick="toggleTcard('tc-targets')">
       <div class="ttitle">🎯 Monthly Targets</div>

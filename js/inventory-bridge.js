@@ -168,3 +168,7 @@ export async function refreshFullData(force) {
 window.inventoryBridgeIsConnected = isConnected;
 window.inventoryBridgeGetFullData = getFullData;
 window.inventoryBridgeRefresh = refreshFullData;
+// Exposes the raw Supabase client for this project (vtcrdkqhuvxatclobsby)
+// so auth.js can establish a real signed-in session on it too, alongside
+// the main wetbugzzchkghpzmowod project. See js/auth.js — btEstablishSupabaseSessions().
+window.inventoryBridgeGetClient = _getClient;

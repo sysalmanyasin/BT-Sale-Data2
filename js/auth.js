@@ -335,19 +335,48 @@ function _gauthOAuthSignIn() {
   }
   _gauthShowError('');
 
+  // nonce protects the id_token from replay — generated fresh per attempt,
+  // verified by Supabase against the token's own nonce claim on the way back.
+  const nonce = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + Math.random();
+  sessionStorage.setItem('bt_oauth_nonce', nonce);
+
   // Save current page state so we return cleanly
   sessionStorage.setItem('bt_oauth_pending','1');
   const redirectUri = window.location.origin + window.location.pathname;
   const params = new URLSearchParams({
     client_id:             CID,
     redirect_uri:          redirectUri,
-    response_type:         'token',
+    // 'id_token token' (was just 'token') — id_token lets us establish a
+    // REAL Supabase session (auth.uid() becomes usable server-side);
+    // access token still used for Drive exactly as before.
+    response_type:         'id_token token',
     scope:                 'openid email profile https://www.googleapis.com/auth/drive.file',
     prompt:                'select_account',
-    include_granted_scopes:'true'
+    include_granted_scopes:'true',
+    nonce:                 nonce
   });
   window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
 }
+
+// Signs the same verified Google id_token into every Supabase project the
+// app talks to, so auth.uid() is real everywhere RLS checks it.
+async function btEstablishSupabaseSessions(idToken, nonce) {
+  try {
+    const clients = [
+      (typeof window.btGetSupabaseClient === 'function') ? window.btGetSupabaseClient() : null,        // wetbugzzchkghpzmowod
+      (typeof window.inventoryBridgeGetClient === 'function') ? window.inventoryBridgeGetClient() : null // vtcrdkqhuvxatclobsby
+    ].filter(Boolean);
+    if (!clients.length) return false;
+    const results = await Promise.all(
+      clients.map(c => c.auth.signInWithIdToken({ provider: 'google', token: idToken, nonce }))
+    );
+    return results.every(r => !r || !r.error);
+  } catch (e) {
+    console.error('Supabase sign-in failed', e);
+    return false;
+  }
+}
+window.btEstablishSupabaseSessions = btEstablishSupabaseSessions;
 
 // Step 2: Called on page load — detects Google's redirect-back token in the URL hash
 async function _gauthHandleRedirectToken() {
@@ -370,11 +399,14 @@ async function _gauthHandleRedirectToken() {
     return true;
   }
 
-  const token  = params.get('access_token');
+  const token   = params.get('access_token');
+  const idToken = params.get('id_token');
   if(!token) return false;
   // Clean the token out of the URL immediately (security + cleanliness)
   history.replaceState(null,'',window.location.pathname);
   sessionStorage.removeItem('bt_oauth_pending');
+  const nonce = sessionStorage.getItem('bt_oauth_nonce');
+  sessionStorage.removeItem('bt_oauth_nonce');
   _gauthShowError(''); // clear any old errors
   try {
     const r    = await fetch('https://www.googleapis.com/oauth2/v3/userinfo',
@@ -384,6 +416,20 @@ async function _gauthHandleRedirectToken() {
     // Access control: only the three authorised emails may proceed
     if(!gauthIsAllowed(info.email)){
       _gauthShowError('⛔ ' + info.email + ' is not authorised to access this app.');
+      return false;
+    }
+    // Establish a REAL Supabase session (auth.uid() becomes usable server-side
+    // for RLS) on every project the app talks to. Once the DB-side lockdown
+    // migration runs, this step becomes required — surface a clear error if
+    // it fails rather than silently letting the user in with no DB access.
+    if (idToken) {
+      const sbOk = await btEstablishSupabaseSessions(idToken, nonce);
+      if (!sbOk) {
+        _gauthShowError('⚠ Signed in to Google, but could not verify with the database. Please try again.');
+        return false;
+      }
+    } else {
+      _gauthShowError('⚠ Google did not return an id_token — sign-in cannot be verified. Please try again.');
       return false;
     }
     // Reuse the Drive-scoped token so Drive backup works without a separate authorize step
@@ -480,11 +526,38 @@ function _gauthCheckSession() {
 }
 function gauthConfirmUser() { unlockApp(); }
 function gauthSignOut() {
+  // Local-only sign-out (this device/tab). Also drops the Supabase session
+  // on this device so it doesn't silently linger past the UI sign-out.
+  try {
+    if (typeof window.btGetSupabaseClient === 'function') window.btGetSupabaseClient().auth.signOut();
+    if (typeof window.inventoryBridgeGetClient === 'function') window.inventoryBridgeGetClient().auth.signOut();
+  } catch(e) { /* best-effort */ }
   gauthClearSession();
   document.getElementById('gauth-user-bar').style.display='none';
   document.getElementById('gauth-btn-wrap').style.display='flex';
   document.getElementById('gauth-error').style.display='none';
 }
+
+// Ends every session for this account on every device it's signed into —
+// not just this one. Uses Supabase's global sign-out (scope:'global'),
+// which revokes the refresh token everywhere, on both connected projects.
+async function gauthSignOutAllDevices() {
+  const btn = document.getElementById('logout-all-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Signing out everywhere…'; }
+  try {
+    const clients = [
+      (typeof window.btGetSupabaseClient === 'function') ? window.btGetSupabaseClient() : null,
+      (typeof window.inventoryBridgeGetClient === 'function') ? window.inventoryBridgeGetClient() : null
+    ].filter(Boolean);
+    await Promise.all(clients.map(c => c.auth.signOut({ scope: 'global' })));
+  } catch(e) {
+    console.error('Global sign-out failed', e);
+  }
+  gauthClearSession();
+  if (typeof toast === 'function') toast('✓ Signed out on all devices', 'ok');
+  setTimeout(() => window.location.reload(), 600);
+}
+window.gauthSignOutAllDevices = gauthSignOutAllDevices;
 
 // ── Main gate init ────────────────────────────────────────────────
 function initAuthGate() {
