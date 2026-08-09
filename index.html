@@ -1475,7 +1475,7 @@ if ('serviceWorker' in navigator) {
         <textarea id="tc-allowed-emails" rows="4" readonly
           style="font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s3,#f1f5f9);width:100%;font-family:var(--sans);color:var(--muted);outline:none;resize:vertical;box-sizing:border-box;cursor:default"
           placeholder="yourname@gmail.com&#10;colleague@gmail.com"></textarea>
-        <div style="font-size:10px;color:var(--muted);margin-top:4px">Fixed in app source for security — edit <code>auth.js</code> and redeploy to change who can sign in.</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px">Managed in Supabase (<code>bt_authorized_users</code>) — add or remove rows in the Table Editor to change who can sign in, no redeploy needed.</div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
         <button class="btn btn-p" onclick="tcSaveGAuthSettings()">💾 Save Client ID</button>

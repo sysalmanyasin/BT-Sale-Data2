@@ -100,21 +100,53 @@ const PIN_K        = 'bt_pin_hash';
 const GAUTH_CID_K  = 'bt_gauth_cid';        // Google OAuth Client ID
 const GAUTH_MAIL_K = 'bt_gauth_emails';      // comma-separated allowed emails
 const GAUTH_SESS_K = 'bt_gauth_session';     // {email,name,picture,exp}
-// ── Baked-in Client ID (no manual setup required) ─────────────
+
+// ── Offline / first-run fallback only ──────────────────────────────
+// Client ID and authorized emails now live in Supabase (bt_auth_config,
+// bt_authorized_users) so they can be managed from the Table Editor with
+// no redeploy. These constants are ONLY used (a) to seed localStorage on
+// the very first load before the sync below has ever completed, and
+// (b) as a last resort if the device is offline and has never synced.
+const GAUTH_CID_FALLBACK  = '36704237826-6lg0o3u0voqhdkvdj3kd331jsft62uun.apps.googleusercontent.com';
+const GAUTH_MAIL_FALLBACK = 'sy.salmanyasin@gmail.com,sy.salmanmughal@gmail.com,bahria.cat@fdpp.pk';
 // NOTE: stays on direct localStorage, not Repository — this IIFE runs at
 // script-parse time, and auth.js loads BEFORE repository.js. Routing it
 // through Repository here would throw "Repository is not defined" and
 // crash the entire app's startup. (Caught during the Floor-1 storage
 // migration, before it shipped.)
-(function(){var _k='bt_gauth_cid',_v='36704237826-6lg0o3u0voqhdkvdj3kd331jsft62uun.apps.googleusercontent.com';if(!localStorage.getItem(_k))localStorage.setItem(_k,_v);})();
-// ── Baked-in allowed emails (same list on every device, every load) ──
-// Editing who can sign in means editing this list in the source and redeploying.
-// Same load-order constraint as above — must stay on direct localStorage.
-(function(){
-  var _k='bt_gauth_emails';
-  var _v='sy.salmanyasin@gmail.com,sy.salmanmughal@gmail.com,bahria.cat@fdpp.pk';
-  localStorage.setItem(_k,_v); // always re-seed — overrides any local edit/clear, so it can't be bypassed per-device
-})();
+(function(){ if(!localStorage.getItem('bt_gauth_cid'))    localStorage.setItem('bt_gauth_cid', GAUTH_CID_FALLBACK); })();
+(function(){ if(!localStorage.getItem('bt_gauth_emails')) localStorage.setItem('bt_gauth_emails', GAUTH_MAIL_FALLBACK); })();
+
+// ── Live sync from Supabase (bt_auth_config + bt_authorized_users) ──
+// Fire-and-forget on script load: usually resolves in well under a
+// second, long before a user finishes tapping "Sign in with Google".
+// On failure (offline, Supabase unreachable) it silently keeps whatever
+// is already cached in localStorage — last successful sync, or the
+// fallback seed above — so sign-in still works offline.
+const GAUTH_SB_URL  = 'https://wetbugzzchkghpzmowod.supabase.co';
+const GAUTH_SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndldGJ1Z3p6Y2hrZ2hwem1vd29kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzMDg4OTIsImV4cCI6MjA5Nzg4NDg5Mn0.LXFrvQTOfI3ph4aA8xWYIUo-z1yxdX0znnN5f-KsOPM';
+async function _gauthSyncFromSupabase() {
+  const headers = { apikey: GAUTH_SB_ANON, Authorization: 'Bearer ' + GAUTH_SB_ANON };
+  try {
+    const cfgRes = await fetch(GAUTH_SB_URL + '/rest/v1/bt_auth_config?select=value&key=eq.google_oauth_client_id', { headers });
+    if (cfgRes.ok) {
+      const rows = await cfgRes.json();
+      if (rows && rows[0] && rows[0].value) localStorage.setItem(GAUTH_CID_K, rows[0].value);
+    }
+  } catch (e) { /* offline — keep cached CID */ }
+  try {
+    const usersRes = await fetch(GAUTH_SB_URL + '/rest/v1/bt_authorized_users?select=email&active=eq.true', { headers });
+    if (usersRes.ok) {
+      const rows = await usersRes.json();
+      // Reachable and returned a real (possibly empty) list — trust it as
+      // the source of truth, including "fail closed" if everyone was
+      // deactivated. Only a network/offline failure falls back to cache.
+      localStorage.setItem(GAUTH_MAIL_K, Array.isArray(rows) ? rows.map(r => r.email).join(',') : '');
+    }
+  } catch (e) { /* offline — keep cached email list */ }
+}
+_gauthSyncFromSupabase();
+
 let _pinBuf = '', _pinBusy = false;
 
 // ── Password strength helpers ─────────────────────────────────────
@@ -292,7 +324,7 @@ function _gauthRenderBtn() {
 // ── Redirect-based Google Sign-In (works on ALL mobile browsers) ─────────
 // Step 1: Tap button → redirect to Google account selector
 function _gauthOAuthSignIn() {
-  const CID = '36704237826-6lg0o3u0voqhdkvdj3kd331jsft62uun.apps.googleusercontent.com';
+  const CID = Repository.getItem(GAUTH_CID_K) || GAUTH_CID_FALLBACK;
 
   // Show loading state on the button
   const btn = document.getElementById('google-signin-btn');
@@ -388,7 +420,6 @@ function _gauthShowError(msg){
 // sign-in. If silent renewal isn't possible (consent revoked, no active
 // Google session, GIS script blocked, etc.) it just resolves to null and
 // Drive falls back to the existing "Authorize Drive" redirect flow.
-const GAUTH_BAKED_CID = '36704237826-6lg0o3u0voqhdkvdj3kd331jsft62uun.apps.googleusercontent.com';
 let _gisTokenClient = null;
 function _driveSilentReauth(timeoutMs = 4000) {
   return new Promise(resolve => {
@@ -403,7 +434,7 @@ function _driveSilentReauth(timeoutMs = 4000) {
       try {
         if (!_gisTokenClient) {
           _gisTokenClient = google.accounts.oauth2.initTokenClient({
-            client_id: GAUTH_BAKED_CID,
+            client_id: Repository.getItem(GAUTH_CID_K) || GAUTH_CID_FALLBACK,
             scope: 'https://www.googleapis.com/auth/drive.file',
             prompt: '',
             callback: resp => {
@@ -457,9 +488,11 @@ function gauthSignOut() {
 
 // ── Main gate init ────────────────────────────────────────────────
 function initAuthGate() {
-  // Always enforce the baked-in Client ID
-  const BAKED_CID = '36704237826-6lg0o3u0voqhdkvdj3kd331jsft62uun.apps.googleusercontent.com';
-  Actions.saveFeatureData(GAUTH_CID_K, BAKED_CID);
+  // Client ID now comes from Supabase (bt_auth_config) via _gauthSyncFromSupabase();
+  // only seed the fallback here if nothing has ever been synced/cached.
+  if (!Repository.getItem(GAUTH_CID_K)) {
+    Actions.saveFeatureData(GAUTH_CID_K, GAUTH_CID_FALLBACK);
+  }
   gauthShowMain();
   _gauthRenderBtn();
   // 1. Check if Google just redirected back with an access token in the URL hash
@@ -484,7 +517,7 @@ function tcSaveGAuthSettings() {
 function tcClearGAuthSession() { gauthClearSession(); toast('✓ Google session cleared — you will need to sign in again next visit'); }
 function tcClearGAuthAll() {
   if(!confirm('Reset Google Client ID to the built-in default and sign out?')) return;
-  Actions.saveFeatureData(GAUTH_CID_K, '36704237826-6lg0o3u0voqhdkvdj3kd331jsft62uun.apps.googleusercontent.com');
+  Actions.saveFeatureData(GAUTH_CID_K, GAUTH_CID_FALLBACK);
   gauthClearSession();
   toast('✓ Google settings reset to default');
   _tcLoadGAuthStatus();
