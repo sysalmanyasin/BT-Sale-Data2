@@ -177,3 +177,66 @@ tfoot td{font-weight:700;color:var(--text);background:var(--s2);border-top:2px s
 .theme-opt{flex:1;padding:10px 8px;border:1.5px solid var(--border);border-radius:var(--r-sm);background:var(--s2);color:var(--t2);font-family:var(--sans);font-size:12.5px;font-weight:600;cursor:pointer;transition:border-color .15s,color .15s,background .15s;}
 .theme-opt:hover{border-color:var(--border-strong);color:var(--text);}
 .theme-opt.active{border-color:var(--accent);color:var(--accent);background:var(--alt);}
+
+/* ══════════════════════════════════════════════════════════════════
+   SHARED REPORT TABLE SHELL — design pass, Aug 2026
+   Was three byte-identical 47-line blocks duplicated across
+   stockledger.css / excess-working.css / reorder-report.css (each
+   just swapping in its own .xxx-app class prefix) — a future tweak to
+   one silently wouldn't reach the other two. Consolidated here as one
+   rule targeting all three at once; behavior is unchanged, this is a
+   pure dedup. Each page still defines its own --ink/--paper/--panel/
+   --teal-dark aliases (scoped to its own .xxx-app root, all pointing
+   at the same variables.css tokens) — custom-property resolution
+   follows the DOM, not the stylesheet file, so those still apply
+   correctly to the selectors below even though the rule itself now
+   lives here instead of in each page's own file.
+   ══════════════════════════════════════════════════════════════════ */
+.stockledger-app thead th, .excessworking-app thead th, .reorder-app thead th {
+    position:sticky; top:0;
+    background:var(--ink);
+    color:#EFEFEA;
+    text-align:left;
+    padding:10px 12px;
+    font-family:var(--mono);
+    font-weight:500;
+    font-size:11px;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    cursor:pointer;
+    white-space:nowrap;
+    user-select:none;
+  }
+.stockledger-app thead th:hover, .excessworking-app thead th:hover, .reorder-app thead th:hover {background:var(--teal-dark);}
+.stockledger-app thead th .arrow, .excessworking-app thead th .arrow, .reorder-app thead th .arrow {opacity:.5; font-size:10px; margin-left:3px;}
+.stockledger-app tbody td, .excessworking-app tbody td, .reorder-app tbody td {
+    padding:9px 12px;
+    border-bottom:1px solid var(--paper);
+    white-space:nowrap;
+    color:var(--ink);
+  }
+.stockledger-app tbody tr:hover, .excessworking-app tbody tr:hover, .reorder-app tbody tr:hover {background:var(--paper);}
+.stockledger-app td.num, .stockledger-app th.num, .excessworking-app td.num, .excessworking-app th.num, .reorder-app td.num, .reorder-app th.num {text-align:right; font-family:var(--mono);}
+.stockledger-app td.name-cell, .excessworking-app td.name-cell, .reorder-app td.name-cell {white-space:normal; min-width:200px; max-width:280px;}
+.stockledger-app td.sub, .excessworking-app td.sub, .reorder-app td.sub {color:var(--ink-soft); font-size:11.5px;}
+.stockledger-app .val, .excessworking-app .val, .reorder-app .val {font-weight:600;}
+.stockledger-app tfoot td, .excessworking-app tfoot td, .reorder-app tfoot td {
+    position:sticky; bottom:0;
+    background:var(--ink); color:#fff;
+    font-family:var(--mono);
+    padding:10px 12px;
+    font-weight:600;
+    border-top:2px solid var(--teal);
+  }
+.stockledger-app .noresults, .excessworking-app .noresults, .reorder-app .noresults {padding:40px; text-align:center; color:var(--ink-soft); font-size:13.5px;}
+.stockledger-app footer, .excessworking-app footer, .reorder-app footer {
+    padding:20px clamp(16px,4vw,48px) 40px;
+    font-size:11.5px;
+    color:var(--ink-soft);
+    font-family:var(--mono);
+  }
+@media (max-width:640px){
+  .stockledger-app thead th, .stockledger-app tbody td,
+  .excessworking-app thead th, .excessworking-app tbody td,
+  .reorder-app thead th, .reorder-app tbody td {padding:8px 8px; font-size:12px;}
+}

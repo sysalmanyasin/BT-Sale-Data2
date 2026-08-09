@@ -364,53 +364,12 @@
     max-height:64vh;
   }
 .excessworking-app table {border-collapse:collapse; width:100%; font-size:12.8px;}
-.excessworking-app thead th {
-    position:sticky; top:0;
-    background:var(--ink);
-    color:#EFEFEA;
-    text-align:left;
-    padding:10px 12px;
-    font-family:var(--mono);
-    font-weight:500;
-    font-size:11px;
-    letter-spacing:.04em;
-    text-transform:uppercase;
-    cursor:pointer;
-    white-space:nowrap;
-    user-select:none;
-  }
-.excessworking-app thead th:hover {background:var(--teal-dark);}
-.excessworking-app thead th .arrow {opacity:.5; font-size:10px; margin-left:3px;}
-.excessworking-app tbody td {
-    padding:9px 12px;
-    border-bottom:1px solid var(--paper);
-    white-space:nowrap;
-    color:var(--ink);
-  }
-.excessworking-app tbody tr:hover {background:var(--paper);}
-.excessworking-app td.num, .excessworking-app th.num {text-align:right; font-family:var(--mono);}
-.excessworking-app td.name-cell {white-space:normal; min-width:200px; max-width:280px;}
-.excessworking-app td.sub {color:var(--ink-soft); font-size:11.5px;}
-.excessworking-app .val {font-weight:600;}
-.excessworking-app tfoot td {
-    position:sticky; bottom:0;
-    background:var(--ink); color:#fff;
-    font-family:var(--mono);
-    padding:10px 12px;
-    font-weight:600;
-    border-top:2px solid var(--teal);
-  }
-.excessworking-app .noresults {padding:40px; text-align:center; color:var(--ink-soft); font-size:13.5px;}
-.excessworking-app footer {
-    padding:20px clamp(16px,4vw,48px) 40px;
-    font-size:11.5px;
-    color:var(--ink-soft);
-    font-family:var(--mono);
-  }
-
-
-  @media (max-width:640px){.excessworking-app thead th, .excessworking-app tbody td {padding:8px 8px; font-size:12px;}
-  }
+/* Table shell (thead/tbody/tfoot/hover/num/name-cell/sub/val/
+   noresults/footer + the 640px padding media query) now lives in
+   css/components.css, shared with .stockledger-app/.reorder-app —
+   see that file's "SHARED REPORT TABLE SHELL" comment. Kept out of
+   here to kill the 3x-duplicated-block drift risk; nothing about how
+   this page looks changed. */
 /* ============================================================
    EXCESS WORKING — additions on top of the shared stockledger
    design language (stat cards, retain chips, status pills, donut).
