@@ -1307,6 +1307,35 @@ function _wireCoverSearch() {
   const input = document.getElementById('cover-search');
   if (!input || input.dataset.wired) return;
   input.dataset.wired = '1';
+
+  // The placeholder promises "Jump to anything — Sales, Inventory,
+  // Audit…", but typing here only ever filtered the handful of group
+  // cards already on this page. The app's real cross-section search
+  // already exists (js/global-search.js, inside the All Sections
+  // drawer) — so the first keystroke here hands off to that instead of
+  // silently under-delivering on what the box promises. Cover's own
+  // in-page filtering (below) still runs too, in case someone just
+  // wants to narrow what's on screen without leaving the page.
+  input.addEventListener('focus', () => {
+    if (input.dataset.handedOff) return;
+    input.dataset.handedOff = '1';
+    if (typeof window.openSectionsDrawer === 'function') {
+      const q = input.value;
+      window.openSectionsDrawer();
+      setTimeout(() => {
+        const gsInput = document.getElementById('gs-input');
+        if (gsInput) {
+          gsInput.value = q;
+          gsInput.focus();
+          if (window.GlobalSearch && typeof window.GlobalSearch.onInput === 'function') {
+            window.GlobalSearch.onInput(q);
+          }
+        }
+      }, 80);
+    }
+  });
+  input.addEventListener('blur', () => { input.dataset.handedOff = ''; });
+
   input.addEventListener('input', () => {
     const q = input.value.trim().toLowerCase();
     document.querySelectorAll('#cover-container .cover-group').forEach(groupEl => {

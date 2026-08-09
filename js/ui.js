@@ -25,6 +25,10 @@ function showPage(id) {
     if (_subnav) _subnav.style.display = _inSaleData ? '' : 'none';
     const _bnavSub = document.getElementById('bnav-saledata-sub');
     if (_bnavSub) _bnavSub.style.display = _inSaleData ? '' : 'none';
+    // Sale Data's sub-nav is fixed just above the bottom tab bar (see
+    // .bnav-sub in nav.css) — reserve extra scroll room for it so the
+    // last row of page content doesn't end up hidden underneath it.
+    document.body.classList.toggle('has-bnav-sub', _inSaleData);
 
     // ── Domain isolation (V2 plan §2) — Sales, Manager, Notes & Sheets,
     // Closing, and Audit are separate peer dashboards, not nested tabs.

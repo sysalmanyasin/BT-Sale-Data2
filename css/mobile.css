@@ -51,6 +51,11 @@ tr.cl:active td{background:var(--alt)!important;}
   .page{padding:16px 14px calc(78px + env(safe-area-inset-bottom));}
   #toast{left:50%;right:auto;bottom:calc(78px + env(safe-area-inset-bottom));transform:translate(-50%,70px);}
   #toast.on{transform:translate(-50%,0);}
+
+  /* Extra bottom room while the Sale Data sub-nav (fixed, ~40px tall)
+     floats above the main bottom tab bar, so it doesn't cover content. */
+  body.has-bnav-sub .page{padding-bottom:calc(78px + 42px + env(safe-area-inset-bottom));}
+  body.has-bnav-sub #toast{bottom:calc(78px + 42px + env(safe-area-inset-bottom));}
 }
 
 @media(max-width:600px){
