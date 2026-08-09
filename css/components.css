@@ -171,3 +171,9 @@ tfoot td{font-weight:700;color:var(--text);background:var(--s2);border-top:2px s
 .bg-green{background:var(--glt);color:var(--green);}
 .bg-amber{background:var(--alt2);color:var(--amber);}
 .bg-red{background:var(--rlt);color:var(--red);}
+
+/* APPEARANCE TOGGLE (Tools > tc-appearance) */
+.theme-opts{display:flex;gap:8px;}
+.theme-opt{flex:1;padding:10px 8px;border:1.5px solid var(--border);border-radius:var(--r-sm);background:var(--s2);color:var(--t2);font-family:var(--sans);font-size:12.5px;font-weight:600;cursor:pointer;transition:border-color .15s,color .15s,background .15s;}
+.theme-opt:hover{border-color:var(--border-strong);color:var(--text);}
+.theme-opt.active{border-color:var(--accent);color:var(--accent);background:var(--alt);}

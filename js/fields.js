@@ -330,6 +330,36 @@ function toggleTcard(id) {
   if (!el) return;
   el.classList.toggle('open');
 }
+
+// ── Appearance (light/dark/system) ────────────────────────────────────────────
+// Pref is stored as typed ('light'/'dark'/'system'); the resolved value is what
+// actually lands on <html data-theme>. The <head> inline script (index.html)
+// does this same resolution once, synchronously, before first paint — this is
+// the "user changed it just now" path, called from the Tools > Appearance card.
+function _btResolveTheme(pref) {
+  if (pref === 'dark' || pref === 'light') return pref;
+  return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+}
+function setThemePref(pref) {
+  localStorage.setItem('bt_theme', pref);
+  const resolved = _btResolveTheme(pref);
+  document.documentElement.setAttribute('data-theme', resolved === 'dark' ? 'dark' : 'light');
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = resolved === 'dark' ? '#0e1320' : '#2563eb';
+  document.querySelectorAll('.theme-opt').forEach(b => b.classList.toggle('active', b.dataset.theme === pref));
+}
+function _btInitThemeCard() {
+  const saved = localStorage.getItem('bt_theme') || 'system';
+  document.querySelectorAll('.theme-opt').forEach(b => b.classList.toggle('active', b.dataset.theme === saved));
+  // Keep it live if the user's on "system" and flips their OS theme mid-session.
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      if ((localStorage.getItem('bt_theme') || 'system') === 'system') setThemePref('system');
+    });
+  }
+}
+window.addEventListener('load', _btInitThemeCard);
+window.setThemePref = setThemePref;
 // ── Bootstrap on load ─────────────────────────────────────────────────────────
 window.addEventListener('load', function() {
   fmLoad();

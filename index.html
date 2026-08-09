@@ -11,6 +11,19 @@
     document.documentElement.style.minWidth='1280px';
   }
 })();
+// Apply saved theme (light/dark/system) BEFORE first paint to avoid flash.
+// Preference is stored as-is ('light'/'dark'/'system'); 'system' resolves
+// live against the OS setting here and again on change (wired in
+// js/ui-extras.js's setThemePref, which owns the Tools > Appearance card).
+(function(){
+  var pref = localStorage.getItem('bt_theme') || 'system';
+  var resolved = pref === 'system'
+    ? (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+    : pref;
+  if(resolved === 'dark'){
+    document.documentElement.setAttribute('data-theme','dark');
+  }
+})();
 </script>
 <meta name="theme-color" content="#2563eb">
 <meta name="mobile-web-app-capable" content="yes">
@@ -1365,6 +1378,21 @@ if ('serviceWorker' in navigator) {
         <div id="sync-history-list" style="line-height:1.6">
           <div style="color:var(--muted);font-size:11px;padding:8px 0">No sync events yet.</div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tcard" id="tc-appearance">
+    <div class="tcard-hdr" onclick="toggleTcard('tc-appearance')">
+      <div class="ttitle">🌙 Appearance</div>
+      <span class="tcard-chevron">▶</span>
+    </div>
+    <div class="tcard-body">
+      <div class="tdesc">Choose a light or dark theme, or follow your device's setting automatically.</div>
+      <div class="theme-opts">
+        <button type="button" class="theme-opt" data-theme="light" onclick="setThemePref('light')">☀️ Light</button>
+        <button type="button" class="theme-opt" data-theme="dark" onclick="setThemePref('dark')">🌙 Dark</button>
+        <button type="button" class="theme-opt" data-theme="system" onclick="setThemePref('system')">🖥 System</button>
       </div>
     </div>
   </div>

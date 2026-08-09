@@ -23,6 +23,30 @@
      hand-rolling a slightly-different navy/blue gradient. */
   --grad-header:linear-gradient(135deg,#141b3d,var(--accent-dk) 65%,var(--accent));
 }
+/* ── Dark mode — Aug 2026 ────────────────────────────────────────────
+   Overrides the same custom-property names on :root (root = <html>),
+   so every existing rule that already reads var(--bg)/var(--surface)/
+   var(--text)/etc. picks this up automatically — no component CSS
+   needs to change. Toggled by setting data-theme="dark" on <html>
+   (see the early inline script in index.html's <head>, and the
+   Appearance card in Tools / js/ui-extras.js's setThemePref()).
+   Semantic accents (accent/teal/green/amber/red/etc.) are bumped a
+   shade lighter than their light-mode values so they keep enough
+   contrast against the dark surfaces; -lt "tint" backgrounds go dark
+   instead of pale so badges/callouts don't turn into bright squares. */
+:root[data-theme="dark"]{
+  --bg:#0e1320;--surface:#161c2c;--s2:#1b2233;--s3:#212940;--border:#2a3349;--border-strong:#38415c;
+  --sh:0 1px 2px rgba(0,0,0,.4),0 1px 1px rgba(0,0,0,.3);
+  --sh-md:0 6px 20px -6px rgba(0,0,0,.5);
+  --sh-lg:0 20px 48px -12px rgba(0,0,0,.6);
+  --focus-ring:0 0 0 3px rgba(91,130,255,.28);
+  --accent:#5b82ff;--accent-dk:#3a61f7;--alt:#1a2144;--purple:#a78bfa;--purple-lt:#211a3a;
+  --mgrblue:#38bdf8;--mgrblue-lt:#0c2230;
+  --teal:#2dd4bf;--teal-dk:#5eead4;--tlt:#0e2624;
+  --green:#34d399;--glt:#0f2a20;--amber:#fbbf24;--alt2:#2a2110;
+  --red:#f87171;--rlt:#2a1414;--pink:#f472b6;--pink-lt:#2a1522;
+  --text:#e8ebf5;--t2:#c1c7de;--muted:#8892ae;
+}
 *{margin:0;padding:0;box-sizing:border-box;}
 html{scroll-behavior:smooth;overflow-x:hidden;overflow-y:auto;width:100%;}
 body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;font-size:14px;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%;overflow-x:hidden;overflow-y:auto;width:100%;max-width:100vw;position:relative;-webkit-font-smoothing:antialiased;}
