@@ -98,7 +98,13 @@
       if (id === 'recents' || !document.getElementById('page-' + id)) return;
       map[id] = {
         label: (el.querySelector('.blabel') || {}).textContent || id,
-        icon: (el.querySelector('.bicon') || {}).textContent || '📄',
+        // .bicon's emoji got swapped for an inline <svg> by js/icons.js
+        // on load, so its textContent is empty now — carry the page id
+        // through as svgKey instead and let _renderNode look it up in
+        // BT_ICONS, with the old '📄' only as a last-resort fallback for
+        // any id that (deliberately) has no icon defined.
+        icon: null,
+        svgKey: id,
         href: el.getAttribute('href'),
       };
     });
@@ -140,7 +146,7 @@
   }
 
   function _leaf(f) {
-    return f ? { label: f.label, icon: f.icon, href: f.href, kids: [] } : null;
+    return f ? { label: f.label, icon: f.icon, svgKey: f.svgKey || null, href: f.href, kids: [] } : null;
   }
 
   // Every *.mgr-tab/.cl-mode-tab/.ns-pill/.sc-tab/.tcard label in this app
@@ -164,10 +170,10 @@
     const label = (m && m[0].trim()) ? (item.label.slice(m[0].length).trim() || item.label) : item.label;
     return { label: label, icon: icon, href: item.href, kids: [] };
   }
-  function _customGroup(domainGroup, label, icon, kids) {
+  function _customGroup(domainGroup, label, icon, kids, svgKey) {
     const filtered = (kids || []).filter(Boolean);
     if (!filtered.length) return null;
-    return { label: label, icon: icon, href: null, kids: filtered, _domainGroup: domainGroup };
+    return { label: label, icon: icon, svgKey: svgKey || null, href: null, kids: filtered, _domainGroup: domainGroup };
   }
 
   // Builds the drawer's actual row tree. This is the one place that
@@ -192,7 +198,7 @@
       const kids = [];
       if (flat.dashboard) kids.push(_leaf(flat.dashboard));
       _domList(_SUB_GROUPS.index).forEach(s => kids.push(_leafFromList(s)));
-      groups.push({ label: flat.index.label, icon: flat.index.icon, href: flat.index.href, kids: kids, _domainGroup: 'sales', _section: 'core' });
+      groups.push({ label: flat.index.label, icon: flat.index.icon, svgKey: 'index', href: flat.index.href, kids: kids, _domainGroup: 'sales', _section: 'core' });
     }
 
     // Manager: Overview first, then its existing tab subs.
@@ -200,7 +206,7 @@
       const kids = [];
       if (flat['manager-dashboard']) kids.push(_leaf(flat['manager-dashboard']));
       _domList(_SUB_GROUPS.manager).forEach(s => kids.push(_leafFromList(s)));
-      groups.push({ label: flat.manager.label, icon: flat.manager.icon, href: flat.manager.href, kids: kids, _domainGroup: 'manager', _section: 'core' });
+      groups.push({ label: flat.manager.label, icon: flat.manager.icon, svgKey: 'manager', href: flat.manager.href, kids: kids, _domainGroup: 'manager', _section: 'core' });
     }
 
     // New: Inventory umbrella over the 4 former top-level inventory pages,
@@ -208,7 +214,7 @@
     // pattern as Audit's own external link above).
     const invKids = ['inventory', 'stockledger', 'excess', 'reorder', 'inv-health'].map(id => _leaf(flat[id]));
     invKids.push({ label: _VIRTUAL.inventorySearch.label, icon: _VIRTUAL.inventorySearch.icon, href: _VIRTUAL.inventorySearch.href, external: true, kids: [] });
-    groups.push(Object.assign(_customGroup('inventory', 'Inventory', '📦', invKids), { _section: 'data' }));
+    groups.push(Object.assign(_customGroup('inventory', 'Inventory', '📦', invKids, 'group-inventory'), { _section: 'data' }));
 
     // New: Closing umbrella over Closing Book + Credit Ledger (which
     // keeps its own Credit / Misc-Ongoing subs nested one level deeper).
@@ -219,13 +225,13 @@
         kids: _domList(_SUB_GROUPS['credit-ledger']).map(_leafFromList),
       };
     }
-    groups.push(Object.assign(_customGroup('closing', 'Closing', '🔒', [_leaf(flat['closing-book']), creditLedger]), { _section: 'data' }));
+    groups.push(Object.assign(_customGroup('closing', 'Closing', '🔒', [_leaf(flat['closing-book']), creditLedger], 'group-closing'), { _section: 'data' }));
 
     // New: Audit umbrella over the external Audit link + Assignments.
     groups.push(Object.assign(_customGroup('audit', 'Audit', '🧾', [
       { label: _VIRTUAL.auditExternal.label, icon: _VIRTUAL.auditExternal.icon, href: _VIRTUAL.auditExternal.href, external: true, kids: [] },
       _leaf(flat.assignments),
-    ]), { _section: 'utility' }));
+    ], 'group-audit'), { _section: 'utility' }));
 
     // New: Notes & Sheets umbrella over its Notes/Sheets/Manage Sheets/
     // Live Data tabs. Those tabs are only in the DOM once the page has
@@ -233,15 +239,15 @@
     // row pointing at the page itself if it hasn't yet.
     const nsSubs = _domList(_SUB_GROUPS.notesheets).map(_leafFromList);
     if (nsSubs.length) {
-      groups.push(Object.assign(_customGroup('notesheets', 'Notes & Sheets', '📑', nsSubs), { _section: 'data' }));
+      groups.push(Object.assign(_customGroup('notesheets', 'Notes & Sheets', '📑', nsSubs, 'group-notes'), { _section: 'data' }));
     } else if (flat.notesheets) {
-      groups.push({ label: 'Notes & Sheets', icon: flat.notesheets.icon, href: flat.notesheets.href, kids: [], _domainGroup: 'notesheets', _section: 'data' });
+      groups.push({ label: 'Notes & Sheets', icon: flat.notesheets.icon, svgKey: 'notesheets', href: flat.notesheets.href, kids: [], _domainGroup: 'notesheets', _section: 'data' });
     }
 
     // New: Reports umbrella over the 3 external report links (none of
     // these have a bnav item — same "external, no page behind it"
     // pattern as Audit's own external tile above).
-    groups.push(Object.assign(_customGroup('reports', 'Reports', '📰', _VIRTUAL.reports.map(r => ({ label: r.label, icon: r.icon, href: r.href, external: true, kids: [] }))), { _section: 'data' }));
+    groups.push(Object.assign(_customGroup('reports', 'Reports', '📰', _VIRTUAL.reports.map(r => ({ label: r.label, icon: r.icon, href: r.href, external: true, kids: [] })), 'group-reports'), { _section: 'data' }));
 
     // Tools: its own Sync Center collapses into a nested group (with its
     // 6 tabs as sub-subs), followed by every other settings card.
@@ -250,7 +256,7 @@
       const kids = [];
       if (scSubs.length) kids.push({ label: 'Sync Center', icon: '🖥', href: null, kids: scSubs });
       _toolCards().forEach(c => kids.push(_leafFromList(c)));
-      groups.push({ label: flat.tools.label, icon: flat.tools.icon, href: flat.tools.href, kids: kids, _section: 'utility' });
+      groups.push({ label: flat.tools.label, icon: flat.tools.icon, svgKey: 'tools', href: flat.tools.href, kids: kids, _section: 'utility' });
     }
 
     if (document.getElementById('page-pdf-library')) groups.push(Object.assign(_leaf(_VIRTUAL.pdfLibrary), { _section: 'utility' }));
@@ -304,11 +310,15 @@
           ? `window.open('${_esc(node.href)}','_blank');closeSectionsDrawer();`
           : `location.hash='${_esc(node.href)}';closeSectionsDrawer();`)
       : `BTNavSections._toggle(this);`;
+    const svg = node.svgKey && window.BT_ICONS && window.BT_ICONS[node.svgKey];
+    const iconSpan = svg
+      ? `<span class="recents-icon${depth > 0 ? ' recents-icon-sub' : ''} recents-icon-svg">${svg}</span>`
+      : `<span class="recents-icon${depth > 0 ? ' recents-icon-sub' : ''}">${_esc(node.icon || (isGroup ? '📁' : '📄'))}</span>`;
     return `
       <div class="sections-group" data-label="${_esc(node.label)}">
         <div class="sections-row ${rowClass}" style="padding-left:${_indent(depth)}px">
           <span class="sections-nav-hit" onclick="${hitClick}">
-            <span class="recents-icon${depth > 0 ? ' recents-icon-sub' : ''}">${_esc(node.icon || (isGroup ? '📁' : '📄'))}</span>
+            ${iconSpan}
             ${labelSpan}
           </span>
           ${isGroup ? `<button type="button" class="sections-toggle" aria-label="Expand ${_esc(node.label)}" onclick="event.stopPropagation();BTNavSections._toggle(this);">▸</button>` : ''}

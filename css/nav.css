@@ -195,6 +195,12 @@ body[data-domain="inventory"] {
   width: 24px; height: 24px; font-size: 13px; border-radius: 7px;
   background: var(--alt, var(--s2)); border-color: transparent;
 }
+/* SVG variant (top-level All Sections drawer rows, js/icons.js) — the
+   emoji sizing above (font-size) does nothing for an <svg> child, so
+   size/color it directly; chip sizing (width/height/bg/border) is
+   shared with .recents-icon above. */
+.recents-icon-svg { color: var(--t2); }
+.recents-icon-svg svg { width: 16px; height: 16px; }
 .recents-label { flex: 1; font-size: 13px; font-weight: 500; }
 .recents-time { font-size: 11px; color: var(--muted); flex-shrink: 0; }
 .recents-empty { text-align: center; padding: 28px 12px; color: var(--muted); font-size: 13px; }
