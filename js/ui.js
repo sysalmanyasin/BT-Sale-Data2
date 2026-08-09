@@ -389,21 +389,106 @@ function exportCSV(type) {
   a.click(); toast('✓ CSV downloaded');
 }
 
+// Mirrors driveBackupNow()'s payload (js/drive.js) so a manual "Full JSON
+// Backup" download actually is full — previously this only held
+// monthly/daily and silently dropped Manager/Petty/Custom/JazzCash/Ledger/
+// Column config despite the button's label.
 function exportJSON() {
+  const petty = {};
+  Repository.getKeysByPrefix('mw_petty_').forEach(k => { petty[k] = JSON.parse(Repository.getItem(k)||'null'); });
+  const payload = {
+    monthly: MONTHLY, daily: DAILY,
+    manager:  JSON.parse(Repository.getItem(MGR_KEY)||'{}'),
+    petty:    petty,
+    custom:   JSON.parse(Repository.getItem(CSEC_KEY)||'{}'),
+    jazzcash: JSON.parse(Repository.getItem(JC_KEY)       || 'null'),
+    jcTally:  JSON.parse(Repository.getItem(JC_TALLY_KEY) || 'null'),
+    ledger:            JSON.parse(Repository.getItem(LEDGER_KEY)             || 'null'),
+    ledgerCustomTypes: JSON.parse(Repository.getItem(LEDGER_CUSTOM_TYPES_KEY)|| 'null'),
+    colConfig: {
+      hidden: JSON.parse(Repository.getItem('bt_col_config')  || '[]'),
+      custom: JSON.parse(Repository.getItem('bt_custom_cols') || '[]')
+    },
+    exportedAt: new Date().toISOString()
+  };
   const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([JSON.stringify({monthly:MONTHLY,daily:DAILY,exportedAt:new Date().toISOString()},null,2)],{type:'application/json'}));
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}));
   a.download='BT_backup_'+new Date().toISOString().slice(0,10)+'.json';
-  a.click(); toast('✓ JSON exported');
+  a.click(); toast('✓ Full JSON exported');
 }
 
-function importJSON(e) {
+// Mirrors _driveRestoreFile()'s merge logic (js/drive.js) so manual
+// Import matches Drive Restore — same "fill gaps only, never overwrite
+// or drop local data" behavior, extended to Manager/Petty/Custom/
+// JazzCash/Ledger/Column config instead of just monthly/daily.
+async function importJSON(e) {
   const file=e.target.files[0]; if(!file) return;
   const r=new FileReader();
-  r.onload=ev=>{ try{
+  r.onload=async ev=>{ try{
     const data=JSON.parse(ev.target.result);
-    if(data.monthly) data.monthly.forEach(m=>{ if(!Repository.getMonthlyEntry(m.Month_Year)) Actions.addOrUpdateMonth(m); });
-    if(data.daily)   data.daily.forEach(d=>{ if(!Repository.getDailyEntry(d.Date, d.Month_Year)) Actions.addDailyEntry(d); });
-    rebuildAll(); toast('✓ Imported');
+    let mN=0, dN=0;
+    if (Array.isArray(data.monthly)) { const res = Repository.gapFillMonthly(data.monthly); mN = res.added; }
+    if (Array.isArray(data.daily))   { const res = Repository.gapFillDaily(data.daily);     dN = res.added; }
+    await idbSaveData();
+
+    if (data.manager && typeof data.manager==='object') {
+      const cur = JSON.parse(Repository.getItem(MGR_KEY)||'{}');
+      Object.keys(data.manager).forEach(k => { if (!cur[k]) cur[k]=data.manager[k]; });
+      Actions.saveFeatureData(MGR_KEY, JSON.stringify(cur));
+    }
+    if (data.petty && typeof data.petty==='object') {
+      Object.keys(data.petty).forEach(k => {
+        if (k.startsWith('mw_petty_') && !Repository.getItem(k))
+          Actions.saveFeatureData(k, JSON.stringify(data.petty[k]));
+      });
+    }
+    if (data.custom && typeof data.custom==='object') {
+      const cur = JSON.parse(Repository.getItem(CSEC_KEY)||'{}');
+      Object.keys(data.custom).forEach(k => { if (!cur[k]) cur[k]=data.custom[k]; });
+      Actions.saveFeatureData(CSEC_KEY, JSON.stringify(cur));
+    }
+    if (data.jazzcash && typeof data.jazzcash === 'object') {
+      const cur = JSON.parse(Repository.getItem(JC_KEY)||'null') || { openingBalance:0, entries:[] };
+      const byId = {}; (cur.entries||[]).forEach(en => byId[en.id]=en);
+      (data.jazzcash.entries||[]).forEach(en => { if (en && en.id && !byId[en.id]) byId[en.id]=en; });
+      if (!cur.entries || !cur.entries.length) cur.openingBalance = data.jazzcash.openingBalance ?? cur.openingBalance ?? 0;
+      cur.entries = Object.values(byId);
+      Actions.saveFeatureData(JC_KEY, JSON.stringify(cur));
+    }
+    if (data.jcTally && typeof data.jcTally === 'object') {
+      const cur = JSON.parse(Repository.getItem(JC_TALLY_KEY)||'null') || { accounts:[], snapshots:[] };
+      const acctById = {}; (cur.accounts||[]).forEach(a => acctById[a.id]=a);
+      (data.jcTally.accounts||[]).forEach(a => { if (a && a.id && !acctById[a.id]) acctById[a.id]=a; });
+      const snapByDate = {}; (cur.snapshots||[]).forEach(s => snapByDate[s.date]=s);
+      (data.jcTally.snapshots||[]).forEach(s => { if (s && s.date && !snapByDate[s.date]) snapByDate[s.date]=s; });
+      cur.accounts = Object.values(acctById);
+      cur.snapshots = Object.values(snapByDate);
+      Actions.saveFeatureData(JC_TALLY_KEY, JSON.stringify(cur));
+    }
+    if (data.ledger && typeof data.ledger === 'object') {
+      const cur = JSON.parse(Repository.getItem(LEDGER_KEY)||'null') || { entries:[], openingBalances:{} };
+      const byId = {}; (cur.entries||[]).forEach(en => byId[en.id]=en);
+      (data.ledger.entries||[]).forEach(en => { if (en && en.id && !byId[en.id]) byId[en.id]=en; });
+      cur.entries = Object.values(byId);
+      cur.openingBalances = cur.openingBalances || {};
+      Object.keys(data.ledger.openingBalances||{}).forEach(t => {
+        if (!(t in cur.openingBalances)) cur.openingBalances[t] = data.ledger.openingBalances[t];
+      });
+      Actions.saveFeatureData(LEDGER_KEY, JSON.stringify(cur));
+    }
+    if (data.ledgerCustomTypes && typeof data.ledgerCustomTypes === 'object') {
+      const cur = JSON.parse(Repository.getItem(LEDGER_CUSTOM_TYPES_KEY)||'null') || {};
+      Object.keys(data.ledgerCustomTypes).forEach(t => { if (!cur[t]) cur[t] = data.ledgerCustomTypes[t]; });
+      Actions.saveFeatureData(LEDGER_CUSTOM_TYPES_KEY, JSON.stringify(cur));
+    }
+    if (data.colConfig && typeof data.colConfig === 'object') {
+      if (!Repository.getItem('bt_col_config')  && Array.isArray(data.colConfig.hidden)) Actions.saveFeatureData('bt_col_config',  JSON.stringify(data.colConfig.hidden));
+      if (!Repository.getItem('bt_custom_cols') && Array.isArray(data.colConfig.custom)) Actions.saveFeatureData('bt_custom_cols', JSON.stringify(data.colConfig.custom));
+      if (typeof fmLoad === 'function') fmLoad();
+    }
+
+    rebuildAll();
+    toast(`✓ Imported: +${mN} months, +${dN} days. Manager/Petty/Custom/JazzCash/Ledger/Fields merged.`);
   }catch(err){toast('✕ Invalid file','e');}};
   r.readAsText(file); e.target.value='';
 }
