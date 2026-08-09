@@ -323,7 +323,17 @@ function _gauthRenderBtn() {
 // ── OAuth2 popup sign-in (replaces GSI iframe renderButton) ──────
 // ── Redirect-based Google Sign-In (works on ALL mobile browsers) ─────────
 // Step 1: Tap button → redirect to Google account selector
-function _gauthOAuthSignIn() {
+// Nonce hashing — Google embeds our nonce verbatim into the id_token's
+// nonce claim, but Supabase's signInWithIdToken hashes whatever raw nonce
+// you give it and compares that hash against the token's claim (same
+// pattern as native Apple/Google sign-in). So: send Google the HASH,
+// keep the RAW nonce to hand to Supabase afterward.
+async function _sha256Hex(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function _gauthOAuthSignIn() {
   const CID = Repository.getItem(GAUTH_CID_K) || GAUTH_CID_FALLBACK;
 
   // Show loading state on the button
@@ -335,10 +345,12 @@ function _gauthOAuthSignIn() {
   }
   _gauthShowError('');
 
-  // nonce protects the id_token from replay — generated fresh per attempt,
-  // verified by Supabase against the token's own nonce claim on the way back.
-  const nonce = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + Math.random();
-  sessionStorage.setItem('bt_oauth_nonce', nonce);
+  // rawNonce -> kept for Supabase later. hashedNonce -> sent to Google, ends
+  // up as the id_token's nonce claim. Supabase hashes rawNonce itself and
+  // compares — so the two must be a matching raw/hash pair, not identical.
+  const rawNonce = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + Math.random();
+  const hashedNonce = await _sha256Hex(rawNonce);
+  sessionStorage.setItem('bt_oauth_nonce', rawNonce);
 
   // Save current page state so we return cleanly
   sessionStorage.setItem('bt_oauth_pending','1');
@@ -353,7 +365,7 @@ function _gauthOAuthSignIn() {
     scope:                 'openid email profile https://www.googleapis.com/auth/drive.file',
     prompt:                'select_account',
     include_granted_scopes:'true',
-    nonce:                 nonce
+    nonce:                 hashedNonce
   });
   window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
 }
