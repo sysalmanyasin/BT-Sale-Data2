@@ -5,7 +5,16 @@
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v10.61'; // Full version history: see CHANGELOG.md (moved out of this file — it had grown to ~70KB of inline comments, all downloaded/parsed on every SW update check).
+const CACHE_NAME = 'bt-sales-v10.62'; // Full version history: see CHANGELOG.md (moved out of this file — it had grown to ~70KB of inline comments, all downloaded/parsed on every SW update check).
+// v10.62: NETWORK_ONLY_ORIGINS was missing vtcrdkqhuvxatclobsby.supabase.co
+// (the BTpharmacyAudit@2026 project — inventory_products, sales_payment_summary,
+// sales_credit_by_customer, engagements/rounds/assignments/submissions used by
+// Stock Ledger, audit-bridge.js, inventory-bridge.js, sale-payments-bridge.js).
+// That let networkWithCacheFallback() cache those responses; a single
+// incomplete-but-200 response on a weak connection could then get replayed on
+// later hiccups instead of surfacing a fresh error, causing intermittent
+// "returned no rows" failures even when the server was answering fine. Bumping
+// CACHE_NAME also purges whatever's already cached under the old version.
 const APP_SHELL = [
   './',
   './index.html',
@@ -138,6 +147,7 @@ const CDN_ORIGINS = [
 /* ── API / data origins — always network, never cache ── */
 const NETWORK_ONLY_ORIGINS = [
   'https://wetbugzzchkghpzmowod.supabase.co',
+  'https://vtcrdkqhuvxatclobsby.supabase.co',
   'https://api.anthropic.com',
   'https://api.groq.com',
   'https://www.googleapis.com',
