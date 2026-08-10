@@ -57,6 +57,18 @@ let _fullDb = null; // in-memory cache of the reassembled Closing db — see get
 let _presenceInFlight = null;
 
 function _getClient() {
+  // Prefer the app's real authenticated client — Google sign-in signs
+  // this one into wetbugzzchkghpzmowod (see auth.js's
+  // btEstablishSupabaseSessions()), and sheets/credit_ledger/settings/
+  // activity_log now require is_authorized_user() or is_authorized_staff()
+  // (Stage 2 lockdown), so the plain anon key below no longer sees rows.
+  // Falls back to the anon-only client if the main app hasn't loaded
+  // supabase.js for some reason, purely so this doesn't hard-crash —
+  // that fallback will just get empty results from RLS, same as before.
+  if (typeof window.btGetSupabaseClient === 'function') {
+    const c = window.btGetSupabaseClient();
+    if (c) return c;
+  }
   if (_client) return _client;
   if (typeof supabase === 'undefined') return null; // supabase-js UMD global, loaded via <script defer> in index.html
   _client = supabase.createClient(CLOSING_SUPABASE_URL, CLOSING_SUPABASE_ANON_KEY);
