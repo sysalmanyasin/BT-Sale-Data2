@@ -69,6 +69,13 @@ window.PdfLibrary = (function () {
   let _rows = [];            // last fetched library rows, cached for client-side filter/search
 
   function _getClient() {
+    // Prefer the app's real authenticated client — see closing-bridge.js's
+    // _getClient() for why: bt_pdf_library now requires is_authorized_user()
+    // (Stage 2 lockdown), so the plain anon key below no longer sees rows.
+    if (typeof window.btGetSupabaseClient === 'function') {
+      const c = window.btGetSupabaseClient();
+      if (c) return c;
+    }
     if (_client) return _client;
     if (typeof supabase === 'undefined' || !supabase.createClient) return null;
     _client = supabase.createClient(SB_URL, SB_KEY);
