@@ -145,7 +145,31 @@ export async function refreshFullData(force) {
       const client = _getClient();
       if (!client) return cached;
 
-      const products = await _fetchAllProducts(client);
+      // This client is deliberately signed into the same Google-backed
+      // Supabase session auth.js establishes (see btEstablishSupabaseSessions
+      // above and window.inventoryBridgeGetClient's export note) — unlike
+      // stockledger.js's own always-anonymous client (see that file's
+      // comment on why it bakes persistSession/autoRefreshToken: false).
+      // A signed-in client has a known supabase-js v2 race: if a query
+      // fires while the SDK is still restoring/refreshing the session in
+      // the background, the request can go out with a stale/expiring
+      // token, RLS then quietly filters everything out, and PostgREST
+      // returns a normal 200 with zero rows — no error to catch, just an
+      // inventory that looks empty. Awaiting getSession() first forces
+      // that restore/refresh to settle before the real query fires.
+      try { await client.auth.getSession(); } catch (e) { /* best-effort — fall through to the query either way */ }
+
+      let products = await _fetchAllProducts(client);
+      // Defensive retry: a legitimately-empty inventory_products table is
+      // implausible for a live pharmacy — if the very first attempt (after
+      // already awaiting getSession()) still comes back empty, treat it as
+      // the race above rather than truth, wait for the in-flight refresh
+      // to fully settle, and try once more before accepting "empty".
+      if (products.length === 0) {
+        await new Promise(r => setTimeout(r, 700));
+        try { products = await _fetchAllProducts(client); } catch (e) { /* keep the empty result from above */ }
+      }
+
       let lastSync = null;
       try { lastSync = await _fetchLastSync(client); } catch (e) { /* best-effort, table may not exist yet — ignore */ }
 
