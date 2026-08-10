@@ -156,10 +156,10 @@ function _salUpdateFooter(rows) {
   const totalNet = rows.reduce((s,r) => s + _salNet(r), 0);
   document.getElementById('sal-tfoot').innerHTML = `<tr class="mgr-tfoot">
     <td colspan="4" style="text-align:right;padding:7px 10px;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">TOTALS</td>
-    <td class="mgr-td" style="text-align:right;font-weight:700;font-family:var(--mono)">₨${_fc2(totalHO)}</td>
-    <td class="mgr-td" style="text-align:right;font-weight:700;font-family:var(--mono)">₨${_fc2(totalAdv)}</td>
-    <td class="mgr-td" style="text-align:right;font-weight:700;font-family:var(--mono)">₨${_fc2(totalGen)}</td>
-    <td class="mgr-td" style="text-align:right;font-weight:700;font-family:var(--mono);color:var(--accent)">₨${_fc2(totalNet)}</td>
+    <td class="mgr-td" style="text-align:center;font-weight:700;font-family:var(--mono)">₨${_fc2(totalHO)}</td>
+    <td class="mgr-td" style="text-align:center;font-weight:700;font-family:var(--mono)">₨${_fc2(totalAdv)}</td>
+    <td class="mgr-td" style="text-align:center;font-weight:700;font-family:var(--mono)">₨${_fc2(totalGen)}</td>
+    <td class="mgr-td" style="text-align:center;font-weight:700;font-family:var(--mono);color:var(--accent)">₨${_fc2(totalNet)}</td>
     <td></td>
     <td></td>
   </tr>`;

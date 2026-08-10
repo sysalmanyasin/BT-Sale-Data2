@@ -124,10 +124,10 @@ function _genUpdateFooter(rows) {
   const totFin = rows.reduce((s,r) => s + _genFinal(r), 0);
   document.getElementById('gen-tfoot').innerHTML = `<tr class="mgr-tfoot">
     <td colspan="3" style="text-align:right;padding:7px 10px;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">TOTALS</td>
-    <td class="mgr-td" style="text-align:right;font-weight:700;font-family:var(--mono)">₨${_fc2(totSale)}</td>
-    <td class="mgr-td" style="text-align:right;font-weight:700;font-family:var(--mono);color:var(--green)">₨${_fc2(totInc)}</td>
-    <td class="mgr-td" style="text-align:right;font-weight:700;font-family:var(--mono)">₨${_fc2(totExtra)}</td>
-    <td class="mgr-td" style="text-align:right;font-weight:700;font-family:var(--mono);color:var(--accent)">₨${_fc2(totFin)}</td>
+    <td class="mgr-td" style="text-align:center;font-weight:700;font-family:var(--mono)">₨${_fc2(totSale)}</td>
+    <td class="mgr-td" style="text-align:center;font-weight:700;font-family:var(--mono);color:var(--green)">₨${_fc2(totInc)}</td>
+    <td class="mgr-td" style="text-align:center;font-weight:700;font-family:var(--mono)">₨${_fc2(totExtra)}</td>
+    <td class="mgr-td" style="text-align:center;font-weight:700;font-family:var(--mono);color:var(--accent)">₨${_fc2(totFin)}</td>
     <td></td>
   </tr>`;
 }
