@@ -33,7 +33,12 @@ let _client = null;
 function _getClient() {
   if (_client) return _client;
   if (typeof supabase === 'undefined') return null; // supabase-js UMD global, loaded via <script defer> in index.html
-  _client = supabase.createClient(SP_SUPABASE_URL, SP_SUPABASE_ANON_KEY);
+  // persistSession/autoRefreshToken/detectSessionInUrl: false — pure anon
+  // client, isolated from the session inventory-bridge.js's client shares
+  // via localStorage with the Google sign-in flow (same project URL).
+  _client = supabase.createClient(SP_SUPABASE_URL, SP_SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+  });
   return _client;
 }
 
