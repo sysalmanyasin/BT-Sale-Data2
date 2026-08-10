@@ -53,7 +53,7 @@ function printManagerDashboard() {
 
 function printSalaryReport() {
   const my = document.getElementById('sal-month-sel').value;
-  const rows = _salRows_cur;
+  const rows = _salRows_cur.filter(r => !r.printSkip); // rows toggled 🖨🚫 in the sheet are left out of the printout entirely
   const today = new Date().toLocaleDateString('en-PK',{day:'2-digit',month:'short',year:'numeric'});
   const trows = rows.map((r,i) => `<tr>
     <td style="padding:5px 8px;border-bottom:1px solid #eee">${i+1}</td>

@@ -66,15 +66,17 @@ function renderSalaryTable(rows) {
             + ' style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:10px;font-weight:700;font-family:monospace;flex-shrink:0">'+_sSid+'</button>'
           : '')
       + '<span style="font-weight:600">'+(_mgrEsc(_sName) || '<em style="color:var(--muted)">(unnamed)</em>')+'</span></div>';
-    return `<tr class="mgr-tr">
+    const skipped = !!r.printSkip;
+    return `<tr class="mgr-tr${skipped ? ' sal-row-skip' : ''}">
       <td class="mgr-td sal-c" style="font-size:11px;color:var(--muted);font-weight:700">${_sSrNum}</td>
-      <td class="mgr-td">${_sNameCell}</td>
+      <td class="mgr-td">${_sNameCell}${skipped ? '<span class="crd-skip-badge" title="Excluded from print">Hidden from print</span>' : ''}</td>
       <td class="mgr-td" style="color:var(--t2)">${_mgrEsc(_sDesig) || '<span style="color:var(--muted)">—</span>'}</td>
       <td class="mgr-td sal-c" style="width:60px"><input type="number" value="${r.days||31}" class="mgr-inp sal-num" placeholder="31" oninput="salRowChange(${i},'days',this.value)"></td>
       <td class="mgr-td"><input type="number" value="${r.hoSal||0}" class="mgr-inp sal-num" placeholder="0" oninput="salRowChange(${i},'hoSal',this.value);recalcSalNet(${i})"></td>
       <td class="mgr-td" ${_advTitle ? 'title="'+_advTitle+'" style="position:relative"' : ''}><input type="number" value="${r.advance||0}" class="mgr-inp sal-num${_advTitle?' sal-adv-linked':''}" placeholder="0" oninput="salRowChange(${i},'advance',this.value);recalcSalNet(${i})">${_advTitle ? '<span style="position:absolute;top:2px;right:3px;font-size:9px;color:var(--accent);pointer-events:none" title="'+_advTitle+'">💳</span>' : ''}</td>
       <td class="mgr-td"><input type="number" value="${r.generic||0}" class="mgr-inp sal-num" placeholder="0" oninput="salRowChange(${i},'generic',this.value);recalcSalNet(${i})"></td>
       <td class="mgr-td"><input type="number" id="sal-net-${i}" class="mgr-inp calc sal-num" value="${_salNet(r)}" readonly></td>
+      <td class="mgr-td sal-c"><button class="crd-print-toggle${skipped ? ' is-off' : ''}" onclick="toggleSalPrintSkip(${i})" title="${skipped ? 'Excluded from print — click to include' : 'Included in print — click to exclude'}">${skipped ? '🖨🚫' : '🖨'}</button></td>
       <td class="mgr-td sal-c"><button class="mgr-del" onclick="deleteSalRow(${i})">🗑</button></td>
     </tr>`;
   }).join('');
@@ -154,6 +156,7 @@ function _salUpdateFooter(rows) {
     <td class="mgr-td" style="text-align:right;font-weight:700;font-family:var(--mono)">₨${_fc2(totalGen)}</td>
     <td class="mgr-td" style="text-align:right;font-weight:700;font-family:var(--mono);color:var(--accent)">₨${_fc2(totalNet)}</td>
     <td></td>
+    <td></td>
   </tr>`;
 }
 function addSalaryRow() {
@@ -162,6 +165,18 @@ function addSalaryRow() {
 }
 function deleteSalRow(i) {
   _salRows_cur.splice(i, 1);
+  renderSalaryTable(_salRows_cur);
+}
+// Per-row, per-month flag: when true, this employee is left out of
+// printSalaryReport() (manager-reports.js) — same pattern and same
+// printSkip field name as the Staff Credit sheet's 🖨 toggle. Purely a
+// print-time filter; the row and its figures are untouched on screen and
+// in storage. Persists on Save / Copy → Next Month like every other
+// salary field.
+function toggleSalPrintSkip(i) {
+  const row = _salRows_cur[i];
+  if (!row) return;
+  row.printSkip = !row.printSkip;
   renderSalaryTable(_salRows_cur);
 }
 function saveSalaryData() {
@@ -217,10 +232,10 @@ function autoFillSalaryFromSheets() {
 
 Object.assign(window, {
   _salRows, _salRows_cur, renderSalaryTable, loadSalaryMonth, salRowChange, addSalaryRow,
-  deleteSalRow, saveSalaryData, autoFillSalaryFromSheets, _salNet, _salUpdateFooter,
+  deleteSalRow, saveSalaryData, autoFillSalaryFromSheets, _salNet, _salUpdateFooter, toggleSalPrintSkip,
 });
 
 export {
   _salRows, _salRows_cur, renderSalaryTable, loadSalaryMonth, salRowChange, addSalaryRow,
-  deleteSalRow, saveSalaryData, autoFillSalaryFromSheets, _salNet, _salUpdateFooter,
+  deleteSalRow, saveSalaryData, autoFillSalaryFromSheets, _salNet, _salUpdateFooter, toggleSalPrintSkip,
 };
