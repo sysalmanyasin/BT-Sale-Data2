@@ -23,7 +23,18 @@ window.StockLedgerApp = (function(){
 
       let _bakedClient = null;
       if(!options.supabaseClient && !window.supabaseClient && window.supabase && window.supabase.createClient){
-        try { _bakedClient = window.supabase.createClient(STOCKLEDGER_SUPABASE_URL, STOCKLEDGER_SUPABASE_ANON_KEY); }
+        // persistSession/autoRefreshToken/detectSessionInUrl: false — this
+        // client is meant to be pure anon, always. Without this it silently
+        // shares the browser-stored session with inventory-bridge.js's
+        // client (same project URL → same default storageKey), which
+        // intentionally IS signed into the Google session. Two client
+        // instances sharing one session hit a known supabase-js token-
+        // refresh race, which was producing empty-but-200 responses here.
+        try {
+          _bakedClient = window.supabase.createClient(STOCKLEDGER_SUPABASE_URL, STOCKLEDGER_SUPABASE_ANON_KEY, {
+            auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+          });
+        }
         catch(e){ _bakedClient = null; /* supabase-js not ready yet — Dropbox/manual entry still work as fallback */ }
       }
 
