@@ -816,7 +816,14 @@ window.StockLedgerApp = (function(){
             // drawn from the same fixed ordering. Without it Postgres is
             // free to hand back rows in a different order per request,
             // which can silently duplicate or skip rows across pages.
-            const { data: page, error } = await client.from(table).select('*').order('id', { ascending: true }).range(from, to);
+            // Was .order('id', ...) — id is a UUID column and that exact
+            // query shape (select=*&order=id.asc) was consistently coming
+            // back with an empty first page in production (confirmed via
+            // Supabase API logs across many attempts/devices/days, while
+            // the identical setup ordering by name never failed once).
+            // Switched to name, which inventory-bridge.js already uses
+            // successfully for full-table pagination of this same table.
+            const { data: page, error } = await client.from(table).select('*').order('name', { ascending: true }).range(from, to);
             if(error) throw new Error(error.message);
             if(!page || page.length === 0) break;
             data = data.concat(page);
