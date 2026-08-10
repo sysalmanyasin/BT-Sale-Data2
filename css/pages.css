@@ -223,6 +223,13 @@
 .crd-td-action{padding:9px 10px;text-align:center;border-bottom:1px solid var(--border);}
 .crd-expand-btn{background:var(--s2);border:1px solid var(--border);border-radius:7px;width:28px;height:28px;font-size:13px;color:var(--accent);cursor:pointer;transition:transform .18s,background .15s;}
 .crd-expand-btn:hover{background:var(--alt);}
+.crd-th-print{text-align:center;width:36px;}
+.crd-print-toggle{background:var(--s2);border:1px solid var(--border);border-radius:7px;width:28px;height:28px;font-size:12px;cursor:pointer;transition:background .15s,opacity .15s;opacity:.9;}
+.crd-print-toggle:hover{background:var(--alt);}
+.crd-print-toggle.is-off{background:#fee2e2;border-color:#fca5a5;opacity:.65;}
+.crd-row-skip{opacity:.55;}
+.crd-row-skip .crd-name-link{text-decoration:line-through;text-decoration-color:var(--red);}
+.crd-skip-badge{font-size:9px;font-weight:700;color:#fff;background:var(--red);border-radius:20px;padding:1px 7px;white-space:nowrap;margin-left:8px;text-transform:uppercase;letter-spacing:.03em;}
 .crd-body-row td{padding:0;background:var(--s2);border-bottom:1px solid var(--border);}
 .crd-emp-fields{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:14px;}
 .crd-body-row table tbody tr:nth-child(even) td{background:var(--surface);}

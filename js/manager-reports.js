@@ -133,7 +133,8 @@ function printCreditReport(myArg) {
   const sel = document.getElementById('crd-month-sel');
   const my = myArg || (sel ? sel.value : '') || (typeof BTDate !== 'undefined' ? BTDate.currentMonthYear() : '');
   // Use the on-screen working copy only if it matches the requested month; otherwise load fresh from storage (headless-safe).
-  const emps = (sel && sel.value === my && _crdData_cur) ? _crdData_cur : _crdData(my);
+  const allEmps = (sel && sel.value === my && _crdData_cur) ? _crdData_cur : _crdData(my);
+  const emps = allEmps.filter(e => !e.printSkip); // rows toggled 🖨🚫 in the sheet are left out of the printout entirely
   const today = new Date().toLocaleDateString('en-PK',{day:'2-digit',month:'short',year:'numeric'});
   const empBlocks = emps.map(emp => {
     const net = _crdNet(emp);
@@ -168,7 +169,8 @@ function printCreditReport(myArg) {
 function printCreditSummaryReport(myArg) {
   const sel = document.getElementById('crd-month-sel');
   const my = myArg || (sel ? sel.value : '') || (typeof BTDate !== 'undefined' ? BTDate.currentMonthYear() : '');
-  const emps = (sel && sel.value === my && _crdData_cur) ? _crdData_cur : _crdData(my);
+  const allEmps = (sel && sel.value === my && _crdData_cur) ? _crdData_cur : _crdData(my);
+  const emps = allEmps.filter(e => !e.printSkip); // rows toggled 🖨🚫 in the sheet are left out of the printout entirely
   const today = new Date().toLocaleDateString('en-PK',{day:'2-digit',month:'short',year:'numeric'});
   const rows = emps.map(emp => {
     const net = _crdNet(emp);

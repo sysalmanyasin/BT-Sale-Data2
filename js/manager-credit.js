@@ -60,31 +60,36 @@ function renderCreditLedger(emps) {
   container.innerHTML = `<div class="crd-table-wrap"><table class="crd-table">
     <thead><tr>
       <th class="crd-th-sr">Sr#</th><th class="crd-th-name">Staff</th>
-      <th>Prev</th><th>Salary</th><th>LessGen</th><th>Net</th><th></th>
+      <th>Prev</th><th>Salary</th><th>LessGen</th><th>Net</th><th class="crd-th-print" title="Include in Print Summary/Detailed">🖨</th><th></th>
     </tr></thead>
     <tbody>
     ${rows.map(({ emp, ei, cIdx, sid, srNum }) => {
       const net = _crdNet(emp);
       const netColor = net > 0 ? 'var(--green)' : net < 0 ? 'var(--red)' : 'var(--muted)';
       const nameClick = cIdx >= 0 ? `openStaffCard(${cIdx})` : `_toggleCrdEmpBody(${ei})`;
+      const skipped = !!emp.printSkip;
       return `
-      <tr class="crd-row">
+      <tr class="crd-row${skipped ? ' crd-row-skip' : ''}">
         <td class="crd-td-sr">${srNum !== 999 ? srNum : '—'}</td>
         <td class="crd-td-name">
           ${sid ? `<button class="crd-sid-pill" onclick="event.stopPropagation();openStaffCard(${cIdx})" title="Open Staff Card">${sid}</button>` : ''}
           <span class="crd-name-link" onclick="${nameClick}">${_crdEsc(emp.name || '(unnamed)')}</span>
           ${emp.entries.length ? `<span class="crd-entry-badge">${emp.entries.length}</span>` : ''}
+          ${skipped ? '<span class="crd-skip-badge" title="Excluded from print">Hidden from print</span>' : ''}
         </td>
         <td class="crd-td-num">₨${_fc2(emp.prevBal)}</td>
         <td class="crd-td-num">₨${_fc2(emp.salary)}</td>
         <td class="crd-td-num">₨${_fc2(emp.lessGeneric)}</td>
         <td class="crd-td-num crd-td-net" style="color:${netColor}" id="crd-net-${ei}">₨${_fc2(net)}</td>
         <td class="crd-td-action">
+          <button class="crd-print-toggle${skipped ? ' is-off' : ''}" id="crd-print-${ei}" onclick="event.stopPropagation();toggleCrdPrintSkip(${ei})" title="${skipped ? 'Excluded from print — click to include' : 'Included in print — click to exclude'}">${skipped ? '🖨🚫' : '🖨'}</button>
+        </td>
+        <td class="crd-td-action">
           <button class="crd-expand-btn" id="crd-chev-${ei}" onclick="_toggleCrdEmpBody(${ei})" title="Quick-edit this month right here">▶</button>
         </td>
       </tr>
       <tr class="crd-body-row" id="crd-body-${ei}" style="display:none">
-        <td colspan="7">
+        <td colspan="8">
           <div class="crd-emp-fields">
             <div class="fg"><label>Previous Balance (₨)</label><input type="number" value="${emp.prevBal||0}" class="mgr-inp" oninput="crdEmpField(${ei},'prevBal',this.value);recalcCrdEmp(${ei})"></div>
             <div class="fg"><label>Salary Paid (₨)</label><input type="number" value="${emp.salary||0}" class="mgr-inp" oninput="crdEmpField(${ei},'salary',this.value);recalcCrdEmp(${ei})"></div>
@@ -166,6 +171,29 @@ function loadCreditMonth(my) {
 }
 
 function crdEmpField(ei, field, val) { _crdData_cur[ei][field] = _ni(val); }
+// Per-employee, per-month flag: when true, this row is left out of both
+// the Credit "Print Summary" and "Print Detailed" reports (printCreditReport /
+// printCreditSummaryReport in manager-reports.js both filter on it). Purely
+// a print-time filter — the row, its balance, and its entries are untouched
+// on screen and in storage; only the printed report skips it. Persists like
+// any other credit field: click "Save" (or Copy → Next Month, which saves
+// first) to write it to storage.
+function toggleCrdPrintSkip(ei) {
+  const emp = _crdData_cur[ei];
+  if (!emp) return;
+  emp.printSkip = !emp.printSkip;
+  // Re-render rebuilds the whole table (bodies default back to collapsed) —
+  // remember which row, if any, was expanded and restore it afterward.
+  const openBody = document.querySelector('.crd-body-row:not([style*="display: none"])');
+  const openEi = openBody ? openBody.id.replace('crd-body-', '') : null;
+  renderCreditLedger(_crdData_cur);
+  if (openEi != null) {
+    const body = document.getElementById('crd-body-' + openEi);
+    const chev = document.getElementById('crd-chev-' + openEi);
+    if (body) body.style.display = '';
+    if (chev) chev.style.transform = 'rotate(90deg)';
+  }
+}
 function crdEntryChange(ei, eni, field, val) {
   _crdData_cur[ei].entries[eni][field] = field === 'amount' ? _ni(val) : val;
 }
@@ -410,7 +438,7 @@ Object.assign(window, {
   deleteCrdEntry, addCreditEmployee, deleteCrdEmp, saveCreditData, copyToNextMonth,
   thisMonthNetFor, renderStaffCreditCurrent, scCreditFieldChange, scAddCreditEntry,
   scCreditEntryChange, scDeleteCreditEntry, currentCreditMonthYear,
-  _scCreditRow, _scCreditSync,
+  _scCreditRow, _scCreditSync, toggleCrdPrintSkip,
 });
 
 export {
@@ -419,5 +447,5 @@ export {
   deleteCrdEntry, addCreditEmployee, deleteCrdEmp, saveCreditData, copyToNextMonth,
   thisMonthNetFor, renderStaffCreditCurrent, scCreditFieldChange, scAddCreditEntry,
   scCreditEntryChange, scDeleteCreditEntry, currentCreditMonthYear,
-  _scCreditRow, _scCreditSync,
+  _scCreditRow, _scCreditSync, toggleCrdPrintSkip,
 };
