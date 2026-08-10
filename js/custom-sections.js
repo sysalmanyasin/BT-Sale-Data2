@@ -38,7 +38,7 @@ function salaryNextMonth() {
   // Clone rows — carry name, designation, hoSal; reset days/advance/generic
   const carried = curRows.map(r => ({
     name:        r.name        || '',
-    designation: r.designation || '',
+    desig:       r.desig       || '',
     days:        0,
     hoSal:       r.hoSal       || 0,
     advance:     0,

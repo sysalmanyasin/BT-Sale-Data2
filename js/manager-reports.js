@@ -55,16 +55,30 @@ function printSalaryReport() {
   const my = document.getElementById('sal-month-sel').value;
   const rows = _salRows_cur.filter(r => !r.printSkip); // rows toggled 🖨🚫 in the sheet are left out of the printout entirely
   const today = new Date().toLocaleDateString('en-PK',{day:'2-digit',month:'short',year:'numeric'});
-  const trows = rows.map((r,i) => `<tr>
+  const norm = s => (s||'').trim().toLowerCase();
+  const trows = rows.map((r,i) => {
+    // Name/Designation: resolve live off the Staff Registry (STAFF), same
+    // as the on-screen table (see manager-salary.js renderSalaryTable) —
+    // never trust the stored row's own name/desig fields directly. Rows
+    // saved by an older "Copy → Next Month" bug were missing `desig`
+    // entirely (saved under the wrong key), which used to print as the
+    // literal text "undefined"; resolving live avoids that regardless of
+    // what's actually sitting in already-saved months.
+    const sIdx = STAFF.findIndex(s => (r.staffId && s.staffId === r.staffId) || norm(s.name) === norm(r.name));
+    const sEmp = sIdx >= 0 ? STAFF[sIdx] : null;
+    const dispName = sEmp ? sEmp.name : (r.name || '');
+    const dispDesig = sEmp ? sEmp.designation : (r.desig || '');
+    return `<tr>
     <td style="padding:5px 8px;border-bottom:1px solid #eee">${i+1}</td>
-    <td style="padding:5px 8px;border-bottom:1px solid #eee;font-weight:600">${r.name}</td>
-    <td style="padding:5px 8px;border-bottom:1px solid #eee">${r.desig}</td>
-    <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right">${r.days}</td>
+    <td style="padding:5px 8px;border-bottom:1px solid #eee;font-weight:600">${dispName}</td>
+    <td style="padding:5px 8px;border-bottom:1px solid #eee">${dispDesig || '—'}</td>
+    <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right">${r.days ?? 0}</td>
     <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${_fc2(r.hoSal)}</td>
     <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${_fc2(r.advance)}</td>
     <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${_fc2(r.generic)}</td>
     <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace;font-weight:700;color:#1e40af">₨${_fc2(_salNet(r))}</td>
-  </tr>`).join('');
+  </tr>`;
+  }).join('');
   const totNet = rows.reduce((s,r) => s + _salNet(r), 0);
   _mgrPrint(`<div style="max-width:700px;margin:0 auto;font-family:Arial,sans-serif">
     <div style="background:#0f172a;color:#fff;padding:14px 20px;border-radius:8px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
