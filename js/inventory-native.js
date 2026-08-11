@@ -251,7 +251,8 @@ function renderInventoryPage() {
   }
 
   if (!data.products.length) {
-    if (emptyEl) { emptyEl.style.display = 'block'; emptyEl.textContent = '📭 No inventory synced yet.'; }
+    const err = (typeof window.inventoryBridgeGetLastError === 'function') ? window.inventoryBridgeGetLastError() : null;
+    if (emptyEl) { emptyEl.style.display = 'block'; emptyEl.textContent = err ? `⚠️ Sync failed: ${err}` : '📭 No inventory synced yet.'; }
     if (wrapEl) wrapEl.style.display = 'none';
     if (topPager) topPager.innerHTML = '';
     if (botPager) botPager.innerHTML = '';

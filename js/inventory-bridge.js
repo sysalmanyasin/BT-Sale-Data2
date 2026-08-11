@@ -36,6 +36,36 @@ function _getClient() {
   return _client;
 }
 
+// Separate, deliberately-anonymous client used ONLY for reading
+// inventory_products / inventory_sync_log — never for auth.js's
+// sign-in/out calls, which still go through _getClient() above via
+// window.inventoryBridgeGetClient.
+//
+// _getClient()'s client is intentionally signed into the same
+// Google-backed session auth.js establishes. stockledger.js reads this
+// exact same table, from this exact same project, and documented (see
+// its own header comment) that doing so through a signed-in client hits
+// a real, reproducible problem: RLS on inventory_products only actually
+// resolves rows for the anon role here, not the authenticated one — a
+// signed-in client gets a normal 200 with zero rows every time, not
+// just during some transient refresh window (an earlier attempt at
+// fixing this by awaiting client.auth.getSession() before the query
+// made no difference, confirming it isn't a timing race). Stock Ledger
+// works precisely because it baked persistSession/autoRefreshToken/
+// detectSessionInUrl: false into its own separate client and never
+// touches the signed-in one. Mirroring that exact working setup here,
+// rather than continuing to guess at what's different about the
+// signed-in path, is the fix.
+let _readClient = null;
+function _getReadClient() {
+  if (_readClient) return _readClient;
+  if (typeof supabase === 'undefined') return null;
+  _readClient = supabase.createClient(INV_SUPABASE_URL, INV_SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+  return _readClient;
+}
+
 // Always "connected" — no manual pairing step, same as AuditBridge.isConnected().
 export function isConnected() { return true; }
 
@@ -125,6 +155,8 @@ async function _fetchLastSync(client) {
 
 let _fullData = null;
 let _fullInFlight = null;
+let _lastError = null;
+export function getLastError() { return _lastError; }
 
 export function getFullData() {
   if (_fullData) return _fullData;
@@ -142,37 +174,14 @@ export async function refreshFullData(force) {
 
   _fullInFlight = (async () => {
     try {
-      const client = _getClient();
-      if (!client) return cached;
+      const client = _getReadClient();
+      if (!client) { _lastError = 'Supabase client library not loaded yet'; return cached; }
 
-      // This client is deliberately signed into the same Google-backed
-      // Supabase session auth.js establishes (see btEstablishSupabaseSessions
-      // above and window.inventoryBridgeGetClient's export note) — unlike
-      // stockledger.js's own always-anonymous client (see that file's
-      // comment on why it bakes persistSession/autoRefreshToken: false).
-      // A signed-in client has a known supabase-js v2 race: if a query
-      // fires while the SDK is still restoring/refreshing the session in
-      // the background, the request can go out with a stale/expiring
-      // token, RLS then quietly filters everything out, and PostgREST
-      // returns a normal 200 with zero rows — no error to catch, just an
-      // inventory that looks empty. Awaiting getSession() first forces
-      // that restore/refresh to settle before the real query fires.
-      try { await client.auth.getSession(); } catch (e) { /* best-effort — fall through to the query either way */ }
-
-      let products = await _fetchAllProducts(client);
-      // Defensive retry: a legitimately-empty inventory_products table is
-      // implausible for a live pharmacy — if the very first attempt (after
-      // already awaiting getSession()) still comes back empty, treat it as
-      // the race above rather than truth, wait for the in-flight refresh
-      // to fully settle, and try once more before accepting "empty".
-      if (products.length === 0) {
-        await new Promise(r => setTimeout(r, 700));
-        try { products = await _fetchAllProducts(client); } catch (e) { /* keep the empty result from above */ }
-      }
-
+      const products = await _fetchAllProducts(client);
       let lastSync = null;
       try { lastSync = await _fetchLastSync(client); } catch (e) { /* best-effort, table may not exist yet — ignore */ }
 
+      _lastError = null;
       const data = { products, lastSync, fetchedAt: Date.now() };
       _fullData = data;
       try { _setLocal(FULLDATA_CACHE_KEY, JSON.stringify(data)); } catch (e) { /* best-effort — fine if too big, in-memory still works this session */ }
@@ -180,6 +189,7 @@ export async function refreshFullData(force) {
       if (typeof window.renderCoverDashboard === 'function') window.renderCoverDashboard();
       return data;
     } catch (e) {
+      _lastError = (e && (e.message || e.error_description || e.details)) || String(e);
       return _fullData || cached;
     } finally {
       _fullInFlight = null;
@@ -192,6 +202,7 @@ export async function refreshFullData(force) {
 window.inventoryBridgeIsConnected = isConnected;
 window.inventoryBridgeGetFullData = getFullData;
 window.inventoryBridgeRefresh = refreshFullData;
+window.inventoryBridgeGetLastError = getLastError;
 // Exposes the raw Supabase client for this project (vtcrdkqhuvxatclobsby)
 // so auth.js can establish a real signed-in session on it too, alongside
 // the main wetbugzzchkghpzmowod project. See js/auth.js — btEstablishSupabaseSessions().
