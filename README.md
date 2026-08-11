@@ -67,8 +67,9 @@ in it.
 | `inventory`  | BT Inventory, Stock Ledger, Excess Working, Reorder Report, Inventory Health        | pink        |
 
 Cross-domain utilities, never hidden and never owned by a domain:
-**Cover**, **Tools** (settings/sync), and the **PDF Library** (opened
-as a Cover shortcut).
+**Cover**, **Tools** (settings/sync), the **PDF Library**, and the
+**Activity Log** (all three reached from the top nav / All Sections
+drawer's Utility group).
 
 Three fully separate, standalone apps live *outside* this codebase and
 are only ever linked to from Cover: Closing (`closing.duapharma.com`),
@@ -196,6 +197,21 @@ Save-to-Library, with no forced new tab and no silent download.
 Backed by Supabase Storage, with a silent expiry sweep run on every
 unlock.
 
+### 🕒 Activity Log
+A cross-device, Supabase-synced feed of what changed, where, and
+when — date/time, section, and add / edit / delete — for a single-user
+app running on more than one device. Fed passively off the EventBus
+(`js/event-bus.js`) that every real data mutation already announces
+itself on (`repository.js`'s daily/monthly/staff/generic-item writes,
+`actions.js`'s staff:added/updated/removed, `ledger-store.js`'s
+ledger:changed, diffed by id since that event carries the full entries
+array rather than a verb) — no existing Action had to change to wire
+this up. Table is `bt_activity_log` (`supabase/activity_log/schema.sql`);
+not to be confused with the sibling standalone Closing app's own,
+differently-shaped `activity_log` table that `closing-bridge.js` reads
+read-only (`{ts, actor, key, action, changes}`) — the two are
+deliberately separate tables in the same Supabase project.
+
 ### 🕘 Recents & 🔍 Global Search
 Two navigation aids that live in drawers rather than pages: **Recents**
 lists whatever sections you've actually visited this session; the
@@ -312,11 +328,15 @@ through the Event Bus.
 - `localStorage` is touched directly outside the Repository in a
   handful of files: `auth.js` (must run before the Repository loads —
   a load-order constraint), the three read-only bridges
-  (`closing-bridge.js`, `audit-bridge.js`, `inventory-bridge.js`), and
-  a few files storing UI-local state only (`stockledger.js`,
-  `excess-working.js`, `reorder-report.js`, `reports.js`,
-  `closing-native.js`, `ui-extras.js`) — none of it is business data,
-  so it doesn't violate the spirit of the rule.
+  (`closing-bridge.js`, `audit-bridge.js`, `inventory-bridge.js`),
+  `activity-log.js` (its local cache mirrors `bt_activity_log`, whose
+  authoritative copy lives in Supabase — also sidesteps a feedback
+  loop, since going through Repository would re-fire the very
+  EventBus event this file listens to), and a few files storing
+  UI-local state only (`stockledger.js`, `excess-working.js`,
+  `reorder-report.js`, `reports.js`, `closing-native.js`,
+  `ui-extras.js`) — none of it is business data, so it doesn't violate
+  the spirit of the rule.
 - `bt-search.js` was dead code post-AI-removal; it's now back in use,
   powering Global Search.
 - The daily WhatsApp briefing Edge Function still calls Groq (Cerebras

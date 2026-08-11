@@ -5,7 +5,8 @@
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v10.62'; // Full version history: see CHANGELOG.md (moved out of this file — it had grown to ~70KB of inline comments, all downloaded/parsed on every SW update check).
+const CACHE_NAME = 'bt-sales-v10.63'; // Full version history: see CHANGELOG.md (moved out of this file — it had grown to ~70KB of inline comments, all downloaded/parsed on every SW update check).
+// v10.63: added Utility → Activity Log (js/activity-log.js, css/activity-log.css) — see README's Navigation model / Key subsystems.
 // v10.62: NETWORK_ONLY_ORIGINS was missing vtcrdkqhuvxatclobsby.supabase.co
 // (the BTpharmacyAudit@2026 project — inventory_products, sales_payment_summary,
 // sales_credit_by_customer, engagements/rounds/assignments/submissions used by
@@ -34,6 +35,7 @@ const APP_SHELL = [
   './css/reorder-report.css',
   './css/inventory-health-dashboard.css',
   './css/pdf-library.css',
+  './css/activity-log.css',
   './css/cash-deposit-report.css',
   './css/sale-payments.css',
   './css/components.css',
@@ -65,6 +67,7 @@ const APP_SHELL = [
   './js/conflict-ui.js',
   './js/supabase.js',
   './js/pdf-library.js',
+  './js/activity-log.js',
   './js/cover-dashboard.js',
   './js/record-day.js',
   './js/staff-notes.js',

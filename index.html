@@ -65,6 +65,7 @@
 <link rel="stylesheet" href="css/reorder-report.css?v=20260809b">
 <link rel="stylesheet" href="css/inventory-health-dashboard.css?v=20260731a">
 <link rel="stylesheet" href="css/pdf-library.css?v=20260725a">
+<link rel="stylesheet" href="css/activity-log.css?v=20260811a">
 <link rel="stylesheet" href="css/cash-deposit-report.css?v=20260725b">
 <link rel="stylesheet" href="css/sale-payments.css?v=20260807a">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,400,0,0">
@@ -271,6 +272,7 @@ if ('serviceWorker' in navigator) {
     <a class="ntab" href="#inv-health" data-page="inv-health" data-group="inventory" data-domain-group="inventory">🩺 Inventory Health</a>
     <a class="ntab" href="#tools" data-page="tools" data-group="tools">Tools</a>
     <a class="ntab" href="#pdf-library" data-page="pdf-library" data-group="pdf-library">📚 PDF Library</a>
+    <a class="ntab" href="#activity-log" data-page="activity-log" data-group="activity-log">🕒 Activity Log</a>
   </div>
   <div class="ntabs subnav" id="saledata-subnav" style="display:none">
     <a class="ntab sub" href="#index" data-page="index">Index</a>
@@ -1604,6 +1606,27 @@ if ('serviceWorker' in navigator) {
   </div>
 </div>
 
+<!-- ══ ACTIVITY LOG ══ (see js/activity-log.js) -->
+<div class="page" id="page-activity-log">
+  <div class="hero"><div class="hlabel">Activity Log</div><div class="htitle">🕒 Activity Log</div><div class="hsub">Date, time, section, and what changed — add, edit, or delete — synced across every device.</div></div>
+  <div class="al-toolbar">
+    <input type="search" id="al-search" placeholder="🔎 Search by section or summary…">
+    <select id="al-filter-section">
+      <option value="">All sections</option>
+    </select>
+    <select id="al-filter-action">
+      <option value="">All changes</option>
+      <option value="add">Add</option>
+      <option value="edit">Edit</option>
+      <option value="delete">Delete</option>
+    </select>
+    <button class="btn btn-s" id="al-refresh" type="button">↻ Refresh</button>
+  </div>
+  <div class="al-list" id="al-list">
+    <div class="al-empty">Loading…</div>
+  </div>
+</div>
+
 <!-- FIELD MANAGER MODAL -->
 <div class="fmbg" id="fmbg" onclick="if(event.target===this)closeFieldManager()">
   <div class="fmbox">
@@ -2132,6 +2155,7 @@ if ('serviceWorker' in navigator) {
 <!-- 6d. Supabase sync (Floor 1 extension — needs Repository + Actions) -->
 <script defer src="js/supabase.js?v=20260806a"></script>
 <script defer src="js/pdf-library.js?v=20260725a"></script>
+<script type="module" src="js/activity-log.js?v=20260811a"></script>
 
 <!-- 7. Targets: monthly target management -->
 <script type="module" src="js/targets.js?v=20260731a"></script>

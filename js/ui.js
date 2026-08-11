@@ -96,6 +96,7 @@ function showPage(id) {
     if (id === 'reorder' && window.ReorderReportApp && typeof window.ReorderReportApp.init === 'function') window.ReorderReportApp.init();
     if (id === 'inv-health' && window.InventoryHealthDashboard && typeof window.InventoryHealthDashboard.init === 'function') window.InventoryHealthDashboard.init();
     if (id === 'pdf-library' && window.PdfLibrary && typeof window.PdfLibrary.onShow === 'function') window.PdfLibrary.onShow();
+    if (id === 'activity-log' && window.ActivityLog && typeof window.ActivityLog.onShow === 'function') window.ActivityLog.onShow();
     _curPage = id;
     // Announce navigation through EventBus so any subscriber can react
     // (closes MF-03 — _curPage was previously a silent bare `let`).
