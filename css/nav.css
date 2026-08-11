@@ -53,7 +53,7 @@ nav{position:sticky;top:0;z-index:200;background:rgba(255,255,255,.96);backdrop-
   opacity: 0.85;
 }
 .bnav-sub {
-  display: flex;
+  display: none; /* mobile-only — turned on inside @media(max-width:860px) in mobile.css, same pattern as .bnav */
   justify-content: flex-start;
   gap: 2px;
   overflow-x: auto;
@@ -62,7 +62,6 @@ nav{position:sticky;top:0;z-index:200;background:rgba(255,255,255,.96);backdrop-
   background: var(--s1, #fff);
   border-top: 1px solid var(--border);
   padding: 6px 8px;
-  position: fixed;
   left: 0;
   right: 0;
   bottom: calc(56px + env(safe-area-inset-bottom));

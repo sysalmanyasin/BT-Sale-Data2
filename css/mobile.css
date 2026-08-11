@@ -48,6 +48,11 @@ tr.cl:active td{background:var(--alt)!important;}
   .bnav-item.active .bicon{transform:translateY(-1px);}
   .bnav-item:active{background:var(--s2);}
 
+  /* Sale Data sub-nav (bnav-sub in nav.css) — same fixed-strip pattern
+     as .bnav above, floating just over it. Must stay inside this same
+     mobile breakpoint so it never appears on desktop. */
+  .bnav-sub{display:flex;position:fixed;}
+
   .page{padding:16px 14px calc(78px + env(safe-area-inset-bottom));}
   #toast{left:50%;right:auto;bottom:calc(78px + env(safe-area-inset-bottom));transform:translate(-50%,70px);}
   #toast.on{transform:translate(-50%,0);}
