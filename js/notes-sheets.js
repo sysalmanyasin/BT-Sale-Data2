@@ -631,7 +631,11 @@ function _nsRenderPanel() {
   const host = document.getElementById('ns-panel-host');
   if (!host) return;
   if (_nsActivePanel === 'notes')  _nsRenderNotes(host);
-  if (_nsActivePanel === 'sheets') _nsSpBuild(host);
+  // 'sheets' now renders real Google Sheets (js/sheets-app.js) instead of
+  // the old custom grid (_nsSpBuild, further down this file — kept in
+  // place but unreachable pending deletion once the new flow is confirmed
+  // working live; see plan step 8).
+  if (_nsActivePanel === 'sheets') { if (typeof sheetsAppBuild === 'function') sheetsAppBuild(host); else _nsSpBuild(host); }
   if (_nsActivePanel === 'manage') _nsRenderManage(host);
   if (_nsActivePanel === 'data')   _nsRenderData(host);
 }
@@ -3004,41 +3008,30 @@ function _nsExportDataXLSX() {
 // print. Independent of any one source's live-binding caveats above —
 // once sent, it's a snapshot, safe to keep even after the source month
 // changes in Manager.
+// Re-pointed (plan step 7) at the real Google Sheets backend — pushes
+// into a timestamped tab in the designated "App Data" spreadsheet
+// instead of writing into the old custom grid's workbook storage.
+// See js/sheets-app.js → sheetsPushRows / _saGetOrCreateAppDataSheet.
 function _nsSendToSheets() {
   const cols = _NS_SOURCE_COLS[_nsDataSource] || [];
   const meta = _NS_SOURCE_META[_nsDataSource] || {};
   const rows = _nsFilteredRows(5000);
   if (!rows.length) { if (typeof toast === 'function') toast('⚠ No data to send — nothing loaded for this table.', 'w'); return; }
 
-  const sheetName = (meta.label || _nsDataSource).replace(/^\S+\s/, ''); // strip the leading emoji for a clean sheet/file name
-  const grid = _nsDefaultGrid(sheetName);
-  cols.forEach((c, ci) => { grid.cells[_nsSpCellKey(0, ci)] = { v: String(c[2] || c[0]) }; });
-  rows.forEach((r, ri) => {
-    cols.forEach((c, ci) => {
-      const raw = r[c[0]];
-      if (raw !== undefined && raw !== null && raw !== '') grid.cells[_nsSpCellKey(ri + 1, ci)] = { v: String(raw) };
-    });
-  });
-  grid.numRows = Math.max(100, rows.length + 10);
-  grid.numCols = Math.max(26, cols.length + 2);
+  const sheetName = (meta.label || _nsDataSource).replace(/^\S+\s/, ''); // strip the leading emoji for a clean tab name
+  const headerRow = cols.map(c => String(c[2] || c[0]));
+  const dataRows = rows.map(r => cols.map(c => {
+    const raw = r[c[0]];
+    return (raw !== undefined && raw !== null) ? String(raw) : '';
+  }));
 
-  const wb = _nsWBLoadRaw();
-  wb.files = wb.files || {};
-  const fid = _nsUid();
-  const dateLabel = new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' });
-  const fileName = sheetName + ' — ' + dateLabel;
-  wb.files[fid] = {
-    id: fid, name: fileName,
-    category: (_NS_DOMAINS.find(d => d.id === _nsDataDomain) || {}).label || 'General',
-    createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-    grids: { [grid.id]: grid },
-    activeSheet: grid.id,
-  };
-  wb.activeFileId = fid;
-  _nsWBSaveRaw(wb);
-  _spState.activeSheet = grid.id;
-  _nsSetPanel('sheets');
-  if (typeof toast === 'function') toast('📥 Sent ' + rows.length + ' rows to Sheets as "' + fileName + '"');
+  if (typeof sheetsPushRows !== 'function') {
+    if (typeof toast === 'function') toast('⚠ Sheets integration not loaded — check js/sheets-app.js', 'w');
+    return;
+  }
+  sheetsPushRows(sheetName, headerRow, dataRows).then(result => {
+    if (result) _nsSetPanel('sheets');
+  });
 }
 
 /* renderNotesSheets() is called directly from manager-page.js's
