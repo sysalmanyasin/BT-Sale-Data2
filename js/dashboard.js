@@ -269,21 +269,25 @@ function buildCreditSection(lat) {
   const _esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
   const detailRows = rows => rows.map(r => `
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
+    <div class="mgr-card-row">
       <span style="font-size:11px;color:var(--t2)">${r.name}</span>
       <span style="font-size:11px;font-family:var(--mono);font-weight:600;color:${amtColor(r.net)}">${fmtAmt(r.net)}</span>
     </div>`).join('') || `<div style="font-size:11px;color:var(--muted);padding:4px 0">No activity yet</div>`;
 
-  const sectionCard = (icon, title, rows, total, navTab) => `
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:14px 16px;box-shadow:var(--sh)">
+  const sectionCard = (icon, title, rows, total, navTab, tint) => {
+    const t = tint || { accent: 'var(--accent)', bg: 'var(--alt)' };
+    return `
+    <div class="mgr-card" style="border-left-color:${t.accent}">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div style="font-size:12px;font-weight:700;color:var(--t2)">${icon} ${title}
-          ${navTab ? `<span onclick="navigateTo('manager');setTimeout(()=>{switchMgrTab('${navTab}');},200)" style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:4px;margin-left:6px;cursor:pointer;font-weight:700">OPEN ↗</span>` : ''}
+        <div style="font-size:12px;font-weight:700;color:var(--t2)">
+          <span class="mgr-card-icon" style="background:${t.bg}">${icon}</span>${title}
+          ${navTab ? `<span onclick="navigateTo('manager');setTimeout(()=>{switchMgrTab('${navTab}');},200)" class="mgr-card-open">OPEN ↗</span>` : ''}
         </div>
-        <div style="font-size:15px;font-weight:700;font-family:var(--mono);color:${amtColor(total)}">${fmtAmt(total)}</div>
+        <div class="mgr-card-total" style="background:${t.bg};color:${amtColor(total)}">${fmtAmt(total)}</div>
       </div>
-      <div style="border-top:1px solid var(--border);padding-top:8px">${detailRows(rows)}</div>
+      <div style="border-top:1px solid var(--border);padding-top:6px">${detailRows(rows)}</div>
     </div>`;
+  };
 
   // ── Patty/Expenses card — its own expandable-by-category rows ────────
   // Each category row (Bill Amount, Fuel/HO, ...) is clickable; expanding
@@ -301,7 +305,7 @@ function buildCreditSection(lat) {
     const isOpen = expandable && _dashPattyExpanded.has(r.catId);
     return `
     <div>
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);${expandable ? 'cursor:pointer' : ''}"
+      <div class="mgr-card-row" style="${expandable ? 'cursor:pointer' : ''}"
         ${expandable ? `onclick="dashTogglePattyCat('${r.catId}')"` : ''}>
         <span style="font-size:11px;color:var(--t2)">${expandable ? (isOpen ? '▾ ' : '▸ ') : ''}${r.name}${expandable ? ` <span style="color:var(--muted);font-weight:400">(${r.entries.length})</span>` : ''}</span>
         <span style="font-size:11px;font-family:var(--mono);font-weight:600;color:${amtColor(r.net)}">${fmtAmt(r.net)}</span>
@@ -310,13 +314,15 @@ function buildCreditSection(lat) {
     </div>`;
   }).join('') || `<div style="font-size:11px;color:var(--muted);padding:4px 0">${(_dashPattyDateFrom || _dashPattyDateTo) ? 'No entries in this date range' : 'No activity yet'}</div>`;
 
+  const pattyTint = { accent: 'var(--amber)', bg: 'var(--alt2)' };
   const pattyCardHtml = `
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:14px 16px;box-shadow:var(--sh)">
+    <div class="mgr-card" style="border-left-color:${pattyTint.accent}">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px">
-        <div style="font-size:12px;font-weight:700;color:var(--t2)">🧾 Patty / Expenses ${d.pattyIsFiltered ? '(filtered)' : '(all-time)'}
-          <span onclick="navigateTo('manager');setTimeout(()=>{switchMgrTab('expense');},200)" style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:4px;margin-left:6px;cursor:pointer;font-weight:700">OPEN ↗</span>
+        <div style="font-size:12px;font-weight:700;color:var(--t2)">
+          <span class="mgr-card-icon" style="background:${pattyTint.bg}">🧾</span>Patty / Expenses ${d.pattyIsFiltered ? '(filtered)' : '(all-time)'}
+          <span onclick="navigateTo('manager');setTimeout(()=>{switchMgrTab('expense');},200)" class="mgr-card-open">OPEN ↗</span>
         </div>
-        <div style="font-size:15px;font-weight:700;font-family:var(--mono);color:${amtColor(d.pattyTotal)}">${fmtAmt(d.pattyTotal)}</div>
+        <div class="mgr-card-total" style="background:${pattyTint.bg};color:${amtColor(d.pattyTotal)}">${fmtAmt(d.pattyTotal)}</div>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
         <input type="date" value="${_esc(_dashPattyDateFrom)}" onchange="dashSetPattyDateFrom(this.value)"
@@ -337,13 +343,13 @@ function buildCreditSection(lat) {
         <span onclick="dashSetPattyPreset('${key}')"
           style="font-size:9.5px;font-weight:600;padding:3px 8px;border-radius:20px;cursor:pointer;white-space:nowrap;
             ${_dashPattyActivePreset === key
-              ? 'background:var(--accent,#2563eb);color:#fff;border:1px solid var(--accent,#2563eb)'
+              ? 'background:' + pattyTint.accent + ';color:#fff;border:1px solid ' + pattyTint.accent
               : 'background:var(--s2);color:var(--t2);border:1px solid var(--border)'}">${label}</span>`).join('')}
         <span onclick="dashClearPattyDates()"
           style="font-size:9.5px;font-weight:600;padding:3px 8px;border-radius:20px;cursor:pointer;white-space:nowrap;
             background:var(--s2);color:var(--red,#dc2626);border:1px solid var(--border)">↺ Reset</span>
       </div>
-      <div style="border-top:1px solid var(--border);padding-top:8px">${pattyDetailRows(d.pattyRows)}</div>
+      <div style="border-top:1px solid var(--border);padding-top:6px">${pattyDetailRows(d.pattyRows)}</div>
     </div>`;
 
   // Build month picker options — sorted newest-first, limited to 6 months
@@ -362,21 +368,21 @@ function buildCreditSection(lat) {
       </select>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:10px">
-      ${sectionCard('👥', 'Staff Credit — ' + my, d.staffRows, d.staffTotal)}
-      ${sectionCard('💚', 'Jazz Cash (all-time)', d.jazzCashRows, d.jazzCashTotal, 'jazzcash')}
+      ${sectionCard('👥', 'Staff Credit — ' + my, d.staffRows, d.staffTotal, null, { accent: 'var(--mgrblue)', bg: 'var(--mgrblue-lt)' })}
+      ${sectionCard('💚', 'Jazz Cash (all-time)', d.jazzCashRows, d.jazzCashTotal, 'jazzcash', { accent: 'var(--teal)', bg: 'var(--tlt)' })}
       ${pattyCardHtml}
     </div>
     ${d.otherSections.length ? `
     <div style="margin:14px 0 8px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">📋 Misc Sections (all-time)</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:10px">
-      ${d.otherSections.map(sec => sectionCard('📋', sec.label, sec.rows, sec.total, 'custom')).join('')}
+      ${d.otherSections.map(sec => sectionCard('📋', sec.label, sec.rows, sec.total, 'custom', { accent: 'var(--purple)', bg: 'var(--purple-lt)' })).join('')}
     </div>` : ''}
-    <div style="background:linear-gradient(135deg,#0f172a,#1e3a5f);border-radius:11px;padding:14px 20px;display:flex;align-items:center;justify-content:space-between">
+    <div style="background:var(--grad-header);border-radius:var(--r-md);padding:16px 22px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--sh-md)">
       <div>
-        <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.6);margin-bottom:3px">Total Outstanding Credits</div>
-        <div style="font-size:10px;color:rgba(255,255,255,.4)">Staff (${my}) + Jazz Cash + Patty/Expenses + Misc Sections, all-time</div>
+        <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:3px">💰 Total Outstanding Credits</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.45)">Staff (${my}) + Jazz Cash + Patty/Expenses + Misc Sections, all-time</div>
       </div>
-      <div style="font-size:24px;font-weight:700;font-family:var(--mono);color:${d.grandTotal >= 0 ? '#4ade80' : '#f87171'}">${fmtAmt(d.grandTotal)}</div>
+      <div style="font-size:25px;font-weight:800;font-family:var(--mono);color:${d.grandTotal >= 0 ? '#4ade80' : '#f87171'}">${fmtAmt(d.grandTotal)}</div>
     </div>`;
 }
 
