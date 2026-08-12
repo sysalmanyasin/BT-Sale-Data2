@@ -59,7 +59,7 @@
 .ps-sheet-scope .ps-row.ps-highlight { background:#e6f4f1; border-top:1px solid #0d7d72; border-bottom:1px solid #0d7d72; }
 .ps-sheet-scope .ps-row.ps-highlight span { color:#0d7d72 !important; font-weight:800; }
 .ps-sheet-scope .ps-row.ps-red { background:#fbeeec; }
-.ps-sheet-scope .ps-row.ps-red span { color:#c8463c !important; font-weight:700; }
+.ps-sheet-scope .ps-row.ps-red span { color:#c04036 !important; font-weight:700; }
 .ps-sheet-scope .ps-row.ps-minus span:last-child::before { content:'\2212\00A0'; }
 .ps-sheet-scope .ps-row.ps-plus  span:last-child::before { content:'+\00A0'; }
 .ps-sheet-scope .ps-row.ps-empty span:last-child { color:#c4bfae; font-weight:500; }
@@ -88,12 +88,12 @@
 .cb-cover-page { display: flex; flex-direction: column; }
 .cb-cover-title { font-size: 2.4rem; font-weight: 800; color: #1c2b2b; margin-top: 60px; text-align: center; }
 .cb-cover-range { font-size: 1rem; color: #475569; text-align: center; margin-top: 20px; line-height: 1.6; font-family: 'JetBrains Mono', monospace; }
-.cb-cover-arrow { color: #94a3b8; font-size: 1.1rem; }
+.cb-cover-arrow { color: #627693; font-size: 1.1rem; }
 .cb-cover-stats { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; margin-top: 50px; }
 .cb-stat { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px 22px; text-align: center; min-width: 120px; }
 .cb-stat-val { font-size: 1.8rem; font-weight: 800; color: #0f172a; font-family: 'JetBrains Mono', monospace; }
 .cb-stat-label { font-size: 0.72rem; color: #64748b; margin-top: 4px; text-transform: uppercase; letter-spacing: .3px; }
-.cb-cover-gen { text-align: center; color: #94a3b8; font-size: 0.75rem; margin-top: auto; padding-bottom: 20px; }
+.cb-cover-gen { text-align: center; color: #627693; font-size: 0.75rem; margin-top: auto; padding-bottom: 20px; }
 
 /* ── READER CHROME (remapped to BT's tokens) ── */
 .cb-reader { margin-top: 16px; }

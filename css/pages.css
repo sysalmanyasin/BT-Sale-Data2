@@ -93,7 +93,7 @@
 .pr-tbl td.l{font-family:'Inter',system-ui,sans-serif;font-weight:500;}
 .pr-tbl td.r{text-align:right;}
 .pr-tbl tr.tot td{font-weight:700;background:#eff6ff;border-top:2px solid #bfdbfe;color:#1e40af;}
-.pr-tbl tr.sub td{font-weight:700;background:#fef2f2;color:#dc2626;border-top:1px solid #fecaca;}
+.pr-tbl tr.sub td{font-weight:700;background:#fef2f2;color:var(--red);border-top:1px solid #fecaca;}
 .pr-tbl tr.grp td{background:#f8fafc;font-weight:600;color:#334155;font-size:11px;text-transform:uppercase;letter-spacing:.07em;}
 .pr-header{background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;padding:14px 20px;border-radius:8px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;}
 .pr-header h1{font-size:16px;font-weight:700;letter-spacing:-.01em;}
