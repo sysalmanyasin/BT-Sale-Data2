@@ -18,7 +18,7 @@
 // ══════════════════════════════════════════════════════════════════════
 import { Repository } from './repository.js';
 import { STAFF } from './config.js';
-import { _ni, _fc2, _inp, _mgrEsc, mgrLoad, mgrSave, reconcileStaffRows } from './manager-shared.js';
+import { _ni, _fc2, _inp, _mgrEsc, mgrLoad, mgrSave, mgrAutosave, reconcileStaffRows } from './manager-shared.js';
 import { activeStaff } from './manager-staff.js';
 import { _crdData, _crdData_cur } from './manager-credit.js';
 import { _genRows, _genRows_cur, _genFinal } from './manager-generic.js';
@@ -143,6 +143,7 @@ function loadSalaryMonth(my) {
 
 function salRowChange(i, field, val) {
   _salRows_cur[i][field] = field === 'name' || field === 'desig' ? val : _ni(val);
+  mgrAutosave('salary', () => saveSalaryData(true));
 }
 function recalcSalNet(i) {
   const el = document.getElementById('sal-net-' + i);
@@ -167,10 +168,12 @@ function _salUpdateFooter(rows) {
 function addSalaryRow() {
   _salRows_cur.push({name:'', desig:'Salesman', days:31, hoSal:0, advance:0, generic:0});
   renderSalaryTable(_salRows_cur);
+  mgrAutosave('salary', () => saveSalaryData(true));
 }
 function deleteSalRow(i) {
   _salRows_cur.splice(i, 1);
   renderSalaryTable(_salRows_cur);
+  mgrAutosave('salary', () => saveSalaryData(true));
 }
 // Per-row, per-month flag: when true, this employee is left out of
 // printSalaryReport() (manager-reports.js) — same pattern and same
@@ -183,14 +186,15 @@ function toggleSalPrintSkip(i) {
   if (!row) return;
   row.printSkip = !row.printSkip;
   renderSalaryTable(_salRows_cur);
+  mgrAutosave('salary', () => saveSalaryData(true));
 }
-function saveSalaryData() {
+function saveSalaryData(silent) {
   const my = document.getElementById('sal-month-sel').value;
   const data = mgrLoad();
   if (!data.salary) data.salary = {};
   data.salary[my] = _salRows_cur.map(r => ({...r}));
   mgrSave(data);
-  toast('✓ Salary saved for ' + my);
+  if (!silent) toast('✓ Salary saved for ' + my);
   if (Repository.getItem('bt_auto_save')==='1') pushToSupabase();
 }
 

@@ -12,7 +12,7 @@
 import { Repository } from './repository.js';
 import { Actions } from './actions.js';
 import { STAFF } from './config.js';
-import { _ni, _fc2 } from './manager-shared.js';
+import { _ni, _fc2, mgrAutosave } from './manager-shared.js';
 import { _salRows_cur, renderSalaryTable } from './manager-salary.js';
 import { _genRows_cur, renderGenericTable } from './manager-generic.js';
 import { _crdData_cur, _crdNet, renderCreditLedger, thisMonthNetFor, renderStaffCreditCurrent } from './manager-credit.js';
@@ -134,6 +134,10 @@ function renderStaffRegistry() {
 
 function staffFieldChange(i, field, val) {
   Actions.updateEmployee(i, { [field]: val });
+  // Actions.updateEmployee already commits to Repository/localStorage
+  // instantly — this only debounces the *cloud* push, so a few keystrokes
+  // in a name/phone field don't fire one network request per character.
+  mgrAutosave('staff', _pushStaffIfAuto);
 }
 function staffSrNumChange(i, val) {
   const before = Number(val) || 1;
@@ -143,12 +147,14 @@ function staffSrNumChange(i, val) {
   }
   // Re-render the table so the sort order updates live
   renderStaffRegistry();
+  mgrAutosave('staff', _pushStaffIfAuto);
 }
 
 function staffToggleActive(i, active) {
   Actions.updateEmployee(i, { active });
   renderStaffRegistry();
   _propagateStaffToSheets();
+  _pushStaffIfAuto(); // discrete action, not free typing — push right away
 }
 
 function staffDelete(i) {
@@ -157,6 +163,7 @@ function staffDelete(i) {
   if (!confirm('Remove ' + name + ' from the staff list?\n\nHistorical data will be kept — they just won\'t appear in new months.')) return;
   Actions.removeEmployee(i);
   renderStaffRegistry();
+  _pushStaffIfAuto();
 }
 
 function addStaffEmployee() {
@@ -167,7 +174,16 @@ function addStaffEmployee() {
   // newly added employee was invisible in every sheet until that separate
   // step was remembered.
   _propagateStaffToSheets();
+  _pushStaffIfAuto();
   setTimeout(() => openStaffCard(Repository.getStaff().length - 1), 100);
+}
+
+// Shared by every instant-save path above — same guard saveStaffRegistry()
+// already used ("push staff registry unconditionally, it's shared config"),
+// just callable without also re-running the srNum migration / sheet
+// propagation / toast that a full manual Save does.
+function _pushStaffIfAuto() {
+  if (Repository.getItem('bt_auto_save') === '1' && typeof pushToSupabase === 'function') pushToSupabase();
 }
 
 function saveStaffRegistry() {

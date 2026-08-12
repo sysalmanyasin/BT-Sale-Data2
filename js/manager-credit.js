@@ -8,7 +8,7 @@
 // ══════════════════════════════════════════════════════════════════════
 import { Repository } from './repository.js';
 import { STAFF } from './config.js';
-import { _ni, _fc2, _mgrPopSel, mgrLoad, mgrSave, reconcileStaffRows } from './manager-shared.js';
+import { _ni, _fc2, _mgrPopSel, mgrLoad, mgrSave, mgrAutosave, reconcileStaffRows } from './manager-shared.js';
 import { activeStaff } from './manager-staff.js';
 
 // ══════════════════════════════
@@ -170,14 +170,13 @@ function loadCreditMonth(my) {
   renderCreditLedger(_crdData_cur);
 }
 
-function crdEmpField(ei, field, val) { _crdData_cur[ei][field] = _ni(val); }
+function crdEmpField(ei, field, val) { _crdData_cur[ei][field] = _ni(val); mgrAutosave('credit', () => saveCreditData(true)); }
 // Per-employee, per-month flag: when true, this row is left out of both
 // the Credit "Print Summary" and "Print Detailed" reports (printCreditReport /
 // printCreditSummaryReport in manager-reports.js both filter on it). Purely
 // a print-time filter — the row, its balance, and its entries are untouched
-// on screen and in storage; only the printed report skips it. Persists like
-// any other credit field: click "Save" (or Copy → Next Month, which saves
-// first) to write it to storage.
+// on screen and in storage; only the printed report skips it. Autosaves like
+// any other credit field (or click "Save"/Copy → Next Month for an immediate write).
 function toggleCrdPrintSkip(ei) {
   const emp = _crdData_cur[ei];
   if (!emp) return;
@@ -193,9 +192,11 @@ function toggleCrdPrintSkip(ei) {
     if (body) body.style.display = '';
     if (chev) chev.style.transform = 'rotate(90deg)';
   }
+  mgrAutosave('credit', () => saveCreditData(true));
 }
 function crdEntryChange(ei, eni, field, val) {
   _crdData_cur[ei].entries[eni][field] = field === 'amount' ? _ni(val) : val;
+  mgrAutosave('credit', () => saveCreditData(true));
 }
 function recalcCrdEmp(ei) {
   const el = document.getElementById('crd-net-' + ei);
@@ -215,27 +216,31 @@ function addCrdEntry(ei) {
   const chev = document.getElementById('crd-chev-' + ei);
   if (body) body.style.display = '';
   if (chev) chev.style.transform = 'rotate(90deg)';
+  mgrAutosave('credit', () => saveCreditData(true));
 }
 function deleteCrdEntry(ei, eni) {
   _crdData_cur[ei].entries.splice(eni, 1);
   renderCreditLedger(_crdData_cur);
+  mgrAutosave('credit', () => saveCreditData(true));
 }
 function addCreditEmployee() {
   _crdData_cur.push({name:'New Employee', prevBal:0, entries:[], salary:0, lessGeneric:0});
   renderCreditLedger(_crdData_cur);
+  mgrAutosave('credit', () => saveCreditData(true));
 }
 function deleteCrdEmp(ei) {
   if (!confirm('Remove ' + _crdData_cur[ei].name + '?')) return;
   _crdData_cur.splice(ei, 1);
   renderCreditLedger(_crdData_cur);
+  mgrAutosave('credit', () => saveCreditData(true));
 }
-function saveCreditData() {
+function saveCreditData(silent) {
   const my = document.getElementById('crd-month-sel').value;
   const data = mgrLoad();
   if (!data.credit) data.credit = {};
   data.credit[my] = _crdData_cur.map(e => ({...e, entries:[...e.entries]}));
   mgrSave(data);
-  toast('✓ Staff Credit saved for ' + my);
+  if (!silent) toast('✓ Staff Credit saved for ' + my);
   if (Repository.getItem('bt_auto_save')==='1') pushToSupabase();
 }
 
@@ -367,6 +372,7 @@ function scAddCreditEntry() {
   mgrSave(data);
   _scCreditSync(my);
   renderStaffCreditCurrent(name);
+  if (Repository.getItem('bt_auto_save') === '1' && typeof pushToSupabase === 'function') pushToSupabase();
 }
 
 function scCreditEntryChange(eni, field, val) {
@@ -385,6 +391,11 @@ function scCreditEntryChange(eni, field, val) {
     netEl.textContent = 'Net: ₨' + _fc2(net);
     netEl.style.color = net > 0 ? 'var(--green)' : net < 0 ? 'var(--red)' : 'var(--muted)';
   }
+  // Local commit above is already instant (mgrSave); debounce just the
+  // network push so a multi-digit amount doesn't fire one request per digit.
+  mgrAutosave('credit-sc', () => {
+    if (Repository.getItem('bt_auto_save') === '1' && typeof pushToSupabase === 'function') pushToSupabase();
+  });
 }
 
 function scDeleteCreditEntry(eni) {
@@ -395,6 +406,7 @@ function scDeleteCreditEntry(eni) {
   mgrSave(data);
   _scCreditSync(my);
   renderStaffCreditCurrent(name);
+  if (Repository.getItem('bt_auto_save') === '1' && typeof pushToSupabase === 'function') pushToSupabase();
 }
 
 function renderStaffCreditCurrent(name) {

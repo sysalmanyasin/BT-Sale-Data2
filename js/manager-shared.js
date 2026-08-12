@@ -30,6 +30,48 @@ function mgrLoad() {
 }
 function mgrSave(data) { Actions.saveFeatureData(MGR_KEY, JSON.stringify(data)); }
 
+// ── Instant autosave — "no click Save needed" ───────────────────────
+// Every Manager sub-tab used to only commit typed values to Repository
+// (and from there, to Supabase) when its own explicit save*Data()
+// function ran, which only ever happened on a button click — DOM values
+// lived nowhere else until then, the exact class of "typed but never
+// saved" bug already fixed piecemeal for Jazz Cash's Balance Tally
+// (v10.58) and ledger-page.js (v10.59). mgrAutosave() is the one shared
+// fix for the whole pattern: called from each sub-tab's own live
+// recalc/onchange handler (already firing on every keystroke to update
+// on-screen totals), it debounces a short pause after the last keystroke
+// and then calls that sub-tab's real save*Data() function — the exact
+// same function the Save button already calls, just fired automatically
+// instead of requiring the click. The button itself is left in place as
+// an explicit "save right now" fallback, not removed — clicking it still
+// works exactly as before, including any manual `toast()` confirmation;
+// it is just no longer the only path data ever reaches Supabase through.
+const _mgrAutosaveTimers = {};
+function mgrAutosave(key, fn, delay) {
+  clearTimeout(_mgrAutosaveTimers[key]);
+  _mgrAutosaveTimers[key] = setTimeout(() => {
+    delete _mgrAutosaveTimers[key];
+    try { fn(); } finally { _mgrAutosaveFlash(key); }
+  }, delay || 700);
+}
+// Briefly relabels the sub-tab's own Save button (id="mgr-save-<key>",
+// see index.html) to confirm an autosave actually happened, without a
+// toast on every keystroke pause — a per-field toast storm would be far
+// noisier than useful. Purely cosmetic; does nothing if the id isn't
+// present (e.g. a section not yet wired up, or the button not on screen).
+function _mgrAutosaveFlash(key) {
+  const btn = document.getElementById('mgr-save-' + key);
+  if (!btn) return;
+  if (btn.dataset.label === undefined) btn.dataset.label = btn.textContent;
+  btn.textContent = '✓ Saved';
+  btn.classList.add('mgr-autosaved');
+  clearTimeout(btn._mgrFlashTimer);
+  btn._mgrFlashTimer = setTimeout(() => {
+    btn.textContent = btn.dataset.label;
+    btn.classList.remove('mgr-autosaved');
+  }, 1400);
+}
+
 // Returns a continuous newest-first month list, so blank months do not disappear.
 function mgrMonths() {
   const names = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -137,6 +179,6 @@ function reconcileStaffRows(activeList, storedRows, blankFactory) {
   });
 }
 
-Object.assign(window, { MGR_KEY, mgrLoad, mgrSave, mgrMonths, _mgrPopSel, _ni, _fc2, _inp, _mgrEsc, reconcileStaffRows });
+Object.assign(window, { MGR_KEY, mgrLoad, mgrSave, mgrAutosave, mgrMonths, _mgrPopSel, _ni, _fc2, _inp, _mgrEsc, reconcileStaffRows });
 
-export { MGR_KEY, mgrLoad, mgrSave, mgrMonths, _mgrPopSel, _ni, _fc2, _inp, _mgrEsc, reconcileStaffRows };
+export { MGR_KEY, mgrLoad, mgrSave, mgrAutosave, mgrMonths, _mgrPopSel, _ni, _fc2, _inp, _mgrEsc, reconcileStaffRows };

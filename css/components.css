@@ -88,6 +88,10 @@ tfoot td{font-weight:700;color:var(--text);background:var(--s2);border-top:2px s
    outline for everything else (Auto-Fill, Copy -> Next Month, Print). */
 .mgr-btn-primary{background:var(--mgrblue);color:#fff;box-shadow:0 2px 8px -2px rgba(3,105,161,.45);}
 .mgr-btn-primary:hover{background:#025a86;box-shadow:0 4px 14px -3px rgba(3,105,161,.5);}
+/* Instant autosave confirmation — briefly relabels a section's own Save
+   button to "✓ Saved" after mgrAutosave() (js/manager-shared.js) commits
+   in the background, without a toast firing on every keystroke pause. */
+.mgr-btn-primary.mgr-autosaved{background:var(--green);transition:background .2s;}
 .mgr-btn-secondary{background:var(--surface);color:var(--t2);border:1px solid var(--border);}
 .mgr-btn-secondary:hover{border-color:var(--mgrblue);color:var(--mgrblue);background:var(--mgrblue-lt);}
 

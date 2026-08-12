@@ -5,7 +5,8 @@
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v10.63'; // Full version history: see CHANGELOG.md (moved out of this file — it had grown to ~70KB of inline comments, all downloaded/parsed on every SW update check).
+const CACHE_NAME = 'bt-sales-v10.64'; // Full version history: see CHANGELOG.md (moved out of this file — it had grown to ~70KB of inline comments, all downloaded/parsed on every SW update check).
+// v10.64: Manager section instant autosave — no "click Save" needed. See CHANGELOG.md.
 // v10.63: added Utility → Activity Log (js/activity-log.js, css/activity-log.css) — see README's Navigation model / Key subsystems.
 // v10.62: NETWORK_ONLY_ORIGINS was missing vtcrdkqhuvxatclobsby.supabase.co
 // (the BTpharmacyAudit@2026 project — inventory_products, sales_payment_summary,

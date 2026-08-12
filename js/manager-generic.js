@@ -9,7 +9,7 @@
 // ══════════════════════════════════════════════════════════════════════
 import { Repository } from './repository.js';
 import { STAFF } from './config.js';
-import { _ni, _fc2, _inp, _mgrEsc, mgrLoad, mgrSave, reconcileStaffRows } from './manager-shared.js';
+import { _ni, _fc2, _inp, _mgrEsc, mgrLoad, mgrSave, mgrAutosave, reconcileStaffRows } from './manager-shared.js';
 import { activeStaff } from './manager-staff.js';
 import { _salRows_cur, _salNet, _salUpdateFooter } from './manager-salary.js';
 
@@ -100,6 +100,7 @@ function recalcGenRow(i) {
   _genUpdateFooter(_genRows_cur);
   // Live sync to salary sheet — update the matching employee's generic column
   _syncGenericToSalary(i);
+  mgrAutosave('generic', () => saveGenericData(true));
 }
 
 function _syncGenericToSalary(genIdx) {
@@ -134,18 +135,20 @@ function _genUpdateFooter(rows) {
 function addGenericRow() {
   _genRows_cur.push({name:'', desig:'Salesman', genericSale:0, extra:0});
   renderGenericTable(_genRows_cur);
+  mgrAutosave('generic', () => saveGenericData(true));
 }
 function deleteGenRow(i) {
   _genRows_cur.splice(i, 1);
   renderGenericTable(_genRows_cur);
+  mgrAutosave('generic', () => saveGenericData(true));
 }
-function saveGenericData() {
+function saveGenericData(silent) {
   const my = document.getElementById('gen-month-sel').value;
   const data = mgrLoad();
   if (!data.generic) data.generic = {};
   data.generic[my] = _genRows_cur.map(r => ({...r}));
   mgrSave(data);
-  toast('✓ Generic Working saved for ' + my);
+  if (!silent) toast('✓ Generic Working saved for ' + my);
   if (Repository.getItem('bt_auto_save')==='1') pushToSupabase();
 }
 

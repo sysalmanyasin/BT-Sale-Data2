@@ -7,7 +7,7 @@
 // ══════════════════════════════════════════════════════════════════════
 import { Repository } from './repository.js';
 import { Actions } from './actions.js';
-import { _ni, _fc2 } from './manager-shared.js';
+import { _ni, _fc2, mgrAutosave } from './manager-shared.js';
 import { _mgrPrint } from './manager-reports.js';
 
 const PETTY_PFX = 'mw_petty_';
@@ -40,10 +40,10 @@ function loadPettyMonth(my) {
   renderPettyGroups();
 }
 
-function savePettyData() {
+function savePettyData(silent) {
   if (!_pettyMonth) { toast('⚠ Select a month first','w'); return; }
   Actions.saveFeatureData(_pettyKey(_pettyMonth), JSON.stringify(_pettyData));
-  toast('✓ Petty Detail saved');
+  if (!silent) toast('✓ Petty Detail saved');
   if (Repository.getItem('bt_auto_save')==='1') pushToSupabase();
 }
 
@@ -59,6 +59,7 @@ function _pettyTotalForMonth(my) {
 function addPettyGroup() {
   _pettyData.groups.push({ period: '', rows: [{ desc: '', amount: 0 }] });
   renderPettyGroups();
+  mgrAutosave('petty', () => savePettyData(true));
   // Scroll to the new group
   setTimeout(() => {
     const gs = document.querySelectorAll('.petty-group');
@@ -70,16 +71,19 @@ function deletePettyGroup(gi) {
   if (!confirm('Delete this group?')) return;
   _pettyData.groups.splice(gi, 1);
   renderPettyGroups();
+  mgrAutosave('petty', () => savePettyData(true));
 }
 
 function addPettyRow(gi) {
   _pettyData.groups[gi].rows.push({ desc: '', amount: 0 });
   renderPettyGroups();
+  mgrAutosave('petty', () => savePettyData(true));
 }
 
 function deletePettyRow(gi, ri) {
   _pettyData.groups[gi].rows.splice(ri, 1);
   renderPettyGroups();
+  mgrAutosave('petty', () => savePettyData(true));
 }
 
 function pettyRowChange(gi, ri, field, val) {
@@ -89,6 +93,7 @@ function pettyRowChange(gi, ri, field, val) {
   const el = document.getElementById('petty-sub-' + gi);
   if (el) el.textContent = '₨' + _fc2(sub);
   recalcPettyKpis();
+  mgrAutosave('petty', () => savePettyData(true));
 }
 
 function _pettyGroupTotal(g) {
@@ -160,6 +165,7 @@ function renderPettyGroups() {
 
 function pettyRowChange_period(gi, val) {
   _pettyData.groups[gi].period = val;
+  mgrAutosave('petty', () => savePettyData(true));
 }
 
 // Shared per-group print block — used by both the full-month report

@@ -31,6 +31,7 @@
 import { Repository } from './repository.js';
 import { Actions } from './actions.js';
 import * as LedgerStore from './ledger-store.js';
+import { mgrAutosave } from './manager-shared.js';
 
 // ─── LEDGER constant — the one-time migration into the unified Ledger
 // has already been run for this app's data. Nothing in this file
@@ -297,7 +298,7 @@ function _renderTally() {
     </div>
 
     <!-- Save Snapshot -->
-    <button onclick="_tallySaveSnapshot()" style="width:100%;background:#1e40af;color:#fff;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:16px;display:flex;align-items:center;justify-content:center;gap:8px">
+    <button id="mgr-save-jazzcash-tally" onclick="_tallySaveSnapshot()" style="width:100%;background:#1e40af;color:#fff;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:16px;display:flex;align-items:center;justify-content:center;gap:8px">
       📸 Save Today's Snapshot
     </button>
 
@@ -367,6 +368,31 @@ function _tallyLiveCalc() {
     dr.querySelector('div').textContent=diff===0?'✅ Balanced':diff>0?'⬆ Extra Cash':'⬇ Short';
     dr.querySelector('div').style.color=diff===0?'var(--green)':diff>0?'var(--amber)':'var(--red)';
   }
+  mgrAutosave('jazzcash-tally', _tallyAutosaveSnapshot);
+}
+
+// Same data-write as _tallySaveSnapshot() below, minus the _renderTally()
+// call and toast: a full re-render mid-keystroke would rebuild every
+// input in the accounts table and steal focus out from under whatever
+// the user is still typing. _tallyLiveCalc() (already called on every
+// keystroke, right above) keeps the on-screen totals current in the
+// meantime, so nothing looks stale while this saves quietly underneath.
+function _tallyAutosaveSnapshot() {
+  _jcTallyData=_tallyLoad();
+  const date=document.getElementById('tally-date')?.value||_jcTodayStr();
+  const appTarget=parseFloat(document.getElementById('tally-app-target')?.value)||0;
+  const inputs=document.querySelectorAll('.tally-amt-inp');
+  const accountsCopy=[];
+  inputs.forEach(inp=>{
+    const id=inp.dataset.acid;
+    const base=_jcTallyData.accounts.find(a=>a.id===id)||{id,name:id,amount:0};
+    accountsCopy.push({...base,amount:parseFloat(inp.value)||0});
+  });
+  const total=accountsCopy.reduce((s,a)=>s+(parseFloat(a.amount)||0),0);
+  _jcTallyData.snapshots=(_jcTallyData.snapshots||[]).filter(s=>s.date!==date);
+  _jcTallyData.snapshots.push({date,accounts:accountsCopy,appTarget,total,diff:total-appTarget,savedAt:new Date().toISOString()});
+  _jcTallyData.accounts=accountsCopy;
+  _tallySave(_jcTallyData);
 }
 
 function _tallySaveSnapshot() {

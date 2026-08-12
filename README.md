@@ -139,6 +139,18 @@ The staff and money-movement suite:
 - **Reports** — Salary, Petty, Credit, and Incentive reports, each its
   own manager sub-tab.
 
+Every free-typing sub-tab here (Staff Registry, Salary, Generic
+Working, Petty Detail, Staff Credit — sheet and Staff Card views —,
+Incentive, Jazz Cash's Balance Tally) autosaves: `mgrAutosave()`
+(`js/manager-shared.js`) debounces ~700ms after the last keystroke and
+then calls that sub-tab's own `save*Data()` — no click needed. Each
+Save button stays as an explicit "save right now" fallback (it briefly
+flashes "✓ Saved" when an autosave commits instead) rather than being
+removed. Deliberately excluded: the generalized Ledger's inline
+per-row edit (`ledger-page.js`) keeps its explicit ✓/✕ Save/Cancel —
+that's a genuine back-out-before-committing safeguard for a ledger,
+not friction to remove.
+
 ### 📊 Overview (Manager Overview)
 A dedicated Manager-domain dashboard, separate from the Sales
 Dashboard, giving a manager-focused summary view across staff, ledger,

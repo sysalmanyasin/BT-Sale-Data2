@@ -7,7 +7,7 @@
 // ══════════════════════════════════════════════════════════════════════
 import { Repository } from './repository.js';
 import { Actions } from './actions.js';
-import { _ni, _fc2 } from './manager-shared.js';
+import { _ni, _fc2, mgrAutosave } from './manager-shared.js';
 import { _mgrPrint } from './manager-reports.js';
 
 const INCEN_PFX = 'mw_incentive_';
@@ -41,14 +41,14 @@ function loadIncentiveMonth(my) {
   recalcIncentive();
 }
 
-function saveIncentiveData() {
-  if (!_incMonth) { toast('⚠ Select a month first','w'); return; }
+function saveIncentiveData(silent) {
+  if (!_incMonth) { if (!silent) toast('⚠ Select a month first','w'); return; }
   _INC_FIELDS.forEach(f => {
     const el = document.getElementById('inc-' + f);
     if (el) _incData[f] = _ni(el.value);
   });
   Actions.saveFeatureData(_incKey(_incMonth), JSON.stringify(_incData));
-  toast('✓ Incentive data saved');
+  if (!silent) toast('✓ Incentive data saved');
   if (Repository.getItem('bt_auto_save')==='1') pushToSupabase();
 }
 
@@ -94,6 +94,7 @@ function recalcIncentive() {
   set('ic-netInc',      netInc);
   setRed('ic-taxAmt',   tax);
   set('ic-salmanNet',   salmanNet);
+  if (_incMonth) mgrAutosave('incentive', () => saveIncentiveData(true));
 }
 
 function printIncentiveReport() {
