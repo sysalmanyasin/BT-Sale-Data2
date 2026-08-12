@@ -45,12 +45,32 @@
 <title>Bahria Town — Sales IC</title>
 
 <!-- External Libraries -->
+<!-- No SRI on Google's GSI client by design: Google serves this from a
+     rotating URL with no versioned/pinned build, and explicitly does not
+     support Subresource Integrity on it (https://developers.google.com/identity/gsi/web) —
+     pinning a hash here would break sign-in the next time Google updates it. -->
 <script src="https://accounts.google.com/gsi/client" async></script>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<!-- All libraries below are pinned to an exact version AND SRI-hashed.
+     Hashes were computed locally against the official npm-published
+     package for each exact version (verified byte-for-byte, not copied
+     from a third party), then served via jsDelivr's npm mirror, which is
+     guaranteed to serve npm's published bytes unmodified. Re-verify and
+     regenerate the hash any time a version number here changes. -->
+<script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"
+  integrity="sha384-dug+JxfBvklEQdJ4AYuBBAIScUz0bVN73xpy273gcAwHjb3qI0fXmuYNaNfdyYJG"
+  crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"
+  integrity="sha384-vtjasyidUo0kW94K5MXDXntzOJpQgBKXmE7e2Ga4LG0skTTLeBi97eFAXsqewJjw"
+  crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"
+  integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H"
+  crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"
+  integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk"
+  crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"
+  integrity="sha384-fCAW/rDWORTbQXSiB7mOg0QtQ5c+r0f544y6XoKjuVva0nMBlCpNUjiFeG5iMdS3"
+  crossorigin="anonymous"></script>
 
 <!-- CSS Modules — load order matters -->
 <link rel="stylesheet" href="css/variables.css?v=20260810a">
@@ -2135,7 +2155,13 @@ if ('serviceWorker' in navigator) {
      'undefined' when they run — every single page load, not just
      sometimes. (Was previously down at the old "6b" spot near
      sync-center.js, which was too late for these bridges.) -->
-<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<!-- Was unpinned "@2" (floats to latest 2.x on every load, and can't be
+     SRI-hashed since the bytes change under that URL without notice).
+     Pinned to an exact version below; bump deliberately and regenerate
+     the hash when you want the newer client, don't let it drift silently. -->
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js"
+  integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg"
+  crossorigin="anonymous"></script>
 
 <script type="module" src="js/ledger-store.js"></script>
 <script type="module" src="js/ledger-actions.js"></script>

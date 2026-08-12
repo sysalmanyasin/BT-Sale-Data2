@@ -233,10 +233,16 @@ fuzzy-ranks the Staff registry, so searching an employee's name jumps
 straight to their Staff Card.
 
 ### 🔒 Auth
-A Google Sign-In gate with a PIN fallback, which has to run *before*
-the rest of the app's data layer loads — the one deliberate exception
-to "nothing touches storage directly." Also triggers the PDF Library's
-expiry sweep on every unlock.
+A Google Sign-In gate, which has to run *before* the rest of the app's
+data layer loads — the one deliberate exception to "nothing touches
+storage directly." Also triggers the PDF Library's expiry sweep on
+every unlock. There used to be a PIN/password offline fallback; it's
+been removed (see comments in `auth.js`) — Google Sign-In with an
+authorised email is now the only way in. Real access control happens
+server-side: the Google `id_token` establishes a genuine Supabase
+session (`signInWithIdToken`), so `auth.uid()` is real for RLS — the
+client-side authorised-email check is a fast-fail UX gate, not the
+actual security boundary.
 
 ---
 
@@ -271,6 +277,13 @@ for a free-tier AI-generated overview of that medicine.
   remaining step is setting `GROQ_API_KEY` (and optionally
   `GEMINI_API_KEY`) as secrets on that project, since those need your
   own free account — see that function's `DEPLOY.md`.
+- **AI chat:** a separate floating chat assistant, calling a second
+  Edge Function (`supabase/functions/inventory-chat/`). Answers
+  inventory questions only from the search-result context the client
+  already has locally (no server-side inventory access by design) and
+  general medicine questions from the model's own knowledge — same
+  "reference only, not patient-specific advice" framing as the
+  `medicine-ai-info` lookup above.
 - **Not yet built:** a true native Android home-screen widget (the
   resizable live tile). That needs an Android Studio / Kotlin project,
   which is a separate build from this repo.
@@ -337,23 +350,52 @@ through the Event Bus.
 
 ## Known gaps
 
-- `localStorage` is touched directly outside the Repository in a
-  handful of files: `auth.js` (must run before the Repository loads —
-  a load-order constraint), the three read-only bridges
-  (`closing-bridge.js`, `audit-bridge.js`, `inventory-bridge.js`),
+- `localStorage` is touched directly outside the Repository in these
+  files (verified via `grep -rl "localStorage\." js` — this list has
+  drifted before, re-run that grep before trusting it):
+  `auth.js` (must run before the Repository loads — a load-order
+  constraint), the three read-only bridges (`closing-bridge.js`,
+  `audit-bridge.js`, `inventory-bridge.js`) plus a fourth,
+  `sale-payments-bridge.js`, following the same read-only pattern,
   `activity-log.js` (its local cache mirrors `bt_activity_log`, whose
   authoritative copy lives in Supabase — also sidesteps a feedback
   loop, since going through Repository would re-fire the very
-  EventBus event this file listens to), and a few files storing
-  UI-local state only (`stockledger.js`, `excess-working.js`,
-  `reorder-report.js`, `reports.js`, `closing-native.js`,
-  `ui-extras.js`) — none of it is business data, so it doesn't violate
-  the spirit of the rule.
+  EventBus event this file listens to), `drive.js` (caches the Google
+  Drive OAuth access token + expiry), `closing-ledger-marks.js`
+  (a small pending-marks map, UI-local), `fields.js` (theme
+  preference only), and a Repository-with-`localStorage`-fallback
+  pattern in `inventory-native.js` / `inventory-health-dashboard.js`
+  (`stockledger.js`, `excess-working.js`, `reorder-report.js`,
+  `reports.js`, `closing-native.js`, `ui-extras.js` also fall into
+  this UI-local-state bucket) — none of it is business data, so it
+  doesn't violate the spirit of the rule.
 - `bt-search.js` was dead code post-AI-removal; it's now back in use,
   powering Global Search.
-- The daily WhatsApp briefing Edge Function still calls Groq (Cerebras
-  fallback) to narrate the briefing text — the one place AI still runs
-  anywhere in this project. Everything client-side is AI-free.
+- AI narration survives in **two** places, not one: the daily
+  WhatsApp briefing Edge Function (Groq, Cerebras fallback) covered
+  above, and the Inventory Search PWA's floating chat assistant
+  (`supabase/functions/inventory-chat/`, wired up in
+  `inventory-search/app.js` via `CHAT_FUNCTION_URL`) — answers
+  inventory questions strictly from client-supplied search-result
+  context (no server-side inventory access) and general medicine
+  questions from the model's own knowledge. Everything in the *main*
+  app (this README's primary subject) is still AI-free; both AI
+  surfaces live in the separate Inventory Search companion PWA /
+  its Edge Functions.
+- All CDN library `<script>` tags in `index.html` are now pinned to
+  an exact version and SRI-hashed (`integrity` + `crossorigin`
+  attributes) — the Chart.js and Supabase Edge Function
+  script tags used to float on an unpinned `@2`, and none had a
+  hash. Chart.js is served from jsDelivr's `dist/chart.umd.js`
+  (unminified — the exact minified `chart.umd.min.js` cdnjs used to
+  serve isn't published to npm, so there's no way to hash-verify that
+  specific minified build against its source; the unminified npm
+  build is byte-verifiable and was preferred over shipping an
+  unverifiable hash). Google's GSI client (`accounts.google.com/gsi/client`)
+  is deliberately left unpinned/unhashed — Google doesn't support SRI
+  on it and rotates it without notice. **When bumping any pinned
+  library version, regenerate its hash from the matching npm package
+  — don't hand-edit the `integrity` attribute.**
 
 ---
 

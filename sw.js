@@ -5,7 +5,7 @@
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v10.64'; // Full version history: see CHANGELOG.md (moved out of this file — it had grown to ~70KB of inline comments, all downloaded/parsed on every SW update check).
+const CACHE_NAME = 'bt-sales-v10.65'; // v10.65: index.html's CDN <script> tags moved cdnjs → jsDelivr + gained SRI integrity hashes (Chart.js, xlsx, html2canvas, jsPDF, jsPDF-autotable, Supabase JS — the last two also newly version-pinned instead of floating). Precached CDN URLs above updated to match. Full version history: see CHANGELOG.md (moved out of this file — it had grown to ~70KB of inline comments, all downloaded/parsed on every SW update check).
 // v10.64: Manager section instant autosave — no "click Save" needed. See CHANGELOG.md.
 // v10.63: added Utility → Activity Log (js/activity-log.js, css/activity-log.css) — see README's Navigation model / Key subsystems.
 // v10.62: NETWORK_ONLY_ORIGINS was missing vtcrdkqhuvxatclobsby.supabase.co
@@ -134,15 +134,20 @@ const APP_SHELL = [
   './icons/icon-512.png',
   './icons/apple-touch-icon.png',
 
-  /* ── External CDN — precached for offline Chart / Excel / Supabase client ── */
-  'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js',
+  /* ── External CDN — precached for offline Chart / Excel / Supabase client ──
+     Moved from cdnjs to jsDelivr + pinned to exact versions when SRI hashes
+     were added to index.html — these URLs must stay byte-identical to the
+     <script src> in index.html or the SW will precache a resource the page
+     never actually requests. Update both together. */
+  'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js',
+  'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3/dist/umd/supabase.js',
 ];
 
-/* ── External CDN origins — cached on first use (stale-while-revalidate) ── */
+/* ── External CDN origins — cached on first use (stale-while-revalidate) ──
+   cdnjs.cloudflare.com removed: index.html no longer loads anything from
+   it (all CDN libraries moved to jsDelivr, see CACHE_NAME comment above). */
 const CDN_ORIGINS = [
-  'https://cdnjs.cloudflare.com',
   'https://fonts.googleapis.com',
   'https://fonts.gstatic.com',
   'https://cdn.jsdelivr.net',

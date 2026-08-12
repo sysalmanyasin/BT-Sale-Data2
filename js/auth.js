@@ -1,5 +1,9 @@
 // ══════════════════════════════════════════
-// AUTH GATE — Google Sign-In + PIN fallback
+// AUTH GATE — Google Sign-In only.
+// (PIN/password offline fallback was removed — see the comments further
+// down at the pwSubmit/pwResetSubmit stubs. This header used to say
+// "+ PIN fallback"; that stopped being true and the header hadn't been
+// updated to match.)
 // ══════════════════════════════════════════
 
 // NOTE: unlockApp and initAutoRefresh (below) stay TRUE bare globals,
