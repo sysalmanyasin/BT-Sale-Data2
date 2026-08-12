@@ -42,6 +42,26 @@ nav{position:sticky;top:0;z-index:200;background:rgba(255,255,255,.96);backdrop-
 @media(max-width:640px){ #nav-tc-text{display:none;} .takectrlbtn{padding:6px;border-radius:50%;} }
 
 
+/* ── Persistent Status Bar — slim live readout (Total Credit + Today's
+   Sale), sticky directly under the top nav, visible on EVERY page (not
+   just Cover/Manager Dashboard). Sits at top:56px so it stacks correctly
+   under nav's own sticky top:0/height:56px instead of overlapping it. ── */
+.status-bar{position:sticky;top:56px;z-index:190;background:linear-gradient(90deg,#0f172a,#1e3a5f);display:none;align-items:center;padding:0 20px;height:32px;box-shadow:0 1px 3px rgba(0,0,0,.08);}
+.status-bar-inner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;width:100%;}
+.status-pill{display:flex;align-items:center;gap:6px;text-decoration:none;color:#fff;font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,.08);transition:background .15s;cursor:pointer;}
+.status-pill:hover{background:rgba(255,255,255,.18);}
+.status-pill .sb-ic{font-size:12px;}
+.status-pill .sb-label{color:rgba(255,255,255,.6);font-weight:500;}
+.status-pill .sb-val{font-family:var(--mono);font-weight:700;}
+.status-credit .sb-val{color:#fbbf24;}
+.status-sale .sb-val{color:#4ade80;}
+.status-bar-time{margin-left:auto;font-size:10px;color:rgba(255,255,255,.4);font-family:var(--mono);}
+@media(max-width:640px){
+  .status-bar{padding:0 12px;height:auto;min-height:30px;}
+  .status-bar-time{display:none;}
+  .status-pill .sb-label{display:none;}
+}
+
 /* ── Sale Data sub-nav (Phase 1 reshape) ── */
 .ntabs.subnav {
   border-top: 1px solid var(--border);

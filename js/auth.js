@@ -15,6 +15,7 @@
 function unlockApp() {
   document.getElementById('pin-gate').style.display='none';
   document.getElementById('nav').style.display='flex';
+  if (typeof showStatusBar === 'function') showStatusBar();
   if (window._appInited) return;
   window._appInited = true;
   initApp();
@@ -27,10 +28,12 @@ function unlockApp() {
     if(ghCfg()&&Repository.getItem('bt_auto_load')==='1') manualSync(true);
     startAutoInterval();
     initAutoRefresh();
+    if (typeof refreshStatusBar === 'function') refreshStatusBar();
   }).catch(() => {
     if(ghCfg()&&Repository.getItem('bt_auto_load')==='1') manualSync(true);
     startAutoInterval();
     initAutoRefresh();
+    if (typeof refreshStatusBar === 'function') refreshStatusBar();
   });
 }
 
@@ -642,6 +645,7 @@ function lockApp() {
   if (typeof resetSupabaseSync === 'function') resetSupabaseSync();
   document.getElementById('pin-gate').style.display='flex';
   document.getElementById('nav').style.display='none';
+  if (typeof hideStatusBar === 'function') hideStatusBar();
   document.querySelectorAll('.page').forEach(p=>{ p.classList.remove('on'); p.style.display=''; });
   setTimeout(initAuthGate, 50);
 }

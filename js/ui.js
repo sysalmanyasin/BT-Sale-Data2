@@ -353,6 +353,10 @@ function rebuildAll() {
     // they had open and discard unsaved edits. refreshManagerPage() keeps
     // each sub-tab on its current month and only pulls in fresh data for it.
     if(_curPage==='manager' && typeof refreshManagerPage==='function') refreshManagerPage();
+    // Persistent status bar (Total Credit / Today's Sale) — refresh here
+    // too, not just on its own 30s timer, so a sync pull/push or ledger
+    // write reflects immediately instead of waiting out the interval.
+    if (typeof refreshStatusBar === 'function') refreshStatusBar();
   } catch(err) {
     if (typeof toast === 'function') toast('\u26a0 Rebuild error: ' + err.message, 'e');
     console.error('[rebuildAll] error:', err);

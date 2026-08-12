@@ -1735,3 +1735,9 @@ window.renderCoverDashboard = renderCoverDashboard;
 // Cover's own drag-reordered group sequence in the All Sections menu —
 // see its header comment for the domain-group -> Cover-slug mapping.
 window.btGetCoverOrder = _getOrder;
+// status-bar.js (classic script, not a module) reads these two so the
+// persistent top status bar shows exactly the same Total Outstanding
+// Credit / Today's Sale figures as Cover's own hero cards, computed by
+// the exact same helpers — never a second, possibly-disagreeing copy.
+window._totalOutstandingCredits = _totalOutstandingCredits;
+window._todaySaleBreakdown = _todaySaleBreakdown;

@@ -295,6 +295,22 @@ if ('serviceWorker' in navigator) {
   </div>
 </nav>
 
+<!-- ══ PERSISTENT STATUS BAR — slim live readout, visible on every page ══
+     Shows the exact same Total Outstanding Credit / Today's Sale figures
+     Cover's hero cards already show, via the same helpers (see
+     js/status-bar.js), so it can never disagree with the detail pages. -->
+<div id="status-bar" class="status-bar no-print" style="display:none">
+  <div class="status-bar-inner">
+    <a href="#manager-dashboard" class="status-pill status-credit" id="sb-credit" title="Total Outstanding Credit — Staff + Jazz Cash + Patty/Expenses + Misc, all-time">
+      <span class="sb-ic">💳</span><span class="sb-label">Total Credit</span><span class="sb-val" id="sb-credit-val">—</span>
+    </a>
+    <a href="#cover" class="status-pill status-sale" id="sb-sale" title="Today's Sale — live POS">
+      <span class="sb-ic">🧾</span><span class="sb-label" id="sb-sale-label">Today's Sale</span><span class="sb-val" id="sb-sale-val">—</span>
+    </a>
+    <span class="status-bar-time" id="sb-updated"></span>
+  </div>
+</div>
+
 <!-- ══ BOTTOM TAB BAR (mobile) ══ -->
 <div class="bnav no-print" id="bnav" role="navigation" aria-label="Page navigation">
   <button type="button" class="bnav-item side-menu-btn" onclick="openSectionsDrawer()" title="Search &amp; All Sections" aria-label="Open Search and All Sections menu"><span class="bicon">☰</span><span class="blabel">Menu</span></button>
@@ -2125,6 +2141,7 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/ledger-actions.js"></script>
 <script type="module" src="js/ledger-page.js?v=20260806b"></script>
 <script type="module" src="js/cover-dashboard.js?v=20260807a"></script>
+<script src="js/status-bar.js?v=20260812a"></script>
 <script type="module" src="js/record-day.js?v=20260801a"></script>
 <script type="module" src="js/staff-notes.js"></script>
 <script type="module" src="js/closing-bridge.js"></script>
