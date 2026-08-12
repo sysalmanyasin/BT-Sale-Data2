@@ -277,13 +277,13 @@ function buildCreditSection(lat) {
   const sectionCard = (icon, title, rows, total, navTab, tint) => {
     const t = tint || { accent: 'var(--accent)', bg: 'var(--alt)' };
     return `
-    <div class="mgr-card" style="border-left-color:${t.accent}">
+    <div class="mgr-card" style="--card-accent:${t.accent};--card-bg:${t.bg}">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <div style="font-size:12px;font-weight:700;color:var(--t2)">
-          <span class="mgr-card-icon" style="background:${t.bg}">${icon}</span>${title}
+          <span class="mgr-card-icon">${icon}</span>${title}
           ${navTab ? `<span onclick="navigateTo('manager');setTimeout(()=>{switchMgrTab('${navTab}');},200)" class="mgr-card-open">OPEN ↗</span>` : ''}
         </div>
-        <div class="mgr-card-total" style="background:${t.bg};color:${amtColor(total)}">${fmtAmt(total)}</div>
+        <div class="mgr-card-total" style="color:${amtColor(total)}">${fmtAmt(total)}</div>
       </div>
       <div style="border-top:1px solid var(--border);padding-top:6px">${detailRows(rows)}</div>
     </div>`;
@@ -316,13 +316,13 @@ function buildCreditSection(lat) {
 
   const pattyTint = { accent: 'var(--amber)', bg: 'var(--alt2)' };
   const pattyCardHtml = `
-    <div class="mgr-card" style="border-left-color:${pattyTint.accent}">
+    <div class="mgr-card" style="--card-accent:${pattyTint.accent};--card-bg:${pattyTint.bg}">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px">
         <div style="font-size:12px;font-weight:700;color:var(--t2)">
-          <span class="mgr-card-icon" style="background:${pattyTint.bg}">🧾</span>Patty / Expenses ${d.pattyIsFiltered ? '(filtered)' : '(all-time)'}
+          <span class="mgr-card-icon">🧾</span>Patty / Expenses ${d.pattyIsFiltered ? '(filtered)' : '(all-time)'}
           <span onclick="navigateTo('manager');setTimeout(()=>{switchMgrTab('expense');},200)" class="mgr-card-open">OPEN ↗</span>
         </div>
-        <div class="mgr-card-total" style="background:${pattyTint.bg};color:${amtColor(d.pattyTotal)}">${fmtAmt(d.pattyTotal)}</div>
+        <div class="mgr-card-total" style="color:${amtColor(d.pattyTotal)}">${fmtAmt(d.pattyTotal)}</div>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
         <input type="date" value="${_esc(_dashPattyDateFrom)}" onchange="dashSetPattyDateFrom(this.value)"

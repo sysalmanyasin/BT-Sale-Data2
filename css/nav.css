@@ -7,7 +7,7 @@
   color: inherit;
 }
 /* NAV */
-nav{position:sticky;top:0;z-index:200;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:env(safe-area-inset-top) 20px 0;height:56px;box-sizing:content-box;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+nav{position:sticky;top:32px;z-index:200;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:env(safe-area-inset-top) 20px 0;height:56px;box-sizing:content-box;box-shadow:0 1px 3px rgba(0,0,0,.06);}
 .nbrand{display:flex;align-items:center;gap:11px;}
 .nlogo{width:32px;height:32px;border-radius:9px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;box-shadow:0 2px 6px -2px rgba(58,97,247,.5);}
 .nbrand-text{font-weight:700;font-size:13px;letter-spacing:-.01em;}
@@ -43,10 +43,11 @@ nav{position:sticky;top:0;z-index:200;background:rgba(255,255,255,.96);backdrop-
 
 
 /* ── Persistent Status Bar — slim live readout (Total Credit + Today's
-   Sale), sticky directly under the top nav, visible on EVERY page (not
-   just Cover/Manager Dashboard). Sits at top:56px so it stacks correctly
-   under nav's own sticky top:0/height:56px instead of overlapping it. ── */
-.status-bar{position:sticky;top:56px;z-index:190;background:linear-gradient(90deg,#0f172a,#1e3a5f);display:none;align-items:center;padding:0 20px;height:32px;box-shadow:0 1px 3px rgba(0,0,0,.08);}
+   Sale), sticky at the very TOP of the page (topmost, above the main
+   nav), visible on EVERY page (not just Cover/Manager Dashboard). nav's
+   own sticky top offset (see nav{} above) is set to this bar's height
+   (32px) so it stacks directly underneath instead of overlapping it. ── */
+.status-bar{position:sticky;top:0;z-index:210;background:linear-gradient(90deg,#0f172a,#1e3a5f);display:none;align-items:center;padding:0 20px;height:32px;box-shadow:0 1px 3px rgba(0,0,0,.08);}
 .status-bar-inner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;width:100%;}
 .status-pill{display:flex;align-items:center;gap:6px;text-decoration:none;color:#fff;font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,.08);transition:background .15s;cursor:pointer;}
 .status-pill:hover{background:rgba(255,255,255,.18);}
@@ -57,7 +58,7 @@ nav{position:sticky;top:0;z-index:200;background:rgba(255,255,255,.96);backdrop-
 .status-sale .sb-val{color:#4ade80;}
 .status-bar-time{margin-left:auto;font-size:10px;color:rgba(255,255,255,.4);font-family:var(--mono);}
 @media(max-width:640px){
-  .status-bar{padding:0 12px;height:auto;min-height:30px;}
+  .status-bar{padding:0 12px;height:32px;}
   .status-bar-time{display:none;}
   .status-pill .sb-label{display:none;}
 }
@@ -119,14 +120,14 @@ nav{position:sticky;top:0;z-index:200;background:rgba(255,255,255,.96);backdrop-
   display: flex !important;
   flex-direction: column;
   padding: 0 !important;
-  height: calc(100vh - 56px);  /* desktop nav */
-  max-height: calc(100vh - 56px);
+  height: calc(100vh - 56px - 32px);  /* desktop nav + status bar */
+  max-height: calc(100vh - 56px - 32px);
   overflow: hidden;
 }
 @media (max-width: 700px) {
   .page.on#page-commandhub {
-    height: calc(100vh - 56px - 60px); /* nav + mobile bottom nav */
-    max-height: calc(100vh - 56px - 60px);
+    height: calc(100vh - 56px - 32px - 60px); /* nav + status bar + mobile bottom nav */
+    max-height: calc(100vh - 56px - 32px - 60px);
   }
 }
 

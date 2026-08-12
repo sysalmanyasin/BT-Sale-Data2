@@ -248,6 +248,24 @@ if ('serviceWorker' in navigator) {
 </script>
 
 <!-- ====== NAV ====== -->
+<!-- ══ PERSISTENT STATUS BAR — slim live readout, visible on every page ══
+     Sits ABOVE the main nav (topmost sticky element) so it's the first
+     thing visible on any page. Shows the exact same Total Outstanding
+     Credit / Today's Sale figures Cover's hero cards already show, via
+     the same helpers (see js/status-bar.js), so it can never disagree
+     with the detail pages. -->
+<div id="status-bar" class="status-bar no-print" style="display:none">
+  <div class="status-bar-inner">
+    <a href="#manager-dashboard" class="status-pill status-credit" id="sb-credit" title="Total Outstanding Credit — Staff + Jazz Cash + Patty/Expenses + Misc, all-time">
+      <span class="sb-ic">💳</span><span class="sb-label">Total Credit</span><span class="sb-val" id="sb-credit-val">—</span>
+    </a>
+    <a href="#cover" class="status-pill status-sale" id="sb-sale" title="Today's Sale — live POS">
+      <span class="sb-ic">🧾</span><span class="sb-label" id="sb-sale-label">Today's Sale</span><span class="sb-val" id="sb-sale-val">—</span>
+    </a>
+    <span class="status-bar-time" id="sb-updated"></span>
+  </div>
+</div>
+
 <!-- ══ NAV ══ -->
 <nav id="nav" style="display:none" class="no-print">
   <div class="nbrand">
@@ -292,22 +310,6 @@ if ('serviceWorker' in navigator) {
     <button class="lockbtn" onclick="lockApp()" title="Sign Out" style="width:auto;padding:0 10px;font-size:12px;font-weight:600;letter-spacing:.3px;color:var(--muted);">Sign Out</button>
   </div>
 </nav>
-
-<!-- ══ PERSISTENT STATUS BAR — slim live readout, visible on every page ══
-     Shows the exact same Total Outstanding Credit / Today's Sale figures
-     Cover's hero cards already show, via the same helpers (see
-     js/status-bar.js), so it can never disagree with the detail pages. -->
-<div id="status-bar" class="status-bar no-print" style="display:none">
-  <div class="status-bar-inner">
-    <a href="#manager-dashboard" class="status-pill status-credit" id="sb-credit" title="Total Outstanding Credit — Staff + Jazz Cash + Patty/Expenses + Misc, all-time">
-      <span class="sb-ic">💳</span><span class="sb-label">Total Credit</span><span class="sb-val" id="sb-credit-val">—</span>
-    </a>
-    <a href="#cover" class="status-pill status-sale" id="sb-sale" title="Today's Sale — live POS">
-      <span class="sb-ic">🧾</span><span class="sb-label" id="sb-sale-label">Today's Sale</span><span class="sb-val" id="sb-sale-val">—</span>
-    </a>
-    <span class="status-bar-time" id="sb-updated"></span>
-  </div>
-</div>
 
 <!-- ══ BOTTOM TAB BAR (mobile) ══ -->
 <div class="bnav no-print" id="bnav" role="navigation" aria-label="Page navigation">

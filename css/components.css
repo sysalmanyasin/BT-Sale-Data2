@@ -27,17 +27,21 @@
 
 /* ── Manager Dashboard credit cards (Staff Credit / Jazz Cash /
    Patty-Expenses / Misc Sections) — visual redesign pass, Aug 2026.
-   Each card carries a colored left accent + a tinted icon badge so the
-   four ledger types are distinguishable at a glance; content/markup is
-   unchanged, only presentation (see js/dashboard.js's sectionCard()/
-   pattyCardHtml, which now pass a `tint` through to these classes). ── */
-.mgr-card{background:var(--surface);border:1px solid var(--border);border-left-width:4px;border-left-style:solid;border-radius:var(--r-md);padding:14px 16px;box-shadow:var(--sh);transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease;}
+   Each card gets a full colored border + a light tinted background (not
+   just a left accent) so the four ledger types are distinguishable at a
+   glance; content/markup is unchanged, only presentation. Tint is set
+   once per card via --card-accent/--card-bg custom properties (see
+   js/dashboard.js's sectionCard()/pattyCardHtml) — everything inside
+   (icon badge, total chip) just reads var(--card-accent) so there's a
+   single source of truth per card instead of repeating the color in
+   three places. ── */
+.mgr-card{background:var(--card-bg, var(--surface));border:1.5px solid var(--card-accent, var(--border));border-radius:var(--r-md);padding:14px 16px;box-shadow:var(--sh);transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease;}
 .mgr-card:hover{transform:translateY(-2px);box-shadow:var(--sh-md);}
-.mgr-card-icon{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:7px;font-size:12px;margin-right:7px;vertical-align:-6px;}
-.mgr-card-total{font-size:15px;font-weight:800;font-family:var(--mono);padding:2px 9px;border-radius:8px;font-variant-numeric:tabular-nums;}
+.mgr-card-icon{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:7px;font-size:12px;margin-right:7px;vertical-align:-6px;background:var(--surface);border:1.5px solid var(--card-accent, var(--border));}
+.mgr-card-total{font-size:15px;font-weight:800;font-family:var(--mono);padding:2px 9px;border-radius:8px;font-variant-numeric:tabular-nums;background:var(--surface);border:1.5px solid var(--card-accent, var(--border));}
 .mgr-card-open{font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;margin-left:6px;cursor:pointer;letter-spacing:.02em;background:#dcfce7;color:#15803d;}
 .mgr-card-row{display:flex;justify-content:space-between;align-items:center;padding:6px 4px;border-radius:6px;border-bottom:1px solid var(--border);transition:background .12s;}
-.mgr-card-row:hover{background:var(--s2);}
+.mgr-card-row:hover{background:rgba(0,0,0,.04);}
 .mgr-card-row:last-child{border-bottom:none;}
 
 /* GRID */
