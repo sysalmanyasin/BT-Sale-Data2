@@ -164,6 +164,14 @@
 .sal-c{text-align:center;}
 .sal-num{text-align:center!important;}
 .mgr-inp.sal-num{text-align:center;font-weight:600;}
+/* Days column (salary table) — widened so the value is easy to read,
+   and native number-input spin buttons removed since they sit right
+   under the cursor and are easy to mis-click, bumping the day count by
+   accident. Typing/selecting the value still works exactly as before —
+   only the +/- stepper UI is gone. */
+.sal-c input[type="number"]::-webkit-outer-spin-button,
+.sal-c input[type="number"]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+.sal-c input[type="number"]{-moz-appearance:textfield;}
 #sal-table,#gen-table{border:2px solid var(--grid);}
 #sal-table th,#gen-table th{border:1px solid var(--grid)!important;}
 .mgr-tr:hover td{background:var(--s2);}
