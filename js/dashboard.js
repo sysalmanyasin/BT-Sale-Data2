@@ -30,6 +30,11 @@ let _dashTotalCompareOn = false;
 let _dashPattyDateFrom = '';
 let _dashPattyDateTo = '';
 const _dashPattyExpanded = new Set();
+// Which quick-preset button (if any) is currently active, purely for
+// highlighting the matching pill. Cleared whenever the user edits either
+// date input by hand or hits Reset, so a stale pill never stays lit once
+// the range no longer matches it.
+let _dashPattyActivePreset = '';
 
 // Called by the month <select> inside the credit section on the dashboard.
 // Re-renders the credit block and the Working Summary for the chosen month.
@@ -43,9 +48,39 @@ function dashSetCreditMonth(my) {
 // Patty/Expenses card's own From/To filter — re-renders just the credit
 // section (not the whole dashboard) against whichever month/credit-month
 // is currently selected, same as dashSetCreditMonth above.
-function dashSetPattyDateFrom(v) { _dashPattyDateFrom = v; buildCreditSection(_dashCreditMonthOverride || _dashDefaultCreditMonth()); }
-function dashSetPattyDateTo(v)   { _dashPattyDateTo = v; buildCreditSection(_dashCreditMonthOverride || _dashDefaultCreditMonth()); }
-function dashClearPattyDates()   { _dashPattyDateFrom = ''; _dashPattyDateTo = ''; buildCreditSection(_dashCreditMonthOverride || _dashDefaultCreditMonth()); }
+function dashSetPattyDateFrom(v) { _dashPattyDateFrom = v; _dashPattyActivePreset = ''; buildCreditSection(_dashCreditMonthOverride || _dashDefaultCreditMonth()); }
+function dashSetPattyDateTo(v)   { _dashPattyDateTo = v; _dashPattyActivePreset = ''; buildCreditSection(_dashCreditMonthOverride || _dashDefaultCreditMonth()); }
+function dashClearPattyDates()   { _dashPattyDateFrom = ''; _dashPattyDateTo = ''; _dashPattyActivePreset = ''; buildCreditSection(_dashCreditMonthOverride || _dashDefaultCreditMonth()); }
+
+// Quick-preset ranges for the Patty/Expenses card, all anchored to the
+// current calendar month (not whichever month Staff Credit is showing —
+// this card is its own all-time/date-filtered view). Weeks are fixed
+// day-of-month bands (01-07 / 08-14 / 15-22 / 23-end) rather than actual
+// Mon-Sun weeks, matching how the branch already talks about "1st week,
+// 2nd week" for petty cash reconciliation.
+function _dashPattyPresetRange(preset) {
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth();
+  const pad = n => String(n).padStart(2, '0');
+  const iso = (dd) => `${y}-${pad(m + 1)}-${pad(dd)}`;
+  const lastDay = new Date(y, m + 1, 0).getDate();
+  switch (preset) {
+    case 'month': return [iso(1), iso(lastDay)];
+    case 'w1':    return [iso(1), iso(7)];
+    case 'w2':    return [iso(8), iso(14)];
+    case 'w3':    return [iso(15), iso(22)];
+    case 'w4':    return [iso(23), iso(lastDay)];
+    default:      return ['', ''];
+  }
+}
+
+function dashSetPattyPreset(preset) {
+  const [from, to] = _dashPattyPresetRange(preset);
+  _dashPattyDateFrom = from;
+  _dashPattyDateTo = to;
+  _dashPattyActivePreset = preset;
+  buildCreditSection(_dashCreditMonthOverride || _dashDefaultCreditMonth());
+}
 function dashTogglePattyCat(catId) {
   if (_dashPattyExpanded.has(catId)) _dashPattyExpanded.delete(catId); else _dashPattyExpanded.add(catId);
   buildCreditSection(_dashCreditMonthOverride || _dashDefaultCreditMonth());
@@ -283,13 +318,30 @@ function buildCreditSection(lat) {
         </div>
         <div style="font-size:15px;font-weight:700;font-family:var(--mono);color:${amtColor(d.pattyTotal)}">${fmtAmt(d.pattyTotal)}</div>
       </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
         <input type="date" value="${_esc(_dashPattyDateFrom)}" onchange="dashSetPattyDateFrom(this.value)"
           style="font-size:11px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;background:var(--s2);color:var(--text)">
         <span style="font-size:10px;color:var(--muted)">to</span>
         <input type="date" value="${_esc(_dashPattyDateTo)}" onchange="dashSetPattyDateTo(this.value)"
           style="font-size:11px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;background:var(--s2);color:var(--text)">
         ${(_dashPattyDateFrom || _dashPattyDateTo) ? `<span onclick="dashClearPattyDates()" style="font-size:10px;color:var(--red,#dc2626);cursor:pointer;text-decoration:underline">✕ Clear</span>` : ''}
+      </div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+        ${[
+          ['month', 'This Month'],
+          ['w1', 'Wk1 (01-07)'],
+          ['w2', 'Wk2 (08-14)'],
+          ['w3', 'Wk3 (15-22)'],
+          ['w4', 'Wk4 (23-End)'],
+        ].map(([key, label]) => `
+        <span onclick="dashSetPattyPreset('${key}')"
+          style="font-size:9.5px;font-weight:600;padding:3px 8px;border-radius:20px;cursor:pointer;white-space:nowrap;
+            ${_dashPattyActivePreset === key
+              ? 'background:var(--accent,#2563eb);color:#fff;border:1px solid var(--accent,#2563eb)'
+              : 'background:var(--s2);color:var(--t2);border:1px solid var(--border)'}">${label}</span>`).join('')}
+        <span onclick="dashClearPattyDates()"
+          style="font-size:9.5px;font-weight:600;padding:3px 8px;border-radius:20px;cursor:pointer;white-space:nowrap;
+            background:var(--s2);color:var(--red,#dc2626);border:1px solid var(--border)">↺ Reset</span>
       </div>
       <div style="border-top:1px solid var(--border);padding-top:8px">${pattyDetailRows(d.pattyRows)}</div>
     </div>`;
@@ -753,6 +805,7 @@ window.dashSetCreditMonth = dashSetCreditMonth;
 window.dashSetPattyDateFrom = dashSetPattyDateFrom;
 window.dashSetPattyDateTo = dashSetPattyDateTo;
 window.dashClearPattyDates = dashClearPattyDates;
+window.dashSetPattyPreset = dashSetPattyPreset;
 window.dashTogglePattyCat = dashTogglePattyCat;
 window.printDashboardReport = printDashboardReport;
 
