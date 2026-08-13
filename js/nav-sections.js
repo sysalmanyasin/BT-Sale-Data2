@@ -90,25 +90,38 @@
     return depth === 0 ? 8 : 42 + (depth - 1) * 20;
   }
 
-  // Reads every top-level bnav page (id -> {label, icon, href}), keyed
-  // by data-page. Skips Recents (not a real page) and anything whose
-  // page element isn't in the DOM.
+  // Reads every top-level page (id -> {label, icon, href}), keyed by
+  // data-page, merged across every shell that can carry one: the
+  // trimmed 5-item #bnav (mobile), the 9-item .app-rail (desktop), and
+  // #bnav-index — a hidden catch-all for pages neither shell shows
+  // anymore (see index.html) — in that priority order, first match
+  // wins so a real, visible shell's label/icon/href is never
+  // clobbered by the hidden fallback. Skips Recents (not a real page)
+  // and anything whose page element isn't in the DOM.
   function _flatFromBnav() {
+    const sources = [
+      { sel: '#bnav > .bnav-item[data-page]', labelSel: '.blabel' },
+      { sel: '.app-rail > .rail-item[data-page]', labelSel: '.rail-lb' },
+      { sel: '#bnav-index > .bnav-item[data-page]', labelSel: '.blabel' },
+    ];
     const map = {};
-    document.querySelectorAll('#bnav > .bnav-item[data-page]').forEach(el => {
-      const id = el.dataset.page;
-      if (id === 'recents' || !document.getElementById('page-' + id)) return;
-      map[id] = {
-        label: (el.querySelector('.blabel') || {}).textContent || id,
-        // .bicon's emoji got swapped for an inline <svg> by js/icons.js
-        // on load, so its textContent is empty now — carry the page id
-        // through as svgKey instead and let _renderNode look it up in
-        // BT_ICONS, with the old '📄' only as a last-resort fallback for
-        // any id that (deliberately) has no icon defined.
-        icon: null,
-        svgKey: id,
-        href: el.getAttribute('href'),
-      };
+    sources.forEach(src => {
+      document.querySelectorAll(src.sel).forEach(el => {
+        const id = el.dataset.page;
+        if (!id || id === 'recents' || map[id] || !document.getElementById('page-' + id)) return;
+        map[id] = {
+          label: (el.querySelector(src.labelSel) || {}).textContent || id,
+          // .bicon/.rail-ic's emoji got swapped for an inline <svg> by
+          // js/icons.js on load, so its textContent is empty now —
+          // carry the page id through as svgKey instead and let
+          // _renderNode look it up in BT_ICONS, with the old '📄' only
+          // as a last-resort fallback for any id that (deliberately)
+          // has no icon defined.
+          icon: null,
+          svgKey: id,
+          href: el.getAttribute('href'),
+        };
+      });
     });
     return map;
   }

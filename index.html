@@ -341,6 +341,26 @@ if ('serviceWorker' in navigator) {
   <a class="bnav-item" href="#inventory" data-page="inventory" data-group="inventory" data-domain-group="inventory"><span class="bicon">📦</span><span class="blabel">Inventory</span></a>
 </div>
 
+<!-- ══ NAV INDEX (hidden) ══ — the trimmed bnav (5 items) and the
+     app-rail (9 items) both dropped several pages that still need to
+     stay discoverable through the Search & All Sections drawer
+     (js/nav-sections.js reads this, .bnav and .app-rail together — see
+     that file's _flatFromBnav). Never shown directly; not a nav shell
+     of its own. -->
+<div class="bnav-index no-print" id="bnav-index" style="display:none" aria-hidden="true">
+  <a class="bnav-item" href="#dashboard" data-page="dashboard" data-group="dashboard" data-domain-group="sales"><span class="bicon">📊</span><span class="blabel">Dashboard</span></a>
+  <a class="bnav-item" href="#manager-dashboard" data-page="manager-dashboard" data-group="managerdash" data-domain-group="manager"><span class="bicon">📈</span><span class="blabel">Manager Dashboard</span></a>
+  <a class="bnav-item" href="#notesheets" data-page="notesheets" data-group="notesheets" data-domain-group="notesheets"><span class="bicon">📑</span><span class="blabel">Notes &amp; Sheets</span></a>
+  <a class="bnav-item" href="#closing-book" data-page="closing-book" data-group="closing" data-domain-group="closing"><span class="bicon">📖</span><span class="blabel">Closing Book</span></a>
+  <a class="bnav-item" href="#credit-ledger" data-page="credit-ledger" data-group="closing" data-domain-group="closing"><span class="bicon">💳</span><span class="blabel">Credit Ledger</span></a>
+  <a class="bnav-item" href="#assignments" data-page="assignments" data-group="audit" data-domain-group="audit"><span class="bicon">🧾</span><span class="blabel">Assignments</span></a>
+  <a class="bnav-item" href="#stockledger" data-page="stockledger" data-group="inventory" data-domain-group="inventory"><span class="bicon">📒</span><span class="blabel">Stock Ledger</span></a>
+  <a class="bnav-item" href="#excess" data-page="excess" data-group="inventory" data-domain-group="inventory"><span class="bicon">📉</span><span class="blabel">Excess Working</span></a>
+  <a class="bnav-item" href="#reorder" data-page="reorder" data-group="inventory" data-domain-group="inventory"><span class="bicon">🛒</span><span class="blabel">Reorder Report</span></a>
+  <a class="bnav-item" href="#inv-health" data-page="inv-health" data-group="inventory" data-domain-group="inventory"><span class="bicon">🩺</span><span class="blabel">Inventory Health</span></a>
+  <a class="bnav-item" href="#tools" data-page="tools" data-group="tools"><span class="bicon">⚙️</span><span class="blabel">Tools</span></a>
+</div>
+
 <!-- ====== PAGES ====== -->
 <!-- ══ PAGES ══ -->
 
