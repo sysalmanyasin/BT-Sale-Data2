@@ -24,8 +24,10 @@ async function sbSheetsList() {
   return data || [];
 }
 
-async function sbSheetsInsert(spreadsheetId, title) {
-  const { data, error } = await sb().from('bt_sheets').insert({ spreadsheet_id: spreadsheetId, title }).select().single();
+// extra: { origin: 'owned'|'linked', can_edit: bool } — defaults to an
+// owned, editable sheet (the original create-flow behavior).
+async function sbSheetsInsert(spreadsheetId, title, extra) {
+  const { data, error } = await sb().from('bt_sheets').insert({ spreadsheet_id: spreadsheetId, title, ...(extra || {}) }).select().single();
   if (error) throw error;
   return data;
 }
@@ -41,6 +43,37 @@ async function sbSheetsSetPinned(spreadsheetId, pinned) {
 
 async function sbSheetsSoftDelete(spreadsheetId) {
   return sbSheetsTouch(spreadsheetId, { deleted: true });
+}
+
+// ── Orphan handling: we lost access (unshared / deleted upstream) ──────
+// Marked rather than removed, so the user sees *why* a sheet disappeared
+// instead of it silently vanishing from the list.
+async function sbSheetsMarkOrphaned(spreadsheetId) {
+  return sbSheetsTouch(spreadsheetId, { orphaned: true });
+}
+
+async function sbSheetsClearOrphaned(spreadsheetId) {
+  return sbSheetsTouch(spreadsheetId, { orphaned: false });
+}
+
+// ── Template designation (coding-boss §7: clone-from-template on create) ─
+async function sbSheetsGetTemplate() {
+  const { data, error } = await sb().from('bt_sheets').select('*').eq('is_template', true).eq('deleted', false).maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+
+// Setting a new template automatically un-sets any previous one (DB has a
+// partial unique index enforcing "at most one", but we clear explicitly
+// first so the intent is obvious even to someone reading just this file).
+async function sbSheetsSetTemplate(spreadsheetId) {
+  const { error: clearErr } = await sb().from('bt_sheets').update({ is_template: false }).eq('is_template', true);
+  if (clearErr) throw clearErr;
+  return sbSheetsTouch(spreadsheetId, { is_template: true });
+}
+
+async function sbSheetsUnsetTemplate(spreadsheetId) {
+  return sbSheetsTouch(spreadsheetId, { is_template: false });
 }
 
 // ── bt_sheets_cache (per-tab snapshot) ──────────────────────────────
@@ -81,14 +114,34 @@ async function sbPushHistory(spreadsheetId) {
   return data || [];
 }
 
-window.sbSheetsList       = sbSheetsList;
-window.sbSheetsInsert     = sbSheetsInsert;
-window.sbSheetsTouch      = sbSheetsTouch;
-window.sbSheetsSetPinned  = sbSheetsSetPinned;
-window.sbSheetsSoftDelete = sbSheetsSoftDelete;
-window.sbCacheGet         = sbCacheGet;
-window.sbCacheWrite       = sbCacheWrite;
-window.sbPushRecord       = sbPushRecord;
-window.sbPushHistory      = sbPushHistory;
+// All push rows for one spreadsheet+source, oldest first — used to decide
+// what to prune (coding-boss §7: cap push tabs instead of growing forever).
+async function sbPushHistoryAll(spreadsheetId, source) {
+  const { data, error } = await sb().from('bt_sheets_pushes').select('*').eq('spreadsheet_id', spreadsheetId).eq('source', source).order('pushed_at', { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
+async function sbPushDelete(id) {
+  const { error } = await sb().from('bt_sheets_pushes').delete().eq('id', id);
+  if (error) throw error;
+}
+
+window.sbSheetsList          = sbSheetsList;
+window.sbSheetsInsert        = sbSheetsInsert;
+window.sbSheetsTouch         = sbSheetsTouch;
+window.sbSheetsSetPinned     = sbSheetsSetPinned;
+window.sbSheetsSoftDelete    = sbSheetsSoftDelete;
+window.sbSheetsMarkOrphaned  = sbSheetsMarkOrphaned;
+window.sbSheetsClearOrphaned = sbSheetsClearOrphaned;
+window.sbSheetsGetTemplate   = sbSheetsGetTemplate;
+window.sbSheetsSetTemplate   = sbSheetsSetTemplate;
+window.sbSheetsUnsetTemplate = sbSheetsUnsetTemplate;
+window.sbCacheGet            = sbCacheGet;
+window.sbCacheWrite          = sbCacheWrite;
+window.sbPushRecord          = sbPushRecord;
+window.sbPushHistory         = sbPushHistory;
+window.sbPushHistoryAll      = sbPushHistoryAll;
+window.sbPushDelete          = sbPushDelete;
 
 })();

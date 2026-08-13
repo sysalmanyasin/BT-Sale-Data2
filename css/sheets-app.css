@@ -16,6 +16,7 @@
 .sa-card-title { font-weight: 600; font-size: 14px; color: var(--text); }
 .sa-card-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
 .sa-card-actions { display: flex; gap: var(--sp-1); }
+.sa-card-orphaned { border-color: var(--red); background: var(--rlt); }
 .sa-icon-btn {
   background: var(--s2); border: 1px solid var(--border); border-radius: var(--r-sm);
   width: 32px; height: 32px; font-size: 14px; cursor: pointer;

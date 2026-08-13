@@ -39,15 +39,32 @@ async function _sheetsFindOrCreateSubfolder() {
 }
 
 // ── Create a new spreadsheet, place it in the Sheets subfolder ─────────
-async function sheetsCreate(title) {
-  const cr = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
-    method: 'POST',
-    headers: { ..._authHeader(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ properties: { title: title || 'Untitled sheet' } })
-  });
-  const cd = await cr.json();
-  if (!cr.ok) throw new Error(cd.error?.message || 'Could not create spreadsheet');
-  const spreadsheetId = cd.spreadsheetId;
+// If templateId is given, clones that file via Drive's files.copy instead
+// of creating blank (coding-boss feature list §7 "template spreadsheet").
+async function sheetsCreate(title, templateId) {
+  let spreadsheetId, cdTitle;
+
+  if (templateId) {
+    const cr = await fetch(`https://www.googleapis.com/drive/v3/files/${templateId}/copy`, {
+      method: 'POST',
+      headers: { ..._authHeader(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: title || 'Untitled sheet' })
+    });
+    const cd = await cr.json();
+    if (!cr.ok) throw new Error(cd.error?.message || 'Could not clone template spreadsheet');
+    spreadsheetId = cd.id;
+    cdTitle = cd.name;
+  } else {
+    const cr = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
+      method: 'POST',
+      headers: { ..._authHeader(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ properties: { title: title || 'Untitled sheet' } })
+    });
+    const cd = await cr.json();
+    if (!cr.ok) throw new Error(cd.error?.message || 'Could not create spreadsheet');
+    spreadsheetId = cd.spreadsheetId;
+    cdTitle = cd.properties?.title;
+  }
 
   // Move it into the Sheets subfolder (Drive API addParents)
   try {
@@ -60,14 +77,43 @@ async function sheetsCreate(title) {
     console.warn('sheetsCreate: could not move into Sheets subfolder', e);
   }
 
-  return { spreadsheetId, title: cd.properties?.title || title };
+  return { spreadsheetId, title: cdTitle || title };
+}
+
+// ── Read a file's Drive-level info: who owns it, can we edit it ────────
+// Used by the Picker link flow to decide origin/can_edit for bt_sheets,
+// and by orphan-detection to tell "lost access" apart from other errors.
+async function sheetsGetFileInfo(spreadsheetId) {
+  const r = await fetch(`https://www.googleapis.com/drive/v3/files/${spreadsheetId}?fields=id,name,capabilities(canEdit),owners(me)`, { headers: _authHeader() });
+  const d = await r.json();
+  if (!r.ok) {
+    const err = new Error(d.error?.message || 'Could not read file info');
+    err.status = r.status;
+    throw err;
+  }
+  const isOwner = !!(d.owners && d.owners.some(o => o.me));
+  return { id: d.id, title: d.name, canEdit: !!d.capabilities?.canEdit, isOwner };
+}
+
+// ── Delete a single tab by its numeric sheetId (used by push auto-prune) ─
+async function sheetsDeleteTab(spreadsheetId, sheetId) {
+  const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
+    method: 'POST',
+    headers: { ..._authHeader(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ requests: [{ deleteSheet: { sheetId } }] })
+  });
+  if (!r.ok) { const d = await r.json(); throw new Error(d.error?.message || 'Could not delete old tab'); }
 }
 
 // ── Read metadata (tab names/order) for a spreadsheet ───────────────────
 async function sheetsGetMeta(spreadsheetId) {
   const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=properties.title,sheets.properties`, { headers: _authHeader() });
   const d = await r.json();
-  if (!r.ok) throw new Error(d.error?.message || 'Could not read spreadsheet metadata');
+  if (!r.ok) {
+    const err = new Error(d.error?.message || 'Could not read spreadsheet metadata');
+    err.status = r.status; // lets callers tell "lost access" (403/404) apart from a transient network/API error
+    throw err;
+  }
   return {
     title: d.properties?.title,
     tabs: (d.sheets || []).map(s => ({ title: s.properties.title, index: s.properties.index, sheetId: s.properties.sheetId }))
@@ -133,5 +179,7 @@ window.sheetsGetMeta        = sheetsGetMeta;
 window.sheetsGetAllValues  = sheetsGetAllValues;
 window.sheetsWriteTab      = sheetsWriteTab;
 window.sheetsTrash         = sheetsTrash;
+window.sheetsGetFileInfo   = sheetsGetFileInfo;
+window.sheetsDeleteTab     = sheetsDeleteTab;
 
 })();
