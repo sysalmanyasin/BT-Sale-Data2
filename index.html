@@ -388,6 +388,19 @@ if ('serviceWorker' in navigator) {
     <div class="rail-subs"></div>
   </div>
 
+  <!-- Reports has no page of its own (its 3 rows are all external
+       links — see nav-sections.js's "reports" _customGroup) so its row
+       is a plain toggle button, not an <a>, same rail-group/rail-subs
+       pattern as every other domain otherwise. Added so the rail
+       matches the drawer's directory 1:1. -->
+  <div class="rail-group" data-domain-group="reports">
+    <div class="rail-row">
+      <button type="button" class="rail-item" style="cursor:default;background:none;border:none;text-align:left;font:inherit;" onclick="BTAppNav.toggleGroup(this)"><span class="rail-ic">📰</span><span class="rail-lb">Reports</span></button>
+      <button type="button" class="rail-toggle" aria-label="Expand Reports sub-sections" onclick="BTAppNav.toggleGroup(this)">▸</button>
+    </div>
+    <div class="rail-subs"></div>
+  </div>
+
   <button type="button" class="rail-item rail-pin" id="rail-pin-btn" onclick="btToggleRailPin()" title="Expand navigation rail" aria-label="Expand or collapse navigation rail"><span class="rail-ic">»</span><span class="rail-lb">Expand</span></button>
 </div>
 

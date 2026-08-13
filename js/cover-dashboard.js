@@ -1092,6 +1092,12 @@ function _getOrder() {
     // a name (_orderedGroupNames already filters it, this just keeps
     // what gets re-saved clean too).
     const defaults = _defaultOrderSlugs();
+    // De-dupe first — a slug that somehow got written twice into a saved
+    // order (e.g. "manager" appearing twice) used to render its Cover
+    // card twice forever, since the old logic below only ever *added*
+    // missing slugs and *removed* unknown ones, never collapsed repeats
+    // of a slug that was already known-good.
+    saved = [...new Set(saved)];
     const known = new Set(saved);
     defaults.forEach(slug => { if (!known.has(slug)) saved.push(slug); });
     saved = saved.filter(slug => defaults.includes(slug));

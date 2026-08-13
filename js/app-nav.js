@@ -2,9 +2,11 @@
 // APP RAIL — expand/collapse + per-domain sub-tabs (Aug 2026 nav redesign)
 //
 // The rail (index.html's #app-rail, styled in css/app-nav.css) defaults
-// to collapsed (icons only, 64px) every session unless the user has
-// explicitly pinned it open before — that choice is remembered in
-// localStorage so it's a one-time preference, not a per-load default.
+// to expanded (208px, full labels + groups) every session — it's the
+// one persistent desktop nav, so it shouldn't default to a
+// hunt-for-it icon strip. A user who's explicitly collapsed it before
+// (a real '0' written to localStorage, not just "never touched it")
+// still gets that choice remembered and honoured.
 // Purely a desktop concern; the mobile shell (.bnav) has no equivalent
 // expand/collapse, it's just the 5 items + the ☰ Menu drawer trigger.
 //
@@ -43,7 +45,14 @@
   }
 
   function toggle() {
-    var next = !(safeGet() === '1');
+    // Read the rail's actual current state rather than raw storage —
+    // storage can be null (never explicitly saved either way, now that
+    // expanded is the default), and computing "next" from a null read
+    // used to always resolve to "expand" even when the rail was already
+    // expanded and the user was trying to collapse it.
+    var rail = document.getElementById('app-rail');
+    var currentlyExpanded = !!(rail && rail.classList.contains('expanded'));
+    var next = !currentlyExpanded;
     try { localStorage.setItem(KEY, next ? '1' : '0'); } catch (_) { /* private mode etc. — just won't persist */ }
     apply(next);
   }
@@ -135,7 +144,7 @@
   window.BTAppNav = { toggleGroup: toggleGroup, refresh: _refresh };
 
   document.addEventListener('DOMContentLoaded', function () {
-    apply(safeGet() === '1');
+    apply(safeGet() !== '0');
     _refresh();
   });
 
