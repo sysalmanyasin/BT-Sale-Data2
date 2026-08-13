@@ -155,7 +155,7 @@ function openMonthModal(my) {
   ].filter(([,v])=>v!=null&&n(v)!==0);
 
   const tgts=getTgts(), tgt=tgts[my];
-  const tgtHTML=tgt?`<div style="margin-bottom:14px;padding:10px 12px;background:var(--alt);border-radius:8px;font-size:12px">
+  const tgtHTML=tgt?`<div style="margin-bottom:14px;padding:13px 14px;background:var(--alt);border-radius:8px;font-size:12px">
     🎯 Target: <strong>₨${fc(tgt)}</strong> · Achieved: <strong>₨${fc(n(m.TOTAL))}</strong> (${Math.min(100,Math.round(n(m.TOTAL)/tgt*100))}%)
     <div style="background:var(--border);border-radius:99px;height:5px;margin-top:6px;overflow:hidden"><div style="height:100%;width:${Math.min(100,Math.round(n(m.TOTAL)/tgt*100))}%;background:var(--accent);border-radius:99px"></div></div>
   </div>`:'';
@@ -409,14 +409,14 @@ function buildPrintHTML(date, my, till, patty) {
   const r=dayData(d);
   const hidden=_rptHidden();
   const vis=id=>!hidden.has(id);
-  const row=(lbl,val)=>`<tr><td style="padding:5px 12px;font-size:13px;border:1px solid #ccc">${lbl}</td><td style="padding:5px 12px;font-size:13px;text-align:right;font-family:monospace;border:1px solid #ccc">${fv(val)}</td></tr>`;
+  const row=(lbl,val)=>`<tr><td style="padding:8px 14px;font-size:13px;border:1px solid #ccc">${lbl}</td><td style="padding:8px 14px;font-size:13px;text-align:right;font-family:monospace;border:1px solid #ccc">${fv(val)}</td></tr>`;
   const orow=(id,lbl,val)=>vis(id)&&val!==0?row(lbl,val):'';
   const rreq=(id,lbl,val)=>vis(id)?row(lbl,val):'';
   return `<div style="max-width:520px;margin:0;font-family:Arial,sans-serif">
     <table style="width:100%;border-collapse:collapse;border:1px solid #000">
-      <tr><td colspan="2" style="background:#000;color:#fff;text-align:center;font-size:14px;font-weight:700;padding:7px;letter-spacing:.04em;border:1px solid #000">BAHRIA TOWN SALE REPORT</td></tr>
-      <tr><td style="padding:5px 12px;font-size:13px;font-weight:600;border:1px solid #ccc">Date:</td><td style="padding:5px 12px;font-size:13px;text-align:right;color:#c00;font-weight:700;border:1px solid #ccc">${date}</td></tr>
-      <tr><td colspan="2" style="text-align:center;font-size:13px;font-weight:700;padding:5px;background:#f8fafc;border:1px solid #ccc">Cash Sale:</td></tr>
+      <tr><td colspan="2" style="background:#000;color:#fff;text-align:center;font-size:14px;font-weight:700;padding:10px;letter-spacing:.04em;border:1px solid #000">BAHRIA TOWN SALE REPORT</td></tr>
+      <tr><td style="padding:8px 14px;font-size:13px;font-weight:600;border:1px solid #ccc">Date:</td><td style="padding:8px 14px;font-size:13px;text-align:right;color:#c00;font-weight:700;border:1px solid #ccc">${date}</td></tr>
+      <tr><td colspan="2" style="text-align:center;font-size:14px;font-weight:800;padding:8px;background:#f8fafc;border:1px solid #ccc;text-decoration:underline;text-decoration-style:double;letter-spacing:.03em">Cash Sale:</td></tr>
       ${rreq('cashSale','Cash Sale (Sales Only)',r.cashSale)}
       ${rreq('meezan','Meezan Bank',r.meezan)}
       ${rreq('alfalah','Bank Alfalah',r.alfalah)}
@@ -424,8 +424,8 @@ function buildPrintHTML(date, my, till, patty) {
       ${orow('hbl','HBL',r.hbl)}${orow('mcb','MCB',r.mcb)}
       ${rreq('cashRet','Cash Returns (Returns Only)',r.cashRet)}
       ${r.customRows.filter(c=>c.cash).map((c,i)=>vis('ccash_'+i)?row(c.label,c.value):'').join('')}
-      <tr><td style="padding:6px 12px;font-size:13px;font-weight:700;color:#c00;background:#fff5f5;border:1px solid #fecaca">Net Cash Sale:</td><td style="padding:6px 12px;font-size:13px;font-weight:700;color:#c00;text-align:right;font-family:monospace;background:#fff5f5;border:1px solid #fecaca">${fv(r.netCash)}</td></tr>
-      <tr><td colspan="2" style="text-align:center;font-size:13px;font-weight:700;padding:5px;background:#f8fafc;border:1px solid #ccc">Credit Sale:</td></tr>
+      <tr><td style="padding:9px 14px;font-size:13px;font-weight:700;color:#c00;background:#fff5f5;border:1px solid #fecaca">Net Cash Sale:</td><td style="padding:9px 14px;font-size:13px;font-weight:700;color:#c00;text-align:right;font-family:monospace;background:#fff5f5;border:1px solid #fecaca">${fv(r.netCash)}</td></tr>
+      <tr><td colspan="2" style="text-align:center;font-size:14px;font-weight:800;padding:8px;background:#f8fafc;border:1px solid #ccc;text-decoration:underline;text-decoration-style:double;letter-spacing:.03em">Credit Sale:</td></tr>
       ${rreq('pso','PSO (Sales Only)',r.pso)}${rreq('nespak','Nespak (Sales Only)',r.nespak)}${rreq('parco','Parco (Sales Only)',r.parco)}
       ${rreq('askari','Askari',r.askari)}${rreq('lda','LDA (Sales Only)',r.lda)}${rreq('tepa','Tepa',r.tepa)}${rreq('fissue','Free Issue',r.fissue)}
       ${orow('gourmet','Gourmet',r.gourmet)}${orow('wapda','Wapda Hospital',r.wapda)}${orow('bth','BTH',r.bth)}
@@ -436,13 +436,13 @@ function buildPrintHTML(date, my, till, patty) {
       ${rreq('parcoRet','Credit Return Parco (Returns Only)',r.parcoRet)}${rreq('tepaRet','Credit Return Tepa (Returns Only)',r.tepaRet)}
       ${rreq('ldaRet','Credit Return LDA (Returns Only)',r.ldaRet)}${orow('askariRet','Askari Returns',r.askariRet)}
       ${r.customRows.filter(c=>!c.cash).map((c,i)=>vis('ccred_'+i)?row(c.label,c.value):'').join('')}
-      <tr><td style="padding:6px 12px;font-size:13px;font-weight:700;color:#c00;background:#fff5f5;border:1px solid #fecaca">Net Credit Sale:</td><td style="padding:6px 12px;font-size:13px;font-weight:700;color:#c00;text-align:right;font-family:monospace;background:#fff5f5;border:1px solid #fecaca">${fv(r.netCredit)}</td></tr>
-      <tr><td style="padding:10px 12px;font-size:16px;font-weight:700;color:#1e40af;background:#eff6ff;border:2px solid #bfdbfe">Grand Total:</td><td style="padding:10px 12px;font-size:16px;font-weight:700;color:#1e40af;text-align:right;font-family:monospace;background:#eff6ff;border:2px solid #bfdbfe">₨${fv(r.grand)}</td></tr>
-      ${vis('compSale')&&(r.compSale||r.diff!==0)?`<tr><td style="padding:5px 12px;font-size:12px;font-weight:600;border:1px solid #ccc">COMP SALE</td><td style="padding:5px 12px;font-size:12px;text-align:right;font-family:monospace;border:1px solid #ccc">${fv(r.compSale)}</td></tr>`:''}
-      ${vis('diff')&&(r.compSale||r.diff!==0)?`<tr><td style="padding:5px 12px;font-size:13px;font-weight:700;border:2px solid #000;color:${r.diff>0?'#15803d':r.diff<0?'#c00':'#64748b'}">Difference (Total − COMP)</td><td style="padding:5px 12px;font-size:13px;font-weight:700;text-align:right;font-family:monospace;border:2px solid #000;color:${r.diff>0?'#15803d':r.diff<0?'#c00':'#64748b'}">${fv(r.diff)}</td></tr>`:''}
-      ${vis('fdpp')?`<tr><td style="padding:5px 12px;font-size:12px;color:#c00;font-weight:600;border:1px solid #ccc">FDPP POS Sale:</td><td style="padding:5px 12px;font-size:12px;text-align:right;font-family:monospace;border:1px solid #ccc">${fv(r.fdpp)}</td></tr>`:''}
-      ${vis('fdppCon')?`<tr><td style="padding:5px 12px;font-size:12px;color:#c00;font-weight:600;border:1px solid #ccc">FDPP Consumer POS Sale:</td><td style="padding:5px 12px;font-size:12px;text-align:right;font-family:monospace;border:1px solid #ccc">${fv(r.fdppCon)}</td></tr>`:''}
-      ${vis('customers')?`<tr><td style="padding:5px 12px;font-size:12px;font-weight:600;border:1px solid #ccc">Customers</td><td style="padding:5px 12px;font-size:12px;text-align:right;font-family:monospace;border:1px solid #ccc">${fv(r.customers)}</td></tr>`:''}
+      <tr><td style="padding:9px 14px;font-size:13px;font-weight:700;color:#c00;background:#fff5f5;border:1px solid #fecaca">Net Credit Sale:</td><td style="padding:9px 14px;font-size:13px;font-weight:700;color:#c00;text-align:right;font-family:monospace;background:#fff5f5;border:1px solid #fecaca">${fv(r.netCredit)}</td></tr>
+      <tr><td style="padding:13px 14px;font-size:17px;font-weight:800;color:#fff;background:#1e3a8a;border:2px solid #fbbf24;letter-spacing:.02em">Grand Total:</td><td style="padding:13px 14px;font-size:17px;font-weight:800;color:#fff;text-align:right;font-family:monospace;background:#1e3a8a;border:2px solid #fbbf24">₨${fv(r.grand)}</td></tr>
+      ${vis('compSale')&&(r.compSale||r.diff!==0)?`<tr><td style="padding:8px 14px;font-size:12px;font-weight:600;border:1px solid #ccc">COMP SALE</td><td style="padding:8px 14px;font-size:12px;text-align:right;font-family:monospace;border:1px solid #ccc">${fv(r.compSale)}</td></tr>`:''}
+      ${vis('diff')&&(r.compSale||r.diff!==0)?`<tr><td style="padding:8px 14px;font-size:13px;font-weight:700;border:2px solid #000;color:${r.diff>0?'#15803d':r.diff<0?'#c00':'#64748b'}">Difference (Total − COMP)</td><td style="padding:8px 14px;font-size:13px;font-weight:700;text-align:right;font-family:monospace;border:2px solid #000;color:${r.diff>0?'#15803d':r.diff<0?'#c00':'#64748b'}">${fv(r.diff)}</td></tr>`:''}
+      ${vis('fdpp')?`<tr><td style="padding:8px 14px;font-size:12px;color:#c00;font-weight:600;border:1px solid #ccc">FDPP POS Sale:</td><td style="padding:8px 14px;font-size:12px;text-align:right;font-family:monospace;border:1px solid #ccc">${fv(r.fdpp)}</td></tr>`:''}
+      ${vis('fdppCon')?`<tr><td style="padding:8px 14px;font-size:12px;color:#c00;font-weight:600;border:1px solid #ccc">FDPP Consumer POS Sale:</td><td style="padding:8px 14px;font-size:12px;text-align:right;font-family:monospace;border:1px solid #ccc">${fv(r.fdppCon)}</td></tr>`:''}
+      ${vis('customers')?`<tr><td style="padding:8px 14px;font-size:12px;font-weight:600;border:1px solid #ccc">Customers</td><td style="padding:8px 14px;font-size:12px;text-align:right;font-family:monospace;border:1px solid #ccc">${fv(r.customers)}</td></tr>`:''}
       ${rreq('till','Till Short',till)}${rreq('patty','Patty Cash',patty)}
     </table>
   </div>`;
