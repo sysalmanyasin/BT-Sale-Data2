@@ -191,6 +191,22 @@
     return { label: label, icon: icon, svgKey: svgKey || null, href: null, kids: filtered, _domainGroup: domainGroup };
   }
 
+  // _customGroup returns null when every kid it was given resolved to
+  // nothing (e.g. their source page id wasn't found anywhere in the DOM
+  // this render — see _flatFromBnav). Object.assign(null, {...}) throws,
+  // which used to propagate all the way up through _buildTree/_render/
+  // openSectionsDrawer and abort before the drawer ever opened (the
+  // v10.66 nav-redesign regression, fixed in v10.67 by giving every
+  // domain a real DOM source again). Routing every _customGroup call
+  // through this helper means a future gap in one domain's DOM entries
+  // just quietly omits that group from the drawer instead of breaking
+  // the whole thing again.
+  function _pushGroup(groups, group, section) {
+    if (!group) return;
+    group._section = section;
+    groups.push(group);
+  }
+
   // Builds the drawer's actual row tree. This is the one place that
   // encodes the July-2026 re-org: Home folded into Sale Data, Overview
   // folded into Manager, and new collapsed umbrella groups (Inventory /
@@ -229,7 +245,7 @@
     // pattern as Audit's own external link above).
     const invKids = ['inventory', 'stockledger', 'excess', 'reorder', 'inv-health'].map(id => _leaf(flat[id]));
     invKids.push({ label: _VIRTUAL.inventorySearch.label, icon: _VIRTUAL.inventorySearch.icon, href: _VIRTUAL.inventorySearch.href, external: true, kids: [] });
-    groups.push(Object.assign(_customGroup('inventory', 'Inventory', '📦', invKids, 'group-inventory'), { _section: 'data' }));
+    _pushGroup(groups, _customGroup('inventory', 'Inventory', '📦', invKids, 'group-inventory'), 'data');
 
     // New: Closing umbrella over Closing Book + Credit Ledger (which
     // keeps its own Credit / Misc-Ongoing subs nested one level deeper).
@@ -240,13 +256,13 @@
         kids: _domList(_SUB_GROUPS['credit-ledger']).map(_leafFromList),
       };
     }
-    groups.push(Object.assign(_customGroup('closing', 'Closing', '🔒', [_leaf(flat['closing-book']), creditLedger], 'group-closing'), { _section: 'data' }));
+    _pushGroup(groups, _customGroup('closing', 'Closing', '🔒', [_leaf(flat['closing-book']), creditLedger], 'group-closing'), 'data');
 
     // New: Audit umbrella over the external Audit link + Assignments.
-    groups.push(Object.assign(_customGroup('audit', 'Audit', '🧾', [
+    _pushGroup(groups, _customGroup('audit', 'Audit', '🧾', [
       { label: _VIRTUAL.auditExternal.label, icon: _VIRTUAL.auditExternal.icon, href: _VIRTUAL.auditExternal.href, external: true, kids: [] },
       _leaf(flat.assignments),
-    ], 'group-audit'), { _section: 'utility' }));
+    ], 'group-audit'), 'utility');
 
     // New: Notes & Sheets umbrella over its Notes/Sheets/Manage Sheets/
     // Live Data tabs. Those tabs are only in the DOM once the page has
@@ -254,7 +270,7 @@
     // row pointing at the page itself if it hasn't yet.
     const nsSubs = _domList(_SUB_GROUPS.notesheets).map(_leafFromList);
     if (nsSubs.length) {
-      groups.push(Object.assign(_customGroup('notesheets', 'Notes & Sheets', '📑', nsSubs, 'group-notes'), { _section: 'data' }));
+      _pushGroup(groups, _customGroup('notesheets', 'Notes & Sheets', '📑', nsSubs, 'group-notes'), 'data');
     } else if (flat.notesheets) {
       groups.push({ label: 'Notes & Sheets', icon: flat.notesheets.icon, svgKey: 'notesheets', href: flat.notesheets.href, kids: [], _domainGroup: 'notesheets', _section: 'data' });
     }
@@ -262,7 +278,7 @@
     // New: Reports umbrella over the 3 external report links (none of
     // these have a bnav item — same "external, no page behind it"
     // pattern as Audit's own external tile above).
-    groups.push(Object.assign(_customGroup('reports', 'Reports', '📰', _VIRTUAL.reports.map(r => ({ label: r.label, icon: r.icon, href: r.href, external: true, kids: [] })), 'group-reports'), { _section: 'data' }));
+    _pushGroup(groups, _customGroup('reports', 'Reports', '📰', _VIRTUAL.reports.map(r => ({ label: r.label, icon: r.icon, href: r.href, external: true, kids: [] })), 'group-reports'), 'data');
 
     // Tools: its own Sync Center collapses into a nested group (with its
     // 6 tabs as sub-subs), followed by every other settings card.
