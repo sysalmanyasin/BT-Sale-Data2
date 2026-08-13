@@ -297,11 +297,12 @@ if ('serviceWorker' in navigator) {
   <!-- Old top tab row (.ntabs, 15 always-visible tabs) and the Sale Data
        sub-strip are retired — this bar is now just brand + utility
        controls. All wayfinding (6 domains, ~30 sub-sections) lives in
-       the app-rail (desktop, left) / bottom tab bar (mobile) + the
-       Search &amp; All Sections drawer both of them open — see
-       css/app-nav.css + js/app-nav.js, and #sectionsbg below. -->
+       the app-rail (desktop, left) / bottom tab bar (mobile) — both
+       already have their own "Menu" trigger for the Search & All
+       Sections drawer, so this bar no longer needs a third one (the
+       old 🔍 button here was pure duplication) — see css/app-nav.css +
+       js/app-nav.js, and #sectionsbg below. -->
   <div class="nright">
-    <button type="button" class="lockbtn" onclick="openSectionsDrawer()" title="Search &amp; All Sections" aria-label="Open Search and All Sections" style="font-size:14px;">🔍</button>
     <div class="syncbadge" id="synci" onclick="handleSyncBadgeClick()" title="Push all data to Supabase now (auto-pushes every 30s)">
       <span id="sync-icon">☁</span><span id="sync-text">Push All Data</span>
     </div>
