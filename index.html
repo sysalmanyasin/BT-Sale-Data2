@@ -76,7 +76,7 @@
 <link rel="stylesheet" href="css/variables.css?v=20260810a">
 <link rel="stylesheet" href="css/auth.css?v=20260722a">
 <link rel="stylesheet" href="css/nav.css?v=20260811a">
-<link rel="stylesheet" href="css/app-nav.css?v=20260813a">
+<link rel="stylesheet" href="css/app-nav.css?v=20260813b">
 <link rel="stylesheet" href="css/closing-native.css?v=20260728a">
 <link rel="stylesheet" href="css/closing-book-print.css?v=20260722a">
 <link rel="stylesheet" href="css/audit-native.css?v=20260722a">
@@ -322,13 +322,72 @@ if ('serviceWorker' in navigator) {
 <div class="app-rail no-print" id="app-rail" role="navigation" aria-label="Main navigation">
   <button type="button" class="rail-item rail-menu" onclick="openSectionsDrawer()" title="Search &amp; All Sections" aria-label="Open Search and All Sections"><span class="rail-ic">☰</span><span class="rail-lb">Menu</span></button>
   <a class="rail-item" href="#cover" data-page="cover"><span class="rail-ic">🏠</span><span class="rail-lb">Cover</span></a>
-  <a class="rail-item" href="#index" data-page="index" data-group="saledata" data-domain-group="sales"><span class="rail-ic">🗂️</span><span class="rail-lb">Sales</span></a>
-  <a class="rail-item" href="#manager" data-page="manager" data-domain-group="manager"><span class="rail-ic">👔</span><span class="rail-lb">Manager</span></a>
-  <a class="rail-item" href="#notesheets" data-page="notesheets" data-domain-group="notesheets"><span class="rail-ic">📑</span><span class="rail-lb">Notes &amp; Sheets</span></a>
-  <a class="rail-item" href="#closing-book" data-page="closing-book" data-domain-group="closing"><span class="rail-ic">📖</span><span class="rail-lb">Closing</span></a>
-  <a class="rail-item" href="#assignments" data-page="assignments" data-domain-group="audit"><span class="rail-ic">🧾</span><span class="rail-lb">Audit</span></a>
-  <a class="rail-item" href="#inventory" data-page="inventory" data-domain-group="inventory"><span class="rail-ic">📦</span><span class="rail-lb">Inventory</span></a>
-  <a class="rail-item" href="#tools" data-page="tools"><span class="rail-ic">⚙️</span><span class="rail-lb">Tools</span></a>
+
+  <!-- Each domain below is a .rail-group: the original .rail-item link
+       (unchanged — still what showPage()'s active-state bookkeeping and
+       navigation targets) plus a ▸ toggle and an initially-empty
+       .rail-subs list. js/app-nav.js fills .rail-subs from the exact
+       same tree js/nav-sections.js already builds for the Search & All
+       Sections drawer (window.BTNavSections.getTree()) — one source of
+       truth, two places it's rendered — and auto-opens whichever group
+       matches the page you're actually on. Sub-rows only ever show
+       when the rail itself is expanded (see css/app-nav.css). -->
+  <div class="rail-group" data-domain-group="sales">
+    <div class="rail-row">
+      <a class="rail-item" href="#index" data-page="index" data-group="saledata" data-domain-group="sales"><span class="rail-ic">🗂️</span><span class="rail-lb">Sales</span></a>
+      <button type="button" class="rail-toggle" aria-label="Expand Sales sub-sections" onclick="BTAppNav.toggleGroup(this)">▸</button>
+    </div>
+    <div class="rail-subs"></div>
+  </div>
+
+  <div class="rail-group" data-domain-group="manager">
+    <div class="rail-row">
+      <a class="rail-item" href="#manager" data-page="manager" data-domain-group="manager"><span class="rail-ic">👔</span><span class="rail-lb">Manager</span></a>
+      <button type="button" class="rail-toggle" aria-label="Expand Manager sub-sections" onclick="BTAppNav.toggleGroup(this)">▸</button>
+    </div>
+    <div class="rail-subs"></div>
+  </div>
+
+  <div class="rail-group" data-domain-group="notesheets">
+    <div class="rail-row">
+      <a class="rail-item" href="#notesheets" data-page="notesheets" data-domain-group="notesheets"><span class="rail-ic">📑</span><span class="rail-lb">Notes &amp; Sheets</span></a>
+      <button type="button" class="rail-toggle" aria-label="Expand Notes &amp; Sheets sub-sections" onclick="BTAppNav.toggleGroup(this)">▸</button>
+    </div>
+    <div class="rail-subs"></div>
+  </div>
+
+  <div class="rail-group" data-domain-group="closing">
+    <div class="rail-row">
+      <a class="rail-item" href="#closing-book" data-page="closing-book" data-domain-group="closing"><span class="rail-ic">📖</span><span class="rail-lb">Closing</span></a>
+      <button type="button" class="rail-toggle" aria-label="Expand Closing sub-sections" onclick="BTAppNav.toggleGroup(this)">▸</button>
+    </div>
+    <div class="rail-subs"></div>
+  </div>
+
+  <div class="rail-group" data-domain-group="audit">
+    <div class="rail-row">
+      <a class="rail-item" href="#assignments" data-page="assignments" data-domain-group="audit"><span class="rail-ic">🧾</span><span class="rail-lb">Audit</span></a>
+      <button type="button" class="rail-toggle" aria-label="Expand Audit sub-sections" onclick="BTAppNav.toggleGroup(this)">▸</button>
+    </div>
+    <div class="rail-subs"></div>
+  </div>
+
+  <div class="rail-group" data-domain-group="inventory">
+    <div class="rail-row">
+      <a class="rail-item" href="#inventory" data-page="inventory" data-domain-group="inventory"><span class="rail-ic">📦</span><span class="rail-lb">Inventory</span></a>
+      <button type="button" class="rail-toggle" aria-label="Expand Inventory sub-sections" onclick="BTAppNav.toggleGroup(this)">▸</button>
+    </div>
+    <div class="rail-subs"></div>
+  </div>
+
+  <div class="rail-group" data-domain-group="tools">
+    <div class="rail-row">
+      <a class="rail-item" href="#tools" data-page="tools" data-domain-group="tools"><span class="rail-ic">⚙️</span><span class="rail-lb">Tools</span></a>
+      <button type="button" class="rail-toggle" aria-label="Expand Tools sub-sections" onclick="BTAppNav.toggleGroup(this)">▸</button>
+    </div>
+    <div class="rail-subs"></div>
+  </div>
+
   <button type="button" class="rail-item rail-pin" id="rail-pin-btn" onclick="btToggleRailPin()" title="Expand navigation rail" aria-label="Expand or collapse navigation rail"><span class="rail-ic">»</span><span class="rail-lb">Expand</span></button>
 </div>
 
@@ -358,7 +417,24 @@ if ('serviceWorker' in navigator) {
   <a class="bnav-item" href="#excess" data-page="excess" data-group="inventory" data-domain-group="inventory"><span class="bicon">📉</span><span class="blabel">Excess Working</span></a>
   <a class="bnav-item" href="#reorder" data-page="reorder" data-group="inventory" data-domain-group="inventory"><span class="bicon">🛒</span><span class="blabel">Reorder Report</span></a>
   <a class="bnav-item" href="#inv-health" data-page="inv-health" data-group="inventory" data-domain-group="inventory"><span class="bicon">🩺</span><span class="blabel">Inventory Health</span></a>
-  <a class="bnav-item" href="#tools" data-page="tools" data-group="tools"><span class="bicon">⚙️</span><span class="blabel">Tools</span></a>
+  <a class="bnav-item" href="#tools" data-page="tools" data-group="tools" data-domain-group="tools"><span class="bicon">⚙️</span><span class="blabel">Tools</span></a>
+</div>
+
+<!-- Hidden Sale Data sub-tab index — the old top .ntabs "subnav" strip
+     and mobile #bnav-saledata-sub (both `.bnav-sub-item[data-page]`,
+     read by js/nav-sections.js's _SUB_GROUPS.index) were deleted by the
+     nav redesign with nothing put in their place, so Daily Data/Add
+     Entry/Sale Report/Cash Deposit/Payments/DIFF Report had zero
+     discoverable DOM entries anywhere in the app — not the drawer, not
+     the rail. Restores that source, same pattern as #bnav-index above. -->
+<div class="bnav-sub no-print" id="saledata-sub-index" style="display:none" aria-hidden="true">
+  <a class="bnav-sub-item" href="#index" data-page="index">Index</a>
+  <a class="bnav-sub-item" href="#data" data-page="data">Daily Data</a>
+  <a class="bnav-sub-item" href="#entry" data-page="entry">Add Entry</a>
+  <a class="bnav-sub-item" href="#report" data-page="report">Sale Report</a>
+  <a class="bnav-sub-item" href="#cashdeposit" data-page="cashdeposit">Cash Deposit</a>
+  <a class="bnav-sub-item" href="#sale-payments" data-page="sale-payments">Payments</a>
+  <a class="bnav-sub-item" href="#diff" data-page="diff">DIFF Report</a>
 </div>
 
 <!-- ====== PAGES ====== -->
@@ -2217,9 +2293,9 @@ if ('serviceWorker' in navigator) {
 <script defer src="js/reports.js?v=20260722a"></script>
 <script defer src="js/cash-deposit-report.js?v=20260727a"></script>
 <script defer src="js/icons.js?v=20260809a"></script>
-<script defer src="js/nav-sections.js?v=20260809a"></script>
+<script defer src="js/nav-sections.js?v=20260813b"></script>
 <script defer src="js/global-search.js?v=20260731a"></script>
-<script defer src="js/app-nav.js?v=20260813a"></script>
+<script defer src="js/app-nav.js?v=20260813b"></script>
 
 <!-- 11. Data page: daily table + entry form -->
 <script defer src="js/data-page.js?v=20260722a"></script>

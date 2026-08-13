@@ -85,6 +85,70 @@
 
   .rail-menu { color: var(--accent); }
   .rail-pin { margin-top: auto; }
+
+  /* ── Per-domain sub-tabs ──────────────────────────────────────────
+     .rail-group wraps one domain's .rail-item + ▸ toggle + .rail-subs.
+     The toggle/subs only ever render meaningfully once the rail itself
+     is .expanded (collapsed icon-only mode has no room for labels);
+     collapsed mode hides both outright below. Content is filled by
+     js/app-nav.js from the same tree js/nav-sections.js builds for the
+     Search & All Sections drawer. */
+  .rail-group { display: flex; flex-direction: column; }
+  .rail-row { display: flex; align-items: center; }
+  .rail-row .rail-item { flex: 1; min-width: 0; }
+  .rail-toggle {
+    display: none;
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    margin-right: 6px;
+    border: none;
+    background: none;
+    border-radius: var(--r-sm);
+    color: var(--muted);
+    font-size: 11px;
+    line-height: 1;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    transition: transform .12s ease;
+  }
+  .rail-toggle:hover { background: var(--s2); color: var(--text); }
+  .app-rail.expanded .rail-group.has-subs .rail-toggle { display: flex; }
+
+  .rail-subs {
+    display: none;
+    flex-direction: column;
+    padding-left: 34px;
+    margin: 2px 8px 6px;
+    gap: 1px;
+    border-left: 1px solid var(--border);
+  }
+  .app-rail.expanded .rail-group.rail-group-open .rail-subs { display: flex; }
+
+  .rail-sub-label {
+    padding: 6px 4px 2px 10px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    opacity: .7;
+  }
+  .rail-sub-item {
+    display: block;
+    padding: 6px 4px 6px 10px;
+    font-size: 12.5px;
+    color: var(--muted);
+    text-decoration: none;
+    border-radius: var(--r-sm);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .rail-sub-item:hover { background: var(--s2); color: var(--text); }
+  .rail-sub-item.active { color: var(--accent); font-weight: 600; background: var(--alt); }
+  .rail-sub-item-l2 { padding-left: 20px; font-size: 12px; }
 }
 
 @media (max-width: 860px) {

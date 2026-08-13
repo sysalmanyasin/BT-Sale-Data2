@@ -287,7 +287,7 @@
       const kids = [];
       if (scSubs.length) kids.push({ label: 'Sync Center', icon: '🖥', href: null, kids: scSubs });
       _toolCards().forEach(c => kids.push(_leafFromList(c)));
-      groups.push({ label: flat.tools.label, icon: flat.tools.icon, svgKey: 'tools', href: flat.tools.href, kids: kids, _section: 'utility' });
+      groups.push({ label: flat.tools.label, icon: flat.tools.icon, svgKey: 'tools', href: flat.tools.href, kids: kids, _domainGroup: 'tools', _section: 'utility' });
     }
 
     if (document.getElementById('page-pdf-library')) groups.push(Object.assign(_leaf(_VIRTUAL.pdfLibrary), { _section: 'utility' }));
@@ -424,6 +424,11 @@
 
   window.openSectionsDrawer = openSectionsDrawer;
   window.closeSectionsDrawer = closeSectionsDrawer;
-  window.BTNavSections = { _toggle: _toggleGroup };
+  // getTree: exposed so js/app-nav.js can render the same domain->kids
+  // tree into the persistent rail's sub-tabs, instead of re-deriving
+  // (and risking drift from) its own copy of this mapping. Returns a
+  // fresh build every call — cheap (small DOM, runs on open/nav-change
+  // only) and always current, same as the drawer itself.
+  window.BTNavSections = { _toggle: _toggleGroup, getTree: _buildTree };
 
 })();
