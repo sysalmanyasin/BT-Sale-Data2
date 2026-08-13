@@ -6,7 +6,7 @@
 .mhdr{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
 .mhdr h2{font-size:16px;font-weight:700;}
 .mclose{width:30px;height:30px;border-radius:7px;border:1px solid var(--border);background:var(--s2);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;}
-.mbody{padding:18px 22px;overflow-y:auto;}
+.mbody{padding:18px 22px;overflow-y:auto;flex:1 1 auto;min-height:0;}
 .statrow{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
 .stati{flex:1;min-width:100px;background:var(--s2);border:1px solid var(--border);border-radius:9px;padding:10px 12px;}
 .statil{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;}
@@ -20,7 +20,7 @@
 .dmhdr h3{font-size:14px;font-weight:700;}
 .dmhdr h3 small{font-size:11px;opacity:.7;margin-left:6px;}
 .dmclose{width:26px;height:26px;border-radius:6px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;color:#fff;}
-.dmbody{overflow-y:auto;}
+.dmbody{overflow-y:auto;flex:1 1 auto;min-height:0;}
 .dmsec{padding:10px 16px 6px;}
 .dmsh{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);padding-bottom:5px;border-bottom:2px solid var(--alt);margin-bottom:6px;}
 .dmrow{display:flex;justify-content:space-between;align-items:baseline;padding:3px 0;font-size:12px;border-bottom:1px solid #f8fafc;}
