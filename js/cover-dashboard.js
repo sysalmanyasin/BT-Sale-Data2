@@ -1309,68 +1309,11 @@ function _renderKpiRow() {
   });
 }
 
-function _wireCoverSearch() {
-  const input = document.getElementById('cover-search');
-  if (!input || input.dataset.wired) return;
-  input.dataset.wired = '1';
-
-  // The placeholder promises "Jump to anything — Sales, Inventory,
-  // Audit…", but typing here only ever filtered the handful of group
-  // cards already on this page. The app's real cross-section search
-  // already exists (js/global-search.js, inside the All Sections
-  // drawer) — so the first keystroke here hands off to that instead of
-  // silently under-delivering on what the box promises. Cover's own
-  // in-page filtering (below) still runs too, in case someone just
-  // wants to narrow what's on screen without leaving the page.
-  input.addEventListener('focus', () => {
-    if (input.dataset.handedOff) return;
-    input.dataset.handedOff = '1';
-    if (typeof window.openSectionsDrawer === 'function') {
-      const q = input.value;
-      window.openSectionsDrawer();
-      setTimeout(() => {
-        const gsInput = document.getElementById('gs-input');
-        if (gsInput) {
-          gsInput.value = q;
-          gsInput.focus();
-          if (window.GlobalSearch && typeof window.GlobalSearch.onInput === 'function') {
-            window.GlobalSearch.onInput(q);
-          }
-        }
-      }, 80);
-    }
-  });
-  input.addEventListener('blur', () => { input.dataset.handedOff = ''; });
-
-  input.addEventListener('input', () => {
-    const q = input.value.trim().toLowerCase();
-    document.querySelectorAll('#cover-container .cover-group').forEach(groupEl => {
-      const title = (groupEl.querySelector('.cover-group-title')?.textContent || '').toLowerCase();
-      const subtitle = (groupEl.querySelector('.cover-group-subtitle')?.textContent || '').toLowerCase();
-      let match = !q || title.includes(q) || subtitle.includes(q);
-
-      // Audit/Reports still have real tiles (see TILE_GRID_GROUPS) — also
-      // match/highlight against each tile's own title+status, same as
-      // every group used to before the rest went hero-only.
-      const tileEls = groupEl.querySelectorAll('.cover-tile');
-      if (tileEls.length) {
-        let anyTileVisible = false;
-        tileEls.forEach(tileEl => {
-          const tTitle = (tileEl.querySelector('.cover-tile-title')?.textContent || '').toLowerCase();
-          const tStatus = (tileEl.querySelector('.cover-tile-status')?.textContent || '').toLowerCase();
-          const tMatch = !q || tTitle.includes(q) || tStatus.includes(q);
-          tileEl.classList.toggle('cover-tile-hidden', !tMatch);
-          tileEl.classList.toggle('cover-tile-match', !!q && tMatch);
-          if (tMatch) anyTileVisible = true;
-        });
-        match = match || anyTileVisible;
-      }
-
-      groupEl.classList.toggle('cover-group-hidden', !!q && !match);
-      if (q && match) groupEl.classList.remove('collapsed');
-    });
-  });
-}
+// The Cover-page "Jump to anything" search box was removed (Aug 2026) —
+// it only ever handed off to the same Search & All Sections drawer
+// already one tap away via Menu, so it was a third redundant entry
+// point into that same search (see index.html). _wireCoverSearch and
+// its in-page filtering are gone with it.
 
 export function renderCoverDashboard() {
   const container = document.getElementById('cover-container');
@@ -1701,7 +1644,6 @@ export function renderCoverDashboard() {
       _setCollapsed(coll);
     });
   });
-  _wireCoverSearch();
   _wireCollapseToggle();
   _updateCollapseToggleLabel();
   _wireGroupDragReorder();

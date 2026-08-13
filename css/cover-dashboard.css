@@ -103,16 +103,11 @@
 .cover-kpi-label{font-size:11px;color:var(--muted);margin-top:2px;}
 .cover-kpi-sub{font-size:9.5px;color:var(--red);margin-top:3px;font-weight:600;}
 
-/* ── Search bar ── */
-.cover-search-row{position:relative;margin-bottom:16px;display:flex;gap:8px;align-items:stretch;}
-.cover-search-row .cover-search-icon{left:14px;}
-.cover-search-icon{position:absolute;top:50%;transform:translateY(-50%);font-size:14px;opacity:.55;pointer-events:none;}
-.cover-search-input{
-  flex:1;min-width:0;padding:12px 14px 12px 40px;border-radius:13px;border:1px solid var(--border);
-  background:var(--surface);font-family:var(--sans);font-size:14px;color:var(--text);
-  box-shadow:var(--sh);transition:border-color .15s,box-shadow .15s;
-}
-.cover-search-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.12);}
+/* ── Collapse-all toggle row ── (the "Jump to anything" search input that
+   used to share this row is gone — see index.html; it only ever handed
+   off to the same Search & All Sections drawer already one tap away via
+   Menu, so it was a third redundant entry point to that same search) */
+.cover-search-row{position:relative;margin-bottom:16px;display:flex;gap:8px;align-items:stretch;justify-content:flex-end;}
 .cover-collapse-toggle-btn{
   flex:0 0 auto;padding:0 14px;border-radius:13px;border:1px solid var(--border);
   background:var(--surface);font-family:var(--sans);font-size:12.5px;font-weight:600;color:var(--text);
