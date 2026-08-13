@@ -1,7 +1,12 @@
 /* ══════════════════════════════════════════════════════════════════
    SALE PAYMENTS  —  Cash / Card / Credit split + credit-by-customer.
-   Table conventions mirror cash-deposit-report.css (#tbl-cdr) and
-   inventory-native's group-header rows.
+   Redesign pass (Aug 2026): full gridlines (horizontal + vertical),
+   a rounded bordered table shell, gradient header, zebra striping,
+   row-hover, and a distinct color read per payment type so the two
+   tables scan as a modern, well-defined grid instead of the flat
+   border-bottom-only list they used to be. Everything pulls from
+   variables.css tokens (--grid/--accent/--purple/--amber/etc.), so
+   dark mode keeps working automatically — no hardcoded colors here.
    ══════════════════════════════════════════════════════════════════ */
 
 .sp-toolbar {
@@ -22,37 +27,135 @@
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
 }
-.sp-toolbar button:hover { background: var(--alt); }
+.sp-toolbar button:hover { background: var(--alt); border-color: var(--accent); color: var(--accent); }
 
 .sp-section-title {
-  margin: 18px 16px 8px;
+  margin: 22px 16px 10px;
   font-size: 13px;
-  font-weight: 700;
-  color: var(--t2);
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: .01em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sp-section-title::before {
+  content: '';
+  width: 4px;
+  height: 15px;
+  border-radius: 3px;
+  background: var(--grad-header);
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* ── Table shell — separate borders (not collapsed) so the outer
+   corners can round off cleanly, with a full grid drawn cell-by-cell
+   (border-right + border-bottom on every cell, border-left added
+   back in on the first column only) so verticals never double up. ── */
+#tbl-sp-summary, #tbl-sp-credit {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
 }
 
 #tbl-sp-summary th, #tbl-sp-summary td,
-#tbl-sp-credit th, #tbl-sp-credit td { text-align: right; padding: 7px 10px; font-size: 13px; }
-#tbl-sp-summary thead tr, #tbl-sp-credit thead tr { background: var(--alt); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
-#tbl-sp-summary tbody tr, #tbl-sp-credit tbody tr { border-bottom: 1px solid var(--border); }
+#tbl-sp-credit th, #tbl-sp-credit td {
+  text-align: right;
+  padding: 10px 14px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--grid);
+  border-right: 1px solid var(--grid);
+}
+#tbl-sp-summary th:first-child, #tbl-sp-credit th:first-child,
+#tbl-sp-summary td:first-child, #tbl-sp-credit td:first-child {
+  border-left: 1px solid var(--grid);
+  text-align: left;
+}
+#tbl-sp-summary thead th, #tbl-sp-credit thead th {
+  border-top: 1px solid var(--grid);
+}
 
-.sp-num { font-family: var(--mono); }
-.sp-total-cell { font-weight: 700; color: var(--accent); }
+/* header: brand gradient, white uppercase labels, faint grid lines
+   so it still reads as a grid against the color. Background is set
+   directly on the <th> (not just the parent <tr>) because the base
+   th{background:var(--s2)} rule in components.css paints each cell's
+   own background independently — it would otherwise mask a
+   tr-level gradient. */
+#tbl-sp-summary thead th, #tbl-sp-credit thead th {
+  background: var(--grad-header);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: #fff;
+  font-weight: 700;
+  border-color: rgba(255,255,255,.2);
+}
+#tbl-sp-summary thead th:first-child, #tbl-sp-credit thead th:first-child { border-top-left-radius: var(--r-sm); }
+#tbl-sp-summary thead th:last-child, #tbl-sp-credit thead th:last-child { border-top-right-radius: var(--r-sm); }
 
-.sp-totals-row { background: var(--alt); font-weight: 700; }
-.sp-totals-row td { border-top: 2px solid var(--border); }
+/* rounded bottom corners on the last visible row */
+#tbl-sp-summary tbody:last-of-type tr:last-child td:first-child,
+#tbl-sp-credit tbody tr:last-child td:first-child { border-bottom-left-radius: var(--r-sm); }
+#tbl-sp-summary tbody:last-of-type tr:last-child td:last-child,
+#tbl-sp-credit tbody tr:last-child td:last-child { border-bottom-right-radius: var(--r-sm); }
+#tbl-sp-summary tfoot tr:last-child td:first-child { border-bottom-left-radius: var(--r-sm); }
+#tbl-sp-summary tfoot tr:last-child td:last-child { border-bottom-right-radius: var(--r-sm); }
 
-.sp-group-row { background: var(--s2); }
-.sp-group-row td { font-weight: 700; font-size: 12px; color: var(--t2); border-bottom: 1px solid var(--border); }
+/* zebra striping + hover, skipping the special rows */
+#tbl-sp-summary tbody tr:nth-child(even),
+#tbl-sp-credit tbody tr:nth-child(even):not(.sp-group-row) { background: var(--s2); }
+#tbl-sp-summary tbody tr:hover td,
+#tbl-sp-credit tbody tr:hover td:not(.sp-group-row td) { background: var(--alt); }
 
-.sp-search-row { margin: 0 16px 8px; }
+.sp-num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.sp-total-cell { font-weight: 800; color: var(--accent); }
+
+/* quick-scan color coding per payment type on the Daily Split table */
+#tbl-sp-summary td:nth-child(2).sp-num { color: var(--teal); }
+#tbl-sp-summary td:nth-child(3).sp-num { color: var(--purple); }
+#tbl-sp-summary td:nth-child(4).sp-num { color: var(--amber); }
+
+/* totals footer row — tinted, bold, accent top border to set it apart */
+.sp-totals-row td {
+  background: var(--alt) !important;
+  font-weight: 800;
+  color: var(--text);
+  border-top: 2px solid var(--accent) !important;
+}
+.sp-totals-row .sp-total-cell { color: var(--accent-dk); }
+
+/* per-day group header rows on the credit table */
+.sp-group-row td {
+  background: var(--alt) !important;
+  font-weight: 800;
+  font-size: 12.5px;
+  color: var(--accent-dk);
+  border-top: 1.5px solid var(--border-strong);
+  border-bottom: 1.5px solid var(--border-strong);
+}
+
+.sp-search-row { margin: 0 16px 10px; position: relative; }
 .sp-search-row input {
   width: 100%;
-  padding: 9px 12px;
-  border-radius: 8px;
+  padding: 9px 12px 9px 34px;
+  border-radius: 9px;
   border: 1px solid var(--border);
-  background: var(--s2);
+  background: var(--surface);
   color: var(--text);
   font-size: 13px;
+  transition: border-color .15s, box-shadow .15s;
+}
+.sp-search-row input:focus { border-color: var(--accent); box-shadow: var(--focus-ring); }
+.sp-search-row::before {
+  content: '🔎';
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  opacity: .55;
+  pointer-events: none;
 }
