@@ -1,0 +1,92 @@
+/* ══════════════════════════════════════════════════════════════════
+   APP RAIL — persistent desktop nav (Aug 2026 nav redesign)
+
+   Replaces the old always-expanded 15-item .ntabs row. Collapsed to a
+   64px icon dock by default (task: "default collapsible"); a pin
+   button at the bottom expands it to 208px with labels and remembers
+   that choice in localStorage (js/app-nav.js). Hidden below 861px,
+   where css/mobile.css's .bnav (now trimmed to 5 items) takes over as
+   the mobile shell instead.
+
+   Both shells are deliberately thin — they're just quick-access to the
+   handful of domain landing pages. The full ~30-item directory (every
+   sub-section, nested) lives in one place, opened from either shell:
+   the existing Search & All Sections drawer (#sectionsbg, nav.css +
+   nav-sections.js). That's the "one tree, two shells" idea — nothing
+   here re-implements or duplicates that tree.
+
+   Uses only the app's existing custom properties (--surface, --border,
+   --accent, --text, --muted, --sans, --r-sm, --sh, ...) from
+   variables.css, so it inherits the exact palette/dark-mode already in
+   place — no new colors introduced.
+   ══════════════════════════════════════════════════════════════════ */
+
+.app-rail { display: none; }
+
+@media (min-width: 861px) {
+  .app-rail {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    position: fixed;
+    left: 0;
+    top: calc(32px + 56px); /* below status-bar (32px) + top utility bar (56px) */
+    bottom: 0;
+    width: 64px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 10px 0;
+    gap: 2px;
+    z-index: 190; /* below nav (200) / status-bar (210), above page content */
+    overflow-y: auto;
+    overflow-x: hidden;
+    transition: width .16s ease;
+    box-shadow: var(--sh);
+  }
+  .app-rail.expanded { width: 208px; }
+
+  /* Reserve the rail's own width so it never overlaps page content —
+     applied to body rather than .page so it also clears fixed-position
+     in-page toolbars etc. Fixed-position elements (modals, .mbg, this
+     rail itself) ignore body padding, so nothing else is affected. */
+  body { padding-left: 64px; }
+  body.rail-expanded { padding-left: 208px; }
+
+  .rail-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    white-space: nowrap;
+    padding: 10px 0 10px 22px;
+    margin: 0 8px;
+    border-radius: var(--r-sm);
+    color: var(--muted);
+    text-decoration: none;
+    border: none;
+    background: none;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    flex-shrink: 0;
+    width: calc(100% - 16px);
+    box-sizing: border-box;
+  }
+  .rail-item:hover { background: var(--s2); color: var(--text); }
+  .rail-item.active { background: var(--alt); color: var(--accent); font-weight: 600; }
+  .rail-ic { font-size: 17px; width: 20px; text-align: center; flex-shrink: 0; }
+  .rail-lb {
+    opacity: 0;
+    max-width: 0;
+    overflow: hidden;
+    transition: opacity .1s;
+  }
+  .app-rail.expanded .rail-lb { opacity: 1; max-width: 160px; }
+
+  .rail-menu { color: var(--accent); }
+  .rail-pin { margin-top: auto; }
+}
+
+@media (max-width: 860px) {
+  .app-rail { display: none !important; }
+}

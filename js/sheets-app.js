@@ -50,10 +50,9 @@ function saLog(msg, cls) {
   el.scrollTop = el.scrollHeight;
 }
 
-// ── Recently-opened tracking (mirrors js/nav-recents.js's MRU pattern —
-// a separate, small session store rather than reusing nav-recents.js
-// directly, since that module keys off page-level DOM nav elements and
-// individual sheets aren't pages). ──────────────────────────────────
+// ── Recently-opened tracking (small, self-contained MRU/session store —
+// sheets aren't page-level nav destinations, so this doesn't hook into
+// the app nav at all, just sessionStorage + a max-length list). ──────
 const RECENTS_KEY = 'bt_sheets_recents_session';
 const RECENTS_MAX = 20;
 

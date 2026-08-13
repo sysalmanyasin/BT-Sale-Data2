@@ -5,7 +5,7 @@
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v10.65'; // v10.65: index.html's CDN <script> tags moved cdnjs → jsDelivr + gained SRI integrity hashes (Chart.js, xlsx, html2canvas, jsPDF, jsPDF-autotable, Supabase JS — the last two also newly version-pinned instead of floating). Precached CDN URLs above updated to match. Full version history: see CHANGELOG.md (moved out of this file — it had grown to ~70KB of inline comments, all downloaded/parsed on every SW update check).
+const CACHE_NAME = 'bt-sales-v10.66'; // v10.66: nav redesign — top .ntabs row (15 always-visible tabs) and the old .bnav (13 items, unusable on a phone) replaced by a shared "one tree, two shells" nav: a collapsible desktop rail (css/app-nav.css + js/app-nav.js, defaults collapsed) + a trimmed 5-item mobile bottom bar, both opening the same Search & All Sections drawer for the full ~30-item directory. Recents drawer (js/nav-recents.js) and the Sale Data sub-nav strips retired as redundant with that directory. Full version history: see CHANGELOG.md (moved out of this file — it had grown to ~70KB of inline comments, all downloaded/parsed on every SW update check).
 // v10.64: Manager section instant autosave — no "click Save" needed. See CHANGELOG.md.
 // v10.63: added Utility → Activity Log (js/activity-log.js, css/activity-log.css) — see README's Navigation model / Key subsystems.
 // v10.62: NETWORK_ONLY_ORIGINS was missing vtcrdkqhuvxatclobsby.supabase.co
@@ -27,6 +27,7 @@ const APP_SHELL = [
   './css/variables.css',
   './css/auth.css',
   './css/nav.css',
+  './css/app-nav.css',
   './css/closing-native.css',
   './css/closing-book-print.css',
   './css/audit-native.css',
@@ -122,8 +123,8 @@ const APP_SHELL = [
   './js/quick-add.js',
   './js/ui-extras.js',
   './js/nav-sections.js',
-  './js/nav-recents.js',
   './js/global-search.js',
+  './js/app-nav.js',
   './js/fields.js',
   './js/drive.js',
 

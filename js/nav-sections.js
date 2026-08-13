@@ -1,10 +1,11 @@
 // ══════════════════════════════════════════════════════════════════════
-// ALL SECTIONS DRAWER  —  long-press Cover (bottom nav) OR the permanent
-// ☰ "Menu" item pinned as the left-most entry of the bottom nav bar
-// (see index.html/css/nav.css) opens a full directory of every section
-// + sub-section, as opposed to js/nav-recents.js's drawer which only
-// shows what's actually been visited. Complements the bottom tab bar +
-// back button + recents drawer combo already in place.
+// ALL SECTIONS DRAWER  —  long-press Cover (bottom nav) OR any of the
+// ☰ "Menu" triggers (desktop rail, bottom nav, top-bar 🔍 — see
+// index.html/css/app-nav.css) opens a full directory of every section
+// + sub-section. It's the one shared tree behind both nav shells (see
+// js/app-nav.js for the rail itself); the old per-visit recents drawer
+// (js/nav-recents.js) was retired as redundant with always having the
+// full directory one tap away.
 //
 // Every group renders collapsed by default each time the drawer opens;
 // tapping a group's ▸ chevron expands/collapses just that group, while

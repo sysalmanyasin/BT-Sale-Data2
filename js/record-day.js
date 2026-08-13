@@ -21,7 +21,7 @@
 // brand-new install's first few entries (necessarily each a "record"
 // against an almost-empty history) don't celebrate an empty baseline.
 // Fires at most once per calendar date per session (sessionStorage —
-// same ephemeral-per-session convention nav-recents.js already uses).
+// cleared on tab close, not persisted across sessions).
 // ══════════════════════════════════════════════════════════════════════
 
 import { EventBus } from './event-bus.js';

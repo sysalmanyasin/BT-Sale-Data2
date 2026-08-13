@@ -76,6 +76,7 @@
 <link rel="stylesheet" href="css/variables.css?v=20260810a">
 <link rel="stylesheet" href="css/auth.css?v=20260722a">
 <link rel="stylesheet" href="css/nav.css?v=20260811a">
+<link rel="stylesheet" href="css/app-nav.css?v=20260813a">
 <link rel="stylesheet" href="css/closing-native.css?v=20260728a">
 <link rel="stylesheet" href="css/closing-book-print.css?v=20260722a">
 <link rel="stylesheet" href="css/audit-native.css?v=20260722a">
@@ -293,34 +294,14 @@ if ('serviceWorker' in navigator) {
     <div class="nlogo">BT</div>
     <div><div class="nbrand-text">Bahria Town Sales IC</div><div class="nbrand-sub" id="nbrand-sub-label">Intelligence Centre</div></div>
   </div>
-  <div class="ntabs">
-    <button type="button" class="ntab ntab-menu" onclick="openSectionsDrawer()" title="Search &amp; All Sections">☰ Menu</button>
-    <a class="ntab" href="#cover" data-page="cover" data-group="cover">🏠 Cover</a>
-    <a class="ntab" href="#dashboard" data-page="dashboard" data-group="dashboard" data-domain-group="sales">Dashboard</a>
-    <a class="ntab" href="#index" data-page="index" data-group="saledata" data-domain-group="sales">Sale Data</a>
-    <a class="ntab" href="#manager" data-page="manager" data-group="manager" data-domain-group="manager">👔 Manager</a>
-    <a class="ntab" href="#manager-dashboard" data-page="manager-dashboard" data-group="managerdash" data-domain-group="manager">📊 Manager Dashboard</a>
-    <a class="ntab" href="#notesheets" data-page="notesheets" data-group="notesheets" data-domain-group="notesheets">📑 Notes &amp; Sheets</a>
-    <a class="ntab" href="#closing-book" data-page="closing-book" data-group="closing" data-domain-group="closing">📖 Closing Book</a>
-    <a class="ntab" href="#credit-ledger" data-page="credit-ledger" data-group="closing" data-domain-group="closing">💳 Credit Ledger</a>
-    <a class="ntab" href="#assignments" data-page="assignments" data-group="audit" data-domain-group="audit">🧾 Assignments</a>
-    <a class="ntab" href="#inventory" data-page="inventory" data-group="inventory" data-domain-group="inventory">📦 BT Inventory</a>
-    <a class="ntab" href="#stockledger" data-page="stockledger" data-group="inventory" data-domain-group="inventory">📒 Stock Ledger</a>
-    <a class="ntab" href="#excess" data-page="excess" data-group="inventory" data-domain-group="inventory">📉 Excess Working</a>
-    <a class="ntab" href="#reorder" data-page="reorder" data-group="inventory" data-domain-group="inventory">🛒 Reorder Report</a>
-    <a class="ntab" href="#inv-health" data-page="inv-health" data-group="inventory" data-domain-group="inventory">🩺 Inventory Health</a>
-    <a class="ntab" href="#tools" data-page="tools" data-group="tools">⚙️ Tools</a>
-  </div>
-  <div class="ntabs subnav" id="saledata-subnav" style="display:none">
-    <a class="ntab sub" href="#index" data-page="index">Index</a>
-    <a class="ntab sub" href="#data" data-page="data">Daily Data</a>
-    <a class="ntab sub" href="#entry" data-page="entry">Add Entry</a>
-    <a class="ntab sub" href="#report" data-page="report">Sale Report</a>
-    <a class="ntab sub" href="#cashdeposit" data-page="cashdeposit">Cash Deposit</a>
-    <a class="ntab sub" href="#sale-payments" data-page="sale-payments">Payments</a>
-    <a class="ntab sub" href="#diff" data-page="diff">DIFF Report</a>
-  </div>
+  <!-- Old top tab row (.ntabs, 15 always-visible tabs) and the Sale Data
+       sub-strip are retired — this bar is now just brand + utility
+       controls. All wayfinding (6 domains, ~30 sub-sections) lives in
+       the app-rail (desktop, left) / bottom tab bar (mobile) + the
+       Search &amp; All Sections drawer both of them open — see
+       css/app-nav.css + js/app-nav.js, and #sectionsbg below. -->
   <div class="nright">
+    <button type="button" class="lockbtn" onclick="openSectionsDrawer()" title="Search &amp; All Sections" aria-label="Open Search and All Sections" style="font-size:14px;">🔍</button>
     <div class="syncbadge" id="synci" onclick="handleSyncBadgeClick()" title="Push all data to Supabase now (auto-pushes every 30s)">
       <span id="sync-icon">☁</span><span id="sync-text">Push All Data</span>
     </div>
@@ -332,35 +313,32 @@ if ('serviceWorker' in navigator) {
   </div>
 </nav>
 
+<!-- ══ APP RAIL (desktop, ≥861px) ══ — collapsed to icons by default
+     (64px), remembers an expanded/pinned state (208px, labels) in
+     localStorage — see js/app-nav.js. Mobile gets the bottom tab bar +
+     drawer below instead; both shells open the exact same Search & All
+     Sections drawer (#sectionsbg) for the full ~30-item directory, so
+     nothing here needs to duplicate that tree. -->
+<div class="app-rail no-print" id="app-rail" role="navigation" aria-label="Main navigation">
+  <button type="button" class="rail-item rail-menu" onclick="openSectionsDrawer()" title="Search &amp; All Sections" aria-label="Open Search and All Sections"><span class="rail-ic">☰</span><span class="rail-lb">Menu</span></button>
+  <a class="rail-item" href="#cover" data-page="cover"><span class="rail-ic">🏠</span><span class="rail-lb">Cover</span></a>
+  <a class="rail-item" href="#index" data-page="index" data-group="saledata" data-domain-group="sales"><span class="rail-ic">🗂️</span><span class="rail-lb">Sales</span></a>
+  <a class="rail-item" href="#manager" data-page="manager" data-domain-group="manager"><span class="rail-ic">👔</span><span class="rail-lb">Manager</span></a>
+  <a class="rail-item" href="#notesheets" data-page="notesheets" data-domain-group="notesheets"><span class="rail-ic">📑</span><span class="rail-lb">Notes &amp; Sheets</span></a>
+  <a class="rail-item" href="#closing-book" data-page="closing-book" data-domain-group="closing"><span class="rail-ic">📖</span><span class="rail-lb">Closing</span></a>
+  <a class="rail-item" href="#assignments" data-page="assignments" data-domain-group="audit"><span class="rail-ic">🧾</span><span class="rail-lb">Audit</span></a>
+  <a class="rail-item" href="#inventory" data-page="inventory" data-domain-group="inventory"><span class="rail-ic">📦</span><span class="rail-lb">Inventory</span></a>
+  <a class="rail-item" href="#tools" data-page="tools"><span class="rail-ic">⚙️</span><span class="rail-lb">Tools</span></a>
+  <button type="button" class="rail-item rail-pin" id="rail-pin-btn" onclick="btToggleRailPin()" title="Expand navigation rail" aria-label="Expand or collapse navigation rail"><span class="rail-ic">»</span><span class="rail-lb">Expand</span></button>
+</div>
+
 <!-- ══ BOTTOM TAB BAR (mobile) ══ -->
 <div class="bnav no-print" id="bnav" role="navigation" aria-label="Page navigation">
   <button type="button" class="bnav-item side-menu-btn" onclick="openSectionsDrawer()" title="Search &amp; All Sections" aria-label="Open Search and All Sections menu"><span class="bicon">☰</span><span class="blabel">Menu</span></button>
   <a class="bnav-item" href="#cover" data-page="cover" data-group="cover"><span class="bicon">🏠</span><span class="blabel">Cover</span></a>
-  <a class="bnav-item" href="#" data-page="recents" onclick="openRecentsDrawer();return false;"><span class="bicon">🕘</span><span class="blabel">Recents</span></a>
-  <a class="bnav-item" href="#dashboard" data-page="dashboard" data-group="dashboard" data-domain-group="sales"><span class="bicon">📊</span><span class="blabel">Home</span></a>
-  <a class="bnav-item" href="#index" data-page="index" data-group="saledata" data-domain-group="sales"><span class="bicon">🗂️</span><span class="blabel">Sale Data</span></a>
+  <a class="bnav-item" href="#index" data-page="index" data-group="saledata" data-domain-group="sales"><span class="bicon">🗂️</span><span class="blabel">Sales</span></a>
   <a class="bnav-item" href="#manager" data-page="manager" data-group="manager" data-domain-group="manager"><span class="bicon">👔</span><span class="blabel">Manager</span></a>
-  <a class="bnav-item" href="#manager-dashboard" data-page="manager-dashboard" data-group="managerdash" data-domain-group="manager"><span class="bicon">📈</span><span class="blabel">Overview</span></a>
-  <a class="bnav-item" href="#notesheets" data-page="notesheets" data-group="notesheets" data-domain-group="notesheets"><span class="bicon">📑</span><span class="blabel">Notes</span></a>
-  <a class="bnav-item" href="#closing-book" data-page="closing-book" data-group="closing" data-domain-group="closing"><span class="bicon">📖</span><span class="blabel">Closing Book</span></a>
-  <a class="bnav-item" href="#credit-ledger" data-page="credit-ledger" data-group="closing" data-domain-group="closing"><span class="bicon">💳</span><span class="blabel">Credit Ledger</span></a>
-  <a class="bnav-item" href="#assignments" data-page="assignments" data-group="audit" data-domain-group="audit"><span class="bicon">🧾</span><span class="blabel">Assignments</span></a>
-  <a class="bnav-item" href="#inventory" data-page="inventory" data-group="inventory" data-domain-group="inventory"><span class="bicon">📦</span><span class="blabel">BT Inventory</span></a>
-  <a class="bnav-item" href="#stockledger" data-page="stockledger" data-group="inventory" data-domain-group="inventory"><span class="bicon">📒</span><span class="blabel">Stock Ledger</span></a>
-  <a class="bnav-item" href="#excess" data-page="excess" data-group="inventory" data-domain-group="inventory"><span class="bicon">📉</span><span class="blabel">Excess</span></a>
-  <a class="bnav-item" href="#reorder" data-page="reorder" data-group="inventory" data-domain-group="inventory"><span class="bicon">🛒</span><span class="blabel">Reorder</span></a>
-  <a class="bnav-item" href="#inv-health" data-page="inv-health" data-group="inventory" data-domain-group="inventory"><span class="bicon">🩺</span><span class="blabel">Inv Health</span></a>
-  <a class="bnav-item" href="#tools" data-page="tools" data-group="tools"><span class="bicon">⚙️</span><span class="blabel">Tools</span></a>
-</div>
-<!-- Sale Data sub-nav (mobile) -->
-<div class="bnav-sub no-print" id="bnav-saledata-sub" style="display:none">
-  <a class="bnav-sub-item" href="#index" data-page="index">Index</a>
-  <a class="bnav-sub-item" href="#data" data-page="data">Daily Data</a>
-  <a class="bnav-sub-item" href="#entry" data-page="entry">Add Entry</a>
-  <a class="bnav-sub-item" href="#report" data-page="report">Report</a>
-  <a class="bnav-sub-item" href="#cashdeposit" data-page="cashdeposit">Cash Deposit</a>
-  <a class="bnav-sub-item" href="#sale-payments" data-page="sale-payments">Payments</a>
-  <a class="bnav-sub-item" href="#diff" data-page="diff">DIFF</a>
+  <a class="bnav-item" href="#inventory" data-page="inventory" data-group="inventory" data-domain-group="inventory"><span class="bicon">📦</span><span class="blabel">Inventory</span></a>
 </div>
 
 <!-- ====== PAGES ====== -->
@@ -767,20 +745,10 @@ if ('serviceWorker' in navigator) {
   </div>
 </div>
 
-<!-- RECENTS DRAWER — "recently used sections" this session, tap to
-     jump straight back. Same .mbg/.modal shell as every other modal.
-     Populated by js/nav-recents.js from EventBus's 'nav:changed'. -->
-<div class="mbg" id="recentsbg" onclick="if(event.target===this)closeRecentsDrawer()">
-  <div class="modal" style="width:min(96vw,420px)">
-    <div class="sheet-handle"></div>
-    <div class="mhdr"><h2>Recently Used</h2><button class="mclose" onclick="closeRecentsDrawer()">✕</button></div>
-    <div class="mbody" id="recents-list"></div>
-  </div>
-</div>
-
-<!-- ALL SECTIONS DRAWER — long-press Cover to open. Full directory of
-     every top-level section + its sub-sections, unlike the Recents
-     drawer above which only shows what's actually been visited. Same
+<!-- ALL SECTIONS DRAWER — long-press Cover (bottom nav) or tap ☰ Menu
+     (rail / bottom nav / top-bar 🔍) to open. Full directory of
+     every top-level section + its sub-sections — the one shared tree
+     behind both nav shells (see js/app-nav.js for the rail). Same
      .mbg/.modal shell. Tree populated by js/nav-sections.js; the search
      box on top of it (fuzzy-filters the tree + ranks Staff matches) is
      js/global-search.js, reviving the previously-dead js/bt-search.js. -->
@@ -2228,10 +2196,10 @@ if ('serviceWorker' in navigator) {
 <!-- 10. Reports: day modal, month modal, all print helpers -->
 <script defer src="js/reports.js?v=20260722a"></script>
 <script defer src="js/cash-deposit-report.js?v=20260727a"></script>
-<script type="module" src="js/nav-recents.js?v=20260731a"></script>
 <script defer src="js/icons.js?v=20260809a"></script>
 <script defer src="js/nav-sections.js?v=20260809a"></script>
 <script defer src="js/global-search.js?v=20260731a"></script>
+<script defer src="js/app-nav.js?v=20260813a"></script>
 
 <!-- 11. Data page: daily table + entry form -->
 <script defer src="js/data-page.js?v=20260722a"></script>
