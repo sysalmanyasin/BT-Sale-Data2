@@ -300,7 +300,12 @@ body[data-domain="inventory"] {
    sections/sub-sections during an active filter use .gs-hidden rather
    than touching .sections-group-open, so the collapsed/expanded state
    nav-sections.js already manages is left alone once the query clears. */
-.gs-search-row { padding: 2px 4px 10px; position: sticky; top: 0; background: var(--surface); z-index: 1; }
+/* No longer sticky (Aug 2026) — it's now a plain flex sibling of .mbody
+   in the DOM (see index.html's #sectionsbg), pinned the same structural
+   way .mhdr is, via flex-shrink:0. Horizontal padding matches .mbody's
+   own (18px 22px, in modals.css) so the input still lines up flush
+   with the section rows below it. */
+.gs-search-row { padding: 14px 22px 10px; flex-shrink: 0; }
 .gs-input {
   width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 9px;
   border: 1px solid var(--border); background: var(--s1, var(--surface));

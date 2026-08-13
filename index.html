@@ -865,14 +865,23 @@ if ('serviceWorker' in navigator) {
   <div class="modal">
     <div class="sheet-handle"></div>
     <div class="mhdr"><h2>Search &amp; Sections</h2><button class="mclose" onclick="closeSectionsDrawer()">✕</button></div>
+    <!-- Moved out of .mbody (Aug 2026) — sticky positioning inside a
+         padded, backdrop-blurred scroll container was producing a
+         repaint/ghosting artifact on some Android Chrome builds (a
+         thin duplicate sliver of the box during scroll). Structurally
+         pinning it here, as a plain non-scrolling flex sibling right
+         after .mhdr (same flex-shrink:0 pattern .mhdr itself uses), is
+         more robust than relying on sticky at all — only #sections-list
+         (and the staff-match results above it) actually scroll now. -->
+    <div class="gs-search-row">
+      <input type="search" id="gs-input" class="gs-input" placeholder="Search sections, staff…" autocomplete="off" oninput="GlobalSearch.onInput(this.value)">
+    </div>
     <div class="mbody">
-      <div class="gs-search-row">
-        <input type="search" id="gs-input" class="gs-input" placeholder="Search sections, staff…" autocomplete="off" oninput="GlobalSearch.onInput(this.value)">
-      </div>
       <div id="gs-staff-results" style="display:none"></div>
       <div id="sections-list"></div>
     </div>
   </div>
+
 </div>
 
 <!-- CLOSING BOOK — native port of Closing's own Closing Book page,
