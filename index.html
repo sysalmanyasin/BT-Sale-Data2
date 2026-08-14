@@ -1399,8 +1399,15 @@ if ('serviceWorker' in navigator) {
         <span id="sc-status-pill" style="font-size:9px;font-weight:700;padding:0px 6px;border-radius:20px;background:rgba(245,158,11,.15);color:var(--amber,#f59e0b)">◐ PASSIVE</span>
       </div>
 
-      <!-- Sub-tab nav -->
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+      <!-- Sub-tab nav — retired from view (Aug 2026), same as Manager's
+           #mgr-tabs / Credit Ledger's .cl-mode-tabs / Notes & Sheets'
+           .ns-nav — its 6 destinations are covered by the rail/drawer's
+           nested Tools > Sync Center group (js/nav-sections.js's
+           '.sc-tab[href]' scraper is still the one real source of
+           these rows). Scoped class (not bare .sc-tab, which the
+           unrelated staff-card modal further down this file also
+           uses) so only this row is hidden. -->
+      <div class="sc-tabs" style="display:none;flex-wrap:wrap;margin-bottom:14px">
         <a class="sc-tab btn" href="#tools/synccenter/session" data-tab="session"
           style="font-size:11px;padding:5px 12px;background:var(--accent);color:#fff;font-weight:700;border-radius:20px">
           📊 Session

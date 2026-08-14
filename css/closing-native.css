@@ -56,7 +56,15 @@
 .cb-entry-grid b { color: var(--text); font-family: var(--mono); font-weight: 700; }
 
 /* ── Credit / Misc Ledger ─────────────────────────────────────── */
-.cl-mode-tabs { display: flex; gap: 6px; margin-bottom: 12px; background: var(--s2); border-radius: 10px; padding: 4px; }
+/* .cl-mode-tabs retired from view (Aug 2026), same as Manager's
+   #mgr-tabs — its 2 destinations are covered by the rail/drawer
+   (desktop) and the sub-tab strip (mobile, js/subtab-strip.js), both
+   already reading js/nav-sections.js's '.cl-mode-tab[href]' scraper.
+   Kept in the DOM, not deleted — still the one real source of those 2
+   rows, and clnSwitchMode()'s own logic is untouched either way. The
+   page's own hero title (#cln-cl-title) still shows which mode you're
+   viewing without the tabs. */
+.cl-mode-tabs { display: none; }
 .cl-mode-tab {
   flex: 1; text-align: center; padding: 8px 10px; border: none; border-radius: 7px;
   background: transparent; color: var(--muted); font-size: 13px; font-weight: 700; cursor: pointer; font-family: var(--sans);

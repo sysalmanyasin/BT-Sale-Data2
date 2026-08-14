@@ -78,11 +78,13 @@ import { getFullData as _invGetFullData } from './inventory-bridge.js';
 .ns-shell { display: flex; flex-direction: column; height: 100%; min-height: 500px; }
 
 /* ── Pill nav ── */
-.ns-nav {
-  display: flex; gap: 4px; padding: 10px 12px 0;
-  border-bottom: 1px solid var(--border); background: var(--s1, #fff);
-  flex-shrink: 0;
-}
+/* .ns-nav retired from view (Aug 2026), same as Manager's #mgr-tabs and
+   Credit Ledger's .cl-mode-tabs — its 4 destinations are covered by the
+   rail/drawer (js/nav-sections.js's '.ns-pill[href]' scraper is still
+   the one real source of those rows). Not in the mobile sub-tab strip's
+   scope (that covers Sales/Manager/Inventory/Closing only), so on
+   mobile this is reachable via the Menu drawer's Notes & Sheets group. */
+.ns-nav { display: none; }
 .ns-pill {
   padding: 6px 14px; border-radius: 20px 20px 0 0;
   border: 1px solid var(--border); border-bottom: none;
