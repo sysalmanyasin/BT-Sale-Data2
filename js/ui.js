@@ -145,6 +145,14 @@ function showPage(id) {
         renderDataTable();
       }
     }
+    // Sales/Manager/Inventory/Closing's persistent sub-tab strip (mobile,
+    // pinned above .bnav — see js/subtab-strip.js). Also re-run on every
+    // hashchange from there directly, since switching Manager's own
+    // in-page tabs (#manager/xxx) or Credit Ledger's mode tabs doesn't
+    // call showPage() again — only a hash change.
+    if (typeof window.BTSubtabStrip === 'object' && typeof window.BTSubtabStrip.render === 'function') {
+      window.BTSubtabStrip.render();
+    }
   } catch(err) {
     if (typeof toast === 'function') toast('\u26a0 Page error: ' + err.message, 'e');
     console.error('[showPage] error for page "' + id + '":', err);

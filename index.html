@@ -451,6 +451,16 @@ if ('serviceWorker' in navigator) {
   <a class="bnav-sub-item" href="#diff" data-page="diff">DIFF Report</a>
 </div>
 
+<!-- The real, visible sub-tab strip (Aug 2026) — one shared strip for
+     all 4 domains that have sub-sections (Sales, Manager, Inventory,
+     Closing), populated dynamically by js/subtab-strip.js from the
+     exact same tree js/nav-sections.js already builds for the Search &
+     All Sections drawer. Empty/hidden until that script fills it in;
+     .bnav-sub's own CSS (mobile-only, pinned above .bnav) already does
+     everything needed here unchanged. -->
+<div class="bnav-sub no-print" id="dynamic-subtab-strip" style="display:none" aria-live="polite"></div>
+
+
 <!-- ====== PAGES ====== -->
 <!-- ══ PAGES ══ -->
 
@@ -2317,6 +2327,7 @@ if ('serviceWorker' in navigator) {
 <script defer src="js/nav-sections.js?v=20260813b"></script>
 <script defer src="js/global-search.js?v=20260731a"></script>
 <script defer src="js/app-nav.js?v=20260813b"></script>
+<script defer src="js/subtab-strip.js?v=20260814a"></script>
 
 <!-- 11. Data page: daily table + entry form -->
 <script defer src="js/data-page.js?v=20260722a"></script>
