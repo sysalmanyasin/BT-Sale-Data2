@@ -512,6 +512,18 @@ export const Repository = (function () {
     return localStorage.getItem(key);
   }
   function setItem(key, value) {
+    // Guard added (Aug 2026): every periodic sync cycle (poll + the
+    // 30s auto-push) runs its merge logic in supabase.js unconditionally,
+    // re-writing Targets/Custom Sections/Jazz Cash-Petty/Notes/etc. even
+    // when the merged result is identical to what's already stored. This
+    // function is the one choke point all of those writes go through, so
+    // a single before/after comparison here — instead of patching every
+    // merge call site individually — stops a no-op write from firing
+    // 'item:changed', which is what was spamming the Activity Log with
+    // phantom "EDIT" entries for the same handful of sections on every
+    // sync tick even when nothing had actually changed. A genuine change
+    // still writes + notifies exactly as before.
+    if (localStorage.getItem(key) === value) return;
     localStorage.setItem(key, value);
     _notify('item:changed', { key, value });
   }
