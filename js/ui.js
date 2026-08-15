@@ -510,44 +510,6 @@ async function importJSON(e) {
 // DROPDOWNS  (called on rebuild)
 // ══════════════════════════════════════════
 
-// ══════════════════════════════════════════
-// DESKTOP / MOBILE VIEW TOGGLE
-// ══════════════════════════════════════════
-function _applyViewModeBtn(mode) {
-  const btn = document.getElementById('view-mode-btn');
-  if (!btn) return;
-  if (mode === 'desktop') {
-    btn.textContent = '📱 Mobile View';
-    btn.style.background = '#2563eb'; btn.style.color = '#fff'; btn.style.border = 'none';
-  } else {
-    btn.textContent = '🖥️ Desktop View';
-    btn.style.background = 'var(--s2)'; btn.style.color = 'var(--text)'; btn.style.border = '1px solid var(--border)';
-  }
-}
-
-function toggleViewMode() {
-  const cur = Repository.getItem('bt_view_mode') || 'mobile';
-  const next = cur === 'desktop' ? 'mobile' : 'desktop';
-  Actions.saveFeatureData('bt_view_mode', next);
-  // Viewport meta changes only take effect on reload — save & reload
-  window.location.reload();
-}
-
-// Init button label on page load to reflect current saved mode
-(function() {
-  // Always defer/module now — see note in auth.js. readyState is never
-  // 'loading' here anymore. Also: the Repository.getItem call itself
-  // must be inside the deferred callback too, not just the DOM update —
-  // ui.js loads BEFORE repository.js in the document, so calling
-  // Repository immediately here (even just to compute `mode`) throws
-  // "Repository is not defined". Only code that runs after
-  // DOMContentLoaded is guaranteed Repository/Actions are ready.
-  document.addEventListener('DOMContentLoaded', () => {
-    const mode = Repository.getItem('bt_view_mode') || 'mobile';
-    _applyViewModeBtn(mode);
-  });
-})();
-
 // Bridge what's used externally or from index.html. showPage/
 // loadToolsPage/populateTgtSel are NOT here — they stay bare globals
 // declared before this IIFE (see note above).

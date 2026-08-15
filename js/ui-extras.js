@@ -9,115 +9,12 @@
 //     _updateStrip(), and #uex-strip's injected CSS all removed together
 //     — nothing else in this file depended on any of them.)
 //  2. (Floating 📊 Dashboard FAB removed — Ctrl+D shortcut still works)
+//     [Dead _buildFab() body + its #uex-fab CSS were also removed in this
+//     pass; they were never actually deleted when the FAB itself was cut.]
 //  3. "Add New Month" → auto-creates matching target entry
 // ═══════════════════════════════════════════════════════════════════════
 (function () {
   'use strict';
-
-  // ─────────────────────────────────────────────────────────────────────
-  // 2. FLOATING DASHBOARD FAB
-  // ─────────────────────────────────────────────────────────────────────
-  function _buildFab() {
-    if (document.getElementById('uex-fab')) return;
-
-    // Restore last dragged position
-    var saved = null;
-    try { saved = JSON.parse(localStorage.getItem('bt_fab_pos') || 'null'); } catch (e) {}
-
-    var fab = document.createElement('button');
-    fab.id = 'uex-fab';
-    fab.title = 'Dashboard  (Ctrl+D)';
-    fab.innerHTML = '📊';
-
-    if (saved && saved.x != null && saved.y != null) {
-      fab.style.left   = saved.x + 'px';
-      fab.style.top    = saved.y + 'px';
-      fab.style.right  = 'auto';
-      fab.style.bottom = 'auto';
-    }
-
-    document.body.appendChild(fab);
-
-    // Click → navigate (only if not dragging)
-    var _dragged = false;
-    fab.addEventListener('click', function () {
-      if (_dragged) return;
-      if (typeof showPage === 'function') showPage('dashboard');
-    });
-
-    // ── Drag (mouse) ──────────────────────────────────────────────────
-    var _down = false, _ox = 0, _oy = 0;
-
-    fab.addEventListener('mousedown', function (e) {
-      _down    = true;
-      _dragged = false;
-      _ox = e.clientX - fab.getBoundingClientRect().left;
-      _oy = e.clientY - fab.getBoundingClientRect().top;
-      fab.style.transition = 'none';
-      e.preventDefault();
-    });
-
-    document.addEventListener('mousemove', function (e) {
-      if (!_down) return;
-      _dragged = true;
-      fab.style.left   = (e.clientX - _ox) + 'px';
-      fab.style.top    = (e.clientY - _oy) + 'px';
-      fab.style.right  = 'auto';
-      fab.style.bottom = 'auto';
-    });
-
-    document.addEventListener('mouseup', function () {
-      if (!_down) return;
-      _down = false;
-      fab.style.transition = '';
-      if (_dragged) {
-        try {
-          localStorage.setItem('bt_fab_pos', JSON.stringify({
-            x: parseInt(fab.style.left,  10),
-            y: parseInt(fab.style.top,   10),
-          }));
-        } catch (e) {}
-      }
-      // Reset _dragged after click fires
-      setTimeout(function () { _dragged = false; }, 50);
-    });
-
-    // ── Touch drag (mobile) ──────────────────────────────────────────
-    fab.addEventListener('touchstart', function (e) {
-      _down    = true;
-      _dragged = false;
-      var t = e.touches[0];
-      _ox = t.clientX - fab.getBoundingClientRect().left;
-      _oy = t.clientY - fab.getBoundingClientRect().top;
-      fab.style.transition = 'none';
-    }, { passive: true });
-
-    document.addEventListener('touchmove', function (e) {
-      if (!_down) return;
-      _dragged = true;
-      var t = e.touches[0];
-      fab.style.left   = (t.clientX - _ox) + 'px';
-      fab.style.top    = (t.clientY - _oy) + 'px';
-      fab.style.right  = 'auto';
-      fab.style.bottom = 'auto';
-    }, { passive: true });
-
-    document.addEventListener('touchend', function () {
-      if (!_down) return;
-      _down = false;
-      fab.style.transition = '';
-      if (_dragged) {
-        try {
-          localStorage.setItem('bt_fab_pos', JSON.stringify({
-            x: parseInt(fab.style.left,  10),
-            y: parseInt(fab.style.top,   10),
-          }));
-        } catch (e) {}
-      }
-      if (!_dragged && typeof showPage === 'function') showPage('dashboard');
-      setTimeout(function () { _dragged = false; }, 50);
-    }, { passive: true });
-  }
 
   // ─────────────────────────────────────────────────────────────────────
   // 3a. SELF-HEAL: auto-create targets for every month that's missing one
@@ -323,42 +220,9 @@
   }
 
   // ─────────────────────────────────────────────────────────────────────
-  // 6. STYLES
-  // ─────────────────────────────────────────────────────────────────────
-  function _injectStyles() {
-    if (document.getElementById('uex-css')) return;
-
-    var s = document.createElement('style');
-    s.id = 'uex-css';
-    s.textContent = [
-
-      /* ── Floating Dashboard FAB ── */
-      '#uex-fab{',
-        'position:fixed;right:18px;bottom:80px;',
-        'width:34px;height:34px;border-radius:50%;',
-        'background:#1d4ed8;color:#fff;border:2.5px solid rgba(255,255,255,.45);',
-        'box-shadow:0 4px 18px rgba(29,78,216,.45);',
-        'font-size:15px;line-height:1;cursor:pointer;',
-        'z-index:600;display:flex;align-items:center;justify-content:center;',
-        'user-select:none;touch-action:none;',
-        'transition:transform .14s,box-shadow .14s;',
-      '}',
-      '#uex-fab:hover{',
-        'transform:scale(1.14);',
-        'box-shadow:0 6px 22px rgba(29,78,216,.6);',
-      '}',
-      '#uex-fab:active{transform:scale(.9)!important;}',
-
-    ].join('');
-
-    document.head.appendChild(s);
-  }
-
-  // ─────────────────────────────────────────────────────────────────────
   // INIT
   // ─────────────────────────────────────────────────────────────────────
   function _init() {
-    _injectStyles();
     _patchShowPage();
     _addKeyboard();
     _patchAddNewMonth(); // targets.js already loaded by this point

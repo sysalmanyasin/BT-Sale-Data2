@@ -138,7 +138,7 @@
 
     const rows = [
       { icon: '📄', label: 'New Sheet',         kb: '',       fn: 'shtFmNew'         },
-      { icon: '📁', label: 'Switch File',        kb: '',       fn: 'shtFmSwitchFile'  },
+      { icon: '🔗', label: 'Link Existing Sheet', kb: '',     fn: 'shtFmSwitchFile'  },
       { icon: '📂', label: 'Import XLSX',        kb: '',       fn: 'shtFmImport'      },
       null, // separator
       { icon: '💾', label: 'Save All',           kb: 'Ctrl+S', fn: 'shtFmSave'        },
@@ -469,10 +469,11 @@
 
   window.shtFmSwitchFile = function () {
     _closeFilePanel();
-    // The multi-file workbook switcher lives in notes-sheets.js — this
-    // just opens it (V2 plan §5 — one file, many named sheets).
-    if (typeof _nsSFOpenManager === 'function') { _nsSFOpenManager(); return; }
-    toast('File switcher unavailable', 'w');
+    // Opens the Google Picker to link an existing Drive sheet — the
+    // modern replacement for the old local-workbook file switcher.
+    // Defined in sheets-app.js, which loads before this file.
+    if (typeof _saLinkExisting === 'function') { _saLinkExisting(); return; }
+    toast('Sheet linking unavailable', 'w');
   };
 
   window.shtFmImport = function () {
@@ -522,14 +523,9 @@
       '#mgr-sheets [onclick*="print" i]:not(.sfm-row), #mgr-sheets [title*="print" i]:not(.sfm-row)'
     );
     if (btn) { btn.click(); return; }
-    // Fall back to calling the real Sheets print function directly
-    // rather than a bare window.print() — a bare call here used to
-    // print whatever the live page happened to look like at that
-    // moment, with none of print.js's race-condition safety, if the
-    // DOM-query above ever failed to find a button. (The two typeof
-    // checks that used to be here — printSheet/nsPrintSheet — were
-    // dead: neither function exists anywhere in this codebase.)
-    if (typeof _nsSpPrint === 'function') { _nsSpPrint(); return; }
+    // (Two earlier typeof checks that used to fall back to here —
+    // printSheet/nsPrintSheet, then _nsSpPrint — were all dead in turn:
+    // none of those functions exist in this codebase anymore.)
     if (typeof toast === 'function') toast('⚠ Nothing to print here.', 'w');
   };
 

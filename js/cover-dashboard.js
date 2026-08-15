@@ -442,10 +442,8 @@ function _managerCreditRankedHtml() {
 function _notesheetsStatus() {
   try {
     const notes = JSON.parse(Repository.getItem('bt_notes_v1') || '[]');
-    const sheetFiles = (typeof _nsSFLoad === 'function') ? _nsSFLoad() : JSON.parse(Repository.getItem('bt_sheet_files_v1') || '[]');
-    if (!notes.length && !sheetFiles.length) return 'No notes or sheets yet';
-    return notes.length + ' note' + (notes.length === 1 ? '' : 's') + ' · ' +
-           sheetFiles.length + ' file' + (sheetFiles.length === 1 ? '' : 's');
+    if (!notes.length) return 'No notes yet';
+    return notes.length + ' note' + (notes.length === 1 ? '' : 's');
   } catch (e) {
     return 'Notes & Sheets status unavailable';
   }
