@@ -6,6 +6,9 @@ spreadsheet tool, a cross-device PDF archive, and native read-only
 views into two sibling apps (Closing, Pharmacy Audit Hub). Google
 Sign-In gated, offline-capable via service worker, synced across
 devices with Supabase, deployed at `bt.duapharma.com` (see `CNAME`).
+Alongside the PWA, `android-widget/` is a separate native Android app
+providing 19 home-screen widgets (Closing, Sales, Credit, Inventory)
+— see [Android home-screen widgets](#android-home-screen-widgets).
 
 This is intentionally a **single-user app, permanently** — there's no
 multi-tenant support and no roles/permissions system. That constraint
@@ -24,6 +27,7 @@ speculatively.
 - [Tech stack](#tech-stack)
 - [Navigation model](#navigation-model)
 - [Section-by-section guide](#section-by-section-guide)
+- [Android home-screen widgets](#android-home-screen-widgets)
 - [Architecture](#architecture--5-floors-golden-rules)
 - [File layout](#file-layout)
 - [Known gaps](#known-gaps)
@@ -284,9 +288,29 @@ for a free-tier AI-generated overview of that medicine.
   general medicine questions from the model's own knowledge — same
   "reference only, not patient-specific advice" framing as the
   `medicine-ai-info` lookup above.
-- **Not yet built:** a true native Android home-screen widget (the
-  resizable live tile). That needs an Android Studio / Kotlin project,
-  which is a separate build from this repo.
+
+---
+
+## Android home-screen widgets
+
+`android-widget/` is a **separate native Android app** (Kotlin, its
+own Gradle project — not part of the PWA's build or deploy) whose only
+purpose is **19 home-screen widgets**: Closing (summary, sales/target
+pace, aggregated final closing, latest month total, today's live POS
+sale, last-3-shifts), Credit (total outstanding, section breakdown,
+per-staff), Misc/Ongoing Ledger aging, and nine Inventory widgets
+(total stock, health, reorder-urgency, excess/top-running/negative/
+dead/never-sold rankings, plus a tap-shortcut into a native product
+search screen). Every number is either read straight from the same
+Supabase tables the web app writes to, or computed via a line-for-line
+Kotlin port of the web app's own math (`InventoryRepository.kt`
+mirrors `stockledger.js`/`excess-working.js`/`reorder-report.js`;
+`MonthSaleRepository.kt` mirrors `js/cover-dashboard.js`), so the
+widgets stay correct without either app needing to be open. Auth is a
+dedicated read-only "widget service" Supabase account, not a user's
+own Google sign-in. Built via GitHub Actions on every push touching
+`android-widget/**`; full widget list, data sources, and install
+instructions in [`android-widget/README.md`](android-widget/README.md).
 
 ---
 
@@ -336,6 +360,12 @@ through the Event Bus.
 - `sw.js` — the service worker; bump `CACHE_NAME` and keep
   `APP_SHELL` in sync with `index.html` whenever a `<script>`/`<link>`
   tag changes, or offline/flaky-connection loads silently break.
+- `android-widget/` — separate native Android app (19 home-screen
+  widgets), its own Gradle project — see
+  [Android home-screen widgets](#android-home-screen-widgets) and
+  `android-widget/README.md`.
+- `.github/workflows/build-widget-apk.yml` — builds a debug APK on
+  every push touching `android-widget/**`.
 - `supabase/functions/` — Edge Functions, including the daily
   WhatsApp briefing generator.
 - `supabase/pdf_library/` — schema + deploy notes for the PDF
