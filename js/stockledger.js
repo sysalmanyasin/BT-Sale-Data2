@@ -364,7 +364,6 @@ window.StockLedgerApp = (function(){
       }
     
       function applyFilterSort(panelKey){
-        const def = TABLE_DEFS[panelKey];
         let rows = computed[panelKey].slice();
         const q = state.search[panelKey].trim();
         if(q){

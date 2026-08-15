@@ -50,7 +50,7 @@ import { STAFF, MONTHLY, DAILY } from './config.js';
 import { _salRows_cur, _salNet } from './manager-salary.js';
 import { _genRows_cur, _genIncentive, _genFinal } from './manager-generic.js';
 import { _crdData_cur, _crdNet } from './manager-credit.js';
-import { _pettyData, _pettyMonth } from './manager-petty.js';
+import { _pettyData } from './manager-petty.js';
 import { _incData, _incMonth } from './manager-incentive.js';
 import { unmatchedLoad } from './manager-unmatched.js';
 // ── Inventory domain source — inventory-bridge.js is a standalone
@@ -176,8 +176,8 @@ import { getFullData as _invGetFullData } from './inventory-bridge.js';
    STORAGE
 
    Notes only, below. The old local workbook system (bt_sheets_v2 /
-   bt_sheet_files_v1 / bt_sheet_workbooks_v1 and every _nsWB*/_nsSF*/
-   _nsSp*/_nsRenderManage function that read or wrote them) was fully
+   bt_sheet_files_v1 / bt_sheet_workbooks_v1 and every _nsWB / _nsSF /
+   _nsSp / _nsRenderManage function that read or wrote them) was fully
    retired (Aug 2026) now that the Sheets panel talks to real Google
    Sheets (js/sheets-app.js). Those old localStorage keys are simply no
    longer read — nothing was deleted from a user's browser storage,

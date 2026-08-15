@@ -21,7 +21,7 @@ import { Print } from './print.js';
 import { STAFF } from './config.js';
 import { _ni, _fc2, mgrLoad, _mgrPopSel, mgrMonths } from './manager-shared.js';
 import { _crdNet } from './manager-credit.js';
-import { _genIncentive, _genFinal } from './manager-generic.js';
+import { _genIncentive } from './manager-generic.js';
 import { _salNet } from './manager-salary.js';
 
 const _norm = s => (s || '').trim().toLowerCase();
@@ -142,7 +142,7 @@ function initStaffPayslipTab(name) {
 
 function printStaffPayslip() {
   if (!_slipCur) return;
-  const { name, my, emp, salRow, crdRow, genRow } = _slipCur;
+  const { name, my, emp, salRow, crdRow } = _slipCur;
   const net = _salNet(salRow);
   const crdNetVal = _crdNet(crdRow);
   const today = new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' });

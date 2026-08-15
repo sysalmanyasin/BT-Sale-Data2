@@ -123,7 +123,6 @@ function renderAssignmentsPage() {
 
   container.innerHTML = sorted.map(e => {
     const dash = buildEngagementDashboard(data, e);
-    const isOpenCard = anState.openEngagements.has(e.id);
     const openSections = anState.openSections.get(e.id) || new Set();
     const isSectionOpen = k => openSections.has(k);
 

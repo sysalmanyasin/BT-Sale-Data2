@@ -161,11 +161,11 @@ function buildDashboard() {
   if (!kd) return;
 
   const {
-    lat, prv, isLive, D, vsLabel, ytdVsLabel,
+    lat, isLive, D, vsLabel, ytdVsLabel,
     gTotal, dailyRecordCount,
     prvTotal, prvCash, prvCredit, prvCustomers,
     ytd, pYtd, curY,
-    latTgt, latAct, latDays, daysInMon, dailyAvg, forecastTotal,
+    latTgt, latAct, latDays, daysInMon, forecastTotal,
     avgBill, pAvgBill,
     cagr, bScore, cumDiff,
   } = kd;

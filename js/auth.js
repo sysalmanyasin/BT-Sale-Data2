@@ -103,7 +103,6 @@ function initAutoRefresh() {
 (function() {
 'use strict';
 
-const PIN_K        = 'bt_pin_hash';
 const GAUTH_CID_K  = 'bt_gauth_cid';        // Google OAuth Client ID
 const GAUTH_MAIL_K = 'bt_gauth_emails';      // comma-separated allowed emails
 const GAUTH_SESS_K = 'bt_gauth_session';     // {email,name,picture,exp}
@@ -154,8 +153,6 @@ async function _gauthSyncFromSupabase() {
 }
 _gauthSyncFromSupabase();
 
-let _pinBuf = '', _pinBusy = false;
-
 // ── Password strength helpers ─────────────────────────────────────
 const _PW_LEVELS = [
   {label:'',            color:'transparent'},
@@ -198,13 +195,10 @@ function pwSubmit() {
   gauthShowMain();
 }
 // ── Forgot-password / reset flow ─────────────────────────────────
-let _resetVerifiedEmail = '';
-
 function pwShowEnter() {
   document.getElementById('pw-view-enter').style.display='';
   document.getElementById('pw-view-verify').style.display='none';
   document.getElementById('pw-view-newpw').style.display='none';
-  _resetVerifiedEmail = '';
   setTimeout(()=>{ const i=document.getElementById('pw-input'); if(i) i.focus(); }, 80);
 }
 function pwShowForgot() {
@@ -212,11 +206,9 @@ function pwShowForgot() {
   document.getElementById('pw-view-verify').style.display='';
   document.getElementById('pw-view-newpw').style.display='none';
   document.getElementById('pw-reset-error').style.display='none';
-  _resetVerifiedEmail = '';
   _gauthRenderResetBtn();
 }
 function pwShowNewPw(email, name) {
-  _resetVerifiedEmail = email;
   document.getElementById('pw-view-enter').style.display='none';
   document.getElementById('pw-view-verify').style.display='none';
   document.getElementById('pw-view-newpw').style.display='';
@@ -642,7 +634,6 @@ function _tcLoadGAuthStatus() {
 document.addEventListener('DOMContentLoaded', initAuthGate);
 
 function lockApp() {
-  _pinBuf='';
   const pmsg = document.getElementById('pmsg'); if(pmsg) pmsg.textContent='';
   gauthClearSession();
   window._appInited = false;

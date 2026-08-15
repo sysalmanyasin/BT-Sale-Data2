@@ -11,9 +11,7 @@ let _driveAccessToken = '';
 'use strict';
 
 const DRIVE_LAST_K = 'bt_drive_last_backup';
-const DRIVE_FOLDER = 'BT-SALE-DATA';
 const DRIVE_FOLDER_ID = '1qDSFSlrcUA7EoaMx43bG3mxkpS1ESHGn'; // your existing Drive folder
-let _driveTokenClient = null;
 
 // ── Persist the Drive access token across page refreshes AND new tabs ──
 // Google access tokens are short-lived (~1hr), but there's no reason to

@@ -167,7 +167,7 @@ function staffDelete(i) {
 }
 
 function addStaffEmployee() {
-  const newEmp = Actions.addEmployee();
+  Actions.addEmployee();
   renderStaffRegistry();
   // Immediately add to Salary/Generic/Credit sheets — previously this only
   // happened when the manager clicked "💾 Save Staff List" afterwards, so a

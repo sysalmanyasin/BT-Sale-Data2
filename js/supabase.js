@@ -839,7 +839,6 @@ async function testSupabaseConnection() {
 // ══════════════════════════════════════════════════════════════════
 // COMPATIBILITY SHIMS  (other files call these — unchanged)
 // ══════════════════════════════════════════════════════════════════
-const pushToGitHub = pushToSupabase;
 const manualSync   = (silent = false) => pullFromSupabase(silent);
 const ghCfg        = () => true;
 
@@ -905,28 +904,3 @@ document.addEventListener('DOMContentLoaded', () => {
   _updateLastPollDisplay();
 });
 
-// ══════════════════════════════════════════════════════════════════
-// HARD REFRESH — clear all caches then reload
-// ══════════════════════════════════════════════════════════════════
-async function hardRefreshCache() {
-  const btn = [...document.querySelectorAll('button')].find(b => b.textContent.includes('Hard Refresh'));
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Clearing…'; }
-
-  try {
-    // 1. Unregister all service workers
-    if ('serviceWorker' in navigator) {
-      const regs = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(regs.map(r => r.unregister()));
-    }
-    // 2. Clear all Cache Storage caches
-    if ('caches' in window) {
-      const keys = await caches.keys();
-      await Promise.all(keys.map(k => caches.delete(k)));
-    }
-    // 3. Reload bypassing browser cache
-    location.reload(true);
-  } catch (e) {
-    console.error('Hard refresh failed:', e);
-    location.reload(true);
-  }
-}

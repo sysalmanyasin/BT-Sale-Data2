@@ -112,8 +112,6 @@ function _syncGenericToSalary(genIdx) {
   const finalVal = _genFinal(genRow);
   _salRows_cur[salIdx].generic = finalVal;
   // Update the salary net cell live (no full re-render needed)
-  const salGenInput = document.querySelector(`#sal-tbody tr:nth-child(${salIdx+1}) .mgr-inp:nth-child(4)`);
-  // Simpler: just update the net display field
   const netEl = document.getElementById('sal-net-' + salIdx);
   if (netEl) netEl.value = _salNet(_salRows_cur[salIdx]);
   _salUpdateFooter(_salRows_cur);

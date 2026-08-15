@@ -10,7 +10,7 @@
 // `_beginInternalWrite`/`_endInternalWrite` below.
 // ══════════════════════════════════════════════════════════════════════════
 
-import { MONTHLY, DAILY, STAFF, newEntries, STAFF_KEY } from './config.js';
+import { MONTHLY, DAILY, STAFF, newEntries } from './config.js';
 import { EventBus } from './event-bus.js';
 
 export const Repository = (function () {

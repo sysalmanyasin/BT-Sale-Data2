@@ -18,7 +18,7 @@
 // ══════════════════════════════════════════════════════════════════════
 import { Repository } from './repository.js';
 import { STAFF } from './config.js';
-import { _ni, _fc2, _inp, _mgrEsc, mgrLoad, mgrSave, mgrAutosave, reconcileStaffRows } from './manager-shared.js';
+import { _ni, _fc2, _mgrEsc, mgrLoad, mgrSave, mgrAutosave, reconcileStaffRows } from './manager-shared.js';
 import { activeStaff } from './manager-staff.js';
 import { _crdData, _crdData_cur } from './manager-credit.js';
 import { _genRows, _genRows_cur, _genFinal } from './manager-generic.js';
@@ -37,7 +37,6 @@ function _salNet(r) { return _ni(r.hoSal) - _ni(r.advance) + _ni(r.generic); }
 
 function renderSalaryTable(rows) {
   const tbody = document.getElementById('sal-tbody');
-  const tfoot = document.getElementById('sal-tfoot');
   if (!tbody) return;
   // FIX 1+2: Load credit detail for advance tooltip; find staff card index
   const _salMon = document.getElementById('sal-month-sel')?.value || '';
