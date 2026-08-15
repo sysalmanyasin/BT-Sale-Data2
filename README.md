@@ -6,9 +6,10 @@ spreadsheet tool, a cross-device PDF archive, and native read-only
 views into two sibling apps (Closing, Pharmacy Audit Hub). Google
 Sign-In gated, offline-capable via service worker, synced across
 devices with Supabase, deployed at `bt.duapharma.com` (see `CNAME`).
-Alongside the PWA, `android-widget/` is a separate native Android app
-providing 19 home-screen widgets (Closing, Sales, Credit, Inventory)
-— see [Android home-screen widgets](#android-home-screen-widgets).
+Alongside the PWA, two separate native Android apps live in this
+repo: `android-app/` (a standalone installable wrapper of this same
+PWA) and `android-widget/` (19 home-screen widgets: Closing, Sales,
+Credit, Inventory) — see [Android apps](#android-apps).
 
 This is intentionally a **single-user app, permanently** — there's no
 multi-tenant support and no roles/permissions system. That constraint
@@ -27,7 +28,7 @@ speculatively.
 - [Tech stack](#tech-stack)
 - [Navigation model](#navigation-model)
 - [Section-by-section guide](#section-by-section-guide)
-- [Android home-screen widgets](#android-home-screen-widgets)
+- [Android apps](#android-apps)
 - [Architecture](#architecture--5-floors-golden-rules)
 - [File layout](#file-layout)
 - [Known gaps](#known-gaps)
@@ -221,7 +222,7 @@ Inventory isn't confined to these 5 pages, either:
 - **9 of the Android app's 19 home-screen widgets** are inventory
   widgets, running a Kotlin port of this same math so they stay
   correct without either app open — see
-  [Android home-screen widgets](#android-home-screen-widgets).
+  [Android apps](#android-apps).
 - **The Inventory Search companion PWA** (`/inventory-search/`) is a
   separate, standalone one-tap lookup tool over the same dataset — see
   [below](#-inventory-search-standalone-companion-pwa).
@@ -322,7 +323,28 @@ for a free-tier AI-generated overview of that medicine.
 
 ---
 
-## Android home-screen widgets
+## Android apps
+
+Two separate native Android apps live in this repo, neither part of
+the PWA's own build/deploy — both built via GitHub Actions.
+
+### Standalone app (`android-app/`)
+
+A **Trusted Web Activity (TWA)** — the live PWA (`bt.duapharma.com`)
+running full-screen inside a real installable app, no browser chrome,
+via Google's `androidbrowserhelper` library rather than a plain
+`WebView` (a WebView can't do this: Google blocks Google Sign-In
+inside embedded WebViews, and this app's Auth gate needs it to work —
+a TWA is actually Chrome under the hood, so Sign-In works exactly like
+it does in the browser). The chrome-less mode is gated by Digital
+Asset Links verification (`/.well-known/assetlinks.json` at the repo
+root, served at `bt.duapharma.com/.well-known/assetlinks.json`) — see
+[`android-app/README.md`](android-app/README.md) for exactly how that
+verification works and how to troubleshoot it if the URL bar shows up
+instead of running standalone. Built via GitHub Actions on every push
+touching `android-app/**`.
+
+### Home-screen widgets (`android-widget/`)
 
 `android-widget/` is a **separate native Android app** (Kotlin, its
 own Gradle project — not part of the PWA's build or deploy) whose only
@@ -391,10 +413,20 @@ through the Event Bus.
 - `sw.js` — the service worker; bump `CACHE_NAME` and keep
   `APP_SHELL` in sync with `index.html` whenever a `<script>`/`<link>`
   tag changes, or offline/flaky-connection loads silently break.
+- `android-app/` — separate native Android app, a standalone Trusted
+  Web Activity wrapper of this same PWA, its own Gradle project — see
+  [Android apps](#android-apps) and `android-app/README.md`.
+- `.well-known/assetlinks.json` + `.nojekyll` — Digital Asset Links
+  file proving `bt.duapharma.com` owns `android-app/`'s package name,
+  required for that app to run standalone instead of showing a URL
+  bar; `.nojekyll` stops GitHub Pages' default Jekyll build from
+  excluding the dot-directory it lives in.
 - `android-widget/` — separate native Android app (19 home-screen
   widgets), its own Gradle project — see
-  [Android home-screen widgets](#android-home-screen-widgets) and
+  [Android apps](#android-apps) and
   `android-widget/README.md`.
+- `.github/workflows/build-app-apk.yml` — builds a debug APK on every
+  push touching `android-app/**`.
 - `.github/workflows/build-widget-apk.yml` — builds a debug APK on
   every push touching `android-widget/**`.
 - `supabase/functions/` — Edge Functions, including the daily

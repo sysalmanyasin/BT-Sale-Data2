@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.duapharma.btsaledata",
+      "sha256_cert_fingerprints": [
+        "57:56:85:CE:0D:79:3D:35:DF:03:9C:33:04:31:4E:F9:AE:7F:04:AF:86:1F:9C:AC:1F:CF:08:B7:B4:89:C8:D0"
+      ]
+    }
+  }
+]

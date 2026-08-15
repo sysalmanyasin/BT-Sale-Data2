@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@drawable/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.Twa">
+
+        <!--
+          android.support.customtabs.trusted.LauncherActivity, from the
+          Android Browser Helper library, IS the app — there's no custom
+          Activity/Kotlin code in this project. It opens DEFAULT_URL in a
+          real Chrome-backed Trusted Web Activity: full-screen, no browser
+          chrome, but still actually Chrome under the hood (unlike a plain
+          WebView) — which matters because Google blocks Google Sign-In
+          inside embedded WebViews, and this app's Auth gate needs it to
+          work. "No URL bar" only kicks in once Digital Asset Links
+          verification succeeds — see assetlinks.json's own comment.
+        -->
+        <activity
+            android:name="android.support.customtabs.trusted.LauncherActivity"
+            android:label="@string/app_name"
+            android:exported="true">
+
+            <meta-data
+                android:name="android.support.customtabs.trusted.DEFAULT_URL"
+                android:value="https://bt.duapharma.com/" />
+            <meta-data
+                android:name="android.support.customtabs.trusted.STATUS_BAR_COLOR"
+                android:resource="@color/colorPrimary" />
+            <meta-data
+                android:name="android.support.customtabs.trusted.NAVIGATION_BAR_COLOR"
+                android:resource="@color/colorPrimary" />
+            <meta-data
+                android:name="android.support.customtabs.trusted.SPLASH_SCREEN_BACKGROUND_COLOR"
+                android:resource="@color/backgroundColor" />
+            <meta-data
+                android:name="android.support.customtabs.trusted.SPLASH_SCREEN_FADE_OUT_DURATION"
+                android:value="300" />
+            <meta-data
+                android:name="android.support.customtabs.trusted.FILE_PROVIDER_AUTHORITY"
+                android:value="${applicationId}.fileprovider" />
+            <meta-data
+                android:name="asset_statements"
+                android:resource="@string/asset_statements" />
+            <meta-data
+                android:name="android.webkit.WebView.EnableSafeBrowsing"
+                android:value="true" />
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!--
+              autoVerify triggers Digital Asset Links verification on
+              install: Android fetches
+              https://bt.duapharma.com/.well-known/assetlinks.json and
+              checks it lists this app's package name + this keystore's
+              SHA-256 fingerprint. Only then does the TWA drop the URL bar.
+            -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="bt.duapharma.com" />
+            </intent-filter>
+        </activity>
+
+        <!-- Lets file downloads (e.g. PDF Library, Excel exports) started
+             inside the TWA hand a real, openable file back to this app. -->
+        <provider
+            android:name="android.support.customtabs.trusted.TrustedWebActivityFileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/filepaths" />
+        </provider>
+
+    </application>
+
+</manifest>
