@@ -180,20 +180,51 @@ page, fed directly from the shared Supabase project the two apps have
 in common (`audit-bridge.js`).
 
 ### 📦 Inventory suite
-Five pages sharing one already-loaded dataset
-(`window.StockLedgerApp.getRawRows()`), each a different lens on the
-same shared, Supabase-synced inventory:
-- **BT Inventory** — the native inventory home page.
-- **Stock Ledger** — the full inventory ledger, one row per product.
+Five native pages sharing one already-loaded dataset
+(`window.StockLedgerApp.getRawRows()`), read-only from the **separate
+Pharmacy Audit Hub Supabase project** (`inventory-bridge.js`) rather
+than the main BT Sale Data project — but each page is a small app in
+its own right, not a plain table view:
+- **BT Inventory** — the native inventory home page
+  (`inventory-native.js`): search, group-by-Manufacturer/Supplier,
+  paged 100 rows at a time (built for 5,000+ SKU inventories), and a
+  toggleable optional-column picker exposing every column on
+  `inventory_products`, not just the base 6 shown by default.
+- **Stock Ledger** — not one flat table but **5 panels**
+  (`neverSold`, `deadStock`, `excess`, `packIssues`, `zeroStock`),
+  each with its own independent sort/search/filter state.
 - **Excess Working** — flags stock sitting too high relative to sales
-  (90+ days of cover by default) and quantifies how much is tied up.
-- **Reorder Report** — the inverse: flags stock running out too soon,
-  ranks the shortfall by sale value, and estimates how much to buy.
-- **Inventory Health** — a standalone health dashboard (health
-  classification, reorder/velocity math, Chart.js charts, a searchable
-  table) that adds one metric none of the others track: a local
-  day-by-day trend of total reorder value, since the underlying table
-  is a live snapshot rather than a time series.
+  (90+ days of cover by default) across **4 sub-tabs**: the flagged
+  Working list; a persistent per-device **Retain List** (items always
+  excluded from Excess regardless of pack quantity); **Adjustments**
+  (an optional reported-HO-value reconciliation with a live variance
+  calculation); and **Export** (Top-N Excel export with preset
+  buttons).
+- **Reorder Report** — the inverse: flags stock running out too soon
+  and ranks the shortfall by sale value, across **Top N / All**
+  sub-tabs, each independently configurable — sale-value window
+  (30/60/90 day), cover-days threshold, an "include today's live
+  sales" toggle, group-by-supplier, and a per-column hide picker that
+  also affects print output.
+- **Inventory Health** — a standalone health dashboard: 4 separate
+  Chart.js charts (health classification, movers, trend, supplier
+  breakdown), a KPI row, and a searchable table. Adds one metric none
+  of the others track: a local day-by-day trend of total reorder
+  value, since the underlying table is a live snapshot rather than a
+  time series.
+
+Inventory isn't confined to these 5 pages, either:
+- **Automated alerts** — `rules-registrations.js` registers 3 rules
+  (low-cover-value, excess-item, dead-stock-aggregate) into the Cover
+  dashboard's alert engine, so a reorder or excess-stock warning can
+  surface without anyone opening an inventory page.
+- **9 of the Android app's 19 home-screen widgets** are inventory
+  widgets, running a Kotlin port of this same math so they stay
+  correct without either app open — see
+  [Android home-screen widgets](#android-home-screen-widgets).
+- **The Inventory Search companion PWA** (`/inventory-search/`) is a
+  separate, standalone one-tap lookup tool over the same dataset — see
+  [below](#-inventory-search-standalone-companion-pwa).
 
 ### ⚙️ Tools
 Settings and cross-cutting utilities, most notably:
