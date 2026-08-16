@@ -1,6 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Required on Android 11+ (API 30+): without this, package-visibility
+         restrictions hide every other installed app from PackageManager
+         queries, including the ones androidbrowserhelper uses to find a
+         Custom Tabs-capable browser (Chrome) to run the TWA in. Missing
+         this is the most common cause of a TWA crashing immediately on
+         launch. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" />
+        </intent>
+    </queries>
+
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
