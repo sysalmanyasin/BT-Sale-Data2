@@ -4,7 +4,12 @@ plugins {
 
 android {
     namespace = "com.duapharma.btsaledata"
-    compileSdk = 34
+    // androidbrowserhelper 2.7.3's transitive androidx.browser/androidx.core
+    // require compileSdk 36+ (checked at build time by CheckAarMetadata).
+    // targetSdk is deliberately left at 34 — compileSdk and targetSdk can be
+    // bumped independently, and 34 avoids opting into API-36 runtime behavior
+    // changes this simple TWA wrapper doesn't need.
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.duapharma.btsaledata"
