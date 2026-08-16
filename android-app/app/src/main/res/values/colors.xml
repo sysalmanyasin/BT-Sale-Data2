@@ -1,6 +1,0 @@
-<resources>
-    <!-- Matches manifest.json's theme_color / background_color exactly, so
-         the native app and the installed PWA look like the same app. -->
-    <color name="colorPrimary">#2563EB</color>
-    <color name="backgroundColor">#0F172A</color>
-</resources>
