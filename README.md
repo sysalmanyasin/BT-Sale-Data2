@@ -134,11 +134,17 @@ The staff and money-movement suite:
   through Actions (`addEmployee`/`updateEmployee`/`removeEmployee`),
   never raw state mutation. Each staff card has its own **Notes** tab
   for simple timestamped per-employee notes (not a messaging system).
-- **Ledger** — a generalized replacement for what used to be separate
-  Jazz Cash / Expense / Petty / custom-section implementations, now
-  unified behind one store with date-range filtering and
-  group-by-category (Petty/Expenses, Jazz Cash, custom sections
-  alike).
+- **Ledger** — a generalized store (`ledger-store.js`/
+  `ledger-actions.js`/`ledger-page.js`) with date-range filtering and
+  group-by-category, built to replace the separate Jazz Cash / Expense
+  (Petty) / custom-section implementations. Jazz Cash and custom
+  sections have actually made that move and render through
+  `renderLedgerView()`. **Petty has not** — `ledger-store.js` still
+  carries an unused `petty` category config, but the live Petty Cash
+  UI runs entirely through `manager-petty.js`'s own separate
+  `mw_petty_*` storage; nothing calls `renderLedgerView('petty', ...)`
+  anywhere in the app. Verify with `grep -rn "renderLedgerView(.*petty" js/`
+  before trusting either claim again.
 - **Targets** — staff/store performance targets feeding the
   Dashboard's Target Pace card.
 - **Reports** — Salary, Petty, Credit, and Incentive reports, each its
