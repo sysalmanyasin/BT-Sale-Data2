@@ -13,8 +13,10 @@ android {
 
     defaultConfig {
         applicationId = "com.duapharma.btsaledata"
-        // Android Browser Helper's LauncherActivity requires 21+.
-        minSdk = 21
+        // androidbrowserhelper 2.7.3's own manifest declares minSdk 23 (not
+        // 21 as its LauncherActivity docs imply) — manifest merger fails
+        // below that.
+        minSdk = 23
         targetSdk = 34
         // Bumped per CI build via -PappVersionCode=<github.run_number> — same
         // reasoning as android-widget/app/build.gradle.kts: keeps every
