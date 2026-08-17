@@ -52,6 +52,22 @@
   body { padding-left: 64px; }
   body.rail-expanded { padding-left: 208px; }
 
+  /* #nav and .status-bar are position:sticky (not fixed), so unlike
+     .app-rail they DO inherit the body padding-left above — which
+     shoves them rightward, leaving a blank 64px/208px-wide gap in the
+     top-left corner above the rail. Cancel that out here so both bars
+     stay full-width and flush with the true viewport edge, with the
+     rail layered underneath them (z-index) exactly as designed. */
+  #nav, .status-bar {
+    margin-left: -64px;
+    padding-left: calc(20px + 64px);
+  }
+  body.rail-expanded #nav,
+  body.rail-expanded .status-bar {
+    margin-left: -208px;
+    padding-left: calc(20px + 208px);
+  }
+
   .rail-item {
     display: flex;
     align-items: center;
