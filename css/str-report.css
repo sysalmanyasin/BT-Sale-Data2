@@ -1,0 +1,68 @@
+/* ══════════════════════════════════════════════════════════════════
+   STR REPORT — Stock Transfer Records tab
+   Classes prefixed str- — new namespace, no collision with bti-
+   (BT Inventory) or an- (Assignments) native ports.
+   ══════════════════════════════════════════════════════════════════ */
+
+.str-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 8px; flex-wrap: wrap; }
+.str-toolbar span { font-size: 11px; color: var(--muted); }
+.str-refresh-btn { font-size: 11px; font-weight: 700; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--t2); cursor: pointer; }
+.str-refresh-btn:hover { background: var(--s2); }
+
+/* Sub-heading stat chips — also double as branch filters (tap to toggle) */
+.str-chip-row { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.str-chip { flex: 1 1 220px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; box-shadow: var(--sh); }
+.str-chip-label { font-size: 12px; font-weight: 700; color: var(--text); }
+.str-chip-sub { font-size: 10.5px; color: var(--muted); display: block; margin-top: 1px; }
+.str-chip-count { font-size: 18px; font-weight: 800; color: var(--pink, #db2777); }
+.str-chip-active { border-color: var(--pink, #db2777); background: color-mix(in srgb, var(--pink, #db2777) 8%, var(--surface)); }
+
+.str-search-row { margin-bottom: 10px; }
+.str-search-input { width: 100%; padding: 10px 12px; border-radius: 9px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; box-sizing: border-box; }
+.str-search-input:focus { outline: none; border-color: var(--accent); }
+
+.str-filter-row { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+.str-stage-btn { font-size: 11px; font-weight: 700; padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--t2); cursor: pointer; }
+.str-stage-btn-active { background: var(--pink, #db2777); color: #fff; border-color: var(--pink, #db2777); }
+.str-date-input { font-size: 12px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+.str-clear-btn { font-size: 11px; font-weight: 700; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; margin-left: auto; }
+.str-clear-btn:hover { background: var(--s2); }
+
+.str-empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 13px; }
+
+.str-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: var(--sh); }
+.str-table { width: 100%; border-collapse: collapse; min-width: 620px; }
+.str-table thead th { position: sticky; top: 0; background: var(--s2); color: var(--muted); font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.str-row td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; cursor: pointer; }
+.str-row:last-child td { border-bottom: none; }
+.str-row:hover td { background: var(--s2); }
+
+.str-badge { display: inline-block; font-size: 10.5px; font-weight: 800; padding: 3px 9px; border-radius: 20px; text-transform: uppercase; letter-spacing: .02em; }
+.str-badge-amber { background: #fffbeb; color: #b45309; }
+.str-badge-blue { background: #eff6ff; color: #1d4ed8; }
+.str-badge-green { background: #ecfdf5; color: #047857; }
+
+/* ── Detail modal ── same bottom-sheet pattern as an-snapshot-overlay */
+.str-detail-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.5); display: none; align-items: flex-end; justify-content: center; z-index: 500; }
+.str-detail-overlay.str-open { display: flex; }
+.str-detail-sheet { background: var(--surface); border-radius: 16px 16px 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)); width: 100%; max-width: 720px; max-height: 90vh; overflow: auto; }
+.str-detail-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.str-detail-head h3 { color: var(--text); font-size: 15px; font-weight: 800; margin: 0; }
+.str-detail-close { border: none; background: var(--s2); color: var(--t2); border-radius: 8px; padding: 4px 10px; font-size: 13px; cursor: pointer; }
+.str-detail-actions { display: flex; gap: 8px; margin-top: 12px; }
+.str-detail-btn { flex: 1; font-size: 12px; font-weight: 700; padding: 9px 12px; border-radius: 9px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
+.str-detail-btn-primary { background: var(--pink, #db2777); color: #fff; border-color: var(--pink, #db2777); }
+
+.str-detail-fields-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 16px; margin-bottom: 14px; padding: 10px 12px; background: var(--s2); border-radius: 10px; }
+.str-detail-field { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
+.str-detail-field-label { color: var(--muted); }
+.str-detail-field-val { color: var(--text); font-weight: 600; text-align: right; }
+
+.str-detail-table-wrap { overflow-x: auto; }
+.str-detail-table { width: 100%; border-collapse: collapse; min-width: 520px; font-size: 12px; }
+.str-detail-table thead th { text-align: left; font-size: 10.5px; font-weight: 800; text-transform: uppercase; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.str-detail-row td { padding: 5px 8px; border-bottom: 1px solid var(--border); }
+.str-detail-supplier-row td { padding: 7px 8px 4px; font-size: 11.5px; font-weight: 800; color: var(--text); background: var(--s2); }
+.str-detail-subtotal-row td { padding: 5px 8px; font-size: 11px; font-weight: 700; color: var(--muted); border-bottom: 1px solid var(--border); }
+.str-detail-grand-row td { padding: 8px; font-size: 12.5px; font-weight: 800; color: var(--text); border-top: 2px solid var(--border); }
+.str-detail-comments { margin-top: 12px; font-size: 12px; color: var(--t2); background: var(--s2); border-radius: 8px; padding: 8px 10px; }

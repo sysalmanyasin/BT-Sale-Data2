@@ -243,7 +243,7 @@
     // New: Inventory umbrella over the 4 former top-level inventory pages,
     // plus the standalone Inventory Search PWA (external tile, same
     // pattern as Audit's own external link above).
-    const invKids = ['inventory', 'stockledger', 'excess', 'reorder', 'inv-health'].map(id => _leaf(flat[id]));
+    const invKids = ['inventory', 'stockledger', 'excess', 'reorder', 'inv-health', 'str'].map(id => _leaf(flat[id]));
     invKids.push({ label: _VIRTUAL.inventorySearch.label, icon: _VIRTUAL.inventorySearch.icon, href: _VIRTUAL.inventorySearch.href, external: true, kids: [] });
     _pushGroup(groups, _customGroup('inventory', 'Inventory', '📦', invKids, 'group-inventory'), 'data');
 
