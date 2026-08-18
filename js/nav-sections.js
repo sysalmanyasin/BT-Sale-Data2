@@ -242,10 +242,19 @@
 
     // New: Inventory umbrella over the 4 former top-level inventory pages,
     // plus the standalone Inventory Search PWA (external tile, same
-    // pattern as Audit's own external link above).
-    const invKids = ['inventory', 'stockledger', 'excess', 'reorder', 'inv-health', 'str'].map(id => _leaf(flat[id]));
+    // pattern as Audit's own external link above). STR Report used to
+    // be nested in here too — pulled out into its own standalone group
+    // below (Aug 2026 re-org).
+    const invKids = ['inventory', 'stockledger', 'excess', 'reorder', 'inv-health'].map(id => _leaf(flat[id]));
     invKids.push({ label: _VIRTUAL.inventorySearch.label, icon: _VIRTUAL.inventorySearch.icon, href: _VIRTUAL.inventorySearch.href, external: true, kids: [] });
     _pushGroup(groups, _customGroup('inventory', 'Inventory', '📦', invKids, 'group-inventory'), 'data');
+
+    // New: STR Report — standalone under Data (no longer nested inside
+    // Inventory), with its own two sub-tabs: the list+detail page
+    // ('str') and the flattened, all-STRs "Report" page ('str-report'
+    // — see js/str-report-native.js).
+    const strKids = [_leaf(flat.str), _leaf(flat['str-report'])].filter(Boolean);
+    _pushGroup(groups, _customGroup('str', 'STR Report', '📋', strKids, 'group-str'), 'data');
 
     // New: Closing umbrella over Closing Book + Credit Ledger (which
     // keeps its own Credit / Misc-Ongoing subs nested one level deeper).

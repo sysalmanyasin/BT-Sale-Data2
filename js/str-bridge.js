@@ -15,14 +15,16 @@
 // STR history in this table; an STR older than ~7 days simply won't be
 // here anymore. That's a property of the source export, not a bug here.
 //
-// Also fetches a lightweight { code -> supplier } map from
-// inventory_products (same read-only client) so the STR detail report
-// can group line items by supplier — str_line_items itself has no
-// supplier column (it's a transfer record, not a catalog row), so this
-// is a join done client-side against whatever inventory_products
-// currently has for that code. A code that's since dropped from
-// inventory_products falls back to "Unassigned Supplier", same default
-// inventory-bridge.js uses for products that shipped without one.
+// Also fetches a lightweight { code -> supplier, code -> conversion_factor }
+// pair of maps from inventory_products (same read-only client) so the STR
+// detail report can (a) group line items by supplier and (b) show pack
+// quantities instead of loose units — str_line_items itself has neither a
+// supplier column nor a pack-size column (it's a transfer record, not a
+// catalog row), so both are joins done client-side against whatever
+// inventory_products currently has for that code. A code that's since
+// dropped from inventory_products falls back to "Unassigned Supplier" (same
+// default inventory-bridge.js uses for products that shipped without one)
+// and a pack factor of 1 (i.e. displayed "pack qty" == loose qty).
 // ══════════════════════════════════════════════════════════════════════
 
 // Same Supabase project as inventory-bridge.js.
@@ -120,16 +122,18 @@ async function _fetchAllRows(client, table, mapFn, orderCol) {
   return all.map(mapFn);
 }
 
-async function _fetchSupplierMap(client) {
-  // Only the two columns needed — this table can be 6,000+ rows, no
-  // reason to pull every column just for a code->supplier lookup.
+async function _fetchProductMeta(client) {
+  // Only the three columns needed — this table can be 6,000+ rows, no
+  // reason to pull every column just for a code->supplier/pack-factor
+  // lookup. conversion_factor is the same "units per pack" column
+  // excess-working.js / stockledger.js already read off this table.
   const PAGE_SIZE = 1000;
   let all = [];
   let from = 0;
   while (true) {
     const { data, error } = await client
       .from('inventory_products')
-      .select('code, supplier')
+      .select('code, supplier, conversion_factor')
       .range(from, from + PAGE_SIZE - 1);
     if (error) throw error;
     if (!data || data.length === 0) break;
@@ -137,9 +141,15 @@ async function _fetchSupplierMap(client) {
     if (data.length < PAGE_SIZE) break;
     from += PAGE_SIZE;
   }
-  const map = {};
-  all.forEach(r => { if (r.code) map[r.code] = r.supplier || 'Unassigned Supplier'; });
-  return map;
+  const supplierByCode = {};
+  const packFactorByCode = {};
+  all.forEach(r => {
+    if (!r.code) return;
+    supplierByCode[r.code] = r.supplier || 'Unassigned Supplier';
+    const f = Number(r.conversion_factor);
+    packFactorByCode[r.code] = (f && f > 0 && Number.isFinite(f)) ? f : 1;
+  });
+  return { supplierByCode, packFactorByCode };
 }
 
 let _fullData = null;
@@ -166,17 +176,19 @@ export async function refreshFullData(force) {
       const client = _getReadClient();
       if (!client) { _lastError = 'Supabase client library not loaded yet'; return cached; }
 
-      const [headers, lineItems, supplierByCode] = await Promise.all([
+      const [headers, lineItems, productMeta] = await Promise.all([
         _fetchAllRows(client, 'str_headers', _rowToHeader, 'str_date'),
         _fetchAllRows(client, 'str_line_items', _rowToLineItem, 'str_id'),
-        _fetchSupplierMap(client).catch(() => ({})), // best-effort — grouping falls back to "Unassigned Supplier" if this fails
+        _fetchProductMeta(client).catch(() => ({ supplierByCode: {}, packFactorByCode: {} })), // best-effort — grouping/pack-qty fall back to their defaults if this fails
       ]);
 
       _lastError = null;
-      const data = { headers, lineItems, supplierByCode, fetchedAt: Date.now() };
+      const { supplierByCode, packFactorByCode } = productMeta;
+      const data = { headers, lineItems, supplierByCode, packFactorByCode, fetchedAt: Date.now() };
       _fullData = data;
       try { _setLocal(FULLDATA_CACHE_KEY, JSON.stringify(data)); } catch (e) { /* best-effort — fine if too big, in-memory still works this session */ }
       if (typeof window.strNativeOnRefresh === 'function') window.strNativeOnRefresh();
+      if (typeof window.strReportNativeOnRefresh === 'function') window.strReportNativeOnRefresh();
       return data;
     } catch (e) {
       _lastError = (e && (e.message || e.error_description || e.details)) || String(e);

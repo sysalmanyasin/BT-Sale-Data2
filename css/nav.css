@@ -156,7 +156,8 @@ body[data-domain="manager"]    .ntab[data-domain-group="manager"],
 body[data-domain="notesheets"] .ntab[data-domain-group="notesheets"],
 body[data-domain="closing"]    .ntab[data-domain-group="closing"],
 body[data-domain="audit"]      .ntab[data-domain-group="audit"],
-body[data-domain="inventory"]  .ntab[data-domain-group="inventory"] {
+body[data-domain="inventory"]  .ntab[data-domain-group="inventory"],
+body[data-domain="str"]        .ntab[data-domain-group="str"] {
   display: inline-block !important;
 }
 body[data-domain="sales"]      .bnav-item[data-domain-group="sales"],
@@ -164,7 +165,8 @@ body[data-domain="manager"]    .bnav-item[data-domain-group="manager"],
 body[data-domain="notesheets"] .bnav-item[data-domain-group="notesheets"],
 body[data-domain="closing"]    .bnav-item[data-domain-group="closing"],
 body[data-domain="audit"]      .bnav-item[data-domain-group="audit"],
-body[data-domain="inventory"]  .bnav-item[data-domain-group="inventory"] {
+body[data-domain="inventory"]  .bnav-item[data-domain-group="inventory"],
+body[data-domain="str"]        .bnav-item[data-domain-group="str"] {
   display: flex !important;
 }
 
@@ -189,6 +191,10 @@ body[data-domain="audit"] {
   --alt: var(--alt2);
 }
 body[data-domain="inventory"] {
+  --accent: var(--pink);
+  --alt: var(--pink-lt);
+}
+body[data-domain="str"] {
   --accent: var(--pink);
   --alt: var(--pink-lt);
 }

@@ -54,13 +54,20 @@ function showPage(id) {
     const _notesheetsDomainPages = ['notesheets'];
     const _closingDomainPages = ['closing-book', 'credit-ledger'];
     const _auditDomainPages = ['assignments'];
-    const _inventoryDomainPages = ['inventory', 'stockledger', 'excess', 'reorder', 'inv-health', 'str'];
+    const _inventoryDomainPages = ['inventory', 'stockledger', 'excess', 'reorder', 'inv-health'];
+    // STR Report is its own standalone domain now (Aug 2026 re-org) —
+    // was nested under Inventory, now a peer top-level group with its
+    // own two sub-tabs: the existing list+detail page ('str') and the
+    // new flattened all-STRs page ('str-report' — see
+    // js/str-report-native.js).
+    const _strDomainPages = ['str', 'str-report'];
     const _domain = _salesDomainPages.indexOf(id) !== -1 ? 'sales'
                   : _managerDomainPages.indexOf(id) !== -1 ? 'manager'
                   : _notesheetsDomainPages.indexOf(id) !== -1 ? 'notesheets'
                   : _closingDomainPages.indexOf(id) !== -1 ? 'closing'
                   : _auditDomainPages.indexOf(id) !== -1 ? 'audit'
                   : _inventoryDomainPages.indexOf(id) !== -1 ? 'inventory'
+                  : _strDomainPages.indexOf(id) !== -1 ? 'str'
                   : '';
     document.body.dataset.domain = _domain;
     const _brandSub = document.getElementById('nbrand-sub-label');
@@ -71,6 +78,7 @@ function showPage(id) {
                              : _domain === 'closing'    ? 'Closing'
                              : _domain === 'audit'      ? 'Audit'
                              : _domain === 'inventory'  ? 'Inventory'
+                             : _domain === 'str'        ? 'STR Report'
                              : 'Intelligence Centre';
     }
 
@@ -84,6 +92,7 @@ function showPage(id) {
     // STR Report — read-only over str_headers/str_line_items (rolling
     // 7-day sync window, see str-bridge.js's header note).
     if (id === 'str' && typeof window.strOnShowReport === 'function') window.strOnShowReport();
+    if (id === 'str-report' && typeof window.strReportOnShow === 'function') window.strReportOnShow();
     // Stock Ledger is fully self-contained (own Supabase panel + JSON
     // upload fallback, no dependency on this app's inventory_products
     // bridge — see index.html's comment above #page-stockledger for

@@ -70,6 +70,7 @@ in it.
 | `closing`    | Closing Book, Credit Ledger                                                        | teal        |
 | `audit`      | Assignments                                                                        | amber       |
 | `inventory`  | BT Inventory, Stock Ledger, Excess Working, Reorder Report, Inventory Health        | pink        |
+| `str`        | STR Report (List, Report)                                                          | pink        |
 
 Cross-domain utilities, never hidden and never owned by a domain:
 **Cover**, **Tools** (settings/sync), the **PDF Library**, and the
@@ -80,7 +81,7 @@ Three fully separate, standalone apps live *outside* this codebase and
 are only ever linked to from Cover: Closing (`closing.duapharma.com`),
 Audit (`random.duapharma.com`), and Fazal Din's Pharma Plus's toolset
 (`reports.duapharma.com`). Don't confuse those links with the native
-`closing`/`audit`/`inventory` domains above — the native domains
+`closing`/`audit`/`inventory`/`str` domains above — the native domains
 re-implement a read-only view of (part of) the same underlying data
 inside *this* app; the Cover links open the other apps directly.
 
@@ -232,6 +233,44 @@ Inventory isn't confined to these 5 pages, either:
 - **The Inventory Search companion PWA** (`/inventory-search/`) is a
   separate, standalone one-tap lookup tool over the same dataset — see
   [below](#-inventory-search-standalone-companion-pwa).
+
+### 📋 STR Report
+Its own standalone domain (`str`) — pulled out of Inventory in v10.72
+so it sits as a peer of Sales/Manager/Inventory/etc in the nav rather
+than nested underneath one of them. Same read-only Pharmacy Audit Hub
+Supabase project as the Inventory suite above (`str-bridge.js`), but a
+different pair of tables — `str_headers`/`str_line_items`, synced from
+`inventory.json`'s `strLast7Days`/`strLineItemsLast7Days` — and a
+**rolling last-7-days window only** (not the full history). Two
+sub-tabs, sharing one filter/pack-qty/grouping engine
+(`str-shared.js`) so they can't drift apart:
+- **List** (`str-native.js`) — every STR touching Bahria Town,
+  dispatched out or received in. Sub-heading chips double as filters
+  ("Dispatched: N" / "Received: N", driven by the `direction` column),
+  plus a derived 3-stage Awaited/Dispatched/Received filter (the raw
+  `str_status` column is only ever Open/Close — the three stages come
+  from `dispatch_status` + `receive_status` instead) and a date range
+  on `str_date`. Tapping a row opens a detail modal reproducing the
+  source system's own printed Stock Transfer Report — grouped by
+  supplier (joined client-side from `inventory_products`, since
+  `str_line_items` itself carries no supplier column) and sorted by
+  product code ascending within each group — with Prev/Next buttons
+  that step through the same filtered list without closing the modal,
+  and a Print button.
+- **Report** (`str-report-native.js`) — every STR currently matching
+  the filters, flattened and open at once: **Dispatch Branch → STR #
+  (+ its Comments) → Supplier (product code ascending) → line items**.
+  Same filters as List, plus a manageable-columns picker (persisted
+  per-device under `bt_str_report_cols_v1`) and its own Print button
+  that mirrors the on-screen grouping.
+
+Both pages show **pack quantities**, not loose units — STR
+Qty/Dispatch Qty/Receive Qty are synced in loose units, then converted
+via `floor(loose / inventory_products.conversion_factor)` (same
+down-rounding `excess-working.js` already does elsewhere; a code with
+no reliable `conversion_factor` falls back to a factor of 1, i.e. its
+"pack qty" is just its loose qty). Difference is computed from the
+pack values too, so all four qty-shaped columns stay in the same unit.
 
 ### ⚙️ Tools
 Settings and cross-cutting utilities, most notably:

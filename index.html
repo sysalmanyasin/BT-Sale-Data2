@@ -382,6 +382,18 @@ if ('serviceWorker' in navigator) {
     <div class="rail-subs"></div>
   </div>
 
+  <!-- STR is its own standalone domain (Aug 2026 re-org) — was nested
+       under Inventory, now a peer top-level group with its own two
+       sub-tabs (List / Report — see js/nav-sections.js, js/str-native.js,
+       js/str-report-native.js). -->
+  <div class="rail-group" data-domain-group="str">
+    <div class="rail-row">
+      <a class="rail-item" href="#str" data-page="str" data-domain-group="str"><span class="rail-ic">📋</span><span class="rail-lb">STR Report</span></a>
+      <button type="button" class="rail-toggle" aria-label="Expand STR Report sub-sections" onclick="BTAppNav.toggleGroup(this)">▸</button>
+    </div>
+    <div class="rail-subs"></div>
+  </div>
+
   <div class="rail-group" data-domain-group="tools">
     <div class="rail-row">
       <a class="rail-item" href="#tools" data-page="tools" data-domain-group="tools"><span class="rail-ic">⚙️</span><span class="rail-lb">Tools</span></a>
@@ -432,7 +444,8 @@ if ('serviceWorker' in navigator) {
   <a class="bnav-item" href="#excess" data-page="excess" data-group="inventory" data-domain-group="inventory"><span class="bicon">📉</span><span class="blabel">Excess Working</span></a>
   <a class="bnav-item" href="#reorder" data-page="reorder" data-group="inventory" data-domain-group="inventory"><span class="bicon">🛒</span><span class="blabel">Reorder Report</span></a>
   <a class="bnav-item" href="#inv-health" data-page="inv-health" data-group="inventory" data-domain-group="inventory"><span class="bicon">🩺</span><span class="blabel">Inventory Health</span></a>
-<a class="bnav-item" href="#str" data-page="str" data-group="inventory" data-domain-group="inventory"><span class="bicon">📋</span><span class="blabel">STR Report</span></a>
+  <a class="bnav-item" href="#str" data-page="str" data-group="str" data-domain-group="str"><span class="bicon">📋</span><span class="blabel">STR Report</span></a>
+  <a class="bnav-item" href="#str-report" data-page="str-report" data-group="str" data-domain-group="str"><span class="bicon">🧾</span><span class="blabel">Report</span></a>
   <a class="bnav-item" href="#tools" data-page="tools" data-group="tools" data-domain-group="tools"><span class="bicon">⚙️</span><span class="blabel">Tools</span></a>
 </div>
 
@@ -1379,7 +1392,7 @@ if ('serviceWorker' in navigator) {
      system's own printed Stock Transfer Report. -->
 <section class="page str-app app-page" id="page-str">
 <header>
-  <p class="eyebrow">Inventory</p>
+  <p class="eyebrow">STR</p>
   <h1>STR Report</h1>
   <p class="sub">Stock transfers touching Bahria Town — dispatched out or received in — synced from the source system's last 7 days.</p>
 </header>
@@ -1401,7 +1414,7 @@ if ('serviceWorker' in navigator) {
 </div>
 
 <div class="str-search-row">
-  <input type="search" class="str-search-input" id="str-search-input" placeholder="Search STR #, ref #, issued by, branch…" autocomplete="off" oninput="strSetSearch(this.value)">
+  <input type="search" class="str-search-input" id="str-search-input" placeholder="Search STR #, ref #, comments, branch…" autocomplete="off" oninput="strSetSearch(this.value)">
 </div>
 
 <div class="str-filter-row">
@@ -1425,7 +1438,7 @@ if ('serviceWorker' in navigator) {
         <th>Date</th>
         <th>From → To</th>
         <th>Status</th>
-        <th>Issued By</th>
+        <th>Comments</th>
         <th style="text-align:right">Items</th>
       </tr>
     </thead>
@@ -1436,13 +1449,71 @@ if ('serviceWorker' in navigator) {
 <footer>STR Report — tap any row to open the full transfer, grouped by supplier and sorted by product code.</footer>
 </section>
 
+<!-- STR REPORT (flattened, all-STRs) — sub-tab under STR, alongside
+     the list above. Every STR currently matching the filters, open at
+     once: Dispatch Branch > STR # (+ its Comments) > Supplier (product
+     code ascending) > line items. See js/str-report-native.js. -->
+<section class="page str-rpt-app app-page" id="page-str-report">
+<header>
+  <p class="eyebrow">STR</p>
+  <h1>Report</h1>
+  <p class="sub">Every matching STR, flattened: dispatch branch → STR # → supplier, sorted by product code.</p>
+</header>
+
+<div class="str-chip-row">
+  <button class="str-chip" id="str-report-chip-dispatched" type="button" onclick="strReportSetBranchFilter('dispatched')">
+    <div><span class="str-chip-label">Dispatched</span><span class="str-chip-sub">Dispatch branch: Bahria Town</span></div>
+  </button>
+  <button class="str-chip" id="str-report-chip-received" type="button" onclick="strReportSetBranchFilter('received')">
+    <div><span class="str-chip-label">Received</span><span class="str-chip-sub">Receive branch: Bahria Town</span></div>
+  </button>
+</div>
+
+<div class="str-rpt-toolbar">
+  <span id="str-report-status">Loading…</span>
+  <div class="str-rpt-toolbar-btns">
+    <button class="str-rpt-btn" type="button" onclick="strReportRefresh()">↻ Refresh</button>
+    <div class="str-rpt-cols-wrap">
+      <button class="str-rpt-btn" type="button" onclick="strReportToggleColsPanel()">☰ Columns</button>
+      <div class="str-rpt-cols-panel" id="str-report-cols-panel"></div>
+    </div>
+    <button class="str-rpt-btn str-rpt-btn-primary" type="button" onclick="strReportPrint()">🖨 Print</button>
+  </div>
+</div>
+
+<div class="str-search-row">
+  <input type="search" class="str-search-input" id="str-report-search-input" placeholder="Search STR #, ref #, comments, branch…" autocomplete="off" oninput="strReportSetSearch(this.value)">
+</div>
+
+<div class="str-filter-row">
+  <button class="str-stage-btn str-stage-btn-active" data-stage="all" type="button" onclick="strReportSetStage('all')">All</button>
+  <button class="str-stage-btn" data-stage="awaited" type="button" onclick="strReportSetStage('awaited')">Awaited</button>
+  <button class="str-stage-btn" data-stage="dispatched" type="button" onclick="strReportSetStage('dispatched')">Dispatched</button>
+  <button class="str-stage-btn" data-stage="received" type="button" onclick="strReportSetStage('received')">Received</button>
+  <input type="date" class="str-date-input" id="str-report-date-from" aria-label="From date" onchange="strReportSetDateFrom(this.value)">
+  <span style="font-size:11px;color:var(--muted)">to</span>
+  <input type="date" class="str-date-input" id="str-report-date-to" aria-label="To date" onchange="strReportSetDateTo(this.value)">
+  <button class="str-clear-btn" type="button" onclick="strReportClearFilters()">Clear</button>
+</div>
+
+<div class="str-empty" id="str-report-empty" style="display:none"></div>
+
+<div id="str-report-body"></div>
+
+<footer>STR Report — every matching STR at once, tap any STR's header to open its full detail.</footer>
+</section>
+
 <!-- STR detail modal — bottom-sheet, same pattern as Assignments' Live
      Snapshot popup (an-snapshot-overlay in audit-native.js) -->
 <div class="str-detail-overlay" id="str-detail-overlay">
   <div class="str-detail-sheet">
     <div class="str-detail-head">
       <h3 id="str-detail-title">STR</h3>
-      <button class="str-detail-close" type="button" onclick="strCloseDetail()">✕</button>
+      <div class="str-detail-head-actions">
+        <button class="str-detail-nav-btn" id="str-detail-prev" type="button" onclick="strPrevDetail()" aria-label="Previous STR" title="Previous STR">‹ Prev</button>
+        <button class="str-detail-nav-btn" id="str-detail-next" type="button" onclick="strNextDetail()" aria-label="Next STR" title="Next STR">Next ›</button>
+        <button class="str-detail-close" type="button" onclick="strCloseDetail()">✕</button>
+      </div>
     </div>
     <div id="str-detail-body"></div>
     <div class="str-detail-actions">
@@ -2364,8 +2435,9 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/audit-native.js"></script>
 <script type="module" src="js/inventory-bridge.js?v=20260811a"></script>
 <script type="module" src="js/inventory-native.js?v=20260811a"></script>
-<script type="module" src="js/str-bridge.js?v=20260817a"></script>
-<script type="module" src="js/str-native.js?v=20260817a"></script>
+<script type="module" src="js/str-bridge.js?v=20260818a"></script>
+<script type="module" src="js/str-native.js?v=20260818a"></script>
+<script type="module" src="js/str-report-native.js?v=20260818a"></script>
 <script type="module" src="js/sale-payments-bridge.js?v=20260807b"></script>
 <script type="module" src="js/sale-payments-native.js?v=20260807b"></script>
 <script defer src="js/stockledger.js?v=20260722a"></script>
