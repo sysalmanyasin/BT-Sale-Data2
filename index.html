@@ -342,6 +342,7 @@ if ('serviceWorker' in navigator) {
   <a class="bnav-item" href="#inv-health" data-page="inv-health" data-group="inventory" data-domain-group="inventory"><span class="bicon">🩺</span><span class="blabel">Inventory Health</span></a>
   <a class="bnav-item" href="#str" data-page="str" data-group="str" data-domain-group="str"><span class="bicon">📋</span><span class="blabel">STR Report</span></a>
   <a class="bnav-item" href="#str-report" data-page="str-report" data-group="str" data-domain-group="str"><span class="bicon">🧾</span><span class="blabel">Report</span></a>
+  <a class="bnav-item" href="#str-zero-dispatch" data-page="str-zero-dispatch" data-group="str" data-domain-group="str"><span class="bicon">🚫</span><span class="blabel">0-Dispatch</span></a>
   <a class="bnav-item" href="#tools" data-page="tools" data-group="tools" data-domain-group="tools"><span class="bicon">⚙️</span><span class="blabel">Tools</span></a>
 </div>
 
@@ -1398,6 +1399,69 @@ if ('serviceWorker' in navigator) {
 <footer>STR Report — every matching STR at once, tap any STR's header to open its full detail.</footer>
 </section>
 
+<!-- STR ZERO DISPATCH — 3rd sub-tab under STR: same flattened branch >
+     STR > supplier nesting as Report, filtered to only line items
+     where STR Qty > 0 and Dispatch Qty = 0, with a per-STR checkbox to
+     pick which ones go into the printed report. See
+     js/str-zero-dispatch.js. -->
+<section class="page str-rpt-app app-page" id="page-str-zero-dispatch">
+<header>
+  <p class="eyebrow">STR</p>
+  <h1>Zero Dispatch</h1>
+  <p class="sub">Lines where STR Qty is raised but Dispatch Qty is still zero. Tick the STRs you want, then print.</p>
+</header>
+
+<div class="str-chip-row">
+  <button class="str-chip" id="str-zd-chip-dispatched" type="button" onclick="strZdSetBranchFilter('dispatched')">
+    <div><span class="str-chip-label">Dispatched</span><span class="str-chip-sub">Dispatch branch: Bahria Town</span></div>
+  </button>
+  <button class="str-chip" id="str-zd-chip-received" type="button" onclick="strZdSetBranchFilter('received')">
+    <div><span class="str-chip-label">Received</span><span class="str-chip-sub">Receive branch: Bahria Town</span></div>
+  </button>
+</div>
+
+<div class="str-rpt-toolbar">
+  <span id="str-zd-status">Loading…</span>
+  <div class="str-rpt-toolbar-btns">
+    <button class="str-rpt-btn" type="button" onclick="strZdRefresh()">↻ Refresh</button>
+    <div class="str-rpt-cols-wrap">
+      <button class="str-rpt-btn" type="button" onclick="strZdToggleColsPanel()">☰ Columns</button>
+      <div class="str-rpt-cols-panel" id="str-zd-cols-panel"></div>
+    </div>
+    <button class="str-rpt-btn str-rpt-btn-primary" type="button" onclick="strZdPrint()">🖨 Print Selected</button>
+  </div>
+</div>
+
+<div class="str-search-row">
+  <input type="search" class="str-search-input" id="str-zd-search-input" placeholder="Search STR #, ref #, comments, branch…" autocomplete="off" oninput="strZdSetSearch(this.value)">
+</div>
+
+<div class="str-filter-row">
+  <button class="str-stage-btn str-stage-btn-active" data-stage="all" type="button" onclick="strZdSetStage('all')">All</button>
+  <button class="str-stage-btn" data-stage="awaited" type="button" onclick="strZdSetStage('awaited')">Awaited</button>
+  <button class="str-stage-btn" data-stage="dispatched" type="button" onclick="strZdSetStage('dispatched')">Dispatched</button>
+  <button class="str-stage-btn" data-stage="received" type="button" onclick="strZdSetStage('received')">Received</button>
+  <input type="date" class="str-date-input" id="str-zd-date-from" aria-label="From date" onchange="strZdSetDateFrom(this.value)">
+  <span style="font-size:11px;color:var(--muted)">to</span>
+  <input type="date" class="str-date-input" id="str-zd-date-to" aria-label="To date" onchange="strZdSetDateTo(this.value)">
+  <button class="str-clear-btn" type="button" onclick="strZdClearFilters()">Clear</button>
+</div>
+
+<div class="str-zd-select-row">
+  <span id="str-zd-select-status">0 selected for print</span>
+  <div class="str-rpt-toolbar-btns">
+    <button class="str-rpt-btn" type="button" onclick="strZdSelectAll()">☑ Select All</button>
+    <button class="str-rpt-btn" type="button" onclick="strZdSelectNone()">☐ Select None</button>
+  </div>
+</div>
+
+<div class="str-empty" id="str-zd-empty" style="display:none"></div>
+
+<div id="str-zd-body"></div>
+
+<footer>Zero Dispatch — STR Qty &gt; 0 and Dispatch Qty = 0, tick STRs to include in the printed report.</footer>
+</section>
+
 <!-- STR detail modal — bottom-sheet, same pattern as Assignments' Live
      Snapshot popup (an-snapshot-overlay in audit-native.js) -->
 <div class="str-detail-overlay" id="str-detail-overlay">
@@ -2333,6 +2397,7 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/str-bridge.js?v=20260818a"></script>
 <script type="module" src="js/str-native.js?v=20260818a"></script>
 <script type="module" src="js/str-report-native.js?v=20260818a"></script>
+<script type="module" src="js/str-zero-dispatch.js?v=20260818a"></script>
 <script type="module" src="js/sale-payments-bridge.js?v=20260807b"></script>
 <script type="module" src="js/sale-payments-native.js?v=20260807b"></script>
 <script defer src="js/stockledger.js?v=20260722a"></script>

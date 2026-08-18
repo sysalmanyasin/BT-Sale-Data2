@@ -251,7 +251,7 @@
     // Inventory), with its own two sub-tabs: the list+detail page
     // ('str') and the flattened, all-STRs "Report" page ('str-report'
     // — see js/str-report-native.js).
-    const strKids = [_leaf(flat.str), _leaf(flat['str-report'])].filter(Boolean);
+    const strKids = [_leaf(flat.str), _leaf(flat['str-report']), _leaf(flat['str-zero-dispatch'])].filter(Boolean);
     _pushGroup(groups, _customGroup('str', 'STR Report', '📋', strKids, 'group-str'), 'data');
 
     // New: Closing umbrella over Closing Book + Credit Ledger (which

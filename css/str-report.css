@@ -130,3 +130,12 @@
 .str-rpt-str-comment { font-size: 11.5px; color: var(--t2); background: var(--s2); border-radius: 7px; padding: 6px 9px; margin-top: 8px; border-left: 3px solid var(--pink, #db2777); }
 .str-rpt-table-wrap { overflow-x: auto; border-radius: 8px; }
 .str-rpt-table { min-width: 480px; }
+
+/* ── Zero Dispatch — 3rd STR sub-tab (Aug 2026): same branch>STR>supplier
+   nesting/CSS as Report above, plus a per-STR print-selection checkbox. */
+.str-zd-str-head-row { display: flex; align-items: flex-start; gap: 10px; }
+.str-zd-checkbox-wrap { display: flex; align-items: center; padding-top: 2px; cursor: pointer; }
+.str-zd-checkbox { width: 18px; height: 18px; cursor: pointer; accent-color: var(--pink, #db2777); }
+.str-zd-badge { font-size: 10.5px; font-weight: 800; padding: 3px 9px; border-radius: 20px; background: #fef2f2; color: #b91c1c; text-transform: uppercase; letter-spacing: .02em; }
+.str-zd-select-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+#str-zd-select-status { font-size: 11px; color: var(--muted); font-weight: 700; }
