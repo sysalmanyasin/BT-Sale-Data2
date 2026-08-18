@@ -1,8 +1,8 @@
 // ══════════════════════════════════════════════════════════════════════
 // SUB-TAB STRIP — persistent, always-visible strip of the current
 // domain's sub-sections, pinned directly above the bottom nav bar
-// (mobile only — desktop already has this via the always-expanded rail's
-// own accordion, see js/app-nav.js).
+// (mobile only — desktop reaches the same sub-sections through the
+// Search & All Sections drawer instead).
 //
 // Covers Sales, Manager, Inventory, Closing — the 4 domains with more
 // than one sub-section — reusing the exact same domain->kids tree

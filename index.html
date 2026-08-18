@@ -75,8 +75,7 @@
 <!-- CSS Modules — load order matters -->
 <link rel="stylesheet" href="css/variables.css?v=20260810a">
 <link rel="stylesheet" href="css/auth.css?v=20260722a">
-<link rel="stylesheet" href="css/nav.css?v=20260811a">
-<link rel="stylesheet" href="css/app-nav.css?v=20260817a">
+<link rel="stylesheet" href="css/nav.css?v=20260818a">
 <link rel="stylesheet" href="css/closing-native.css?v=20260728a">
 <link rel="stylesheet" href="css/closing-book-print.css?v=20260722a">
 <link rel="stylesheet" href="css/audit-native.css?v=20260722a">
@@ -292,17 +291,18 @@ if ('serviceWorker' in navigator) {
 <!-- ══ NAV ══ -->
 <nav id="nav" style="display:none" class="no-print">
   <div class="nbrand">
+    <!-- Old top tab row (.ntabs, 15 always-visible tabs), the Sale Data
+         sub-strip, and the fixed desktop app-rail are all retired — this
+         bar is now a single Menu trigger + brand + utility controls. All
+         wayfinding (6 domains, ~30 sub-sections) lives in one place, the
+         Search & All Sections drawer (#sectionsbg below, built by
+         js/nav-sections.js), opened from here on desktop and from the
+         bottom tab bar's own ☰ Menu button on mobile — one nav system,
+         two entry points into the same tree. -->
+    <button type="button" class="navmenubtn" onclick="openSectionsDrawer()" title="Search &amp; All Sections" aria-label="Open Search and All Sections"><span class="navmenu-ic">☰</span></button>
     <div class="nlogo">BT</div>
     <div><div class="nbrand-text">Bahria Town Sales IC</div><div class="nbrand-sub" id="nbrand-sub-label">Intelligence Centre</div></div>
   </div>
-  <!-- Old top tab row (.ntabs, 15 always-visible tabs) and the Sale Data
-       sub-strip are retired — this bar is now just brand + utility
-       controls. All wayfinding (6 domains, ~30 sub-sections) lives in
-       the app-rail (desktop, left) / bottom tab bar (mobile) — both
-       already have their own "Menu" trigger for the Search & All
-       Sections drawer, so this bar no longer needs a third one (the
-       old 🔍 button here was pure duplication) — see css/app-nav.css +
-       js/app-nav.js, and #sectionsbg below. -->
   <div class="nright">
     <div class="syncbadge" id="synci" onclick="handleSyncBadgeClick()" title="Push all data to Supabase now (auto-pushes every 30s)">
       <span id="sync-icon">☁</span><span id="sync-text">Push All Data</span>
@@ -315,109 +315,6 @@ if ('serviceWorker' in navigator) {
   </div>
 </nav>
 
-<!-- ══ APP RAIL (desktop, ≥861px) ══ — collapsed to icons by default
-     (64px), remembers an expanded/pinned state (208px, labels) in
-     localStorage — see js/app-nav.js. Mobile gets the bottom tab bar +
-     drawer below instead; both shells open the exact same Search & All
-     Sections drawer (#sectionsbg) for the full ~30-item directory, so
-     nothing here needs to duplicate that tree. -->
-<div class="app-rail no-print" id="app-rail" role="navigation" aria-label="Main navigation">
-  <button type="button" class="rail-item rail-menu" onclick="openSectionsDrawer()" title="Search &amp; All Sections" aria-label="Open Search and All Sections"><span class="rail-ic">☰</span><span class="rail-lb">Menu</span></button>
-  <a class="rail-item" href="#cover" data-page="cover"><span class="rail-ic">🏠</span><span class="rail-lb">Cover</span></a>
-
-  <!-- Each domain below is a .rail-group: the original .rail-item link
-       (unchanged — still what showPage()'s active-state bookkeeping and
-       navigation targets) plus a ▸ toggle and an initially-empty
-       .rail-subs list. js/app-nav.js fills .rail-subs from the exact
-       same tree js/nav-sections.js already builds for the Search & All
-       Sections drawer (window.BTNavSections.getTree()) — one source of
-       truth, two places it's rendered — and auto-opens whichever group
-       matches the page you're actually on. Sub-rows only ever show
-       when the rail itself is expanded (see css/app-nav.css). -->
-  <div class="rail-group" data-domain-group="sales">
-    <div class="rail-row">
-      <a class="rail-item" href="#index" data-page="index" data-group="saledata" data-domain-group="sales"><span class="rail-ic">🗂️</span><span class="rail-lb">Sales</span></a>
-      <button type="button" class="rail-toggle" aria-label="Expand Sales sub-sections" onclick="BTAppNav.toggleGroup(this)">▸</button>
-    </div>
-    <div class="rail-subs"></div>
-  </div>
-
-  <div class="rail-group" data-domain-group="manager">
-    <div class="rail-row">
-      <a class="rail-item" href="#manager" data-page="manager" data-domain-group="manager"><span class="rail-ic">👔</span><span class="rail-lb">Manager</span></a>
-      <button type="button" class="rail-toggle" aria-label="Expand Manager sub-sections" onclick="BTAppNav.toggleGroup(this)">▸</button>
-    </div>
-    <div class="rail-subs"></div>
-  </div>
-
-  <div class="rail-group" data-domain-group="notesheets">
-    <div class="rail-row">
-      <a class="rail-item" href="#notesheets" data-page="notesheets" data-domain-group="notesheets"><span class="rail-ic">📑</span><span class="rail-lb">Notes &amp; Sheets</span></a>
-      <button type="button" class="rail-toggle" aria-label="Expand Notes &amp; Sheets sub-sections" onclick="BTAppNav.toggleGroup(this)">▸</button>
-    </div>
-    <div class="rail-subs"></div>
-  </div>
-
-  <div class="rail-group" data-domain-group="closing">
-    <div class="rail-row">
-      <a class="rail-item" href="#closing-book" data-page="closing-book" data-domain-group="closing"><span class="rail-ic">📖</span><span class="rail-lb">Closing</span></a>
-      <button type="button" class="rail-toggle" aria-label="Expand Closing sub-sections" onclick="BTAppNav.toggleGroup(this)">▸</button>
-    </div>
-    <div class="rail-subs"></div>
-  </div>
-
-  <div class="rail-group" data-domain-group="audit">
-    <div class="rail-row">
-      <a class="rail-item" href="#assignments" data-page="assignments" data-domain-group="audit"><span class="rail-ic">🧾</span><span class="rail-lb">Audit</span></a>
-      <button type="button" class="rail-toggle" aria-label="Expand Audit sub-sections" onclick="BTAppNav.toggleGroup(this)">▸</button>
-    </div>
-    <div class="rail-subs"></div>
-  </div>
-
-  <div class="rail-group" data-domain-group="inventory">
-    <div class="rail-row">
-      <a class="rail-item" href="#inventory" data-page="inventory" data-domain-group="inventory"><span class="rail-ic">📦</span><span class="rail-lb">Inventory</span></a>
-      <button type="button" class="rail-toggle" aria-label="Expand Inventory sub-sections" onclick="BTAppNav.toggleGroup(this)">▸</button>
-    </div>
-    <div class="rail-subs"></div>
-  </div>
-
-  <!-- STR is its own standalone domain (Aug 2026 re-org) — was nested
-       under Inventory, now a peer top-level group with its own two
-       sub-tabs (List / Report — see js/nav-sections.js, js/str-native.js,
-       js/str-report-native.js). -->
-  <div class="rail-group" data-domain-group="str">
-    <div class="rail-row">
-      <a class="rail-item" href="#str" data-page="str" data-domain-group="str"><span class="rail-ic">📋</span><span class="rail-lb">STR Report</span></a>
-      <button type="button" class="rail-toggle" aria-label="Expand STR Report sub-sections" onclick="BTAppNav.toggleGroup(this)">▸</button>
-    </div>
-    <div class="rail-subs"></div>
-  </div>
-
-  <div class="rail-group" data-domain-group="tools">
-    <div class="rail-row">
-      <a class="rail-item" href="#tools" data-page="tools" data-domain-group="tools"><span class="rail-ic">⚙️</span><span class="rail-lb">Tools</span></a>
-      <button type="button" class="rail-toggle" aria-label="Expand Tools sub-sections" onclick="BTAppNav.toggleGroup(this)">▸</button>
-    </div>
-    <div class="rail-subs"></div>
-  </div>
-
-  <!-- Reports has no page of its own (its 3 rows are all external
-       links — see nav-sections.js's "reports" _customGroup) so its row
-       is a plain toggle button, not an <a>, same rail-group/rail-subs
-       pattern as every other domain otherwise. Added so the rail
-       matches the drawer's directory 1:1. -->
-  <div class="rail-group" data-domain-group="reports">
-    <div class="rail-row">
-      <button type="button" class="rail-item" style="cursor:default;background:none;border:none;text-align:left;font:inherit;" onclick="BTAppNav.toggleGroup(this)"><span class="rail-ic">📰</span><span class="rail-lb">Reports</span></button>
-      <button type="button" class="rail-toggle" aria-label="Expand Reports sub-sections" onclick="BTAppNav.toggleGroup(this)">▸</button>
-    </div>
-    <div class="rail-subs"></div>
-  </div>
-
-  <button type="button" class="rail-item rail-pin" id="rail-pin-btn" onclick="btToggleRailPin()" title="Expand navigation rail" aria-label="Expand or collapse navigation rail"><span class="rail-ic">»</span><span class="rail-lb">Expand</span></button>
-</div>
-
 <!-- ══ BOTTOM TAB BAR (mobile) ══ -->
 <div class="bnav no-print" id="bnav" role="navigation" aria-label="Page navigation">
   <button type="button" class="bnav-item side-menu-btn" onclick="openSectionsDrawer()" title="Search &amp; All Sections" aria-label="Open Search and All Sections menu"><span class="bicon">☰</span><span class="blabel">Menu</span></button>
@@ -427,12 +324,11 @@ if ('serviceWorker' in navigator) {
   <a class="bnav-item" href="#inventory" data-page="inventory" data-group="inventory" data-domain-group="inventory"><span class="bicon">📦</span><span class="blabel">Inventory</span></a>
 </div>
 
-<!-- ══ NAV INDEX (hidden) ══ — the trimmed bnav (5 items) and the
-     app-rail (9 items) both dropped several pages that still need to
-     stay discoverable through the Search & All Sections drawer
-     (js/nav-sections.js reads this, .bnav and .app-rail together — see
-     that file's _flatFromBnav). Never shown directly; not a nav shell
-     of its own. -->
+<!-- ══ NAV INDEX (hidden) ══ — the trimmed bnav (5 items) dropped several
+     pages that still need to stay discoverable through the Search &
+     All Sections drawer (js/nav-sections.js reads this and .bnav
+     together — see that file's _flatFromBnav). Never shown directly;
+     not a nav shell of its own. -->
 <div class="bnav-index no-print" id="bnav-index" style="display:none" aria-hidden="true">
   <a class="bnav-item" href="#dashboard" data-page="dashboard" data-group="dashboard" data-domain-group="sales"><span class="bicon">📊</span><span class="blabel">Dashboard</span></a>
   <a class="bnav-item" href="#manager-dashboard" data-page="manager-dashboard" data-group="managerdash" data-domain-group="manager"><span class="bicon">📈</span><span class="blabel">Manager Dashboard</span></a>
@@ -878,10 +774,9 @@ if ('serviceWorker' in navigator) {
   </div>
 </div>
 
-<!-- ALL SECTIONS DRAWER — long-press Cover (bottom nav) or tap ☰ Menu
-     (rail / bottom nav / top-bar 🔍) to open. Full directory of
-     every top-level section + its sub-sections — the one shared tree
-     behind both nav shells (see js/app-nav.js for the rail). Same
+<!-- ALL SECTIONS DRAWER — tap ☰ Menu (top nav bar / bottom nav on
+     mobile) to open. Full directory of every top-level section + its
+     sub-sections — the one nav system, opened from either shell. Same
      .mbg/.modal shell. Tree populated by js/nav-sections.js; the search
      box on top of it (fuzzy-filters the tree + ranks Staff matches) is
      js/global-search.js, reviving the previously-dead js/bt-search.js. -->
@@ -2488,9 +2383,8 @@ if ('serviceWorker' in navigator) {
 <script defer src="js/reports.js?v=20260722a"></script>
 <script defer src="js/cash-deposit-report.js?v=20260727a"></script>
 <script defer src="js/icons.js?v=20260809a"></script>
-<script defer src="js/nav-sections.js?v=20260813b"></script>
+<script defer src="js/nav-sections.js?v=20260818a"></script>
 <script defer src="js/global-search.js?v=20260731a"></script>
-<script defer src="js/app-nav.js?v=20260813b"></script>
 <script defer src="js/subtab-strip.js?v=20260814a"></script>
 
 <!-- 11. Data page: daily table + entry form -->

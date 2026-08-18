@@ -18,6 +18,17 @@ nav{position:sticky;top:32px;z-index:200;background:rgba(255,255,255,.96);backdr
 .ntab.active{background:var(--alt);color:var(--accent);font-weight:600;}
 .ntab-menu{background:var(--s2);color:var(--t2);font-weight:700;border:1px solid var(--border);margin-right:6px;border-radius:var(--r-xs,7px);}
 .ntab-menu:hover{background:var(--accent);color:#fff;border-color:var(--accent);}
+/* ── Menu button (nav) — the app's one nav-system trigger: opens the
+   Search & All Sections drawer (#sectionsbg, js/nav-sections.js) on
+   desktop, same as the ☰ Menu button in .bnav does on mobile. Leads
+   the brand group at the far left of the bar. ── */
+.navmenubtn{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--s2);cursor:pointer;color:var(--muted);transition:all .15s;flex-shrink:0;}
+.navmenubtn:hover{border-color:var(--accent);color:var(--accent);}
+.navmenu-ic{font-size:16px;line-height:1;}
+/* Below 861px .bnav's own ☰ Menu button takes over (same drawer, same
+   trigger — just the mobile shell's copy of it), so hide this one to
+   avoid showing two Menu buttons on a phone-sized screen. */
+@media(max-width:860px){ .navmenubtn{display:none;} }
 .nright{display:flex;align-items:center;gap:8px;}
 .nclock{font-family:var(--mono);font-size:11px;color:var(--muted);}
 .syncbadge{display:flex;align-items:center;gap:5px;font-size:11px;font-family:var(--mono);padding:3px 9px;border-radius:20px;cursor:pointer;border:1px solid var(--border);background:var(--s2);color:var(--muted);}

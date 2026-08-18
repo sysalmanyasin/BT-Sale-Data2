@@ -1,9 +1,8 @@
 // ══════════════════════════════════════════════════════════════════════
-// ALL SECTIONS DRAWER  —  long-press Cover (bottom nav) OR any of the
-// ☰ "Menu" triggers (desktop rail, bottom nav, top-bar 🔍 — see
-// index.html/css/app-nav.css) opens a full directory of every section
-// + sub-section. It's the one shared tree behind both nav shells (see
-// js/app-nav.js for the rail itself); the old per-visit recents drawer
+// ALL SECTIONS DRAWER  —  the app's one nav system. Either ☰ "Menu"
+// trigger (top #nav bar on desktop, bottom nav on mobile — see
+// index.html) opens a full directory of every section + sub-section,
+// built from this one shared tree. The old per-visit recents drawer
 // (js/nav-recents.js) was retired as redundant with always having the
 // full directory one tap away.
 //
@@ -92,16 +91,15 @@
 
   // Reads every top-level page (id -> {label, icon, href}), keyed by
   // data-page, merged across every shell that can carry one: the
-  // trimmed 5-item #bnav (mobile), the 9-item .app-rail (desktop), and
-  // #bnav-index — a hidden catch-all for pages neither shell shows
-  // anymore (see index.html) — in that priority order, first match
-  // wins so a real, visible shell's label/icon/href is never
-  // clobbered by the hidden fallback. Skips Recents (not a real page)
-  // and anything whose page element isn't in the DOM.
+  // trimmed 5-item #bnav (mobile) and #bnav-index — a hidden catch-all
+  // for pages the visible bar doesn't carry (see index.html) — in that
+  // priority order, first match wins so the real, visible shell's
+  // label/icon/href is never clobbered by the hidden fallback. Skips
+  // Recents (not a real page) and anything whose page element isn't in
+  // the DOM.
   function _flatFromBnav() {
     const sources = [
       { sel: '#bnav > .bnav-item[data-page]', labelSel: '.blabel' },
-      { sel: '.app-rail > .rail-item[data-page]', labelSel: '.rail-lb' },
       { sel: '#bnav-index > .bnav-item[data-page]', labelSel: '.blabel' },
     ];
     const map = {};
@@ -433,8 +431,8 @@
 
   window.openSectionsDrawer = openSectionsDrawer;
   window.closeSectionsDrawer = closeSectionsDrawer;
-  // getTree: exposed so js/app-nav.js can render the same domain->kids
-  // tree into the persistent rail's sub-tabs, instead of re-deriving
+  // getTree: exposed so js/subtab-strip.js can render the same
+  // domain->kids tree into its sub-tab strip, instead of re-deriving
   // (and risking drift from) its own copy of this mapping. Returns a
   // fresh build every call — cheap (small DOM, runs on open/nav-change
   // only) and always current, same as the drawer itself.

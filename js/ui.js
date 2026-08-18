@@ -15,10 +15,10 @@
 function showPage(id) {
   try {
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
-    document.querySelectorAll('.ntab,.bnav-item,.bnav-sub-item,.rail-item').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.ntab,.bnav-item,.bnav-sub-item').forEach(t=>t.classList.remove('active'));
     const pg = document.getElementById('page-'+id);
     if(pg) pg.classList.add('on');
-    document.querySelectorAll('.ntab[data-page="'+id+'"],.bnav-item[data-page="'+id+'"],.bnav-sub-item[data-page="'+id+'"],.rail-item[data-page="'+id+'"]').forEach(t=>t.classList.add('active'));
+    document.querySelectorAll('.ntab[data-page="'+id+'"],.bnav-item[data-page="'+id+'"],.bnav-sub-item[data-page="'+id+'"]').forEach(t=>t.classList.add('active'));
     const _saleDataPages = ['index','data','entry','report','diff','cashdeposit','sale-payments'];
     const _inSaleData = _saleDataPages.indexOf(id) !== -1;
     const _subnav = document.getElementById('saledata-subnav');
@@ -83,7 +83,7 @@ function showPage(id) {
     }
 
     if (_inSaleData) {
-      document.querySelectorAll('.ntab[data-group="saledata"],.bnav-item[data-group="saledata"],.rail-item[data-group="saledata"]').forEach(t=>t.classList.add('active'));
+      document.querySelectorAll('.ntab[data-group="saledata"],.bnav-item[data-group="saledata"]').forEach(t=>t.classList.add('active'));
     }
     if (id === 'closing-book' && typeof window.clnOnShowClosingBook === 'function') window.clnOnShowClosingBook();
     if (id === 'credit-ledger' && typeof window.clnOnShowCreditLedger === 'function') window.clnOnShowCreditLedger();
