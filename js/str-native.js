@@ -51,7 +51,7 @@ function _rowHtml(h, itemCount) {
     <td style="font-size:11.5px;color:var(--t2)">${S.esc(h.dispatchBranch || '—')} → ${S.esc(h.receiveBranch || '—')}</td>
     <td><span class="str-badge ${S.STAGE_BADGE_CLASS[stage]}">${S.STAGE_LABEL[stage]}</span></td>
     <td style="font-size:11.5px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${S.esc(h.comments || '')}">${S.esc(h.comments || '—')}</td>
-    <td style="text-align:left;font-size:12px;color:var(--text)">${itemCount}</td>
+    <td style="text-align:center;font-size:12px;color:var(--text)">${itemCount}</td>
   </tr>`;
 }
 
@@ -142,11 +142,11 @@ function _detailLineRowHtml(li, sr) {
       <span style="color:var(--muted);font-size:11px">[${S.esc(li.productCode || '—')}]</span>
       <span style="font-weight:600">${S.esc(li.productName)}</span>
     </td>
-    <td style="text-align:left">${S.fmtMoney(li.productPrice)}</td>
-    <td style="text-align:left">${S.fmtQty(li.packStrQty)}</td>
-    <td style="text-align:left">${S.fmtQty(li.packDispatchQty)}</td>
-    <td style="text-align:left">${S.fmtQty(li.packReceiveQty)}</td>
-    <td style="text-align:left">${diffHtml}</td>
+    <td style="text-align:center">${S.fmtMoney(li.productPrice)}</td>
+    <td style="text-align:center">${S.fmtQty(li.packStrQty)}</td>
+    <td style="text-align:center">${S.fmtQty(li.packDispatchQty)}</td>
+    <td style="text-align:center">${S.fmtQty(li.packReceiveQty)}</td>
+    <td style="text-align:center">${diffHtml}</td>
   </tr>`;
 }
 
@@ -159,8 +159,8 @@ function _detailGroupHtml(group, srStart) {
     ${rowsHtml}
     <tr class="str-detail-subtotal-row">
       <td colspan="3">Subtotal — ${group.rows.length} item(s)</td>
-      <td style="text-align:left">${S.fmtQty(subStr)}</td>
-      <td style="text-align:left">${S.fmtQty(subDisp)}</td>
+      <td style="text-align:center">${S.fmtQty(subStr)}</td>
+      <td style="text-align:center">${S.fmtQty(subDisp)}</td>
       <td></td><td></td>
     </tr>`;
 }
@@ -213,20 +213,20 @@ function renderStrDetail() {
     <div class="str-detail-table-wrap">
       <table class="str-detail-table">
         <thead><tr>
-          <th style="width:32px">Sr#</th><th>Product</th>
-          <th style="text-align:left">R. Price</th>
-          <th style="text-align:left">STR Qty (Pack)</th>
-          <th style="text-align:left">Dispatch Qty (Pack)</th>
-          <th style="text-align:left">Receive Qty (Pack)</th>
-          <th style="text-align:left">Difference</th>
+          <th style="width:32px;text-align:center">Sr#</th><th>Product</th>
+          <th style="text-align:center">R. Price</th>
+          <th style="text-align:center">STR Qty (Pack)</th>
+          <th style="text-align:center">Dispatch Qty (Pack)</th>
+          <th style="text-align:center">Receive Qty (Pack)</th>
+          <th style="text-align:center">Difference</th>
         </tr></thead>
         <tbody>
           ${groupsHtml || `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:16px">No line items synced for this STR.</td></tr>`}
         </tbody>
         <tfoot><tr class="str-detail-grand-row">
           <td colspan="3">Grand Total — ${totalItems} item(s)</td>
-          <td style="text-align:left">${S.fmtQty(grandStr)}</td>
-          <td style="text-align:left">${S.fmtQty(grandDisp)}</td>
+          <td style="text-align:center">${S.fmtQty(grandStr)}</td>
+          <td style="text-align:center">${S.fmtQty(grandDisp)}</td>
           <td></td><td></td>
         </tr></tfoot>
       </table>
@@ -299,21 +299,21 @@ function strPrintDetail() {
       const cur = sr++;
       const zebra = i % 2 === 1 ? 'background:#fafafa;' : '';
       return `<tr style="${zebra}">
-        <td style="padding:5px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:center">${cur}</td>
-        <td style="padding:5px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:left">[${S.esc(li.productCode)}] ${S.esc(li.productName)}</td>
-        <td style="padding:5px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:left">${S.fmtMoney(li.productPrice)}</td>
-        <td style="padding:5px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:left">${S.fmtQty(li.packStrQty)}</td>
-        <td style="padding:5px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:left">${S.fmtQty(li.packDispatchQty)}</td>
-        <td style="padding:5px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:left">${S.fmtQty(li.packReceiveQty)}</td>
-        <td style="padding:5px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:left">${diff === null ? '' : (diff > 0 ? '+' : '') + diff}</td>
+        <td style="padding:5px 6px;border:1px solid #ddd;font-size:11px;text-align:center">${cur}</td>
+        <td style="padding:5px 6px;border:1px solid #ddd;font-size:11px;text-align:left">[${S.esc(li.productCode)}] ${S.esc(li.productName)}</td>
+        <td style="padding:5px 6px;border:1px solid #ddd;font-size:11px;text-align:center">${S.fmtMoney(li.productPrice)}</td>
+        <td style="padding:5px 6px;border:1px solid #ddd;font-size:11px;text-align:center">${S.fmtQty(li.packStrQty)}</td>
+        <td style="padding:5px 6px;border:1px solid #ddd;font-size:11px;text-align:center">${S.fmtQty(li.packDispatchQty)}</td>
+        <td style="padding:5px 6px;border:1px solid #ddd;font-size:11px;text-align:center">${S.fmtQty(li.packReceiveQty)}</td>
+        <td style="padding:5px 6px;border:1px solid #ddd;font-size:11px;text-align:center">${diff === null ? '' : (diff > 0 ? '+' : '') + diff}</td>
       </tr>`;
     }).join('');
-    return `<tr><td colspan="7" style="padding:8px 6px 4px;font-size:11.5px;font-weight:800;background:#eef0f3">${S.esc(g.supplier)}</td></tr>
+    return `<tr><td colspan="7" style="padding:8px 6px 4px;font-size:11.5px;font-weight:800;background:#eef0f3;border:1px solid #ddd">${S.esc(g.supplier)}</td></tr>
       ${rows}
-      <tr><td colspan="3" style="padding:4px 6px;font-size:11px;font-weight:700;text-align:left">Subtotal (${g.rows.length} item(s))</td>
-        <td style="padding:4px 6px;font-size:11px;font-weight:700;text-align:left">${S.fmtQty(subStr)}</td>
-        <td style="padding:4px 6px;font-size:11px;font-weight:700;text-align:left">${S.fmtQty(subDisp)}</td>
-        <td></td><td></td></tr>`;
+      <tr><td colspan="3" style="padding:4px 6px;font-size:11px;font-weight:700;text-align:left;border:1px solid #ddd">Subtotal (${g.rows.length} item(s))</td>
+        <td style="padding:4px 6px;font-size:11px;font-weight:700;text-align:center;border:1px solid #ddd">${S.fmtQty(subStr)}</td>
+        <td style="padding:4px 6px;font-size:11px;font-weight:700;text-align:center;border:1px solid #ddd">${S.fmtQty(subDisp)}</td>
+        <td style="border:1px solid #ddd"></td><td style="border:1px solid #ddd"></td></tr>`;
   }).join('');
 
   const grandStr = groups.reduce((s, g) => s + g.rows.reduce((s2, r) => s2 + (r.packStrQty || 0), 0), 0);
@@ -332,22 +332,22 @@ function strPrintDetail() {
       <tr>${fieldRow('Receive Date', S.fmtDate(h.receiveDate))}${fieldRow('Receive Status', h.receiveStatus)}${fieldRow('Received By', h.receivedBy)}</tr>
       <tr>${fieldRow('Issued By', h.issuedBy)}${fieldRow('Cartons', h.noOfBoxes)}<td></td><td></td></tr>
     </table>
-    <table style="width:100%;border-collapse:collapse">
+    <table style="width:100%;border-collapse:collapse;border:1px solid #ddd">
       <thead><tr style="background:#111;color:#fff">
-        <th style="padding:6px;font-size:10.5px;text-align:center">Sr#</th>
-        <th style="padding:6px;font-size:10.5px;text-align:left">Product</th>
-        <th style="padding:6px;font-size:10.5px;text-align:left">R. Price</th>
-        <th style="padding:6px;font-size:10.5px;text-align:left">STR Qty</th>
-        <th style="padding:6px;font-size:10.5px;text-align:left">Dispatch Qty</th>
-        <th style="padding:6px;font-size:10.5px;text-align:left">Receive Qty</th>
-        <th style="padding:6px;font-size:10.5px;text-align:left">Difference</th>
+        <th style="padding:6px;font-size:10.5px;text-align:center;border:1px solid #333">Sr#</th>
+        <th style="padding:6px;font-size:10.5px;text-align:left;border:1px solid #333">Product</th>
+        <th style="padding:6px;font-size:10.5px;text-align:center;border:1px solid #333">R. Price</th>
+        <th style="padding:6px;font-size:10.5px;text-align:center;border:1px solid #333">STR Qty</th>
+        <th style="padding:6px;font-size:10.5px;text-align:center;border:1px solid #333">Dispatch Qty</th>
+        <th style="padding:6px;font-size:10.5px;text-align:center;border:1px solid #333">Receive Qty</th>
+        <th style="padding:6px;font-size:10.5px;text-align:center;border:1px solid #333">Difference</th>
       </tr></thead>
-      <tbody>${groupsHtml || `<tr><td colspan="7" style="padding:12px;text-align:center;color:#888;font-size:11px">No line items synced for this STR</td></tr>`}</tbody>
+      <tbody>${groupsHtml || `<tr><td colspan="7" style="padding:12px;text-align:center;color:#888;font-size:11px;border:1px solid #ddd">No line items synced for this STR</td></tr>`}</tbody>
       <tfoot><tr style="border-top:2px solid #111">
-        <td colspan="3" style="padding:6px;font-size:12px;font-weight:800">Grand Total — ${totalItems} item(s)</td>
-        <td style="padding:6px;font-size:12px;font-weight:800;text-align:left">${S.fmtQty(grandStr)}</td>
-        <td style="padding:6px;font-size:12px;font-weight:800;text-align:left">${S.fmtQty(grandDisp)}</td>
-        <td></td><td></td>
+        <td colspan="3" style="padding:6px;font-size:12px;font-weight:800;border:1px solid #ddd">Grand Total — ${totalItems} item(s)</td>
+        <td style="padding:6px;font-size:12px;font-weight:800;text-align:center;border:1px solid #ddd">${S.fmtQty(grandStr)}</td>
+        <td style="padding:6px;font-size:12px;font-weight:800;text-align:center;border:1px solid #ddd">${S.fmtQty(grandDisp)}</td>
+        <td style="border:1px solid #ddd"></td><td style="border:1px solid #ddd"></td>
       </tr></tfoot>
     </table>
     ${h.comments ? `<div style="margin-top:10px;font-size:11px;color:#444"><strong>Comments:</strong> ${S.esc(h.comments)}</div>` : ''}

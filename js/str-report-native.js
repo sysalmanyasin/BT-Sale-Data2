@@ -64,18 +64,18 @@ function _colCount() { return 2 + COLUMN_DEFS.filter(c => rptState.cols[c.key]).
 
 function _colHeadHtml() {
   return COLUMN_DEFS.filter(c => rptState.cols[c.key])
-    .map(c => `<th style="text-align:left">${c.label}</th>`).join('');
+    .map(c => `<th style="text-align:center">${c.label}</th>`).join('');
 }
 
 function _lineRowCellsHtml(li) {
   const diff = S.diffQty(li);
   const diffHtml = diff === null ? '' : `<span style="color:${diff === 0 ? 'var(--muted)' : diff < 0 ? '#dc2626' : '#047857'}">${diff > 0 ? '+' : ''}${diff}</span>`;
   const cells = {
-    price: `<td style="text-align:left">${S.fmtMoney(li.productPrice)}</td>`,
-    strQty: `<td style="text-align:left">${S.fmtQty(li.packStrQty)}</td>`,
-    dispatchQty: `<td style="text-align:left">${S.fmtQty(li.packDispatchQty)}</td>`,
-    receiveQty: `<td style="text-align:left">${S.fmtQty(li.packReceiveQty)}</td>`,
-    diff: `<td style="text-align:left">${diffHtml}</td>`,
+    price: `<td style="text-align:center">${S.fmtMoney(li.productPrice)}</td>`,
+    strQty: `<td style="text-align:center">${S.fmtQty(li.packStrQty)}</td>`,
+    dispatchQty: `<td style="text-align:center">${S.fmtQty(li.packDispatchQty)}</td>`,
+    receiveQty: `<td style="text-align:center">${S.fmtQty(li.packReceiveQty)}</td>`,
+    diff: `<td style="text-align:center">${diffHtml}</td>`,
   };
   return COLUMN_DEFS.filter(c => rptState.cols[c.key]).map(c => cells[c.key]).join('');
 }
@@ -116,7 +116,7 @@ function _strBlockHtml(data, h) {
       <div class="str-rpt-table-wrap">
         <table class="str-detail-table str-rpt-table">
           <thead><tr>
-            <th style="width:32px">Sr#</th><th>Product</th>
+            <th style="width:32px;text-align:center">Sr#</th><th>Product</th>
             ${_colHeadHtml()}
           </tr></thead>
           <tbody>
@@ -276,7 +276,7 @@ function strReportPrint() {
       receiveQty: S.fmtQty(li.packReceiveQty),
       diff: diff === null ? '' : (diff > 0 ? '+' : '') + diff,
     };
-    return cols.map(c => `<td style="padding:5px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:left">${map[c.key]}</td>`).join('');
+    return cols.map(c => `<td style="padding:5px 6px;border:1px solid #ddd;font-size:11px;text-align:center">${map[c.key]}</td>`).join('');
   };
 
   const branchGroups = _groupedByBranch(data, visible);
@@ -289,12 +289,12 @@ function strReportPrint() {
           const cur = sr++;
           const zebra = i % 2 === 1 ? 'background:#fafafa;' : '';
           return `<tr style="${zebra}">
-            <td style="padding:5px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:center">${cur}</td>
-            <td style="padding:5px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:left">[${S.esc(li.productCode)}] ${S.esc(li.productName)}</td>
+            <td style="padding:5px 6px;border:1px solid #ddd;font-size:11px;text-align:center">${cur}</td>
+            <td style="padding:5px 6px;border:1px solid #ddd;font-size:11px;text-align:left">[${S.esc(li.productCode)}] ${S.esc(li.productName)}</td>
             ${cellsHtml(li)}
           </tr>`;
         }).join('');
-        return `<tr><td colspan="${colCount}" style="padding:6px 6px 3px;font-size:11px;font-weight:800;background:#eef0f3">${S.esc(g.supplier)}</td></tr>${rows}`;
+        return `<tr><td colspan="${colCount}" style="padding:6px 6px 3px;font-size:11px;font-weight:800;background:#eef0f3;border:1px solid #ddd">${S.esc(g.supplier)}</td></tr>${rows}`;
       }).join('');
       // Each STR is its own bordered card with real breathing room above
       // it and page-break-inside:avoid, so a print run never splits an
@@ -306,11 +306,11 @@ function strReportPrint() {
             <span style="font-size:11px;color:#555"> · ${S.fmtDate(h.strDate)} · ${S.esc(h.dispatchBranch || '—')} → ${S.esc(h.receiveBranch || '—')} · ${S.STAGE_LABEL[S.strStage(h)]}</span>
             ${h.comments ? `<div style="font-size:11px;color:#444;margin-top:3px"><strong>Comments:</strong> ${S.esc(h.comments)}</div>` : ''}
           </div>
-          <table style="width:100%;border-collapse:collapse">
+          <table style="width:100%;border-collapse:collapse;border:1px solid #ddd">
             <thead><tr style="background:#111;color:#fff">
-              <th style="padding:5px;font-size:10px;text-align:center">Sr#</th>
-              <th style="padding:5px;font-size:10px;text-align:left">Product</th>
-              ${cols.map(c => `<th style="padding:5px;font-size:10px;text-align:left">${c.label}</th>`).join('')}
+              <th style="padding:5px;font-size:10px;text-align:center;border:1px solid #333">Sr#</th>
+              <th style="padding:5px;font-size:10px;text-align:left;border:1px solid #333">Product</th>
+              ${cols.map(c => `<th style="padding:5px;font-size:10px;text-align:center;border:1px solid #333">${c.label}</th>`).join('')}
             </tr></thead>
             <tbody>${groupsHtml}</tbody>
           </table>

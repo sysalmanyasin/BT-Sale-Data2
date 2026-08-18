@@ -13,12 +13,30 @@
    branches, dates, comments) with only a handful of genuinely numeric
    columns, so every cell in all three STR tables (list, detail modal,
    flattened Report) defaults to left-aligned here as the baseline;
-   nothing currently needs to opt back into right-alignment. */
+   the genuinely numeric columns (Sr#, R. Price, STR/Dispatch/Receive
+   Qty, Difference, Items) opt back into centered via an inline
+   text-align:center set at render time (js/str-native.js,
+   js/str-report-native.js) — inline always wins regardless of this
+   class's specificity, so this stays a plain default. */
 .str-table th, .str-table td,
 .str-detail-table th, .str-detail-table td,
 .str-rpt-table th, .str-rpt-table td {
   text-align: left;
 }
+
+/* ── Full gridlines — every cell boxed on all four sides (not just a
+   bottom rule), so long numeric columns read as a straight-edged grid
+   instead of a loosely-lined list. Same treatment on screen and in
+   print (see js/str-native.js / js/str-report-native.js's print
+   builders, which set matching inline borders since Print.render()'s
+   output is a standalone document that doesn't load this stylesheet). */
+.str-table, .str-detail-table, .str-rpt-table { border-collapse: collapse; }
+.str-table th, .str-table td,
+.str-detail-table th, .str-detail-table td,
+.str-rpt-table th, .str-rpt-table td {
+  border: 1px solid var(--border);
+}
+.str-table thead th, .str-detail-table thead th { border-bottom: 1px solid var(--border); }
 
 .str-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 8px; flex-wrap: wrap; }
 .str-toolbar span { font-size: 11px; color: var(--muted); }
@@ -50,7 +68,6 @@
 .str-table { width: 100%; border-collapse: collapse; min-width: 620px; }
 .str-table thead th { position: sticky; top: 0; background: var(--s2); color: var(--muted); font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
 .str-row td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; cursor: pointer; }
-.str-row:last-child td { border-bottom: none; }
 .str-row:hover td { background: var(--s2); }
 
 .str-badge { display: inline-block; font-size: 10.5px; font-weight: 800; padding: 3px 9px; border-radius: 20px; text-transform: uppercase; letter-spacing: .02em; }
