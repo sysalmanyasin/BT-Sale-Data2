@@ -7,7 +7,7 @@ project:
 # Closing Summary — Android Home Screen Widgets
 
 A minimal native Android app whose only real purpose is a set of
-**19 home-screen widgets**, pulled directly from the **BT SALE DATA**
+**22 home-screen widgets**, pulled directly from the **BT SALE DATA**
 Supabase project and the separate Pharmacy Audit Hub Supabase project
 (for the inventory + Today's Sale widgets). No login screen in the
 normal sense — see [Auth model](#auth-model) below.
@@ -83,6 +83,36 @@ formula mirrors), so none of them need either app open to compute:
     with real interactive UI (type a name/code, pick a match, see full
     detail).
 
+### STR Report
+Three widgets reading `str_headers` from the same Pharmacy Audit Hub
+Supabase project as the Inventory widgets (`StrRepository.kt` — a
+Kotlin mirror of the web app's `js/str-bridge.js`/`js/str-shared.js`:
+same 3-stage Awaited/Dispatched/Received lifecycle derived from
+`dispatch_status`/`receive_status`, same `direction` field to tell
+which side Bahria Town is on). Same rolling ~7-day window caveat as
+the web app — `str_headers` only ever holds recent STRs, there's no
+long-term history to surface here.
+20. **Awaited STR — Dispatch from Bahria Town** — every STR with
+    Bahria Town as the dispatch branch that hasn't been dispatched,
+    closed, or received yet. Up to 6 stacked cards (STR Number, Date,
+    Comment), oldest/most-overdue first — same bounded-list pattern as
+    Last 3 Shift Closings, since a 7-day window rarely needs more.
+21. **Dispatched STR — from Bahria Town** — the same Bahria-Town-as-
+    dispatch-branch STRs, but already dispatched and still not closed
+    or received (i.e. currently in transit out). Same stacked-card
+    layout as #20.
+22. **Dispatched STR — Inbound to Bahria Town** — every STR dispatched
+    *from* another branch (Warehouse, Warehouse 2, or any other
+    source — `direction == "in"`, Bahria Town is the receive branch)
+    that's been dispatched but not yet closed or received at Bahria
+    Town. Unlike #20/#21, this one can have STRs arriving from an
+    unbounded number of branches at once, so it's rendered as a
+    scrolling `ListView` via `StrInboundWidgetService`/
+    `StrInboundCache.kt` — the same RemoteViewsService pattern as the
+    Inventory list widgets (#13–18), for the same TransactionTooLarge
+    reason documented on `InventoryReorderWidgetService.kt`. Each row
+    shows STR Number, source branch, Date, and Comment.
+
 ## Auth model
 
 `WidgetAuthManager.kt` holds a Supabase session for a dedicated
@@ -102,7 +132,8 @@ from it on every widget refresh.
 - One `*Repository.kt` per data domain (`ClosingRepository`,
   `SalesRepository`, `AggregatedRepository`, `MonthSaleRepository`,
   `CreditRepository`, `InventoryRepository`, `TodaySaleRepository`,
-  `LastShiftsRepository`, `MiscAgingRepository`) does a plain `GET`
+  `LastShiftsRepository`, `MiscAgingRepository`, `StrRepository`) does
+  a plain `GET`
   against the relevant Supabase REST API using the project's anon/
   publishable key. Read access is governed by each table's Row Level
   Security policy, not by keeping this key secret — that's expected
@@ -139,6 +170,13 @@ from it on every widget refresh.
     rather than reading the sheet's stored `finalDiff`/`finalDiffLabel`,
     which flip to the period-aggregated figures whenever a Final
     Closing has since been saved.
+  - `StrRepository` reads `str_headers` directly with the same anon
+    key `InventoryRepository` uses (no `WidgetAuthManager` session
+    needed — RLS on this table resolves for the anon role only, same
+    as the web app's `str-bridge.js`), and mirrors that same file's
+    `strStage()`/`isDispatchedFromBT()`/`isReceivedAtBT()` logic in
+    Kotlin so the three STR widgets never drift from what the web app
+    considers "Awaited" vs "Dispatched".
 - Each domain's `*WidgetProvider.kt` is an `AppWidgetProvider` that
   renders its result into the widget via `RemoteViews`. Every data
   widget auto-refreshes every 30 minutes (the Android-enforced
@@ -174,5 +212,5 @@ own device, not for the Play Store.
 2. Enable "Install unknown apps" for whatever app you download it
    with.
 3. Install the APK, open it once, then long-press your home screen →
-   Widgets → **Closing Summary** → drag any of the 19 widgets listed
+   Widgets → **Closing Summary** → drag any of the 22 widgets listed
    above onto your home screen.
