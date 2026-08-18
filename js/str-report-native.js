@@ -290,7 +290,7 @@ function strReportPrint() {
           const zebra = i % 2 === 1 ? 'background:#fafafa;' : '';
           return `<tr style="${zebra}">
             <td style="padding:5px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:center">${cur}</td>
-            <td style="padding:5px 6px;border-bottom:1px solid #eee;font-size:11px">[${S.esc(li.productCode)}] ${S.esc(li.productName)}</td>
+            <td style="padding:5px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:left">[${S.esc(li.productCode)}] ${S.esc(li.productName)}</td>
             ${cellsHtml(li)}
           </tr>`;
         }).join('');

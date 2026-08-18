@@ -289,7 +289,7 @@ function strPrintDetail() {
   let sr = 1;
   const today = new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' });
 
-  const fieldRow = (label, val) => `<td style="padding:3px 10px 3px 0;font-size:11px;color:#555;white-space:nowrap">${label}</td><td style="padding:3px 16px 3px 0;font-size:12px;font-weight:600">${S.esc(val || '—')}</td>`;
+  const fieldRow = (label, val) => `<td style="padding:3px 10px 3px 0;font-size:11px;color:#555;white-space:nowrap;text-align:left">${label}</td><td style="padding:3px 16px 3px 0;font-size:12px;font-weight:600;text-align:left">${S.esc(val || '—')}</td>`;
 
   const groupsHtml = groups.map(g => {
     const subStr = g.rows.reduce((s, r) => s + (r.packStrQty || 0), 0);
@@ -300,7 +300,7 @@ function strPrintDetail() {
       const zebra = i % 2 === 1 ? 'background:#fafafa;' : '';
       return `<tr style="${zebra}">
         <td style="padding:5px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:center">${cur}</td>
-        <td style="padding:5px 6px;border-bottom:1px solid #eee;font-size:11px">[${S.esc(li.productCode)}] ${S.esc(li.productName)}</td>
+        <td style="padding:5px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:left">[${S.esc(li.productCode)}] ${S.esc(li.productName)}</td>
         <td style="padding:5px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:left">${S.fmtMoney(li.productPrice)}</td>
         <td style="padding:5px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:left">${S.fmtQty(li.packStrQty)}</td>
         <td style="padding:5px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:left">${S.fmtQty(li.packDispatchQty)}</td>

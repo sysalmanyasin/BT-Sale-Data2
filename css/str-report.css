@@ -4,6 +4,22 @@
    (BT Inventory) or an- (Assignments) native ports.
    ══════════════════════════════════════════════════════════════════ */
 
+/* css/components.css defines a global, unscoped base style for every
+   <table>/<th>/<td> in the app — right-aligned except the first
+   column — built for the app's original numeric-heavy tables (loads
+   *after* this file, but a class selector still outranks
+   components.css's bare `td`/`th` on specificity regardless of load
+   order). STR Report's tables are mostly text (product names,
+   branches, dates, comments) with only a handful of genuinely numeric
+   columns, so every cell in all three STR tables (list, detail modal,
+   flattened Report) defaults to left-aligned here as the baseline;
+   nothing currently needs to opt back into right-alignment. */
+.str-table th, .str-table td,
+.str-detail-table th, .str-detail-table td,
+.str-rpt-table th, .str-rpt-table td {
+  text-align: left;
+}
+
 .str-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 8px; flex-wrap: wrap; }
 .str-toolbar span { font-size: 11px; color: var(--muted); }
 .str-refresh-btn { font-size: 11px; font-weight: 700; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--t2); cursor: pointer; }
