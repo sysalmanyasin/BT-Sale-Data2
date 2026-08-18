@@ -64,18 +64,18 @@ function _colCount() { return 2 + COLUMN_DEFS.filter(c => rptState.cols[c.key]).
 
 function _colHeadHtml() {
   return COLUMN_DEFS.filter(c => rptState.cols[c.key])
-    .map(c => `<th style="text-align:right">${c.label}</th>`).join('');
+    .map(c => `<th style="text-align:left">${c.label}</th>`).join('');
 }
 
 function _lineRowCellsHtml(li) {
   const diff = S.diffQty(li);
   const diffHtml = diff === null ? '' : `<span style="color:${diff === 0 ? 'var(--muted)' : diff < 0 ? '#dc2626' : '#047857'}">${diff > 0 ? '+' : ''}${diff}</span>`;
   const cells = {
-    price: `<td style="text-align:right">${S.fmtMoney(li.productPrice)}</td>`,
-    strQty: `<td style="text-align:right">${S.fmtQty(li.packStrQty)}</td>`,
-    dispatchQty: `<td style="text-align:right">${S.fmtQty(li.packDispatchQty)}</td>`,
-    receiveQty: `<td style="text-align:right">${S.fmtQty(li.packReceiveQty)}</td>`,
-    diff: `<td style="text-align:right">${diffHtml}</td>`,
+    price: `<td style="text-align:left">${S.fmtMoney(li.productPrice)}</td>`,
+    strQty: `<td style="text-align:left">${S.fmtQty(li.packStrQty)}</td>`,
+    dispatchQty: `<td style="text-align:left">${S.fmtQty(li.packDispatchQty)}</td>`,
+    receiveQty: `<td style="text-align:left">${S.fmtQty(li.packReceiveQty)}</td>`,
+    diff: `<td style="text-align:left">${diffHtml}</td>`,
   };
   return COLUMN_DEFS.filter(c => rptState.cols[c.key]).map(c => cells[c.key]).join('');
 }
@@ -113,15 +113,17 @@ function _strBlockHtml(data, h) {
         </div>
         ${h.comments ? `<div class="str-rpt-str-comment"><strong>Comments:</strong> ${S.esc(h.comments)}</div>` : ''}
       </div>
-      <table class="str-detail-table str-rpt-table">
-        <thead><tr>
-          <th style="width:32px">Sr#</th><th>Product</th>
-          ${_colHeadHtml()}
-        </tr></thead>
-        <tbody>
-          ${groupsHtml || `<tr><td colspan="${_colCount()}" style="text-align:center;color:var(--muted);padding:12px">No line items synced for this STR.</td></tr>`}
-        </tbody>
-      </table>
+      <div class="str-rpt-table-wrap">
+        <table class="str-detail-table str-rpt-table">
+          <thead><tr>
+            <th style="width:32px">Sr#</th><th>Product</th>
+            ${_colHeadHtml()}
+          </tr></thead>
+          <tbody>
+            ${groupsHtml || `<tr><td colspan="${_colCount()}" style="text-align:center;color:var(--muted);padding:12px">No line items synced for this STR.</td></tr>`}
+          </tbody>
+        </table>
+      </div>
     </div>`;
 }
 
@@ -274,7 +276,7 @@ function strReportPrint() {
       receiveQty: S.fmtQty(li.packReceiveQty),
       diff: diff === null ? '' : (diff > 0 ? '+' : '') + diff,
     };
-    return cols.map(c => `<td style="padding:4px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:right">${map[c.key]}</td>`).join('');
+    return cols.map(c => `<td style="padding:5px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:left">${map[c.key]}</td>`).join('');
   };
 
   const branchGroups = _groupedByBranch(data, visible);
@@ -283,33 +285,39 @@ function strReportPrint() {
       const groups = S.groupedLineItems(data, h.strId);
       let sr = 1;
       const groupsHtml = groups.map(g => {
-        const rows = g.rows.map(li => {
+        const rows = g.rows.map((li, i) => {
           const cur = sr++;
-          return `<tr>
-            <td style="padding:4px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:center">${cur}</td>
-            <td style="padding:4px 6px;border-bottom:1px solid #eee;font-size:11px">[${S.esc(li.productCode)}] ${S.esc(li.productName)}</td>
+          const zebra = i % 2 === 1 ? 'background:#fafafa;' : '';
+          return `<tr style="${zebra}">
+            <td style="padding:5px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:center">${cur}</td>
+            <td style="padding:5px 6px;border-bottom:1px solid #eee;font-size:11px">[${S.esc(li.productCode)}] ${S.esc(li.productName)}</td>
             ${cellsHtml(li)}
           </tr>`;
         }).join('');
-        return `<tr><td colspan="${colCount}" style="padding:6px 6px 3px;font-size:11px;font-weight:800;background:#f3f4f6">${S.esc(g.supplier)}</td></tr>${rows}`;
+        return `<tr><td colspan="${colCount}" style="padding:6px 6px 3px;font-size:11px;font-weight:800;background:#eef0f3">${S.esc(g.supplier)}</td></tr>${rows}`;
       }).join('');
+      // Each STR is its own bordered card with real breathing room above
+      // it and page-break-inside:avoid, so a print run never splits an
+      // STR's header from its own line-item table across two pages.
       return `
-        <div style="margin:10px 0 4px;padding:6px 8px;background:#fafafa;border:1px solid #e5e5e5;border-radius:6px">
-          <strong style="font-size:12px">STR #${S.esc(h.strNumber || h.strId)}</strong>
-          <span style="font-size:11px;color:#555"> · ${S.fmtDate(h.strDate)} · ${S.esc(h.dispatchBranch || '—')} → ${S.esc(h.receiveBranch || '—')} · ${S.STAGE_LABEL[S.strStage(h)]}</span>
-          ${h.comments ? `<div style="font-size:11px;color:#444;margin-top:2px"><strong>Comments:</strong> ${S.esc(h.comments)}</div>` : ''}
-        </div>
-        <table style="width:100%;border-collapse:collapse;margin-bottom:6px">
-          <thead><tr style="background:#111;color:#fff">
-            <th style="padding:5px;font-size:10px;text-align:center">Sr#</th>
-            <th style="padding:5px;font-size:10px;text-align:left">Product</th>
-            ${cols.map(c => `<th style="padding:5px;font-size:10px;text-align:right">${c.label}</th>`).join('')}
-          </tr></thead>
-          <tbody>${groupsHtml}</tbody>
-        </table>`;
+        <div style="margin:0 0 20px;border:1px solid #ddd;border-radius:8px;overflow:hidden;page-break-inside:avoid;break-inside:avoid">
+          <div style="padding:8px 10px;background:#fafafa;border-bottom:1px solid #ddd">
+            <strong style="font-size:12.5px">STR #${S.esc(h.strNumber || h.strId)}</strong>
+            <span style="font-size:11px;color:#555"> · ${S.fmtDate(h.strDate)} · ${S.esc(h.dispatchBranch || '—')} → ${S.esc(h.receiveBranch || '—')} · ${S.STAGE_LABEL[S.strStage(h)]}</span>
+            ${h.comments ? `<div style="font-size:11px;color:#444;margin-top:3px"><strong>Comments:</strong> ${S.esc(h.comments)}</div>` : ''}
+          </div>
+          <table style="width:100%;border-collapse:collapse">
+            <thead><tr style="background:#111;color:#fff">
+              <th style="padding:5px;font-size:10px;text-align:center">Sr#</th>
+              <th style="padding:5px;font-size:10px;text-align:left">Product</th>
+              ${cols.map(c => `<th style="padding:5px;font-size:10px;text-align:left">${c.label}</th>`).join('')}
+            </tr></thead>
+            <tbody>${groupsHtml}</tbody>
+          </table>
+        </div>`;
     }).join('');
     return `
-      <div style="margin-top:14px;padding:6px 0;border-top:2px solid #111;border-bottom:1px solid #111;font-size:13px;font-weight:800;display:flex;justify-content:space-between">
+      <div style="margin:22px 0 14px;padding:8px 0;border-top:3px solid #111;border-bottom:1px solid #111;font-size:13.5px;font-weight:800;display:flex;justify-content:space-between">
         <span>${S.esc(bg.branch)}</span><span>${bg.headers.length} STR(s)</span>
       </div>
       ${strsHtml}`;

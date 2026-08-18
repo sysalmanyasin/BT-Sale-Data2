@@ -51,7 +51,7 @@ function _rowHtml(h, itemCount) {
     <td style="font-size:11.5px;color:var(--t2)">${S.esc(h.dispatchBranch || '—')} → ${S.esc(h.receiveBranch || '—')}</td>
     <td><span class="str-badge ${S.STAGE_BADGE_CLASS[stage]}">${S.STAGE_LABEL[stage]}</span></td>
     <td style="font-size:11.5px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${S.esc(h.comments || '')}">${S.esc(h.comments || '—')}</td>
-    <td style="text-align:right;font-size:12px;color:var(--text)">${itemCount}</td>
+    <td style="text-align:left;font-size:12px;color:var(--text)">${itemCount}</td>
   </tr>`;
 }
 
@@ -142,11 +142,11 @@ function _detailLineRowHtml(li, sr) {
       <span style="color:var(--muted);font-size:11px">[${S.esc(li.productCode || '—')}]</span>
       <span style="font-weight:600">${S.esc(li.productName)}</span>
     </td>
-    <td style="text-align:right">${S.fmtMoney(li.productPrice)}</td>
-    <td style="text-align:right">${S.fmtQty(li.packStrQty)}</td>
-    <td style="text-align:right">${S.fmtQty(li.packDispatchQty)}</td>
-    <td style="text-align:right">${S.fmtQty(li.packReceiveQty)}</td>
-    <td style="text-align:right">${diffHtml}</td>
+    <td style="text-align:left">${S.fmtMoney(li.productPrice)}</td>
+    <td style="text-align:left">${S.fmtQty(li.packStrQty)}</td>
+    <td style="text-align:left">${S.fmtQty(li.packDispatchQty)}</td>
+    <td style="text-align:left">${S.fmtQty(li.packReceiveQty)}</td>
+    <td style="text-align:left">${diffHtml}</td>
   </tr>`;
 }
 
@@ -159,8 +159,8 @@ function _detailGroupHtml(group, srStart) {
     ${rowsHtml}
     <tr class="str-detail-subtotal-row">
       <td colspan="3">Subtotal — ${group.rows.length} item(s)</td>
-      <td style="text-align:right">${S.fmtQty(subStr)}</td>
-      <td style="text-align:right">${S.fmtQty(subDisp)}</td>
+      <td style="text-align:left">${S.fmtQty(subStr)}</td>
+      <td style="text-align:left">${S.fmtQty(subDisp)}</td>
       <td></td><td></td>
     </tr>`;
 }
@@ -214,19 +214,19 @@ function renderStrDetail() {
       <table class="str-detail-table">
         <thead><tr>
           <th style="width:32px">Sr#</th><th>Product</th>
-          <th style="text-align:right">R. Price</th>
-          <th style="text-align:right">STR Qty (Pack)</th>
-          <th style="text-align:right">Dispatch Qty (Pack)</th>
-          <th style="text-align:right">Receive Qty (Pack)</th>
-          <th style="text-align:right">Difference</th>
+          <th style="text-align:left">R. Price</th>
+          <th style="text-align:left">STR Qty (Pack)</th>
+          <th style="text-align:left">Dispatch Qty (Pack)</th>
+          <th style="text-align:left">Receive Qty (Pack)</th>
+          <th style="text-align:left">Difference</th>
         </tr></thead>
         <tbody>
           ${groupsHtml || `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:16px">No line items synced for this STR.</td></tr>`}
         </tbody>
         <tfoot><tr class="str-detail-grand-row">
           <td colspan="3">Grand Total — ${totalItems} item(s)</td>
-          <td style="text-align:right">${S.fmtQty(grandStr)}</td>
-          <td style="text-align:right">${S.fmtQty(grandDisp)}</td>
+          <td style="text-align:left">${S.fmtQty(grandStr)}</td>
+          <td style="text-align:left">${S.fmtQty(grandDisp)}</td>
           <td></td><td></td>
         </tr></tfoot>
       </table>
@@ -294,24 +294,25 @@ function strPrintDetail() {
   const groupsHtml = groups.map(g => {
     const subStr = g.rows.reduce((s, r) => s + (r.packStrQty || 0), 0);
     const subDisp = g.rows.reduce((s, r) => s + (r.packDispatchQty || 0), 0);
-    const rows = g.rows.map(li => {
+    const rows = g.rows.map((li, i) => {
       const diff = S.diffQty(li);
       const cur = sr++;
-      return `<tr>
-        <td style="padding:4px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:center">${cur}</td>
-        <td style="padding:4px 6px;border-bottom:1px solid #eee;font-size:11px">[${S.esc(li.productCode)}] ${S.esc(li.productName)}</td>
-        <td style="padding:4px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:right">${S.fmtMoney(li.productPrice)}</td>
-        <td style="padding:4px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:right">${S.fmtQty(li.packStrQty)}</td>
-        <td style="padding:4px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:right">${S.fmtQty(li.packDispatchQty)}</td>
-        <td style="padding:4px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:right">${S.fmtQty(li.packReceiveQty)}</td>
-        <td style="padding:4px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:right">${diff === null ? '' : (diff > 0 ? '+' : '') + diff}</td>
+      const zebra = i % 2 === 1 ? 'background:#fafafa;' : '';
+      return `<tr style="${zebra}">
+        <td style="padding:5px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:center">${cur}</td>
+        <td style="padding:5px 6px;border-bottom:1px solid #eee;font-size:11px">[${S.esc(li.productCode)}] ${S.esc(li.productName)}</td>
+        <td style="padding:5px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:left">${S.fmtMoney(li.productPrice)}</td>
+        <td style="padding:5px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:left">${S.fmtQty(li.packStrQty)}</td>
+        <td style="padding:5px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:left">${S.fmtQty(li.packDispatchQty)}</td>
+        <td style="padding:5px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:left">${S.fmtQty(li.packReceiveQty)}</td>
+        <td style="padding:5px 6px;border-bottom:1px solid #eee;font-size:11px;text-align:left">${diff === null ? '' : (diff > 0 ? '+' : '') + diff}</td>
       </tr>`;
     }).join('');
-    return `<tr><td colspan="7" style="padding:8px 6px 4px;font-size:11.5px;font-weight:800;background:#f3f4f6">${S.esc(g.supplier)}</td></tr>
+    return `<tr><td colspan="7" style="padding:8px 6px 4px;font-size:11.5px;font-weight:800;background:#eef0f3">${S.esc(g.supplier)}</td></tr>
       ${rows}
-      <tr><td colspan="3" style="padding:4px 6px;font-size:11px;font-weight:700;text-align:right">Subtotal (${g.rows.length} item(s))</td>
-        <td style="padding:4px 6px;font-size:11px;font-weight:700;text-align:right">${S.fmtQty(subStr)}</td>
-        <td style="padding:4px 6px;font-size:11px;font-weight:700;text-align:right">${S.fmtQty(subDisp)}</td>
+      <tr><td colspan="3" style="padding:4px 6px;font-size:11px;font-weight:700;text-align:left">Subtotal (${g.rows.length} item(s))</td>
+        <td style="padding:4px 6px;font-size:11px;font-weight:700;text-align:left">${S.fmtQty(subStr)}</td>
+        <td style="padding:4px 6px;font-size:11px;font-weight:700;text-align:left">${S.fmtQty(subDisp)}</td>
         <td></td><td></td></tr>`;
   }).join('');
 
@@ -335,17 +336,17 @@ function strPrintDetail() {
       <thead><tr style="background:#111;color:#fff">
         <th style="padding:6px;font-size:10.5px;text-align:center">Sr#</th>
         <th style="padding:6px;font-size:10.5px;text-align:left">Product</th>
-        <th style="padding:6px;font-size:10.5px;text-align:right">R. Price</th>
-        <th style="padding:6px;font-size:10.5px;text-align:right">STR Qty</th>
-        <th style="padding:6px;font-size:10.5px;text-align:right">Dispatch Qty</th>
-        <th style="padding:6px;font-size:10.5px;text-align:right">Receive Qty</th>
-        <th style="padding:6px;font-size:10.5px;text-align:right">Difference</th>
+        <th style="padding:6px;font-size:10.5px;text-align:left">R. Price</th>
+        <th style="padding:6px;font-size:10.5px;text-align:left">STR Qty</th>
+        <th style="padding:6px;font-size:10.5px;text-align:left">Dispatch Qty</th>
+        <th style="padding:6px;font-size:10.5px;text-align:left">Receive Qty</th>
+        <th style="padding:6px;font-size:10.5px;text-align:left">Difference</th>
       </tr></thead>
       <tbody>${groupsHtml || `<tr><td colspan="7" style="padding:12px;text-align:center;color:#888;font-size:11px">No line items synced for this STR</td></tr>`}</tbody>
       <tfoot><tr style="border-top:2px solid #111">
         <td colspan="3" style="padding:6px;font-size:12px;font-weight:800">Grand Total — ${totalItems} item(s)</td>
-        <td style="padding:6px;font-size:12px;font-weight:800;text-align:right">${S.fmtQty(grandStr)}</td>
-        <td style="padding:6px;font-size:12px;font-weight:800;text-align:right">${S.fmtQty(grandDisp)}</td>
+        <td style="padding:6px;font-size:12px;font-weight:800;text-align:left">${S.fmtQty(grandStr)}</td>
+        <td style="padding:6px;font-size:12px;font-weight:800;text-align:left">${S.fmtQty(grandDisp)}</td>
         <td></td><td></td>
       </tr></tfoot>
     </table>
