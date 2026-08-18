@@ -52,12 +52,24 @@ function _saveCols() {
   try { localStorage.setItem(COLS_KEY, JSON.stringify(rptState.cols)); } catch (e) { /* best-effort */ }
 }
 
+const HIDE_ZERO_KEY = 'bt_str_report_hidezero_v1';
+function _loadHideZero() {
+  try { return localStorage.getItem(HIDE_ZERO_KEY) === '1'; } catch (e) { return false; }
+}
+function _saveHideZero() {
+  try { localStorage.setItem(HIDE_ZERO_KEY, rptState.hideZeroDispatch ? '1' : '0'); } catch (e) { /* best-effort */ }
+}
+
 // ── Page state — same filter shape as str-native.js's strState (all of
 // it just gets handed straight to str-shared.js's filterHeaders), plus
-// this page's own column-visibility + columns-panel-open state.
+// this page's own column-visibility + columns-panel-open state, and a
+// "Hide 0-Dispatch" toggle (persisted like the columns picker) that
+// drops any line still sitting at Dispatch Qty = 0 from view — opposite
+// intent of the Zero Dispatch tab, same underlying number.
 const rptState = {
   search: '', stageFilter: 'all', branchFilter: 'all',
   dateFrom: '', dateTo: '', cols: _loadCols(), colsOpen: false,
+  hideZeroDispatch: _loadHideZero(),
 };
 
 function _colCount() { return 2 + COLUMN_DEFS.filter(c => rptState.cols[c.key]).length; } // Sr# + Product + enabled
@@ -92,10 +104,31 @@ function _supplierGroupHtml(group, srStart) {
   return `<tr class="str-detail-supplier-row"><td colspan="${_colCount()}">${S.esc(group.supplier)}</td></tr>${rowsHtml}`;
 }
 
+// When "Hide 0-Dispatch" is on, drop any line still at Dispatch Qty = 0
+// from each supplier group, then drop any supplier group left with no
+// rows. Off, this is just str-shared.js's groupedLineItems untouched.
+function _visibleGroups(data, strId) {
+  const groups = S.groupedLineItems(data, strId);
+  if (!rptState.hideZeroDispatch) return groups;
+  return groups
+    .map(g => ({ supplier: g.supplier, rows: g.rows.filter(li => (li.packDispatchQty || 0) > 0) }))
+    .filter(g => g.rows.length > 0);
+}
+
+// Every STR matching the shared filters, each carrying its own
+// (possibly hide-zero-dispatch-filtered) groups. When the toggle is on,
+// an STR left with zero groups after filtering drops out entirely —
+// same "empty STR disappears" behavior the Zero Dispatch tab uses, just
+// inverted.
+function _visibleEntries(data) {
+  const base = S.filterHeaders(data, rptState);
+  if (!rptState.hideZeroDispatch) return base.map(h => ({ h, groups: S.groupedLineItems(data, h.strId) }));
+  return base.map(h => ({ h, groups: _visibleGroups(data, h.strId) })).filter(x => x.groups.length > 0);
+}
+
 // One STR's block: header strip (STR #, date, status, To/From, item
 // count) + its Comments (if any) + its supplier groups.
-function _strBlockHtml(data, h) {
-  const groups = S.groupedLineItems(data, h.strId);
+function _strBlockHtml(h, groups) {
   let sr = 1;
   const groupsHtml = groups.map(g => { const html = _supplierGroupHtml(g, sr); sr += g.rows.length; return html; }).join('');
   const stage = S.strStage(h);
@@ -130,9 +163,9 @@ function _strBlockHtml(data, h) {
 // Top grouping level: dispatch branch. Each branch group lists every
 // matching STR (newest first, same order str-shared.js's
 // filterHeaders already sorts in) as its own block.
-function _branchGroupHtml(data, branchName, headers) {
-  const strCount = headers.length;
-  const blocksHtml = headers.map(h => _strBlockHtml(data, h)).join('');
+function _branchGroupHtml(branchName, entries) {
+  const strCount = entries.length;
+  const blocksHtml = entries.map(x => _strBlockHtml(x.h, x.groups)).join('');
   return `
     <div class="str-rpt-branch-group">
       <div class="str-rpt-branch-head">
@@ -143,15 +176,15 @@ function _branchGroupHtml(data, branchName, headers) {
     </div>`;
 }
 
-function _groupedByBranch(data, headers) {
+function _groupedByBranch(entries) {
   const byBranch = new Map();
-  headers.forEach(h => {
-    const branch = h.dispatchBranch || 'Unknown Branch';
+  entries.forEach(x => {
+    const branch = x.h.dispatchBranch || 'Unknown Branch';
     if (!byBranch.has(branch)) byBranch.set(branch, []);
-    byBranch.get(branch).push(h);
+    byBranch.get(branch).push(x);
   });
   return Array.from(byBranch.entries())
-    .map(([branch, hs]) => ({ branch, headers: hs }))
+    .map(([branch, list]) => ({ branch, entries: list }))
     .sort((a, b) => a.branch.localeCompare(b.branch));
 }
 
@@ -169,20 +202,26 @@ function renderReportPage() {
     return;
   }
 
-  const visible = S.filterHeaders(data, rptState);
+  const visible = _visibleEntries(data);
   if (statusEl) {
-    statusEl.textContent = `${visible.length.toLocaleString()} of ${data.headers.length.toLocaleString()} STR(s) · synced ${new Date(data.fetchedAt).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' })} · rolling 7-day window`;
+    const hideNote = rptState.hideZeroDispatch ? ' · 0-dispatch lines hidden' : '';
+    statusEl.textContent = `${visible.length.toLocaleString()} of ${data.headers.length.toLocaleString()} STR(s) · synced ${new Date(data.fetchedAt).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' })} · rolling 7-day window${hideNote}`;
   }
 
   if (!visible.length) {
-    if (emptyEl) { emptyEl.style.display = 'block'; emptyEl.textContent = '🔍 No STRs match these filters.'; }
+    if (emptyEl) {
+      emptyEl.style.display = 'block';
+      emptyEl.textContent = rptState.hideZeroDispatch
+        ? '🔍 No STRs left after hiding 0-dispatch lines — try turning that off.'
+        : '🔍 No STRs match these filters.';
+    }
     body.innerHTML = '';
     return;
   }
   if (emptyEl) emptyEl.style.display = 'none';
 
-  const branchGroups = _groupedByBranch(data, visible);
-  body.innerHTML = branchGroups.map(g => _branchGroupHtml(data, g.branch, g.headers)).join('');
+  const branchGroups = _groupedByBranch(visible);
+  body.innerHTML = branchGroups.map(g => _branchGroupHtml(g.branch, g.entries)).join('');
 
   _renderColsPanel();
 }
@@ -218,6 +257,17 @@ async function strReportRefresh() {
   const statusEl = document.getElementById('str-report-status');
   if (statusEl) statusEl.textContent = '⏳ Syncing…';
   await StrBridge.refreshFullData(true);
+  renderReportPage();
+}
+
+// "Hide 0-Dispatch" toggle — persisted like the columns picker, drops
+// any still-zero Dispatch Qty line (and any STR left empty after that)
+// from both the on-screen report and the printed version. Button-toggle
+// pattern, same as the Dispatched/Received branch chips above it.
+function strReportToggleHideZero() {
+  rptState.hideZeroDispatch = !rptState.hideZeroDispatch;
+  _saveHideZero();
+  document.getElementById('str-report-hidezero-btn')?.classList.toggle('str-rpt-btn-active', rptState.hideZeroDispatch);
   renderReportPage();
 }
 
@@ -260,7 +310,7 @@ function strReportOpenDetail(strId) {
 function strReportPrint() {
   const data = StrBridge.getFullData();
   if (!data || typeof window.Print === 'undefined') return;
-  const visible = S.filterHeaders(data, rptState);
+  const visible = _visibleEntries(data);
   if (!visible.length) return;
 
   const today = new Date().toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -279,12 +329,12 @@ function strReportPrint() {
     return cols.map(c => `<td style="padding:5px 6px;border:1px solid #ddd;font-size:11px;text-align:center">${map[c.key]}</td>`).join('');
   };
 
-  const branchGroups = _groupedByBranch(data, visible);
+  const branchGroups = _groupedByBranch(visible);
   const branchesHtml = branchGroups.map(bg => {
-    const strsHtml = bg.headers.map(h => {
-      const groups = S.groupedLineItems(data, h.strId);
+    const strsHtml = bg.entries.map(x => {
+      const h = x.h;
       let sr = 1;
-      const groupsHtml = groups.map(g => {
+      const groupsHtml = x.groups.map(g => {
         const rows = g.rows.map((li, i) => {
           const cur = sr++;
           const zebra = i % 2 === 1 ? 'background:#fafafa;' : '';
@@ -318,14 +368,14 @@ function strReportPrint() {
     }).join('');
     return `
       <div style="margin:22px 0 14px;padding:8px 0;border-top:3px solid #111;border-bottom:1px solid #111;font-size:13.5px;font-weight:800;display:flex;justify-content:space-between">
-        <span>${S.esc(bg.branch)}</span><span>${bg.headers.length} STR(s)</span>
+        <span>${S.esc(bg.branch)}</span><span>${bg.entries.length} STR(s)</span>
       </div>
       ${strsHtml}`;
   }).join('');
 
   const html = `<div style="max-width:960px;margin:0 auto;font-family:Arial,sans-serif;color:#111">
     <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:6px">
-      <div><h2 style="margin:0;font-size:16px">STR REPORT — ALL TRANSFERS</h2><p style="margin:2px 0 0;font-size:11px;color:#666">Printed ${today}</p></div>
+      <div><h2 style="margin:0;font-size:16px">STR REPORT — ALL TRANSFERS</h2><p style="margin:2px 0 0;font-size:11px;color:#666">Printed ${today}${rptState.hideZeroDispatch ? ' · 0-dispatch lines hidden' : ''}</p></div>
       <div style="text-align:right;font-size:12px">${visible.length} STR(s) in this report</div>
     </div>
     ${branchesHtml}
@@ -336,6 +386,7 @@ function strReportPrint() {
 
 // ── Page-show hook — called from ui.js's showPage() ─────────────────
 export function onShowStrReportAll() {
+  document.getElementById('str-report-hidezero-btn')?.classList.toggle('str-rpt-btn-active', rptState.hideZeroDispatch);
   renderReportPage();
   StrBridge.refreshFullData(false).then(renderReportPage);
 }
@@ -351,6 +402,7 @@ window.strReportSetDateFrom = strReportSetDateFrom;
 window.strReportSetDateTo = strReportSetDateTo;
 window.strReportClearFilters = strReportClearFilters;
 window.strReportRefresh = strReportRefresh;
+window.strReportToggleHideZero = strReportToggleHideZero;
 window.strReportToggleColsPanel = strReportToggleColsPanel;
 window.strReportToggleCol = strReportToggleCol;
 window.strReportOpenDetail = strReportOpenDetail;
