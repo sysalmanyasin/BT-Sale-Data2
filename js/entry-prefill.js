@@ -106,12 +106,44 @@ async function fetchSalePaymentsDay(dateIso) {
   };
 }
 
-function _setIfEmpty(id, val) {
+// Ownership tracking: fields prefill sets are marked data-prefill-owned="1"
+// so a later prefill run (different date picked) can safely overwrite them
+// again. The moment a person actually types into one of these fields, that
+// mark is removed — from then on it's treated as manual input and never
+// touched by prefill again, even across date changes. This is the fix for
+// a real bug: on page load Add Entry auto-selects TODAY's date (see
+// autoFillEntryDate in data-page.js) and fires a prefill for it, which can
+// fill COMP SALE/credit fields from partial same-day Sale Payments data —
+// then picking a different (earlier, complete) date without this tracking
+// would leave those two fields stuck showing today's stale numbers, since
+// "only fill empty fields" can't tell "prefill set this for the wrong day"
+// apart from "the person typed this on purpose".
+const PREFILL_FIELD_IDS = [
+  'e-Cash_Sale', 'e-Alfala_Bank', 'e-custom_Bank_Alfalah_2', 'e-Cash_Returns', 'e-COMP_SALE',
+  'e-Askari_Bank', 'e-PSO', 'e-NESPAK', 'e-PARCO', 'e-TEPA', 'e-LDA', 'e-Gourmet', 'e-Wapda_Hospital',
+  'e-BTH', 'e-Berger_Paints', 'e-Ecolean_PK', 'e-Style_Textile', 'e-Syed_Babar_Ali', 'e-Rahnuma_NGO',
+  'e-Health_Pass', 'e-Nisar_Spinning', 'e-Food_Panda'
+];
+
+let _releaseListenersBound = false;
+function _bindReleaseListeners() {
+  if (_releaseListenersBound) return;
+  _releaseListenersBound = true;
+  PREFILL_FIELD_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return; // custom fields (e.g. custom_Bank_Alfalah_2) may not exist in every install
+    el.addEventListener('input', () => { delete el.dataset.prefillOwned; }, { passive: true });
+  });
+}
+
+function _setField(id, val) {
   const el = document.getElementById(id);
-  if (!el) return false;
-  if (el.value !== '' && el.value != null) return false; // don't clobber manual input
-  if (val == null) return false;
+  if (!el || val == null) return false;
+  const isPrefillOwned = el.dataset.prefillOwned === '1';
+  const isEmpty = el.value === '' || el.value == null;
+  if (!isEmpty && !isPrefillOwned) return false; // typed by hand — never overwrite
   el.value = val;
+  el.dataset.prefillOwned = '1';
   return true;
 }
 
@@ -140,6 +172,7 @@ async function fetchClosingDayTotals(dateIso) {
 
 async function entryPrefillFromClosing(dateIso) {
   if (!dateIso) return;
+  _bindReleaseListeners();
 
   const [closing, salePayments] = await Promise.all([
     fetchClosingDayTotals(dateIso).catch(e => { console.error('Entry Prefill: Closing fetch failed', e); return null; }),
@@ -153,31 +186,31 @@ async function entryPrefillFromClosing(dateIso) {
   // Closing → Cash Sale, card fields, Cash Returns
   if (closing) {
     if (closing.hasEvening) {
-      if (_setIfEmpty('e-Cash_Sale', closing.cashSale)) filled++;
-      if (_setIfEmpty('e-Alfala_Bank', closing.alfalaBank)) filled++;
+      if (_setField('e-Cash_Sale', closing.cashSale)) filled++;
+      if (_setField('e-Alfala_Bank', closing.alfalaBank)) filled++;
       // Custom field — id matches the "Bank Alfalah 2" column as saved in
       // reports (custom_Bank_Alfalah_2). Only present if that custom field
       // exists in this install's Field Manager config.
-      if (_setIfEmpty('e-custom_Bank_Alfalah_2', closing.bankAlfalah2)) filled++;
+      if (_setField('e-custom_Bank_Alfalah_2', closing.bankAlfalah2)) filled++;
       notes.push('Cash/Card');
     } else {
       warnings.push('Evening shift not closed in Closing yet');
     }
     if (closing.cashReturns) {
-      if (_setIfEmpty('e-Cash_Returns', closing.cashReturns)) filled++;
+      if (_setField('e-Cash_Returns', closing.cashReturns)) filled++;
     }
   }
 
   // Sale Payments → COMP SALE (Total Sale) + matched credit customers
   if (salePayments) {
     if (salePayments.totalSale != null) {
-      if (_setIfEmpty('e-COMP_SALE', salePayments.totalSale)) filled++;
+      if (_setField('e-COMP_SALE', salePayments.totalSale)) filled++;
       notes.push('Total Sale');
     }
     if (salePayments.matchedCredits.length) {
       let creditFilled = 0;
       salePayments.matchedCredits.forEach(({ fieldId, amount }) => {
-        if (_setIfEmpty('e-' + fieldId, amount)) creditFilled++;
+        if (_setField('e-' + fieldId, amount)) creditFilled++;
       });
       if (creditFilled) { filled += creditFilled; notes.push('Credit Customers'); }
     }
