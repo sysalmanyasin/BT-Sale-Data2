@@ -72,7 +72,15 @@ export const Actions = (function () {
     const staff = Repository.getStaff();
     const num   = staff.length + 1;
     const newEmp = Object.assign({
-      id:          'emp_' + Date.now(),
+      // 'emp_' + Date.now() alone could collide when two employees are
+      // added within the same millisecond (e.g. a fast scripted import,
+      // or the AI assistant creating several in one turn) — that then
+      // corrupted the Sr# exclusion logic below, since it excludes "the
+      // record itself" by matching on id, and two records with the same
+      // id both matched. The random suffix makes an accidental collision
+      // astronomically unlikely while keeping the same debuggable,
+      // sortable-by-creation-time prefix.
+      id:          'emp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8),
       staffId:     'EMP-' + String(num).padStart(3, '0'),
       srNum:       _nextSrNum(staff, null),
       name:        '',

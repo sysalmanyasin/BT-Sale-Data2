@@ -5,7 +5,8 @@
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v10.80'; // v10.80: Fix entry-prefill.js bug — picking a date auto-selected TODAY on load (autoFillEntryDate), which prefilled COMP SALE/credit fields from partial same-day Sale Payments data; switching to an earlier complete date then left those two fields stuck on the wrong day's numbers because "only fill empty fields" couldn't tell that apart from real manual input. Now every prefill-set field is marked data-prefillOwned, cleared the instant a person actually types into it — so a later prefill run can safely refresh anything it owns, while never touching anything hand-typed, across any number of date changes.
+const CACHE_NAME = 'bt-sales-v10.81'; // v10.81: Fix APP_SHELL drift found by the new smoke-test suite (tests/static/file-references.test.js) — 7 JS files (status-bar.js, icons.js, subtab-strip.js, sheets-api.js, sheets-sync.js, sheets-picker.js, sheets-app.js) and 1 CSS file (sheets-app.css) were all loaded by index.html but missing from APP_SHELL, so they'd silently 404 offline/on a flaky connection instead of erroring, exactly the failure mode this file's own header comment warns about. No behavior change online; this only fixes what gets precached.
+// v10.80: Fix entry-prefill.js bug — picking a date auto-selected TODAY on load (autoFillEntryDate), which prefilled COMP SALE/credit fields from partial same-day Sale Payments data; switching to an earlier complete date then left those two fields stuck on the wrong day's numbers because "only fill empty fields" couldn't tell that apart from real manual input. Now every prefill-set field is marked data-prefillOwned, cleared the instant a person actually types into it — so a later prefill run can safely refresh anything it owns, while never touching anything hand-typed, across any number of date changes.
 // v10.79: Add Entry auto-prefill (js/entry-prefill.js). Picking a date in #page-entry now pulls Cash Sale/Bank Alfalah/custom Bank Alfalah 2/Cash Returns from Closing's synced 'sheets' rows (Evening shift = full day's cumulative POS reading, verified against real 16/17/18 Aug data; Cash Returns summed across all 3 shifts since System Return is entered per-shift, not cumulative) and COMP SALE (Total Sale) + matched credit-customer columns from Sale Payments' live bridge (js/sale-payments-bridge.js, project vtcrdkqhuvxatclobsby — same source the Payments tab itself reads). Customers/FDPP/FDPP Con have no live source anywhere and stay manual; credit customers with no matching column are named in the toast instead of silently dropped. Only fills empty fields, never overwrites manual input.
 // v10.78: Cover gets a new "STR Report" hero group (js/cover-dashboard.js) — the domain existed (nav, pages, bridge) but was never surfaced on Cover. Four cards, all built off the existing StrBridge.getFullData()/str-shared.js stage+direction helpers, no new data source: (1) Stock Received Value — yesterday's headline figure (retail price × receive qty for STRs Received at BT) plus a per-day breakdown for every day in the bridge's rolling 7-day window that actually has received stock; (2) Awaited — STR #/date/comment for STRs dispatched FROM Bahria Town that haven't been dispatched yet; (3) Dispatched — same direction, dispatched but not yet received; (4) Inbound — STRs dispatched from a warehouse/other branch (BT is the receiving side) that haven't been received at BT yet, with source branch shown. Tapping a row jumps to the real STR page and opens that STR's detail modal (strOpenDetail); "FULL LIST" jumps to the STR page pre-filtered by stage. Hero-only, same pattern as Sales/Manager/Closing/Inventory — no new CSS, reuses .card/.ctitle/.cover-hero-row.
 // v10.76: new "Zero Dispatch" 3rd sub-tab under STR (js/str-zero-dispatch.js, #page-str-zero-dispatch) — same branch>STR>supplier flattened nesting as the existing Report tab (str-shared.js's filterHeaders/groupedLineItems), but line-item filtered to only STR Qty > 0 & Dispatch Qty = 0 rows (per line item, not per whole STR — a partially-dispatched STR can still surface its own zero-dispatch lines); STRs/supplier groups with no surviving lines are dropped from the page entirely. New: a checkbox per STR block (unchecked by default, not persisted — this is a "what am I printing right now" pick, not a saved preference), Select All/None, and print only includes checked STRs (warns if none are ticked). Wired into js/ui.js's _strDomainPages + str domain page-show hook, js/nav-sections.js's strKids, css/str-report.css (.str-zd-* rules). New file: js/str-zero-dispatch.js.
@@ -47,6 +48,7 @@ const APP_SHELL = [
   './css/activity-log.css',
   './css/cash-deposit-report.css',
   './css/sale-payments.css',
+  './css/sheets-app.css',
   './css/components.css',
   './css/modals.css',
   './css/pages.css',
@@ -78,6 +80,7 @@ const APP_SHELL = [
   './js/pdf-library.js',
   './js/activity-log.js',
   './js/cover-dashboard.js',
+  './js/status-bar.js',
   './js/record-day.js',
   './js/staff-notes.js',
   './js/closing-bridge.js',
@@ -111,11 +114,17 @@ const APP_SHELL = [
   './js/index-page.js',
   './js/reports.js',
   './js/cash-deposit-report.js',
+  './js/icons.js',
+  './js/subtab-strip.js',
   './js/data-page.js',
   './js/entry-prefill.js',
   './js/diff-report.js',
   './js/reports-print.js',
   './js/manager-export.js',
+  './js/sheets-api.js',
+  './js/sheets-sync.js',
+  './js/sheets-picker.js',
+  './js/sheets-app.js',
   './js/notes-sheets.js',
   './js/sheets-patch.js',
   './js/manager-shared.js',
