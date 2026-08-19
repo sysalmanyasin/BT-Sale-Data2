@@ -231,8 +231,15 @@ function ensureEntryMonthOption(monthYear) {
 }
 
 function syncEntryMonthFromDate() {
-  const monthYear = entryMonthYearFromIso(document.getElementById('e-date')?.value);
+  const dateIso = document.getElementById('e-date')?.value;
+  const monthYear = entryMonthYearFromIso(dateIso);
   if (monthYear) ensureEntryMonthOption(monthYear);
+  // Auto-pull Cash/Card/Returns (Closing) + Total Sale/Credit Customers
+  // (Sale Payments) for the picked date — see js/entry-prefill.js. Only
+  // fills fields that are still empty; never overwrites manual input.
+  if (dateIso && typeof window.entryPrefillFromClosing === 'function') {
+    window.entryPrefillFromClosing(dateIso);
+  }
 }
 
 async function saveEntry() {
