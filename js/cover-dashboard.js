@@ -7,6 +7,8 @@ import * as ClosingBridge from './closing-bridge.js';
 import * as AuditBridge from './audit-bridge.js';
 import * as InventoryBridge from './inventory-bridge.js';
 import * as SalePaymentsBridge from './sale-payments-bridge.js';
+import * as StrBridge from './str-bridge.js';
+import * as StrShared from './str-shared.js';
 import { computeInventoryHealth } from './shared/summary-calc.js';
 
 const TGT_KEY = 'bt_targets';
@@ -14,6 +16,7 @@ let _closingRefreshInFlight = false;
 let _auditRefreshInFlight = false;
 let _inventoryRefreshInFlight = false;
 let _salePaymentsRefreshInFlight = false;
+let _strRefreshInFlight = false;
 // Phase 3.1 — current-state inventory doughnut. Held at module scope (not
 // local to renderCoverDashboard) so re-renders (every showPage('cover'),
 // every closing/audit/inventory bridge refresh — see call sites) destroy
@@ -89,7 +92,7 @@ function _setTopRunCount(v) { try { Repository.setItem(TOPRUN_COUNT_KEY, String(
 // below). Used only to seed the very first render — once a user has
 // expanded/collapsed anything, their real stored preference (even an empty
 // array, meaning "everything expanded") always wins over this default.
-const ALL_GROUP_SLUGS = ['sales', 'manager', 'notes', 'closing', 'audit', 'inventory', 'reports'];
+const ALL_GROUP_SLUGS = ['sales', 'manager', 'notes', 'closing', 'audit', 'inventory', 'str', 'reports'];
 function _getPins() { try { return JSON.parse(Repository.getItem(PIN_KEY) || '[]'); } catch (e) { return []; } }
 function _setPins(arr) { try { Repository.setItem(PIN_KEY, JSON.stringify(arr)); } catch (e) {} }
 function _getCollapsed() {
@@ -1012,6 +1015,8 @@ function _groupSubtitle(groupName) {
         if (!slStats || !slStats.dataReady) return 'Syncing inventory…';
         return 'Rs. ' + fc(slStats.totalInventoryValue) + ' total · Rs. ' + fc(slStats.negativeValue) + ' negative';
       }
+      case 'STR Report':
+        return _strStatus();
       case 'Reports':
         return '3 reports — Daily Check List · Excess Stock Control · Branch Invoice Desk';
       default:
@@ -1020,6 +1025,165 @@ function _groupSubtitle(groupName) {
   } catch (e) {
     console.error('Cover Dashboard: _groupSubtitle(' + groupName + ') failed', e);
     return '';
+  }
+}
+
+// ── STR Report hero (Cover, Aug 2026) — four glance cards built on the
+// exact same read-only StrBridge.getFullData() + str-shared.js stage/
+// direction helpers that str-native.js/str-report-native.js/
+// str-zero-dispatch.js already use, so "awaited"/"dispatched" and which
+// side of a transfer Bahria Town is on can never drift from what those
+// pages show for the same STR. StrBridge only ever holds a rolling
+// last-7-days window (see that file's header note) — that's a property
+// of the source sync, not something this hero re-derives or extends.
+function _strData() {
+  try { return StrBridge.getFullData(); } catch (e) { console.error('Cover Dashboard: StrBridge.getFullData() failed', e); return null; }
+}
+
+// Card 1 — received value per day, retail price (same R.Price field
+// every other STR screen shows) × receive qty, summed per receiveDate,
+// only for STRs actually marked Received at BT (direction 'in'). Only
+// days that actually have received stock are returned — a quiet day is
+// omitted rather than shown as a zero row.
+function _strReceivedByDay(data) {
+  if (!data) return [];
+  const byDate = new Map();
+  data.headers
+    .filter(h => StrShared.isReceivedAtBT(h) && h.receiveStatus === 'Received' && h.receiveDate)
+    .forEach(h => {
+      const value = StrShared.lineItemsForStr(data, h.strId)
+        .reduce((s, li) => s + (Number(li.receiveQty) || 0) * (Number(li.productPrice) || 0), 0);
+      byDate.set(h.receiveDate, (byDate.get(h.receiveDate) || 0) + value);
+    });
+  return Array.from(byDate.entries())
+    .map(([date, value]) => ({ date, value }))
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+function _strDayLabel(dateStr) {
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return { date: dateStr, day: '' };
+  return {
+    date: d.toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' }),
+    day: d.toLocaleDateString('en-PK', { weekday: 'long' }),
+  };
+}
+
+// Cards 2/3/4 — same three-stage lifecycle str-native.js badges use
+// (strStage), split by direction (isDispatchedFromBT / isReceivedAtBT).
+// Card 2: created at BT, not dispatched out yet. Card 3: dispatched out
+// of BT, not yet received wherever it's going. Card 4: dispatched from
+// a warehouse/other branch (Bahria Town is the *receiving* side), not
+// yet received at BT. All three drop an STR the moment it's Received —
+// that's the point, these are "still needs chasing" lists.
+function _strAwaitedRows(data) {
+  if (!data) return [];
+  return data.headers.filter(h => StrShared.isDispatchedFromBT(h) && StrShared.strStage(h) === 'awaited')
+    .sort((a, b) => (b.strDate || '').localeCompare(a.strDate || ''));
+}
+function _strDispatchedFromBTRows(data) {
+  if (!data) return [];
+  return data.headers.filter(h => StrShared.isDispatchedFromBT(h) && StrShared.strStage(h) === 'dispatched')
+    .sort((a, b) => (b.dispatchedDate || b.strDate || '').localeCompare(a.dispatchedDate || a.strDate || ''));
+}
+function _strInboundPendingRows(data) {
+  if (!data) return [];
+  return data.headers.filter(h => StrShared.isReceivedAtBT(h) && StrShared.strStage(h) === 'dispatched')
+    .sort((a, b) => (b.dispatchedDate || b.strDate || '').localeCompare(a.dispatchedDate || a.strDate || ''));
+}
+
+// Shared row renderer for cards 2/3/4 — STR #, date, comment, and (card
+// 4 only) which branch it's coming from. Tapping a row jumps to the
+// real STR page and opens that exact STR's detail modal (same
+// strOpenDetail() the STR list page's own rows use) rather than
+// duplicating detail rendering here.
+function _strRowsListHtml(rows, opts) {
+  opts = opts || {};
+  if (!rows.length) return `<div style="font-size:11px;color:var(--muted);padding:8px 0">Nothing here right now.</div>`;
+  return `<div style="max-height:230px;overflow-y:auto">${rows.map(h => `
+    <div style="padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="showPage('str');setTimeout(function(){window.strOpenDetail&&window.strOpenDetail(${h.strId})},30)">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
+        <span style="font-size:12px;font-weight:700;color:var(--text)">${_esc(h.strNumber || ('STR-' + h.strId))}</span>
+        <span style="font-size:10.5px;color:var(--muted);flex-shrink:0">${_esc(StrShared.fmtDate(h.strDate))}</span>
+      </div>
+      ${opts.showBranch ? `<div style="font-size:10.5px;color:var(--muted)">from ${_esc(h.dispatchBranch || '—')}</div>` : ''}
+      ${h.comments ? `<div style="font-size:10.5px;color:var(--t2);margin-top:1px">${_esc(h.comments)}</div>` : ''}
+    </div>`).join('')}</div>`;
+}
+
+function _strReceivedValueCardHtml(data) {
+  const days = _strReceivedByDay(data);
+  const y = new Date(); y.setDate(y.getDate() - 1);
+  const yStr = y.getFullYear() + '-' + String(y.getMonth() + 1).padStart(2, '0') + '-' + String(y.getDate()).padStart(2, '0');
+  const yEntry = days.find(d => d.date === yStr);
+  return `
+    <div class="card">
+      <div class="ctitle"><span class="cdot" style="background:#059669"></span>Stock Received Value — Yesterday</div>
+      <div class="cover-hero-value" style="margin:2px 0 10px">Rs. ${fc(yEntry ? yEntry.value : 0)}</div>
+      <div style="font-size:10.5px;color:var(--muted);margin-bottom:6px">Days with received stock, last 7 days</div>
+      ${days.length ? days.map(d => {
+        const lbl = _strDayLabel(d.date);
+        return `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:11.5px">
+          <span style="color:var(--text)">${_esc(lbl.date)} <span style="color:var(--muted)">(${_esc(lbl.day)})</span></span>
+          <span style="font-weight:700;font-family:var(--mono)">Rs. ${fc(d.value)}</span>
+        </div>`;
+      }).join('') : `<div style="font-size:11px;color:var(--muted);padding:8px 0">No received-stock data in the last 7 days.</div>`}
+    </div>`;
+}
+
+function _strStatus() {
+  try {
+    const data = _strData();
+    if (!data) return 'Syncing STR data…';
+    const awaited = _strAwaitedRows(data).length;
+    const dispBT = _strDispatchedFromBTRows(data).length;
+    const inbound = _strInboundPendingRows(data).length;
+    return `${awaited} awaited · ${dispBT} dispatched (BT) not received · ${inbound} inbound not received`;
+  } catch (e) { console.error('Cover Dashboard: _strStatus failed', e); return ''; }
+}
+
+function _strHeroHtml() {
+  try {
+    const data = _strData();
+    if (!data) {
+      return `<div class="cover-skel-row"><div class="cover-skel-card"></div><div class="cover-skel-card"></div></div>`;
+    }
+    const awaited = _strAwaitedRows(data);
+    const dispatchedBT = _strDispatchedFromBTRows(data);
+    const inboundPending = _strInboundPendingRows(data);
+    return `
+    <div class="cover-hero-row cover-hero-row-single">
+      ${_strReceivedValueCardHtml(data)}
+    </div>
+    <div class="cover-hero-row">
+      <div class="card">
+        <div class="ctitle"><span class="cdot" style="background:#b45309"></span>Awaited — not dispatched (${awaited.length})
+          <span onclick="event.stopPropagation();showPage('str');window.strClearFilters&&window.strClearFilters();window.strSetStage&&window.strSetStage('awaited')" style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:4px;margin-left:6px;cursor:pointer;font-weight:700">FULL LIST ↗</span>
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin:-4px 0 6px">Dispatch from Bahria Town</div>
+        ${_strRowsListHtml(awaited)}
+      </div>
+      <div class="card">
+        <div class="ctitle"><span class="cdot" style="background:#1d4ed8"></span>Dispatched — not received (${dispatchedBT.length})
+          <span onclick="event.stopPropagation();showPage('str');window.strClearFilters&&window.strClearFilters();window.strSetStage&&window.strSetStage('dispatched')" style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:4px;margin-left:6px;cursor:pointer;font-weight:700">FULL LIST ↗</span>
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin:-4px 0 6px">Dispatch from Bahria Town</div>
+        ${_strRowsListHtml(dispatchedBT)}
+      </div>
+    </div>
+    <div class="cover-hero-row cover-hero-row-single">
+      <div class="card">
+        <div class="ctitle"><span class="cdot" style="background:#db2777"></span>Inbound — dispatched, not received at BT (${inboundPending.length})
+          <span onclick="event.stopPropagation();showPage('str');window.strClearFilters&&window.strClearFilters();window.strSetStage&&window.strSetStage('dispatched')" style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:4px;margin-left:6px;cursor:pointer;font-weight:700">FULL LIST ↗</span>
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin:-4px 0 6px">Dispatch from warehouse / Warehouse 2 / other branches</div>
+        ${_strRowsListHtml(inboundPending, { showBranch: true })}
+      </div>
+    </div>`;
+  } catch (e) {
+    console.error('Cover Dashboard: building STR Report hero HTML failed', e);
+    return `<div class="cover-hero-row cover-hero-row-single">
+      <div class="cover-hero-card"><div class="cover-hero-label">STR Report</div><div class="cover-hero-value">Unavailable</div></div>
+    </div>`;
   }
 }
 
@@ -1038,6 +1202,9 @@ function _tiles() {
     { page: 'stockledger', icon: '📒', title: 'Stock Ledger', status: 'Never-sold, dead stock, excess & pack-issue analysis', enabled: true, group: 'Inventory' },
     { page: 'excess', icon: '📉', title: 'Excess Working', status: 'Corrected excess value, retain list & Top N export', enabled: true, group: 'Inventory' },
     { page: 'reorder', icon: '🛒', title: 'Reorder Report', status: 'Low stock-cover items ranked by sale value, Top N + export', enabled: true, group: 'Inventory' },
+    { page: 'str', icon: '📋', title: 'STR Report', status: _strStatus(), enabled: true, group: 'STR Report' },
+    { page: 'str-report', icon: '🧾', title: 'STR – Report', status: 'Flattened all-STRs view, filterable & printable', enabled: true, group: 'STR Report' },
+    { page: 'str-zero-dispatch', icon: '🚫', title: 'STR – 0-Dispatch', status: 'Zero-dispatch line items, pick & print', enabled: true, group: 'STR Report' },
     { href: 'https://reports.duapharma.com/daily_report.html', icon: '✅', title: 'Daily Check List', status: 'Fazal Din\'s Pharma Plus — standalone checklist app', enabled: true, group: 'Reports' },
     { href: 'https://reports.duapharma.com/excess-stock-control.html', icon: '📦', title: 'Excess Stock Control', status: 'Fazal Din\'s Pharma Plus — excess stock control', enabled: true, group: 'Reports' },
     { href: 'https://reports.duapharma.com/invoice-desk.html', icon: '🧮', title: 'Branch Invoice Desk', status: 'Fazal Din\'s Pharma Plus — branch invoice desk', enabled: true, group: 'Reports' },
@@ -1053,7 +1220,7 @@ function _tiles() {
 // "Quick Access" (PDF Library) was dropped entirely — it had no hero
 // content of its own, just a single shortcut tile, which Cover no longer
 // renders; PDF Library still lives in the bottom nav / All Sections menu.
-const GROUP_ORDER = ['Inventory', 'Manager', 'Closing', 'Sales', 'Reports', 'Notes & Sheets', 'Audit'];
+const GROUP_ORDER = ['Inventory', 'STR Report', 'Manager', 'Closing', 'Sales', 'Reports', 'Notes & Sheets', 'Audit'];
 const GROUP_META = {
   'Sales':           { slug: 'sales',   icon: '📊' },
   'Manager':         { slug: 'manager', icon: '👔' },
@@ -1061,6 +1228,7 @@ const GROUP_META = {
   'Closing':         { slug: 'closing', icon: '🔒' },
   'Audit':           { slug: 'audit',   icon: '🧾' },
   'Inventory':       { slug: 'inventory', icon: '📦' },
+  'STR Report':      { slug: 'str',     icon: '📋' },
   'Reports':         { slug: 'reports', icon: '📚' },
 };
 
@@ -1517,6 +1685,8 @@ export function renderCoverDashboard() {
     </div>`;
   }
 
+  const strHeroHtml = _strHeroHtml();
+
   const collapsed = _getCollapsed();
   const pins = _getPins();
 
@@ -1539,7 +1709,7 @@ export function renderCoverDashboard() {
       ${t.bridgeAction ? `<button class="cover-tile-bridge" data-bridge-idx="${i}">Bridge</button>` : ''}
     </div>`;
 
-  const GROUP_HERO = { Sales: heroHtml, Manager: managerHeroHtml, Closing: closingHeroHtml, Inventory: inventoryHeroHtml, 'Notes & Sheets': notesHeroHtml };
+  const GROUP_HERO = { Sales: heroHtml, Manager: managerHeroHtml, Closing: closingHeroHtml, Inventory: inventoryHeroHtml, 'STR Report': strHeroHtml, 'Notes & Sheets': notesHeroHtml };
   // New home for the old per-tile "Bridge" button: one ↻ on each
   // bridge-backed group's own header, force-refreshing past the normal
   // 5-min cache — available regardless of whether that group's body is
@@ -1549,6 +1719,7 @@ export function renderCoverDashboard() {
     Closing: () => ClosingBridge.refresh(true),
     Audit: () => AuditBridge.refresh(true),
     Inventory: () => InventoryBridge.refreshFullData(true),
+    'STR Report': () => StrBridge.refreshFullData(true),
   };
   const groupsHtml = _orderedGroupNames().map(groupName => {
     const members = tiles.map((t, i) => ({ t, i })).filter(x => x.t.group === groupName);
@@ -1673,6 +1844,11 @@ export function renderCoverDashboard() {
   if (!_salePaymentsRefreshInFlight) {
     _salePaymentsRefreshInFlight = true;
     SalePaymentsBridge.refreshFullData(false).finally(() => { _salePaymentsRefreshInFlight = false; });
+  }
+
+  if (!_strRefreshInFlight) {
+    _strRefreshInFlight = true;
+    StrBridge.refreshFullData(false).finally(() => { _strRefreshInFlight = false; });
   }
 }
 

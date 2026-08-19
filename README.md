@@ -70,7 +70,7 @@ in it.
 | `closing`    | Closing Book, Credit Ledger                                                        | teal        |
 | `audit`      | Assignments                                                                        | amber       |
 | `inventory`  | BT Inventory, Stock Ledger, Excess Working, Reorder Report, Inventory Health        | pink        |
-| `str`        | STR Report (List, Report)                                                          | pink        |
+| `str`        | STR Report (List, Report, 0-Dispatch)                                              | pink        |
 
 Cross-domain utilities, never hidden and never owned by a domain:
 **Cover**, **Tools** (settings/sync), the **PDF Library**, and the
