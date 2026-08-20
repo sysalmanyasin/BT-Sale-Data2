@@ -6,10 +6,12 @@ spreadsheet tool, a cross-device PDF archive, and native read-only
 views into two sibling apps (Closing, Pharmacy Audit Hub). Google
 Sign-In gated, offline-capable via service worker, synced across
 devices with Supabase, deployed at `bt.duapharma.com` (see `CNAME`).
-Alongside the PWA, two separate native Android apps live in this
-repo: `android-app/` (a standalone installable wrapper of this same
-PWA) and `android-widget/` (19 home-screen widgets: Closing, Sales,
-Credit, Inventory) — see [Android apps](#android-apps).
+Alongside the PWA, a separate native Android app lives in this repo,
+`android-widget/` (22 home-screen widgets: Closing, Sales, Credit,
+Inventory) — see [Android apps](#android-apps). A second native
+wrapper app, `android-app/` (a standalone TWA installable wrapper of
+this same PWA), used to live here too; it's been deleted — see
+[Known gaps](#known-gaps).
 
 This is intentionally a **single-user app, permanently** — there's no
 multi-tenant support and no roles/permissions system. That constraint
@@ -31,6 +33,7 @@ speculatively.
 - [Android apps](#android-apps)
 - [Architecture](#architecture--5-floors-golden-rules)
 - [File layout](#file-layout)
+- [Testing](#testing)
 - [Known gaps](#known-gaps)
 - [Working conventions for future sessions](#working-conventions-for-future-sessions)
 
@@ -64,7 +67,7 @@ in it.
 
 | Domain       | Pages                                                                             | Accent      |
 | ------------ | ---------------------------------------------------------------------------------- | ----------- |
-| `sales`      | Dashboard, Sale Data (Index / Daily Data / Add Entry / Report / DIFF / Cash Deposit) | blue (base) |
+| `sales`      | Dashboard, Sale Data (Index / Daily Data / Add Entry / Report / Payments / DIFF / Cash Deposit) | blue (base) |
 | `manager`    | Manager (Staff, Ledger, Targets, Salary/Petty/Credit/Incentive), Overview           | sky blue    |
 | `notesheets` | Notes & Sheets                                                                      | green       |
 | `closing`    | Closing Book, Credit Ledger                                                        | teal        |
@@ -85,12 +88,14 @@ Audit (`random.duapharma.com`), and Fazal Din's Pharma Plus's toolset
 re-implement a read-only view of (part of) the same underlying data
 inside *this* app; the Cover links open the other apps directly.
 
-Getting around also means three complementary nav pieces layered on
-top of the tab bar: a real pushState-based back button, a **Recents**
-drawer of whatever you've actually visited this session, and an **All
+Getting around also means two complementary nav pieces layered on top
+of the tab bar: a real pushState-based back button, and an **All
 Sections** directory (long-press Cover, or the ☰ Menu item) that lists
 every page and sub-page in the app in one collapsible tree, with a
-live fuzzy search box pinned to the top.
+live fuzzy search box pinned to the top. There used to be a separate
+per-visit **Recents** drawer too; it's been retired as redundant with
+always having the full tree one tap away (see `nav-sections.js`'s
+header comment) — `js/nav-recents.js` no longer exists in the repo.
 
 ---
 
@@ -119,8 +124,22 @@ own sub-nav:
 - **Index** — a collapsible year → month directory of every day on
   record.
 - **Daily Data** — the raw day-by-day ledger.
-- **Add Entry** — the daily sales entry form.
+- **Add Entry** — the daily sales entry form. `entry-prefill.js`
+  auto-fills what it can straight from data that already exists
+  elsewhere, so nothing gets retyped: Cash Sale / Bank Alfalah / Bank
+  Alfalah 2 and Cash Returns are read back from Closing's own Supabase
+  data (same project, `sheets` table), and Total Sale (→ COMP SALE)
+  plus named credit-client columns are read from Sale Payments' bridge
+  (today + last 3 days only). Customers/FDPP/FDPP Con have no reliable
+  live source and stay manual; anything that can't be matched or
+  fetched is named in a toast rather than silently skipped.
 - **Report** — the standard sales report.
+- **Payments** (Sale Payments) — Cash/Card/Credit split plus a
+  per-customer credit breakdown, for today + the last 3 days only.
+  Synced from Candela POS via Dropbox → Supabase (a separate
+  Supabase project, `sale-payments-bridge.js`), read-only — the same
+  live source `entry-prefill.js` above reads Total Sale/credit clients
+  from.
 - **DIFF** — a diff/reconciliation report between two data points.
 - **Cash Deposit Report** — computed fresh for every day as
   `Cash Sale − Cash Returns + FDPP POS + FDPP Consumer`, deliberately
@@ -226,9 +245,9 @@ Inventory isn't confined to these 5 pages, either:
   (low-cover-value, excess-item, dead-stock-aggregate) into the Cover
   dashboard's alert engine, so a reorder or excess-stock warning can
   surface without anyone opening an inventory page.
-- **9 of the Android app's 19 home-screen widgets** are inventory
-  widgets, running a Kotlin port of this same math so they stay
-  correct without either app open — see
+- **9 of the Android widget app's 22 home-screen widgets** are
+  inventory widgets, running a Kotlin port of this same math so they
+  stay correct without either app open — see
   [Android apps](#android-apps).
 - **The Inventory Search companion PWA** (`/inventory-search/`) is a
   separate, standalone one-tap lookup tool over the same dataset — see
@@ -272,6 +291,11 @@ no reliable `conversion_factor` falls back to a factor of 1, i.e. its
 "pack qty" is just its loose qty). Difference is computed from the
 pack values too, so all four qty-shaped columns stay in the same unit.
 
+**3 of the Android widget app's 22 home-screen widgets** mirror this
+same Awaited/Dispatched/Received lifecycle natively (`StrRepository.kt`
+ports `str-bridge.js`/`str-shared.js`) — see
+[Android apps](#android-apps).
+
 ### ⚙️ Tools
 Settings and cross-cutting utilities, most notably:
 - **Sync Center** — a "single active device" architecture (device ID +
@@ -305,13 +329,15 @@ differently-shaped `activity_log` table that `closing-bridge.js` reads
 read-only (`{ts, actor, key, action, changes}`) — the two are
 deliberately separate tables in the same Supabase project.
 
-### 🕘 Recents & 🔍 Global Search
-Two navigation aids that live in drawers rather than pages: **Recents**
-lists whatever sections you've actually visited this session; the
-**All Sections** drawer lists the entire app as a collapsible tree,
-with a fuzzy search box at the top that filters the tree live and also
+### 🔍 Global Search & All Sections
+A navigation aid that lives in a drawer rather than a page: the **All
+Sections** drawer lists the entire app as a collapsible tree, with a
+fuzzy search box at the top that filters the tree live and also
 fuzzy-ranks the Staff registry, so searching an employee's name jumps
-straight to their Staff Card.
+straight to their Staff Card. (A separate **Recents** drawer used to
+live alongside it, listing whatever sections you'd actually visited
+that session — retired as redundant with All Sections; see the
+[Navigation model](#navigation-model) note above.)
 
 ### 🔒 Auth
 A Google Sign-In gate, which has to run *before* the rest of the app's
@@ -370,40 +396,37 @@ for a free-tier AI-generated overview of that medicine.
 
 ## Android apps
 
-Two separate native Android apps live in this repo, neither part of
-the PWA's own build/deploy — both built via GitHub Actions.
+One native Android app lives in this repo, not part of the PWA's own
+build/deploy — built via GitHub Actions.
 
-### Standalone app (`android-app/`)
-
-A **Trusted Web Activity (TWA)** — the live PWA (`bt.duapharma.com`)
-running full-screen inside a real installable app, no browser chrome,
-via Google's `androidbrowserhelper` library rather than a plain
-`WebView` (a WebView can't do this: Google blocks Google Sign-In
-inside embedded WebViews, and this app's Auth gate needs it to work —
-a TWA is actually Chrome under the hood, so Sign-In works exactly like
-it does in the browser). The chrome-less mode is gated by Digital
-Asset Links verification (`/.well-known/assetlinks.json` at the repo
-root, served at `bt.duapharma.com/.well-known/assetlinks.json`) — see
-[`android-app/README.md`](android-app/README.md) for exactly how that
-verification works and how to troubleshoot it if the URL bar shows up
-instead of running standalone. Built via GitHub Actions on every push
-touching `android-app/**`.
+> A second native app used to live here too: a **Trusted Web Activity
+> (TWA)** wrapper (`android-app/`) that ran the live PWA full-screen
+> inside a real installable app via Google's `androidbrowserhelper`
+> library, gated by Digital Asset Links verification
+> (`.well-known/assetlinks.json`). It's been **deleted** — see
+> [Known gaps](#known-gaps). If it comes back, `git show
+> d141cb1~1:android-app` (the commit before its deletion) has the last
+> working copy.
 
 ### Home-screen widgets (`android-widget/`)
 
 `android-widget/` is a **separate native Android app** (Kotlin, its
 own Gradle project — not part of the PWA's build or deploy) whose only
-purpose is **19 home-screen widgets**: Closing (summary, sales/target
+purpose is **22 home-screen widgets**: Closing (summary, sales/target
 pace, aggregated final closing, latest month total, today's live POS
 sale, last-3-shifts), Credit (total outstanding, section breakdown,
-per-staff), Misc/Ongoing Ledger aging, and nine Inventory widgets
-(total stock, health, reorder-urgency, excess/top-running/negative/
-dead/never-sold rankings, plus a tap-shortcut into a native product
-search screen). Every number is either read straight from the same
-Supabase tables the web app writes to, or computed via a line-for-line
-Kotlin port of the web app's own math (`InventoryRepository.kt`
-mirrors `stockledger.js`/`excess-working.js`/`reorder-report.js`;
-`MonthSaleRepository.kt` mirrors `js/cover-dashboard.js`), so the
+per-staff), Misc/Ongoing Ledger aging, nine Inventory widgets (total
+stock, health, reorder-urgency, excess/top-running/negative/dead/
+never-sold rankings, plus a tap-shortcut into a native product search
+screen), and three STR widgets (Awaited-Dispatch, Dispatched-from-BT,
+Dispatched-Inbound-to-BT — same 3-stage Awaited/Dispatched/Received
+lifecycle as the web app's STR Report). Every number is either read
+straight from the same Supabase tables the web app writes to, or
+computed via a line-for-line Kotlin port of the web app's own math
+(`InventoryRepository.kt` mirrors
+`stockledger.js`/`excess-working.js`/`reorder-report.js`;
+`MonthSaleRepository.kt` mirrors `js/cover-dashboard.js`;
+`StrRepository.kt` mirrors `str-bridge.js`/`str-shared.js`), so the
 widgets stay correct without either app needing to be open. Auth is a
 dedicated read-only "widget service" Supabase account, not a user's
 own Google sign-in. Built via GitHub Actions on every push touching
@@ -458,27 +481,22 @@ through the Event Bus.
 - `sw.js` — the service worker; bump `CACHE_NAME` and keep
   `APP_SHELL` in sync with `index.html` whenever a `<script>`/`<link>`
   tag changes, or offline/flaky-connection loads silently break.
-- `android-app/` — separate native Android app, a standalone Trusted
-  Web Activity wrapper of this same PWA, its own Gradle project — see
-  [Android apps](#android-apps) and `android-app/README.md`.
-- `.well-known/assetlinks.json` + `.nojekyll` — Digital Asset Links
-  file proving `bt.duapharma.com` owns `android-app/`'s package name,
-  required for that app to run standalone instead of showing a URL
-  bar; `.nojekyll` stops GitHub Pages' default Jekyll build from
-  excluding the dot-directory it lives in.
-- `android-widget/` — separate native Android app (19 home-screen
+- `android-widget/` — separate native Android app (22 home-screen
   widgets), its own Gradle project — see
   [Android apps](#android-apps) and
   `android-widget/README.md`.
-- `.github/workflows/build-app-apk.yml` — builds a debug APK on every
-  push touching `android-app/**`.
 - `.github/workflows/build-widget-apk.yml` — builds a debug APK on
   every push touching `android-widget/**`.
 - `supabase/functions/` — Edge Functions, including the daily
   WhatsApp briefing generator.
+- `supabase/migrations/` — dated SQL migrations applied directly to
+  the Supabase project (e.g. sync fanout / security fixes).
 - `supabase/pdf_library/` — schema + deploy notes for the PDF
   Library's Storage bucket and metadata table.
-- `scripts/generate-icons.ps1` — one-off PWA icon generator.
+- `supabase/activity_log/` — schema for the Activity Log's
+  `bt_activity_log` table.
+- `tests/` — the smoke-test suite (Node's built-in test runner +
+  jsdom) — see [Testing](#testing) and `tests/README.md`.
 - `manifest.json` — PWA manifest (home-screen shortcuts: Add Daily
   Entry, Dashboard, Daily Data, Sale Report).
 - `CNAME` — GitHub Pages custom-domain file, points the deploy at
@@ -486,8 +504,49 @@ through the Event Bus.
 
 ---
 
+## Testing
+
+A breadth-first smoke-test suite — "did anything fundamental break?",
+not deep business-rule coverage — on Node's built-in test runner
+(`node:test`) plus jsdom as the only dependency, zero build step:
+
+```bash
+npm install          # once, installs jsdom
+npm test             # runs the whole suite
+npm run test:verbose # same, with readable test names
+npm run test:watch   # re-runs on file changes
+```
+
+Covers static integrity (every `index.html` script/link points at a
+real file; `sw.js`'s `APP_SHELL` matches; `manifest.json` is valid;
+every JS file parses), pure-module unit tests (`config.js` formatters,
+`event-bus.js`, `print.js`'s API surface), an integration slice
+through the Staff Registry (`config.js` → `event-bus.js` →
+`repository.js` → `actions.js`), and a DOM/navigation test that loads
+the real `index.html` into jsdom and drives the real `ui.js`. Deliberately
+out of scope: Supabase sync, Google Sign-In, print rendering output,
+and anything needing a real device or live network — see
+[`tests/README.md`](tests/README.md) for the full breakdown and the
+real bugs this suite has already caught.
+
+---
+
 ## Known gaps
 
+- The standalone `android-app/` TWA wrapper (see the note in
+  [Android apps](#android-apps)) has been deleted from the repo
+  (`d141cb1`). Only the widget app (`android-widget/`) remains.
+- **Leftover "Petrol Station" branding in `index.html`**: the `<meta
+  name="description">` tag (line 35) and one subtitle div (`.psub`,
+  line 153) still read "Bahria Town Petrol Station Intelligence
+  Centre" from before this app was repurposed for the pharmacy. Every
+  other branding surface (this README, `manifest.json`,
+  `package.json`) already correctly says pharmacy — just these two
+  strings need updating.
+- **`package.json`'s description still lists "AI assistant"** as a
+  feature, contradicting this README's own "AI has been fully removed
+  from the client app" callout above. Stale copy, not a real feature —
+  needs a wording fix.
 - `localStorage` is touched directly outside the Repository in these
   files (verified via `grep -rl "localStorage\." js` — this list has
   drifted before, re-run that grep before trusting it):
