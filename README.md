@@ -536,17 +536,12 @@ real bugs this suite has already caught.
 - The standalone `android-app/` TWA wrapper (see the note in
   [Android apps](#android-apps)) has been deleted from the repo
   (`d141cb1`). Only the widget app (`android-widget/`) remains.
-- **Leftover "Petrol Station" branding in `index.html`**: the `<meta
-  name="description">` tag (line 35) and one subtitle div (`.psub`,
-  line 153) still read "Bahria Town Petrol Station Intelligence
-  Centre" from before this app was repurposed for the pharmacy. Every
-  other branding surface (this README, `manifest.json`,
-  `package.json`) already correctly says pharmacy — just these two
-  strings need updating.
-- **`package.json`'s description still lists "AI assistant"** as a
-  feature, contradicting this README's own "AI has been fully removed
-  from the client app" callout above. Stale copy, not a real feature —
-  needs a wording fix.
+- ~~Leftover "Petrol Station" branding in `index.html`~~ — fixed: the
+  meta description and `.psub` subtitle now both read pharmacy, matching
+  every other branding surface in the app.
+- ~~`package.json`'s description still listed "AI assistant"~~ —
+  fixed: removed, now matches the "AI has been fully removed from the
+  client app" callout above.
 - `localStorage` is touched directly outside the Repository in these
   files (verified via `grep -rl "localStorage\." js` — this list has
   drifted before, re-run that grep before trusting it):
