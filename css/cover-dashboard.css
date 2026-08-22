@@ -102,6 +102,7 @@
 .cover-group[data-group="audit"]{--g-accent:var(--red);--g-bg:var(--rlt);}
 .cover-group[data-group="inventory"]{--g-accent:var(--pink);--g-bg:var(--pink-lt);}
 .cover-group[data-group="reports"]{--g-accent:var(--teal);--g-bg:var(--tlt);}
+.cover-group[data-group="str"]{--g-accent:var(--purple);--g-bg:var(--purple-lt);}
 
 /* ── Greeting line ── */
 .cover-page-hero-greeting{font-size:12.5px;font-weight:600;color:#93c5fd;letter-spacing:.02em;margin-bottom:6px;}
