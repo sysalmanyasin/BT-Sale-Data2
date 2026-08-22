@@ -334,14 +334,57 @@ body[data-domain="str"] {
    reads as the same visual language as Cover instead of a lookalike
    with different hues per domain. ── */
 
-/* Header — brand gradient, with a solid dark fallback declared first:
-   if a gradient value ever fails to parse/apply for any reason, this
-   still leaves a solid dark header behind the white h2/mclose text
-   instead of a blank white bar with invisible white-on-white text. */
-#sectionsbg .mhdr { background: var(--accent-dk); background: var(--grad-header); border-bottom: none; }
-#sectionsbg .mhdr h2 { color: #fff; }
-#sectionsbg .mclose { background: rgba(255,255,255,.15); border-color: rgba(255,255,255,.3); color: #fff; }
-#sectionsbg .mclose:hover, #sectionsbg .mclose:active { background: rgba(255,255,255,.28); }
+/* Header — "BT Navigation Panel". Layered like the sections-group
+   cards below it (radial glow + gradient), not just a flat banner, so
+   it reads as designed rather than a plain color swap. Two solid
+   background-color fallbacks declared FIRST (in order: a hex color,
+   then the CSS-variable version) before the gradient/radial layers —
+   if any single one of those later values ever fails to parse/apply
+   for any reason, the browser keeps the last one that DID apply
+   instead of falling through to invisible white-on-white text. Order
+   matters: each subsequent `background` line only overrides the
+   previous one if it successfully parses. */
+#sectionsbg .mhdr {
+  background: #2543c9;
+  background: var(--accent-dk);
+  background:
+    radial-gradient(120% 180% at 100% -40%, rgba(122,162,255,.35) 0%, transparent 55%),
+    radial-gradient(90% 140% at -10% 120%, rgba(139,92,246,.28) 0%, transparent 60%),
+    var(--grad-header);
+  border-bottom: none;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 1px 0 rgba(255,255,255,.08) inset, 0 8px 20px -10px rgba(20,27,61,.5);
+}
+/* Slim tri-color accent line along the very bottom edge, echoing the
+   segmented progress bar in Cover's own hero card (see
+   .cover-page-hero-domainstrip) so this header reads as part of the
+   same brand system instead of a one-off banner. */
+#sectionsbg .mhdr::after {
+  content: "";
+  position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
+  background: linear-gradient(90deg, #5b82ff 0%, #8b5cf6 45%, #f472b6 75%, #fbbf24 100%);
+  opacity: .85;
+}
+#sectionsbg .mhdr h2 {
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: .01em;
+  text-shadow: 0 1px 2px rgba(10,14,35,.35);
+  position: relative;
+  z-index: 1;
+}
+#sectionsbg .mclose {
+  background: rgba(255,255,255,.14);
+  border: 1px solid rgba(255,255,255,.28);
+  color: #fff;
+  position: relative;
+  z-index: 1;
+  transition: background .15s, border-color .15s, transform .15s;
+}
+#sectionsbg .mclose:hover { background: rgba(255,255,255,.26); border-color: rgba(255,255,255,.4); }
+#sectionsbg .mclose:active { transform: scale(.92); }
 
 /* Section headings (Core/Data/Utility) get a small colored tick mark
    instead of plain uppercase text, so the 3-tier grouping reads faster. */
