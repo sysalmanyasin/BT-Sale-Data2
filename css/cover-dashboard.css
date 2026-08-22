@@ -54,9 +54,12 @@
 /* ── Section groups ── */
 .cover-group{
   position:relative;margin-bottom:26px;padding:22px 20px 22px;border-radius:16px;overflow:hidden;
-  background:linear-gradient(150deg,var(--g-bg,var(--alt)) 0%,var(--surface) 38%);
-  border:1px solid var(--border);border-left:5px solid var(--g-accent,var(--border));
-  box-shadow:var(--sh);
+  background:
+    radial-gradient(120% 200% at 94% -50%,color-mix(in srgb,var(--g-accent,var(--accent)) 20%,transparent) 0%,transparent 60%),
+    linear-gradient(155deg,var(--g-bg,var(--alt)) 0%,color-mix(in srgb,var(--g-bg,var(--alt)) 65%,var(--surface)) 100%);
+  border:1px solid color-mix(in srgb,var(--g-accent,var(--border)) 30%,var(--border));
+  border-left:5px solid var(--g-accent,var(--border));
+  box-shadow:var(--sh),0 6px 18px -16px var(--g-accent,transparent);
   transition:box-shadow .2s,border-color .2s,transform .2s;
 }
 .cover-group::before{
@@ -304,7 +307,9 @@
 .cover-hero-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:16px;align-items:start;}
 .cover-hero-card{
   position:relative;overflow:hidden;
-  background:linear-gradient(160deg,var(--g-bg,var(--alt)) 0%,var(--surface) 60%);
+  background:
+    radial-gradient(130% 200% at 90% -60%,color-mix(in srgb,var(--g-accent,var(--accent)) 24%,transparent) 0%,transparent 60%),
+    linear-gradient(160deg,var(--g-bg,var(--alt)) 0%,color-mix(in srgb,var(--g-bg,var(--alt)) 60%,var(--surface)) 100%);
   border:1px solid var(--g-accent,var(--accent));border-left:4px solid var(--g-accent,var(--accent));
   border-radius:14px;padding:16px 18px;
   box-shadow:var(--sh);transition:transform .15s,box-shadow .15s;
