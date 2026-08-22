@@ -10,6 +10,7 @@ import * as SalePaymentsBridge from './sale-payments-bridge.js';
 import * as StrBridge from './str-bridge.js';
 import * as StrShared from './str-shared.js';
 import { computeInventoryHealth } from './shared/summary-calc.js';
+import { iconHtml } from './cover-icons.js';
 
 const TGT_KEY = 'bt_targets';
 let _closingRefreshInFlight = false;
@@ -211,7 +212,7 @@ function _renderAttentionStrip() {
     return;
   }
   el.innerHTML = `<div class="cover-attn-row">
-    ${items.map((it, i) => `<div class="cover-attn-chip cls-${it.cls}" data-attn-idx="${i}">${it.icon} ${_esc(it.text)}</div>`).join('')}
+    ${items.map((it, i) => `<div class="cover-attn-chip cls-${it.cls}" data-attn-idx="${i}"><span class="cover-attn-ic">${iconHtml(it.icon)}</span>${_esc(it.text)}</div>`).join('')}
   </div>`;
   el.querySelectorAll('[data-attn-idx]').forEach(chip => {
     chip.addEventListener('click', () => {
@@ -230,7 +231,7 @@ function _renderPinsRow(tiles) {
   el.innerHTML = `<div class="cover-pins-title">📌 Your Shortcuts</div>
     <div class="cover-pins-row">
       ${pinned.map(t => `<div class="cover-pin-tile" data-pin-goto="${_esc(t.page || t.href)}">
-        <div class="cover-pin-icon">${t.icon}</div>
+        <div class="cover-pin-icon">${iconHtml(t.icon)}</div>
         <div class="cover-pin-label">${_esc(t.title)}</div>
       </div>`).join('')}
     </div>`;
@@ -1460,7 +1461,7 @@ function _renderKpiRow() {
   const tiles = _kpiTiles();
   el.innerHTML = tiles.map((t, i) => `
     <div class="cover-kpi-tile cls-${t.cls}" data-kpi-idx="${i}" role="button" tabindex="0">
-      <div class="cover-kpi-icon">${t.icon}</div>
+      <div class="cover-kpi-icon">${iconHtml(t.icon)}</div>
       <div class="cover-kpi-value">${_esc(t.value)}</div>
       <div class="cover-kpi-label">${_esc(t.label)}</div>
       ${t.sub ? `<div class="cover-kpi-sub">${_esc(t.sub)}</div>` : ''}
@@ -1512,7 +1513,7 @@ export function renderCoverDashboard() {
       <div class="ccs-stat-grid">
         ${h.stats.map(s => `
           <div class="ccs-stat ccs-${s.cls}">
-            <span class="ccs-ic">${s.icon}</span>
+            <span class="ccs-ic">${iconHtml(s.icon)}</span>
             <div class="ccs-text">
               <div class="ccs-lbl">${_esc(s.label)}</div>
               <div class="ccs-val">Rs. ${_esc(fc(s.value))}</div>
@@ -1703,7 +1704,7 @@ export function renderCoverDashboard() {
     <div class="cover-tile${t.enabled ? '' : ' cover-tile-disabled'}"
          ${t.enabled ? `data-goto-idx="${i}" role="button" tabindex="0"` : ''}>
       <button class="cover-tile-pin${pins.includes(t.page || t.href) ? ' pinned' : ''}" data-pin-key="${_esc(t.page || t.href)}" title="Pin to shortcuts">📌</button>
-      <div class="cover-tile-icon">${t.icon}</div>
+      <div class="cover-tile-icon">${iconHtml(t.icon)}</div>
       <div class="cover-tile-title">${_esc(t.title)}${t.href ? ' <span class="ext">↗</span>' : ''}</div>
       <div class="cover-tile-status">${_esc(t.status)}</div>
       ${t.bridgeAction ? `<button class="cover-tile-bridge" data-bridge-idx="${i}">Bridge</button>` : ''}
@@ -1731,9 +1732,10 @@ export function renderCoverDashboard() {
     const showTiles = TILE_GRID_GROUPS.has(groupName);
     return `
       <div class="cover-group${isCollapsed ? ' collapsed' : ''}" data-group="${meta.slug}">
+        <div class="cover-group-watermark" aria-hidden="true">${iconHtml(meta.icon)}</div>
         <div class="cover-group-header" data-group-toggle="${meta.slug}">
           <div class="cover-group-drag" data-drag-handle="${meta.slug}" title="Drag to reorder" onclick="event.stopPropagation()">⠿</div>
-          <div class="cover-group-icon">${meta.icon}</div>
+          <div class="cover-group-icon">${iconHtml(meta.icon)}</div>
           <div class="cover-group-head-text">
             <div class="cover-group-title">${_esc(groupName)}</div>
             ${subtitle ? `<div class="cover-group-subtitle">${_esc(subtitle)}</div>` : ''}

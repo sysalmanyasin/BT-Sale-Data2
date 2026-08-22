@@ -4,42 +4,72 @@
 
 #page-cover{padding-top:16px;}
 
-/* ── Page hero banner ── */
+/* ── Page hero banner ──
+   Deep navy-indigo mesh (kept on-brand with --accent) with a faint
+   apothecary line-pattern (mortar & pestle / capsule / cross) etched
+   at very low opacity behind the content, and a thin animated pulse
+   trace along the bottom edge — the one "signature" flourish for the
+   whole page, per the design pass (Aug 2026). Everything else on this
+   page stays quiet so this one motif reads as intentional, not noisy. */
 .cover-page-hero{
-  position:relative;overflow:hidden;
-  background:linear-gradient(120deg,#1e293b 0%,#1e3a8a 45%,#2563eb 100%);
-  border-radius:20px;padding:26px 28px;margin-bottom:24px;color:#fff;
-  box-shadow:0 10px 30px -10px rgba(30,58,138,.45);
+  position:relative;overflow:hidden;isolation:isolate;
+  background:
+    radial-gradient(120% 140% at 100% -20%,rgba(91,130,255,.35),transparent 55%),
+    radial-gradient(90% 120% at -10% 120%,rgba(56,189,248,.22),transparent 60%),
+    linear-gradient(135deg,#0c1226 0%,#141b3d 40%,#1e3a8a 78%,#2b4fd6 100%);
+  border-radius:22px;padding:28px 28px 24px;margin-bottom:24px;color:#fff;
+  box-shadow:0 16px 40px -14px rgba(15,23,48,.55);
 }
 .cover-page-hero::before{
-  content:'';position:absolute;top:-60px;right:-60px;width:240px;height:240px;
-  border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.16),transparent 70%);
-  pointer-events:none;
+  /* apothecary line-pattern watermark */
+  content:'';position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.10;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='1.4' stroke-linecap='round'%3E%3Ccircle cx='22' cy='24' r='9'/%3E%3Cpath d='M15 24a7 7 0 0 0 14 0'/%3E%3Crect x='70' y='14' width='9' height='22' rx='4.5' transform='rotate(35 74.5 25)'/%3E%3Cpath d='M78 10l6 6M96 78h16M104 70v16'/%3E%3Ccircle cx='30' cy='92' r='7'/%3E%3Cpath d='M23 92h14M30 85v14'/%3E%3C/g%3E%3C/svg%3E");
+  background-size:120px 120px;
 }
 .cover-page-hero::after{
-  content:'';position:absolute;bottom:-80px;left:20%;width:220px;height:220px;
-  border-radius:50%;background:radial-gradient(circle,rgba(56,189,248,.18),transparent 70%);
+  content:'';position:absolute;top:-70px;right:-70px;width:260px;height:260px;z-index:0;
+  border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.14),transparent 70%);
   pointer-events:none;
 }
 .cover-page-hero-row{position:relative;z-index:1;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;}
 .cover-page-hero-badge{
   display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;
   letter-spacing:.09em;text-transform:uppercase;color:#bfdbfe;
-  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);
   padding:4px 10px;border-radius:99px;margin-bottom:10px;
 }
-.cover-page-hero-title{font-size:26px;font-weight:700;letter-spacing:-.02em;margin-bottom:4px;}
-.cover-page-hero-sub{font-size:13px;color:#cbd5e1;}
+.cover-page-hero-title{font-size:27px;font-weight:800;letter-spacing:-.02em;margin-bottom:4px;}
+.cover-page-hero-sub{font-size:13px;color:#c7d2e8;}
 .cover-page-hero-date{
-  text-align:right;font-size:12px;color:#bfdbfe;
-  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);
-  border-radius:12px;padding:10px 14px;backdrop-filter:blur(4px);
+  position:relative;text-align:right;font-size:12px;color:#bfdbfe;
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);
+  border-radius:14px;padding:10px 16px;backdrop-filter:blur(6px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12);
 }
 .cover-page-hero-date .d-day{font-size:16px;font-weight:700;color:#fff;}
 
+/* pulse trace along the hero's bottom edge — a single deliberate
+   flourish, not decoration scattered everywhere */
+.cover-page-hero-pulse{
+  position:relative;z-index:1;margin-top:18px;height:22px;opacity:.85;
+}
+.cover-page-hero-pulse svg{width:100%;height:100%;display:block;}
+.cover-page-hero-pulse path{
+  fill:none;stroke:#7dd3fc;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;
+  stroke-dasharray:340;stroke-dashoffset:340;animation:cover-pulse-draw 3.6s ease-in-out infinite;
+}
+@keyframes cover-pulse-draw{
+  0%{stroke-dashoffset:340;}
+  55%{stroke-dashoffset:0;}
+  100%{stroke-dashoffset:-340;}
+}
+@media (prefers-reduced-motion:reduce){
+  .cover-page-hero-pulse path{animation:none;stroke-dashoffset:0;}
+}
+
 /* ── Section groups ── */
 .cover-group{
-  position:relative;margin-bottom:26px;padding:20px 20px 22px;border-radius:16px;
+  position:relative;overflow:hidden;margin-bottom:26px;padding:20px 20px 22px;border-radius:16px;
   background:var(--surface);border:1px solid var(--border);
   box-shadow:var(--sh);
   transition:box-shadow .2s;
@@ -56,9 +86,21 @@
 .cover-group-drag:hover,.cover-group-drag:active,.cover-group-drag:focus-visible{background:var(--s2);color:var(--text,#111);opacity:1;}
 .cover-group-icon{
   width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;
-  font-size:17px;background:var(--g-bg,var(--alt));border:1px solid var(--g-accent,var(--accent));
-  flex-shrink:0;
+  background:var(--g-bg,var(--alt));border:1px solid var(--g-accent,var(--accent));
+  color:var(--g-accent,var(--accent));flex-shrink:0;
 }
+.cover-group-icon svg{width:18px;height:18px;}
+
+/* Ghost watermark of the section's own icon, large + very low opacity,
+   sitting behind the header/content — the per-section echo of the
+   hero's line-pattern, using each group's own --g-accent so it stays
+   quiet in every color. Purely decorative (aria-hidden). */
+.cover-group-watermark{
+  position:absolute;top:-14px;right:-10px;width:120px;height:120px;
+  color:var(--g-accent,var(--accent));opacity:.05;pointer-events:none;z-index:0;
+}
+.cover-group-watermark svg{width:100%;height:100%;}
+.cover-group-header,.cover-group>*:not(.cover-group-watermark){position:relative;z-index:1;}
 .cover-group-head-text{display:flex;flex-direction:column;gap:2px;min-width:0;overflow:hidden;}
 .cover-group-title{
   font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;
@@ -95,7 +137,12 @@
 .cover-kpi-tile.cls-amber{border-left-color:var(--amber);}
 .cover-kpi-tile.cls-red{border-left-color:var(--red);}
 .cover-kpi-tile.cls-neutral{border-left-color:var(--border);}
-.cover-kpi-icon{font-size:15px;margin-bottom:4px;}
+.cover-kpi-icon{width:18px;height:18px;margin-bottom:6px;color:var(--muted);}
+.cover-kpi-icon svg{width:100%;height:100%;}
+.cover-kpi-tile.cls-green .cover-kpi-icon{color:var(--green);}
+.cover-kpi-tile.cls-amber .cover-kpi-icon{color:var(--amber);}
+.cover-kpi-tile.cls-red .cover-kpi-icon{color:var(--red);}
+.cover-kpi-tile{position:relative;overflow:hidden;}
 .cover-kpi-value{font-size:18px;font-weight:700;color:var(--text);line-height:1.15;font-family:var(--mono);}
 .cover-kpi-tile.cls-green .cover-kpi-value{color:var(--green);}
 .cover-kpi-tile.cls-amber .cover-kpi-value{color:var(--amber);}
@@ -136,6 +183,8 @@
   border:1px solid transparent;transition:transform .12s;
 }
 .cover-attn-chip:active{transform:scale(.96);}
+.cover-attn-ic{width:14px;height:14px;flex-shrink:0;display:inline-flex;}
+.cover-attn-ic svg{width:100%;height:100%;}
 .cover-attn-chip.cls-red{background:var(--rlt);color:var(--red);border-color:#fecaca;}
 .cover-attn-chip.cls-amber{background:var(--alt2);color:var(--amber);border-color:#fde68a;}
 .cover-attn-chip.cls-green{background:var(--glt);color:var(--green);border-color:#bbf7d0;}
@@ -151,7 +200,8 @@
   box-shadow:var(--sh);cursor:pointer;transition:transform .12s,box-shadow .12s;
 }
 .cover-pin-tile:active{transform:scale(.94);}
-.cover-pin-icon{font-size:20px;}
+.cover-pin-icon{width:20px;height:20px;color:var(--accent);}
+.cover-pin-icon svg{width:100%;height:100%;}
 .cover-pin-label{font-size:10.5px;font-weight:600;color:var(--t2);text-align:center;line-height:1.25;}
 .cover-pins-empty{display:none;}
 
@@ -289,8 +339,9 @@
 
 .cover-tile-icon{
   width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;
-  font-size:19px;background:var(--g-bg,var(--alt));margin-bottom:10px;
+  color:var(--g-accent,var(--accent));background:var(--g-bg,var(--alt));margin-bottom:10px;
 }
+.cover-tile-icon svg{width:20px;height:20px;}
 .cover-tile-title{font-weight:600;font-size:14px;color:var(--text);display:flex;align-items:center;gap:6px;}
 .cover-tile-title .ext{font-size:11px;color:var(--muted);font-weight:400;}
 .cover-tile-status{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.5;}
@@ -315,9 +366,10 @@
 }
 .ccs-stat:hover{transform:translateY(-2px);box-shadow:var(--sh);}
 .ccs-ic{
-  font-size:16px;width:30px;height:30px;flex-shrink:0;border-radius:9px;
+  width:30px;height:30px;flex-shrink:0;border-radius:9px;color:var(--text);
   display:flex;align-items:center;justify-content:center;
 }
+.ccs-ic svg{width:16px;height:16px;}
 .ccs-lbl{font-size:10.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;}
 .ccs-val{font-size:14.5px;font-weight:700;color:var(--text);font-family:var(--mono);margin-top:1px;}
 
