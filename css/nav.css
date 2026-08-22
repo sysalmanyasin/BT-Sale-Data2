@@ -7,10 +7,15 @@
   color: inherit;
 }
 /* NAV */
-nav{position:sticky;top:32px;z-index:200;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:env(safe-area-inset-top) 20px 0;height:56px;box-sizing:content-box;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+nav{position:sticky;top:32px;z-index:200;background:radial-gradient(130% 220% at 92% -60%,rgba(37,67,201,.1),transparent 55%),radial-gradient(130% 220% at 8% 160%,rgba(20,27,61,.08),transparent 55%),linear-gradient(120deg,#e2e8f6 0%,#dbe3f4 55%,#e6ebf9 100%);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:env(safe-area-inset-top) 20px 0;height:56px;box-sizing:content-box;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+/* Slim multicolor underline — echoes the segmented progress bar in the
+   Cover hero card, so the nav reads as part of the same brand system
+   instead of a plain white strip. Pseudo-element (not border-bottom)
+   so it can be a gradient without fighting the existing box-shadow. */
+nav::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:linear-gradient(90deg,#141b3d 0%,var(--accent-dk) 50%,var(--accent) 100%);opacity:.7;}
 .nbrand{display:flex;align-items:center;gap:11px;}
-.nlogo{width:32px;height:32px;border-radius:9px;background:var(--accent);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;box-shadow:0 2px 6px -2px rgba(58,97,247,.5);}
-.nbrand-text{font-weight:700;font-size:13px;letter-spacing:-.01em;}
+.nlogo{width:32px;height:32px;border-radius:9px;background:var(--grad-header);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;box-shadow:0 2px 8px -2px rgba(58,97,247,.5);}
+.nbrand-text{font-weight:700;font-size:13px;letter-spacing:-.01em;color:var(--text);}
 .nbrand-sub{font-size:10px;color:var(--muted);}
 .ntabs{display:flex;gap:2px;}
 .ntab{padding:6px 12px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--muted);transition:all .15s;font-family:var(--sans);}
@@ -22,7 +27,7 @@ nav{position:sticky;top:32px;z-index:200;background:rgba(255,255,255,.96);backdr
    Search & All Sections drawer (#sectionsbg, js/nav-sections.js) on
    desktop, same as the ☰ Menu button in .bnav does on mobile. Leads
    the brand group at the far left of the bar. ── */
-.navmenubtn{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--s2);cursor:pointer;color:var(--muted);transition:all .15s;flex-shrink:0;}
+.navmenubtn{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.6);cursor:pointer;color:var(--muted);transition:all .15s;flex-shrink:0;}
 .navmenubtn:hover{border-color:var(--accent);color:var(--accent);}
 .navmenu-ic{font-size:16px;line-height:1;}
 /* Below 861px .bnav's own ☰ Menu button takes over (same drawer, same
@@ -31,22 +36,22 @@ nav{position:sticky;top:32px;z-index:200;background:rgba(255,255,255,.96);backdr
 @media(max-width:860px){ .navmenubtn{display:none;} }
 .nright{display:flex;align-items:center;gap:8px;}
 .nclock{font-family:var(--mono);font-size:11px;color:var(--muted);}
-.syncbadge{display:flex;align-items:center;gap:5px;font-size:11px;font-family:var(--mono);padding:3px 9px;border-radius:20px;cursor:pointer;border:1px solid var(--border);background:var(--s2);color:var(--muted);}
+.syncbadge{display:flex;align-items:center;gap:5px;font-size:11px;font-family:var(--mono);padding:3px 9px;border-radius:20px;cursor:pointer;border:1px solid var(--border);background:rgba(255,255,255,.6);color:var(--muted);}
 .syncbadge.syncing{background:var(--alt2);color:var(--amber);border-color:#fde68a;animation:pulse .8s infinite;}
 .syncbadge.ok{background:var(--glt);color:var(--green);border-color:#bbf7d0;}
 .syncbadge.err{background:var(--rlt);color:var(--red);border-color:#fecaca;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
-.lockbtn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--s2);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;color:var(--muted);transition:all .15s;}
+.lockbtn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.6);cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;color:var(--muted);transition:all .15s;}
 .lockbtn:hover{border-color:var(--accent);color:var(--accent);}
 
 /* ── Take Control button (nav, beside Supabase sync badge) ── */
 .takectrlbtn{
   display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;font-family:var(--sans);
   padding:3px 10px;border-radius:20px;cursor:pointer;
-  border:1px solid var(--purple);background:var(--s2);color:var(--purple);
+  border:1px solid var(--purple);background:rgba(255,255,255,.6);color:var(--purple);
   transition:all .15s;
 }
-.takectrlbtn:hover{background:var(--purple);color:#fff;}
+.takectrlbtn:hover{background:var(--purple);color:#fff;border-color:var(--purple);}
 .takectrlbtn:disabled{cursor:default;opacity:.55;background:var(--glt);color:var(--green);border-color:#bbf7d0;}
 .takectrlbtn:disabled:hover{background:var(--glt);color:var(--green);}
 .takectrlbtn.busy{opacity:.65;cursor:wait;animation:pulse .8s infinite;}
