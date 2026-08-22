@@ -327,13 +327,18 @@ body[data-domain="str"] {
    Everything below is scoped to #sectionsbg (or classes that only ever
    render inside it — .sections-*/.gs-* — see nav-sections.js/
    global-search.js), so none of it touches any other modal that shares
-   .mbg/.modal/.mhdr/.mbody/.mclose. Goal: each top-level group reads as
-   its own domain at a glance, using the same accent tokens
-   (variables.css) that domain's own dashboard already uses, rather
-   than inventing new colors. ── */
+   .mbg/.modal/.mhdr/.mbody/.mclose. Card recipe (wash + radial glow +
+   --g-accent/--g-bg custom props) and the domain→color assignments are
+   deliberately copied from Cover's own .cover-group (css/
+   cover-dashboard.css) rather than invented separately, so this drawer
+   reads as the same visual language as Cover instead of a lookalike
+   with different hues per domain. ── */
 
-/* Header — brand gradient instead of the plain flat modal header. */
-#sectionsbg .mhdr { background: var(--grad-header); border-bottom: none; }
+/* Header — brand gradient, with a solid dark fallback declared first:
+   if a gradient value ever fails to parse/apply for any reason, this
+   still leaves a solid dark header behind the white h2/mclose text
+   instead of a blank white bar with invisible white-on-white text. */
+#sectionsbg .mhdr { background: var(--accent-dk); background: var(--grad-header); border-bottom: none; }
 #sectionsbg .mhdr h2 { color: #fff; }
 #sectionsbg .mclose { background: rgba(255,255,255,.15); border-color: rgba(255,255,255,.3); color: #fff; }
 #sectionsbg .mclose:hover, #sectionsbg .mclose:active { background: rgba(255,255,255,.28); }
@@ -346,80 +351,58 @@ body[data-domain="str"] {
 .sections-heading[data-section="data"]::before { background: var(--teal); }
 .sections-heading[data-section="utility"]::before { background: var(--purple); }
 
-/* Top-level groups become their own colored cards (domain-tinted left
-   border) instead of a flat list separated by hairlines. Scoped to
-   direct children of #sections-list only, so nested sub-groups one
-   level deeper keep the plain, understated divider style — that
-   contrast is what keeps the hierarchy readable. */
+/* Domain → --g-accent/--g-bg assignment — identical slugs* and hues to
+   Cover's own .cover-group[data-group="…"] block, so a domain is the
+   same color here as it is on Cover. (*"notesheets" here vs Cover's
+   "notes" — nav-sections.js's _domainGroup already used "notesheets"
+   before this pass and plenty else keys off it, so matched color to
+   that existing slug rather than renaming it.) "tools" has no Cover
+   counterpart (utility card, not a draggable Cover group) — given its
+   own accent-dk treatment instead of leaving it uncolored. */
+#sections-list > .sections-group[data-domain="sales"]      { --g-accent: var(--accent);    --g-bg: var(--alt); }
+#sections-list > .sections-group[data-domain="manager"]    { --g-accent: var(--mgrblue);   --g-bg: var(--mgrblue-lt); }
+#sections-list > .sections-group[data-domain="notesheets"] { --g-accent: var(--green);     --g-bg: var(--glt); }
+#sections-list > .sections-group[data-domain="closing"]    { --g-accent: var(--amber);     --g-bg: var(--alt2); }
+#sections-list > .sections-group[data-domain="audit"]      { --g-accent: var(--red);       --g-bg: var(--rlt); }
+#sections-list > .sections-group[data-domain="inventory"]  { --g-accent: var(--pink);      --g-bg: var(--pink-lt); }
+#sections-list > .sections-group[data-domain="str"]        { --g-accent: var(--purple);    --g-bg: var(--purple-lt); }
+#sections-list > .sections-group[data-domain="reports"]    { --g-accent: var(--teal);      --g-bg: var(--tlt); }
+#sections-list > .sections-group[data-domain="tools"]      { --g-accent: var(--accent-dk); --g-bg: var(--s3); }
+
+/* Card shell — same wash-gradient + top-right radial glow + tinted
+   border recipe as .cover-group, scaled down for the drawer's narrower
+   width (5px left border → 3px, 22px/16px padding → the row's own
+   padding, no hover lift since these aren't drag targets). Falls back
+   to the neutral accent/alt pair for rows with no domain (Cover, PDF
+   Library, Activity Log — same as Cover's own ungrouped tiles).
+   Scoped to direct children of #sections-list only, so nested
+   sub-groups one level deeper keep the plain, understated divider
+   style — that contrast is what keeps the hierarchy readable. */
 #sections-list > .sections-group {
-  border: 1px solid var(--border); border-left: 3px solid var(--border-strong);
-  border-radius: var(--r-md); margin-bottom: 8px; padding: 4px 0;
-  background: var(--surface); box-shadow: var(--sh);
-  transition: border-color .15s, box-shadow .15s;
+  position: relative; overflow: hidden;
+  margin-bottom: var(--sp-2); padding: var(--sp-1) 0; border-radius: var(--r-md);
+  background:
+    radial-gradient(120% 200% at 94% -50%, color-mix(in srgb, var(--g-accent, var(--accent)) 16%, transparent) 0%, transparent 60%),
+    linear-gradient(155deg, var(--g-bg, var(--alt)) 0%, color-mix(in srgb, var(--g-bg, var(--alt)) 55%, var(--surface)) 100%);
+  border: 1px solid color-mix(in srgb, var(--g-accent, var(--border)) 25%, var(--border));
+  border-left: 3px solid var(--g-accent, var(--border-strong));
+  box-shadow: var(--sh);
+  transition: box-shadow .15s, border-color .15s;
 }
 #sections-list > .sections-group:last-child { margin-bottom: 0; }
+#sections-list > .sections-group:hover { box-shadow: var(--sh-md); }
 
-/* Domain → accent token map. Same hues each domain's own dashboard
-   already uses (see README's Navigation model table / variables.css). */
-#sections-list > .sections-group[data-domain="sales"] { border-left-color: var(--accent); }
-#sections-list > .sections-group[data-domain="manager"] { border-left-color: var(--mgrblue); }
-#sections-list > .sections-group[data-domain="notesheets"] { border-left-color: var(--green); }
-#sections-list > .sections-group[data-domain="closing"] { border-left-color: var(--teal); }
-#sections-list > .sections-group[data-domain="audit"] { border-left-color: var(--amber); }
-#sections-list > .sections-group[data-domain="inventory"] { border-left-color: var(--pink); }
-#sections-list > .sections-group[data-domain="str"] { border-left-color: var(--red); }
-#sections-list > .sections-group[data-domain="reports"] { border-left-color: var(--purple); }
-#sections-list > .sections-group[data-domain="tools"] { border-left-color: var(--accent-dk); }
-
-/* Icon chip + hover tint + open-chevron color, all keyed off the same
-   per-domain accent. ">" keeps this on the top-level row only — nested
-   rows share .recents-icon/.sections-row too, one level deeper. */
-#sections-list > .sections-group[data-domain="sales"] > .sections-row .recents-icon,
-#sections-list > .sections-group[data-domain="sales"] > .sections-row .recents-icon-svg { background: var(--alt); color: var(--accent); border-color: transparent; }
-#sections-list > .sections-group[data-domain="manager"] > .sections-row .recents-icon,
-#sections-list > .sections-group[data-domain="manager"] > .sections-row .recents-icon-svg { background: var(--mgrblue-lt); color: var(--mgrblue); border-color: transparent; }
-#sections-list > .sections-group[data-domain="notesheets"] > .sections-row .recents-icon,
-#sections-list > .sections-group[data-domain="notesheets"] > .sections-row .recents-icon-svg { background: var(--glt); color: var(--green); border-color: transparent; }
-#sections-list > .sections-group[data-domain="closing"] > .sections-row .recents-icon,
-#sections-list > .sections-group[data-domain="closing"] > .sections-row .recents-icon-svg { background: var(--tlt); color: var(--teal); border-color: transparent; }
-#sections-list > .sections-group[data-domain="audit"] > .sections-row .recents-icon,
-#sections-list > .sections-group[data-domain="audit"] > .sections-row .recents-icon-svg { background: var(--alt2); color: var(--amber); border-color: transparent; }
-#sections-list > .sections-group[data-domain="inventory"] > .sections-row .recents-icon,
-#sections-list > .sections-group[data-domain="inventory"] > .sections-row .recents-icon-svg { background: var(--pink-lt); color: var(--pink); border-color: transparent; }
-#sections-list > .sections-group[data-domain="str"] > .sections-row .recents-icon,
-#sections-list > .sections-group[data-domain="str"] > .sections-row .recents-icon-svg { background: var(--rlt); color: var(--red); border-color: transparent; }
-#sections-list > .sections-group[data-domain="reports"] > .sections-row .recents-icon,
-#sections-list > .sections-group[data-domain="reports"] > .sections-row .recents-icon-svg { background: var(--purple-lt); color: var(--purple); border-color: transparent; }
-#sections-list > .sections-group[data-domain="tools"] > .sections-row .recents-icon,
-#sections-list > .sections-group[data-domain="tools"] > .sections-row .recents-icon-svg { background: var(--s3); color: var(--accent-dk); border-color: transparent; }
-
-#sections-list > .sections-group[data-domain="sales"] > .sections-row:hover,
-#sections-list > .sections-group[data-domain="sales"] > .sections-row .sections-nav-hit:hover { background: var(--alt); }
-#sections-list > .sections-group[data-domain="sales"].sections-group-open > .sections-row-main .sections-toggle { color: var(--accent); }
-#sections-list > .sections-group[data-domain="manager"] > .sections-row:hover,
-#sections-list > .sections-group[data-domain="manager"] > .sections-row .sections-nav-hit:hover { background: var(--mgrblue-lt); }
-#sections-list > .sections-group[data-domain="manager"].sections-group-open > .sections-row-main .sections-toggle { color: var(--mgrblue); }
-#sections-list > .sections-group[data-domain="notesheets"] > .sections-row:hover,
-#sections-list > .sections-group[data-domain="notesheets"] > .sections-row .sections-nav-hit:hover { background: var(--glt); }
-#sections-list > .sections-group[data-domain="notesheets"].sections-group-open > .sections-row-main .sections-toggle { color: var(--green); }
-#sections-list > .sections-group[data-domain="closing"] > .sections-row:hover,
-#sections-list > .sections-group[data-domain="closing"] > .sections-row .sections-nav-hit:hover { background: var(--tlt); }
-#sections-list > .sections-group[data-domain="closing"].sections-group-open > .sections-row-main .sections-toggle { color: var(--teal); }
-#sections-list > .sections-group[data-domain="audit"] > .sections-row:hover,
-#sections-list > .sections-group[data-domain="audit"] > .sections-row .sections-nav-hit:hover { background: var(--alt2); }
-#sections-list > .sections-group[data-domain="audit"].sections-group-open > .sections-row-main .sections-toggle { color: var(--amber); }
-#sections-list > .sections-group[data-domain="inventory"] > .sections-row:hover,
-#sections-list > .sections-group[data-domain="inventory"] > .sections-row .sections-nav-hit:hover { background: var(--pink-lt); }
-#sections-list > .sections-group[data-domain="inventory"].sections-group-open > .sections-row-main .sections-toggle { color: var(--pink); }
-#sections-list > .sections-group[data-domain="str"] > .sections-row:hover,
-#sections-list > .sections-group[data-domain="str"] > .sections-row .sections-nav-hit:hover { background: var(--rlt); }
-#sections-list > .sections-group[data-domain="str"].sections-group-open > .sections-row-main .sections-toggle { color: var(--red); }
-#sections-list > .sections-group[data-domain="reports"] > .sections-row:hover,
-#sections-list > .sections-group[data-domain="reports"] > .sections-row .sections-nav-hit:hover { background: var(--purple-lt); }
-#sections-list > .sections-group[data-domain="reports"].sections-group-open > .sections-row-main .sections-toggle { color: var(--purple); }
-#sections-list > .sections-group[data-domain="tools"] > .sections-row:hover,
-#sections-list > .sections-group[data-domain="tools"] > .sections-row .sections-nav-hit:hover { background: var(--s3); }
-#sections-list > .sections-group[data-domain="tools"].sections-group-open > .sections-row-main .sections-toggle { color: var(--accent-dk); }
+/* Icon chip, hover tint, and open-chevron color all read the same
+   --g-accent/--g-bg pair set above — one rule instead of one per
+   domain. ">" + descendant keeps this on the top-level row only —
+   nested rows share .recents-icon/.sections-row too, one level deeper. */
+#sections-list > .sections-group > .sections-row .recents-icon,
+#sections-list > .sections-group > .sections-row .recents-icon-svg {
+  background: var(--g-bg, var(--s2)); color: var(--g-accent, var(--t2)); border-color: transparent;
+}
+#sections-list > .sections-group > .sections-row:hover,
+#sections-list > .sections-group > .sections-row .sections-nav-hit:hover { background: var(--g-bg, var(--s2)); }
+#sections-list > .sections-group.sections-group-open > .sections-row-main .sections-toggle { color: var(--g-accent, var(--accent)); }
 
 /* ── Global search (js/global-search.js) — search box pinned atop the
    All Sections drawer, plus its Staff-match result rows. Hidden
