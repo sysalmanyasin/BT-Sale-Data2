@@ -235,15 +235,15 @@ body[data-domain="str"] {
 .recents-row:last-child { border-bottom: none; }
 .recents-row:hover, .recents-row:active { background: var(--s2); }
 .recents-icon {
-  font-size: 15px; flex-shrink: 0; width: 28px; height: 28px; line-height: 1;
+  font-size: 15px; flex-shrink: 0; width: var(--sp-6); height: var(--sp-6); line-height: 1;
   display: flex; align-items: center; justify-content: center;
-  border-radius: 9px; background: var(--s2); border: 1px solid var(--border);
+  border-radius: var(--r-sm); background: var(--s2); border: 1px solid var(--border);
 }
 /* Nested rows (depth ≥ 1 in the All Sections drawer) get a smaller,
    softer-tinted chip — reinforces hierarchy instead of every row at
    every depth looking like the exact same size/weight. */
 .recents-icon-sub {
-  width: 24px; height: 24px; font-size: 13px; border-radius: 7px;
+  width: var(--sp-5); height: var(--sp-5); font-size: 13px; border-radius: var(--r-xs);
   background: var(--alt, var(--s2)); border-color: transparent;
 }
 /* SVG variant (top-level All Sections drawer rows, js/icons.js) — the
@@ -258,18 +258,24 @@ body[data-domain="str"] {
 
 /* ── All Sections drawer (long-press Cover) — shares .recents-icon/
    .recents-label styling above for its group headers; only the group
-   wrapper and indented sub-rows are new. ── */
+   wrapper and indented sub-rows are new.
+
+   Spacing below is snapped onto variables.css's --sp-* scale (4px base
+   unit: 4/8/12/16/24/32/44), the same 4pt/8pt grid convention Material
+   Design, Apple HIG, and IBM Carbon all use — replaces a mix of
+   3/6/10/14/30/42px one-offs that didn't line up with any consistent
+   unit or with each other. ── */
 .sections-heading {
   font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
-  color: var(--muted); padding: 14px 10px 6px;
+  color: var(--muted); padding: var(--sp-4) var(--sp-2) var(--sp-2);
 }
-.sections-heading:first-child { padding-top: 6px; }
-.sections-group { border-bottom: 1px solid var(--border); padding: 6px 0; }
+.sections-heading:first-child { padding-top: var(--sp-2); }
+.sections-group { border-bottom: 1px solid var(--border); padding: var(--sp-2) 0; }
 .sections-group:last-child { border-bottom: none; }
-.sections-row { display: flex; align-items: center; gap: 10px; padding: 10px 8px; cursor: pointer; border-radius: 8px; transition: background .15s; }
+.sections-row { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2); cursor: pointer; border-radius: var(--r-sm); transition: background .15s; }
 .sections-row:hover, .sections-row:active { background: var(--s2); }
-.sections-row-main { font-weight: 700; font-size: 13.5px; padding: 3px 4px 3px 8px; justify-content: space-between; }
-.sections-row-sub { padding-left: 42px; }
+.sections-row-main { font-weight: 700; font-size: 13.5px; padding: var(--sp-1) var(--sp-1) var(--sp-1) var(--sp-2); justify-content: space-between; }
+.sections-row-sub { padding-left: 40px; }
 
 /* Collapsed by default (task: sections + sub-sections start collapsed
    every time the drawer opens). The nav-hit span carries navigation +
@@ -277,11 +283,11 @@ body[data-domain="str"] {
    that only toggles visibility of .sections-subs, so tapping the label
    still jumps straight to the page while tapping the arrow just
    expands/collapses. */
-.sections-nav-hit { flex: 1; display: flex; align-items: center; gap: 10px; padding: 8px 4px; border-radius: 8px; transition: background .15s; min-width: 0; }
+.sections-nav-hit { flex: 1; display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-1); border-radius: var(--r-sm); transition: background .15s; min-width: 0; }
 .sections-nav-hit:hover, .sections-nav-hit:active { background: var(--s2); }
 .sections-toggle {
-  flex-shrink: 0; width: 30px; height: 30px; border: none; background: none;
-  color: var(--muted); font-size: 13px; cursor: pointer; border-radius: 8px;
+  flex-shrink: 0; width: var(--sp-6); height: var(--sp-6); border: none; background: none;
+  color: var(--muted); font-size: 13px; cursor: pointer; border-radius: var(--r-sm);
   display: flex; align-items: center; justify-content: center;
   transition: transform .15s, background .15s;
 }
@@ -310,12 +316,110 @@ body[data-domain="str"] {
 #sectionsbg { justify-content: flex-start !important; padding: 0 !important; }
 #sectionsbg .modal {
   width: min(84vw, 320px); max-height: 100vh; height: 100%;
-  border-radius: 0 14px 14px 0;
+  border-radius: 0 var(--r-lg) var(--r-lg) 0;
   animation: sideMenuSlideIn .22s ease-out;
 }
 #sectionsbg .sheet-handle { display: none !important; }
 @keyframes sideMenuSlideIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }
 .sections-sub-label { font-size: 12.5px; color: var(--t2); }
+
+/* ── Colorful design pass (Aug 2026) ──────────────────────────────────
+   Everything below is scoped to #sectionsbg (or classes that only ever
+   render inside it — .sections-*/.gs-* — see nav-sections.js/
+   global-search.js), so none of it touches any other modal that shares
+   .mbg/.modal/.mhdr/.mbody/.mclose. Goal: each top-level group reads as
+   its own domain at a glance, using the same accent tokens
+   (variables.css) that domain's own dashboard already uses, rather
+   than inventing new colors. ── */
+
+/* Header — brand gradient instead of the plain flat modal header. */
+#sectionsbg .mhdr { background: var(--grad-header); border-bottom: none; }
+#sectionsbg .mhdr h2 { color: #fff; }
+#sectionsbg .mclose { background: rgba(255,255,255,.15); border-color: rgba(255,255,255,.3); color: #fff; }
+#sectionsbg .mclose:hover, #sectionsbg .mclose:active { background: rgba(255,255,255,.28); }
+
+/* Section headings (Core/Data/Utility) get a small colored tick mark
+   instead of plain uppercase text, so the 3-tier grouping reads faster. */
+.sections-heading { display: flex; align-items: center; gap: 8px; }
+.sections-heading::before { content: ""; width: 14px; height: 3px; border-radius: 2px; background: var(--border-strong); flex-shrink: 0; }
+.sections-heading[data-section="core"]::before { background: var(--accent); }
+.sections-heading[data-section="data"]::before { background: var(--teal); }
+.sections-heading[data-section="utility"]::before { background: var(--purple); }
+
+/* Top-level groups become their own colored cards (domain-tinted left
+   border) instead of a flat list separated by hairlines. Scoped to
+   direct children of #sections-list only, so nested sub-groups one
+   level deeper keep the plain, understated divider style — that
+   contrast is what keeps the hierarchy readable. */
+#sections-list > .sections-group {
+  border: 1px solid var(--border); border-left: 3px solid var(--border-strong);
+  border-radius: var(--r-md); margin-bottom: 8px; padding: 4px 0;
+  background: var(--surface); box-shadow: var(--sh);
+  transition: border-color .15s, box-shadow .15s;
+}
+#sections-list > .sections-group:last-child { margin-bottom: 0; }
+
+/* Domain → accent token map. Same hues each domain's own dashboard
+   already uses (see README's Navigation model table / variables.css). */
+#sections-list > .sections-group[data-domain="sales"] { border-left-color: var(--accent); }
+#sections-list > .sections-group[data-domain="manager"] { border-left-color: var(--mgrblue); }
+#sections-list > .sections-group[data-domain="notesheets"] { border-left-color: var(--green); }
+#sections-list > .sections-group[data-domain="closing"] { border-left-color: var(--teal); }
+#sections-list > .sections-group[data-domain="audit"] { border-left-color: var(--amber); }
+#sections-list > .sections-group[data-domain="inventory"] { border-left-color: var(--pink); }
+#sections-list > .sections-group[data-domain="str"] { border-left-color: var(--red); }
+#sections-list > .sections-group[data-domain="reports"] { border-left-color: var(--purple); }
+#sections-list > .sections-group[data-domain="tools"] { border-left-color: var(--accent-dk); }
+
+/* Icon chip + hover tint + open-chevron color, all keyed off the same
+   per-domain accent. ">" keeps this on the top-level row only — nested
+   rows share .recents-icon/.sections-row too, one level deeper. */
+#sections-list > .sections-group[data-domain="sales"] > .sections-row .recents-icon,
+#sections-list > .sections-group[data-domain="sales"] > .sections-row .recents-icon-svg { background: var(--alt); color: var(--accent); border-color: transparent; }
+#sections-list > .sections-group[data-domain="manager"] > .sections-row .recents-icon,
+#sections-list > .sections-group[data-domain="manager"] > .sections-row .recents-icon-svg { background: var(--mgrblue-lt); color: var(--mgrblue); border-color: transparent; }
+#sections-list > .sections-group[data-domain="notesheets"] > .sections-row .recents-icon,
+#sections-list > .sections-group[data-domain="notesheets"] > .sections-row .recents-icon-svg { background: var(--glt); color: var(--green); border-color: transparent; }
+#sections-list > .sections-group[data-domain="closing"] > .sections-row .recents-icon,
+#sections-list > .sections-group[data-domain="closing"] > .sections-row .recents-icon-svg { background: var(--tlt); color: var(--teal); border-color: transparent; }
+#sections-list > .sections-group[data-domain="audit"] > .sections-row .recents-icon,
+#sections-list > .sections-group[data-domain="audit"] > .sections-row .recents-icon-svg { background: var(--alt2); color: var(--amber); border-color: transparent; }
+#sections-list > .sections-group[data-domain="inventory"] > .sections-row .recents-icon,
+#sections-list > .sections-group[data-domain="inventory"] > .sections-row .recents-icon-svg { background: var(--pink-lt); color: var(--pink); border-color: transparent; }
+#sections-list > .sections-group[data-domain="str"] > .sections-row .recents-icon,
+#sections-list > .sections-group[data-domain="str"] > .sections-row .recents-icon-svg { background: var(--rlt); color: var(--red); border-color: transparent; }
+#sections-list > .sections-group[data-domain="reports"] > .sections-row .recents-icon,
+#sections-list > .sections-group[data-domain="reports"] > .sections-row .recents-icon-svg { background: var(--purple-lt); color: var(--purple); border-color: transparent; }
+#sections-list > .sections-group[data-domain="tools"] > .sections-row .recents-icon,
+#sections-list > .sections-group[data-domain="tools"] > .sections-row .recents-icon-svg { background: var(--s3); color: var(--accent-dk); border-color: transparent; }
+
+#sections-list > .sections-group[data-domain="sales"] > .sections-row:hover,
+#sections-list > .sections-group[data-domain="sales"] > .sections-row .sections-nav-hit:hover { background: var(--alt); }
+#sections-list > .sections-group[data-domain="sales"].sections-group-open > .sections-row-main .sections-toggle { color: var(--accent); }
+#sections-list > .sections-group[data-domain="manager"] > .sections-row:hover,
+#sections-list > .sections-group[data-domain="manager"] > .sections-row .sections-nav-hit:hover { background: var(--mgrblue-lt); }
+#sections-list > .sections-group[data-domain="manager"].sections-group-open > .sections-row-main .sections-toggle { color: var(--mgrblue); }
+#sections-list > .sections-group[data-domain="notesheets"] > .sections-row:hover,
+#sections-list > .sections-group[data-domain="notesheets"] > .sections-row .sections-nav-hit:hover { background: var(--glt); }
+#sections-list > .sections-group[data-domain="notesheets"].sections-group-open > .sections-row-main .sections-toggle { color: var(--green); }
+#sections-list > .sections-group[data-domain="closing"] > .sections-row:hover,
+#sections-list > .sections-group[data-domain="closing"] > .sections-row .sections-nav-hit:hover { background: var(--tlt); }
+#sections-list > .sections-group[data-domain="closing"].sections-group-open > .sections-row-main .sections-toggle { color: var(--teal); }
+#sections-list > .sections-group[data-domain="audit"] > .sections-row:hover,
+#sections-list > .sections-group[data-domain="audit"] > .sections-row .sections-nav-hit:hover { background: var(--alt2); }
+#sections-list > .sections-group[data-domain="audit"].sections-group-open > .sections-row-main .sections-toggle { color: var(--amber); }
+#sections-list > .sections-group[data-domain="inventory"] > .sections-row:hover,
+#sections-list > .sections-group[data-domain="inventory"] > .sections-row .sections-nav-hit:hover { background: var(--pink-lt); }
+#sections-list > .sections-group[data-domain="inventory"].sections-group-open > .sections-row-main .sections-toggle { color: var(--pink); }
+#sections-list > .sections-group[data-domain="str"] > .sections-row:hover,
+#sections-list > .sections-group[data-domain="str"] > .sections-row .sections-nav-hit:hover { background: var(--rlt); }
+#sections-list > .sections-group[data-domain="str"].sections-group-open > .sections-row-main .sections-toggle { color: var(--red); }
+#sections-list > .sections-group[data-domain="reports"] > .sections-row:hover,
+#sections-list > .sections-group[data-domain="reports"] > .sections-row .sections-nav-hit:hover { background: var(--purple-lt); }
+#sections-list > .sections-group[data-domain="reports"].sections-group-open > .sections-row-main .sections-toggle { color: var(--purple); }
+#sections-list > .sections-group[data-domain="tools"] > .sections-row:hover,
+#sections-list > .sections-group[data-domain="tools"] > .sections-row .sections-nav-hit:hover { background: var(--s3); }
+#sections-list > .sections-group[data-domain="tools"].sections-group-open > .sections-row-main .sections-toggle { color: var(--accent-dk); }
 
 /* ── Global search (js/global-search.js) — search box pinned atop the
    All Sections drawer, plus its Staff-match result rows. Hidden
@@ -327,13 +431,22 @@ body[data-domain="str"] {
    way .mhdr is, via flex-shrink:0. Horizontal padding matches .mbody's
    own (18px 22px, in modals.css) so the input still lines up flush
    with the section rows below it. */
-.gs-search-row { padding: 14px 22px 10px; flex-shrink: 0; }
-.gs-input {
-  width: 100%; box-sizing: border-box; padding: 10px 12px; border-radius: 9px;
-  border: 1px solid var(--border); background: var(--s1, var(--surface));
-  color: var(--text); font-size: 13px; font-family: var(--sans);
+.gs-search-row { padding: var(--sp-4) 22px var(--sp-3); flex-shrink: 0; } /* 22px horizontal kept off-grid deliberately — matches .mbody's own 22px (modals.css) so the input stays flush with the section rows below it */
+.gs-search-wrap { position: relative; display: flex; align-items: center; }
+.gs-search-icon {
+  position: absolute; left: var(--sp-3); top: 50%; transform: translateY(-50%);
+  font-size: 13px; opacity: .55; pointer-events: none;
 }
-.gs-input:focus { outline: none; border-color: var(--accent); }
+.gs-input {
+  width: 100%; box-sizing: border-box; padding: var(--sp-2) var(--sp-4) var(--sp-2) 36px; border-radius: var(--r-pill);
+  border: 1px solid var(--border); background: var(--s2);
+  color: var(--text); font-size: 13px; font-family: var(--sans);
+  transition: border-color .15s, box-shadow .15s, background .15s;
+}
+.gs-input:focus {
+  outline: none; border-color: var(--accent); background: var(--surface);
+  box-shadow: var(--focus-ring);
+}
 .gs-hidden { display: none !important; }
 .gs-group-label { font-size: 11px; font-weight: 700; letter-spacing: .3px; color: var(--muted); text-transform: uppercase; padding: 6px 8px 2px; }
 .gs-sub { display: block; font-size: 11px; font-weight: 400; color: var(--muted); }

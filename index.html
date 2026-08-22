@@ -795,7 +795,10 @@ if ('serviceWorker' in navigator) {
          more robust than relying on sticky at all — only #sections-list
          (and the staff-match results above it) actually scroll now. -->
     <div class="gs-search-row">
-      <input type="search" id="gs-input" class="gs-input" placeholder="Search sections, staff…" autocomplete="off" oninput="GlobalSearch.onInput(this.value)">
+      <div class="gs-search-wrap">
+        <span class="gs-search-icon" aria-hidden="true">🔍</span>
+        <input type="search" id="gs-input" class="gs-input" placeholder="Search sections, staff…" autocomplete="off" oninput="GlobalSearch.onInput(this.value)">
+      </div>
     </div>
     <div class="mbody">
       <div id="gs-staff-results" style="display:none"></div>

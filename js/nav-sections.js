@@ -85,8 +85,11 @@
     return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
+  // Indent snapped onto the app's --sp-* spacing grid (4px base unit) —
+  // was 8 / 42+20n, an off-grid mix that didn't line up with any other
+  // spacing value in the drawer. 8 = --sp-2, 40 = 5×--sp-2, 24 = --sp-5.
   function _indent(depth) {
-    return depth === 0 ? 8 : 42 + (depth - 1) * 20;
+    return depth === 0 ? 8 : 40 + (depth - 1) * 24;
   }
 
   // Reads every top-level page (id -> {label, icon, href}), keyed by
@@ -354,7 +357,7 @@
       ? `<span class="recents-icon${depth > 0 ? ' recents-icon-sub' : ''} recents-icon-svg">${svg}</span>`
       : `<span class="recents-icon${depth > 0 ? ' recents-icon-sub' : ''}">${_esc(node.icon || (isGroup ? '📁' : '📄'))}</span>`;
     return `
-      <div class="sections-group" data-label="${_esc(node.label)}">
+      <div class="sections-group" data-label="${_esc(node.label)}" data-domain="${_esc(node._domainGroup || '')}">
         <div class="sections-row ${rowClass}" style="padding-left:${_indent(depth)}px">
           <span class="sections-nav-hit" onclick="${hitClick}">
             ${iconSpan}
@@ -374,7 +377,7 @@
     const html = ordered.map(g => {
       let heading = '';
       if (g._section && g._section !== lastSection) {
-        heading = `<div class="sections-heading">${_esc(_SECTION_LABEL[g._section] || g._section)}</div>`;
+        heading = `<div class="sections-heading" data-section="${_esc(g._section)}">${_esc(_SECTION_LABEL[g._section] || g._section)}</div>`;
         lastSection = g._section;
       }
       return heading + _renderNode(g, 0);
