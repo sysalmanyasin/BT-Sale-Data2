@@ -558,5 +558,11 @@
 .reorder-app .status-pill.Flagged {background:var(--rust-bg); color:var(--rust);}
 .reorder-app th.sortable {cursor:pointer;}
 .reorder-app th.sortable:hover {background:var(--teal-dark);}
+/* In Transit — row has stock already Dispatched and inbound (see
+   reorder-report.js's buildInTransitMap()). Light green tint, same
+   token (--glt) other domains use for a positive/incoming signal. */
+.reorder-app tr.row-intransit td {background:var(--glt);}
+.reorder-app tr.row-intransit:hover td {background:var(--glt); filter:brightness(0.97);}
+
 .reorder-app td.win-primary, .reorder-app th.win-primary {background:var(--indigo-bg);}
 .reorder-app thead th.win-primary {background:var(--teal-dark);}

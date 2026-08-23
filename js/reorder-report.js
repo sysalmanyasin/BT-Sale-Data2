@@ -128,6 +128,18 @@ window.ReorderReportApp = (function () {
 
   const WINDOWS = [30, 60, 90];
 
+  // In-transit qty per product code (2026-08 addition): STR lines
+  // inbound to BT (direction 'in') whose header is currently in the
+  // Dispatched stage — physically moving, not just requested (Awaited,
+  // packDispatchQty is 0 by definition) and not yet arrived (Received,
+  // already landed in stock so no longer "in transit"). Dispatched-only
+  // by deliberate decision — see buildInTransitMap(). Module-scope, not
+  // part of `state`, since it's rebuilt from StrBridge rather than
+  // persisted, and computeAllRows() reads it directly (same pattern as
+  // reading window.StockLedgerApp) rather than threading it through
+  // every call site (getFlaggedRowsFor/getSummaryFor included).
+  let inTransitByCode = {};
+
   const state = {
     tab: 'topn',            // 'topn' | 'all'
     window: 90,              // primary window: 30 | 60 | 90
@@ -276,6 +288,7 @@ window.ReorderReportApp = (function () {
         supplier: (r.supplier && String(r.supplier).trim()) || (r.company && String(r.company).trim()) || 'Unspecified',
         company: r.company || '',
         stock, unitPrice,
+        inTransitQty: (inTransitByCode[r.code] || 0),
         saleQtyToday: todayQty,
         saleValueToday: todayValue,
         isTaxable,
@@ -343,6 +356,36 @@ window.ReorderReportApp = (function () {
     state.topNFlagged = lowCoverWithin(topNByValue(allRows, state.topN), coverDays);
   }
 
+  // Reads whatever StrBridge already has cached (sync, no network) —
+  // str-bridge.js is a real ES module and doesn't export str-shared.js's
+  // stage-derivation helpers to `window`, so the Dispatched-stage check
+  // (receiveStatus !== 'Received' && dispatchStatus === 'Dispatched') is
+  // reimplemented inline here rather than imported; kept identical to
+  // str-shared.js's strStage() so the two never drift on what
+  // "Dispatched" means.
+  function buildInTransitMap(data) {
+    const map = {};
+    if (!data || !Array.isArray(data.headers) || !Array.isArray(data.lineItems)) return map;
+    const dispatchedInStrIds = new Set(
+      data.headers
+        .filter(h => h.direction === 'in' && h.dispatchStatus === 'Dispatched' && h.receiveStatus !== 'Received')
+        .map(h => h.strId)
+    );
+    data.lineItems.forEach(li => {
+      if (!li.productCode || !dispatchedInStrIds.has(li.strId)) return;
+      const factorRaw = Number(data.packFactorByCode && data.packFactorByCode[li.productCode]);
+      const factor = (factorRaw && factorRaw > 0 && Number.isFinite(factorRaw)) ? factorRaw : 1;
+      const packQty = Math.floor((Number(li.dispatchQty) || 0) / factor);
+      map[li.productCode] = (map[li.productCode] || 0) + packQty;
+    });
+    return map;
+  }
+
+  function refreshInTransitMap() {
+    const data = (typeof window.strBridgeGetFullData === 'function') ? window.strBridgeGetFullData() : null;
+    inTransitByCode = buildInTransitMap(data);
+  }
+
   function refreshFromStockLedger(silent) {
     const SL = window.StockLedgerApp;
     if (SL && typeof SL.hasData === 'function' && SL.hasData()) {
@@ -352,6 +395,18 @@ window.ReorderReportApp = (function () {
     } else {
       state.rawRows = [];
       state.dataReady = false;
+    }
+    refreshInTransitMap();
+    // Best-effort background refresh from Supabase (str-bridge.js
+    // de-dupes concurrent callers and no-ops within its own 1-min
+    // cache window) — re-renders once fresher STR data lands, same
+    // "don't block on it" spirit as everything else on this page.
+    if (typeof window.strBridgeRefresh === 'function') {
+      window.strBridgeRefresh().then(() => {
+        refreshInTransitMap();
+        recompute();
+        render();
+      }).catch(() => { /* best-effort — In Transit just stays at whatever was cached */ });
     }
     recompute();
     if (!silent) say(state.dataReady ? ('Pulled ' + state.rawRows.length + ' items from Stock Ledger') : 'No Stock Ledger data loaded yet');
@@ -388,6 +443,7 @@ window.ReorderReportApp = (function () {
     { key: 'name', label: 'Product Name', wrap: true },
     { key: 'supplier', label: 'Supplier' },
     { key: 'stock', label: 'Stock', num: true },
+    { key: 'inTransitQty', label: 'In Transit', num: true },
     { key: 'saleQtyToday', label: 'Sold Today', num: true },
   ];
   function windowCols(w) {
@@ -439,7 +495,10 @@ window.ReorderReportApp = (function () {
   }
 
   function rowHtml(r, cols, primaryWindow) {
-    return '<tr>' + cols.map(c => {
+    // Green highlight = something's already dispatched and physically
+    // moving toward this SKU's stock — see buildInTransitMap().
+    const trCls = (Number(r.inTransitQty) > 0) ? ' class="row-intransit"' : '';
+    return `<tr${trCls}>` + cols.map(c => {
       let v = r[c.key];
       let content = c.days ? fmtDays(v) : (c.num ? fmt(v) : esc(v));
       if (c.key === 'name') content = `${esc(v)}<div class="sub">${esc(r.company || '')}</div>`;
