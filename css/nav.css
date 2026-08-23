@@ -334,6 +334,49 @@ body[data-domain="str"] {
    reads as the same visual language as Cover instead of a lookalike
    with different hues per domain. ── */
 
+/* Panel body wash (2026-08-23): before this, only the header strip
+   (.mhdr) had any brand color — the rest of the drawer (search bar +
+   every section card) sat on flat var(--surface)/white, so the panel
+   read as a plain white sheet with a colored banner stuck on top
+   instead of one designed surface. This puts a soft, full-height wash
+   behind the whole panel instead — same brand hues as .mhdr's gradient
+   and Cover's own hero card, just much lower-opacity so the colorful
+   per-domain section cards (below) still read clearly on top of it.
+   Applied to .modal (the outer flex column), NOT .mbody (the scrolling
+   child) — .mbody has no background of its own (modals.css), so this
+   shows through it and stays fixed in place as the cards scroll,
+   rather than scrolling away with them.
+   Two solid background-color fallbacks declared FIRST (a hex color,
+   then the CSS-variable version) before the gradient layers — same
+   "keep the last value that DID parse" safety net .mhdr already uses
+   below, so a color-mix()/gradient parse failure on an older browser
+   can't fall back to invisible white-on-white. */
+#sectionsbg .modal {
+  position: relative;
+  background: #eef1f7;
+  background: var(--bg);
+  background:
+    radial-gradient(120% 46% at 10% 0%, color-mix(in srgb, var(--accent) 16%, transparent) 0%, transparent 60%),
+    radial-gradient(100% 42% at 108% 12%, color-mix(in srgb, var(--purple) 14%, transparent) 0%, transparent 58%),
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 7%, var(--surface)) 0%, var(--bg) 44%, var(--bg) 100%);
+}
+/* Slim brand stripe down the drawer's outer (left/hinge) edge —
+   echoes .mhdr::after's tri-color line below and Cover's own
+   segmented hero strip, so the whole drawer reads as one connected
+   brand surface rather than a header with a plain body underneath.
+   Sits behind .mhdr in paint order (generated content is first-child,
+   .mhdr comes later in the DOM and is fully opaque) — only visible
+   where it runs past the header, down the body. Clipped to the
+   drawer's own rounded corners for free via .modal's overflow:hidden
+   (modals.css). */
+#sectionsbg .modal::before {
+  content: "";
+  position: absolute; top: 0; bottom: 0; left: 0; width: 3px;
+  background: linear-gradient(180deg, #5b82ff 0%, #8b5cf6 40%, #f472b6 70%, #fbbf24 100%);
+  opacity: .7;
+  z-index: 0;
+}
+
 /* Header — "BT Navigation Panel". Layered like the sections-group
    cards below it (radial glow + gradient), not just a flat banner, so
    it reads as designed rather than a plain color swap. Two solid
@@ -353,6 +396,7 @@ body[data-domain="str"] {
     var(--grad-header);
   border-bottom: none;
   position: relative;
+  z-index: 1; /* paints over .modal::before's left brand stripe (z-index:0) */
   overflow: hidden;
   box-shadow: 0 1px 0 rgba(255,255,255,.08) inset, 0 8px 20px -10px rgba(20,27,61,.5);
 }
@@ -473,6 +517,25 @@ body[data-domain="str"] {
   outline: none; border-color: var(--accent); background: var(--surface);
   box-shadow: var(--focus-ring);
 }
+/* Drawer-only glass treatment (2026-08-23): #sectionsbg is the only
+   place .gs-input renders (js/global-search.js / index.html's single
+   #gs-input) — scoped here rather than changed above so a translucent
+   input only ever shows on the new colored wash behind it, never on a
+   plain var(--surface) background elsewhere this class might land in
+   future. backdrop-filter softens the wash showing through instead of
+   flattening it to a solid color, so the input still reads as part of
+   the same layered surface rather than a plain gray pill dropped on
+   top of it. */
+#sectionsbg .gs-input {
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  border-color: color-mix(in srgb, var(--border-strong) 60%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+#sectionsbg .gs-input:focus {
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+}
+
 .gs-hidden { display: none !important; }
 .gs-group-label { font-size: 11px; font-weight: 700; letter-spacing: .3px; color: var(--muted); text-transform: uppercase; padding: 6px 8px 2px; }
 .gs-sub { display: block; font-size: 11px; font-weight: 400; color: var(--muted); }
