@@ -262,6 +262,12 @@ export const Repository = (function () {
           updated++;
         }
       });
+      // Rows can arrive from Supabase in whatever order the query returned
+      // them in (not guaranteed chronological) — re-sort so MONTHLY keeps
+      // its oldest→newest contract that dashboard-controls.js's
+      // resolvePreset(), the charts, and the monthly summary table all
+      // rely on. Only worth doing when something actually changed.
+      if (added) sortMonthlyChronological();
       if (added || updated) { _notify('monthly:pulled', { added, updated, conflicts }); invalidateRenderCache && invalidateRenderCache(); }
       return { added, updated, conflicts };
     });
@@ -290,7 +296,9 @@ export const Repository = (function () {
       (incomingArr || []).forEach(m => {
         if (findMonthlyIndex(m.Month_Year) === -1) { MONTHLY.push(m); added++; }
       });
-      if (added) { _notify('monthly:gapfilled', { added }); invalidateRenderCache && invalidateRenderCache(); }
+      // Same reasoning as mergePulledMonthly — gap-filled rows aren't
+      // guaranteed to arrive in chronological order, so re-sort in place.
+      if (added) { sortMonthlyChronological(); _notify('monthly:gapfilled', { added }); invalidateRenderCache && invalidateRenderCache(); }
       return { added };
     });
   }
