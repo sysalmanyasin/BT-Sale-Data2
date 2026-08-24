@@ -5,7 +5,7 @@
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v10.94'; // v10.94: CACHE-BUSTING FIX — every CSS edit from today's branding pass
+const CACHE_NAME = 'bt-sales-v10.95'; // v10.94: CACHE-BUSTING FIX — every CSS edit from today's branding pass
 // (nav strip on desktop, dot-grid page texture, real logo in nav, domain hero
 // tinting, hero/login/empty-state watermarks, then the full-color logo swap)
 // touched css/variables.css, auth.css, nav.css, components.css, pages.css,
