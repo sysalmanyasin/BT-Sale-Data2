@@ -10,8 +10,8 @@
   <g opacity="0.1">
     <defs>
       <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#2563eb"/>
-        <stop offset="1" stop-color="#1d4ed8"/>
+        <stop offset="0" stop-color="#a8c1f7"/>
+        <stop offset="1" stop-color="#a5b8ef"/>
       </linearGradient>
       <clipPath id="capsuleClip">
         <rect x="120" y="185" width="270" height="120" rx="60" ry="60"
@@ -21,11 +21,11 @@
     <rect width="512" height="512" rx="100" fill="url(#bg)"/>
     <g clip-path="url(#capsuleClip)">
       <rect x="120" y="185" width="135" height="120" fill="#ffffff"/>
-      <rect x="255" y="185" width="135" height="120" fill="#facc15"/>
+      <rect x="255" y="185" width="135" height="120" fill="#fdeba1"/>
     </g>
     <rect x="120" y="185" width="270" height="120" rx="60" ry="60"
           transform="rotate(-40 255 245)"
-          fill="none" stroke="#1d4ed8" stroke-width="8"/>
+          fill="none" stroke="#a5b8ef" stroke-width="8"/>
     <g fill="#ffffff" fill-opacity="0.9">
       <rect x="150" y="345" width="30" height="55" rx="6"/>
       <rect x="195" y="325" width="30" height="75" rx="6"/>
