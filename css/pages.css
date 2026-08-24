@@ -38,6 +38,11 @@
 #print-area{display:none;}
 
 @media print{
+  /* Body's own dot-grid background texture (css/variables.css) isn't
+     hidden by the "hide every child except #print-area" rule below,
+     since it's painted on body itself, not a child — reset it
+     explicitly so it never shows through behind printed reports. */
+  body{background:#fff!important;background-image:none!important;}
   /* Without this, browsers omit background colors/gradients from print
      output by default (to save ink) — but this report's header and
      table column headers use WHITE TEXT ON COLORED BACKGROUNDS
