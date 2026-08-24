@@ -24,18 +24,15 @@
 }
 /* The big visible brand-mark watermark (Aug 2026 branding pass) — a
    real element, not a third pseudo-class, since ::before/::after above
-   are already spoken for by the two glow blobs. Same icons/mark-
-   watermark.svg mask-image technique as .hero (css/components.css),
-   #pin-gate, and the empty-state watermarks (css/components.css) use,
-   just sized up since this banner is the very first thing anyone sees
-   on Cover — deliberately the most prominent placement in the app. */
+   are already spoken for by the two glow blobs. Uses icons/icon.svg
+   directly (full blue/yellow gradient fill, not the white mark-
+   watermark.svg silhouette) faded via opacity, since this banner is
+   the first thing anyone sees on Cover — deliberately the most
+   prominent, and most colorful, branding placement in the app. */
 .cover-page-hero-mark{
   position:absolute;bottom:-40px;right:-30px;width:220px;height:220px;
-  background-color:rgba(255,255,255,.12);
-  -webkit-mask-image:url(../icons/mark-watermark.svg);mask-image:url(../icons/mark-watermark.svg);
-  -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
-  -webkit-mask-size:contain;mask-size:contain;
-  -webkit-mask-position:center;mask-position:center;
+  background-image:url(../icons/icon.svg);background-repeat:no-repeat;background-size:contain;background-position:center;
+  opacity:.38;
   pointer-events:none;z-index:0;
 }
 /* Colorful strip echoing each domain's accent — a small signature

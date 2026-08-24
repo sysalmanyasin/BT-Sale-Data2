@@ -8,10 +8,12 @@
    domain's hero genuinely reads as that domain's color, not just a
    faint hint of it. Sales has no override so --hero-tint falls back to
    --accent (the app's base blue) and looks the same as before.
-   Also carries a large, deliberately visible watermark of the actual
-   brand mark (icons/mark-watermark.svg via mask-image, so color/opacity
-   are fully CSS-controlled) bottom-right — replaces the old plain white
-   circle blob with something that's actually branded. */
+   Also carries a large, deliberately visible watermark of the real
+   full-color brand mark (icons/icon.svg — its own blue/yellow gradient
+   fill, not the white mark-watermark.svg silhouette used for the more
+   neutral empty-state watermarks) bottom-right, faded via opacity
+   rather than tinted, since the point here is to actually show the
+   logo's real colors. */
 .hero{
   --hero-tint: var(--accent);
   background: linear-gradient(135deg, #141b3d, color-mix(in srgb, var(--hero-tint) 65%, #141b3d) 55%, var(--hero-tint));
@@ -19,11 +21,8 @@
 }
 .hero::after{
   content:'';position:absolute;bottom:-30px;right:-20px;width:200px;height:200px;
-  background-color:rgba(255,255,255,.14);
-  -webkit-mask-image:url(../icons/mark-watermark.svg);mask-image:url(../icons/mark-watermark.svg);
-  -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;
-  -webkit-mask-size:contain;mask-size:contain;
-  -webkit-mask-position:center;mask-position:center;
+  background-image:url(../icons/icon.svg);background-repeat:no-repeat;background-size:contain;background-position:center;
+  opacity:.32;
   pointer-events:none;
 }
 .hero::before{content:'';position:absolute;left:0;right:0;bottom:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent);}

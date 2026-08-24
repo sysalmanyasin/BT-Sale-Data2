@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Same shapes/colors as icon.svg, pre-faded to opacity .07 via the
+       wrapping <g> below. Used as a plain background-image layer on
+       body (css/variables.css) rather than a separate positioned
+       element specifically so it paints behind all page content
+       automatically (backgrounds always paint below a box's own
+       content, no z-index needed) instead of needing careful stacking-
+       context handling the way the hero watermarks did. Keep colors in
+       sync with icon.svg if that ever changes. -->
+  <g opacity="0.1">
+    <defs>
+      <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#2563eb"/>
+        <stop offset="1" stop-color="#1d4ed8"/>
+      </linearGradient>
+      <clipPath id="capsuleClip">
+        <rect x="120" y="185" width="270" height="120" rx="60" ry="60"
+              transform="rotate(-40 255 245)"/>
+      </clipPath>
+    </defs>
+    <rect width="512" height="512" rx="100" fill="url(#bg)"/>
+    <g clip-path="url(#capsuleClip)">
+      <rect x="120" y="185" width="135" height="120" fill="#ffffff"/>
+      <rect x="255" y="185" width="135" height="120" fill="#facc15"/>
+    </g>
+    <rect x="120" y="185" width="270" height="120" rx="60" ry="60"
+          transform="rotate(-40 255 245)"
+          fill="none" stroke="#1d4ed8" stroke-width="8"/>
+    <g fill="#ffffff" fill-opacity="0.9">
+      <rect x="150" y="345" width="30" height="55" rx="6"/>
+      <rect x="195" y="325" width="30" height="75" rx="6"/>
+      <rect x="240" y="300" width="30" height="100" rx="6"/>
+      <rect x="285" y="280" width="30" height="120" rx="6"/>
+      <rect x="330" y="345" width="30" height="55" rx="6"/>
+    </g>
+  </g>
+</svg>
