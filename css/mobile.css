@@ -48,17 +48,6 @@ tr.cl:active td{background:var(--alt)!important;}
   .bnav-item.active .bicon{transform:translateY(-1px);}
   .bnav-item:active{background:var(--s2);}
 
-  /* Sale Data sub-nav (bnav-sub in nav.css) — narrow strip stacked
-     directly under the two top bars (status-bar, then nav), sticky so
-     it stays put while scrolling instead of floating over content.
-     Stacked-sticky-headers pattern: status-bar sticks at top:0 (32px
-     tall), nav sticks at top:32px (56px + safe-area-inset-top tall),
-     so this strip sticks right after both. Being in normal flow (not
-     fixed) it already reserves its own space — no extra .page padding
-     needed the way the old fixed-bottom version required. Must stay
-     inside this same mobile breakpoint so it never appears on desktop. */
-  .bnav-sub{display:flex;position:sticky;top:calc(32px + 56px + env(safe-area-inset-top));}
-
   .page{padding:16px 14px calc(78px + env(safe-area-inset-bottom));}
   #toast{left:50%;right:auto;bottom:calc(78px + env(safe-area-inset-bottom));transform:translate(-50%,70px);}
   #toast.on{transform:translate(-50%,0);}

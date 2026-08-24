@@ -90,7 +90,19 @@ nav::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;backg
   opacity: 0.85;
 }
 .bnav-sub {
-  display: none; /* mobile-only — turned on inside @media(max-width:860px) in mobile.css, same pattern as .bnav */
+  /* Visibility is controlled by subtab-strip.js toggling the inline
+     style attribute (display:'' to show, 'display:none' to hide) —
+     see index.html's #dynamic-subtab-strip, which starts with
+     style="display:none" until JS has something to put in it. This
+     rule is the "shown" state, so it applies on every screen size,
+     desktop included — no more mobile-only gating. */
+  display: flex;
+  position: sticky;
+  /* Stacks directly under the two bars above it: status-bar (sticky
+     top:0, 32px tall) then nav (sticky top:32px, 56px + safe-area-inset
+     tall) — same formula on desktop and mobile since both bars keep
+     the same height at every width. */
+  top: calc(32px + 56px + env(safe-area-inset-top));
   justify-content: flex-start;
   align-items: center;
   gap: 2px;

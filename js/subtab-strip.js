@@ -1,8 +1,9 @@
 // ══════════════════════════════════════════════════════════════════════
 // SUB-TAB STRIP — persistent, always-visible strip of the current
-// domain's sub-sections, pinned directly above the bottom nav bar
-// (mobile only — desktop reaches the same sub-sections through the
-// Search & All Sections drawer instead).
+// domain's sub-sections, sticky directly under the status bar + main
+// nav, on every screen size (desktop included — previously mobile-only,
+// with desktop relying solely on the Search & All Sections drawer for
+// this; now both are available).
 //
 // Covers Sales, Manager, Inventory, Closing — the 4 domains with more
 // than one sub-section — reusing the exact same domain->kids tree

@@ -367,9 +367,9 @@ if ('serviceWorker' in navigator) {
      all 4 domains that have sub-sections (Sales, Manager, Inventory,
      Closing), populated dynamically by js/subtab-strip.js from the
      exact same tree js/nav-sections.js already builds for the Search &
-     All Sections drawer. Empty/hidden until that script fills it in;
-     .bnav-sub's own CSS (mobile-only, pinned above .bnav) already does
-     everything needed here unchanged. -->
+     All Sections drawer. Empty/hidden until that script fills it in.
+     Sticky under the status bar + nav on every screen size, desktop
+     included (see .bnav-sub in css/nav.css). -->
 <div class="bnav-sub no-print" id="dynamic-subtab-strip" style="display:none" aria-live="polite"></div>
 
 
