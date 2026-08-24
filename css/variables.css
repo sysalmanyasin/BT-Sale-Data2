@@ -1,13 +1,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
 :root{
-  --bg:#eef1f7;--surface:#fff;--s2:#f7f8fb;--s3:#eef0f5;--border:#e5e8f0;--border-strong:#c3cadb;--grid:#c3cadb;
+  --bg:#f8f9fc;--surface:#fff;--s2:#fcfcfd;--s3:#f8f9fb;--border:#e5e8f0;--border-strong:#c3cadb;--grid:#c3cadb;
   --r-xs:6px;--r-sm:9px;--r-md:12px;--r-lg:16px;--r-xl:22px;--r-pill:999px;
   --sh:0 1px 2px rgba(21,29,58,.05),0 1px 1px rgba(21,29,58,.04);
   --sh-md:0 6px 20px -6px rgba(21,29,58,.14);
   --sh-lg:0 20px 48px -12px rgba(21,29,58,.22);
   --focus-ring:0 0 0 3px rgba(58,97,247,.16);
-  --accent:#3a61f7;--accent-dk:#2543c9;--alt:#eef2ff;--purple:#8b5cf6;--purple-lt:#f4f1ff;
-  --mgrblue:#0369a1;--mgrblue-lt:#f0f9ff;
+  --accent:#3a61f7;--accent-dk:#2543c9;--alt:#f8faff;--purple:#8b5cf6;--purple-lt:#fbf9ff;
+  --mgrblue:#0369a1;--mgrblue-lt:#f9fdff;
   /* Contrast pass (Aug 2026): the six semantic hues below were darkened
      just enough to clear WCAG AA (~4.6:1) for text/badge use against
      --bg and --surface, since this is an all-day dashboard and the old
@@ -18,9 +18,9 @@
      brighter shade purely as a decorative fill/icon (not text), the
      previous values were: teal #0d9488, green #0ea968, amber #d97706,
      red #e0392f, pink #db2777. */
-  --teal:#0b7a70;--teal-dk:#0f766e;--tlt:#f0fdfa;
-  --green:#0a7c4d;--glt:#ecfdf5;--amber:#a35a05;--alt2:#fffbeb;
-  --red:#d0291f;--rlt:#fef2f2;--pink:#cc226e;--pink-lt:#fdf2f8;
+  --teal:#0b7a70;--teal-dk:#0f766e;--tlt:#f9fefd;
+  --green:#0a7c4d;--glt:#f7fefb;--amber:#a35a05;--alt2:#fffdf7;
+  --red:#d0291f;--rlt:#fffafa;--pink:#cc226e;--pink-lt:#fefafc;
   --text:#12172b;--t2:#3c4360;--muted:#646b8d;
   --mono:'IBM Plex Mono',monospace;--sans:'Inter',system-ui,sans-serif;
   /* Shared spacing scale — layout/design pass (Aug 2026): gives every
