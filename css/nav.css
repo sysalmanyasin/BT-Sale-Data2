@@ -92,25 +92,26 @@ nav::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;backg
 .bnav-sub {
   display: none; /* mobile-only — turned on inside @media(max-width:860px) in mobile.css, same pattern as .bnav */
   justify-content: flex-start;
+  align-items: center;
   gap: 2px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   background: var(--s1, #fff);
-  border-top: 1px solid var(--border);
-  padding: 6px 8px;
-  left: 0;
-  right: 0;
-  bottom: calc(56px + env(safe-area-inset-bottom));
-  z-index: 390;
+  border-bottom: 1px solid var(--border);
+  padding: 0 8px;
+  height: 34px;
+  box-sizing: border-box;
+  z-index: 190;
 }
 .bnav-sub::-webkit-scrollbar { display: none; }
 .bnav-sub-item {
   border: none;
   background: none;
   font-size: 11px;
+  line-height: 1;
   color: var(--muted);
-  padding: 6px 10px;
+  padding: 5px 10px;
   border-radius: 6px;
   white-space: nowrap;
   flex: 0 0 auto;
