@@ -274,8 +274,30 @@ function buildCreditSection(lat) {
       <span style="font-size:11px;font-family:var(--mono);font-weight:600;color:${amtColor(r.net)}">${fmtAmt(r.net)}</span>
     </div>`).join('') || `<div style="font-size:11px;color:var(--muted);padding:4px 0">No activity yet</div>`;
 
-  const sectionCard = (icon, title, rows, total, navTab, tint) => {
+  // Staff Credit's own row renderer — same shape as detailRows above, but
+  // each name opens that employee's Staff Card (openStaffCard, bridged
+  // onto window by manager-staff.js), exactly like clicking a name in
+  // Staff Registry does. `STAFF` is likewise a window bridge from
+  // config.js — this file is still a classic script, not a module, so
+  // both are read as bare globals, same as every onclick="" string
+  // elsewhere in this function (navigateTo, switchMgrTab, ...).
+  // Staff Credit rows only carry `name` (Analytics.getCreditSectionData),
+  // so we resolve back to a STAFF index by name here — the same key
+  // openStaffCard()'s own renderStaffCreditHistory(emp.name) already
+  // matches credit history against, so this isn't a new assumption.
+  const staffDetailRows = rows => rows.map(r => {
+    const idx = (typeof STAFF !== 'undefined') ? STAFF.findIndex(e => e.name === r.name) : -1;
+    const clickable = idx > -1;
+    return `
+    <div class="mgr-card-row"${clickable ? ` style="cursor:pointer" onclick="openStaffCard(${idx})" title="Open Staff Card"` : ''}>
+      <span style="font-size:11px;color:var(--t2)${clickable ? ';font-weight:600;text-decoration:underline dotted;text-underline-offset:2px' : ''}">${_esc(r.name)}</span>
+      <span style="font-size:11px;font-family:var(--mono);font-weight:600;color:${amtColor(r.net)}">${fmtAmt(r.net)}</span>
+    </div>`;
+  }).join('') || `<div style="font-size:11px;color:var(--muted);padding:4px 0">No activity yet</div>`;
+
+  const sectionCard = (icon, title, rows, total, navTab, tint, rowRenderer) => {
     const t = tint || { accent: 'var(--accent)', bg: 'var(--alt)' };
+    const renderRows = rowRenderer || detailRows;
     return `
     <div class="mgr-card" style="--card-accent:${t.accent};--card-bg:${t.bg}">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -285,7 +307,7 @@ function buildCreditSection(lat) {
         </div>
         <div class="mgr-card-total" style="color:${amtColor(total)}">${fmtAmt(total)}</div>
       </div>
-      <div style="border-top:1px solid var(--border);padding-top:6px">${detailRows(rows)}</div>
+      <div style="border-top:1px solid var(--border);padding-top:6px">${renderRows(rows)}</div>
     </div>`;
   };
 
@@ -368,7 +390,7 @@ function buildCreditSection(lat) {
       </select>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:10px">
-      ${sectionCard('👥', 'Staff Credit — ' + my, d.staffRows, d.staffTotal, null, { accent: 'var(--mgrblue)', bg: 'var(--mgrblue-lt)' })}
+      ${sectionCard('👥', 'Staff Credit — ' + my, d.staffRows, d.staffTotal, null, { accent: 'var(--mgrblue)', bg: 'var(--mgrblue-lt)' }, staffDetailRows)}
       ${sectionCard('💚', 'Jazz Cash (all-time)', d.jazzCashRows, d.jazzCashTotal, 'jazzcash', { accent: 'var(--teal)', bg: 'var(--tlt)' })}
       ${pattyCardHtml}
     </div>
