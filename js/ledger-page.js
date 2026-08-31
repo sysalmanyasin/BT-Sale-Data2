@@ -163,6 +163,15 @@ export function renderLedgerView(containerId, ledgerType, label, editingId) {
 
   const filterActive = !!(state.dateFrom || state.dateTo);
 
+  // Jazz Cash and Expense both already have a "⚡ Quick Add" panel above
+  // them on the Manager Dashboard (quick-add.js) that writes into this
+  // exact same ledger via the exact same LedgerActions.addEntry door —
+  // so this in-sheet add-form would just be a second, redundant way to
+  // do the identical thing for those two. Left in place for every other
+  // ledger view (custom "Other Sections"), since those weren't part of
+  // this request and some may still rely on it as their only add path.
+  const showAddForm = ledgerType !== 'jazzcash' && ledgerType !== 'expense';
+
   container.innerHTML = `
     <div class="ledger-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;flex-wrap:wrap">
       <div><strong>${_esc(label || ledgerType)}</strong></div>
@@ -172,14 +181,14 @@ export function renderLedgerView(containerId, ledgerType, label, editingId) {
         <div style="font-size:18px;font-weight:700">₨${_fmt(balance)}</div>
       </div>
     </div>
-    <form class="ledger-add-form" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+    ${showAddForm ? `<form class="ledger-add-form" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
       <input type="date" class="ledger-date" required>
       ${showShift ? `<select class="ledger-shift">${shiftOptionsFor(null)}</select>` : ''}
       <select class="ledger-category" required>${catOptions(null)}</select>
       <input type="number" class="ledger-amount" placeholder="Amount" min="0" step="0.01" required style="width:110px">
       <input type="text" class="ledger-desc" placeholder="Description">
       <button type="submit" class="btn">+ Add</button>
-    </form>
+    </form>` : ''}
     <div class="ledger-filter-bar" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px;padding:8px 10px;background:var(--s2,#f8fafc);border-radius:8px">
       <label style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px">From
         <input type="date" class="ledger-filter-from" value="${_esc(state.dateFrom)}" style="font-size:12px">
@@ -253,7 +262,7 @@ export function renderLedgerView(containerId, ledgerType, label, editingId) {
   });
 
   const form = container.querySelector('.ledger-add-form');
-  form.addEventListener('submit', (e) => {
+  if (form) form.addEventListener('submit', (e) => {
     e.preventDefault();
     const date = form.querySelector('.ledger-date').value;
     const categoryId = form.querySelector('.ledger-category').value;
