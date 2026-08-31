@@ -5,7 +5,7 @@
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v10.95'; // v10.94: CACHE-BUSTING FIX — every CSS edit from today's branding pass
+const CACHE_NAME = 'bt-sales-v10.96'; // v10.96: DIFF Report — day-wise expandable sub-report per month (js/diff-report.js). Clicking a month row now expands a nested day-by-day table (Date / Total Sale / COMP SALE / Difference / Running Total) beneath it, reusing the existing .mon-group/.mon-chevron expand pattern from the Daily Data page (css/components.css) rather than inventing new styles. Per-day running total resets to 0 at the start of each month's sub-report (the top-level monthly running total is unaffected). Bumped js/diff-report.js's query string to ?v=20260831a (index.html) plus this CACHE_NAME so the service worker's own precache picks up the real content too. v10.95: CACHE-BUSTING FIX — every CSS edit from today's branding pass
 // (nav strip on desktop, dot-grid page texture, real logo in nav, domain hero
 // tinting, hero/login/empty-state watermarks, then the full-color logo swap)
 // touched css/variables.css, auth.css, nav.css, components.css, pages.css,
