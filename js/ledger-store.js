@@ -16,6 +16,7 @@
 
 import { Repository } from './repository.js';
 import { EventBus } from './event-bus.js';
+import * as Tombstones from './sync-tombstones.js';
 
 export const LEDGER_KEY = 'bt_ledger_v1';
 
@@ -187,9 +188,17 @@ export function deleteCustomLedgerType(ledgerType, force) {
       throw new Error('LedgerStore: cannot delete "' + ledgerType + '" — it still has entries. Remove them first.');
     }
     _ensureLoaded();
+    // Tombstone every entry being wiped out along with the section —
+    // otherwise the next sync would resurrect each one individually even
+    // though the section itself is gone (see sync-tombstones.js).
+    existingEntries.forEach(e => Tombstones.markDeleted('led:' + e.id));
     _entries = _entries.filter(e => e.ledgerType !== ledgerType);
     _persist();
   }
+  // Tombstone the section/ledgerType itself so a sync doesn't bring the
+  // whole "Misc Section" back from another device that hasn't seen the
+  // deletion yet (see sync-tombstones.js).
+  Tombstones.markDeleted('sec:' + ledgerType);
   delete _customLedgerTypes[ledgerType];
   delete _openingBalances[ledgerType];
   _persistCustomTypes();
@@ -313,6 +322,12 @@ export function _removeEntry(id) {
   const idx = _entries.findIndex(e => e.id === id);
   if (idx === -1) return null;
   const removed = _entries.splice(idx, 1)[0];
+  // Record the tombstone BEFORE/alongside persisting locally, so it's
+  // guaranteed to exist by the time any push/pull merge runs — without
+  // this, the merge in supabase.js sees "id missing locally" and treats
+  // it as a gap to refill from remote, which is exactly what was bringing
+  // deleted rows back after refresh/sync (see sync-tombstones.js).
+  Tombstones.markDeleted('led:' + id);
   _persist();
   return removed;
 }

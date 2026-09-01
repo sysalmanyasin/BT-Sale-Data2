@@ -32,6 +32,7 @@ import { Repository } from './repository.js';
 import { Actions } from './actions.js';
 import * as LedgerStore from './ledger-store.js';
 import { mgrAutosave } from './manager-shared.js';
+import * as Tombstones from './sync-tombstones.js';
 
 // ─── LEDGER constant — the one-time migration into the unified Ledger
 // has already been run for this app's data. Nothing in this file
@@ -439,6 +440,10 @@ function _tallyRemoveAcc(id) {
   if (!confirm('Remove this account from tally?')) return;
   _jcTallyData=_tallyLoad();
   _jcTallyData.accounts=_jcTallyData.accounts.filter(a=>a.id!==id);
+  // Tombstone it — supabase.js merges jcTally.accounts by id (union), so
+  // without this the account reappears on the next pull/push (same root
+  // cause as ledger rows — see sync-tombstones.js).
+  Tombstones.markDeleted('jca:' + id);
   _tallySave(_jcTallyData); _renderTally(); toast('✓ Account removed');
 }
 
@@ -446,6 +451,9 @@ function _tallyDeleteSnap(date) {
   if (!confirm('Delete snapshot for '+_jcFmtDate(date)+'?')) return;
   _jcTallyData=_tallyLoad();
   _jcTallyData.snapshots=(_jcTallyData.snapshots||[]).filter(s=>s.date!==date);
+  // Tombstone it — snapshots are merged by date the same union-by-key
+  // way accounts are (see sync-tombstones.js).
+  Tombstones.markDeleted('jcs:' + date);
   _tallySave(_jcTallyData); _renderTally(); toast('✓ Snapshot deleted');
 }
 

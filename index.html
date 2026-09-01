@@ -2356,6 +2356,13 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/repository.js"></script>
 <script type="module" src="js/actions.js"></script>
 
+<!-- Sync tombstones — must load before ledger-store.js/jazz-cash.js
+     (which record deletions into it) and before supabase.js (a classic
+     defer script further down, which reads/merges it on every
+     push/pull). Fixes deleted ledger rows/sections/tally entries
+     reappearing after refresh or sync — see js/sync-tombstones.js. -->
+<script type="module" src="js/sync-tombstones.js?v=20260901a"></script>
+
 <!-- Boot guard — classic defer script placed right here on purpose: it
      runs after the module block above (module + defer scripts share one
      document-order execution queue) and before every other classic
@@ -2385,7 +2392,7 @@ if ('serviceWorker' in navigator) {
   integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg"
   crossorigin="anonymous"></script>
 
-<script type="module" src="js/ledger-store.js"></script>
+<script type="module" src="js/ledger-store.js?v=20260901a"></script>
 <script type="module" src="js/ledger-actions.js"></script>
 <script type="module" src="js/ledger-page.js?v=20260831b"></script>
 <script type="module" src="js/cover-dashboard.js?v=20260807a"></script>
@@ -2428,7 +2435,7 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/conflict-ui.js?v=20260731a"></script>
 
 <!-- 6d. Supabase sync (Floor 1 extension — needs Repository + Actions) -->
-<script defer src="js/supabase.js?v=20260806a"></script>
+<script defer src="js/supabase.js?v=20260901a"></script>
 <script defer src="js/pdf-library.js?v=20260725a"></script>
 <script type="module" src="js/activity-log.js?v=20260811a"></script>
 
@@ -2517,7 +2524,7 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/custom-sections.js?v=20260810a"></script>
 
 <!-- 13b. Jazz Cash — Balance Tally (Daily Ledger now runs on the generalized Ledger, see ledger-page.js) -->
-<script type="module" src="js/jazz-cash.js?v=20260806b"></script>
+<script type="module" src="js/jazz-cash.js?v=20260901a"></script>
 
 <script defer src="js/quick-add.js?v=20260722a"></script>
 

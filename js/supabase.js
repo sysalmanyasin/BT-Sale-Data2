@@ -189,6 +189,11 @@ function _buildPayload() {
     // "Other Section") — was missing from sync entirely until now.
     ledger:            JSON.parse(Repository.getItem(LEDGER_KEY)            || 'null'),
     ledgerCustomTypes: JSON.parse(Repository.getItem(LEDGER_CUSTOM_TYPES_KEY) || 'null'),
+    // Deletion tombstones (ledger rows, Misc Section types, Jazz Cash
+    // Balance Tally accounts/snapshots) — must travel with every push so
+    // other devices know not to resurrect what was deleted here. See
+    // sync-tombstones.js and mergeIncomingData's `_isDel` checks above.
+    tombstones: (window.SyncTombstones ? window.SyncTombstones.getAllTombstones() : {}),
     unmatched:         JSON.parse(Repository.getItem('bt_unmatched_v1')      || 'null'),
     notes:    JSON.parse(Repository.getItem('bt_notes_v1') || '[]'),
     // Staff Card Notes tab (V2 plan §4) — same id-merge convention as
@@ -216,6 +221,20 @@ function _buildPayload() {
 // ══════════════════════════════════════════════════════════════════
 function mergeIncomingData(data, isPull = false) {
   let mN = 0, dN = 0, mU = 0, dU = 0;
+
+  // ── Tombstones FIRST, before any entity merge below ──────────────────
+  // Fixes "deleted row comes back after refresh/sync": every id-union
+  // merge below (ledger entries, Misc Section types, jcTally accounts/
+  // snapshots) treats "id missing locally" as a gap to refill from
+  // remote — with no way to tell "was removed" apart from "never
+  // existed here". Tombstones close that gap: merge remote's tombstone
+  // map into the local one right away so every isDeleted() check further
+  // down (on push AND on pull) reflects the union of what either device
+  // knows has been deleted. See sync-tombstones.js for the full story.
+  if (data.tombstones && window.SyncTombstones) {
+    window.SyncTombstones.mergeTombstones(data.tombstones);
+  }
+  const _isDel = (key) => !!(window.SyncTombstones && window.SyncTombstones.isDeleted(key));
 
   // Monthly/Daily merge now goes through Repository — this is the same
   // "local wins on push / remote wins on pull" behavior as before, but
@@ -332,9 +351,10 @@ function mergeIncomingData(data, isPull = false) {
     const local  = JSON.parse(Repository.getItem(JC_KEY) || 'null') || { openingBalance: 0, entries: [] };
     const remote = data.jazzcash;
     const byId = {};
-    (local.entries || []).forEach(e => { byId[e.id] = e; });
+    (local.entries || []).forEach(e => { if (e && e.id && !_isDel('led:' + e.id)) byId[e.id] = e; });
     (remote.entries || []).forEach(e => {
       if (!e || !e.id) return;
+      if (_isDel('led:' + e.id)) return;
       if (isPull) byId[e.id] = e;              // remote wins on pull
       else if (!byId[e.id]) byId[e.id] = e;     // local wins on push — fill gaps only
     });
@@ -350,16 +370,18 @@ function mergeIncomingData(data, isPull = false) {
     const local  = JSON.parse(Repository.getItem(JC_TALLY_KEY) || 'null') || { accounts: [], snapshots: [] };
     const remote = data.jcTally;
     const acctById = {};
-    (local.accounts || []).forEach(a => { acctById[a.id] = a; });
+    (local.accounts || []).forEach(a => { if (a && a.id && !_isDel('jca:' + a.id)) acctById[a.id] = a; });
     (remote.accounts || []).forEach(a => {
       if (!a || !a.id) return;
+      if (_isDel('jca:' + a.id)) return;
       if (isPull) acctById[a.id] = a;              // remote wins on pull
       else if (!acctById[a.id]) acctById[a.id] = a; // local wins on push — fill gaps only
     });
     const snapByDate = {};
-    (local.snapshots || []).forEach(s => { snapByDate[s.date] = s; });
+    (local.snapshots || []).forEach(s => { if (s && s.date && !_isDel('jcs:' + s.date)) snapByDate[s.date] = s; });
     (remote.snapshots || []).forEach(s => {
       if (!s || !s.date) return;
+      if (_isDel('jcs:' + s.date)) return;
       if (isPull) snapByDate[s.date] = s;               // remote wins on pull
       else if (!snapByDate[s.date]) snapByDate[s.date] = s; // local wins on push — fill gaps only
     });
@@ -375,9 +397,12 @@ function mergeIncomingData(data, isPull = false) {
     const local  = JSON.parse(Repository.getItem(LEDGER_KEY) || 'null') || { entries: [], openingBalances: {} };
     const remote = data.ledger;
     const byId = {};
-    (local.entries || []).forEach(e => { byId[e.id] = e; });
+    // Tombstoned ids are dropped from BOTH sides — this is what actually
+    // stops a delete from being resurrected (see sync-tombstones.js).
+    (local.entries || []).forEach(e => { if (e && e.id && !_isDel('led:' + e.id)) byId[e.id] = e; });
     (remote.entries || []).forEach(e => {
       if (!e || !e.id) return;
+      if (_isDel('led:' + e.id)) return;
       if (isPull) byId[e.id] = e;
       else if (!byId[e.id]) byId[e.id] = e;
     });
@@ -412,8 +437,10 @@ function mergeIncomingData(data, isPull = false) {
   if (data.ledgerCustomTypes) {
     const local  = JSON.parse(Repository.getItem(LEDGER_CUSTOM_TYPES_KEY) || 'null') || {};
     const remote = data.ledgerCustomTypes;
-    const merged = Object.assign({}, local);
+    const merged = {};
+    Object.keys(local).forEach(t => { if (!_isDel('sec:' + t)) merged[t] = local[t]; });
     Object.keys(remote).forEach(t => {
+      if (_isDel('sec:' + t)) return;
       if (isPull) merged[t] = remote[t];
       else if (!(t in merged)) merged[t] = remote[t];
     });
