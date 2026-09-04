@@ -166,6 +166,21 @@ export function getFullData() {
   return null;
 }
 
+// (2026-09 egress cleanup) Same 1-row check as inventory-bridge.js —
+// str_headers/str_line_items are written by the same sync-inventory-
+// from-dropbox run, so this signal covers this bridge's full refresh
+// too, including the _fetchProductMeta call inside it.
+async function _fetchLastSyncedAt(client) {
+  const { data, error } = await client
+    .from('inventory_sync_log')
+    .select('synced_at')
+    .order('synced_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? data.synced_at : null;
+}
+
 export async function refreshFullData(force) {
   const cached = _fullData || getFullData();
   if (!force && cached && (Date.now() - cached.fetchedAt) < FULLDATA_MIN_REFRESH_MS) return cached;
@@ -176,6 +191,14 @@ export async function refreshFullData(force) {
       const client = _getReadClient();
       if (!client) { _lastError = 'Supabase client library not loaded yet'; return cached; }
 
+      let latestSyncedAt = null;
+      try { latestSyncedAt = await _fetchLastSyncedAt(client); } catch (e) { /* best-effort */ }
+      if (!force && cached && latestSyncedAt && cached.lastSyncedAt && latestSyncedAt === cached.lastSyncedAt) {
+        cached.fetchedAt = Date.now();
+        _fullData = cached;
+        return cached;
+      }
+
       const [headers, lineItems, productMeta] = await Promise.all([
         _fetchAllRows(client, 'str_headers', _rowToHeader, 'str_date'),
         _fetchAllRows(client, 'str_line_items', _rowToLineItem, 'str_id'),
@@ -184,7 +207,7 @@ export async function refreshFullData(force) {
 
       _lastError = null;
       const { supplierByCode, packFactorByCode } = productMeta;
-      const data = { headers, lineItems, supplierByCode, packFactorByCode, fetchedAt: Date.now() };
+      const data = { headers, lineItems, supplierByCode, packFactorByCode, lastSyncedAt: latestSyncedAt, fetchedAt: Date.now() };
       _fullData = data;
       try { _setLocal(FULLDATA_CACHE_KEY, JSON.stringify(data)); } catch (e) { /* best-effort — fine if too big, in-memory still works this session */ }
       if (typeof window.strNativeOnRefresh === 'function') window.strNativeOnRefresh();

@@ -167,6 +167,25 @@ export function getFullData() {
   return null;
 }
 
+async function _fetchLastSyncedAt(client) {
+  const { data, error } = await client
+    .from('inventory_sync_log')
+    .select('synced_at')
+    .order('synced_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? data.synced_at : null;
+}
+
+// (2026-09 egress cleanup) Previously refetched the full 6-page
+// select('*') product list every time this was called and the 60s
+// throttle had expired — which, via cover-dashboard.js re-rendering on
+// almost every user action, meant hundreds of full-table pulls a day
+// even when the Dropbox sync hadn't moved. Now checks the 1-row
+// inventory_sync_log first and only pays for the real fetch if it
+// actually advanced. Call frequency/cadence is unchanged — this just
+// makes most of those calls nearly free instead of full downloads.
 export async function refreshFullData(force) {
   const cached = _fullData || getFullData();
   if (!force && cached && (Date.now() - cached.fetchedAt) < FULLDATA_MIN_REFRESH_MS) return cached;
@@ -176,6 +195,19 @@ export async function refreshFullData(force) {
     try {
       const client = _getReadClient();
       if (!client) { _lastError = 'Supabase client library not loaded yet'; return cached; }
+
+      let latestSyncedAt = null;
+      try { latestSyncedAt = await _fetchLastSyncedAt(client); } catch (e) { /* best-effort — fall through and refetch if unsure */ }
+
+      const cachedSyncedAt = cached && cached.lastSync ? cached.lastSync.syncedAt : null;
+      if (!force && cached && latestSyncedAt && cachedSyncedAt && latestSyncedAt === cachedSyncedAt) {
+        // Nothing changed server-side — refresh the local "freshness"
+        // clock so we don't re-check on every single render, but skip
+        // the real network cost entirely.
+        cached.fetchedAt = Date.now();
+        _fullData = cached;
+        return cached;
+      }
 
       const products = await _fetchAllProducts(client);
       let lastSync = null;

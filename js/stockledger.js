@@ -1104,9 +1104,41 @@ window.StockLedgerApp = (function(){
       const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // matches Supabase's own ~5 min lag behind Dropbox
       let _lastAutoRefresh = Date.now();
 
-      function _autoRefreshTick(){
+      // (2026-09 egress cleanup) This module keeps its own full-table
+      // fetch (rather than sharing InventoryBridge's cache) because it
+      // supports a user-configurable table name via #sl-sbTable — but
+      // for the default `inventory_products` table, check the 1-row
+      // inventory_sync_log first and skip the real 6-page refetch if
+      // nothing actually changed since the last tick. Still ticks every
+      // 5 min either way, so a genuinely new Dropbox sync is picked up
+      // just as fast as before — most ticks just get much cheaper.
+      let _lastKnownSyncedAt = null;
+      async function _syncedAtChanged(client){
+        try {
+          const { data, error } = await client
+            .from('inventory_sync_log')
+            .select('synced_at')
+            .order('synced_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (error) throw error;
+          const latest = data ? data.synced_at : null;
+          if (latest && latest === _lastKnownSyncedAt) return false; // nothing new
+          _lastKnownSyncedAt = latest;
+          return true;
+        } catch (e) {
+          return true; // unsure — fail open and refetch rather than silently going stale
+        }
+      }
+
+      async function _autoRefreshTick(){
         if(!(sbConfig.autoLoad && sbConfig.client)) return;
         _lastAutoRefresh = Date.now();
+        const table = (($('#sl-sbTable') && $('#sl-sbTable').value) || sbConfig.table || 'inventory_products').trim();
+        if (table === 'inventory_products') {
+          const changed = await _syncedAtChanged(sbConfig.client);
+          if (!changed) return;
+        }
         fetchFromSupabase(true).catch(()=>{ /* silent — same as boot-time auto-load */ });
       }
 

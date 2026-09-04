@@ -69,6 +69,20 @@ function _rowToCredit(row) {
   };
 }
 
+// (2026-09 egress cleanup) Same 1-row check used by inventory-bridge.js
+// — sales_payment_summary/sales_credit_by_customer are written by the
+// same sync-inventory-from-dropbox run, so this signal covers them too.
+async function _fetchLastSyncedAt(client) {
+  const { data, error } = await client
+    .from('inventory_sync_log')
+    .select('synced_at')
+    .order('synced_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? data.synced_at : null;
+}
+
 async function _fetchSummary(client) {
   const { data, error } = await client
     .from('sales_payment_summary')
@@ -110,12 +124,20 @@ export async function refreshFullData(force) {
       const client = _getClient();
       if (!client) return cached;
 
+      let latestSyncedAt = null;
+      try { latestSyncedAt = await _fetchLastSyncedAt(client); } catch (e) { /* best-effort */ }
+      if (!force && cached && latestSyncedAt && cached.lastSyncedAt && latestSyncedAt === cached.lastSyncedAt) {
+        cached.fetchedAt = Date.now();
+        _fullData = cached;
+        return cached;
+      }
+
       const [paymentSummary, creditByCustomer] = await Promise.all([
         _fetchSummary(client),
         _fetchCreditByCustomer(client),
       ]);
 
-      const data = { paymentSummary, creditByCustomer, fetchedAt: Date.now() };
+      const data = { paymentSummary, creditByCustomer, lastSyncedAt: latestSyncedAt, fetchedAt: Date.now() };
       _fullData = data;
       try { _setLocal(SP_FULLDATA_CACHE_KEY, JSON.stringify(data)); } catch (e) { /* best-effort */ }
       if (typeof window.salePaymentsBridgeOnRefresh === 'function') window.salePaymentsBridgeOnRefresh();
