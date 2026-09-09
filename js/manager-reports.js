@@ -12,7 +12,7 @@ import { STAFF } from './config.js';
 import { _ni, _fc2 } from './manager-shared.js';
 import { _crdData, _crdData_cur, _crdNet } from './manager-credit.js';
 import { _genRows_cur, _genFinal, _genIncentive } from './manager-generic.js';
-import { _salRows_cur, _salNet } from './manager-salary.js';
+import { _salRows_cur, _salNet, loadSalaryMonth } from './manager-salary.js';
 
 // MANAGER PRINT FUNCTIONS
 // ══════════════════════════════
@@ -53,7 +53,34 @@ function printManagerDashboard() {
 
 function printSalaryReport() {
   const my = document.getElementById('sal-month-sel').value;
+  // Reload fresh from storage right before building the PDF, rather than
+  // trusting whatever the module-level _salRows_cur already happens to
+  // hold. Printing used to read that snapshot as-is, so a print triggered
+  // before this month had actually finished loading (or before recent
+  // 🖨🚫 "Hidden from print" toggles had made it into that in-memory
+  // array) silently produced a PDF with real names but every HO Salary/
+  // Advance/Generic/Net figure at 0, AND with rows still included that
+  // the on-screen sheet already showed as excluded — exactly the kind of
+  // stale-snapshot report that's easy to hand out without noticing.
+  // loadSalaryMonth() re-derives _salRows_cur from saved data (preserving
+  // any in-progress typed edits the same way it always has — see that
+  // function's own header note) so the printout always matches what's
+  // actually saved/shown for `my`, not a leftover snapshot.
+  loadSalaryMonth(my);
   const rows = _salRows_cur.filter(r => !r.printSkip); // rows toggled 🖨🚫 in the sheet are left out of the printout entirely
+  if (!rows.length) {
+    toast('⚠ Nothing to print for ' + my + ' — every row is Hidden from print.', 'w');
+    return;
+  }
+  // Guard against printing a silently-empty report: if every figure on
+  // every row is exactly 0, this is almost certainly an unsaved/not-yet-
+  // filled-in month rather than a real all-zero payroll — surface that
+  // instead of quietly handing out a report that reads as "everyone was
+  // paid ₨0".
+  const _allZero = rows.every(r => !_ni(r.hoSal) && !_ni(r.advance) && !_ni(r.generic));
+  if (_allZero && !confirm('Every HO Salary / Advance / Generic figure for ' + my + ' is currently 0 — looks like this month hasn\'t been filled in / saved yet.\n\nPrint anyway?')) {
+    return;
+  }
   const today = new Date().toLocaleDateString('en-PK',{day:'2-digit',month:'short',year:'numeric'});
   const norm = s => (s||'').trim().toLowerCase();
   const trows = rows.map((r,i) => {
