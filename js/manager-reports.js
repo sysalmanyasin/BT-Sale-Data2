@@ -10,7 +10,7 @@
 import { Print } from './print.js';
 import { STAFF } from './config.js';
 import { _ni, _fc2 } from './manager-shared.js';
-import { _crdData, _crdData_cur, _crdNet } from './manager-credit.js';
+import { _crdData, _crdData_cur, _crdNet, loadCreditMonth } from './manager-credit.js';
 import { _genRows_cur, _genFinal, _genIncentive } from './manager-generic.js';
 import { _salRows_cur, _salNet, loadSalaryMonth } from './manager-salary.js';
 
@@ -173,9 +173,29 @@ function printGenericReport() {
 function printCreditReport(myArg) {
   const sel = document.getElementById('crd-month-sel');
   const my = myArg || (sel ? sel.value : '') || (typeof BTDate !== 'undefined' ? BTDate.currentMonthYear() : '');
-  // Use the on-screen working copy only if it matches the requested month; otherwise load fresh from storage (headless-safe).
-  const allEmps = (sel && sel.value === my && _crdData_cur) ? _crdData_cur : _crdData(my);
+  // When the Credit Ledger sheet is actually on screen for this month,
+  // reload it fresh from storage right before printing — same fix as
+  // printSalaryReport() above, and same root cause: this used to trust
+  // whatever _crdData_cur already held in memory (only falling back to a
+  // fresh reload when the array reference was falsy, which an empty-but-
+  // still-truthy `[]` never is), so a print triggered against a stale or
+  // not-yet-populated snapshot could silently come back with zero
+  // employee blocks — a PDF with just the header and nothing else.
+  // loadCreditMonth() re-derives _crdData_cur from saved data (preserving
+  // in-progress typed edits, same as it already does elsewhere) so the
+  // printout always matches what's actually saved/shown for `my`.
+  // Skipped entirely when there's no sheet on screen at all (headless
+  // callers, e.g. a future CommandHub quick-print action) since
+  // loadCreditMonth() has DOM/state side effects that would be wrong to
+  // trigger against a page that was never opened — falls back to the
+  // pure, side-effect-free _crdData(my) reload in that case instead.
+  if (sel && sel.value === my) loadCreditMonth(my);
+  const allEmps = (sel && sel.value === my) ? _crdData_cur : _crdData(my);
   const emps = allEmps.filter(e => !e.printSkip); // rows toggled 🖨🚫 in the sheet are left out of the printout entirely
+  if (!emps.length) {
+    toast('⚠ Nothing to print for ' + my + (allEmps.length ? ' — every row is Hidden from print.' : ' — no staff found.'), 'w');
+    return;
+  }
   const today = new Date().toLocaleDateString('en-PK',{day:'2-digit',month:'short',year:'numeric'});
   const empBlocks = emps.map(emp => {
     const net = _crdNet(emp);
@@ -210,8 +230,14 @@ function printCreditReport(myArg) {
 function printCreditSummaryReport(myArg) {
   const sel = document.getElementById('crd-month-sel');
   const my = myArg || (sel ? sel.value : '') || (typeof BTDate !== 'undefined' ? BTDate.currentMonthYear() : '');
-  const allEmps = (sel && sel.value === my && _crdData_cur) ? _crdData_cur : _crdData(my);
+  // See the identical fix + comment in printCreditReport() just above.
+  if (sel && sel.value === my) loadCreditMonth(my);
+  const allEmps = (sel && sel.value === my) ? _crdData_cur : _crdData(my);
   const emps = allEmps.filter(e => !e.printSkip); // rows toggled 🖨🚫 in the sheet are left out of the printout entirely
+  if (!emps.length) {
+    toast('⚠ Nothing to print for ' + my + (allEmps.length ? ' — every row is Hidden from print.' : ' — no staff found.'), 'w');
+    return;
+  }
   const today = new Date().toLocaleDateString('en-PK',{day:'2-digit',month:'short',year:'numeric'});
   const rows = emps.map(emp => {
     const net = _crdNet(emp);
