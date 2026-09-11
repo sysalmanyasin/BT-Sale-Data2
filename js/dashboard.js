@@ -229,6 +229,7 @@ function buildDashboard() {
   buildTop10Days();
   buildDayOfWeek();
   buildBestWorstPerYear();
+  if (typeof buildSalesHeatmap === 'function') buildSalesHeatmap();
 
   // Manager month: use user override if set, otherwise Staff Credit's
   // own default (see _dashDefaultCreditMonth() — latest month with real
