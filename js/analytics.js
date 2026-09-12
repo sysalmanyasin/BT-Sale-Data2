@@ -420,6 +420,9 @@ const Analytics = (function () {
     getTargetPaceForMonth,
     computeInsightCandidates,
     getSalesDiffSinceLastLook,
+    // BT Game Play (js/dashboard-race.js)
+    getSameMonthAcrossYears,
+    getRecentWeekdayAverages,
   };
 
   // ── Index page view-model ──────────────────────────────────────────
@@ -608,6 +611,49 @@ const Analytics = (function () {
     }
     const diff = lastTotal - prevSnapshot.totalSales;
     return { diff, lastTotal, lastMonths };
+  }
+
+  // ── BT Game Play: same month across last N years ─────────────────────
+  // Pure aggregation for the "August across the last 5 years" bar-race
+  // widget (js/dashboard-race.js). Returns oldest→newest so a bar race
+  // can play back in chronological order.
+  function getSameMonthAcrossYears(monthName, count) {
+    const rows = MONTHLY
+      .filter(m => (m.Month_Year || '').split(' ')[0] === monthName)
+      .map(m => ({
+        year: parseInt((m.Month_Year || '').split(' ')[1], 10),
+        monthYear: m.Month_Year,
+        total: n(m.TOTAL),
+      }))
+      .filter(r => !isNaN(r.year))
+      .sort((a, b) => a.year - b.year);
+    return rows.slice(-Math.max(1, count || 5));
+  }
+
+  // ── BT Game Play: last-N-occurrences weekday averages ─────────────────
+  // Generalizes computeInsightCandidates()'s single-weekday check (today's
+  // weekday only, vs its own last-4 average) to all 7 days at once, for
+  // the weekday bar-race widget (js/dashboard-race.js). Index 0=Sun same
+  // as Date.getDay(); dashboard-race.js reorders Mon..Sun for display,
+  // same convention dashboard.js's buildDayOfWeek() already uses.
+  function getRecentWeekdayAverages(count) {
+    const months = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+    const sortedD = DAILY.filter(d => n(d.TOTAL) > 0 && d.Date).slice().sort((a, b) => {
+      const pa = a.Date || '', pb = b.Date || '';
+      return pa < pb ? -1 : pa > pb ? 1 : 0;
+    });
+    const byDow = Array.from({ length: 7 }, () => []);
+    sortedD.forEach(d => {
+      const parts = (d.Date || '').split('/');
+      if (parts.length < 3) return;
+      const dt = new Date(parseInt(parts[2], 10), months[parts[1]] || 0, parseInt(parts[0], 10));
+      byDow[dt.getDay()].push(n(d.TOTAL));
+    });
+    return byDow.map(vals => {
+      const last = vals.slice(-Math.max(1, count || 8));
+      const avg = last.length ? last.reduce((s, v) => s + v, 0) / last.length : 0;
+      return { avg: Math.round(avg), count: last.length };
+    });
   }
 
 })();
