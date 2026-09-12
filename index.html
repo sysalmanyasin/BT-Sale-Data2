@@ -2542,14 +2542,6 @@ if ('serviceWorker' in navigator) {
 <!-- 15. Google Drive backup / restore -->
 <script defer src="js/drive.js?v=20260722a"></script>
 
-<!-- 16. Cover hero "Ledger Core" 3D scene — lazy-loads three.js from CDN,
-     mounts into .cover-page-hero-mark. Purely decorative/optional: see
-     js/cover-hero-3d.js's header comment for the full fallback chain
-     (no WebGL, reduced-motion, narrow viewport, or CDN-blocked all just
-     leave the existing flat watermark in place). Independent of every
-     other module above — safe to remove this one line to disable it. -->
-<script type="module" src="js/cover-hero-3d.js?v=20260913a"></script>
-
 <!-- Staff Card Popup Modal -->
 <div class="sc-bg" id="sc-bg" onclick="if(event.target===this)closeStaffCard()">
   <div class="sc-box">
