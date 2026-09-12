@@ -35,6 +35,17 @@
   opacity:.38;
   pointer-events:none;z-index:0;
 }
+/* "Ledger Core" 3D scene (js/cover-hero-3d.js) — a rotating glass core
+   orbited by domain-colored tiles, mounted into this same watermark slot
+   when WebGL + motion are both available. Swaps the flat icon.svg for a
+   live canvas; falls back to the plain watermark above otherwise, so
+   these two rules only ever matter together with that script. */
+.cover-page-hero-mark.cover-hero-3d-active{
+  background-image:none;opacity:1;overflow:visible;z-index:1;
+}
+.cover-hero-3d-canvas{
+  display:block;width:100%;height:100%;touch-action:pan-y;
+}
 /* Colorful strip echoing each domain's accent — a small signature
    touch that ties the hero banner to the six peer dashboards below. */
 .cover-page-hero-domainstrip{
