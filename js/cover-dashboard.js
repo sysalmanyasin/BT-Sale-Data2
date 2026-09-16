@@ -140,86 +140,17 @@ function _trendBadge(values) {
   return `<span class="cover-hero-trend ${up ? 'up' : 'down'}">${up ? '▲' : '▼'} ${Math.abs(pct)}%</span>`;
 }
 
-// Aggregates only genuinely actionable items across modules — the whole
-// point is that this stays short; a quiet day should show almost nothing.
-function _needsAttention() {
-  const items = [];
-  try {
-    const pace = _targetPace();
-    if (/behind pace/.test(pace.sub || '')) {
-      items.push({ icon: '📉', text: 'Behind sales target this month', cls: 'amber', page: 'dashboard' });
-    }
-  } catch (e) {}
-  try {
-    const credits = _totalOutstandingCredits();
-    const v = parseFloat(String(credits.value || '').replace(/[^0-9.-]/g, ''));
-    if (v > 0) items.push({ icon: '💳', text: 'Rs. ' + fc(v) + ' outstanding credit', cls: 'amber', page: 'manager' });
-  } catch (e) {}
-  try {
-    const inv = _inventoryHeroStats();
-    if (inv.slStats && inv.slStats.dataReady && n(inv.slStats.negativeValue) > 0) {
-      items.push({ icon: '⚠️', text: 'Negative-value stock in Inventory', cls: 'red', page: 'inventory' });
-    }
-    if (inv.rrSummary && n(inv.rrSummary.totalReorderValue) > 0) {
-      items.push({ icon: '🛒', text: inv.rrSummary.itemsShown + ' items need reorder', cls: 'amber', page: 'reorder' });
-    }
-  } catch (e) {}
-
-  // Rule-Based Intelligence Plan §3.4: "Alert banner area fed by the
-  // shared rule engine, one line per fired rule, click-through to the
-  // relevant table." Appended after the checks above rather than
-  // replacing them — those pre-date the rule engine (which didn't
-  // exist as a working function until this pass; see rules-engine.js's
-  // header) and cover slightly different ground (e.g. negative-value
-  // stock isn't one of the registered rules). Both sets can coexist;
-  // consolidating the older ones into registered rules is a clean
-  // follow-up, not required for this banner to do its job today.
-  try {
-    if (typeof window.aimRulesCheckAll === 'function') {
-      const fired = window.aimRulesCheckAll();
-      const PAGE_BY_RULE = {
-        'inventory.lowCoverValue': 'reorder',
-        'inventory.excessItem': 'inventory',
-        'inventory.deadStockAggregate': 'inventory',
-        'manager.advanceExceedsSalary': 'manager',
-        'manager.salarySwing': 'manager',
-        'sales.diffTolerance': 'dashboard',
-        'sales.paceAtRisk': 'dashboard',
-      };
-      const ICON_BY_SEVERITY = { red: '🔴', amber: '🟠', info: 'ℹ️' };
-      fired.forEach(a => {
-        const page = PAGE_BY_RULE[a.domain + '.' + a.id] || 'dashboard';
-        // Strip the rule's own leading emoji (already has one per
-        // rules-registrations.js) — the chip supplies its own severity
-        // icon instead, keeping this strip visually consistent with
-        // the hand-rolled chips above it.
-        const text = String(a.msg || '').replace(/^\S+\s*/, '').replace(/<\/?b>/g, '');
-        items.push({ icon: ICON_BY_SEVERITY[a.severity] || '🟠', text, cls: a.severity === 'red' ? 'red' : 'amber', page });
-      });
-    }
-  } catch (e) { /* one broken domain's alerts must not blank the whole strip */ }
-
-  return items;
-}
-
-function _renderAttentionStrip() {
-  const el = document.getElementById('cover-attention-strip');
-  if (!el) return;
-  const items = _needsAttention();
-  if (!items.length) {
-    el.innerHTML = '<div class="cover-attn-empty">✅ All clear — nothing needs attention right now.</div>';
-    return;
-  }
-  el.innerHTML = `<div class="cover-attn-row">
-    ${items.map((it, i) => `<div class="cover-attn-chip cls-${it.cls}" data-attn-idx="${i}">${it.icon} ${_esc(it.text)}</div>`).join('')}
-  </div>`;
-  el.querySelectorAll('[data-attn-idx]').forEach(chip => {
-    chip.addEventListener('click', () => {
-      const it = items[+chip.dataset.attnIdx];
-      if (it && typeof window.showPage === 'function') window.showPage(it.page);
-    });
-  });
-}
+// _needsAttention()/_renderAttentionStrip() used to live here (target
+// pace + outstanding credit + inventory hero flags + aimRulesCheckAll()
+// rendered as a chip row into #cover-attention-strip). Replaced by IC
+// Herald (js/herald/herald-engine.js + herald-page.js), which covers all
+// of that plus Sales/Closing/Audit desks, streaks/records, and a
+// scoring + anti-repeat engine so the lead story rotates instead of
+// showing the same chip every day. Mount point is now #cover-herald —
+// see the guarded window.renderICHerald() call in renderCoverDashboard()
+// below. _targetPace()/_totalOutstandingCredits()/_inventoryHeroStats()
+// are untouched; Herald re-derives its own numbers from the same bridges
+// rather than reaching into this file's private helpers.
 
 function _renderPinsRow(tiles) {
   const el = document.getElementById('cover-pins-row');
@@ -1752,7 +1683,14 @@ export function renderCoverDashboard() {
 
   container.innerHTML = groupsHtml;
   _renderKpiRow();
-  _renderAttentionStrip();
+  // IC Herald (js/herald/) replaces the old narrow attention-strip chip
+  // row — same #cover-herald mount point index.html now provides, but
+  // covering every desk (Sales/Manager/Closing/Inventory/Audit) instead
+  // of just the rule-engine + hand-rolled inventory/credit/pace checks
+  // _needsAttention() used to combine. Guarded the same way every other
+  // cross-module Cover call already is (renderCoverDashboard itself,
+  // closingBridgeRefresh, etc.) since herald-page.js loads after this file.
+  if (typeof window.renderICHerald === 'function') window.renderICHerald();
   _renderPinsRow(tiles);
   _updateHeroDate();
   if (invSl && invSl.dataReady) { _renderInventoryChart(invSl, invEw); }

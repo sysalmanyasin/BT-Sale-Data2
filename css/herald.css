@@ -1,0 +1,84 @@
+/* ══════════════════════════════════════════════════════════════════
+   IC HERALD  —  css/herald.css
+   Collapsible daily "newspaper" on Cover (#cover-herald), replacing
+   the old #cover-attention-strip chip row. Desk accent colors mirror
+   .cover-group[data-group] exactly (css/cover-dashboard.css) so this
+   reads as the same visual language as the rest of Cover.
+   ══════════════════════════════════════════════════════════════════ */
+
+#cover-herald { margin: 0 0 var(--sp-4); }
+
+.herald-masthead,
+.herald-front-page {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh);
+  overflow: hidden;
+}
+
+/* ── collapsed masthead ── */
+.herald-masthead { cursor: pointer; padding: 14px 16px; transition: box-shadow .15s; }
+.herald-masthead:hover, .herald-masthead:focus-visible { box-shadow: var(--sh-md); outline: none; }
+
+.herald-top-row {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 10px; padding-bottom: 8px; margin-bottom: 8px;
+  border-bottom: 2px solid var(--text);
+}
+.herald-brand {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 15px; font-weight: 700; letter-spacing: .01em; color: var(--text);
+}
+.herald-date { font-size: 11px; color: var(--muted); white-space: nowrap; }
+
+.herald-teaser { font-size: 13.5px; font-weight: 600; color: var(--text); line-height: 1.4; }
+.herald-more { margin-top: 6px; font-size: 11.5px; color: var(--accent); font-weight: 600; }
+
+/* ── expanded front page ── */
+.herald-front-page { padding: 14px 16px 16px; }
+.herald-front-page .herald-top-row { cursor: pointer; }
+
+.herald-lead {
+  font-size: 16px; font-weight: 700; color: var(--text); line-height: 1.35;
+  padding: 4px 0 14px; cursor: pointer; border-bottom: 1px dashed var(--border-strong);
+  margin-bottom: 10px;
+}
+.herald-lead-detail { margin-top: 5px; font-size: 11.5px; font-weight: 400; color: var(--muted); }
+
+.herald-desk { margin-top: 14px; }
+.herald-desk-header {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em;
+  color: var(--g-desk-accent, var(--accent)); padding-bottom: 5px; margin-bottom: 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--g-desk-accent, var(--accent)) 30%, var(--border));
+}
+.herald-desk:nth-of-type(1) { --g-desk-accent: var(--accent); }      /* Sales */
+.herald-desk:nth-of-type(2) { --g-desk-accent: var(--mgrblue); }     /* Manager */
+.herald-desk:nth-of-type(3) { --g-desk-accent: var(--amber); }       /* Closing */
+.herald-desk:nth-of-type(4) { --g-desk-accent: var(--pink); }        /* Inventory */
+.herald-desk:nth-of-type(5) { --g-desk-accent: var(--red); }         /* Audit */
+.herald-desk:nth-of-type(6) { --g-desk-accent: var(--purple); }      /* Cross-desk */
+.herald-desk:nth-of-type(7) { --g-desk-accent: var(--green); }       /* Milestone */
+
+.herald-item {
+  padding: 8px 10px; margin-bottom: 6px; border-radius: var(--r-sm);
+  background: var(--s2); cursor: pointer; transition: background .12s;
+}
+.herald-item:hover, .herald-item:focus-visible { background: var(--s3); outline: none; }
+.herald-item-headline { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.4; }
+.herald-item-detail { margin-top: 3px; font-size: 11px; color: var(--muted); }
+
+.herald-empty { font-size: 12.5px; color: var(--muted); padding: 10px 2px; }
+
+.herald-actions { display: flex; gap: 8px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); }
+.herald-btn {
+  flex: 1; font-size: 12px; font-weight: 600; padding: 9px 10px; border-radius: var(--r-sm);
+  border: 1px solid var(--border-strong); background: var(--s2); color: var(--text);
+  cursor: pointer; transition: background .12s, border-color .12s;
+}
+.herald-btn:hover { background: var(--s3); border-color: var(--accent); }
+
+@media (max-width: 480px) {
+  .herald-brand { font-size: 13.5px; }
+  .herald-lead { font-size: 15px; }
+}
