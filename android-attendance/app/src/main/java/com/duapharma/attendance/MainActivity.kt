@@ -9,7 +9,9 @@ import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
+import android.text.InputType
 import android.view.Gravity
+import android.view.View
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
@@ -152,15 +154,30 @@ class MainActivity : AppCompatActivity() {
         val managerCheckbox = CheckBox(this).apply {
             text = "This is the manager's phone — notify me of every check-in"
         }
+        // Only shown once the checkbox above is ticked — see
+        // setOnCheckedChangeListener below. Ticking the checkbox alone
+        // used to be enough to start receiving every staff member's
+        // check-in notifications; this PIN is verified server-side
+        // (AttendanceApi.verifyManagerPin) before setup can complete,
+        // so a staff member can no longer just tick the box themselves.
+        val pinInput = EditText(this).apply {
+            hint = "Manager PIN"
+            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
+            visibility = View.GONE
+        }
+        managerCheckbox.setOnCheckedChangeListener { _, checked ->
+            pinInput.visibility = if (checked) View.VISIBLE else View.GONE
+        }
         container.addView(idInput)
         container.addView(nameInput)
         container.addView(managerCheckbox)
+        container.addView(pinInput)
 
         AlertDialog.Builder(this)
             .setTitle("Set up this phone")
             .setMessage("Enter the staff number and name your manager gave you, " +
-                "or tick the box below if this is the manager's own phone. " +
-                "This only needs to be done once per phone.")
+                "or tick the box below if this is the manager's own phone (you'll " +
+                "need the manager PIN). This only needs to be done once per phone.")
             .setView(container)
             .setCancelable(false)
             .setPositiveButton("Save") { _, _ ->
@@ -179,22 +196,47 @@ class MainActivity : AppCompatActivity() {
                 // reconciles by staff_number on the Manager > Attendance
                 // page. If you'd rather key strictly by the internal id,
                 // hand staff their emp_... id instead of the EMP-### one.
-                Prefs.saveStaff(this, staffId = staffNumber, staffNumber = staffNumber, staffName = staffName)
-                Prefs.setManagerMode(this, isManager)
                 if (isManager) {
-                    // Cursor starts at "now" so the first poll doesn't fire
-                    // a notification for every check-in that already
-                    // happened before this phone was set up.
-                    Prefs.setLastNotifiedIso(this, java.time.Instant.now().toString())
+                    val pin = pinInput.text.toString().trim()
+                    if (pin.isEmpty()) {
+                        Toast.makeText(this, "Enter the manager PIN", Toast.LENGTH_SHORT).show()
+                        showStaffSetupDialog()
+                        return@setPositiveButton
+                    }
+                    Toast.makeText(this, "Verifying manager PIN…", Toast.LENGTH_SHORT).show()
+                    Thread {
+                        val correct = AttendanceApi.verifyManagerPin(pin)
+                        runOnUiThread {
+                            if (correct) {
+                                finalizeStaffSetup(staffNumber, staffName, isManager = true)
+                            } else {
+                                Toast.makeText(this, "✗ Wrong manager PIN — ask whoever manages the pharmacy account", Toast.LENGTH_LONG).show()
+                                showStaffSetupDialog()
+                            }
+                        }
+                    }.start()
+                } else {
+                    finalizeStaffSetup(staffNumber, staffName, isManager = false)
                 }
-                // Non-manager device registration (staff_id/number/name)
-                // now happens inside GeofenceHelper.registerFromServer,
-                // reached moments later via beginPermissionFlowIfNeeded()
-                // -> finishOnboarding() — see that file's header comment.
-                renderStatusScreen()
-                beginPermissionFlowIfNeeded()
             }
             .show()
+    }
+
+    private fun finalizeStaffSetup(staffNumber: String, staffName: String, isManager: Boolean) {
+        Prefs.saveStaff(this, staffId = staffNumber, staffNumber = staffNumber, staffName = staffName)
+        Prefs.setManagerMode(this, isManager)
+        if (isManager) {
+            // Cursor starts at "now" so the first poll doesn't fire
+            // a notification for every check-in that already
+            // happened before this phone was set up.
+            Prefs.setLastNotifiedIso(this, java.time.Instant.now().toString())
+        }
+        // Non-manager device registration (staff_id/number/name) now
+        // happens inside GeofenceHelper.registerFromServer, reached
+        // moments later via beginPermissionFlowIfNeeded() ->
+        // finishOnboarding() — see that file's header comment.
+        renderStatusScreen()
+        beginPermissionFlowIfNeeded()
     }
 
     // ── Steps 1–5: ordered permission flow ──────────────────────────

@@ -204,6 +204,32 @@ object AttendanceApi {
             connection.disconnect()
         }
     }
+
+    /** Server-side manager PIN check via a SECURITY DEFINER Postgres
+     *  function (see migration 20260918120500_attendance_manager_pin.sql)
+     *  — the hash itself is never selectable through this REST API, so
+     *  this can't be brute-forced offline by reading the table
+     *  directly the way every other anon-open table in this schema
+     *  can be. Fails closed (false) on any error — a network hiccup
+     *  should never accidentally grant manager access. */
+    fun verifyManagerPin(pin: String): Boolean {
+        val connection = openConnection(restUrl("rpc/attendance_verify_manager_pin"), "POST")
+        return try {
+            connection.doOutput = true
+            val body = JSONObject().apply { put("candidate", pin) }
+            connection.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+            if (connection.responseCode !in 200..299) {
+                Log.w(TAG, "verifyManagerPin failed: HTTP ${connection.responseCode}")
+                return false
+            }
+            connection.inputStream.bufferedReader().use { it.readText() }.trim() == "true"
+        } catch (e: Exception) {
+            Log.e(TAG, "verifyManagerPin error", e)
+            false
+        } finally {
+            connection.disconnect()
+        }
+    }
 }
 
 data class AttendanceLocation(
