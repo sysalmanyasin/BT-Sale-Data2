@@ -30,11 +30,18 @@ const ATT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJz
 // Deliberately a separate, non-persisted client — same reasoning
 // inventory-bridge.js documents at length: mixing this read/write
 // traffic into auth.js's signed-in Google session client is where that
-// file hit a real, reproducible RLS-resolves-to-zero-rows bug. Manager
-// reads here are gated by the 'manager' JWT role claim instead (see the
-// migration's RLS policies) — how that claim gets onto this session is
-// an auth.js-side decision (a Supabase custom claim mapped from the
-// signed-in Google account), out of scope for this file.
+// file hit a real, reproducible RLS-resolves-to-zero-rows bug.
+//
+// Access control here is anon-role RLS (USING(true)) — the same
+// pattern the rest of this app uses (bt_sessions etc, per the
+// 2026-08-05 security-audit migration), NOT a JWT role/staff_id claim
+// — this app has no real Supabase Auth session anywhere, confirmed via
+// this file's sibling js/supabase.js never calling signIn*/setSession.
+// "Manager can see everything, staff app can't see others" is enforced
+// client-side only (this file's callers, and the staff app only ever
+// querying its own staff_id) — see supabase/migrations/
+// *_attendance_rls_fix.sql for the full story and its accepted
+// tradeoff for a single-user app like this one.
 let _client = null;
 function _getClient() {
   if (_client) return _client;

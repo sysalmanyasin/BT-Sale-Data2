@@ -76,74 +76,38 @@ create index if not exists idx_attendance_events_time on attendance_events (occu
 -- ══════════════════════════════════════════════════════════════════════
 -- ROW LEVEL SECURITY
 --
--- Two very different clients read/write this data:
---   1. The staff Android app — signed in as one specific staff member,
---      should be able to INSERT its own events and read only its OWN
---      history. Never another staff member's.
---   2. The main PWA (Manager > Attendance) — signed in with your own
---      Google account via auth.js, should be able to read everything
---      and insert/edit 'manual' events.
+-- IMPORTANT — corrected 2026-09-18, see the follow-up migration file
+-- *_attendance_rls_fix.sql in this same directory for the full story.
+-- The original version of this section keyed policies off
+-- auth.jwt() ->> 'role'/'staff_id' claims, assuming the staff app and
+-- the main PWA each held a real Supabase Auth session. Neither does:
+-- confirmed via js/supabase.js (never calls signIn*/setSession) that
+-- this app runs entirely on the anon publishable key everywhere,
+-- including bt_sessions per the 2026-08-05 security-audit migration —
+-- access control here is enforced client-side (auth.js's Google-email
+-- allow-list), not at the database layer. Claim-based policies would
+-- have silently blocked every read/write, manager included.
 --
--- This assumes the staff app authenticates via Supabase Auth (phone-
--- number OTP is the simplest built-in option, or a custom PIN scheme
--- validated by an Edge Function that mints a Supabase session — see
--- integration notes for the tradeoff). The policies below key off
--- auth.jwt() claims; adjust the claim name to whatever your chosen
--- auth method actually sets.
+-- What's actually applied (matching the rest of this app's pattern):
+-- anon-role, USING(true) policies — see the follow-up file. Left the
+-- broken version below commented out, not deleted, so the story of
+-- what was tried and why it didn't work stays in the migration
+-- history rather than disappearing.
 -- ══════════════════════════════════════════════════════════════════════
 
 alter table attendance_locations enable row level security;
 alter table attendance_devices   enable row level security;
 alter table attendance_events    enable row level security;
 
--- Locations: every authenticated client (staff app + main app) can read
--- the geofence definitions; only the main app (manager) can write.
-create policy "locations_read_all_authenticated"
-  on attendance_locations for select
-  using (auth.role() = 'authenticated');
-
-create policy "locations_write_manager_only"
-  on attendance_locations for all
-  using (auth.jwt() ->> 'role' = 'manager')
-  with check (auth.jwt() ->> 'role' = 'manager');
-
--- Devices: a staff app can read/update only its own device row
--- (matched by staff_id claim on the JWT); manager can read/write all.
-create policy "devices_self_read"
-  on attendance_devices for select
-  using (
-    auth.jwt() ->> 'role' = 'manager'
-    or staff_id = auth.jwt() ->> 'staff_id'
-  );
-
-create policy "devices_self_upsert"
-  on attendance_devices for insert
-  with check (staff_id = auth.jwt() ->> 'staff_id' or auth.jwt() ->> 'role' = 'manager');
-
-create policy "devices_self_update"
-  on attendance_devices for update
-  using (staff_id = auth.jwt() ->> 'staff_id' or auth.jwt() ->> 'role' = 'manager');
-
--- Events: this is the important one.
---   - Staff app: INSERT only, only its own staff_id, never SELECT
---     (so one employee's app has no way to read another's punch
---     history, per your "no visibility into coworkers" pattern).
---   - Manager (main app): full read, plus insert/update for manual
---     corrections.
-create policy "events_manager_read_all"
-  on attendance_events for select
-  using (auth.jwt() ->> 'role' = 'manager');
-
-create policy "events_self_insert"
-  on attendance_events for insert
-  with check (
-    staff_id = auth.jwt() ->> 'staff_id'
-    or auth.jwt() ->> 'role' = 'manager'
-  );
-
-create policy "events_manager_update"
-  on attendance_events for update
-  using (auth.jwt() ->> 'role' = 'manager');
+-- (superseded — kept for history, see follow-up migration)
+-- create policy "locations_read_all_authenticated" on attendance_locations for select using (auth.role() = 'authenticated');
+-- create policy "locations_write_manager_only" on attendance_locations for all using (auth.jwt() ->> 'role' = 'manager') with check (auth.jwt() ->> 'role' = 'manager');
+-- create policy "devices_self_read" on attendance_devices for select using (auth.jwt() ->> 'role' = 'manager' or staff_id = auth.jwt() ->> 'staff_id');
+-- create policy "devices_self_upsert" on attendance_devices for insert with check (staff_id = auth.jwt() ->> 'staff_id' or auth.jwt() ->> 'role' = 'manager');
+-- create policy "devices_self_update" on attendance_devices for update using (staff_id = auth.jwt() ->> 'staff_id' or auth.jwt() ->> 'role' = 'manager');
+-- create policy "events_manager_read_all" on attendance_events for select using (auth.jwt() ->> 'role' = 'manager');
+-- create policy "events_self_insert" on attendance_events for insert with check (staff_id = auth.jwt() ->> 'staff_id' or auth.jwt() ->> 'role' = 'manager');
+-- create policy "events_manager_update" on attendance_events for update using (auth.jwt() ->> 'role' = 'manager');
 
 -- ══════════════════════════════════════════════════════════════════════
 -- Seed your one pharmacy location — replace lat/lng/radius with the

@@ -1,0 +1,142 @@
+package com.duapharma.attendance
+
+import android.util.Log
+import org.json.JSONArray
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+
+/**
+ * Talks straight to Supabase's PostgREST endpoint with the anon key —
+ * same raw HttpURLConnection + JSONObject style as android-widget's
+ * WidgetAuthManager.kt, no OkHttp/Retrofit/Supabase-Kotlin dependency.
+ *
+ * No sign-in step, unlike WidgetAuthManager: attendance_events/
+ * attendance_devices/attendance_locations run on anon-role RLS with
+ * USING(true) — see supabase/migrations/*_attendance_rls_fix.sql in
+ * the main repo for why (this app has no real backend-enforced
+ * per-device identity; "this device only writes its own staff_id" is
+ * enforced by this file always sending the locally-configured
+ * staff_id, not by anything the server checks).
+ *
+ * All functions here do blocking network I/O — always call from a
+ * background thread (GeofenceBroadcastReceiver's goAsync()+thread,
+ * or MainActivity's own background thread helper), never the main
+ * thread.
+ */
+object AttendanceApi {
+    private const val TAG = "AttendanceApi"
+
+    private fun restUrl(path: String) = "${BuildConfig.SUPABASE_URL}/rest/v1/$path"
+
+    private fun openConnection(urlStr: String, method: String): HttpURLConnection {
+        val connection = URL(urlStr).openConnection() as HttpURLConnection
+        connection.requestMethod = method
+        connection.setRequestProperty("apikey", BuildConfig.SUPABASE_ANON_KEY)
+        connection.setRequestProperty("Authorization", "Bearer ${BuildConfig.SUPABASE_ANON_KEY}")
+        connection.setRequestProperty("Content-Type", "application/json")
+        connection.connectTimeout = 10_000
+        connection.readTimeout = 10_000
+        return connection
+    }
+
+    /** Insert one attendance_events row. Returns true on success. */
+    fun postEvent(
+        staffId: String,
+        staffNumber: String?,
+        eventType: String, // "check_in" | "check_out"
+        source: String,    // "geofence" | "qr" | "manual"
+        lat: Double? = null,
+        lng: Double? = null,
+        accuracyMeters: Double? = null,
+        isMockLocation: Boolean = false,
+    ): Boolean {
+        val connection = openConnection(restUrl("attendance_events"), "POST")
+        return try {
+            connection.setRequestProperty("Prefer", "return=minimal")
+            connection.doOutput = true
+            val body = JSONObject().apply {
+                put("staff_id", staffId)
+                if (staffNumber != null) put("staff_number", staffNumber)
+                put("event_type", eventType)
+                put("source", source)
+                if (lat != null) put("lat", lat)
+                if (lng != null) put("lng", lng)
+                if (accuracyMeters != null) put("accuracy_meters", accuracyMeters)
+                put("is_mock_location", isMockLocation)
+                put("created_by", "device")
+            }
+            connection.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+            val ok = connection.responseCode in 200..299
+            if (!ok) Log.w(TAG, "postEvent failed: HTTP ${connection.responseCode}")
+            ok
+        } catch (e: Exception) {
+            Log.e(TAG, "postEvent error", e)
+            false
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    /** First active attendance_locations row, or null if none configured yet. */
+    fun fetchPrimaryLocation(): AttendanceLocation? {
+        val connection = openConnection(
+            restUrl("attendance_locations?active=eq.true&select=id,name,lat,lng,radius_meters&limit=1"),
+            "GET",
+        )
+        return try {
+            if (connection.responseCode !in 200..299) {
+                Log.w(TAG, "fetchPrimaryLocation failed: HTTP ${connection.responseCode}")
+                return null
+            }
+            val body = connection.inputStream.bufferedReader().use { it.readText() }
+            val arr = JSONArray(body)
+            if (arr.length() == 0) return null
+            val row = arr.getJSONObject(0)
+            AttendanceLocation(
+                id = row.getString("id"),
+                name = row.getString("name"),
+                lat = row.getDouble("lat"),
+                lng = row.getDouble("lng"),
+                radiusMeters = row.getInt("radius_meters"),
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "fetchPrimaryLocation error", e)
+            null
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    /** Upsert this device's row (staff_id + label), so the Manager page
+     *  can see it and last_seen_at stays fresh. Best-effort — a failure
+     *  here never blocks check-in/out. */
+    fun upsertDevice(staffId: String, staffNumber: String?, deviceLabel: String) {
+        val connection = openConnection(restUrl("attendance_devices"), "POST")
+        try {
+            connection.setRequestProperty("Prefer", "resolution=merge-duplicates,return=minimal")
+            connection.doOutput = true
+            val body = JSONObject().apply {
+                put("staff_id", staffId)
+                if (staffNumber != null) put("staff_number", staffNumber)
+                put("device_label", deviceLabel)
+                put("active", true)
+                put("last_seen_at", java.time.Instant.now().toString())
+            }
+            connection.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+            connection.responseCode // trigger the request
+        } catch (e: Exception) {
+            Log.w(TAG, "upsertDevice error (non-fatal)", e)
+        } finally {
+            connection.disconnect()
+        }
+    }
+}
+
+data class AttendanceLocation(
+    val id: String,
+    val name: String,
+    val lat: Double,
+    val lng: Double,
+    val radiusMeters: Int,
+)
