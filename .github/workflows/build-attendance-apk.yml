@@ -34,7 +34,27 @@ jobs:
           gradle-version: "8.7"
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        env:
+          ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
+        run: |
+          set -e
+          mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
+          curl -sSL -o cmdline-tools.zip \
+            https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -q cmdline-tools.zip -d "$ANDROID_SDK_ROOT/cmdline-tools"
+          mv "$ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools" "$ANDROID_SDK_ROOT/cmdline-tools/latest"
+          SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --sdk_root="$ANDROID_SDK_ROOT" --licenses > /dev/null || true
+          # Deliberately NOT installing the legacy "tools" package —
+          # android-actions/setup-android@v3 (used elsewhere in this repo)
+          # unconditionally requests it and now fails outright, because
+          # Google removed "tools" from the repository; only
+          # "platform-tools"/"cmdline-tools"/"platforms;*"/"build-tools;*"
+          # are still published, and none of them need it.
+          "$SDKMANAGER" --sdk_root="$ANDROID_SDK_ROOT" \
+            "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
 
       - name: Build debug APK
         id: build
