@@ -28,11 +28,21 @@ function _fmtTime(iso) {
   const d = new Date(iso);
   return d.toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' });
 }
-function _staffById(id) {
-  return Repository.getStaff().find(e => e.id === id) || null;
+// The Android attendance app only ever knows the human-readable staff
+// number (e.g. 'EMP-001') — it has no way to read this app's internal
+// STAFF[i].id ('emp_...'), so it posts that number as staff_id (see
+// android-attendance's MainActivity.kt / README "Known limitations").
+// Resolve against both: internal id first (future-proof, e.g. manual
+// entries which do use it), then staffId/staff_number match.
+function _resolveStaff(id, staffNumber) {
+  const list = Repository.getStaff();
+  return list.find(e => e.id === id)
+      || (staffNumber && list.find(e => e.staffId === staffNumber))
+      || (id && list.find(e => e.staffId === id))
+      || null;
 }
 function _staffName(id, fallbackNumber) {
-  const s = _staffById(id);
+  const s = _resolveStaff(id, fallbackNumber);
   return s ? s.name : (fallbackNumber || id || 'Unknown');
 }
 function _expectedStart(staff) {
@@ -94,8 +104,17 @@ async function renderTodayView() {
   const active = Repository.getStaff().filter(e => e.active !== false);
 
   // Show every active staff member, even ones with zero events today
-  // (so absences are visible, not just silently missing rows).
-  const byId = new Map(paired.map(p => [p.staffId, p]));
+  // (so absences are visible, not just silently missing rows). Keyed
+  // by resolving each paired event's staff_id/staff_number against
+  // Staff Registry (see _resolveStaff) rather than a raw p.staffId
+  // lookup — the Android app posts the human staffId number, not the
+  // internal STAFF[i].id, so a raw key match here silently marked
+  // everyone absent even after a real geofence check-in landed.
+  const byId = new Map();
+  paired.forEach(p => {
+    const s = _resolveStaff(p.staffId, p.staffNumber);
+    if (s) byId.set(s.id, p);
+  });
   const rows = active.map(s => {
     const p = byId.get(s.id) || { in: null, out: null, sources: [], flagged: false };
     const late = _isLate(p.in, s);
@@ -145,7 +164,11 @@ async function renderMonthView() {
     let present = 0, late = 0;
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = _attCurMonth + '-' + String(d).padStart(2, '0');
-      const dayEvents = _attMonth.filter(ev => ev.staff_id === s.id && ev.occurred_at.slice(0, 10) === dateStr);
+      const dayEvents = _attMonth.filter(ev => {
+        if (ev.occurred_at.slice(0, 10) !== dateStr) return false;
+        const matched = _resolveStaff(ev.staff_id, ev.staff_number);
+        return matched ? matched.id === s.id : ev.staff_id === s.id;
+      });
       const checkIn = dayEvents.find(ev => ev.event_type === 'check_in');
       if (checkIn) {
         present++;
