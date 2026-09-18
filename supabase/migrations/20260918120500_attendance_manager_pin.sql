@@ -51,11 +51,11 @@ create or replace function attendance_verify_manager_pin(candidate text)
 returns boolean
 language sql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
   select exists (
     select 1 from attendance_manager_pin
-    where id = true and pin_hash = crypt(candidate, pin_hash)
+    where id = true and pin_hash = extensions.crypt(candidate, pin_hash)
   );
 $$;
 
@@ -65,7 +65,7 @@ grant execute on function attendance_verify_manager_pin(text) to anon;
 -- Seed a temporary PIN so the function has something to check against
 -- immediately — CHANGE THIS before relying on it. Run in the Supabase
 -- SQL editor (never paste a real PIN into a chat/commit history):
---   update attendance_manager_pin set pin_hash = crypt('<your real PIN>', gen_salt('bf')), updated_at = now();
+--   update attendance_manager_pin set pin_hash = extensions.crypt('<your real PIN>', extensions.gen_salt('bf')), updated_at = now();
 insert into attendance_manager_pin (id, pin_hash)
-values (true, crypt('CHANGE-ME-0000', gen_salt('bf')))
+values (true, extensions.crypt('CHANGE-ME-0000', extensions.gen_salt('bf')))
 on conflict (id) do nothing;
