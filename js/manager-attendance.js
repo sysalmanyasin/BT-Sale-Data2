@@ -61,11 +61,13 @@ export async function renderAttendanceTab() {
       <button class="btn att-subtab" data-atab="month" onclick="AttendanceUI.switchSub('month')">🗓️ Monthly</button>
       <button class="btn att-subtab" data-atab="log" onclick="AttendanceUI.switchSub('log')">📜 Raw Log</button>
       <button class="btn att-subtab" data-atab="manual" onclick="AttendanceUI.switchSub('manual')">✏️ Manual Entry</button>
+      <button class="btn att-subtab" data-atab="location" onclick="AttendanceUI.switchSub('location')">📍 Location</button>
     </div>
     <div id="att-sub-today" class="att-sub"></div>
     <div id="att-sub-month" class="att-sub" style="display:none"></div>
     <div id="att-sub-log" class="att-sub" style="display:none"></div>
     <div id="att-sub-manual" class="att-sub" style="display:none"></div>
+    <div id="att-sub-location" class="att-sub" style="display:none"></div>
   `;
   await renderTodayView();
 }
@@ -79,6 +81,7 @@ function switchSub(tab) {
   if (tab === 'month') renderMonthView();
   if (tab === 'log') renderLogView();
   if (tab === 'manual') renderManualView();
+  if (tab === 'location') renderLocationView();
 }
 
 // ── TODAY ────────────────────────────────────────────────────────────
@@ -253,5 +256,66 @@ async function submitManual() {
   }
 }
 
+// ── LOCATION ─────────────────────────────────────────────────────────
+// Lets the manager stand at the pharmacy and capture GPS coordinates
+// directly into attendance_locations, instead of hand-editing lat/lng
+// via SQL. Reuses AttendanceBridge.upsertLocation (already existed,
+// no bridge changes needed) — passing the existing row's id updates it
+// in place rather than creating a second active location.
+let _attCapturedLoc = null;
+
+async function renderLocationView() {
+  const cont = document.getElementById('att-sub-location');
+  if (!cont) return;
+  const existing = (await AttendanceBridge.fetchLocations())[0] || null;
+  _attCapturedLoc = null;
+  cont.innerHTML = `
+    <div class="att-manual-form">
+      <p class="att-note">Stand inside or right outside the pharmacy, then tap Capture. This sets the center point the staff app's geofence checks against.</p>
+      ${existing ? `<p class="att-note">Current: ${_mgrEsc(existing.name)} (${existing.lat.toFixed(6)}, ${existing.lng.toFixed(6)}), radius ${existing.radius_meters}m</p>` : `<p class="att-note">No location saved yet.</p>`}
+      <button class="btn" onclick="AttendanceUI.captureLocation()">📍 Capture my current location</button>
+      <div id="att-loc-captured"></div>
+      <label>Name
+        <input type="text" id="att-loc-name" value="${_mgrEsc(existing?.name || 'Bahria Town Pharmacy')}">
+      </label>
+      <label>Radius (meters)
+        <input type="number" id="att-loc-radius" value="${existing?.radius_meters ?? 100}" min="20" max="500">
+      </label>
+      <button class="btn" id="att-loc-save" onclick="AttendanceUI.saveLocation('${existing?.id || ''}')" disabled>Save location</button>
+    </div>
+  `;
+}
+
+function captureLocation() {
+  const out = document.getElementById('att-loc-captured');
+  const saveBtn = document.getElementById('att-loc-save');
+  if (!navigator.geolocation) { toast('⚠ This browser can\'t get GPS location', 'w'); return; }
+  out.innerHTML = 'Getting a GPS fix…';
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      _attCapturedLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy };
+      out.innerHTML = `Captured: ${_attCapturedLoc.lat.toFixed(6)}, ${_attCapturedLoc.lng.toFixed(6)} (±${Math.round(_attCapturedLoc.accuracy)}m accuracy)`;
+      if (saveBtn) saveBtn.disabled = false;
+    },
+    err => { out.innerHTML = ''; toast('⚠ Could not get location — ' + err.message, 'w'); },
+    { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+  );
+}
+
+async function saveLocation(existingId) {
+  if (!_attCapturedLoc) { toast('⚠ Capture your location first', 'w'); return; }
+  const name = document.getElementById('att-loc-name').value.trim() || 'Bahria Town Pharmacy';
+  const radius = Number(document.getElementById('att-loc-radius').value) || 100;
+  try {
+    const loc = { name, lat: _attCapturedLoc.lat, lng: _attCapturedLoc.lng, radius_meters: radius, active: true };
+    if (existingId) loc.id = existingId;
+    await AttendanceBridge.upsertLocation(loc);
+    toast('✓ Location saved');
+    renderLocationView();
+  } catch (e) {
+    toast('✗ Failed to save location — see console', 'e');
+  }
+}
+
 // window bridge, same convention as switchMgrTab etc.
-window.AttendanceUI = { switchSub, changeDate, changeMonth, submitManual, renderAttendanceTab };
+window.AttendanceUI = { switchSub, changeDate, changeMonth, submitManual, renderAttendanceTab, renderLocationView, captureLocation, saveLocation };
