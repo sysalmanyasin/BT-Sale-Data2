@@ -1,0 +1,85 @@
+/* ══════════════════════════════════════════════════════════════════
+   ATTENDANCE — Manager tab styling. Reuses existing tokens/classes
+   (.btn, .mgr-table-scroll, variables.css custom properties) rather
+   than introducing a new visual language.
+   ══════════════════════════════════════════════════════════════════ */
+
+.att-subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.att-subtab.active {
+  background: var(--accent, #2563eb);
+  color: #fff;
+}
+
+.att-sub { margin-top: 8px; }
+
+.att-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.att-count {
+  font-size: 0.9em;
+  opacity: 0.75;
+}
+
+.att-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92em;
+}
+.att-table th, .att-table td {
+  padding: 6px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color, #e2e2e2);
+  white-space: nowrap;
+}
+
+.att-late { background: rgba(234, 179, 8, 0.12); }
+.att-absent { background: rgba(239, 68, 68, 0.08); }
+.att-flagged-row { background: rgba(239, 68, 68, 0.1); }
+
+.att-flag {
+  color: #b45309;
+  font-size: 0.8em;
+  font-weight: 600;
+}
+
+.att-note {
+  margin-top: 10px;
+  font-size: 0.85em;
+  opacity: 0.7;
+}
+
+.att-loading {
+  padding: 16px;
+  opacity: 0.6;
+  font-style: italic;
+}
+
+.att-manual-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 420px;
+}
+.att-manual-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.9em;
+}
+.att-manual-form select,
+.att-manual-form input {
+  padding: 6px 8px;
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 6px;
+}

@@ -48,6 +48,7 @@ function switchMgrTab(tab) {
     if (window.location.hash !== _newHash) history.replaceState(null, '', _newHash);
   } catch(_) {}
   if (tab === 'staff') renderStaffRegistry();
+  if (tab === 'attendance' && typeof AttendanceUI !== 'undefined') AttendanceUI.renderAttendanceTab();
   if (tab === 'jazzcash' && typeof renderJazzCash === 'function') renderJazzCash();
   if (tab === 'sheets' && typeof renderNotesSheets === 'function') renderNotesSheets();
   if (tab === 'expense' && typeof renderLedgerView === 'function') {
