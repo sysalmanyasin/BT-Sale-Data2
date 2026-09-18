@@ -186,9 +186,11 @@ class MainActivity : AppCompatActivity() {
                     // a notification for every check-in that already
                     // happened before this phone was set up.
                     Prefs.setLastNotifiedIso(this, java.time.Instant.now().toString())
-                } else {
-                    Thread { AttendanceApi.upsertDevice(staffNumber, staffNumber, Build.MODEL) }.start()
                 }
+                // Non-manager device registration (staff_id/number/name)
+                // now happens inside GeofenceHelper.registerFromServer,
+                // reached moments later via beginPermissionFlowIfNeeded()
+                // -> finishOnboarding() — see that file's header comment.
                 renderStatusScreen()
                 beginPermissionFlowIfNeeded()
             }

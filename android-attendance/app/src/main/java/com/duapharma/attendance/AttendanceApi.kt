@@ -145,10 +145,12 @@ object AttendanceApi {
         }
     }
 
-    /** Upsert this device's row (staff_id + label), so the Manager page
-     *  can see it and last_seen_at stays fresh. Best-effort — a failure
-     *  here never blocks check-in/out. */
-    fun upsertDevice(staffId: String, staffNumber: String?, deviceLabel: String) {
+    /** Upsert this device's row (staff_id + label + name), so the
+     *  Manager page can see it, last_seen_at stays fresh, and
+     *  ManagerNotifyService can show a real name instead of a bare
+     *  staff number. Best-effort — a failure here never blocks
+     *  check-in/out. */
+    fun upsertDevice(staffId: String, staffNumber: String?, deviceLabel: String, staffName: String? = null) {
         val connection = openConnection(restUrl("attendance_devices"), "POST")
         try {
             connection.setRequestProperty("Prefer", "resolution=merge-duplicates,return=minimal")
@@ -156,6 +158,7 @@ object AttendanceApi {
             val body = JSONObject().apply {
                 put("staff_id", staffId)
                 if (staffNumber != null) put("staff_number", staffNumber)
+                if (staffName != null) put("staff_name", staffName)
                 put("device_label", deviceLabel)
                 put("active", true)
                 put("last_seen_at", java.time.Instant.now().toString())
@@ -164,6 +167,39 @@ object AttendanceApi {
             connection.responseCode // trigger the request
         } catch (e: Exception) {
             Log.w(TAG, "upsertDevice error (non-fatal)", e)
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    /** staff_id/staff_number -> staff_name, from attendance_devices —
+     *  display-only, for ManagerNotifyService's notification text.
+     *  Best-effort: returns an empty map on failure so a lookup miss
+     *  just falls back to showing the staff number, never crashes. */
+    fun fetchStaffNames(): Map<String, String> {
+        val connection = openConnection(
+            restUrl("attendance_devices?select=staff_id,staff_number,staff_name&staff_name=not.is.null"),
+            "GET",
+        )
+        return try {
+            if (connection.responseCode !in 200..299) {
+                Log.w(TAG, "fetchStaffNames failed: HTTP ${connection.responseCode}")
+                return emptyMap()
+            }
+            val body = connection.inputStream.bufferedReader().use { it.readText() }
+            val arr = JSONArray(body)
+            val map = mutableMapOf<String, String>()
+            for (i in 0 until arr.length()) {
+                val row = arr.getJSONObject(i)
+                val name = if (row.isNull("staff_name")) null else row.optString("staff_name")
+                if (name.isNullOrBlank()) continue
+                if (!row.isNull("staff_id")) map[row.getString("staff_id")] = name
+                if (!row.isNull("staff_number")) map[row.getString("staff_number")] = name
+            }
+            map
+        } catch (e: Exception) {
+            Log.e(TAG, "fetchStaffNames error", e)
+            emptyMap()
         } finally {
             connection.disconnect()
         }

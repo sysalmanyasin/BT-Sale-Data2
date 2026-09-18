@@ -1,0 +1,22 @@
+-- ══════════════════════════════════════════════════════════════════════
+-- attendance_devices.staff_name
+--
+-- The Android app collects a staff member's name during onboarding
+-- (Prefs.staffName) but never sent it anywhere — it only lives on that
+-- one phone. ManagerNotifyService's check-in notifications therefore
+-- could only ever show staff_number ('EMP-001'), never the actual
+-- name, because the manager's phone has no access to Staff Registry
+-- (that's the web app's localStorage/Supabase-synced STAFF array, not
+-- reachable from a separate native app with no shared state).
+--
+-- This column is a display-only cache, written by the staff app on
+-- every (re-)registration (see GeofenceHelper.registerFromServer),
+-- read by the manager app (AttendanceApi.fetchStaffNames) purely to
+-- put a name instead of a number in the notification text. It is NOT
+-- the source of truth for who a staff member is — Staff Registry
+-- still is — so a rename there doesn't retroactively fix past
+-- notifications, only future ones after that staff member's phone
+-- next re-registers (immediately if they tap "Re-check permissions").
+-- ══════════════════════════════════════════════════════════════════════
+
+alter table attendance_devices add column if not exists staff_name text;

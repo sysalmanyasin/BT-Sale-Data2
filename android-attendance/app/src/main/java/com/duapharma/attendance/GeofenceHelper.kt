@@ -30,6 +30,24 @@ object GeofenceHelper {
 
     fun registerFromServer(context: Context, onDone: (success: Boolean) -> Unit = {}) {
         Thread {
+            // Best-effort device-info refresh, independent of the
+            // geofence lookup below — runs on every path that calls
+            // this function (initial setup, the manual "re-check
+            // permissions" button, and BootReceiver after every
+            // restart), so ManagerNotifyService's name lookup and
+            // attendance_devices.last_seen_at both stay current without
+            // a separate sync step or requiring a reinstall. Manager
+            // phones skip this — they don't have a staff identity to
+            // report and don't hold a Staff Registry name to send.
+            val staffId = Prefs.staffId(context)
+            if (staffId != null && !Prefs.isManagerMode(context)) {
+                AttendanceApi.upsertDevice(
+                    staffId = staffId,
+                    staffNumber = Prefs.staffNumber(context),
+                    deviceLabel = android.os.Build.MODEL,
+                    staffName = Prefs.staffName(context),
+                )
+            }
             val loc = AttendanceApi.fetchPrimaryLocation()
             if (loc != null) {
                 cacheLocation(context, loc.lat, loc.lng, loc.radiusMeters)

@@ -57,6 +57,14 @@ class ManagerNotifyService : Service() {
 
     private var timer: Timer? = null
     private val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+    // staff_id/staff_number -> name, from attendance_devices.staff_name
+    // (see AttendanceApi.fetchStaffNames). Refreshed only when there's
+    // a new check-in to notify about, not every idle poll — no point
+    // spending a request when there's nothing to render a name for.
+    // Kept across a transient fetch failure (only overwritten on a
+    // non-empty result) so one flaky poll doesn't blank out names that
+    // were already known.
+    private var nameCache: Map<String, String> = emptyMap()
 
     override fun onCreate() {
         super.onCreate()
@@ -90,6 +98,8 @@ class ManagerNotifyService : Service() {
         val since = Prefs.lastNotifiedIso(this)
         val newCheckIns = AttendanceApi.fetchNewCheckIns(since)
         if (newCheckIns.isEmpty()) return
+        val freshNames = AttendanceApi.fetchStaffNames()
+        if (freshNames.isNotEmpty()) nameCache = freshNames
         newCheckIns.forEach { event -> postCheckInNotification(event) }
         // Advance the cursor past the newest event we just notified
         // about (list is oldest-first, so .last() is newest).
@@ -98,7 +108,10 @@ class ManagerNotifyService : Service() {
 
     private fun postCheckInNotification(event: CheckInEvent) {
         val manager = getSystemService(NotificationManager::class.java)
-        val label = event.staffNumber ?: event.staffId
+        val label = nameCache[event.staffId]
+            ?: event.staffNumber?.let { nameCache[it] }
+            ?: event.staffNumber
+            ?: event.staffId
         val whenText = try {
             timeFormat.format(Date.from(Instant.parse(event.occurredAt)))
         } catch (e: Exception) {
