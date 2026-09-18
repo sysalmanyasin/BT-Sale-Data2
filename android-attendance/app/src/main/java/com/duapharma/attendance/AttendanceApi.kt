@@ -13,8 +13,8 @@ import java.net.URL
  *
  * No sign-in step, unlike WidgetAuthManager: attendance_events/
  * attendance_devices/attendance_locations run on anon-role RLS with
- * USING(true) — see supabase/migrations/*_attendance_rls_fix.sql in
- * the main repo for why (this app has no real backend-enforced
+ * USING(true) — see the attendance_rls_fix migration file under
+ * supabase/migrations in the main repo for why (this app has no real backend-enforced
  * per-device identity; "this device only writes its own staff_id" is
  * enforced by this file always sending the locally-configured
  * staff_id, not by anything the server checks).
