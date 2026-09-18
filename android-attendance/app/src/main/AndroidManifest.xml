@@ -29,6 +29,8 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <!-- ManagerNotifyService's poll loop — network only, no location. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application
@@ -66,6 +68,14 @@
             android:name=".AttendanceForegroundService"
             android:exported="false"
             android:foregroundServiceType="location" />
+
+        <!-- Manager-mode: polls for new check-ins and posts a local
+             notification per one. No location involved, so a separate
+             foregroundServiceType from the staff-mode service above. -->
+        <service
+            android:name=".ManagerNotifyService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
     </application>
 </manifest>

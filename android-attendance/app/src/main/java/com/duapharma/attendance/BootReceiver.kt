@@ -19,8 +19,13 @@ class BootReceiver : BroadcastReceiver() {
             Log.d("BootReceiver", "Device not set up yet — nothing to re-register")
             return
         }
-        Log.i("BootReceiver", "Re-registering geofence after boot")
-        GeofenceHelper.registerFromServer(context)
-        AttendanceForegroundService.start(context)
+        if (Prefs.isManagerMode(context)) {
+            Log.i("BootReceiver", "Restarting check-in notifications after boot")
+            ManagerNotifyService.start(context)
+        } else {
+            Log.i("BootReceiver", "Re-registering geofence after boot")
+            GeofenceHelper.registerFromServer(context)
+            AttendanceForegroundService.start(context)
+        }
     }
 }

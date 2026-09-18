@@ -11,6 +11,7 @@ import android.os.PowerManager
 import android.provider.Settings
 import android.view.Gravity
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -41,6 +42,11 @@ import com.journeyapps.barcodescanner.ScanOptions
  *   5. Manufacturer-specific instructions (MIUI/ColorOS/Vivo/One UI) —
  *      informational only, nothing to grant here
  *   6. Register geofence + start foreground service
+ *
+ * Manager mode (Prefs.isManagerMode) skips straight from step 0 to
+ * step 3 — no location permissions requested — and step 6 starts
+ * ManagerNotifyService instead of AttendanceForegroundService/
+ * GeofenceHelper. See showStaffSetupDialog's manager checkbox.
  */
 class MainActivity : AppCompatActivity() {
 
@@ -94,6 +100,7 @@ class MainActivity : AppCompatActivity() {
         root.removeAllViews()
         val name = Prefs.staffName(this) ?: "?"
         val number = Prefs.staffNumber(this) ?: "?"
+        val isManager = Prefs.isManagerMode(this)
 
         val title = TextView(this).apply {
             text = "BT Attendance"
@@ -101,7 +108,7 @@ class MainActivity : AppCompatActivity() {
             gravity = Gravity.CENTER
         }
         val subtitle = TextView(this).apply {
-            text = "Signed in as $name ($number)"
+            text = if (isManager) "Manager phone — $name" else "Signed in as $name ($number)"
             textSize = 14f
             gravity = Gravity.CENTER
             setPadding(0, 16, 0, 32)
@@ -111,12 +118,9 @@ class MainActivity : AppCompatActivity() {
             text = "Checking permissions…"
             setPadding(0, 0, 0, 32)
         }
-        val qrButton = Button(this).apply {
-            text = "Scan QR to check in / out"
-            setOnClickListener { launchQrScanner() }
-        }
         val reRegisterButton = Button(this).apply {
-            text = "Re-check permissions / re-register geofence"
+            text = if (isManager) "Re-check permissions / restart notifications"
+                   else "Re-check permissions / re-register geofence"
             setOnClickListener {
                 beginPermissionFlowIfNeeded(forceReRegister = true)
             }
@@ -125,7 +129,15 @@ class MainActivity : AppCompatActivity() {
         root.addView(title)
         root.addView(subtitle)
         root.addView(statusText)
-        root.addView(qrButton)
+        // QR check-in/out only makes sense on a staff phone — a manager
+        // phone doesn't punch in or out itself, it just listens.
+        if (!isManager) {
+            val qrButton = Button(this).apply {
+                text = "Scan QR to check in / out"
+                setOnClickListener { launchQrScanner() }
+            }
+            root.addView(qrButton)
+        }
         root.addView(reRegisterButton)
     }
 
@@ -137,18 +149,25 @@ class MainActivity : AppCompatActivity() {
         }
         val idInput = EditText(this).apply { hint = "Staff number (e.g. EMP-003)" }
         val nameInput = EditText(this).apply { hint = "Name" }
+        val managerCheckbox = CheckBox(this).apply {
+            text = "This is the manager's phone — notify me of every check-in"
+        }
         container.addView(idInput)
         container.addView(nameInput)
+        container.addView(managerCheckbox)
 
         AlertDialog.Builder(this)
             .setTitle("Set up this phone")
-            .setMessage("Enter the staff number and name your manager gave you. " +
+            .setMessage("Enter the staff number and name your manager gave you, " +
+                "or tick the box below if this is the manager's own phone. " +
                 "This only needs to be done once per phone.")
             .setView(container)
             .setCancelable(false)
             .setPositiveButton("Save") { _, _ ->
-                val staffNumber = idInput.text.toString().trim()
+                val isManager = managerCheckbox.isChecked
+                var staffNumber = idInput.text.toString().trim()
                 val staffName = nameInput.text.toString().trim()
+                if (isManager && staffNumber.isEmpty()) staffNumber = "MANAGER"
                 if (staffNumber.isEmpty() || staffName.isEmpty()) {
                     Toast.makeText(this, "Both fields are required", Toast.LENGTH_SHORT).show()
                     showStaffSetupDialog()
@@ -161,7 +180,15 @@ class MainActivity : AppCompatActivity() {
                 // page. If you'd rather key strictly by the internal id,
                 // hand staff their emp_... id instead of the EMP-### one.
                 Prefs.saveStaff(this, staffId = staffNumber, staffNumber = staffNumber, staffName = staffName)
-                Thread { AttendanceApi.upsertDevice(staffNumber, staffNumber, Build.MODEL) }.start()
+                Prefs.setManagerMode(this, isManager)
+                if (isManager) {
+                    // Cursor starts at "now" so the first poll doesn't fire
+                    // a notification for every check-in that already
+                    // happened before this phone was set up.
+                    Prefs.setLastNotifiedIso(this, java.time.Instant.now().toString())
+                } else {
+                    Thread { AttendanceApi.upsertDevice(staffNumber, staffNumber, Build.MODEL) }.start()
+                }
                 renderStatusScreen()
                 beginPermissionFlowIfNeeded()
             }
@@ -170,7 +197,14 @@ class MainActivity : AppCompatActivity() {
 
     // ── Steps 1–5: ordered permission flow ──────────────────────────
     private fun beginPermissionFlowIfNeeded(forceReRegister: Boolean = false) {
-        requestForegroundLocationIfNeeded(forceReRegister)
+        if (Prefs.isManagerMode(this)) {
+            // A manager phone doesn't geofence anything — it only needs
+            // to be able to show notifications and stay alive in the
+            // background, so location permissions are skipped entirely.
+            requestNotificationsIfNeeded(forceReRegister)
+        } else {
+            requestForegroundLocationIfNeeded(forceReRegister)
+        }
     }
 
     private fun requestForegroundLocationIfNeeded(forceReRegister: Boolean = false) {
@@ -209,8 +243,11 @@ class MainActivity : AppCompatActivity() {
         if (granted) {
             promptBatteryOptimization(forceReRegister)
         } else {
-            statusText.text = "Step 3/4 — requesting notification permission " +
-                "(needed for the \"tracking active\" status)…"
+            statusText.text = if (Prefs.isManagerMode(this))
+                "Step 1/2 — requesting notification permission…"
+            else
+                "Step 3/4 — requesting notification permission " +
+                    "(needed for the \"tracking active\" status)…"
             notificationsLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
@@ -222,12 +259,15 @@ class MainActivity : AppCompatActivity() {
             showManufacturerNoteIfNeeded(forceReRegister)
             return
         }
-        statusText.text = "Step 4/4 — battery optimization exemption needed"
+        val isManager = Prefs.isManagerMode(this)
+        statusText.text = if (isManager) "Step 2/2 — battery optimization exemption needed"
+                           else "Step 4/4 — battery optimization exemption needed"
         AlertDialog.Builder(this)
             .setTitle("One more setting")
             .setMessage("Android will try to stop this app in the background to save " +
-                "battery, which breaks automatic check-in/out. On the next screen, " +
-                "allow this app to run without battery restrictions.")
+                "battery, which breaks " +
+                (if (isManager) "check-in notifications." else "automatic check-in/out.") +
+                " On the next screen, allow this app to run without battery restrictions.")
             .setPositiveButton("Continue") { _, _ ->
                 val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
                     data = Uri.parse("package:$packageName")
@@ -275,6 +315,12 @@ class MainActivity : AppCompatActivity() {
 
     // ── Step 6: register + start ────────────────────────────────────
     private fun finishOnboarding(forceReRegister: Boolean) {
+        if (Prefs.isManagerMode(this)) {
+            statusText.text = "Starting check-in notifications…"
+            ManagerNotifyService.start(this)
+            statusText.text = "✓ You'll be notified when staff check in."
+            return
+        }
         statusText.text = "Registering geofence…"
         AttendanceForegroundService.start(this)
         GeofenceHelper.registerFromServer(this) { success ->

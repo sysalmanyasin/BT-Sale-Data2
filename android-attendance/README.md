@@ -62,6 +62,39 @@ installing an update never forces an uninstall first.
 The printed QR code at the entrance always works as a manual
 alternative, no permissions required beyond camera.
 
+## Manager phone setup (once per phone)
+
+Same APK, different setup path — tick the checkbox instead of leaving
+it a staff phone.
+
+1. Install the APK, open the app.
+2. On "Set up this phone", enter a name and tick **"This is the
+   manager's phone — notify me of every check-in."** Staff number can
+   be left blank (defaults to `MANAGER`).
+3. Walk through the shorter permission flow — notifications, then the
+   battery-optimization exemption screen. No location permissions are
+   requested; a manager phone doesn't geofence anything, it just
+   listens.
+4. Same manufacturer-specific step as staff phones if you're on a
+   Xiaomi/Oppo/Realme/Vivo/Samsung device — don't skip it, or the
+   polling loop gets killed in the background the same way the
+   geofence service would.
+5. Leave the app in Recents so `ManagerNotifyService` stays alive.
+
+Once set up, you'll get a notification (staff number + time) within
+about a minute of any staff check-in — `ManagerNotifyService` polls
+`attendance_events` every 60 seconds rather than using Supabase
+Realtime, to avoid a second client library; see that file's header
+comment if you want to tighten the interval. Check-outs aren't
+notified on, only check-ins — extending `AttendanceApi.fetchNewCheckIns`
+to include `check_out` is a small change if you want that too.
+
+A phone can only be one mode at a time — set up as a staff phone, it
+never notifies; set up as a manager phone, it never geofences or shows
+the QR-scan button. To switch a phone's mode, clear the app's storage
+(Android Settings → Apps → BT Attendance → Storage → Clear storage)
+so the "Set up this phone" dialog reappears.
+
 ## Known limitations (scaffold, not yet hardened)
 
 - **No offline queue.** If `postEvent()` fails (no signal at the

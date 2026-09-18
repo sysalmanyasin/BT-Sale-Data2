@@ -5,6 +5,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URLEncoder
 
 /**
  * Talks straight to Supabase's PostgREST endpoint with the anon key —
@@ -108,6 +109,42 @@ object AttendanceApi {
         }
     }
 
+    /** New check-in events with occurred_at strictly after [sinceIso],
+     *  oldest first — powers ManagerNotifyService's poll loop.
+     *  Best-effort: returns an empty list on any failure instead of
+     *  throwing, since a missed poll just gets picked up next cycle. */
+    fun fetchNewCheckIns(sinceIso: String): List<CheckInEvent> {
+        val encodedSince = URLEncoder.encode(sinceIso, "UTF-8")
+        val connection = openConnection(
+            restUrl(
+                "attendance_events?event_type=eq.check_in&occurred_at=gt.$encodedSince" +
+                    "&select=staff_id,staff_number,occurred_at&order=occurred_at.asc&limit=50"
+            ),
+            "GET",
+        )
+        return try {
+            if (connection.responseCode !in 200..299) {
+                Log.w(TAG, "fetchNewCheckIns failed: HTTP ${connection.responseCode}")
+                return emptyList()
+            }
+            val body = connection.inputStream.bufferedReader().use { it.readText() }
+            val arr = JSONArray(body)
+            (0 until arr.length()).map { i ->
+                val row = arr.getJSONObject(i)
+                CheckInEvent(
+                    staffId = row.getString("staff_id"),
+                    staffNumber = if (row.isNull("staff_number")) null else row.optString("staff_number"),
+                    occurredAt = row.getString("occurred_at"),
+                )
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "fetchNewCheckIns error", e)
+            emptyList()
+        } finally {
+            connection.disconnect()
+        }
+    }
+
     /** Upsert this device's row (staff_id + label), so the Manager page
      *  can see it and last_seen_at stays fresh. Best-effort — a failure
      *  here never blocks check-in/out. */
@@ -139,4 +176,10 @@ data class AttendanceLocation(
     val lat: Double,
     val lng: Double,
     val radiusMeters: Int,
+)
+
+data class CheckInEvent(
+    val staffId: String,
+    val staffNumber: String?,
+    val occurredAt: String,
 )

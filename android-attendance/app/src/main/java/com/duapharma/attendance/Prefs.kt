@@ -18,6 +18,8 @@ object Prefs {
     private const val KEY_STAFF_NAME = "staff_name"
     private const val KEY_LAST_TRANSITION_MS = "last_transition_ms"
     private const val KEY_LAST_TRANSITION_TYPE = "last_transition_type"
+    private const val KEY_IS_MANAGER = "is_manager"
+    private const val KEY_LAST_NOTIFIED_ISO = "last_notified_iso"
     private const val DEBOUNCE_WINDOW_MS = 5 * 60 * 1000L // 5 min, see spec's "flapping near the boundary" note
 
     private fun prefs(context: Context) =
@@ -55,5 +57,32 @@ object Prefs {
             .putLong(KEY_LAST_TRANSITION_MS, System.currentTimeMillis())
             .putString(KEY_LAST_TRANSITION_TYPE, transitionType)
             .apply()
+    }
+
+    // ── Manager mode ─────────────────────────────────────────────────
+    // A per-device local flag, not a real role/permission — this app's
+    // main repo deliberately has no roles system (see its README). A
+    // manager phone just skips geofencing and runs ManagerNotifyService
+    // instead of AttendanceForegroundService.
+
+    fun isManagerMode(context: Context): Boolean = prefs(context).getBoolean(KEY_IS_MANAGER, false)
+
+    fun setManagerMode(context: Context, isManager: Boolean) {
+        prefs(context).edit().putBoolean(KEY_IS_MANAGER, isManager).apply()
+    }
+
+    /** occurred_at of the newest check-in already notified about, so a
+     *  service restart (reboot, process death) doesn't re-fire
+     *  notifications for events it already showed. */
+    fun lastNotifiedIso(context: Context): String {
+        val existing = prefs(context).getString(KEY_LAST_NOTIFIED_ISO, null)
+        if (existing != null) return existing
+        val now = java.time.Instant.now().toString()
+        setLastNotifiedIso(context, now)
+        return now
+    }
+
+    fun setLastNotifiedIso(context: Context, iso: String) {
+        prefs(context).edit().putString(KEY_LAST_NOTIFIED_ISO, iso).apply()
     }
 }
