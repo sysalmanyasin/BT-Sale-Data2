@@ -19,6 +19,7 @@ object Prefs {
     private const val KEY_LAST_TRANSITION_MS = "last_transition_ms"
     private const val KEY_LAST_TRANSITION_TYPE = "last_transition_type"
     private const val KEY_IS_MANAGER = "is_manager"
+    private const val KEY_TRACKS_OWN_ATTENDANCE = "tracks_own_attendance"
     private const val KEY_LAST_NOTIFIED_ISO = "last_notified_iso"
     private const val DEBOUNCE_WINDOW_MS = 5 * 60 * 1000L // 5 min, see spec's "flapping near the boundary" note
 
@@ -69,6 +70,18 @@ object Prefs {
 
     fun setManagerMode(context: Context, isManager: Boolean) {
         prefs(context).edit().putBoolean(KEY_IS_MANAGER, isManager).apply()
+    }
+
+    /** True only for a manager phone that's ALSO enrolled as a staff
+     *  member on itself — i.e. it both geofences its own check-in/out
+     *  AND runs ManagerNotifyService. Meaningless (ignored) when
+     *  isManagerMode is false, since a plain staff phone always
+     *  geofences regardless of this flag. */
+    fun tracksOwnAttendance(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_TRACKS_OWN_ATTENDANCE, false)
+
+    fun setTracksOwnAttendance(context: Context, tracks: Boolean) {
+        prefs(context).edit().putBoolean(KEY_TRACKS_OWN_ATTENDANCE, tracks).apply()
     }
 
     /** occurred_at of the newest check-in already notified about, so a

@@ -40,7 +40,11 @@ object GeofenceHelper {
             // phones skip this — they don't have a staff identity to
             // report and don't hold a Staff Registry name to send.
             val staffId = Prefs.staffId(context)
-            if (staffId != null && !Prefs.isManagerMode(context)) {
+            // A notification-only manager phone has no staff identity
+            // worth reporting; a dual-role one (Prefs.tracksOwnAttendance)
+            // is about to geofence below, same as any staff phone, so it
+            // needs this sync too.
+            if (staffId != null && (!Prefs.isManagerMode(context) || Prefs.tracksOwnAttendance(context))) {
                 AttendanceApi.upsertDevice(
                     staffId = staffId,
                     staffNumber = Prefs.staffNumber(context),

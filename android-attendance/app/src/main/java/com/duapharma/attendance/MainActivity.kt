@@ -45,10 +45,15 @@ import com.journeyapps.barcodescanner.ScanOptions
  *      informational only, nothing to grant here
  *   6. Register geofence + start foreground service
  *
- * Manager mode (Prefs.isManagerMode) skips straight from step 0 to
- * step 3 — no location permissions requested — and step 6 starts
- * ManagerNotifyService instead of AttendanceForegroundService/
- * GeofenceHelper. See showStaffSetupDialog's manager checkbox.
+ * Manager mode (Prefs.isManagerMode) skips location permissions (steps
+ * 1-2) and goes straight to step 3, UNLESS the manager also ticked
+ * "I also work here" (Prefs.tracksOwnAttendance) during setup — that
+ * phone is dual-role: it goes through the full staff flow (geofences
+ * its own check-in/out) AND starts ManagerNotifyService. A
+ * notification-only manager phone's step 6 starts ManagerNotifyService
+ * only; a dual-role one starts both that and
+ * AttendanceForegroundService/GeofenceHelper. See needsGeofence() and
+ * showStaffSetupDialog's checkboxes.
  */
 class MainActivity : AppCompatActivity() {
 
@@ -110,7 +115,11 @@ class MainActivity : AppCompatActivity() {
             gravity = Gravity.CENTER
         }
         val subtitle = TextView(this).apply {
-            text = if (isManager) "Manager phone — $name" else "Signed in as $name ($number)"
+            text = when {
+                isManager && Prefs.tracksOwnAttendance(this@MainActivity) -> "Manager phone — $name ($number) — also tracking own attendance"
+                isManager -> "Manager phone — $name"
+                else -> "Signed in as $name ($number)"
+            }
             textSize = 14f
             gravity = Gravity.CENTER
             setPadding(0, 16, 0, 32)
@@ -121,8 +130,11 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, 0, 0, 32)
         }
         val reRegisterButton = Button(this).apply {
-            text = if (isManager) "Re-check permissions / restart notifications"
-                   else "Re-check permissions / re-register geofence"
+            text = when {
+                isManager && Prefs.tracksOwnAttendance(this@MainActivity) -> "Re-check permissions / restart notifications + geofence"
+                isManager -> "Re-check permissions / restart notifications"
+                else -> "Re-check permissions / re-register geofence"
+            }
             setOnClickListener {
                 beginPermissionFlowIfNeeded(forceReRegister = true)
             }
@@ -131,9 +143,10 @@ class MainActivity : AppCompatActivity() {
         root.addView(title)
         root.addView(subtitle)
         root.addView(statusText)
-        // QR check-in/out only makes sense on a staff phone — a manager
-        // phone doesn't punch in or out itself, it just listens.
-        if (!isManager) {
+        // QR check-in/out only makes sense on a phone that geofences
+        // its own attendance — a notification-only manager phone
+        // doesn't punch in or out itself, but a dual-role manager does.
+        if (!isManager || Prefs.tracksOwnAttendance(this)) {
             val qrButton = Button(this).apply {
                 text = "Scan QR to check in / out"
                 setOnClickListener { launchQrScanner() }
@@ -154,6 +167,15 @@ class MainActivity : AppCompatActivity() {
         val managerCheckbox = CheckBox(this).apply {
             text = "This is the manager's phone — notify me of every check-in"
         }
+        // Only meaningful once managerCheckbox is ticked (see both
+        // listeners below). Lets the SAME phone also geofence its own
+        // check-in/out, for a manager who is also sometimes physically
+        // present as staff — previously a manager phone never tracked
+        // its own attendance at all, full stop.
+        val tracksOwnCheckbox = CheckBox(this).apply {
+            text = "I also work here — track my own check-in/out too"
+            visibility = View.GONE
+        }
         // Only shown once the checkbox above is ticked — see
         // setOnCheckedChangeListener below. Ticking the checkbox alone
         // used to be enough to start receiving every staff member's
@@ -166,27 +188,42 @@ class MainActivity : AppCompatActivity() {
             visibility = View.GONE
         }
         managerCheckbox.setOnCheckedChangeListener { _, checked ->
+            tracksOwnCheckbox.visibility = if (checked) View.VISIBLE else View.GONE
             pinInput.visibility = if (checked) View.VISIBLE else View.GONE
+            if (!checked) tracksOwnCheckbox.isChecked = false
         }
         container.addView(idInput)
         container.addView(nameInput)
         container.addView(managerCheckbox)
+        container.addView(tracksOwnCheckbox)
         container.addView(pinInput)
 
         AlertDialog.Builder(this)
             .setTitle("Set up this phone")
             .setMessage("Enter the staff number and name your manager gave you, " +
                 "or tick the box below if this is the manager's own phone (you'll " +
-                "need the manager PIN). This only needs to be done once per phone.")
+                "need the manager PIN — tick the second box too if you also work " +
+                "here yourself). This only needs to be done once per phone.")
             .setView(container)
             .setCancelable(false)
             .setPositiveButton("Save") { _, _ ->
                 val isManager = managerCheckbox.isChecked
+                val tracksOwn = isManager && tracksOwnCheckbox.isChecked
                 var staffNumber = idInput.text.toString().trim()
                 val staffName = nameInput.text.toString().trim()
-                if (isManager && staffNumber.isEmpty()) staffNumber = "MANAGER"
+                // A manager who only wants notifications (not tracksOwn)
+                // has no real staff number of their own — "MANAGER" is
+                // just a placeholder id in that case, never geofenced.
+                // A manager who IS tracksOwn needs a real one, same as
+                // any staff phone, since it's about to be geofenced too.
+                if (isManager && !tracksOwn && staffNumber.isEmpty()) staffNumber = "MANAGER"
                 if (staffNumber.isEmpty() || staffName.isEmpty()) {
-                    Toast.makeText(this, "Both fields are required", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this,
+                        if (tracksOwn) "Enter your real staff number and name — this phone will geofence too"
+                        else "Both fields are required",
+                        Toast.LENGTH_SHORT,
+                    ).show()
                     showStaffSetupDialog()
                     return@setPositiveButton
                 }
@@ -208,7 +245,7 @@ class MainActivity : AppCompatActivity() {
                         val correct = AttendanceApi.verifyManagerPin(pin)
                         runOnUiThread {
                             if (correct) {
-                                finalizeStaffSetup(staffNumber, staffName, isManager = true)
+                                finalizeStaffSetup(staffNumber, staffName, isManager = true, tracksOwn = tracksOwn)
                             } else {
                                 Toast.makeText(this, "✗ Wrong manager PIN — ask whoever manages the pharmacy account", Toast.LENGTH_LONG).show()
                                 showStaffSetupDialog()
@@ -216,38 +253,49 @@ class MainActivity : AppCompatActivity() {
                         }
                     }.start()
                 } else {
-                    finalizeStaffSetup(staffNumber, staffName, isManager = false)
+                    finalizeStaffSetup(staffNumber, staffName, isManager = false, tracksOwn = false)
                 }
             }
             .show()
     }
 
-    private fun finalizeStaffSetup(staffNumber: String, staffName: String, isManager: Boolean) {
+    private fun finalizeStaffSetup(staffNumber: String, staffName: String, isManager: Boolean, tracksOwn: Boolean) {
         Prefs.saveStaff(this, staffId = staffNumber, staffNumber = staffNumber, staffName = staffName)
         Prefs.setManagerMode(this, isManager)
+        Prefs.setTracksOwnAttendance(this, tracksOwn)
         if (isManager) {
             // Cursor starts at "now" so the first poll doesn't fire
             // a notification for every check-in that already
             // happened before this phone was set up.
             Prefs.setLastNotifiedIso(this, java.time.Instant.now().toString())
         }
-        // Non-manager device registration (staff_id/number/name) now
-        // happens inside GeofenceHelper.registerFromServer, reached
-        // moments later via beginPermissionFlowIfNeeded() ->
-        // finishOnboarding() — see that file's header comment.
+        // Device registration (staff_id/number/name) for a phone that
+        // geofences (plain staff, or a dual-role manager) now happens
+        // inside GeofenceHelper.registerFromServer, reached moments
+        // later via beginPermissionFlowIfNeeded() -> finishOnboarding()
+        // — see that file's header comment.
         renderStatusScreen()
         beginPermissionFlowIfNeeded()
     }
 
     // ── Steps 1–5: ordered permission flow ──────────────────────────
+    /** True if this phone needs to go through the location-permission
+     *  chain at all — every plain staff phone does, and so does a
+     *  dual-role manager phone (see Prefs.tracksOwnAttendance), since
+     *  it's about to geofence its own check-in/out same as any staff
+     *  member. A notification-only manager phone is the only case that
+     *  skips straight to requestNotificationsIfNeeded. */
+    private fun needsGeofence(): Boolean = !Prefs.isManagerMode(this) || Prefs.tracksOwnAttendance(this)
+
     private fun beginPermissionFlowIfNeeded(forceReRegister: Boolean = false) {
-        if (Prefs.isManagerMode(this)) {
-            // A manager phone doesn't geofence anything — it only needs
-            // to be able to show notifications and stay alive in the
-            // background, so location permissions are skipped entirely.
-            requestNotificationsIfNeeded(forceReRegister)
-        } else {
+        if (needsGeofence()) {
             requestForegroundLocationIfNeeded(forceReRegister)
+        } else {
+            // A notification-only manager phone doesn't geofence
+            // anything — it only needs to be able to show notifications
+            // and stay alive in the background, so location permissions
+            // are skipped entirely.
+            requestNotificationsIfNeeded(forceReRegister)
         }
     }
 
@@ -287,7 +335,7 @@ class MainActivity : AppCompatActivity() {
         if (granted) {
             promptBatteryOptimization(forceReRegister)
         } else {
-            statusText.text = if (Prefs.isManagerMode(this))
+            statusText.text = if (!needsGeofence())
                 "Step 1/2 — requesting notification permission…"
             else
                 "Step 3/4 — requesting notification permission " +
@@ -304,13 +352,15 @@ class MainActivity : AppCompatActivity() {
             return
         }
         val isManager = Prefs.isManagerMode(this)
-        statusText.text = if (isManager) "Step 2/2 — battery optimization exemption needed"
+        statusText.text = if (!needsGeofence()) "Step 2/2 — battery optimization exemption needed"
                            else "Step 4/4 — battery optimization exemption needed"
         AlertDialog.Builder(this)
             .setTitle("One more setting")
             .setMessage("Android will try to stop this app in the background to save " +
                 "battery, which breaks " +
-                (if (isManager) "check-in notifications." else "automatic check-in/out.") +
+                (if (isManager && !needsGeofence()) "check-in notifications."
+                 else if (isManager) "check-in notifications and your own automatic check-in/out."
+                 else "automatic check-in/out.") +
                 " On the next screen, allow this app to run without battery restrictions.")
             .setPositiveButton("Continue") { _, _ ->
                 val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
@@ -359,23 +409,30 @@ class MainActivity : AppCompatActivity() {
 
     // ── Step 6: register + start ────────────────────────────────────
     private fun finishOnboarding(forceReRegister: Boolean) {
-        if (Prefs.isManagerMode(this)) {
+        val isManager = Prefs.isManagerMode(this)
+        if (isManager) {
             statusText.text = "Starting check-in notifications…"
             ManagerNotifyService.start(this)
-            statusText.text = "✓ You'll be notified when staff check in."
-            return
+            if (!Prefs.tracksOwnAttendance(this)) {
+                statusText.text = "✓ You'll be notified when staff check in."
+                return
+            }
+            // Dual-role: fall through below to also geofence this
+            // phone's own check-in/out, same as any staff phone.
         }
         statusText.text = "Registering geofence…"
         AttendanceForegroundService.start(this)
         GeofenceHelper.registerFromServer(this) { success ->
             runOnUiThread {
                 statusText.text = if (success) {
-                    "✓ Automatic check-in/out is active."
+                    if (isManager) "✓ Notified on check-ins, and your own check-in/out is active."
+                    else "✓ Automatic check-in/out is active."
                 } else {
                     "⚠ Could not register the geofence yet — check that a pharmacy " +
                         "location has been added in Manager > Attendance, and that " +
                         "location permission was granted, then tap \"re-check\" below. " +
-                        "QR scan still works regardless."
+                        (if (isManager) "Check-in notifications are still active regardless."
+                         else "QR scan still works regardless.")
                 }
             }
         }
