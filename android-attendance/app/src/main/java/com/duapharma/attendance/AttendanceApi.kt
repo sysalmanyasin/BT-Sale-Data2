@@ -1,11 +1,11 @@
 package com.duapharma.attendance
 
+import android.content.Context
 import android.util.Log
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
-import java.net.URLEncoder
 
 /**
  * Talks straight to Supabase's PostgREST endpoint with the anon key —
@@ -79,6 +79,81 @@ object AttendanceApi {
         }
     }
 
+    /** Same as postEvent, but on failure queues the event in Prefs for
+     *  AttendanceForegroundService's periodic flushPendingEvents() to
+     *  retry later, instead of it being silently dropped (the previous
+     *  behavior). Used by GeofenceBroadcastReceiver specifically, since
+     *  that's the unattended path — nobody's watching to notice a
+     *  failure or manually retry it. MainActivity's QR flow stays on
+     *  plain postEvent: a human is standing right there and can just
+     *  rescan, no queue needed. */
+    fun postEventOrQueue(
+        context: Context,
+        staffId: String,
+        staffNumber: String?,
+        eventType: String,
+        source: String,
+        lat: Double? = null,
+        lng: Double? = null,
+        accuracyMeters: Double? = null,
+        isMockLocation: Boolean = false,
+    ): Boolean {
+        val success = postEvent(staffId, staffNumber, eventType, source, lat, lng, accuracyMeters, isMockLocation)
+        if (!success) {
+            val event = JSONObject().apply {
+                put("staff_id", staffId)
+                if (staffNumber != null) put("staff_number", staffNumber)
+                put("event_type", eventType)
+                put("source", source)
+                if (lat != null) put("lat", lat)
+                if (lng != null) put("lng", lng)
+                if (accuracyMeters != null) put("accuracy_meters", accuracyMeters)
+                put("is_mock_location", isMockLocation)
+                put("created_by", "device")
+            }
+            Prefs.enqueuePendingEvent(context, event)
+            Log.w(TAG, "Queued $eventType for $staffId for later retry (offline or server error)")
+        }
+        return success
+    }
+
+    /** Retries every queued event, in the order they failed, removing
+     *  each from the queue only once it actually succeeds — a partial
+     *  flush (some succeed, some still can't reach the server) leaves
+     *  the rest queued for next time rather than losing them. Called
+     *  periodically by AttendanceForegroundService while it's alive.
+     *  Deliberately resends the exact body captured when the event was
+     *  first queued (including its original occurred_at, added
+     *  server-side at insert time — a flush doesn't re-timestamp a
+     *  late-arriving punch as "now"). */
+    fun flushPendingEvents(context: Context) {
+        val events = Prefs.pendingEvents(context)
+        if (events.length() == 0) return
+        val stillPending = JSONArray()
+        for (i in 0 until events.length()) {
+            val event = events.getJSONObject(i)
+            val connection = openConnection(restUrl("attendance_events"), "POST")
+            val ok = try {
+                connection.setRequestProperty("Prefer", "return=minimal")
+                connection.doOutput = true
+                connection.outputStream.use { it.write(event.toString().toByteArray(Charsets.UTF_8)) }
+                connection.responseCode in 200..299
+            } catch (e: Exception) {
+                false
+            } finally {
+                connection.disconnect()
+            }
+            if (ok) {
+                Log.i(TAG, "Flushed queued event: $event")
+            } else {
+                stillPending.put(event)
+            }
+        }
+        if (stillPending.length() != events.length()) {
+            Prefs.replacePendingEvents(context, stillPending)
+        }
+    }
+
     /** First active attendance_locations row, or null if none configured yet. */
     fun fetchPrimaryLocation(): AttendanceLocation? {
         val connection = openConnection(
@@ -109,46 +184,11 @@ object AttendanceApi {
         }
     }
 
-    /** New check-in events with occurred_at strictly after [sinceIso],
-     *  oldest first — powers ManagerNotifyService's poll loop.
-     *  Best-effort: returns an empty list on any failure instead of
-     *  throwing, since a missed poll just gets picked up next cycle. */
-    fun fetchNewCheckIns(sinceIso: String): List<CheckInEvent> {
-        val encodedSince = URLEncoder.encode(sinceIso, "UTF-8")
-        val connection = openConnection(
-            restUrl(
-                "attendance_events?event_type=eq.check_in&occurred_at=gt.$encodedSince" +
-                    "&select=staff_id,staff_number,occurred_at&order=occurred_at.asc&limit=50"
-            ),
-            "GET",
-        )
-        return try {
-            if (connection.responseCode !in 200..299) {
-                Log.w(TAG, "fetchNewCheckIns failed: HTTP ${connection.responseCode}")
-                return emptyList()
-            }
-            val body = connection.inputStream.bufferedReader().use { it.readText() }
-            val arr = JSONArray(body)
-            (0 until arr.length()).map { i ->
-                val row = arr.getJSONObject(i)
-                CheckInEvent(
-                    staffId = row.getString("staff_id"),
-                    staffNumber = if (row.isNull("staff_number")) null else row.optString("staff_number"),
-                    occurredAt = row.getString("occurred_at"),
-                )
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "fetchNewCheckIns error", e)
-            emptyList()
-        } finally {
-            connection.disconnect()
-        }
-    }
 
     /** Upsert this device's row (staff_id + label + name), so the
-     *  Manager page can see it, last_seen_at stays fresh, and
-     *  ManagerNotifyService can show a real name instead of a bare
-     *  staff number. Best-effort — a failure here never blocks
+     *  Manager page can see it, last_seen_at stays fresh, and the
+     *  ntfy notification trigger can show a real name instead of a
+     *  bare staff number. Best-effort — a failure here never blocks
      *  check-in/out. */
     fun upsertDevice(staffId: String, staffNumber: String?, deviceLabel: String, staffName: String? = null) {
         val connection = openConnection(restUrl("attendance_devices"), "POST")
@@ -172,38 +212,13 @@ object AttendanceApi {
         }
     }
 
-    /** staff_id/staff_number -> staff_name, from attendance_devices —
-     *  display-only, for ManagerNotifyService's notification text.
-     *  Best-effort: returns an empty map on failure so a lookup miss
-     *  just falls back to showing the staff number, never crashes. */
-    fun fetchStaffNames(): Map<String, String> {
-        val connection = openConnection(
-            restUrl("attendance_devices?select=staff_id,staff_number,staff_name&staff_name=not.is.null"),
-            "GET",
-        )
-        return try {
-            if (connection.responseCode !in 200..299) {
-                Log.w(TAG, "fetchStaffNames failed: HTTP ${connection.responseCode}")
-                return emptyMap()
-            }
-            val body = connection.inputStream.bufferedReader().use { it.readText() }
-            val arr = JSONArray(body)
-            val map = mutableMapOf<String, String>()
-            for (i in 0 until arr.length()) {
-                val row = arr.getJSONObject(i)
-                val name = if (row.isNull("staff_name")) null else row.optString("staff_name")
-                if (name.isNullOrBlank()) continue
-                if (!row.isNull("staff_id")) map[row.getString("staff_id")] = name
-                if (!row.isNull("staff_number")) map[row.getString("staff_number")] = name
-            }
-            map
-        } catch (e: Exception) {
-            Log.e(TAG, "fetchStaffNames error", e)
-            emptyMap()
-        } finally {
-            connection.disconnect()
-        }
-    }
+    // fetchStaffNames was removed here -- it existed only to resolve a
+    // name for ManagerNotifyService's local notification text, which
+    // no longer exists (ntfy push replaced it). Name resolution for
+    // ntfy's notification text is handled in SQL instead, inside the
+    // attendance_notify_manager() trigger itself -- see the
+    // attendance_notify_manager_ntfy migration.
+
 
     /** Server-side manager PIN check via a SECURITY DEFINER Postgres
      *  function (see migration 20260918120500_attendance_manager_pin.sql)
@@ -240,8 +255,3 @@ data class AttendanceLocation(
     val radiusMeters: Int,
 )
 
-data class CheckInEvent(
-    val staffId: String,
-    val staffNumber: String?,
-    val occurredAt: String,
-)

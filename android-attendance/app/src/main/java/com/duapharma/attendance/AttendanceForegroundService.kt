@@ -10,6 +10,8 @@ import android.content.Intent
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import java.util.Timer
+import java.util.TimerTask
 
 /**
  * A geofence registered via GeofencingClient fires at the OS/Play-
@@ -20,8 +22,13 @@ import androidx.core.app.NotificationCompat
  * (see the attendance spec's permissions section). Running as a
  * foreground service — an explicit signal to the OS that this process
  * is doing something the user asked for — is the standard mitigation.
- * It does no location polling of its own; the actual check-in/out
- * logic lives entirely in GeofenceBroadcastReceiver.
+ * The actual check-in/out logic lives in GeofenceBroadcastReceiver;
+ * this service ALSO runs a periodic retry-queue flush (see
+ * FLUSH_INTERVAL_MS below) for events that failed to post the first
+ * time — piggybacking on a service that's already alive for the
+ * geofence-reliability reason above, rather than a second dedicated
+ * service (which is exactly the polling-service pattern removed when
+ * ManagerNotifyService was retired in favor of ntfy push).
  *
  * The persistent notification this requires is mandatory, not
  * optional — that's the whole mechanism (a foreground service without
@@ -33,6 +40,7 @@ class AttendanceForegroundService : Service() {
     companion object {
         private const val CHANNEL_ID = "attendance_tracking"
         private const val NOTIF_ID = 1001
+        private const val FLUSH_INTERVAL_MS = 3 * 60 * 1000L // 3 min — frequent enough that a queued event isn't stuck long once back online, infrequent enough not to matter for battery
 
         fun start(context: Context) {
             val intent = Intent(context, AttendanceForegroundService::class.java)
@@ -44,10 +52,29 @@ class AttendanceForegroundService : Service() {
         }
     }
 
+    private var flushTimer: Timer? = null
+
     override fun onCreate() {
         super.onCreate()
         createChannelIfNeeded()
         startForeground(NOTIF_ID, buildNotification())
+        // First attempt shortly after start (covers "was offline all
+        // night, just regained signal on boot"), then every
+        // FLUSH_INTERVAL_MS after that for the rest of this service's
+        // lifetime.
+        flushTimer = Timer().apply {
+            scheduleAtFixedRate(object : TimerTask() {
+                override fun run() {
+                    AttendanceApi.flushPendingEvents(applicationContext)
+                }
+            }, 10_000L, FLUSH_INTERVAL_MS)
+        }
+    }
+
+    override fun onDestroy() {
+        flushTimer?.cancel()
+        flushTimer = null
+        super.onDestroy()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {

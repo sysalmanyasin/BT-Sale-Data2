@@ -56,11 +56,19 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
 
         // Debounce: absorbs GPS flapping right at the boundary (see the
         // spec's note on this) — a second ENTER within the window of the
-        // last one is treated as noise, not a new punch.
+        // last one is treated as noise, not a new punch. Recorded here,
+        // the moment we commit to acting on this transition — NOT only
+        // on a successful post — because postEventOrQueue can now queue
+        // a failure for later retry rather than dropping it; if this
+        // only updated on success, an offline outage with GPS flapping
+        // at the boundary would queue the SAME arrival repeatedly (each
+        // flap fails to send, never marks debounce, tries again), and
+        // every duplicate would land once the phone's back online.
         if (Prefs.shouldDebounce(context, eventType)) {
             Log.d(TAG, "Debounced duplicate $eventType")
             return
         }
+        Prefs.recordTransition(context, eventType)
 
         val triggeringLocation: Location? = geofencingEvent.triggeringLocation
         val isMock = triggeringLocation != null &&
@@ -70,7 +78,8 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
         val pending = goAsync()
         Thread {
             try {
-                val success = AttendanceApi.postEvent(
+                val success = AttendanceApi.postEventOrQueue(
+                    context = context,
                     staffId = staffId,
                     staffNumber = Prefs.staffNumber(context),
                     eventType = eventType,
@@ -81,14 +90,11 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
                     isMockLocation = isMock,
                 )
                 if (success) {
-                    Prefs.recordTransition(context, eventType)
                     Log.i(TAG, "Posted $eventType for $staffId")
                 } else {
-                    // TODO: queue-and-retry (e.g. WorkManager one-off request)
-                    // for the offline case instead of silently dropping —
-                    // out of scope for this scaffold, flagged here so it
-                    // isn't forgotten.
-                    Log.w(TAG, "Failed to post $eventType for $staffId — event dropped (no offline queue yet)")
+                    // Queued for retry by AttendanceForegroundService's
+                    // periodic flush — see postEventOrQueue.
+                    Log.w(TAG, "$eventType for $staffId queued — will retry, not dropped")
                 }
             } finally {
                 pending.finish()

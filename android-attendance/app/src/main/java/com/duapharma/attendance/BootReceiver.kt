@@ -19,13 +19,20 @@ class BootReceiver : BroadcastReceiver() {
             Log.d("BootReceiver", "Device not set up yet — nothing to re-register")
             return
         }
-        if (Prefs.isManagerMode(context)) {
-            Log.i("BootReceiver", "Restarting check-in notifications after boot")
-            ManagerNotifyService.start(context)
-        } else {
+        // Same "does this phone geofence" logic as MainActivity's
+        // needsGeofence() — every plain staff phone does, and so does
+        // a dual-role manager (Prefs.tracksOwnAttendance). A
+        // notification-only manager phone has nothing on THIS app's
+        // side to restart after boot at all — check-in notifications
+        // come from the separate ntfy app now, which handles its own
+        // reconnection independently of this app's lifecycle.
+        val needsGeofence = !Prefs.isManagerMode(context) || Prefs.tracksOwnAttendance(context)
+        if (needsGeofence) {
             Log.i("BootReceiver", "Re-registering geofence after boot")
             GeofenceHelper.registerFromServer(context)
             AttendanceForegroundService.start(context)
+        } else {
+            Log.d("BootReceiver", "Notification-only manager phone — nothing to restart here")
         }
     }
 }

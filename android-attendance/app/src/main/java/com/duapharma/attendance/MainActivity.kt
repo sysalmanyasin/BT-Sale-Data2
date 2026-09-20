@@ -45,15 +45,15 @@ import com.journeyapps.barcodescanner.ScanOptions
  *      informational only, nothing to grant here
  *   6. Register geofence + start foreground service
  *
- * Manager mode (Prefs.isManagerMode) skips location permissions (steps
- * 1-2) and goes straight to step 3, UNLESS the manager also ticked
- * "I also work here" (Prefs.tracksOwnAttendance) during setup — that
- * phone is dual-role: it goes through the full staff flow (geofences
- * its own check-in/out) AND starts ManagerNotifyService. A
- * notification-only manager phone's step 6 starts ManagerNotifyService
- * only; a dual-role one starts both that and
- * AttendanceForegroundService/GeofenceHelper. See needsGeofence() and
- * showStaffSetupDialog's checkboxes.
+ * Manager mode (Prefs.isManagerMode) skips this entire permission chain
+ * (steps 1-5) UNLESS the manager also ticked "I also work here"
+ * (Prefs.tracksOwnAttendance) during setup — that phone is dual-role
+ * and goes through the full staff flow (geofences its own check-in/
+ * out). A notification-only manager phone has nothing left for this
+ * app to do at all — check-in notifications come from the separate
+ * ntfy app now (see the dashboard's Attendance page), not a poller
+ * this app used to run. See beginPermissionFlowIfNeeded(),
+ * needsGeofence(), and showStaffSetupDialog's checkboxes.
  */
 class MainActivity : AppCompatActivity() {
 
@@ -165,7 +165,7 @@ class MainActivity : AppCompatActivity() {
         val idInput = EditText(this).apply { hint = "Staff number (e.g. EMP-003)" }
         val nameInput = EditText(this).apply { hint = "Name" }
         val managerCheckbox = CheckBox(this).apply {
-            text = "This is the manager's phone — notify me of every check-in"
+            text = "This is the manager's phone (check-in notifications now come via the ntfy app — see the dashboard's Attendance page for setup)"
         }
         // Only meaningful once managerCheckbox is ticked (see both
         // listeners below). Lets the SAME phone also geofence its own
@@ -203,7 +203,10 @@ class MainActivity : AppCompatActivity() {
             .setMessage("Enter the staff number and name your manager gave you, " +
                 "or tick the box below if this is the manager's own phone (you'll " +
                 "need the manager PIN — tick the second box too if you also work " +
-                "here yourself). This only needs to be done once per phone.")
+                "here yourself). This only needs to be done once per phone.\n\n" +
+                "Note: check-in notifications no longer come from this app — " +
+                "install the free \"ntfy\" app separately and subscribe to your " +
+                "pharmacy's channel (the dashboard's Attendance page has the link).")
             .setView(container)
             .setCancelable(false)
             .setPositiveButton("Save") { _, _ ->
@@ -263,12 +266,6 @@ class MainActivity : AppCompatActivity() {
         Prefs.saveStaff(this, staffId = staffNumber, staffNumber = staffNumber, staffName = staffName)
         Prefs.setManagerMode(this, isManager)
         Prefs.setTracksOwnAttendance(this, tracksOwn)
-        if (isManager) {
-            // Cursor starts at "now" so the first poll doesn't fire
-            // a notification for every check-in that already
-            // happened before this phone was set up.
-            Prefs.setLastNotifiedIso(this, java.time.Instant.now().toString())
-        }
         // Device registration (staff_id/number/name) for a phone that
         // geofences (plain staff, or a dual-role manager) now happens
         // inside GeofenceHelper.registerFromServer, reached moments
@@ -292,10 +289,15 @@ class MainActivity : AppCompatActivity() {
             requestForegroundLocationIfNeeded(forceReRegister)
         } else {
             // A notification-only manager phone doesn't geofence
-            // anything — it only needs to be able to show notifications
-            // and stay alive in the background, so location permissions
-            // are skipped entirely.
-            requestNotificationsIfNeeded(forceReRegister)
+            // anything, and this app no longer runs a background
+            // poller either — check-in notifications come from the
+            // separate ntfy app now (see the dashboard's Attendance
+            // page for the channel to subscribe to). There is nothing
+            // left for this app to request permission for or keep
+            // running, so setup finishes immediately.
+            statusText.text = "✓ Nothing more to set up in this app. Install " +
+                "\"ntfy\" separately and subscribe to your pharmacy's channel " +
+                "(dashboard → Attendance) to get check-in notifications."
         }
     }
 
@@ -335,11 +337,14 @@ class MainActivity : AppCompatActivity() {
         if (granted) {
             promptBatteryOptimization(forceReRegister)
         } else {
-            statusText.text = if (!needsGeofence())
-                "Step 1/2 — requesting notification permission…"
-            else
-                "Step 3/4 — requesting notification permission " +
-                    "(needed for the \"tracking active\" status)…"
+            // This function is only ever reached via the geofence chain
+            // now (a notification-only manager phone short-circuits
+            // before this point — see beginPermissionFlowIfNeeded) —
+            // needed for AttendanceForegroundService's own ongoing
+            // notification, unrelated to check-in alerts (those come
+            // from the separate ntfy app now).
+            statusText.text = "Step 3/4 — requesting notification permission " +
+                "(needed for the \"tracking active\" status)…"
             notificationsLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
@@ -352,15 +357,13 @@ class MainActivity : AppCompatActivity() {
             return
         }
         val isManager = Prefs.isManagerMode(this)
-        statusText.text = if (!needsGeofence()) "Step 2/2 — battery optimization exemption needed"
-                           else "Step 4/4 — battery optimization exemption needed"
+        statusText.text = "Step 4/4 — battery optimization exemption needed"
         AlertDialog.Builder(this)
             .setTitle("One more setting")
             .setMessage("Android will try to stop this app in the background to save " +
                 "battery, which breaks " +
-                (if (isManager && !needsGeofence()) "check-in notifications."
-                 else if (isManager) "check-in notifications and your own automatic check-in/out."
-                 else "automatic check-in/out.") +
+                (if (isManager) "your own automatic check-in/out (this phone is set up " +
+                    "as a dual-role manager)." else "automatic check-in/out.") +
                 " On the next screen, allow this app to run without battery restrictions.")
             .setPositiveButton("Continue") { _, _ ->
                 val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
@@ -409,30 +412,23 @@ class MainActivity : AppCompatActivity() {
 
     // ── Step 6: register + start ────────────────────────────────────
     private fun finishOnboarding(forceReRegister: Boolean) {
+        // Only ever reached when needsGeofence() is true — a
+        // notification-only manager phone short-circuits back in
+        // beginPermissionFlowIfNeeded and never starts the location
+        // permission chain that leads here at all.
         val isManager = Prefs.isManagerMode(this)
-        if (isManager) {
-            statusText.text = "Starting check-in notifications…"
-            ManagerNotifyService.start(this)
-            if (!Prefs.tracksOwnAttendance(this)) {
-                statusText.text = "✓ You'll be notified when staff check in."
-                return
-            }
-            // Dual-role: fall through below to also geofence this
-            // phone's own check-in/out, same as any staff phone.
-        }
         statusText.text = "Registering geofence…"
         AttendanceForegroundService.start(this)
         GeofenceHelper.registerFromServer(this) { success ->
             runOnUiThread {
                 statusText.text = if (success) {
-                    if (isManager) "✓ Notified on check-ins, and your own check-in/out is active."
+                    if (isManager) "✓ Your own check-in/out is active. Check-in notifications for everyone else come via the ntfy app — see the dashboard."
                     else "✓ Automatic check-in/out is active."
                 } else {
                     "⚠ Could not register the geofence yet — check that a pharmacy " +
                         "location has been added in Manager > Attendance, and that " +
                         "location permission was granted, then tap \"re-check\" below. " +
-                        (if (isManager) "Check-in notifications are still active regardless."
-                         else "QR scan still works regardless.")
+                        "QR scan still works regardless."
                 }
             }
         }

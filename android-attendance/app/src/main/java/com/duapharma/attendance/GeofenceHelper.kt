@@ -34,11 +34,12 @@ object GeofenceHelper {
             // geofence lookup below — runs on every path that calls
             // this function (initial setup, the manual "re-check
             // permissions" button, and BootReceiver after every
-            // restart), so ManagerNotifyService's name lookup and
-            // attendance_devices.last_seen_at both stay current without
-            // a separate sync step or requiring a reinstall. Manager
-            // phones skip this — they don't have a staff identity to
-            // report and don't hold a Staff Registry name to send.
+            // restart), so the ntfy notification trigger's name lookup
+            // and attendance_devices.last_seen_at both stay current
+            // without a separate sync step or requiring a reinstall.
+            // Manager phones skip this — they don't have a staff
+            // identity to report and don't hold a Staff Registry name
+            // to send.
             val staffId = Prefs.staffId(context)
             // A notification-only manager phone has no staff identity
             // worth reporting; a dual-role one (Prefs.tracksOwnAttendance)
