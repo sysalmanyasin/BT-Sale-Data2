@@ -166,6 +166,12 @@ export async function addManualEvent({ staffId, staffNumber, eventType, occurred
   return data;
 }
 
+// NOT currently called from any UI (verified during the RLS tightening
+// migration 20260919130000) -- and as of that migration, UPDATE has no
+// RLS policy on attendance_events for anon/authenticated, so calling
+// this now succeeds but silently affects 0 rows rather than erroring.
+// If you wire this up to a real "edit an entry" UI later, add a
+// narrow, purpose-specific UPDATE policy for it first.
 export async function updateEvent(id, changes) {
   const client = _getClient();
   if (!client) throw new Error('Supabase client unavailable');
