@@ -191,7 +191,16 @@ object AttendanceApi {
      *  bare staff number. Best-effort — a failure here never blocks
      *  check-in/out. */
     fun upsertDevice(staffId: String, staffNumber: String?, deviceLabel: String, staffName: String? = null) {
-        val connection = openConnection(restUrl("attendance_devices"), "POST")
+        // on_conflict=staff_id is required for 'Prefer: resolution=
+        // merge-duplicates' to actually merge anything — PostgREST
+        // needs to be told which unique constraint to target, it
+        // doesn't infer one. Without this (the bug, until the
+        // corresponding attendance_devices_dedupe_and_unique_staff_id
+        // migration added that constraint and this line was added
+        // together), every "upsert" call was silently just an INSERT —
+        // confirmed live: EMP-001 alone had 4 duplicate rows from
+        // ordinary re-checks before this fix.
+        val connection = openConnection(restUrl("attendance_devices?on_conflict=staff_id"), "POST")
         try {
             connection.setRequestProperty("Prefer", "resolution=merge-duplicates,return=minimal")
             connection.doOutput = true
