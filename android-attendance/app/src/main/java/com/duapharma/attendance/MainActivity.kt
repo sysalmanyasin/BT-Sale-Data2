@@ -445,17 +445,38 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleQrScan(contents: String) {
-        // Expected QR payload: a fixed string agreed with the printed
-        // code, e.g. "BT-ATTENDANCE-ENTRANCE" — content itself doesn't
-        // encode in/out; scanning toggles based on this device's last
-        // recorded transition (no time-window restriction here, unlike
-        // the geofence debounce — a human tapped "scan" on purpose, so
-        // never silently ignore it).
+        // Previously this parameter was never even read -- ANY scanned
+        // barcode (even an unrelated product barcode) triggered a
+        // check-in/out toggle, no validation at all. Now fetches the
+        // real secret from attendance_locations.qr_secret (printed on
+        // the entrance QR — see the dashboard's Location tab) and
+        // rejects anything that doesn't match exactly. Content itself
+        // doesn't encode in/out; scanning toggles based on this
+        // device's last recorded transition (no time-window
+        // restriction here, unlike the geofence debounce — a human
+        // tapped "scan" on purpose, so never silently ignore it).
         val staffId = Prefs.staffId(this) ?: return
-        val eventType = if (Prefs.lastTransitionType(this) == "check_in") "check_out" else "check_in"
 
-        statusText.text = "Submitting…"
+        statusText.text = "Verifying code…"
         Thread {
+            val expectedSecret = AttendanceApi.fetchQrSecret()
+            if (expectedSecret == null) {
+                runOnUiThread {
+                    Toast.makeText(this, "⚠ No QR code has been set up yet — ask your manager to print one from the dashboard", Toast.LENGTH_LONG).show()
+                    statusText.text = "✓ Automatic check-in/out is active."
+                }
+                return@Thread
+            }
+            if (contents != expectedSecret) {
+                runOnUiThread {
+                    Toast.makeText(this, "✗ That's not the pharmacy's check-in code", Toast.LENGTH_LONG).show()
+                    statusText.text = "✓ Automatic check-in/out is active."
+                }
+                return@Thread
+            }
+
+            val eventType = if (Prefs.lastTransitionType(this) == "check_in") "check_out" else "check_in"
+            runOnUiThread { statusText.text = "Submitting…" }
             val success = AttendanceApi.postEvent(
                 staffId = staffId,
                 staffNumber = Prefs.staffNumber(this),

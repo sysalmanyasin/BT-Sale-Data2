@@ -154,6 +154,35 @@ object AttendanceApi {
         }
     }
 
+    /** The active location's qr_secret, or null if none is configured
+     *  yet (no location, or one without a QR code printed). Used by
+     *  MainActivity's QR fallback to actually validate a scan instead
+     *  of accepting any barcode as a valid check-in/out trigger — see
+     *  the attendance_locations_qr_secret migration for why this
+     *  exists at all. */
+    fun fetchQrSecret(): String? {
+        val connection = openConnection(
+            restUrl("attendance_locations?active=eq.true&select=qr_secret&limit=1"),
+            "GET",
+        )
+        return try {
+            if (connection.responseCode !in 200..299) {
+                Log.w(TAG, "fetchQrSecret failed: HTTP ${connection.responseCode}")
+                return null
+            }
+            val body = connection.inputStream.bufferedReader().use { it.readText() }
+            val arr = JSONArray(body)
+            if (arr.length() == 0) return null
+            val row = arr.getJSONObject(0)
+            if (row.isNull("qr_secret")) null else row.optString("qr_secret").ifBlank { null }
+        } catch (e: Exception) {
+            Log.e(TAG, "fetchQrSecret error", e)
+            null
+        } finally {
+            connection.disconnect()
+        }
+    }
+
     /** First active attendance_locations row, or null if none configured yet. */
     fun fetchPrimaryLocation(): AttendanceLocation? {
         val connection = openConnection(

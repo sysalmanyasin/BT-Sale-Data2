@@ -72,12 +72,14 @@ export async function renderAttendanceTab() {
       <button class="btn att-subtab" data-atab="log" onclick="AttendanceUI.switchSub('log')">📜 Raw Log</button>
       <button class="btn att-subtab" data-atab="manual" onclick="AttendanceUI.switchSub('manual')">✏️ Manual Entry</button>
       <button class="btn att-subtab" data-atab="location" onclick="AttendanceUI.switchSub('location')">📍 Location</button>
+      <button class="btn att-subtab" data-atab="notify" onclick="AttendanceUI.switchSub('notify')">🔔 Notifications</button>
     </div>
     <div id="att-sub-today" class="att-sub"></div>
     <div id="att-sub-month" class="att-sub" style="display:none"></div>
     <div id="att-sub-log" class="att-sub" style="display:none"></div>
     <div id="att-sub-manual" class="att-sub" style="display:none"></div>
     <div id="att-sub-location" class="att-sub" style="display:none"></div>
+    <div id="att-sub-notify" class="att-sub" style="display:none"></div>
   `;
   await renderTodayView();
 }
@@ -92,6 +94,7 @@ function switchSub(tab) {
   if (tab === 'log') renderLogView();
   if (tab === 'manual') renderManualView();
   if (tab === 'location') renderLocationView();
+  if (tab === 'notify') renderNotifyView();
 }
 
 // ── TODAY ────────────────────────────────────────────────────────────
@@ -306,7 +309,81 @@ async function renderLocationView() {
       </label>
       <button class="btn" id="att-loc-save" onclick="AttendanceUI.saveLocation('${existing?.id || ''}')" disabled>Save location</button>
     </div>
+
+    <div class="att-manual-form" style="margin-top:16px;">
+      <p class="att-note">
+        <strong>Printable entrance QR code</strong> — the fallback check-in method for a phone
+        whose automatic geofence isn't working (dead GPS signal, permissions revoked, etc.).
+        Staff tap "Scan QR to check in/out" in the app and point the camera at this.
+      </p>
+      ${!existing
+        ? `<p class="att-note">Save a location above first — the QR code is tied to it.</p>`
+        : existing.qr_secret
+          ? `
+            <div id="att-qr-canvas" style="text-align:center; padding:16px; background:#fff; display:inline-block;"></div>
+            <div>
+              <button class="btn" onclick="AttendanceUI.printQr()">🖨️ Print</button>
+              <button class="btn" onclick="AttendanceUI.rotateQr('${existing.id}')">🔄 Generate a new code (invalidates the old printout)</button>
+            </div>
+          `
+          : `
+            <p class="att-note">No QR code set up for this location yet.</p>
+            <button class="btn" onclick="AttendanceUI.rotateQr('${existing.id}')">➕ Generate a QR code</button>
+          `
+      }
+    </div>
   `;
+  if (existing?.qr_secret) renderQrCanvas(existing.qr_secret);
+}
+
+// Renders the QR into #att-qr-canvas using the qrcode-generator library
+// (loaded in index.html — see its <script> tag's comment for the
+// verified SRI hash). Type 0 = auto-pick the smallest QR version that
+// fits the data; error correction 'M' is a reasonable middle ground
+// for a printed sign that might get slightly scuffed or angled.
+function renderQrCanvas(secret) {
+  const holder = document.getElementById('att-qr-canvas');
+  if (!holder || typeof qrcode !== 'function') return;
+  const qr = qrcode(0, 'M');
+  qr.addData(secret);
+  qr.make();
+  holder.innerHTML = qr.createSvgTag(6, 4);
+}
+
+function printQr() {
+  const svg = document.querySelector('#att-qr-canvas svg');
+  if (!svg) { toast('⚠ No QR code to print', 'w'); return; }
+  const name = document.getElementById('att-loc-name')?.value || 'Attendance check-in';
+  const win = window.open('', '_blank');
+  win.document.write(`
+    <html><head><title>Check-in QR — ${_mgrEsc(name)}</title></head>
+    <body style="text-align:center; font-family:sans-serif; padding:40px;">
+      <h2>${_mgrEsc(name)}</h2>
+      <p>Scan to check in / check out</p>
+      ${svg.outerHTML}
+    </body></html>
+  `);
+  win.document.close();
+  win.focus();
+  win.print();
+}
+
+async function rotateQr(locationId) {
+  if (!confirm('This invalidates any previously printed QR code — staff will need the new printout. Continue?')) return;
+  // Random secret, same shape as the one already seeded via SQL
+  // migration (attendance_locations_qr_secret) — generated the same
+  // way here so a rotation from the dashboard is just as strong as
+  // the original.
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  const secret = 'BT-QR-' + Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+  try {
+    await AttendanceBridge.upsertLocation({ id: locationId, qr_secret: secret });
+    toast('✓ New QR code generated — print it and replace the old one');
+    renderLocationView();
+  } catch (e) {
+    toast('✗ Failed to generate a new code — see console', 'e');
+  }
 }
 
 function captureLocation() {
@@ -341,4 +418,79 @@ async function saveLocation(existingId) {
 }
 
 // window bridge, same convention as switchMgrTab etc.
-window.AttendanceUI = { switchSub, changeDate, changeMonth, submitManual, renderAttendanceTab, renderLocationView, captureLocation, saveLocation };
+window.AttendanceUI = { switchSub, changeDate, changeMonth, submitManual, renderAttendanceTab, renderLocationView, captureLocation, saveLocation, copyNtfyTopic, printQr, rotateQr };
+
+// ── NOTIFICATIONS (ntfy) ─────────────────────────────────────────────
+// Real push notifications for check-in/check-out, via ntfy.sh — a
+// free, no-signup, no-custom-app pub-sub service (see docs.ntfy.sh).
+// A Supabase trigger (attendance_notify_manager, see
+// supabase/migrations/20260919090000_attendance_notify_manager_ntfy.sql
+// and its check-out follow-up) posts to this topic on every check-in
+// AND check-out. This tab exists purely to make subscribing easy —
+// there's no app-side code involved at all, ntfy is a separate,
+// prebuilt app on the Play Store and App Store.
+//
+// The topic name below is effectively a password (ntfy has no sign-up
+// or access control of its own — anyone who knows it can subscribe or
+// publish to it, see docs.ntfy.sh/publish/#authentication). It's
+// already alongside the anon key this whole file uses elsewhere,
+// which is the same already-public tradeoff — this dashboard is meant
+// for the manager's eyes, not the public. Don't paste this topic
+// somewhere public (a forum post, a public chat) independent of this
+// codebase.
+const NTFY_TOPIC = 'bt-attendance-gWRxjNPA9m-QV6cQsm3Outf8';
+
+function renderNotifyView() {
+  const cont = document.getElementById('att-sub-notify');
+  if (!cont) return;
+  const androidDeepLink = `ntfy://ntfy.sh/${NTFY_TOPIC}`;
+  cont.innerHTML = `
+    <div class="att-manual-form">
+      <p class="att-note">
+        Get a real push notification the instant anyone checks in or out — works the same on
+        iPhone or Android, and doesn't need this app to stay running in the background the way
+        the old Android polling did.
+      </p>
+
+      <label>Your pharmacy's notification channel
+        <input type="text" id="att-ntfy-topic" value="${_mgrEsc(NTFY_TOPIC)}" readonly>
+      </label>
+      <button class="btn" onclick="AttendanceUI.copyNtfyTopic()">📋 Copy channel name</button>
+
+      <div class="att-note" style="margin-top:16px;">
+        <strong>Setup — do this once per phone:</strong>
+        <ol style="margin:8px 0 0 20px; padding:0;">
+          <li>Install the free <strong>ntfy</strong> app —
+            <a href="https://play.google.com/store/apps/details?id=io.heckel.ntfy" target="_blank" rel="noopener">Android (Play Store)</a>
+            or
+            <a href="https://apps.apple.com/us/app/ntfy/id1625396347" target="_blank" rel="noopener">iPhone (App Store)</a>.
+          </li>
+          <li>Open the app and tap the <strong>+</strong> (add subscription) button.</li>
+          <li>Paste in the channel name above (use the Copy button, then paste it into the "Topic name" field).</li>
+          <li>Tap Subscribe. That's it — no account, no sign-up.</li>
+        </ol>
+      </div>
+
+      <div class="att-note" style="margin-top:16px;">
+        <strong>Android shortcut:</strong> if ntfy is already installed on this phone, this link
+        opens the app straight to the subscribe screen with the channel pre-filled (this doesn't
+        work on iPhone — Apple doesn't support this kind of link the way Android does, so use the
+        manual steps above there):
+        <br>
+        <a href="${_mgrEsc(androidDeepLink)}">${_mgrEsc(androidDeepLink)}</a>
+      </div>
+
+      <p class="att-note" style="margin-top:16px;">
+        Treat the channel name above like a password — anyone who has it can subscribe to the
+        same notifications. It's fine to share it with other managers, just don't post it
+        somewhere public.
+      </p>
+    </div>
+  `;
+}
+
+function copyNtfyTopic() {
+  navigator.clipboard.writeText(NTFY_TOPIC)
+    .then(() => toast('✓ Copied — now paste it into the ntfy app'))
+    .catch(() => toast('⚠ Could not copy — select and copy the text manually', 'w'));
+}
