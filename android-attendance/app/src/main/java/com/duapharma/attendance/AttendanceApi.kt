@@ -183,6 +183,47 @@ object AttendanceApi {
         }
     }
 
+    /** This staff member's check_in/check_out events since local
+     *  midnight, oldest first — powers the "today's check-in/out times
+     *  so far" section on the staff status screen. `sinceIso` is the
+     *  caller's local midnight already converted to an instant (so a
+     *  staff member's "today" matches their phone's calendar day, not
+     *  UTC's), formatted as an ISO-8601 instant for PostgREST's
+     *  `gte.` filter. Returns an empty list (never null) on any
+     *  failure, so the status screen can just render "no punches yet"
+     *  either way rather than needing a separate error state. */
+    fun fetchTodayEvents(staffId: String, sinceIso: String): List<AttendanceEvent> {
+        val encodedSince = java.net.URLEncoder.encode(sinceIso, "UTF-8")
+        val connection = openConnection(
+            restUrl(
+                "attendance_events?staff_id=eq.$staffId&occurred_at=gte.$encodedSince" +
+                    "&select=event_type,occurred_at,source&order=occurred_at.asc"
+            ),
+            "GET",
+        )
+        return try {
+            if (connection.responseCode !in 200..299) {
+                Log.w(TAG, "fetchTodayEvents failed: HTTP ${connection.responseCode}")
+                return emptyList()
+            }
+            val body = connection.inputStream.bufferedReader().use { it.readText() }
+            val arr = JSONArray(body)
+            (0 until arr.length()).map { i ->
+                val row = arr.getJSONObject(i)
+                AttendanceEvent(
+                    eventType = row.getString("event_type"),
+                    occurredAt = row.getString("occurred_at"),
+                    source = row.optString("source", "geofence"),
+                )
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "fetchTodayEvents error", e)
+            emptyList()
+        } finally {
+            connection.disconnect()
+        }
+    }
+
     /** First active attendance_locations row, or null if none configured yet. */
     fun fetchPrimaryLocation(): AttendanceLocation? {
         val connection = openConnection(
@@ -291,5 +332,16 @@ data class AttendanceLocation(
     val lat: Double,
     val lng: Double,
     val radiusMeters: Int,
+)
+
+/** One row from fetchTodayEvents. occurredAt stays a raw ISO-8601
+ *  string from Postgres (rather than a parsed type) — MainActivity is
+ *  the only caller and just needs to reformat it to a local HH:mm for
+ *  display, so parsing once there is simpler than picking a shared
+ *  date type here. */
+data class AttendanceEvent(
+    val eventType: String, // "check_in" | "check_out"
+    val occurredAt: String,
+    val source: String,    // "geofence" | "qr" | "manual"
 )
 

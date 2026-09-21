@@ -59,6 +59,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var statusText: TextView
     private lateinit var root: LinearLayout
+    private lateinit var todayText: TextView
 
     private val foregroundLocationLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -143,17 +144,71 @@ class MainActivity : AppCompatActivity() {
         root.addView(title)
         root.addView(subtitle)
         root.addView(statusText)
-        // QR check-in/out only makes sense on a phone that geofences
-        // its own attendance — a notification-only manager phone
-        // doesn't punch in or out itself, but a dual-role manager does.
+        // QR check-in/out, and the "today so far" list below it, only
+        // make sense on a phone that tracks its own attendance — a
+        // notification-only manager phone doesn't punch in or out
+        // itself, but a dual-role manager does (same condition as the
+        // QR button already used).
         if (!isManager || Prefs.tracksOwnAttendance(this)) {
             val qrButton = Button(this).apply {
                 text = "Scan QR to check in / out"
                 setOnClickListener { launchQrScanner() }
             }
             root.addView(qrButton)
+
+            val todayLabel = TextView(this).apply {
+                text = "Today"
+                textSize = 16f
+                setPadding(0, 32, 0, 8)
+            }
+            todayText = TextView(this).apply {
+                textSize = 14f
+                text = "Loading today's check-in/out…"
+            }
+            root.addView(todayLabel)
+            root.addView(todayText)
+            loadTodayEvents()
         }
         root.addView(reRegisterButton)
+    }
+
+    /** Fetches this staff member's check_in/check_out events since
+     *  local midnight and renders them as a simple time-ordered list
+     *  in todayText, e.g.:
+     *    Checked in   9:02 AM
+     *    Checked out  1:14 PM
+     *  "Since local midnight" uses the phone's own calendar day/zone
+     *  (not UTC) so a staff member's "today" always matches what's on
+     *  their own clock. Safe to call repeatedly — used both from
+     *  renderStatusScreen and right after a QR check-in/out so the
+     *  list reflects the punch that was just made. */
+    private fun loadTodayEvents() {
+        val staffId = Prefs.staffId(this) ?: return
+        Thread {
+            val startOfDay = java.time.LocalDate.now(java.time.ZoneId.systemDefault())
+                .atStartOfDay(java.time.ZoneId.systemDefault())
+                .toInstant()
+                .toString()
+            val events = AttendanceApi.fetchTodayEvents(staffId, startOfDay)
+            runOnUiThread {
+                if (!::todayText.isInitialized) return@runOnUiThread
+                todayText.text = if (events.isEmpty()) {
+                    "No check-in/out yet today."
+                } else {
+                    val formatter = java.time.format.DateTimeFormatter.ofPattern("h:mm a")
+                        .withZone(java.time.ZoneId.systemDefault())
+                    events.joinToString("\n") { event ->
+                        val label = if (event.eventType == "check_in") "Checked in " else "Checked out"
+                        val time = try {
+                            formatter.format(java.time.Instant.parse(event.occurredAt))
+                        } catch (e: Exception) {
+                            event.occurredAt
+                        }
+                        "$label  $time"
+                    }
+                }
+            }
+        }.start()
     }
 
     // ── Step 0: staff identity ──────────────────────────────────────
@@ -487,6 +542,7 @@ class MainActivity : AppCompatActivity() {
                 if (success) {
                     Prefs.recordTransition(this, eventType)
                     Toast.makeText(this, "✓ ${if (eventType == "check_in") "Checked in" else "Checked out"}", Toast.LENGTH_LONG).show()
+                    loadTodayEvents()
                 } else {
                     Toast.makeText(this, "✗ Failed — check your connection and try again", Toast.LENGTH_LONG).show()
                 }
