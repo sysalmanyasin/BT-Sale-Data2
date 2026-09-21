@@ -73,6 +73,7 @@ export async function renderAttendanceTab() {
       <button class="btn att-subtab" data-atab="manual" onclick="AttendanceUI.switchSub('manual')">✏️ Manual Entry</button>
       <button class="btn att-subtab" data-atab="location" onclick="AttendanceUI.switchSub('location')">📍 Location</button>
       <button class="btn att-subtab" data-atab="notify" onclick="AttendanceUI.switchSub('notify')">🔔 Notifications</button>
+      <button class="btn att-subtab" data-atab="iphone" onclick="AttendanceUI.switchSub('iphone')">🍎 iPhone Setup</button>
     </div>
     <div id="att-sub-today" class="att-sub"></div>
     <div id="att-sub-month" class="att-sub" style="display:none"></div>
@@ -80,6 +81,7 @@ export async function renderAttendanceTab() {
     <div id="att-sub-manual" class="att-sub" style="display:none"></div>
     <div id="att-sub-location" class="att-sub" style="display:none"></div>
     <div id="att-sub-notify" class="att-sub" style="display:none"></div>
+    <div id="att-sub-iphone" class="att-sub" style="display:none"></div>
   `;
   await renderTodayView();
 }
@@ -95,6 +97,7 @@ function switchSub(tab) {
   if (tab === 'manual') renderManualView();
   if (tab === 'location') renderLocationView();
   if (tab === 'notify') renderNotifyView();
+  if (tab === 'iphone') renderIphoneView();
 }
 
 // ── TODAY ────────────────────────────────────────────────────────────
@@ -418,7 +421,7 @@ async function saveLocation(existingId) {
 }
 
 // window bridge, same convention as switchMgrTab etc.
-window.AttendanceUI = { switchSub, changeDate, changeMonth, submitManual, renderAttendanceTab, renderLocationView, captureLocation, saveLocation, copyNtfyTopic, printQr, rotateQr };
+window.AttendanceUI = { switchSub, changeDate, changeMonth, submitManual, renderAttendanceTab, renderLocationView, captureLocation, saveLocation, copyNtfyTopic, printQr, rotateQr, changeIosStaff, copyIosField };
 
 // ── NOTIFICATIONS (ntfy) ─────────────────────────────────────────────
 // Real push notifications for check-in/check-out, via ntfy.sh — a
@@ -492,5 +495,142 @@ function renderNotifyView() {
 function copyNtfyTopic() {
   navigator.clipboard.writeText(NTFY_TOPIC)
     .then(() => toast('✓ Copied — now paste it into the ntfy app'))
+    .catch(() => toast('⚠ Could not copy — select and copy the text manually', 'w'));
+}
+
+// ── iPhone SETUP (Shortcuts automation) ─────────────────────────────
+// No native iPhone app — see android-attendance's README on the Xcode/
+// signing constraints that ruled that out. Instead each iPhone runs two
+// Personal Automations in Apple's own built-in Shortcuts app ("Arrive"/
+// "Leave" a location -> "Get Contents of URL", POSTing straight to
+// attendance_events). Conceptually the same idea as the Android app's
+// 'geofence' source (Apple's own location engine doing the detection,
+// not a human tapping anything), but tagged source:'ios_shortcut' so
+// Raw Log can tell it apart -- this path has none of the Android app's
+// protections (no mock-location flag, no 5-minute debounce). See
+// supabase/migrations/20260919110000_attendance_events_ios_shortcut_source.sql.
+//
+// Every value below is real and copy-pasteable, not a placeholder the
+// reader has to edit -- the staff picker regenerates all of it
+// (including the two JSON bodies) for whichever staff member is
+// selected, the same way Manual Entry's staff dropdown works.
+let _attIosStaffId = null;
+
+async function renderIphoneView() {
+  const cont = document.getElementById('att-sub-iphone');
+  if (!cont) return;
+  cont.innerHTML = `<div class="att-loading">Loading…</div>`;
+
+  const active = Repository.getStaff().filter(e => e.active !== false)
+    .sort((a, b) => (Number(a.srNum) || 999) - (Number(b.srNum) || 999));
+  if (!active.length) {
+    cont.innerHTML = `<p class="att-note">Add a staff member in Staff Registry first.</p>`;
+    return;
+  }
+  if (!_attIosStaffId || !active.find(s => s.id === _attIosStaffId)) _attIosStaffId = active[0].id;
+  const staff = active.find(s => s.id === _attIosStaffId);
+  const staffNumber = staff.staffId || staff.id;
+
+  const location = (await AttendanceBridge.fetchLocations())[0] || null;
+  const { eventsUrl, anonKey } = AttendanceBridge.getRestConfig();
+
+  const body = (eventType) => JSON.stringify({
+    staff_id: staffNumber, staff_number: staffNumber, event_type: eventType, source: 'ios_shortcut',
+  }, null, 2);
+
+  cont.innerHTML = `
+    <div class="att-manual-form">
+      <p class="att-note">
+        iPhone has no dedicated app — instead, each staff member sets up two <strong>Personal
+        Automations</strong> in Apple's built-in Shortcuts app: one that fires on arrival at the
+        pharmacy, one on leaving. Each automation makes a single silent web request that writes
+        the check-in/out directly, the same as the Android app's geofence does.
+      </p>
+      <label>Generate instructions for
+        <select id="att-ios-staff" onchange="AttendanceUI.changeIosStaff(this.value)">
+          ${active.map(s => `<option value="${s.id}" ${s.id === staff.id ? 'selected' : ''}>${_mgrEsc(s.name)} (${_mgrEsc(s.staffId || s.id)})</option>`).join('')}
+        </select>
+      </label>
+    </div>
+
+    <div class="att-manual-form" style="margin-top:16px;">
+      <strong>Step 1 — Location</strong>
+      ${location
+        ? `<p class="att-note">In each automation's location picker, search for or drop a pin at:
+             <strong>${_mgrEsc(location.name)}</strong> (${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}).
+             Under "Show More," set radius to <strong>Small</strong> — closest match to the
+             ${location.radius_meters}m geofence the Android app uses.</p>`
+        : `<p class="att-note">⚠ No pharmacy location is saved yet — set one on the Location tab first, staff need its coordinates for this step.</p>`
+      }
+    </div>
+
+    <div class="att-manual-form" style="margin-top:16px;">
+      <strong>Step 2 — Shared request details</strong>
+      <p class="att-note">Both automations' "Get Contents of URL" action use the same URL, method, and headers:</p>
+      ${_iosCopyRow('att-ios-url', 'URL', eventsUrl)}
+      <p class="att-note" style="margin:8px 0 4px;">Method: <strong>POST</strong></p>
+      <p class="att-note" style="margin:4px 0;">Headers (add all four, under "Headers" — not the request body):</p>
+      ${_iosCopyRow('att-ios-hdr-apikey', 'apikey', anonKey)}
+      ${_iosCopyRow('att-ios-hdr-auth', 'Authorization', 'Bearer ' + anonKey)}
+      ${_iosCopyRow('att-ios-hdr-ct', 'Content-Type', 'application/json')}
+      ${_iosCopyRow('att-ios-hdr-prefer', 'Prefer', 'return=minimal')}
+      <p class="att-note">Request Body: choose <strong>JSON</strong>, then add the fields below (one per automation).</p>
+    </div>
+
+    <div class="att-manual-form" style="margin-top:16px;">
+      <strong>Step 3 — "Arrive" automation body</strong> (When I Arrive → ${_mgrEsc(location?.name || 'the pharmacy')})
+      <p class="att-note">Add these as JSON dictionary fields:</p>
+      ${_iosCopyRow('att-ios-in-id', 'staff_id', staffNumber)}
+      ${_iosCopyRow('att-ios-in-num', 'staff_number', staffNumber)}
+      ${_iosCopyRow('att-ios-in-type', 'event_type', 'check_in')}
+      ${_iosCopyRow('att-ios-in-src', 'source', 'ios_shortcut')}
+    </div>
+
+    <div class="att-manual-form" style="margin-top:16px;">
+      <strong>Step 4 — "Leave" automation body</strong> (When I Leave → ${_mgrEsc(location?.name || 'the pharmacy')})
+      <p class="att-note">Same fields, only <code>event_type</code> changes:</p>
+      ${_iosCopyRow('att-ios-out-id', 'staff_id', staffNumber)}
+      ${_iosCopyRow('att-ios-out-num', 'staff_number', staffNumber)}
+      ${_iosCopyRow('att-ios-out-type', 'event_type', 'check_out')}
+      ${_iosCopyRow('att-ios-out-src', 'source', 'ios_shortcut')}
+    </div>
+
+    <div class="att-manual-form" style="margin-top:16px;">
+      <strong>Step 5 — Make it silent</strong>
+      <p class="att-note">
+        On each automation's final confirmation screen, turn off <strong>"Ask Before Running."</strong>
+        Skipped, iOS pops a confirmation banner on every arrival/departure — with it off, both
+        run automatically in the background, same as the Android app.
+      </p>
+      <p class="att-note">
+        This path has no mock-location check and no duplicate-punch debounce (unlike the Android
+        app) — Raw Log tags every event this way as <code>ios_shortcut</code> so it's easy to spot
+        if something looks off.
+      </p>
+    </div>
+  `;
+}
+
+function changeIosStaff(staffId) { _attIosStaffId = staffId; renderIphoneView(); }
+
+// One labeled, read-only, copy-button row — used for every URL/header/
+// body-field value above so staff never have to hand-type anything
+// (typos here are silent failures: a wrong apikey just 401s, a wrong
+// staff_id posts as somebody else).
+function _iosCopyRow(id, label, value) {
+  return `
+    <div class="att-ios-row" style="display:flex; align-items:center; gap:8px; margin:4px 0;">
+      <span style="min-width:110px; font-size:13px; color:#666;">${_mgrEsc(label)}</span>
+      <input type="text" id="${id}" value="${_mgrEsc(value)}" readonly style="flex:1;">
+      <button class="btn" onclick="AttendanceUI.copyIosField('${id}')">📋</button>
+    </div>
+  `;
+}
+
+function copyIosField(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  navigator.clipboard.writeText(el.value)
+    .then(() => toast('✓ Copied'))
     .catch(() => toast('⚠ Could not copy — select and copy the text manually', 'w'));
 }

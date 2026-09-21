@@ -54,6 +54,20 @@ function _getClient() {
 
 export function isConnected() { return true; } // same always-on convention as InventoryBridge/AuditBridge
 
+// Exposed for the manager dashboard's iPhone Shortcuts setup instructions
+// (manager-attendance.js's renderIphoneView) — staff need the literal REST
+// endpoint + anon key to paste into their own phone's "Get Contents of
+// URL" automation, the same way the Android app already gets these two
+// values baked into its own BuildConfig. Doesn't change their exposure —
+// it's the same public anon key this file already ships in its own
+// source above, not a new secret.
+export function getRestConfig() {
+  return {
+    eventsUrl: `${ATT_SUPABASE_URL}/rest/v1/attendance_events`,
+    anonKey: ATT_SUPABASE_ANON_KEY,
+  };
+}
+
 // ── Small in-memory caches (per page load; Today/Monthly re-fetch on demand) ──
 let _todayCache = [];
 let _monthCache = [];
@@ -193,5 +207,5 @@ export async function upsertLocation(loc) {
 window.AttendanceBridge = {
   isConnected, fetchEventsForDay, fetchEventsForMonth, fetchRecentEvents,
   fetchLocations, fetchDevices, pairEventsByStaff,
-  addManualEvent, updateEvent, upsertLocation,
+  addManualEvent, updateEvent, upsertLocation, getRestConfig,
 };
