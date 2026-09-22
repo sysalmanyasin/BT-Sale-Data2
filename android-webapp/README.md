@@ -15,15 +15,40 @@ changes.
 - Back button navigates WebView history before exiting
 - Pull-to-refresh
 
-## Known limitation: Google Sign-In
+## Google Sign-In
 
 Google's OAuth endpoints reject sign-in attempts from generic embedded
-WebViews (`Error 403: disallowed_useragent`) — see `js/auth.js` in the repo
-root, which uses both a full-page redirect and `google.accounts.oauth2`
-for sign-in. Every other part of the app works the same as in a mobile
-browser tab. Making Google sign-in work from inside this shell would need
-a Chrome Custom Tabs–based auth flow instead of a plain WebView — a
-separate piece of work if you want it.
+WebViews (`Error 403: disallowed_useragent`) — a real anti-phishing
+protection, not a bug, since an embedded WebView can read cookies and
+inject JavaScript into the login page in ways a real browser tab can't.
+Spoofing the WebView's user agent to dodge that check would work today
+and quietly break tomorrow, so this app doesn't do that. Instead:
+
+1. `MainActivity` intercepts navigation to `accounts.google.com` and opens
+   it in a **Chrome Custom Tab** instead of the WebView — a real Chrome
+   context, so Google accepts it normally.
+2. When sign-in finishes, Google redirects back to `https://bt.duapharma.com/...`
+   exactly as it would for a browser tab (see `js/auth.js`'s
+   `_gauthOAuthSignIn`/`_gauthHandleRedirectToken`).
+3. An Android **App Link** (`autoVerify` intent-filter in
+   `AndroidManifest.xml`, backed by `/.well-known/assetlinks.json` at the
+   repo root) routes that redirect back into the app instead of leaving
+   it open in Chrome. `MainActivity` then loads that URL into the WebView,
+   so the site's existing token handler picks it up unchanged.
+
+**For this to verify on a device**, `assetlinks.json`'s
+`sha256_cert_fingerprints` must match whatever key actually signs the
+installed APK. It currently lists the fingerprint of the shared debug
+keystore checked into this repo (`shared-debug.keystore`, same one
+`android-attendance`/`android-widget` use) — fine for these debug builds.
+If this app is ever signed for release with a different key, add that
+key's SHA-256 fingerprint (`keytool -list -v -keystore <your-release.keystore>`)
+to `assetlinks.json` alongside the debug one.
+
+If App Link verification hasn't finished on a given device yet (it can
+take a short time after install) or the fingerprint doesn't match, this
+degrades safely rather than breaking: sign-in still completes, it just
+finishes in Chrome instead of hopping back into the app.
 
 ## Building
 

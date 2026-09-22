@@ -63,4 +63,9 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.webkit:webkit:1.11.0")
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
+    // Custom Tabs — required for Google Sign-In (see MainActivity):
+    // Google's OAuth endpoints reject the plain WebView user agent
+    // ("disallowed_useragent"), and this is the flow Google itself
+    // recommends instead, not a workaround.
+    implementation("androidx.browser:browser:1.8.0")
 }

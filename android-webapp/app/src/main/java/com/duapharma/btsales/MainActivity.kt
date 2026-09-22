@@ -21,6 +21,7 @@ import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 
 /**
@@ -30,12 +31,26 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
  * popup intents to the platform, and keep normal Android back-button and
  * pull-to-refresh behavior.
  *
- * Known limitation: Google's OAuth endpoints reject sign-in attempts from
+ * Google Sign-In: Google's OAuth endpoints reject sign-in attempts from
  * generic embedded WebViews ("disallowed_useragent"), which is what the
- * site's Google Sign-In button uses (see js/auth.js). Everything else in
- * the app works the same as in a browser tab. If Google sign-in needs to
- * work from inside this app, that requires a Custom-Tabs-based auth flow
- * instead of a plain WebView, which is a separate follow-up.
+ * site's Google Sign-In button uses (see js/auth.js's full-page redirect
+ * to accounts.google.com). Rather than disguise the WebView to slip past
+ * that check — which is exactly the kind of thing Google's detection
+ * exists to stop, and is a use-at-your-own-risk hack — navigation to
+ * accounts.google.com is handed off to a Chrome Custom Tab instead (see
+ * shouldOverrideUrlLoading below). When sign-in finishes there, Google
+ * redirects back to https://bt.duapharma.com/... exactly as it would in
+ * a normal browser; an Android App Link (registered via the
+ * autoVerify intent-filter in AndroidManifest.xml + the repo's
+ * /.well-known/assetlinks.json) routes that URL back into this activity
+ * instead of leaving it open in Chrome, and onNewIntent/onCreate load it
+ * into the WebView so js/auth.js's existing redirect-token handler picks
+ * it up unchanged. If App Link verification hasn't completed yet on a
+ * given device (it can take a short time after install, and requires
+ * assetlinks.json's fingerprint to match the APK's actual signing key —
+ * see the README), the flow still degrades safely: sign-in simply
+ * finishes in Chrome instead of hopping back into the app, rather than
+ * failing outright.
  */
 class MainActivity : AppCompatActivity() {
 
@@ -60,6 +75,27 @@ class MainActivity : AppCompatActivity() {
             filePathCallback?.onReceiveValue(results)
             filePathCallback = null
         }
+
+    private fun openInCustomTab(uri: Uri) {
+        CustomTabsIntent.Builder().build().launchUrl(this, uri)
+    }
+
+    // App Link redirect back from the Custom Tab (see class doc): a
+    // bt.duapharma.com URL carrying Google's auth result. Hand it straight
+    // to the WebView — js/auth.js's redirect-token handler reads it off
+    // window.location.hash on load exactly as it would in a browser tab.
+    private fun handleAppLinkIntent(intent: Intent?): Boolean {
+        val data = intent?.data ?: return false
+        if (intent.action != Intent.ACTION_VIEW || data.host != APP_HOST) return false
+        webView.loadUrl(data.toString())
+        return true
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleAppLinkIntent(intent)
+    }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -92,18 +128,26 @@ class MainActivity : AppCompatActivity() {
                 request: WebResourceRequest
             ): Boolean {
                 val host = request.url.host ?: return false
-                // Keep the PWA's own domain and the Google OAuth redirect
-                // hop (see class doc) inside the app; send anything else
-                // (external links the app opens) to a real browser.
-                val inApp = host == APP_HOST ||
-                    host.endsWith(".duapharma.com") ||
-                    host.endsWith("accounts.google.com") ||
-                    host.endsWith("supabase.co")
-                return if (inApp) {
-                    false
-                } else {
-                    startActivity(Intent(Intent.ACTION_VIEW, request.url))
-                    true
+                return when {
+                    // The PWA's own domain and its Supabase backend stay
+                    // inside this WebView.
+                    host == APP_HOST || host.endsWith(".duapharma.com") ||
+                        host.endsWith("supabase.co") -> false
+
+                    // Google's sign-in pages: see class doc. Handed to a
+                    // Custom Tab, which Google's OAuth accepts (it's a
+                    // real Chrome context, not an embedded WebView).
+                    host == "accounts.google.com" || host.endsWith(".accounts.google.com") -> {
+                        openInCustomTab(request.url)
+                        true
+                    }
+
+                    // Anything else (external links the app opens) to a
+                    // real browser.
+                    else -> {
+                        startActivity(Intent(Intent.ACTION_VIEW, request.url))
+                        true
+                    }
                 }
             }
 
@@ -192,7 +236,7 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        if (savedInstanceState == null) {
+        if (savedInstanceState == null && !handleAppLinkIntent(intent)) {
             webView.loadUrl(BuildConfig.APP_URL)
         }
     }
