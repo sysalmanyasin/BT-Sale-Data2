@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.BTAttendance" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/brand_blue</item>
+        <item name="colorOnPrimary">@color/brand_navy</item>
+        <item name="colorPrimaryContainer">@color/brand_navy</item>
+        <item name="colorSecondary">@color/brand_navy</item>
+        <item name="colorSurface">@color/surface_card</item>
+        <item name="android:windowBackground">@color/bg_app</item>
+        <item name="android:statusBarColor">@color/brand_navy</item>
+        <item name="android:navigationBarColor">@color/bg_app</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.BTAttendance.Dialog</item>
+        <item name="textInputStyle">@style/Widget.BTAttendance.TextInputLayout</item>
+    </style>
+
+    <style name="ThemeOverlay.BTAttendance.Dialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="colorPrimary">@color/brand_blue_dark</item>
+        <item name="shapeAppearanceOverlay">@style/ShapeAppearance.BTAttendance.Dialog</item>
+        <item name="buttonBarPositiveButtonStyle">@style/Widget.BTAttendance.Dialog.Button</item>
+        <item name="buttonBarNegativeButtonStyle">@style/Widget.BTAttendance.Dialog.Button</item>
+    </style>
+
+    <style name="ShapeAppearance.BTAttendance.Dialog" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">24dp</item>
+    </style>
+
+    <style name="Widget.BTAttendance.Dialog.Button" parent="Widget.Material3.Button.TextButton.Dialog">
+        <item name="android:textColor">@color/brand_blue_dark</item>
+    </style>
+
+    <style name="Widget.BTAttendance.TextInputLayout" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <item name="boxCornerRadiusTopStart">14dp</item>
+        <item name="boxCornerRadiusTopEnd">14dp</item>
+        <item name="boxCornerRadiusBottomStart">14dp</item>
+        <item name="boxCornerRadiusBottomEnd">14dp</item>
+        <item name="boxStrokeColor">@color/brand_blue_dark</item>
+        <item name="hintTextColor">@color/brand_blue_dark</item>
+    </style>
+
+    <style name="ShapeAppearance.BTAttendance.Card" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">20dp</item>
+    </style>
+
+    <style name="ShapeAppearance.BTAttendance.Button" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">16dp</item>
+    </style>
+</resources>

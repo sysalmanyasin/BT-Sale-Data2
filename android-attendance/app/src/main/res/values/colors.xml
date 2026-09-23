@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand (matches ic_launcher: navy field, blue ring) -->
+    <color name="brand_navy">#1E2530</color>
+    <color name="brand_navy_light">#2B3547</color>
+    <color name="brand_blue">#4CB1FF</color>
+    <color name="brand_blue_dark">#2C8FE0</color>
+
+    <!-- Surfaces -->
+    <color name="bg_app">#F2F5FA</color>
+    <color name="surface_card">#FFFFFF</color>
+    <color name="divider">#E6EAF1</color>
+
+    <!-- Text -->
+    <color name="text_primary">#1A2130</color>
+    <color name="text_secondary">#69748A</color>
+    <color name="text_on_brand">#FFFFFF</color>
+    <color name="text_on_brand_muted">#C6D9F2</color>
+
+    <!-- Status -->
+    <color name="success">#18A06B</color>
+    <color name="success_bg">#E2F6EC</color>
+    <color name="warning">#C77A11</color>
+    <color name="warning_bg">#FBF0DD</color>
+    <color name="danger">#D64545</color>
+    <color name="danger_bg">#FBE7E7</color>
+    <color name="pending">#4CB1FF</color>
+    <color name="pending_bg">#E8F4FF</color>
+</resources>

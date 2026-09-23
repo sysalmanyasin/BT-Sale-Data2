@@ -1,9 +1,10 @@
 package com.duapharma.attendance
 
 import android.Manifest
-import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.ColorStateList
+import android.graphics.Typeface
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -12,9 +13,9 @@ import android.provider.Settings
 import android.text.InputType
 import android.view.Gravity
 import android.view.View
-import android.widget.Button
 import android.widget.CheckBox
-import android.widget.EditText
+import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -22,6 +23,11 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.card.MaterialCardView
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 
@@ -54,11 +60,22 @@ import com.journeyapps.barcodescanner.ScanOptions
  * ntfy app now (see the dashboard's Attendance page), not a poller
  * this app used to run. See beginPermissionFlowIfNeeded(),
  * needsGeofence(), and showStaffSetupDialog's checkboxes.
+ *
+ * ── UI note ──────────────────────────────────────────────────────
+ * The view tree below is still built entirely in code (no XML
+ * layouts), but now leans on Material Components (MaterialCardView,
+ * MaterialButton, TextInputLayout, MaterialAlertDialogBuilder) plus a
+ * small set of hand-rolled drawables (see res/drawable/bg_*, ic_*) so
+ * the screen reads as a designed app rather than a debug scratchpad.
+ * `root` is the scrollable content column below the header banner;
+ * `newCard()` appends a rounded, elevated card to it and returns the
+ * card's inner content container for the caller to populate.
  */
 class MainActivity : AppCompatActivity() {
 
     private lateinit var statusText: TextView
     private lateinit var root: LinearLayout
+    private lateinit var headerSubtitle: TextView
     private lateinit var todayText: TextView
 
     private val foregroundLocationLauncher = registerForActivityResult(
@@ -90,18 +107,114 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // ── small style helpers ─────────────────────────────────────────
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+    private fun color(id: Int): Int = ContextCompat.getColor(this, id)
+
+    /** Appends a rounded, elevated card to [root] and returns its
+     *  inner (vertical, padded) content container for the caller to
+     *  fill in — keeps every screen built from the same card style. */
+    private fun newCard(): LinearLayout {
+        val cardView = MaterialCardView(this).apply {
+            radius = dp(20).toFloat()
+            cardElevation = dp(2).toFloat()
+            setCardBackgroundColor(color(R.color.surface_card))
+            strokeWidth = 0
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { bottomMargin = dp(14) }
+        }
+        val inner = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(18), dp(18), dp(18))
+        }
+        cardView.addView(inner)
+        root.addView(cardView)
+        return inner
+    }
+
+    /** A small bold "eyebrow" row: icon + label, used as a card header. */
+    private fun cardEyebrow(container: LinearLayout, iconRes: Int, label: String, tintRes: Int = R.color.brand_blue_dark) {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val icon = ImageView(this).apply {
+            layoutParams = LinearLayout.LayoutParams(dp(18), dp(18)).apply { marginEnd = dp(8) }
+            setImageResource(iconRes)
+            setColorFilter(color(tintRes))
+        }
+        val text = TextView(this).apply {
+            text = label
+            textSize = 12.5f
+            letterSpacing = 0.04f
+            setTextColor(color(R.color.text_secondary))
+            typeface = Typeface.create(typeface, Typeface.BOLD)
+        }
+        row.addView(icon)
+        row.addView(text)
+        container.addView(row)
+    }
+
     // ── UI shell ─────────────────────────────────────────────────────
     private fun buildUi() {
+        val scroll = ScrollView(this).apply {
+            isFillViewport = true
+            setBackgroundColor(color(R.color.bg_app))
+        }
+        val outer = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = ContextCompat.getDrawable(this@MainActivity, R.drawable.bg_header_gradient)
+            setPadding(dp(24), dp(44), dp(24), dp(28))
+        }
+        val logoWrap = FrameLayout(this).apply {
+            layoutParams = LinearLayout.LayoutParams(dp(52), dp(52))
+            background = ContextCompat.getDrawable(this@MainActivity, R.drawable.bg_logo_circle)
+        }
+        val logo = ImageView(this).apply {
+            layoutParams = FrameLayout.LayoutParams(dp(30), dp(30)).apply { gravity = Gravity.CENTER }
+            setImageResource(R.drawable.ic_launcher)
+        }
+        logoWrap.addView(logo)
+        val title = TextView(this).apply {
+            text = "BT Attendance"
+            setTextColor(color(R.color.text_on_brand))
+            textSize = 23f
+            typeface = Typeface.create(typeface, Typeface.BOLD)
+            setPadding(0, dp(14), 0, dp(4))
+        }
+        headerSubtitle = TextView(this).apply {
+            text = "Setting up…"
+            setTextColor(color(R.color.text_on_brand_muted))
+            textSize = 13.5f
+        }
+        header.addView(logoWrap)
+        header.addView(title)
+        header.addView(headerSubtitle)
+
         root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(48, 96, 48, 48)
+            setPadding(dp(18), dp(18), dp(18), dp(28))
         }
+
+        outer.addView(header)
+        outer.addView(root)
+        scroll.addView(outer)
+        setContentView(scroll)
+
+        // Placeholder shown only for the instant before the staff-setup
+        // dialog (first run) or renderStatusScreen (subsequent runs)
+        // replaces it.
+        val loadingCard = newCard()
         statusText = TextView(this).apply {
-            textSize = 16f
+            textSize = 15f
+            setTextColor(color(R.color.text_primary))
             text = "Loading…"
         }
-        root.addView(statusText)
-        setContentView(ScrollView(this).apply { addView(root) })
+        loadingCard.addView(statusText)
     }
 
     private fun renderStatusScreen() {
@@ -110,64 +223,86 @@ class MainActivity : AppCompatActivity() {
         val number = Prefs.staffNumber(this) ?: "?"
         val isManager = Prefs.isManagerMode(this)
 
-        val title = TextView(this).apply {
-            text = "BT Attendance"
-            textSize = 22f
-            gravity = Gravity.CENTER
-        }
-        val subtitle = TextView(this).apply {
-            text = when {
-                isManager && Prefs.tracksOwnAttendance(this@MainActivity) -> "Manager phone — $name ($number) — also tracking own attendance"
-                isManager -> "Manager phone — $name"
-                else -> "Signed in as $name ($number)"
-            }
-            textSize = 14f
-            gravity = Gravity.CENTER
-            setPadding(0, 16, 0, 32)
-        }
-        statusText = TextView(this).apply {
-            textSize = 14f
-            text = "Checking permissions…"
-            setPadding(0, 0, 0, 32)
-        }
-        val reRegisterButton = Button(this).apply {
-            text = when {
-                isManager && Prefs.tracksOwnAttendance(this@MainActivity) -> "Re-check permissions / restart notifications + geofence"
-                isManager -> "Re-check permissions / restart notifications"
-                else -> "Re-check permissions / re-register geofence"
-            }
-            setOnClickListener {
-                beginPermissionFlowIfNeeded(forceReRegister = true)
-            }
+        headerSubtitle.text = when {
+            isManager && Prefs.tracksOwnAttendance(this@MainActivity) ->
+                "Manager · $name ($number) · also tracking own attendance"
+            isManager -> "Manager · $name"
+            else -> "Signed in as $name ($number)"
         }
 
-        root.addView(title)
-        root.addView(subtitle)
-        root.addView(statusText)
+        if (isManager) {
+            val badge = newCard()
+            cardEyebrow(badge, R.drawable.ic_shield, "MANAGER ACCOUNT")
+        }
+
+        // Status card
+        val statusCard = newCard()
+        cardEyebrow(statusCard, R.drawable.ic_error, "STATUS", R.color.pending)
+        statusText = TextView(this).apply {
+            textSize = 15f
+            setTextColor(color(R.color.text_primary))
+            text = "Checking permissions…"
+            setPadding(0, dp(10), 0, 0)
+            setLineSpacing(dp(3).toFloat(), 1f)
+        }
+        statusCard.addView(statusText)
+
         // QR check-in/out, and the "today so far" list below it, only
         // make sense on a phone that tracks its own attendance — a
         // notification-only manager phone doesn't punch in or out
         // itself, but a dual-role manager does (same condition as the
         // QR button already used).
         if (!isManager || Prefs.tracksOwnAttendance(this)) {
-            val qrButton = Button(this).apply {
+            val qrButton = MaterialButton(this).apply {
                 text = "Scan QR to check in / out"
+                textSize = 15f
+                setIconResource(R.drawable.ic_qr)
+                iconGravity = MaterialButton.ICON_GRAVITY_TEXT_START
+                iconPadding = dp(10)
+                iconTint = ColorStateList.valueOf(color(R.color.text_on_brand))
+                cornerRadius = dp(16)
+                backgroundTintList = ColorStateList.valueOf(color(R.color.brand_blue_dark))
+                setTextColor(color(R.color.text_on_brand))
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, dp(54),
+                ).apply { bottomMargin = dp(14) }
                 setOnClickListener { launchQrScanner() }
             }
             root.addView(qrButton)
 
-            val todayLabel = TextView(this).apply {
-                text = "Today"
-                textSize = 16f
-                setPadding(0, 32, 0, 8)
-            }
+            val todayCard = newCard()
+            cardEyebrow(todayCard, R.drawable.ic_history, "TODAY", R.color.success)
             todayText = TextView(this).apply {
-                textSize = 14f
+                textSize = 14.5f
+                setTextColor(color(R.color.text_primary))
                 text = "Loading today's check-in/out…"
+                setPadding(0, dp(10), 0, 0)
+                setLineSpacing(dp(6).toFloat(), 1f)
             }
-            root.addView(todayLabel)
-            root.addView(todayText)
+            todayCard.addView(todayText)
             loadTodayEvents()
+        }
+
+        val reRegisterButton = MaterialButton(
+            this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle,
+        ).apply {
+            text = when {
+                isManager && Prefs.tracksOwnAttendance(this@MainActivity) -> "Re-check permissions / restart notifications + geofence"
+                isManager -> "Re-check permissions / restart notifications"
+                else -> "Re-check permissions / re-register geofence"
+            }
+            textSize = 13.5f
+            setIconResource(R.drawable.ic_refresh)
+            iconGravity = MaterialButton.ICON_GRAVITY_TEXT_START
+            iconTint = ColorStateList.valueOf(color(R.color.brand_blue_dark))
+            cornerRadius = dp(16)
+            strokeColor = ColorStateList.valueOf(color(R.color.brand_blue_dark))
+            strokeWidth = dp(1)
+            setTextColor(color(R.color.brand_blue_dark))
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(50),
+            ).apply { topMargin = dp(4) }
+            setOnClickListener { beginPermissionFlowIfNeeded(forceReRegister = true) }
         }
         root.addView(reRegisterButton)
     }
@@ -175,8 +310,8 @@ class MainActivity : AppCompatActivity() {
     /** Fetches this staff member's check_in/check_out events since
      *  local midnight and renders them as a simple time-ordered list
      *  in todayText, e.g.:
-     *    Checked in   9:02 AM
-     *    Checked out  1:14 PM
+     *    ↑ Checked in   9:02 AM
+     *    ↓ Checked out  1:14 PM
      *  "Since local midnight" uses the phone's own calendar day/zone
      *  (not UTC) so a staff member's "today" always matches what's on
      *  their own clock. Safe to call repeatedly — used both from
@@ -198,13 +333,14 @@ class MainActivity : AppCompatActivity() {
                     val formatter = java.time.format.DateTimeFormatter.ofPattern("h:mm a")
                         .withZone(java.time.ZoneId.systemDefault())
                     events.joinToString("\n") { event ->
+                        val arrow = if (event.eventType == "check_in") "↑" else "↓"
                         val label = if (event.eventType == "check_in") "Checked in " else "Checked out"
                         val time = try {
                             formatter.format(java.time.Instant.parse(event.occurredAt))
                         } catch (e: Exception) {
                             event.occurredAt
                         }
-                        "$label  $time"
+                        "$arrow  $label  $time"
                     }
                 }
             }
@@ -215,12 +351,31 @@ class MainActivity : AppCompatActivity() {
     private fun showStaffSetupDialog() {
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(48, 24, 48, 0)
+            setPadding(dp(24), dp(8), dp(24), 0)
         }
-        val idInput = EditText(this).apply { hint = "Staff number (e.g. EMP-003)" }
-        val nameInput = EditText(this).apply { hint = "Name" }
+
+        fun outlinedField(hintText: String, inputTypeFlags: Int? = null): Pair<TextInputLayout, TextInputEditText> {
+            // Picks up Widget.BTAttendance.TextInputLayout (outlined,
+            // rounded, brand-blue focus color) via the theme's
+            // textInputStyle default — see themes.xml.
+            val til = TextInputLayout(this).apply {
+                hint = hintText
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { bottomMargin = dp(12) }
+            }
+            val edit = TextInputEditText(til.context).apply {
+                if (inputTypeFlags != null) inputType = inputTypeFlags
+            }
+            til.addView(edit)
+            return til to edit
+        }
+
+        val (idField, idInput) = outlinedField("Staff number (e.g. EMP-003)")
+        val (nameField, nameInput) = outlinedField("Name")
         val managerCheckbox = CheckBox(this).apply {
             text = "This is the manager's phone (check-in notifications now come via the ntfy app — see the dashboard's Attendance page for setup)"
+            setPadding(0, dp(4), 0, dp(4))
         }
         // Only meaningful once managerCheckbox is ticked (see both
         // listeners below). Lets the SAME phone also geofence its own
@@ -237,23 +392,24 @@ class MainActivity : AppCompatActivity() {
         // check-in notifications; this PIN is verified server-side
         // (AttendanceApi.verifyManagerPin) before setup can complete,
         // so a staff member can no longer just tick the box themselves.
-        val pinInput = EditText(this).apply {
-            hint = "Manager PIN"
-            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD
-            visibility = View.GONE
-        }
+        val (pinField, pinInput) = outlinedField(
+            "Manager PIN",
+            InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD,
+        )
+        pinField.visibility = View.GONE
+
         managerCheckbox.setOnCheckedChangeListener { _, checked ->
             tracksOwnCheckbox.visibility = if (checked) View.VISIBLE else View.GONE
-            pinInput.visibility = if (checked) View.VISIBLE else View.GONE
+            pinField.visibility = if (checked) View.VISIBLE else View.GONE
             if (!checked) tracksOwnCheckbox.isChecked = false
         }
-        container.addView(idInput)
-        container.addView(nameInput)
+        container.addView(idField)
+        container.addView(nameField)
         container.addView(managerCheckbox)
         container.addView(tracksOwnCheckbox)
-        container.addView(pinInput)
+        container.addView(pinField)
 
-        AlertDialog.Builder(this)
+        MaterialAlertDialogBuilder(this)
             .setTitle("Set up this phone")
             .setMessage("Enter the staff number and name your manager gave you, " +
                 "or tick the box below if this is the manager's own phone (you'll " +
@@ -413,7 +569,7 @@ class MainActivity : AppCompatActivity() {
         }
         val isManager = Prefs.isManagerMode(this)
         statusText.text = "Step 4/4 — battery optimization exemption needed"
-        AlertDialog.Builder(this)
+        MaterialAlertDialogBuilder(this)
             .setTitle("One more setting")
             .setMessage("Android will try to stop this app in the background to save " +
                 "battery, which breaks " +
@@ -455,7 +611,7 @@ class MainActivity : AppCompatActivity() {
             else -> null
         }
         if (note != null) {
-            AlertDialog.Builder(this)
+            MaterialAlertDialogBuilder(this)
                 .setTitle("Your phone needs one extra step")
                 .setMessage(note)
                 .setPositiveButton("Got it") { _, _ -> finishOnboarding(forceReRegister) }
