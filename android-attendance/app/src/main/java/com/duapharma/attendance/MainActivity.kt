@@ -403,22 +403,37 @@ class MainActivity : AppCompatActivity() {
             pinField.visibility = if (checked) View.VISIBLE else View.GONE
             if (!checked) tracksOwnCheckbox.isChecked = false
         }
+        // The message TextView is added as part of the same scrollable
+        // container as the input fields below. Do NOT also call
+        // .setMessage() on the dialog builder — AlertDialog puts the
+        // message and a setView() view in separate panels, and only the
+        // message panel scrolls, which is why the fields used to get
+        // clipped off the bottom of the dialog with no way to reach them.
+        val messageText = TextView(this).apply {
+            text = "Enter the staff number and name your manager gave you, " +
+                "or tick the box below if this is the manager's own phone (you'll " +
+                "need the manager PIN — tick the second box too if you also work " +
+                "here yourself). This only needs to be done once per phone.\n\n" +
+                "Note: check-in notifications no longer come from this app — " +
+                "install the free \"ntfy\" app separately and subscribe to your " +
+                "pharmacy's channel (the dashboard's Attendance page has the link)."
+            setPadding(0, 0, 0, dp(16))
+        }
+        container.addView(messageText, 0)
         container.addView(idField)
         container.addView(nameField)
         container.addView(managerCheckbox)
         container.addView(tracksOwnCheckbox)
         container.addView(pinField)
 
+        val scrollView = ScrollView(this).apply {
+            isFillViewport = true
+            addView(container)
+        }
+
         MaterialAlertDialogBuilder(this)
             .setTitle("Set up this phone")
-            .setMessage("Enter the staff number and name your manager gave you, " +
-                "or tick the box below if this is the manager's own phone (you'll " +
-                "need the manager PIN — tick the second box too if you also work " +
-                "here yourself). This only needs to be done once per phone.\n\n" +
-                "Note: check-in notifications no longer come from this app — " +
-                "install the free \"ntfy\" app separately and subscribe to your " +
-                "pharmacy's channel (the dashboard's Attendance page has the link).")
-            .setView(container)
+            .setView(scrollView)
             .setCancelable(false)
             .setPositiveButton("Save") { _, _ ->
                 val isManager = managerCheckbox.isChecked
