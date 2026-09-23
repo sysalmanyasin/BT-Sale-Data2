@@ -80,6 +80,35 @@ class MainActivity : AppCompatActivity() {
         CustomTabsIntent.Builder().build().launchUrl(this, uri)
     }
 
+    // Where a URL requested from a WebView (direct navigation or a
+    // window.open() popup) is allowed to go. Shared by the main
+    // WebViewClient and the popup WebViewClient in onCreateWindow so
+    // the allowlist can't be bypassed by going through a popup, and so
+    // the two never drift out of sync.
+    private sealed class UrlRoute {
+        object InApp : UrlRoute()
+        object GoogleAuth : UrlRoute()
+        object External : UrlRoute()
+    }
+
+    private fun classifyUrl(url: Uri): UrlRoute {
+        val host = url.host
+            // No host (e.g. a relative or malformed URI): treat like an
+            // in-app URL, same as the original null-host handling.
+            ?: return UrlRoute.InApp
+        return when {
+            // The PWA's own domain and its Supabase backend stay
+            // inside this WebView.
+            host == APP_HOST || host.endsWith(".duapharma.com") ||
+                host.endsWith("supabase.co") -> UrlRoute.InApp
+
+            // Google's sign-in pages: see class doc.
+            host == "accounts.google.com" || host.endsWith(".accounts.google.com") -> UrlRoute.GoogleAuth
+
+            else -> UrlRoute.External
+        }
+    }
+
     // App Link redirect back from the Custom Tab (see class doc): a
     // bt.duapharma.com URL carrying Google's auth result. Hand it straight
     // to the WebView — js/auth.js's redirect-token handler reads it off
@@ -126,28 +155,23 @@ class MainActivity : AppCompatActivity() {
             override fun shouldOverrideUrlLoading(
                 view: WebView,
                 request: WebResourceRequest
-            ): Boolean {
-                val host = request.url.host ?: return false
-                return when {
-                    // The PWA's own domain and its Supabase backend stay
-                    // inside this WebView.
-                    host == APP_HOST || host.endsWith(".duapharma.com") ||
-                        host.endsWith("supabase.co") -> false
+            ): Boolean = when (classifyUrl(request.url)) {
+                // Stays inside this WebView: don't override, let it load normally.
+                UrlRoute.InApp -> false
 
-                    // Google's sign-in pages: see class doc. Handed to a
-                    // Custom Tab, which Google's OAuth accepts (it's a
-                    // real Chrome context, not an embedded WebView).
-                    host == "accounts.google.com" || host.endsWith(".accounts.google.com") -> {
-                        openInCustomTab(request.url)
-                        true
-                    }
+                // Google's sign-in pages: see class doc. Handed to a
+                // Custom Tab, which Google's OAuth accepts (it's a
+                // real Chrome context, not an embedded WebView).
+                UrlRoute.GoogleAuth -> {
+                    openInCustomTab(request.url)
+                    true
+                }
 
-                    // Anything else (external links the app opens) to a
-                    // real browser.
-                    else -> {
-                        startActivity(Intent(Intent.ACTION_VIEW, request.url))
-                        true
-                    }
+                // Anything else (external links the app opens) to a
+                // real browser.
+                UrlRoute.External -> {
+                    startActivity(Intent(Intent.ACTION_VIEW, request.url))
+                    true
                 }
             }
 
@@ -192,11 +216,19 @@ class MainActivity : AppCompatActivity() {
                 val transport = resultMsg.obj as WebView.WebViewTransport
                 val popup = WebView(this@MainActivity)
                 popup.webViewClient = object : WebViewClient() {
+                    // Same allowlist as the main WebViewClient above — a
+                    // popup must not be able to redirect the app into an
+                    // arbitrary host just because it arrived via
+                    // window.open() instead of a direct navigation.
                     override fun shouldOverrideUrlLoading(
                         v: WebView,
                         request: WebResourceRequest
                     ): Boolean {
-                        webView.loadUrl(request.url.toString())
+                        when (classifyUrl(request.url)) {
+                            UrlRoute.InApp -> webView.loadUrl(request.url.toString())
+                            UrlRoute.GoogleAuth -> openInCustomTab(request.url)
+                            UrlRoute.External -> startActivity(Intent(Intent.ACTION_VIEW, request.url))
+                        }
                         return true
                     }
                 }

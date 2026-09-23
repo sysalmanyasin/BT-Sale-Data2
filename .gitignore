@@ -1,1 +1,6 @@
 node_modules/
+
+# Decoded locally from the RELEASE_KEYSTORE_BASE64 CI secret at build
+# time — must never be committed (unlike shared-debug.keystore, which
+# is intentionally checked in as a low-stakes shared dev/sideload key).
+release.keystore

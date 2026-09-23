@@ -5,7 +5,8 @@
       "namespace": "android_app",
       "package_name": "com.duapharma.btsales",
       "sha256_cert_fingerprints": [
-        "FC:75:3D:25:94:23:CF:D8:97:3A:83:FB:87:6D:A0:13:B0:0E:32:81:7A:97:2E:8E:6C:22:F0:5C:7F:AF:FF:67"
+        "FC:75:3D:25:94:23:CF:D8:97:3A:83:FB:87:6D:A0:13:B0:0E:32:81:7A:97:2E:8E:6C:22:F0:5C:7F:AF:FF:67",
+        "8A:C7:14:0E:CB:55:40:1A:C3:84:0D:70:7B:D8:B5:32:FF:52:F1:A6:90:B9:1D:D9:A6:00:9B:CD:D4:E9:4C:01"
       ]
     }
   }

@@ -36,12 +36,38 @@ android {
             keyAlias = "shareddebugkey"
             keyPassword = "duapharma-shared-debug"
         }
+
+        // A real, dedicated release key — never committed to git. CI
+        // decodes it from the RELEASE_KEYSTORE_BASE64 secret into
+        // release.keystore before the build; locally, set the four
+        // RELEASE_* env vars yourself. Until those are present, release
+        // builds keep using the "shared" debug key above (see
+        // buildTypes.release below) so nothing breaks for anyone who
+        // hasn't set this up yet.
+        create("release") {
+            val ksFile = file("release.keystore")
+            if (ksFile.exists()) {
+                storeFile = ksFile
+                storePassword = System.getenv("RELEASE_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("RELEASE_KEY_ALIAS")
+                keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("shared")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+            signingConfig = if (file("release.keystore").exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("shared")
+            }
         }
         debug {
             isMinifyEnabled = false
