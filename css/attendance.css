@@ -83,3 +83,48 @@
   border: 1px solid var(--border-color, #ccc);
   border-radius: 6px;
 }
+
+.att-loc-btn-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Map picker modal — reuses .mbg/.modal/.mhdr/.mbody from modals.css */
+.att-map-modal { width: min(96vw, 640px); }
+.att-map-search-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.att-map-search-row input {
+  flex: 1;
+  padding: 6px 8px;
+  border: 1px solid var(--border-color, #ccc);
+  border-radius: 6px;
+}
+#att-map-search-results {
+  margin-bottom: 8px;
+}
+.att-map-hit {
+  padding: 6px 8px;
+  font-size: 0.85em;
+  border: 1px solid var(--border-color, #e2e2e2);
+  border-radius: 6px;
+  margin-bottom: 4px;
+  cursor: pointer;
+}
+.att-map-hit:hover { background: var(--s2, #f1f5f9); }
+#att-map-container {
+  width: 100%;
+  height: 320px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  z-index: 0;
+}
+#att-map-coords {
+  margin-top: 0;
+  margin-bottom: 8px;
+  font-family: var(--mono, monospace);
+}
+#att-map-confirm { width: 100%; }

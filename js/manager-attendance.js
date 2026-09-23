@@ -302,7 +302,10 @@ async function renderLocationView() {
     <div class="att-manual-form">
       <p class="att-note">Stand inside or right outside the pharmacy, then tap Capture. This sets the center point the staff app's geofence checks against.</p>
       ${existing ? `<p class="att-note">Current: ${_mgrEsc(existing.name)} (${existing.lat.toFixed(6)}, ${existing.lng.toFixed(6)}), radius ${existing.radius_meters}m</p>` : `<p class="att-note">No location saved yet.</p>`}
-      <button class="btn" onclick="AttendanceUI.captureLocation()">📍 Capture my current location</button>
+      <div class="att-loc-btn-row">
+        <button class="btn" onclick="AttendanceUI.captureLocation()">📍 Capture my current location</button>
+        <button class="btn" onclick="AttendanceUI.openMapPicker()">🗺️ Pick on map</button>
+      </div>
       <div id="att-loc-captured"></div>
       <label>Name
         <input type="text" id="att-loc-name" value="${_mgrEsc(existing?.name || 'Bahria Town Pharmacy')}">
@@ -405,6 +408,146 @@ function captureLocation() {
   );
 }
 
+// ── MAP PICKER ───────────────────────────────────────────────────────
+// Alternative to captureLocation() for setting the geofence center:
+// instead of trusting whatever fix the device's GPS gives right now
+// (which can drift indoors, or simply be wrong), the manager opens a
+// map, drags a pin to the exact spot, and confirms. Leaflet + OSM
+// tiles, loaded on demand so the location tab doesn't pay for it
+// unless it's used.
+let _attLeafletLoading = null;
+let _attMap = null;
+let _attMapMarker = null;
+
+function _loadLeaflet() {
+  if (window.L) return Promise.resolve();
+  if (_attLeafletLoading) return _attLeafletLoading;
+  _attLeafletLoading = new Promise((resolve, reject) => {
+    const css = document.createElement('link');
+    css.rel = 'stylesheet';
+    css.href = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(css);
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';
+    script.onload = resolve;
+    script.onerror = () => reject(new Error('Could not load the map library'));
+    document.head.appendChild(script);
+  });
+  return _attLeafletLoading;
+}
+
+function _ensureMapModal() {
+  let bg = document.getElementById('att-map-modal-bg');
+  if (bg) return bg;
+  bg = document.createElement('div');
+  bg.id = 'att-map-modal-bg';
+  bg.className = 'mbg';
+  bg.innerHTML = `
+    <div class="modal att-map-modal">
+      <div class="mhdr">
+        <h2>Pick pharmacy location</h2>
+        <button class="mclose" onclick="AttendanceUI.closeMapPicker()">✕</button>
+      </div>
+      <div class="mbody">
+        <p class="att-note">Search an address, or drag the pin (or tap the map) to the exact spot, then tap Use this location.</p>
+        <div class="att-map-search-row">
+          <input type="text" id="att-map-search" placeholder="Search an address or place…">
+          <button class="btn" id="att-map-search-btn" onclick="AttendanceUI._mapSearch()">Search</button>
+        </div>
+        <div id="att-map-search-results"></div>
+        <div id="att-map-container"></div>
+        <div id="att-map-coords" class="att-note"></div>
+        <button class="btn" id="att-map-confirm" onclick="AttendanceUI.confirmMapPick()">📍 Use this location</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(bg);
+  bg.addEventListener('click', e => { if (e.target === bg) closeMapPicker(); });
+  return bg;
+}
+
+async function openMapPicker() {
+  const bg = _ensureMapModal();
+  bg.classList.add('on');
+  try {
+    await _loadLeaflet();
+  } catch (e) {
+    toast('⚠ Could not load the map — check your connection', 'w');
+    bg.classList.remove('on');
+    return;
+  }
+  // Center on: whatever was just GPS-captured, else the existing saved
+  // location, else a Bahria Town Lahore fallback so the map doesn't
+  // open on the middle of the ocean.
+  const existing = (await AttendanceBridge.fetchLocations())[0] || null;
+  const start = _attCapturedLoc || existing || { lat: 31.298122, lng: 74.070445 };
+  const coordsOut = document.getElementById('att-map-coords');
+
+  requestAnimationFrame(() => {
+    const el = document.getElementById('att-map-container');
+    if (_attMap) { _attMap.remove(); _attMap = null; }
+    _attMap = L.map(el).setView([start.lat, start.lng], 17);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap contributors',
+    }).addTo(_attMap);
+    _attMapMarker = L.marker([start.lat, start.lng], { draggable: true }).addTo(_attMap);
+    const updateCoords = latlng => {
+      coordsOut.textContent = `Pin: ${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}`;
+    };
+    updateCoords(_attMapMarker.getLatLng());
+    _attMapMarker.on('dragend', () => updateCoords(_attMapMarker.getLatLng()));
+    _attMap.on('click', e => {
+      _attMapMarker.setLatLng(e.latlng);
+      updateCoords(e.latlng);
+    });
+    setTimeout(() => _attMap.invalidateSize(), 50);
+  });
+}
+
+async function _mapSearch() {
+  const q = document.getElementById('att-map-search').value.trim();
+  const results = document.getElementById('att-map-search-results');
+  if (!q) return;
+  results.innerHTML = 'Searching…';
+  try {
+    // Nominatim's public search endpoint — fine for this occasional,
+    // manager-initiated lookup (one request per Search click).
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(q)}`);
+    const hits = await res.json();
+    if (!hits.length) { results.innerHTML = '<p class="att-note">No matches found.</p>'; return; }
+    results.innerHTML = hits.map((h, i) => `<div class="att-map-hit" data-i="${i}">${_mgrEsc(h.display_name)}</div>`).join('');
+    results.querySelectorAll('.att-map-hit').forEach(row => {
+      row.addEventListener('click', () => {
+        const h = hits[Number(row.dataset.i)];
+        const latlng = { lat: Number(h.lat), lng: Number(h.lon) };
+        _attMap.setView([latlng.lat, latlng.lng], 18);
+        _attMapMarker.setLatLng(latlng);
+        document.getElementById('att-map-coords').textContent = `Pin: ${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}`;
+        results.innerHTML = '';
+      });
+    });
+  } catch (e) {
+    results.innerHTML = '<p class="att-note">Search failed — check your connection.</p>';
+  }
+}
+
+function closeMapPicker() {
+  const bg = document.getElementById('att-map-modal-bg');
+  if (bg) bg.classList.remove('on');
+}
+
+function confirmMapPick() {
+  if (!_attMapMarker) return;
+  const { lat, lng } = _attMapMarker.getLatLng();
+  _attCapturedLoc = { lat, lng, accuracy: null };
+  const out = document.getElementById('att-loc-captured');
+  if (out) out.innerHTML = `Picked on map: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+  const saveBtn = document.getElementById('att-loc-save');
+  if (saveBtn) saveBtn.disabled = false;
+  closeMapPicker();
+}
+
 async function saveLocation(existingId) {
   if (!_attCapturedLoc) { toast('⚠ Capture your location first', 'w'); return; }
   const name = document.getElementById('att-loc-name').value.trim() || 'Bahria Town Pharmacy';
@@ -421,7 +564,7 @@ async function saveLocation(existingId) {
 }
 
 // window bridge, same convention as switchMgrTab etc.
-window.AttendanceUI = { switchSub, changeDate, changeMonth, submitManual, renderAttendanceTab, renderLocationView, captureLocation, saveLocation, copyNtfyTopic, printQr, rotateQr, changeIosStaff, copyIosField };
+window.AttendanceUI = { switchSub, changeDate, changeMonth, submitManual, renderAttendanceTab, renderLocationView, captureLocation, openMapPicker, closeMapPicker, confirmMapPick, _mapSearch, saveLocation, copyNtfyTopic, printQr, rotateQr, changeIosStaff, copyIosField };
 
 // ── NOTIFICATIONS (ntfy) ─────────────────────────────────────────────
 // Real push notifications for check-in/check-out, via ntfy.sh — a
