@@ -384,10 +384,21 @@ async function rotateQr(locationId) {
   crypto.getRandomValues(bytes);
   const secret = 'BT-QR-' + Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
   try {
-    await AttendanceBridge.upsertLocation({ id: locationId, qr_secret: secret });
+    // upsertLocation is a Postgres INSERT ... ON CONFLICT DO UPDATE —
+    // Postgres checks NOT NULL constraints (name/lat/lng) on the
+    // insert row before it ever resolves the conflict, so sending
+    // only {id, qr_secret} always fails, even for an existing row.
+    // Re-fetch and send the full row instead.
+    const current = (await AttendanceBridge.fetchLocations()).find(l => l.id === locationId);
+    if (!current) throw new Error('Location not found');
+    await AttendanceBridge.upsertLocation({
+      id: current.id, name: current.name, lat: current.lat, lng: current.lng,
+      radius_meters: current.radius_meters, active: current.active, qr_secret: secret,
+    });
     toast('✓ New QR code generated — print it and replace the old one');
     renderLocationView();
   } catch (e) {
+    console.error('[manager-attendance] rotateQr', e);
     toast('✗ Failed to generate a new code — see console', 'e');
   }
 }
