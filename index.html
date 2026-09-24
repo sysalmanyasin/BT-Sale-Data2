@@ -81,6 +81,7 @@
 <link rel="stylesheet" href="css/nav.css?v=20260824a">
 <link rel="stylesheet" href="css/closing-native.css?v=20260728a">
 <link rel="stylesheet" href="css/closing-book-print.css?v=20260722a">
+<link rel="stylesheet" href="css/emergency-billing.css?v=20260924a">
 <link rel="stylesheet" href="css/audit-native.css?v=20260722a">
 <link rel="stylesheet" href="css/inventory-native.css?v=20260722a">
 <link rel="stylesheet" href="css/str-report.css?v=20260817a">
@@ -1496,6 +1497,93 @@ if ('serviceWorker' in navigator) {
   </div>
 </div>
 
+<!-- EMERGENCY BILLING — counter-billing tool for when the real POS
+     (Candela) is down. Billing UX ported from the standalone POS app's
+     billing.js; writes go through js/emergency-billing-bridge.js to
+     this app's OWN Supabase project (emergency_invoices/_items/
+     _stock_deltas), never to inventory_products (see architecture doc
+     "Emergency Billing Domain" §1/§3/§4). Not yet wired into nav —
+     that's a later phase; open directly via #emergency-billing for now. -->
+<section class="page eb-app app-page" id="page-emergency-billing">
+  <div class="eb-wrap">
+    <header>
+      <p class="eyebrow">Break-glass counter sale</p>
+      <h1>Emergency Billing</h1>
+    </header>
+    <div class="eb-banner">⚠️ Use only when Candela POS is down. Stock here is checked against BT Inventory's last sync, not live Candela stock — reconcile into Daily Sale Entry manually once done (see architecture doc §7).</div>
+
+    <div class="eb-search-box">
+      <div class="eb-search-row">
+        <input type="text" id="eb-search-input" placeholder="Search product by name, code, or generic…" autocomplete="off">
+        <input type="number" id="eb-qty-input" value="1" min="1" title="Quantity to add">
+        <button id="eb-search-clear" type="button">✕</button>
+      </div>
+      <div class="eb-search-results" id="eb-search-results"></div>
+      <div class="eb-search-no-results" id="eb-search-no-results"></div>
+    </div>
+
+    <div class="eb-f9-hint" id="eb-f9-hint"></div>
+
+    <div class="eb-cart-card">
+      <div class="eb-cart-head">
+        <h3>Current Bill</h3>
+        <span id="eb-cart-count">0 items</span>
+      </div>
+      <table class="eb-cart-table">
+        <thead><tr><th>#</th><th>Item</th><th>Price</th><th>Qty</th><th>Total</th><th></th></tr></thead>
+        <tbody id="eb-cart-body"></tbody>
+      </table>
+
+      <div class="eb-summary" id="eb-summary">
+        <div class="eb-summary-row"><span>Subtotal</span><span id="eb-subtotal">Rs. 0.00</span></div>
+        <div class="eb-summary-row eb-discount-row"><span>Discount (flat amount)</span><input type="number" id="eb-discount-input" value="0" min="0"></div>
+        <div class="eb-summary-row" style="display:none"><span></span><span id="eb-discount-display">Rs. 0.00</span></div>
+        <div class="eb-summary-row eb-net"><span>Net Payable</span><span id="eb-net-total">Rs. 0.00</span></div>
+      </div>
+
+      <div class="eb-meta-grid">
+        <div><label>Staff Name</label><input type="text" id="eb-staff-name" placeholder="Who is billing this?"></div>
+        <div><label>Customer Name</label><input type="text" id="eb-customer-name" placeholder="Optional"></div>
+        <div><label>Customer Phone</label><input type="text" id="eb-customer-phone" placeholder="Optional"></div>
+      </div>
+
+      <div class="eb-pay-section" id="eb-cash-section">
+        <div class="eb-pay-modes">
+          <button class="eb-pay-btn active" id="eb-pay-cash" type="button">💵 Cash</button>
+          <button class="eb-pay-btn" id="eb-pay-card" type="button">💳 Card</button>
+          <button class="eb-pay-btn" id="eb-pay-online" type="button">📱 Online</button>
+        </div>
+        <div class="eb-cash-row" id="eb-cash-received-row">
+          <label>Cash Received</label>
+          <input type="number" id="eb-cash-received-input" min="0" placeholder="Defaults to net payable">
+        </div>
+        <div class="eb-change-row" id="eb-change-row"><span>Change</span><span id="eb-change-display">Rs. 0.00</span></div>
+      </div>
+
+      <div class="eb-actions">
+        <button class="eb-btn eb-btn-ghost" id="eb-clear-btn" type="button">Clear Bill</button>
+        <button class="eb-btn" id="eb-hold-btn" type="button">📋 Hold Bill</button>
+        <button class="eb-btn eb-btn-primary" id="eb-checkout-btn" type="button">✅ Checkout</button>
+      </div>
+    </div>
+
+    <div class="eb-held-card">
+      <h3>Held Bills</h3>
+      <div id="eb-held-list"></div>
+    </div>
+  </div>
+
+  <div id="eb-receipt-modal">
+    <div class="eb-receipt-box">
+      <div id="eb-receipt-print"></div>
+      <div class="eb-receipt-modal-actions">
+        <button class="eb-btn eb-btn-ghost" id="eb-receipt-close" type="button">Close</button>
+        <button class="eb-btn eb-btn-primary" id="eb-receipt-print-btn" type="button">🖨 Print Receipt</button>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- TOOLS -->
 <div class="page" id="page-tools">
   <div class="hero"><div class="hlabel">Tools</div><div class="htitle">Settings &amp; Data Management</div><div class="hsub">Tap any card to expand it.</div></div>
@@ -2420,10 +2508,14 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/audit-native.js"></script>
 <script type="module" src="js/inventory-bridge.js?v=20260811a"></script>
 <script type="module" src="js/inventory-native.js?v=20260811a"></script>
-<!-- Emergency Billing (Phase 2): bridge only for now — reads inventory-bridge's
-     cache, writes to its own emergency_* tables. Depends on the inventory
-     bridge above; a paired emergency-billing-native.js UI is Phase 3. -->
+<!-- Emergency Billing: bridge (reads inventory-bridge's cache, writes to
+     its own emergency_* tables) + native UI (Phase 3 — cart/checkout/
+     hold/F9-edit/receipt, ported from POS's billing.js; see
+     emergency-billing-native.js's own header note). Nav entry + Cover
+     signal card are a later phase — open directly via #emergency-billing
+     for now. -->
 <script type="module" src="js/emergency-billing-bridge.js?v=20260924a"></script>
+<script type="module" src="js/emergency-billing-native.js?v=20260924a"></script>
 <script type="module" src="js/str-bridge.js?v=20260818a"></script>
 <script type="module" src="js/str-native.js?v=20260818a"></script>
 <script type="module" src="js/str-report-native.js?v=20260818a"></script>

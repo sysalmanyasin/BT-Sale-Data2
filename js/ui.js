@@ -89,6 +89,10 @@ function showPage(id) {
     if (id === 'credit-ledger' && typeof window.clnOnShowCreditLedger === 'function') window.clnOnShowCreditLedger();
     if (id === 'assignments' && typeof window.anOnShowAssignments === 'function') window.anOnShowAssignments();
     if (id === 'inventory' && typeof window.invOnShowInventory === 'function') window.invOnShowInventory();
+    // Emergency Billing — counter-billing tool for when Candela POS is
+    // down (architecture doc "Emergency Billing Domain"). Safe to call
+    // on every visit, same as the other bridge-backed native pages.
+    if (id === 'emergency-billing' && typeof window.ebOnShowEmergencyBilling === 'function') window.ebOnShowEmergencyBilling();
     // STR Report — read-only over str_headers/str_line_items (rolling
     // 7-day sync window, see str-bridge.js's header note).
     if (id === 'str' && typeof window.strOnShowReport === 'function') window.strOnShowReport();

@@ -1,0 +1,143 @@
+/* ══════════════════════════════════════════════════════════════════
+   EMERGENCY BILLING — counter-billing tool for when Candela POS is
+   down (Architecture doc, Phase 3). Follows the app's per-domain CSS
+   file convention (stockledger.css, attendance.css) and its shared
+   design tokens (css/variables.css) rather than porting POS's own
+   css/components.css literally.
+   ══════════════════════════════════════════════════════════════════ */
+
+#page-emergency-billing.page { display: none; }
+#page-emergency-billing.page.on { display: block; }
+
+.eb-wrap {
+  max-width: 980px; margin: 0 auto; padding: var(--sp-4) var(--sp-4) var(--sp-7);
+  font-family: var(--sans); color: var(--text);
+}
+
+.eb-banner {
+  display: flex; align-items: center; gap: var(--sp-3);
+  background: var(--alt2); border: 1px solid var(--amber);
+  border-radius: var(--r-md); padding: var(--sp-3) var(--sp-4);
+  margin-bottom: var(--sp-4); color: var(--amber); font-size: 13px; font-weight: 600;
+}
+
+.eb-search-box { position: relative; margin-bottom: var(--sp-4); }
+.eb-search-row { display: flex; gap: var(--sp-2); }
+.eb-search-row input[type="text"] {
+  flex: 1; padding: 12px 14px; border-radius: var(--r-md);
+  border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 14px;
+}
+.eb-search-row input[type="text"]:focus { outline: none; box-shadow: var(--focus-ring); border-color: var(--accent); }
+#eb-qty-input { width: 72px; text-align: center; }
+#eb-search-clear {
+  padding: 0 14px; border-radius: var(--r-md); border: 1px solid var(--border);
+  background: var(--s2); color: var(--muted); cursor: pointer; font-size: 13px;
+}
+
+.eb-search-results {
+  display: none; position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; right: 0;
+  background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--r-md);
+  box-shadow: var(--sh-lg); max-height: 320px; overflow-y: auto;
+}
+.eb-sr-row {
+  display: grid; grid-template-columns: 24px 1fr 90px 56px 80px;
+  gap: var(--sp-2); align-items: center; padding: 8px 12px; cursor: pointer; font-size: 13px;
+  border-bottom: 1px solid var(--border);
+}
+.eb-sr-row:last-child { border-bottom: none; }
+.eb-sr-row:hover, .eb-sr-row.selected { background: var(--alt); }
+.eb-sr-num { color: var(--muted); font-family: var(--mono); font-size: 11px; }
+.eb-sr-code { color: var(--muted); font-size: 11px; font-family: var(--mono); }
+.eb-sr-generic { color: var(--t2); font-size: 12px; }
+.eb-sr-stock { font-family: var(--mono); text-align: right; }
+.eb-sr-stock.low { color: var(--red); font-weight: 700; }
+.eb-sr-price { font-family: var(--mono); text-align: right; font-weight: 600; }
+.eb-search-no-results { display: none; padding: var(--sp-3); color: var(--muted); font-size: 13px; }
+
+.eb-f9-hint {
+  display: none; background: var(--purple-lt); color: var(--purple);
+  font-weight: 700; font-size: 12px; padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-sm); margin-bottom: var(--sp-3);
+}
+
+.eb-cart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--sh); overflow: hidden; margin-bottom: var(--sp-4); }
+.eb-cart-head { display: flex; justify-content: space-between; align-items: center; padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--border); }
+.eb-cart-head h3 { font-size: 14px; }
+#eb-cart-count { color: var(--muted); font-size: 12px; }
+
+table.eb-cart-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.eb-cart-table th { text-align: left; padding: 8px 12px; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--border); }
+table.eb-cart-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.eb-cart-row.f9-active { background: var(--purple-lt); }
+.eb-cc-name { font-weight: 600; }
+.eb-cc-code { color: var(--muted); font-size: 11px; font-family: var(--mono); }
+.eb-tc-price, .eb-tc-total { font-family: var(--mono); text-align: right; white-space: nowrap; }
+.eb-qwrap { display: flex; align-items: center; gap: 4px; }
+.eb-qbtn { width: 24px; height: 24px; border-radius: var(--r-xs); border: 1px solid var(--border); background: var(--s2); cursor: pointer; font-size: 14px; line-height: 1; }
+.eb-qinp { width: 46px; text-align: center; padding: 4px; border-radius: var(--r-xs); border: 1px solid var(--border); }
+.eb-del { border: none; background: none; color: var(--red); cursor: pointer; font-size: 14px; }
+.eb-empty { text-align: center; padding: var(--sp-6) var(--sp-4); color: var(--muted); font-size: 14px; }
+
+.eb-summary { padding: var(--sp-3) var(--sp-4); border-top: 1px solid var(--border); background: var(--s3); }
+.eb-summary-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
+.eb-summary-row.eb-net { font-weight: 700; font-size: 16px; border-top: 1px dashed var(--border-strong); margin-top: 6px; padding-top: 8px; }
+.eb-discount-row input { width: 110px; text-align: right; padding: 4px 8px; border-radius: var(--r-xs); border: 1px solid var(--border); }
+
+.eb-meta-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--sp-3); padding: var(--sp-4); border-top: 1px solid var(--border); }
+.eb-meta-grid label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .03em; }
+.eb-meta-grid input { width: 100%; padding: 8px 10px; border-radius: var(--r-sm); border: 1px solid var(--border); }
+
+.eb-pay-section { padding: var(--sp-4); border-top: 1px solid var(--border); }
+.eb-pay-modes { display: flex; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+.eb-pay-btn { flex: 1; padding: 10px; border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-weight: 600; font-size: 13px; }
+.eb-pay-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.eb-cash-row { display: flex; gap: var(--sp-3); align-items: center; margin-bottom: var(--sp-2); }
+.eb-cash-row input { flex: 1; padding: 8px 10px; border-radius: var(--r-sm); border: 1px solid var(--border); }
+.eb-change-row { display: none; justify-content: space-between; font-weight: 700; padding: 6px 0; }
+
+.eb-actions { display: flex; gap: var(--sp-3); padding: var(--sp-4); border-top: 1px solid var(--border); }
+.eb-btn { padding: 10px 18px; border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-weight: 600; font-size: 13px; }
+.eb-btn-sm { padding: 6px 10px; font-size: 12px; }
+.eb-btn-danger { color: var(--red); }
+.eb-btn-primary { background: var(--teal); border-color: var(--teal); color: #fff; flex: 1; }
+.eb-btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+.eb-btn-ghost { color: var(--muted); }
+
+.eb-held-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--sh); padding: var(--sp-4); }
+.eb-held-card h3 { font-size: 14px; margin-bottom: var(--sp-3); }
+.eb-held-empty { color: var(--muted); font-size: 13px; padding: var(--sp-3) 0; }
+.eb-held-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.eb-held-row:last-child { border-bottom: none; }
+.eb-held-tag { font-weight: 600; font-size: 13px; }
+.eb-held-meta { color: var(--muted); font-size: 12px; }
+.eb-held-actions { display: flex; gap: 6px; }
+
+/* ── Receipt modal (screen) ─────────────────────────────────────── */
+#eb-receipt-modal { display: none; position: fixed; inset: 0; background: rgba(15,20,40,.5); z-index: 200; align-items: center; justify-content: center; }
+#eb-receipt-modal.visible { display: flex; }
+.eb-receipt-box { background: #fff; color: #111; width: 320px; max-height: 82vh; overflow-y: auto; border-radius: var(--r-md); box-shadow: var(--sh-lg); padding: var(--sp-4); font-family: var(--mono); font-size: 12px; }
+.eb-rcpt-head { text-align: center; margin-bottom: var(--sp-3); }
+.eb-rcpt-head h3 { font-size: 14px; margin-bottom: 2px; }
+.eb-rcpt-head p { font-size: 11px; color: #555; }
+.eb-rcpt-row { display: flex; justify-content: space-between; padding: 2px 0; }
+.eb-rcpt-sep { border-top: 1px dashed #999; margin: 8px 0; }
+.eb-rcpt-item { padding: 4px 0; }
+.eb-rcpt-item-meta { display: flex; justify-content: space-between; color: #444; }
+.eb-rcpt-net { font-weight: 700; font-size: 13px; }
+.eb-rcpt-foot { margin-top: var(--sp-3); font-size: 10px; color: #777; text-align: center; }
+.eb-receipt-modal-actions { display: flex; gap: var(--sp-2); justify-content: center; margin-top: var(--sp-4); }
+
+/* ── Print — only the receipt shows, everything else on the page is
+   hidden. Same pattern POS's own print.css uses for its receipt slip:
+   a dedicated print-only block rather than routing through this app's
+   shared Print.render() engine (js/print.js), which targets full-page
+   KPI/table reports, not a narrow thermal-style slip. ─────────────── */
+@media print {
+  body * { visibility: hidden; }
+  #eb-receipt-print, #eb-receipt-print * { visibility: visible; }
+  #eb-receipt-print {
+    position: fixed; top: 0; left: 0; width: 80mm; padding: 4mm;
+    color: #000; font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+  }
+  #eb-receipt-modal, .eb-receipt-modal-actions { display: none !important; }
+}
