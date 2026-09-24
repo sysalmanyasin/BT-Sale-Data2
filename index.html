@@ -2420,6 +2420,10 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/audit-native.js"></script>
 <script type="module" src="js/inventory-bridge.js?v=20260811a"></script>
 <script type="module" src="js/inventory-native.js?v=20260811a"></script>
+<!-- Emergency Billing (Phase 2): bridge only for now — reads inventory-bridge's
+     cache, writes to its own emergency_* tables. Depends on the inventory
+     bridge above; a paired emergency-billing-native.js UI is Phase 3. -->
+<script type="module" src="js/emergency-billing-bridge.js?v=20260924a"></script>
 <script type="module" src="js/str-bridge.js?v=20260818a"></script>
 <script type="module" src="js/str-native.js?v=20260818a"></script>
 <script type="module" src="js/str-report-native.js?v=20260818a"></script>
