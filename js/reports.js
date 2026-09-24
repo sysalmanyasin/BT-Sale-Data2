@@ -27,17 +27,25 @@ function dayData(d) {
   // built from dayData() showed a different, lower one (didn't). Folding
   // them in dynamically here, once, fixes every caller of dayData() at once
   // instead of needing a fix per report function.
+  //
+  // Every defined custom field is always included here (not just ones with
+  // a non-zero value today) and carries its own stable `id` (the field's
+  // real id, e.g. "custom_MEDIQ") — callers that only want to *display* a
+  // row when it's actually used should check `value !== 0` themselves, but
+  // discovery (Customize Rows) and hide/show toggles need the row to exist
+  // regardless of value, and keyed by the field itself rather than by its
+  // position among that day's non-zero fields (position shifts day to day
+  // and silently misattributes toggles to the wrong field).
   const customRows = [];
   let customCash = 0, customCredit = 0;
   if (typeof _fmCustom !== 'undefined' && _fmCustom) {
     _fmCustom.forEach(f => {
       if (f.calcType === 'none') return;
       const raw = n(d[f.id]);
-      if (!raw) return; // skip zero/unused custom fields so reports don't clutter
       const signed = f.calcType === 'sub' ? -Math.abs(raw) : raw;
       const isCash = f.section !== 'Credit Clients'; // 'Cash'/'Banks' → cash side
       if (isCash) customCash += signed; else customCredit += signed;
-      customRows.push({ label: f.label, value: signed, cash: isCash });
+      customRows.push({ id: f.id, label: f.label, value: signed, cash: isCash });
     });
   }
 
@@ -68,7 +76,7 @@ function buildDayHTML(r) {
       ${dmOptRow('HBL',r.hbl)}
       ${dmOptRow('MCB',r.mcb)}
       ${dmRowHTML('Cash Returns',r.cashRet,'Returns Only')}
-      ${r.customRows.filter(c=>c.cash).map(c=>dmRowHTML(c.label,c.value)).join('')}
+      ${r.customRows.filter(c=>c.cash&&c.value!==0).map(c=>dmRowHTML(c.label,c.value)).join('')}
     </div>
     <div class="dmnet"><span>Net Cash Sale</span><span style="font-family:var(--mono)">${fv(r.netCash)}</span></div>
     <div class="dmsec"><div class="dmsh">📋 Credit Sale</div>
@@ -96,7 +104,7 @@ function buildDayHTML(r) {
       ${dmRowHTML('Credit Return LDA',r.ldaRet,'Returns Only')}
       ${dmRowHTML('Askari',r.askari)}
       ${dmOptRow('Askari Returns',r.askariRet)}
-      ${r.customRows.filter(c=>!c.cash).map(c=>dmRowHTML(c.label,c.value)).join('')}
+      ${r.customRows.filter(c=>!c.cash&&c.value!==0).map(c=>dmRowHTML(c.label,c.value)).join('')}
     </div>
     <div class="dmnet"><span>Net Credit Sale</span><span style="font-family:var(--mono)">${fv(r.netCredit)}</span></div>
     <div class="dmgrand"><span>Grand Total</span><span style="font-family:var(--mono)">₨${fv(r.grand)}</span></div>
@@ -316,13 +324,17 @@ function renderRowManager() {
   const body = document.getElementById('rowmgr-body');
   if (!body) return;
   const hidden = _rptHidden();
-  // If a date's already selected, pull its actual custom-field rows so
-  // their real labels show up too, not just the fixed built-in columns.
-  let customCash = [], customCredit = [];
-  if (_selDate && _selMy) {
-    const d = Repository.getDailyEntry(_selDate, _selMy);
-    if (d) { const r = dayData(d); customCash = r.customRows.filter(c => c.cash); customCredit = r.customRows.filter(c => !c.cash); }
-  }
+  // List every custom field defined via Manage Fields (fields.js's
+  // _fmCustom), regardless of whether the currently selected date happens
+  // to carry a non-zero value for it. A field the user just created has no
+  // data yet — it should still show up here (and be toggleable) right
+  // away, not only once some day's entry happens to use it. Keyed by the
+  // field's own id (e.g. "custom_MEDIQ"), so a toggle always applies to
+  // that specific field, not to "whichever custom field happened to be in
+  // this position today".
+  const customDefs = (typeof _fmCustom !== 'undefined' && _fmCustom) ? _fmCustom.filter(f => f.calcType !== 'none') : [];
+  const customCashRows   = customDefs.filter(f => f.section !== 'Credit Clients').map(f => [f.id, f.label]);
+  const customCreditRows = customDefs.filter(f => f.section === 'Credit Clients').map(f => [f.id, f.label]);
   const group = (title, rows) => rows.length ? `
     <div style="margin-bottom:14px">
       <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">${title}</div>
@@ -332,8 +344,6 @@ function renderRowManager() {
           <input type="checkbox" ${hidden.has(id) ? '' : 'checked'} onchange="toggleReportRow('${id}')">
         </label>`).join('')}
     </div>` : '';
-  const customCashRows = customCash.map((c, i) => ['ccash_' + i, c.label]);
-  const customCreditRows = customCredit.map((c, i) => ['ccred_' + i, c.label]);
   body.innerHTML = `
     <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Uncheck any row to hide it — from the on-screen report, Print, and Copy, all at once. Totals are never affected, only what's shown.</div>
     ${group('Cash Sale', [...REPORT_ROW_CATALOG['Cash Sale'], ...customCashRows])}
@@ -367,7 +377,7 @@ function renderReport() {
       ${rreq('alHabib','Bank Al Habib',r.alHabib)}
       ${ropt('hbl','HBL',r.hbl)}${ropt('mcb','MCB',r.mcb)}
       ${rreq('cashRet','Cash Returns <small style="font-size:10px;color:#888">(Returns Only)</small>',r.cashRet)}
-      ${r.customRows.filter(c=>c.cash).map((c,i)=>vis('ccash_'+i)?rrow(c.label,c.value):'').join('')}
+      ${r.customRows.filter(c=>c.cash).map(c=>vis(c.id)&&c.value!==0?rrow(c.label,c.value):'').join('')}
       <div class="rnet"><span>Net Cash Sale:</span><span class="rv">${fv(r.netCash)}</span></div>
       <div class="rsec">Credit Sale:</div>
       ${rreq('pso','PSO <small style="font-size:10px;color:#888">(Sales Only)</small>',r.pso)}
@@ -387,7 +397,7 @@ function renderReport() {
       ${rreq('tepaRet','Credit Return Tepa <small style="font-size:10px;color:#888">(Returns Only)</small>',r.tepaRet)}
       ${rreq('ldaRet','Credit Return LDA <small style="font-size:10px;color:#888">(Returns Only)</small>',r.ldaRet)}
       ${ropt('askariRet','Askari Returns',r.askariRet)}
-      ${r.customRows.filter(c=>!c.cash).map((c,i)=>vis('ccred_'+i)?rrow(c.label,c.value):'').join('')}
+      ${r.customRows.filter(c=>!c.cash).map(c=>vis(c.id)&&c.value!==0?rrow(c.label,c.value):'').join('')}
       <div class="rnet"><span>Net Credit Sale:</span><span class="rv">${fv(r.netCredit)}</span></div>
       <div class="rgrand"><span>Grand Total:</span><span class="rv">₨${fv(r.grand)}</span></div>
       ${vis('compSale')&&(r.compSale||r.diff!==0)?`<div class="rmisc"><span>COMP SALE</span><span class="rv">${fv(r.compSale)}</span></div>`:''}
@@ -423,7 +433,7 @@ function buildPrintHTML(date, my, till, patty) {
       ${rreq('alHabib','Bank Al Habib',r.alHabib)}
       ${orow('hbl','HBL',r.hbl)}${orow('mcb','MCB',r.mcb)}
       ${rreq('cashRet','Cash Returns (Returns Only)',r.cashRet)}
-      ${r.customRows.filter(c=>c.cash).map((c,i)=>vis('ccash_'+i)?row(c.label,c.value):'').join('')}
+      ${r.customRows.filter(c=>c.cash).map(c=>vis(c.id)&&c.value!==0?row(c.label,c.value):'').join('')}
       <tr><td style="padding:9px 14px;font-size:13px;font-weight:700;color:#c00;background:#fff5f5;border:1px solid #fecaca">Net Cash Sale:</td><td style="padding:9px 14px;font-size:14px;font-weight:700;color:#c00;text-align:right;font-family:monospace;background:#fff5f5;border:1px solid #fecaca">${fv(r.netCash)}</td></tr>
       <tr><td colspan="2" style="text-align:center;font-size:14px;font-weight:800;padding:8px;background:#f8fafc;border:1px solid #ccc;text-decoration:underline;text-decoration-style:double;letter-spacing:.03em">Credit Sale:</td></tr>
       ${rreq('pso','PSO (Sales Only)',r.pso)}${rreq('nespak','Nespak (Sales Only)',r.nespak)}${rreq('parco','Parco (Sales Only)',r.parco)}
@@ -435,7 +445,7 @@ function buildPrintHTML(date, my, till, patty) {
       ${rreq('psoRet','Credit Return PSO (Returns Only)',r.psoRet)}${rreq('nespakRet','Credit Return Nespak (Returns Only)',r.nespakRet)}
       ${rreq('parcoRet','Credit Return Parco (Returns Only)',r.parcoRet)}${rreq('tepaRet','Credit Return Tepa (Returns Only)',r.tepaRet)}
       ${rreq('ldaRet','Credit Return LDA (Returns Only)',r.ldaRet)}${orow('askariRet','Askari Returns',r.askariRet)}
-      ${r.customRows.filter(c=>!c.cash).map((c,i)=>vis('ccred_'+i)?row(c.label,c.value):'').join('')}
+      ${r.customRows.filter(c=>!c.cash).map(c=>vis(c.id)&&c.value!==0?row(c.label,c.value):'').join('')}
       <tr><td style="padding:9px 14px;font-size:13px;font-weight:700;color:#c00;background:#fff5f5;border:1px solid #fecaca">Net Credit Sale:</td><td style="padding:9px 14px;font-size:14px;font-weight:700;color:#c00;text-align:right;font-family:monospace;background:#fff5f5;border:1px solid #fecaca">${fv(r.netCredit)}</td></tr>
       <tr><td style="padding:13px 14px;font-size:17px;font-weight:800;color:#fff;background:#1e3a8a;border:2px solid #fbbf24;letter-spacing:.02em">Grand Total:</td><td style="padding:13px 14px;font-size:18px;font-weight:800;color:#fff;text-align:right;font-family:monospace;background:#1e3a8a;border:2px solid #fbbf24">₨${fv(r.grand)}</td></tr>
       ${vis('compSale')&&(r.compSale||r.diff!==0)?`<tr><td style="padding:8px 14px;font-size:12px;font-weight:600;border:1px solid #ccc">COMP SALE</td><td style="padding:8px 14px;font-size:13px;text-align:right;font-family:monospace;border:1px solid #ccc">${fv(r.compSale)}</td></tr>`:''}
@@ -488,7 +498,7 @@ function _reportPlainText(date, my, till, patty) {
   if(vis('hbl')&&r.hbl) lines.push(line('HBL',r.hbl));
   if(vis('mcb')&&r.mcb) lines.push(line('MCB',r.mcb));
   if(vis('cashRet')) lines.push(line('Cash Returns',r.cashRet));
-  r.customRows.filter(c=>c.cash).forEach((c,i)=>{ if(vis('ccash_'+i)) lines.push(line(c.label,c.value)); });
+  r.customRows.filter(c=>c.cash).forEach(c=>{ if(vis(c.id)&&c.value!==0) lines.push(line(c.label,c.value)); });
   lines.push('Net Cash Sale: '+fv(r.netCash),'','Credit Sale:');
   if(vis('pso')) lines.push(line('PSO',r.pso));
   if(vis('nespak')) lines.push(line('Nespak',r.nespak));
@@ -514,7 +524,7 @@ function _reportPlainText(date, my, till, patty) {
   if(vis('tepaRet')) lines.push(line('Credit Return Tepa',r.tepaRet));
   if(vis('ldaRet')) lines.push(line('Credit Return LDA',r.ldaRet));
   if(vis('askariRet')&&r.askariRet) lines.push(line('Askari Returns',r.askariRet));
-  r.customRows.filter(c=>!c.cash).forEach((c,i)=>{ if(vis('ccred_'+i)) lines.push(line(c.label,c.value)); });
+  r.customRows.filter(c=>!c.cash).forEach(c=>{ if(vis(c.id)&&c.value!==0) lines.push(line(c.label,c.value)); });
   lines.push('Net Credit Sale: '+fv(r.netCredit),'','Grand Total: ₨'+fv(r.grand));
   if(r.compSale||r.diff!==0){
     if(vis('compSale')) lines.push(line('COMP SALE',r.compSale));
