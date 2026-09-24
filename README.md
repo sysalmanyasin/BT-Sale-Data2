@@ -1,615 +1,1398 @@
-# Bahria Town Sales Intelligence Centre
+Bahria Town Sales Intelligence Centre
 
-A personal, single-user Progressive Web App for running a pharmacy end
-to end — daily sales entry and reporting, a full manager suite, a
-spreadsheet tool, a cross-device PDF archive, and native read-only
-views into two sibling apps (Closing, Pharmacy Audit Hub). Google
-Sign-In gated, offline-capable via service worker, synced across
-devices with Supabase, deployed at `bt.duapharma.com` (see `CNAME`).
-Alongside the PWA, a separate native Android app lives in this repo,
-`android-widget/` (22 home-screen widgets: Closing, Sales, Credit,
-Inventory) — see [Android apps](#android-apps). A second native
-wrapper app, `android-app/` (a standalone TWA installable wrapper of
-this same PWA), used to live here too; it's been deleted — see
-[Known gaps](#known-gaps).
+BT Sales IC is a personal, single-user pharmacy operations PWA for Bahria Town. It combines daily sales capture, reporting, management tools, inventory intelligence, closing/audit read-only bridges, attendance, spreadsheets, PDF archiving, cross-device sync, and native Android companions in one codebase.
 
-This is intentionally a **single-user app, permanently** — there's no
-multi-tenant support and no roles/permissions system. That constraint
-keeps everything else simpler; don't add access-control complexity
-speculatively.
+Live app: "bt.duapharma.com"
+Repository: "sysalmanyasin/BT-Sale-Data2"
+Default branch: "main"
 
-> **AI has been fully removed from the client app** (as of v10.32).
-> Every AI-facing feature — chat, AI settings, the Context Engine, the
-> AI Daily Briefing — is gone. See [Known gaps](#known-gaps) for the
-> one place AI narration still survives (a server-side Edge Function)..
+«Documentation note: This README describes the current codebase rather than its historical evolution. When documentation conflicts with implementation, the code and database schema are the source of truth.»
 
 ---
 
-## Contents
+📌 At a Glance
 
-- [Tech stack](#tech-stack)
-- [Navigation model](#navigation-model)
-- [Section-by-section guide](#section-by-section-guide)
-- [Android apps](#android-apps)
-- [Architecture](#architecture--5-floors-golden-rules)
-- [File layout](#file-layout)
-- [Testing](#testing)
-- [Known gaps](#known-gaps)
-- [Working conventions for future sessions](#working-conventions-for-future-sessions)
+Area| What it provides
+📊 Sales| Dashboard, daily sales entry, history/index, reports, payments, DIFF/reconciliation, cash-deposit reporting
+👔 Manager| Staff Registry, staff notes, Ledger, Targets, Salary, Petty, Credit, Incentive, Manager Overview, Payslip, Attendance
+📦 Inventory| BT Inventory, Stock Ledger, Excess Working, Reorder Report, Inventory Health
+🚚 STR| Awaited/Dispatched/Received workflow, detail view, flattened report, Zero Dispatch
+📖 Closing| Native read-only Closing Book + Credit Ledger views
+🧾 Audit| Native read-only Assignments view + external Pharmacy Audit Hub
+📑 Notes & Sheets| Multi-file spreadsheet-style workbooks and live-data materialisation
+🛠️ Utilities| Sync Center, PDF Library, Activity Log, global navigation/search, settings
+🔎 Inventory Search| Standalone Inventory Search PWA with medicine reference AI/chat
+📱 Android| Home-screen widget app + native attendance/geofence app
+🔄 Backup & Sync| Supabase multi-device sync + independent Google Drive backup
+📲 PWA| Installable offline-capable Progressive Web App
+📰 Herald| Deterministic daily operational intelligence across major domains
 
----
-
-## Tech stack
-
-- **Vanilla JS**, ES modules where possible, a handful of classic
-  `<script defer>` files bridged via `window.X` for legacy inline
-  handlers — no framework, no build step.
-- **Supabase** — Postgres + Storage + realtime-ish polling sync,
-  backing multi-device sync, the PDF Library, Sync Center's device
-  coordination, and the Audit/Inventory bridges.
-- **Google Drive** — an independent daily backup, separate from
-  Supabase sync.
-- **Service worker** (`sw.js`) for offline install + caching.
-- **jsPDF + autoTable** for print/PDF generation; Chart.js for the
-  dashboards.
-- No server-rendered backend of its own — this is a static site
-  (GitHub Pages) talking directly to Supabase from the client.
+The application is intentionally designed around a single pharmacy / single primary operational environment. It is not currently a general-purpose multi-tenant SaaS architecture.
 
 ---
 
-## Navigation model
+🧰 Tech Stack
 
-**Cover is the hub.** The top nav only ever shows Cover + Tools plus
-whichever domain you're currently inside — never a long row of
-always-visible icons. You pick a domain from a tile on Cover, and the
-nav re-themes itself with that domain's accent color the moment you're
-in it.
+Frontend
 
-| Domain       | Pages                                                                             | Accent      |
-| ------------ | ---------------------------------------------------------------------------------- | ----------- |
-| `sales`      | Dashboard, Sale Data (Index / Daily Data / Add Entry / Report / Payments / DIFF / Cash Deposit) | blue (base) |
-| `manager`    | Manager (Staff, Ledger, Targets, Salary/Petty/Credit/Incentive), Overview           | sky blue    |
-| `notesheets` | Notes & Sheets                                                                      | green       |
-| `closing`    | Closing Book, Credit Ledger                                                        | teal        |
-| `audit`      | Assignments                                                                        | amber       |
-| `inventory`  | BT Inventory, Stock Ledger, Excess Working, Reorder Report, Inventory Health        | pink        |
-| `str`        | STR Report (List, Report, 0-Dispatch)                                              | pink        |
+- Vanilla JavaScript
+- ES modules
+- Legacy "<script>" modules where migration is still in progress
+- HTML/CSS
+- No frontend build step
+- GitHub Pages/custom-domain deployment
 
-Cross-domain utilities, never hidden and never owned by a domain:
-**Cover**, **Tools** (settings/sync), the **PDF Library**, and the
-**Activity Log** (all three reached from the top nav / All Sections
-drawer's Utility group).
+Backend
 
-Three fully separate, standalone apps live *outside* this codebase and
-are only ever linked to from Cover: Closing (`closing.duapharma.com`),
-Audit (`random.duapharma.com`), and Fazal Din's Pharma Plus's toolset
-(`reports.duapharma.com`). Don't confuse those links with the native
-`closing`/`audit`/`inventory`/`str` domains above — the native domains
-re-implement a read-only view of (part of) the same underlying data
-inside *this* app; the Cover links open the other apps directly.
+- Supabase PostgreSQL
+- Supabase Authentication
+- Supabase Storage
+- Supabase Edge Functions
+- Supabase REST APIs
 
-Getting around also means two complementary nav pieces layered on top
-of the tab bar: a real pushState-based back button, and an **All
-Sections** directory (long-press Cover, or the ☰ Menu item) that lists
-every page and sub-page in the app in one collapsible tree, with a
-live fuzzy search box pinned to the top. There used to be a separate
-per-visit **Recents** drawer too; it's been retired as redundant with
-always having the full tree one tap away (see `nav-sections.js`'s
-header comment) — `js/nav-recents.js` no longer exists in the repo.
+PWA
 
----
+- "manifest.json"
+- Root "sw.js"
+- Service-worker caching
+- Offline application shell
+- Automatic update detection
+- Safe reload handling
 
-## Section-by-section guide
+Libraries
 
-### 🏠 Cover
-The home hub and the only screen that shows every domain at once, as
-a grid of tiles you drag-reorder yourself. Also the exit point to the
-three external standalone apps (Closing, Audit, Fazal Din's toolset)
-and the entry point to the PDF Library. Long-pressing Cover (or
-tapping ☰ Menu) opens the All Sections drawer described above.
+- Chart.js
+- jsPDF
+- jsPDF-AutoTable
+- html2canvas
+- XLSX
+- qrcode-generator
+- jsdom for testing
 
-### 📊 Dashboard (Home)
-The Sales domain's landing page. A pure renderer (`dashboard.js`) on
-top of `analytics.js`, which owns every KPI aggregation, MTD/YTD
-comparison, and forecast calculation — pages never contain business
-logic themselves. On top of the standard KPI row, `dashboard-insights.js`
-adds a **Daily Briefing** card (rotates on whichever signal is
-strongest that day — plain computed data, not AI-generated), a
-**Target Pace** card, and a rotating insight strip (weekday
-comparisons, staff outlier detection, and similar).
+Android
 
-### 🗂️ Sale Data
-Daily sales entry and every report built on top of it, reached via its
-own sub-nav:
-- **Index** — a collapsible year → month directory of every day on
-  record.
-- **Daily Data** — the raw day-by-day ledger.
-- **Add Entry** — the daily sales entry form. `entry-prefill.js`
-  auto-fills what it can straight from data that already exists
-  elsewhere, so nothing gets retyped: Cash Sale / Bank Alfalah / Bank
-  Alfalah 2 and Cash Returns are read back from Closing's own Supabase
-  data (same project, `sheets` table), and Total Sale (→ COMP SALE)
-  plus named credit-client columns are read from Sale Payments' bridge
-  (today + last 3 days only). Customers/FDPP/FDPP Con have no reliable
-  live source and stay manual; anything that can't be matched or
-  fetched is named in a toast rather than silently skipped.
-- **Report** — the standard sales report.
-- **Payments** (Sale Payments) — Cash/Card/Credit split plus a
-  per-customer credit breakdown, for today + the last 3 days only.
-  Synced from Candela POS via Dropbox → Supabase (a separate
-  Supabase project, `sale-payments-bridge.js`), read-only — the same
-  live source `entry-prefill.js` above reads Total Sale/credit clients
-  from.
-- **DIFF** — a diff/reconciliation report between two data points.
-- **Cash Deposit Report** — computed fresh for every day as
-  `Cash Sale − Cash Returns + FDPP POS + FDPP Consumer`, deliberately
-  kept separate from the manually-typed "Cash to be Deposited" field
-  elsewhere in the app, which just reflects whatever was typed in.
-  Prints via a vector jsPDF + autoTable thermal-receipt renderer, not
-  `html2canvas`.
+- Kotlin
+- Gradle
+- Native Android widgets
+- Native Android attendance/geofencing application
 
-### 👔 Manager
-The staff and money-movement suite:
-- **Staff Registry** — full CRUD on employee records, always routed
-  through Actions (`addEmployee`/`updateEmployee`/`removeEmployee`),
-  never raw state mutation. Each staff card has its own **Notes** tab
-  for simple timestamped per-employee notes (not a messaging system).
-- **Ledger** — a generalized store (`ledger-store.js`/
-  `ledger-actions.js`/`ledger-page.js`) with date-range filtering and
-  group-by-category, built to replace the separate Jazz Cash / Expense
-  (Petty) / custom-section implementations. Jazz Cash and custom
-  sections have actually made that move and render through
-  `renderLedgerView()`. **Petty has not** — `ledger-store.js` still
-  carries an unused `petty` category config, but the live Petty Cash
-  UI runs entirely through `manager-petty.js`'s own separate
-  `mw_petty_*` storage; nothing calls `renderLedgerView('petty', ...)`
-  anywhere in the app. Verify with `grep -rn "renderLedgerView(.*petty" js/`
-  before trusting either claim again.
-- **Targets** — staff/store performance targets feeding the
-  Dashboard's Target Pace card.
-- **Reports** — Salary, Petty, Credit, and Incentive reports, each its
-  own manager sub-tab.
+Testing
 
-Every free-typing sub-tab here (Staff Registry, Salary, Generic
-Working, Petty Detail, Staff Credit — sheet and Staff Card views —,
-Incentive, Jazz Cash's Balance Tally) autosaves: `mgrAutosave()`
-(`js/manager-shared.js`) debounces ~700ms after the last keystroke and
-then calls that sub-tab's own `save*Data()` — no click needed. Each
-Save button stays as an explicit "save right now" fallback (it briefly
-flashes "✓ Saved" when an autosave commits instead) rather than being
-removed. Deliberately excluded: the generalized Ledger's inline
-per-row edit (`ledger-page.js`) keeps its explicit ✓/✕ Save/Cancel —
-that's a genuine back-out-before-committing safeguard for a ledger,
-not friction to remove.
-
-### 📊 Overview (Manager Overview)
-A dedicated Manager-domain dashboard, separate from the Sales
-Dashboard, giving a manager-focused summary view across staff, ledger,
-and targets.
-
-### 📑 Notes & Sheets
-A lightweight, multi-file spreadsheet tool living entirely inside the
-app — no separate backend, synced through the same pipeline as
-everything else. Each file is an independent workbook with its own
-sheet tabs. Its standout feature is the **🔗 Data tab**, which can
-materialize any live table from Sales, Manager, or Inventory straight
-into a new, fully editable grid.
-
-### 📖 Closing Book & 💳 Credit Ledger
-Native, read-only ports of the standalone Closing app's own pages,
-fed by a local cache of a Dropbox export (`closing-bridge.js`) rather
-than app business data — so they deliberately sit outside the
-Actions/Event Bus pipeline the rest of the app uses.
-
-### 🧾 Assignments
-A native, read-only port of the standalone Pharmacy Audit Hub's own
-page, fed directly from the shared Supabase project the two apps have
-in common (`audit-bridge.js`).
-
-### 📦 Inventory suite
-Five native pages sharing one already-loaded dataset
-(`window.StockLedgerApp.getRawRows()`), read-only from the **separate
-Pharmacy Audit Hub Supabase project** (`inventory-bridge.js`) rather
-than the main BT Sale Data project — but each page is a small app in
-its own right, not a plain table view:
-- **BT Inventory** — the native inventory home page
-  (`inventory-native.js`): search, group-by-Manufacturer/Supplier,
-  paged 100 rows at a time (built for 5,000+ SKU inventories), and a
-  toggleable optional-column picker exposing every column on
-  `inventory_products`, not just the base 6 shown by default.
-- **Stock Ledger** — not one flat table but **5 panels**
-  (`neverSold`, `deadStock`, `excess`, `packIssues`, `zeroStock`),
-  each with its own independent sort/search/filter state.
-- **Excess Working** — flags stock sitting too high relative to sales
-  (90+ days of cover by default) across **4 sub-tabs**: the flagged
-  Working list; a persistent per-device **Retain List** (items always
-  excluded from Excess regardless of pack quantity); **Adjustments**
-  (an optional reported-HO-value reconciliation with a live variance
-  calculation); and **Export** (Top-N Excel export with preset
-  buttons).
-- **Reorder Report** — the inverse: flags stock running out too soon
-  and ranks the shortfall by sale value, across **Top N / All**
-  sub-tabs, each independently configurable — sale-value window
-  (30/60/90 day), cover-days threshold, an "include today's live
-  sales" toggle, group-by-supplier, and a per-column hide picker that
-  also affects print output.
-- **Inventory Health** — a standalone health dashboard: 4 separate
-  Chart.js charts (health classification, movers, trend, supplier
-  breakdown), a KPI row, and a searchable table. Adds one metric none
-  of the others track: a local day-by-day trend of total reorder
-  value, since the underlying table is a live snapshot rather than a
-  time series.
-
-Inventory isn't confined to these 5 pages, either:
-- **Automated alerts** — `rules-registrations.js` registers 3 rules
-  (low-cover-value, excess-item, dead-stock-aggregate) into the Cover
-  dashboard's alert engine, so a reorder or excess-stock warning can
-  surface without anyone opening an inventory page.
-- **9 of the Android widget app's 22 home-screen widgets** are
-  inventory widgets, running a Kotlin port of this same math so they
-  stay correct without either app open — see
-  [Android apps](#android-apps).
-- **The Inventory Search companion PWA** (`/inventory-search/`) is a
-  separate, standalone one-tap lookup tool over the same dataset — see
-  [below](#-inventory-search-standalone-companion-pwa).
-
-### 📋 STR Report
-Its own standalone domain (`str`) — pulled out of Inventory in v10.72
-so it sits as a peer of Sales/Manager/Inventory/etc in the nav rather
-than nested underneath one of them. Same read-only Pharmacy Audit Hub
-Supabase project as the Inventory suite above (`str-bridge.js`), but a
-different pair of tables — `str_headers`/`str_line_items`, synced from
-`inventory.json`'s `strLast7Days`/`strLineItemsLast7Days` — and a
-**rolling last-7-days window only** (not the full history). Two
-sub-tabs, sharing one filter/pack-qty/grouping engine
-(`str-shared.js`) so they can't drift apart:
-- **List** (`str-native.js`) — every STR touching Bahria Town,
-  dispatched out or received in. Sub-heading chips double as filters
-  ("Dispatched: N" / "Received: N", driven by the `direction` column),
-  plus a derived 3-stage Awaited/Dispatched/Received filter (the raw
-  `str_status` column is only ever Open/Close — the three stages come
-  from `dispatch_status` + `receive_status` instead) and a date range
-  on `str_date`. Tapping a row opens a detail modal reproducing the
-  source system's own printed Stock Transfer Report — grouped by
-  supplier (joined client-side from `inventory_products`, since
-  `str_line_items` itself carries no supplier column) and sorted by
-  product code ascending within each group — with Prev/Next buttons
-  that step through the same filtered list without closing the modal,
-  and a Print button.
-- **Report** (`str-report-native.js`) — every STR currently matching
-  the filters, flattened and open at once: **Dispatch Branch → STR #
-  (+ its Comments) → Supplier (product code ascending) → line items**.
-  Same filters as List, plus a manageable-columns picker (persisted
-  per-device under `bt_str_report_cols_v1`) and its own Print button
-  that mirrors the on-screen grouping.
-
-Both pages show **pack quantities**, not loose units — STR
-Qty/Dispatch Qty/Receive Qty are synced in loose units, then converted
-via `floor(loose / inventory_products.conversion_factor)` (same
-down-rounding `excess-working.js` already does elsewhere; a code with
-no reliable `conversion_factor` falls back to a factor of 1, i.e. its
-"pack qty" is just its loose qty). Difference is computed from the
-pack values too, so all four qty-shaped columns stay in the same unit.
-
-**3 of the Android widget app's 22 home-screen widgets** mirror this
-same Awaited/Dispatched/Received lifecycle natively (`StrRepository.kt`
-ports `str-bridge.js`/`str-shared.js`) — see
-[Android apps](#android-apps).
-
-### ⚙️ Tools
-Settings and cross-cutting utilities, most notably:
-- **Sync Center** — a "single active device" architecture (device ID +
-  activity tracking + a priority lock over a Supabase `bt_sessions`
-  table) so two devices editing at once don't silently clobber each
-  other, plus its own Session / Devices / Controls / Health / Logs /
-  Settings sub-tabs. `conflict-ui.js` owns the actual dialog for
-  resolving a flagged conflict when one comes up.
-
-### 📄 PDF Library
-A cross-device archive of every PDF the app has ever generated, fed
-directly from the one place every report already funnels through:
-the instant a print is requested, a "Generating…" popup appears; once
-the PDF blob exists, that same popup swaps to View / Download /
-Save-to-Library, with no forced new tab and no silent download.
-Backed by Supabase Storage, with a silent expiry sweep run on every
-unlock.
-
-### 🕒 Activity Log
-A cross-device, Supabase-synced feed of what changed, where, and
-when — date/time, section, and add / edit / delete — for a single-user
-app running on more than one device. Fed passively off the EventBus
-(`js/event-bus.js`) that every real data mutation already announces
-itself on (`repository.js`'s daily/monthly/staff/generic-item writes,
-`actions.js`'s staff:added/updated/removed, `ledger-store.js`'s
-ledger:changed, diffed by id since that event carries the full entries
-array rather than a verb) — no existing Action had to change to wire
-this up. Table is `bt_activity_log` (`supabase/activity_log/schema.sql`);
-not to be confused with the sibling standalone Closing app's own,
-differently-shaped `activity_log` table that `closing-bridge.js` reads
-read-only (`{ts, actor, key, action, changes}`) — the two are
-deliberately separate tables in the same Supabase project.
-
-### 🔍 Global Search & All Sections
-A navigation aid that lives in a drawer rather than a page: the **All
-Sections** drawer lists the entire app as a collapsible tree, with a
-fuzzy search box at the top that filters the tree live and also
-fuzzy-ranks the Staff registry, so searching an employee's name jumps
-straight to their Staff Card. (A separate **Recents** drawer used to
-live alongside it, listing whatever sections you'd actually visited
-that session — retired as redundant with All Sections; see the
-[Navigation model](#navigation-model) note above.)
-
-### 🔒 Auth
-A Google Sign-In gate, which has to run *before* the rest of the app's
-data layer loads — the one deliberate exception to "nothing touches
-storage directly." Also triggers the PDF Library's expiry sweep on
-every unlock. There used to be a PIN/password offline fallback; it's
-been removed (see comments in `auth.js`) — Google Sign-In with an
-authorised email is now the only way in. Real access control happens
-server-side: the Google `id_token` establishes a genuine Supabase
-session (`signInWithIdToken`), so `auth.uid()` is real for RLS — the
-client-side authorised-email check is a fast-fail UX gate, not the
-actual security boundary.
+- Node.js built-in test runner
+- jsdom
+- Static integrity checks
+- JavaScript parsing checks
+- DOM/navigation tests
+- Pure-module tests
 
 ---
 
-## 🔍 Inventory Search (standalone companion PWA)
+🧭 Navigation Architecture
 
-`/inventory-search/` is a deliberately separate, lightweight PWA — not
-a page inside the main app — for one-tap medicine lookup: type a
-product/generic/code, tap a result for a detail sheet (stock, price,
-company, supplier, tax, movement stats), and optionally hit "Ask AI"
-for a free-tier AI-generated overview of that medicine.
+The application uses a unified Search & All Sections / BT Navigation Panel.
 
-- **Why separate:** installs to the home screen as its own icon
-  (`Inv Search`, no login screen, no nav chrome) so it opens instantly —
-  the closest practical thing to a native search widget without native
-  Android development. Has its own `manifest.json` and its own
-  `sw.js`, scoped to `/inventory-search/` only, so it doesn't collide
-  with the main app's root-scoped service worker.
-- **Data:** reads `inventory_products` directly — same Supabase
-  project, same anon/publishable key as `inventory-bridge.js`,
-  read-only, RLS-scoped (not key-secrecy-scoped). Reuses `BTFormat`
-  and `BTSearch` from the main app's `js/` folder rather than
-  reimplementing currency formatting or fuzzy ranking.
-  Full product list is cached in `localStorage` and refreshed at most
-  once a minute, so search itself is instant and works offline on
-  stale data if there's no connection.
-- **AI info:** calls the `medicine-ai-info` Supabase Edge Function
-  (`supabase/functions/medicine-ai-info/`) — Groq primary, Gemini
-  fallback, both free-tier, with a `medicine_ai_cache` table so the
-  same medicine isn't re-asked of the AI provider more than once every
-  30 days. **Deployed and live** in the BT SALE DATA / Closing project
-  (`wetbugzzchkghpzmowod`) — the cache table there too. The one
-  remaining step is setting `GROQ_API_KEY` (and optionally
-  `GEMINI_API_KEY`) as secrets on that project, since those need your
-  own free account — see that function's `DEPLOY.md`.
-- **AI chat:** a separate floating chat assistant, calling a second
-  Edge Function (`supabase/functions/inventory-chat/`). Answers
-  inventory questions only from the search-result context the client
-  already has locally (no server-side inventory access by design) and
-  general medicine questions from the model's own knowledge — same
-  "reference only, not patient-specific advice" framing as the
-  `medicine-ai-info` lookup above.
+Access
+
+- Desktop: ☰ Menu
+- Mobile: bottom navigation → ☰ Menu
+- Long-pressing Cover can open navigation
+
+Navigation is generated from:
+
+"js/nav-sections.js"
+
+rather than maintaining multiple independent navigation lists.
+
+Navigation features
+
+- Nested groups
+- Fuzzy navigation search
+- Staff Registry search integration
+- URL-hash routing
+- Browser back-button support
+- Shared navigation tree
+- Mobile and desktop layouts
+
+The previous Recents drawer and old always-visible tab-strip architecture have been retired.
 
 ---
 
-## Android apps
+🏠 Cover
 
-One native Android app lives in this repo, not part of the PWA's own
-build/deploy — built via GitHub Actions.
+Cover acts as the main operational hub.
 
-> A second native app used to live here too: a **Trusted Web Activity
-> (TWA)** wrapper (`android-app/`) that ran the live PWA full-screen
-> inside a real installable app via Google's `androidbrowserhelper`
-> library, gated by Digital Asset Links verification
-> (`.well-known/assetlinks.json`). It's been **deleted** — see
-> [Known gaps](#known-gaps). If it comes back, `git show
-> d141cb1~1:android-app` (the commit before its deletion) has the last
-> working copy.
+It provides:
 
-### Home-screen widgets (`android-widget/`)
+- Major domain cards
+- Cross-domain operational signals
+- Quick navigation
+- Inventory alerts
+- Sales indicators
+- Manager indicators
+- Audit signals
+- Herald headlines
+- External companion-app shortcuts
 
-`android-widget/` is a **separate native Android app** (Kotlin, its
-own Gradle project — not part of the PWA's build or deploy) whose only
-purpose is **22 home-screen widgets**: Closing (summary, sales/target
-pace, aggregated final closing, latest month total, today's live POS
-sale, last-3-shifts), Credit (total outstanding, section breakdown,
-per-staff), Misc/Ongoing Ledger aging, nine Inventory widgets (total
-stock, health, reorder-urgency, excess/top-running/negative/dead/
-never-sold rankings, plus a tap-shortcut into a native product search
-screen), and three STR widgets (Awaited-Dispatch, Dispatched-from-BT,
-Dispatched-Inbound-to-BT — same 3-stage Awaited/Dispatched/Received
-lifecycle as the web app's STR Report). Every number is either read
-straight from the same Supabase tables the web app writes to, or
-computed via a line-for-line Kotlin port of the web app's own math
-(`InventoryRepository.kt` mirrors
-`stockledger.js`/`excess-working.js`/`reorder-report.js`;
-`MonthSaleRepository.kt` mirrors `js/cover-dashboard.js`;
-`StrRepository.kt` mirrors `str-bridge.js`/`str-shared.js`), so the
-widgets stay correct without either app needing to be open. Auth is a
-dedicated read-only "widget service" Supabase account, not a user's
-own Google sign-in. Built via GitHub Actions on every push touching
-`android-widget/**`; full widget list, data sources, and install
-instructions in [`android-widget/README.md`](android-widget/README.md).
+Cards can be reordered.
 
 ---
 
-## Architecture — 5 floors, Golden Rules
+📰 IC Herald
 
-```
-User → Action → Repository → Data → State → Event Bus → Pages → Components
-```
+The IC Herald is a deterministic daily operational intelligence layer.
 
-- **Floor 1 (Repository)** — `repository.js`, `config.js`. The only
-  place raw storage is touched for real business data (a short list of
-  named, deliberate exceptions — see [Known gaps](#known-gaps)).
-- **Floor 2 (State)** — the in-memory arrays/objects (`DAILY`/
-  `MONTHLY`/`STAFF`), guarded by a write-detection Proxy.
-- **Floor 3 (Actions/Event Bus)** — `actions.js`, `event-bus.js`.
-  Every data *change* goes through an Action; every mutating Action
-  calls `EventBus.notify(...)`.
-- **Floor 4 (Components)** — reusable, UI-agnostic building blocks:
-  `print.js` (the only place `window.print()`/`document.write()` are
-  touched), `pdf-library.js`, the generalized Ledger, `conflict-ui.js`.
-- **Floor 5 (Pages)** — one file per domain page. Never touch the
-  Repository directly; always go through Actions.
+It aggregates signals from areas such as:
 
-**Golden rules** (verified against the code, not just claimed): pages
-never touch the database directly; components never contain business
-logic; business modules never know about UI; state is never modified
-directly; every data change goes through an Action; every storage
-operation goes through the Repository; every update is announced
-through the Event Bus.
+- Sales
+- Manager
+- Inventory
+- Closing
+- Audit
+
+The Herald generates headlines and operational summaries from application data.
+
+Important
+
+The main Herald system is not generative AI.
+
+It uses deterministic application calculations and business rules.
+
+Implementation:
+
+"js/herald/"
 
 ---
 
-## File layout
+📊 Sales
 
-- `index.html` — every page, the nav, and all modals in one file.
-  `<script type="module">` for real ES modules, `<script defer>` for
-  classic scripts.
-- `js/` — one file per feature/page, generally namespaced as an IIFE
-  with a `window.X` bridge so both module- and classic-script
-  consumers can reach it. `js/shared/` holds code only ever reached via
-  `import`, never its own `<script>` tag.
-- `css/` — `variables.css` (design tokens, including each domain's
-  accent color and a shared spacing scale), `nav.css` (domain
-  isolation + re-theming), `components.css`/`pages.css`/`modals.css`/
-  `mobile.css` (shared UI), plus one feature-specific sheet per major
-  page/domain.
-- `sw.js` — the service worker; bump `CACHE_NAME` and keep
-  `APP_SHELL` in sync with `index.html` whenever a `<script>`/`<link>`
-  tag changes, or offline/flaky-connection loads silently break.
-- `android-widget/` — separate native Android app (22 home-screen
-  widgets), its own Gradle project — see
-  [Android apps](#android-apps) and
-  `android-widget/README.md`.
-- `.github/workflows/build-widget-apk.yml` — builds a debug APK on
-  every push touching `android-widget/**`.
-- `supabase/functions/` — Edge Functions, including the daily
-  WhatsApp briefing generator.
-- `supabase/migrations/` — dated SQL migrations applied directly to
-  the Supabase project (e.g. sync fanout / security fixes).
-- `supabase/pdf_library/` — schema + deploy notes for the PDF
-  Library's Storage bucket and metadata table.
-- `supabase/activity_log/` — schema for the Activity Log's
-  `bt_activity_log` table.
-- `tests/` — the smoke-test suite (Node's built-in test runner +
-  jsdom) — see [Testing](#testing) and `tests/README.md`.
-- `manifest.json` — PWA manifest (home-screen shortcuts: Add Daily
-  Entry, Dashboard, Daily Data, Sale Report).
-- `CNAME` — GitHub Pages custom-domain file, points the deploy at
-  `bt.duapharma.com`.
+Dashboard
+
+The Sales Dashboard provides operational analytics including:
+
+- Daily sales
+- Period comparisons
+- MTD/YTD information
+- Target pace
+- Staff-related signals
+- Operational alerts
+- Forecast calculations
+- Herald signals
+
+The dashboard is a renderer over the application's analytics/business-data layer rather than a separate data source.
 
 ---
 
-## Testing
+Sale Data
 
-A breadth-first smoke-test suite — "did anything fundamental break?",
-not deep business-rule coverage — on Node's built-in test runner
-(`node:test`) plus jsdom as the only dependency, zero build step:
+Index
 
-```bash
-npm install          # once, installs jsdom
-npm test             # runs the whole suite
-npm run test:verbose # same, with readable test names
-npm run test:watch   # re-runs on file changes
-```
+Year → Month → Day navigation for historical sales.
 
-Covers static integrity (every `index.html` script/link points at a
-real file; `sw.js`'s `APP_SHELL` matches; `manifest.json` is valid;
-every JS file parses), pure-module unit tests (`config.js` formatters,
-`event-bus.js`, `print.js`'s API surface), an integration slice
-through the Staff Registry (`config.js` → `event-bus.js` →
-`repository.js` → `actions.js`), and a DOM/navigation test that loads
-the real `index.html` into jsdom and drives the real `ui.js`. Deliberately
-out of scope: Supabase sync, Google Sign-In, print rendering output,
-and anything needing a real device or live network — see
-[`tests/README.md`](tests/README.md) for the full breakdown and the
-real bugs this suite has already caught.
+Daily Data
 
----
+Raw day-by-day sales records.
 
-## Known gaps
+Add Entry
 
-- The standalone `android-app/` TWA wrapper (see the note in
-  [Android apps](#android-apps)) has been deleted from the repo
-  (`d141cb1`). Only the widget app (`android-widget/`) remains.
-- ~~Leftover "Petrol Station" branding in `index.html`~~ — fixed: the
-  meta description and `.psub` subtitle now both read pharmacy, matching
-  every other branding surface in the app.
-- ~~`package.json`'s description still listed "AI assistant"~~ —
-  fixed: removed, now matches the "AI has been fully removed from the
-  client app" callout above.
-- `localStorage` is touched directly outside the Repository in these
-  files (verified via `grep -rl "localStorage\." js` — this list has
-  drifted before, re-run that grep before trusting it):
-  `auth.js` (must run before the Repository loads — a load-order
-  constraint), the three read-only bridges (`closing-bridge.js`,
-  `audit-bridge.js`, `inventory-bridge.js`) plus a fourth,
-  `sale-payments-bridge.js`, following the same read-only pattern,
-  `activity-log.js` (its local cache mirrors `bt_activity_log`, whose
-  authoritative copy lives in Supabase — also sidesteps a feedback
-  loop, since going through Repository would re-fire the very
-  EventBus event this file listens to), `drive.js` (caches the Google
-  Drive OAuth access token + expiry), `closing-ledger-marks.js`
-  (a small pending-marks map, UI-local), `fields.js` (theme
-  preference only), and a Repository-with-`localStorage`-fallback
-  pattern in `inventory-native.js` / `inventory-health-dashboard.js`
-  (`stockledger.js`, `excess-working.js`, `reorder-report.js`,
-  `reports.js`, `closing-native.js`, `ui-extras.js` also fall into
-  this UI-local-state bucket) — none of it is business data, so it
-  doesn't violate the spirit of the rule.
-- `bt-search.js` was dead code post-AI-removal; it's now back in use,
-  powering Global Search.
-- AI narration survives in **two** places, not one: the daily
-  WhatsApp briefing Edge Function (Groq, Cerebras fallback) covered
-  above, and the Inventory Search PWA's floating chat assistant
-  (`supabase/functions/inventory-chat/`, wired up in
-  `inventory-search/app.js` via `CHAT_FUNCTION_URL`) — answers
-  inventory questions strictly from client-supplied search-result
-  context (no server-side inventory access) and general medicine
-  questions from the model's own knowledge. Everything in the *main*
-  app (this README's primary subject) is still AI-free; both AI
-  surfaces live in the separate Inventory Search companion PWA /
-  its Edge Functions.
-- All CDN library `<script>` tags in `index.html` are now pinned to
-  an exact version and SRI-hashed (`integrity` + `crossorigin`
-  attributes) — the Chart.js and Supabase Edge Function
-  script tags used to float on an unpinned `@2`, and none had a
-  hash. Chart.js is served from jsDelivr's `dist/chart.umd.js`
-  (unminified — the exact minified `chart.umd.min.js` cdnjs used to
-  serve isn't published to npm, so there's no way to hash-verify that
-  specific minified build against its source; the unminified npm
-  build is byte-verifiable and was preferred over shipping an
-  unverifiable hash). Google's GSI client (`accounts.google.com/gsi/client`)
-  is deliberately left unpinned/unhashed — Google doesn't support SRI
-  on it and rotates it without notice. **When bumping any pinned
-  library version, regenerate its hash from the matching npm package
-  — don't hand-edit the `integrity` attribute.**
+Daily sales entry interface with intelligent date-aware prefill.
+
+Sale Report
+
+Standard sales reporting and analysis.
+
+Payments
+
+Handles:
+
+- Cash
+- Card
+- Credit
+- Credit-customer detail
+
+DIFF
+
+Reconciliation and difference analysis.
+
+Cash Deposit
+
+Cash-deposit calculation and reporting.
 
 ---
 
-## Working conventions for future sessions
+✍️ Add Entry Prefill
 
-- **Verify claims against the actual code**, not against what a
-  comment or this README says — module counts, file names, and
-  "was this deleted?" claims have all drifted from reality before.
-  Trust `grep`/`find`.
-- Any change to a live storage format needs a **lossless migration
-  that never deletes the old key** — every migration in this app so
-  far follows that pattern.
-- Verify structural changes with a real test before calling something
-  done — this app holds real financial data.
-- Converting a classic script to a real ES module isn't just adding
-  `import`/`export` — check every inline `onclick`/`onchange`/
-  `oninput` handler in `index.html` that assigns to that file's
-  top-level variables; those handlers run in global scope and will
-  silently create a disconnected `window.*` global once the file
-  becomes a module. Route through a small bridged setter instead.
-  Also bump `sw.js`'s `CACHE_NAME` and add the file to `APP_SHELL`.
-- Test printing (`Print.render`/`renderNewTab`) on a real Android
-  device before release — `window.print()` doesn't block JS execution
-  there the way it does on desktop, which has caused a real bug once
-  already.
+"entry-prefill.js" reduces duplicate manual entry.
+
+Current automatic sources include:
+
+Closing Sheets
+
+Prefills values such as:
+
+- Cash Sale
+- Bank Alfalah
+- Bank Alfalah 2
+- Cash Returns
+
+Sale Payments Bridge
+
+Can supply:
+
+- Total Sale
+- COMP SALE
+- Matching credit-customer information
+
+Manual entry remains available when no reliable live source exists.
+
+Important design
+
+Prefill-owned values are tracked separately from manually entered values.
+
+This prevents changing the selected date from unintentionally overwriting information manually entered by the user.
+
+---
+
+💳 Sale Payments Bridge
+
+The Sale Payments integration is a read-only bridge to the separate:
+
+Candela POS → Dropbox → Supabase
+
+pipeline.
+
+It is not the main PWA's primary source of truth.
+
+---
+
+👔 Manager
+
+The Manager domain provides the operational management layer.
+
+Staff Registry
+
+Provides employee management including:
+
+- Staff CRUD
+- Employee identity
+- Staff information
+- Timestamped staff notes
+- Integration with Attendance
+- Integration with Manager modules
+
+Staff Registry is the source of truth for staff identity used by related systems.
+
+---
+
+📅 Attendance
+
+Attendance is a major integrated domain with both:
+
+1. Web management
+2. Native Android application
+
+---
+
+Manager Attendance
+
+Implementation:
+
+"js/manager-attendance.js"
+
+Today
+
+Displays every active staff member, including visible absences.
+
+Monthly
+
+Provides:
+
+- Present count
+- Absent count
+- Late count
+- Monthly summaries
+
+Raw Log
+
+Recent attendance events.
+
+Manual Entry
+
+Manager-controlled attendance corrections.
+
+Location
+
+Pharmacy geofence/location management.
+
+Notifications
+
+Attendance notification configuration/status.
+
+iPhone Setup
+
+Guidance for devices that cannot use the native Android geofencing application.
+
+---
+
+📱 Native Android Attendance
+
+Location:
+
+"android-attendance/"
+
+The native application is designed for:
+
+- Staff phones
+- Manager notification phone
+
+Staff features
+
+- Pharmacy geofence ENTER → Check-in
+- Pharmacy geofence EXIT → Check-out
+- QR manual fallback
+- Device registration
+- Background operation
+- Reboot geofence re-registration
+- Mock-location detection flag
+- Boundary-flapping debounce
+- Offline event queue
+- Automatic retry when connectivity returns
+
+Manager mode
+
+Manager devices can receive attendance notifications without participating in staff geofencing.
+
+Location source
+
+The application uses the active row from:
+
+"attendance_locations"
+
+for the primary pharmacy geofence.
+
+The last known location is cached for reboot/network resilience.
+
+---
+
+Attendance Logic
+
+Late detection is optional.
+
+It only activates when a staff member has an explicit:
+
+"shiftStart"
+
+A five-minute grace period is applied.
+
+The system does not attempt to guess employee schedules.
+
+---
+
+Attendance Security Considerations
+
+The current attendance architecture is designed around the application's existing single-pharmacy environment.
+
+The attendance tables currently use an anon-role access model with the project's accepted RLS tradeoffs.
+
+Therefore:
+
+«The public client key should not be considered a complete per-device authentication boundary.»
+
+A manager PIN is protected server-side for manager-control functionality, but this is not equivalent to full device/user authentication.
+
+Future security direction
+
+For a future multi-branch or higher-security deployment, attendance should move toward:
+
+- Supabase authenticated users
+- Device identity
+- Server-side authorization
+- Edge Function controlled writes
+- Branch-level access policies
+
+---
+
+🎯 Manager Targets
+
+Target management feeds calculations used by dashboard and management surfaces.
+
+Target information can contribute to:
+
+- Target pace
+- Sales comparisons
+- Manager analytics
+- Staff performance views
+
+---
+
+📒 Manager Ledger
+
+The generalized Ledger architecture supports:
+
+- Date filtering
+- Date ranges
+- Category grouping
+- Reusable ledger rendering
+- Custom ledger sections
+- JazzCash-related records
+- Inline editing
+
+Important exception
+
+Petty Cash remains a deliberate legacy/separate implementation in:
+
+"manager-petty.js"
+
+It is not currently rendered through the generalized Petty category in:
+
+"ledger-store.js"
+
+---
+
+💰 Salary
+
+Manager Salary functionality includes salary-related reporting and payslip functionality.
+
+The architecture keeps salary-related data separate from general ledger presentation.
+
+Important
+
+Attendance is not currently wired as an automatic salary deduction engine.
+
+---
+
+🧾 Credit
+
+Manager Credit functionality supports credit-related operational records and reporting.
+
+Credit information is also surfaced through relevant dashboard/closing views.
+
+---
+
+🎁 Incentive
+
+Manager Incentive functionality handles incentive-related reporting and calculations.
+
+---
+
+📦 Inventory
+
+The Inventory domain is designed for large pharmacy datasets.
+
+---
+
+BT Inventory
+
+Provides:
+
+- Product search
+- Manufacturer/supplier grouping
+- Pagination
+- 100-row views
+- Optional-column picker
+- Large-SKU support
+- Read-only integration with the Pharmacy Audit Hub inventory dataset
+
+---
+
+📚 Stock Ledger
+
+Stock Ledger provides multiple analytical panels:
+
+Never Sold
+
+Products with no recorded sales.
+
+Dead Stock
+
+Products meeting the application's dead-stock criteria.
+
+Excess
+
+Products with excessive inventory cover.
+
+Pack Issues
+
+Potential packaging/conversion inconsistencies.
+
+Zero Stock
+
+Products currently showing zero inventory.
+
+Each analytical panel maintains its own:
+
+- Search
+- Filter
+- Sort
+- Display state
+
+---
+
+📈 Excess Working
+
+Excess Working identifies inventory with excessive stock cover.
+
+Features include:
+
+- Configurable excess logic
+- Working list
+- Retain List
+- Adjustments
+- Reported-HO-value variance
+- Top-N Excel export
+
+Default threshold
+
+The current default excess threshold is:
+
+90+ days of cover
+
+---
+
+🔄 Reorder Report
+
+The Reorder Report is designed to identify stock requiring replenishment.
+
+Features:
+
+- Top N
+- All items
+- 30-day sales-value window
+- 60-day sales-value window
+- 90-day sales-value window
+- Cover-days threshold
+- Optional live today's sales
+- Supplier grouping
+- Column visibility
+- Print/export
+- In-Transit quantities
+
+In Transit
+
+Inbound STR quantities can be incorporated into reorder calculations.
+
+This prevents stock already moving toward the pharmacy from being treated identically to stock with no incoming supply.
+
+---
+
+❤️ Inventory Health
+
+Inventory Health provides a management-level inventory dashboard.
+
+Includes:
+
+- Health classification chart
+- Movers chart
+- Trend chart
+- Supplier breakdown
+- KPI cards
+- Searchable detail table
+- Local reorder-value trend
+
+---
+
+🚨 Inventory Alerts
+
+The application can surface inventory-related operational alerts.
+
+Examples include:
+
+- Low-cover-value
+- Excess-item
+- Dead-stock aggregate
+
+These can appear on Cover without requiring the Inventory module to be opened.
+
+---
+
+🚚 STR Report
+
+STR is a standalone top-level domain.
+
+The source data is read-only and comes from the Pharmacy Audit Hub Supabase environment.
+
+---
+
+STR List / Detail
+
+Supports:
+
+- Dispatch / Receive direction
+- Awaited
+- Dispatched
+- Received
+- Date filtering
+- Supplier grouping
+- Product-code ordering
+- Detail modal
+- Previous/Next navigation
+- Printing
+
+The application derives the business lifecycle from dispatch/receive state rather than relying only on the raw "str_status" field.
+
+---
+
+📋 STR Report
+
+The flattened report follows:
+
+Dispatch Branch → STR → Comments → Supplier → Line Items
+
+It supports:
+
+- Same filtering engine as List
+- Column picker
+- Print
+- Detailed operational reporting
+
+---
+
+0️⃣ Zero Dispatch
+
+Zero Dispatch isolates STR line items where:
+
+- STR Qty > 0
+- Dispatch Qty = 0
+
+Users can select STR blocks for printing.
+
+---
+
+📦 STR Quantity Convention
+
+STR quantities are displayed as pack quantities rather than raw loose units.
+
+Conversion uses:
+
+"conversion_factor"
+
+The same floor/down-rounding convention used by Inventory analysis is applied.
+
+If a reliable conversion factor does not exist:
+
+"conversion_factor = 1"
+
+---
+
+📖 Closing
+
+The application contains native read-only views over the standalone Closing system.
+
+Closing Book
+
+Native read-only Closing Book interface.
+
+Credit Ledger
+
+Native Credit Ledger views include:
+
+- Credit
+- Misc/Ongoing
+
+These are deliberately read-only bridges.
+
+The standalone Closing application remains external to this repository.
+
+---
+
+🧾 Audit
+
+The application includes a native read-only Assignments view backed by shared Audit Hub data.
+
+The external Pharmacy Audit Hub is also accessible from the navigation.
+
+---
+
+📑 Notes & Sheets
+
+A lightweight spreadsheet/workbook environment is built into the PWA.
+
+Features include:
+
+- Multiple files
+- Multiple sheets
+- Editable grid
+- Notes
+- Sheet management
+- Live Data materialisation
+- Spreadsheet import/export
+
+---
+
+Live Data
+
+The Data tab can materialise live application data into editable sheet data.
+
+This reduces the need to manually copy operational information between systems.
+
+---
+
+🔄 Sync Center
+
+The application uses a single-active-device/control model to reduce simultaneous editing conflicts.
+
+Sync Center provides areas for:
+
+- Session
+- Devices
+- Controls
+- Health
+- Logs
+- Settings
+
+Conflict handling is separated into:
+
+"conflict-ui.js"
+
+This keeps conflict presentation separate from the underlying business logic.
+
+---
+
+💾 Backup
+
+The application has two conceptually different persistence mechanisms.
+
+Supabase Sync
+
+Used for application synchronization across supported devices.
+
+Google Drive
+
+Used as an independent backup mechanism.
+
+Google Drive backup should not be confused with Supabase synchronization.
+
+---
+
+📚 PDF Library
+
+Generated PDFs can be:
+
+- Viewed
+- Downloaded
+- Saved
+- Retrieved across supported devices
+
+The PDF Library uses Supabase Storage/metadata.
+
+An expiry sweep is triggered during application unlock.
+
+---
+
+📝 Activity Log
+
+The Activity Log provides a cross-device change feed.
+
+It records:
+
+- Date/time
+- Section
+- Add
+- Edit
+- Delete activity
+
+It listens to the application's EventBus instead of requiring every Action/page to independently implement logging.
+
+---
+
+🔎 Global Search
+
+The unified navigation system provides fuzzy search.
+
+It can search:
+
+- Navigation sections
+- Staff Registry
+- Relevant application destinations
+
+Staff search can fuzzy-rank employee results and help jump toward the relevant Staff Card.
+
+---
+
+🔐 Authentication
+
+The main PWA is protected by Google Sign-In.
+
+Current authentication architecture:
+
+1. User initiates Google Sign-In.
+2. Google provides an identity token.
+3. Authorised email configuration is synchronised from Supabase.
+4. Client-side authorization provides an early UX gate.
+5. The Google ID token is exchanged through Supabase "signInWithIdToken".
+6. Supabase establishes an authenticated session.
+7. RLS-aware backend operations can use the authenticated identity.
+
+Security boundary
+
+The client-side authorized-email list is a fast-fail UX gate, not the sole security boundary.
+
+Server-side Supabase authentication/RLS is the important security layer for protected operations.
+
+---
+
+🔑 Password / PIN Legacy UI
+
+Some legacy password/reset markup and helper functions remain in the codebase.
+
+However:
+
+«Password/PIN unlock is disabled.»
+
+The supported application unlock mechanism is:
+
+Google Sign-In
+
+The legacy password functions are retained primarily for compatibility with existing UI/code structure and do not provide the active authentication path.
+
+---
+
+🤖 AI Architecture
+
+The main PWA is intentionally AI-free.
+
+Previous client-side AI systems such as:
+
+- Assistant
+- Context Engine
+- Daily AI Briefing
+
+have been removed from the main PWA.
+
+Current main-PWA intelligence systems such as Dashboard calculations and Herald are deterministic application logic.
+
+---
+
+🧠 AI Companion Systems
+
+AI exists in separate companion/server-side systems.
+
+---
+
+🔎 Inventory Search — Medicine Reference
+
+The standalone:
+
+"inventory-search/"
+
+application can request medicine reference information through:
+
+"medicine-ai-info"
+
+Current provider strategy:
+
+1. Groq
+2. Gemini fallback
+
+Results may be cached for approximately 30 days.
+
+The companion PWA does not require login, therefore the Edge Function is designed accordingly.
+
+Safety boundary
+
+The feature is intended for reference information.
+
+It is not a patient-specific prescribing or clinical decision-making system.
+
+---
+
+💬 Inventory Search — AI Chat
+
+The Inventory Search companion also provides a conversational interface.
+
+For inventory questions, the assistant is intentionally limited to product context supplied by the client.
+
+It does not maintain an independent server-side copy of the inventory.
+
+General medicine questions may be answered using model knowledge with reference-oriented framing.
+
+---
+
+📲 Daily WhatsApp Briefing
+
+The repository also contains:
+
+"send-daily-whatsapp-briefing"
+
+This is a separate server-side Edge Function.
+
+It can:
+
+1. Read closing/inventory information.
+2. Generate a short briefing using the configured AI provider.
+3. Send the briefing through WhatsApp.
+
+This system is separate from the main PWA's deterministic Herald engine.
+
+---
+
+📱 Android Applications
+
+The repository currently contains two native Android projects.
+
+---
+
+1. "android-widget/"
+
+A Kotlin application providing 22 home-screen widgets.
+
+Widget categories include:
+
+- Closing summaries
+- Sales/target pace
+- Final closing
+- Month totals
+- Live POS sale
+- Recent shifts
+- Credit
+- Ledger aging
+- Inventory health
+- Reorder urgency
+- Excess
+- Top-running products
+- Negative stock
+- Dead stock
+- Never-sold products
+- Native product search shortcut
+- STR Awaited
+- STR Dispatched
+- STR Inbound
+
+The Android implementation mirrors important web business calculations where required so widgets can operate without the main PWA being open.
+
+It has its own Gradle project and GitHub Actions build workflow.
+
+---
+
+2. "android-attendance/"
+
+Native attendance/geofencing application.
+
+Primary capabilities:
+
+- Staff geofencing
+- Check-in
+- Check-out
+- QR fallback
+- Offline queue
+- Background processing
+- Device registration
+- Manager notifications
+- Reboot recovery
+- Mock-location flagging
+
+---
+
+❌ Retired Android Wrapper
+
+The former:
+
+"android-app/"
+
+Trusted Web Activity wrapper has been removed.
+
+The repository now contains:
+
+- "android-widget/"
+- "android-attendance/"
+
+---
+
+🧱 Application Architecture
+
+The main PWA follows a layered architecture:
+
+User
+  ↓
+Action
+  ↓
+Repository
+  ↓
+Data / State
+  ↓
+EventBus
+  ↓
+Pages / Components
+
+---
+
+Repository
+
+The Repository acts as the primary business-data storage boundary.
+
+---
+
+State
+
+State contains the application's in-memory working data.
+
+---
+
+Actions
+
+Actions provide the primary mutation boundary.
+
+Business-data writes should normally pass through Actions.
+
+---
+
+EventBus
+
+EventBus broadcasts meaningful application changes.
+
+This allows:
+
+- UI updates
+- Activity logging
+- Cross-module reactions
+- Cache invalidation
+- Other observers
+
+without tightly coupling individual modules.
+
+---
+
+Components
+
+Reusable UI and utility functionality.
+
+---
+
+Pages
+
+Domain-specific rendering and interaction.
+
+Pages should avoid bypassing the business/data layers.
+
+---
+
+🔧 ES Module Migration
+
+The application is undergoing an incremental migration toward ES modules.
+
+Therefore some compatibility bridges remain using:
+
+"window.*"
+
+Important
+
+Do not remove a global bridge merely because an equivalent module export exists.
+
+Before removing one, search for:
+
+- Other JavaScript consumers
+- HTML inline handlers
+- Legacy modules
+- Android/WebView assumptions
+- Cross-module references
+
+---
+
+💾 Storage Architecture
+
+The application primarily separates:
+
+Core business data
+
+Managed through:
+
+"Repository"
+
+and related application state/actions.
+
+Non-business/local data
+
+Some information intentionally remains in browser storage.
+
+Examples include:
+
+- Authentication bootstrap state
+- UI preferences
+- Theme settings
+- Drive token caching
+- Bridge caches
+- Inventory preferences
+- STR preferences
+
+These should not automatically be treated as business-data migration candidates.
+
+---
+
+📁 Repository Structure
+
+/
+├── index.html
+├── manifest.json
+├── sw.js
+├── CNAME
+├── package.json
+│
+├── js/
+│   ├── shared/
+│   ├── herald/
+│   └── application modules
+│
+├── css/
+│
+├── inventory-search/
+│
+├── android-widget/
+│
+├── android-attendance/
+│
+├── supabase/
+│   ├── functions/
+│   ├── migrations/
+│   ├── pdf_library/
+│   └── activity_log/
+│
+├── tests/
+│
+└── .github/
+    └── workflows/
+
+---
+
+🧪 Testing
+
+The project uses Node's built-in test runner with jsdom.
+
+Install
+
+npm install
+
+Run tests
+
+npm test
+
+Verbose tests
+
+npm run test:verbose
+
+Watch mode
+
+npm run test:watch
+
+---
+
+Testing Coverage
+
+The test suite covers areas including:
+
+- Static file integrity
+- Script integrity
+- Manifest validation
+- Service-worker app-shell consistency
+- JavaScript parsing
+- Pure module behaviour
+- EventBus behaviour
+- Printing API surface
+- Staff Registry integration
+- DOM behaviour
+- Navigation behaviour
+
+---
+
+Testing Limitations
+
+The Node/jsdom suite does not completely reproduce:
+
+- Live Supabase
+- Real Google authentication
+- Real printer hardware
+- Browser rendering
+- Real Android geofencing
+- Android background execution
+- OEM battery management
+- Physical GPS behaviour
+
+Therefore real-device testing remains essential.
+
+---
+
+⚠️ Known Limitations & Design Tradeoffs
+
+Main PWA
+
+- Designed around a single pharmacy environment.
+- Not currently a general multi-tenant SaaS architecture.
+- ES-module migration is incomplete.
+- Some global bridges remain intentionally.
+- Petty Cash retains a separate legacy implementation.
+- Some external integrations are read-only bridges.
+- Main PWA does not use generative AI.
+
+---
+
+Attendance
+
+- Current attendance security uses the existing anon-role/RLS tradeoff.
+- Native attendance is designed around one primary pharmacy geofence.
+- Multi-branch attendance requires architectural expansion.
+- Android OEM battery-management settings can affect background geofencing.
+- Attendance is not yet automatically connected to Salary deductions.
+- QR fallback should be treated as part of the physical security model.
+- Device/user authentication can be strengthened in a future version.
+
+---
+
+Inventory Search AI
+
+- Reference-oriented rather than clinical decision-making.
+- Provider secrets must remain server-side.
+- Inventory chat only knows live inventory information explicitly supplied as context by the client.
+- The assistant should not be treated as a substitute for a pharmacist/doctor or official medicine information source.
+
+---
+
+External Integrations
+
+The repository contains bridges to several separate systems/projects.
+
+Before modifying an integration, verify:
+
+- Supabase project
+- Table name
+- Schema
+- Read/write direction
+- Cache behaviour
+- Source-of-truth ownership
+
+Two similarly named datasets do not necessarily represent the same underlying system.
+
+---
+
+🔒 Security Rules
+
+This repository handles real operational and financial information.
+
+Never commit:
+
+- Supabase service-role keys
+- Private API keys
+- AI provider secrets
+- WhatsApp secrets
+- Google private credentials
+- Database passwords
+- Other privileged credentials
+
+Client-side public Supabase keys may be required for browser functionality, but they must always be protected by appropriate RLS and backend authorization.
+
+---
+
+🛠️ Safe Development Rules
+
+Before changing the application:
+
+1. Read the implementation
+
+Do not rely solely on README documentation.
+
+2. Preserve architecture
+
+New business-data writes should normally use:
+
+Action → Repository → State → EventBus
+
+3. Avoid direct state mutation
+
+Do not bypass the established mutation layer without a documented reason.
+
+4. Preserve EventBus events
+
+Other modules may depend on them.
+
+5. Storage migrations should be lossless
+
+Prefer:
+
+Old key
+   ↓
+Migration
+   ↓
+New key
+
+Keep the old path until the new system is verified.
+
+6. Module migration
+
+Before removing a "window.*" bridge:
+
+- Search repository-wide
+- Check inline HTML
+- Check legacy scripts
+- Check external consumers
+
+7. Service worker
+
+When changing application files:
+
+- Review "sw.js"
+- Review app-shell caching
+- Review cache versioning
+- Verify update behaviour
+
+8. Printing
+
+Test print functionality on actual Android devices before release.
+
+9. Attendance
+
+Test on the actual staff phones, especially:
+
+- Background mode
+- Reboot
+- Weak network
+- GPS boundary
+- Permissions
+- Battery optimization
+- OEM-specific restrictions
+
+10. Database changes
+
+For production Supabase schema changes:
+
+«Add a dated migration.»
+
+Do not silently modify production assumptions.
+
+11. Repository-wide cleanup
+
+After refactoring, search the entire repository for stale references before declaring the change complete.
+
+---
+
+🧭 Source of Truth
+
+When determining how the application actually works, use this order:
+
+1. Running code
+2. Database schema and migrations
+3. Automated tests
+4. Feature/module comments
+5. This README
+6. Historical commits/comments
+
+The README documents the system.
+
+It is not the system itself.
+
+---
+
+🚀 Development Philosophy
+
+This project prioritizes:
+
+- Operational reliability
+- Data integrity
+- Simple workflows
+- Offline resilience
+- Cross-device continuity
+- Conservative financial calculations
+- Reusable architecture
+- Pharmacy-specific practicality
+- Native Android integration where browser limitations matter
+- Clear separation between deterministic business intelligence and AI-assisted companion tools
+
+The goal is not simply to create another dashboard.
+
+The goal is to create a single operational intelligence layer for pharmacy management that connects sales, staff, inventory, closing, STR, audit and supporting workflows without unnecessarily duplicating the underlying systems.
