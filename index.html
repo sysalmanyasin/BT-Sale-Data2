@@ -81,7 +81,7 @@
 <link rel="stylesheet" href="css/nav.css?v=20260824a">
 <link rel="stylesheet" href="css/closing-native.css?v=20260728a">
 <link rel="stylesheet" href="css/closing-book-print.css?v=20260722a">
-<link rel="stylesheet" href="css/emergency-billing.css?v=20260925a">
+<link rel="stylesheet" href="css/emergency-billing.css?v=20260925b">
 <link rel="stylesheet" href="css/audit-native.css?v=20260722a">
 <link rel="stylesheet" href="css/inventory-native.css?v=20260722a">
 <link rel="stylesheet" href="css/str-report.css?v=20260817a">
@@ -1602,8 +1602,30 @@ if ('serviceWorker' in navigator) {
         <div class="eb-total-card">
           <div class="eb-summary" id="eb-summary">
             <div class="eb-summary-row"><span>Subtotal</span><span id="eb-subtotal">Rs. 0.00</span></div>
-            <div class="eb-summary-row eb-discount-row"><span>Discount (flat amount)</span><input type="number" id="eb-discount-input" value="0" min="0"></div>
-            <div class="eb-summary-row" style="display:none"><span></span><span id="eb-discount-display">Rs. 0.00</span></div>
+            <div class="eb-summary-row eb-discount-row">
+              <span>Discount</span>
+              <div class="eb-discount-controls">
+                <div class="eb-discount-mode-toggle" id="eb-discount-mode-toggle">
+                  <button type="button" class="eb-discount-mode-btn active" data-mode="flat">Rs.</button>
+                  <button type="button" class="eb-discount-mode-btn" data-mode="percent">%</button>
+                </div>
+                <input type="number" id="eb-discount-input" value="0" min="0">
+              </div>
+            </div>
+            <!-- Quick 1–5% presets — only shown while the toggle above is
+                 on "%". Picking one switches the mode to % and fills the
+                 input, same as typing that number in by hand. -->
+            <div class="eb-summary-row eb-discount-presets-row" id="eb-discount-presets-row" style="display:none">
+              <span></span>
+              <div class="eb-discount-presets" id="eb-discount-presets">
+                <button type="button" class="eb-discount-preset-btn" data-pct="1">1%</button>
+                <button type="button" class="eb-discount-preset-btn" data-pct="2">2%</button>
+                <button type="button" class="eb-discount-preset-btn" data-pct="3">3%</button>
+                <button type="button" class="eb-discount-preset-btn" data-pct="4">4%</button>
+                <button type="button" class="eb-discount-preset-btn" data-pct="5">5%</button>
+              </div>
+            </div>
+            <div class="eb-summary-row eb-discount-amount-row" id="eb-discount-amount-row" style="display:none"><span></span><span id="eb-discount-display">= Rs. 0.00</span></div>
             <!-- Settings > Billing Settings > "Round Net Payable to the nearest
                  whole rupee" — only shown when that's on AND the rounding is
                  non-zero (see calcTotals() in emergency-billing-native.js). -->
@@ -2725,7 +2747,7 @@ if ('serviceWorker' in navigator) {
      signal card are a later phase — open directly via #emergency-billing
      for now. -->
 <script type="module" src="js/emergency-billing-bridge.js?v=20260925a"></script>
-<script type="module" src="js/emergency-billing-native.js?v=20260925a"></script>
+<script type="module" src="js/emergency-billing-native.js?v=20260925b"></script>
 <script type="module" src="js/str-bridge.js?v=20260818a"></script>
 <script type="module" src="js/str-native.js?v=20260818a"></script>
 <script type="module" src="js/str-report-native.js?v=20260818a"></script>

@@ -169,6 +169,19 @@ table.eb-cart-table th:last-child, table.eb-cart-table td.eb-tc-act { width: 40p
 .eb-qbtn { width: 26px; height: 26px; flex: none; border-radius: var(--r-xs); border: 1px solid var(--border); background: var(--s2); cursor: pointer; font-size: 15px; line-height: 1; }
 .eb-qbtn:hover { background: var(--alt); border-color: var(--accent); }
 .eb-qinp { width: 56px; text-align: center; padding: 5px 2px; border-radius: var(--r-xs); border: 1px solid var(--border); font-size: 13px; }
+/* F9 mode's inline "type a digit to overwrite qty" edit (see onGlobalKeydown
+   in emergency-billing-native.js) focuses this field directly — a clear
+   focus ring makes it obvious editing has actually started. */
+.eb-qinp:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent); }
+/* Native number-input up/down arrows — redundant next to the custom
+   −/+ eb-qbtn buttons already beside this field, and the pair together
+   looked like two competing sets of stepper controls. Hidden on both
+   the cart qty field and its refund-modal twin (same field, same fix). */
+.eb-qinp, .eb-refund-qty-inp { -moz-appearance: textfield; }
+.eb-qinp::-webkit-inner-spin-button, .eb-qinp::-webkit-outer-spin-button,
+.eb-refund-qty-inp::-webkit-inner-spin-button, .eb-refund-qty-inp::-webkit-outer-spin-button {
+  -webkit-appearance: none; margin: 0;
+}
 .eb-del { border: none; background: none; color: var(--red); cursor: pointer; font-size: 14px; }
 .eb-empty { text-align: center; padding: var(--sp-6) var(--sp-4); color: var(--muted); font-size: 14px; }
 
@@ -179,6 +192,25 @@ table.eb-cart-table th:last-child, table.eb-cart-table td.eb-tc-act { width: 40p
 .eb-summary { padding: var(--sp-4); }
 .eb-summary-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 13px; }
 .eb-discount-row input { width: 110px; text-align: right; padding: 4px 8px; border-radius: var(--r-xs); border: 1px solid var(--border); }
+/* ── Discount: Flat / % mode toggle + 1–5% quick presets ──────────── */
+.eb-discount-row { flex-wrap: wrap; row-gap: 6px; }
+.eb-discount-controls { display: flex; align-items: center; gap: 6px; }
+.eb-discount-mode-toggle { display: flex; border: 1px solid var(--border); border-radius: var(--r-xs); overflow: hidden; }
+.eb-discount-mode-btn {
+  padding: 4px 9px; font-size: 12px; font-weight: 700; border: none; background: var(--s2);
+  color: var(--muted); cursor: pointer;
+}
+.eb-discount-mode-btn.active { background: var(--accent); color: #fff; }
+.eb-discount-row .eb-discount-mode-btn:first-child { border-right: 1px solid var(--border); }
+.eb-discount-presets-row { padding-top: 0; }
+.eb-discount-presets { display: flex; gap: 6px; margin-left: auto; }
+.eb-discount-preset-btn {
+  padding: 4px 10px; border-radius: var(--r-pill); border: 1px solid var(--border); background: var(--s2);
+  color: var(--muted); font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.eb-discount-preset-btn:hover { border-color: var(--accent); }
+.eb-discount-preset-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.eb-discount-amount-row { font-size: 11.5px; color: var(--muted); padding-top: 0; }
 /* Big, Candela-style Net Total display — this is the number a person
    scans for from across the counter, so it gets its own tinted panel
    and a much larger, bolder numeral than the rest of the summary. */

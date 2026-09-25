@@ -72,6 +72,7 @@ import { BTDate } from './bt-date.js';
   let lastCheckoutBusy = false;
   let historyResults = [];       // last Billing History search results
   let historyDetail = null;      // { invoice, items } for the open Saved Bill modal
+  let discountMode = 'flat';     // 'flat' (rupee amount) | 'percent' (of subtotal) — see setDiscountMode()
 
   // ── Small local helpers ───────────────────────────────────────────
   // Settings' own Currency Symbol field (default 'Rs. ') wins once the
@@ -349,7 +350,7 @@ import { BTDate } from './bt-date.js';
   function doClearCart() {
     cart = [];
     f9Mode = false; f9Row = -1;
-    $('eb-discount-input').value = '0';
+    setDiscountMode('flat', true); // also zeroes the input and hides the % presets row
     $('eb-customer-name').value = '';
     $('eb-customer-phone').value = '';
     $('eb-cash-received-input').value = '';
@@ -358,11 +359,48 @@ import { BTDate } from './bt-date.js';
     renderCart();
   }
 
+  // ── Discount mode (Flat Rs. / % of subtotal) ───────────────────────
+  // resetValue: whether to zero the input when switching modes — true
+  // for a manual toggle-button click (Rs.50 silently becoming "50%" on
+  // a mode switch would be a dangerous unit mix-up), false when the
+  // caller is about to set its own value right after (recallHeld()).
+  function setDiscountMode(mode, resetValue) {
+    discountMode = mode === 'percent' ? 'percent' : 'flat';
+    document.querySelectorAll('.eb-discount-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === discountMode));
+    const presetsRow = $('eb-discount-presets-row');
+    if (presetsRow) presetsRow.style.display = discountMode === 'percent' ? 'flex' : 'none';
+    if (discountMode !== 'percent') {
+      document.querySelectorAll('.eb-discount-preset-btn').forEach(b => b.classList.remove('active'));
+    }
+    const input = $('eb-discount-input');
+    if (input) {
+      if (discountMode === 'percent') input.setAttribute('max', '100');
+      else input.removeAttribute('max');
+      if (resetValue) input.value = '0';
+    }
+    calcTotals();
+  }
+
+  function applyDiscountPreset(pct) {
+    setDiscountMode('percent', false);
+    $('eb-discount-input').value = pct;
+    document.querySelectorAll('.eb-discount-preset-btn').forEach(b => b.classList.toggle('active', Number(b.dataset.pct) === pct));
+    calcTotals();
+  }
+
   // ── Totals ─────────────────────────────────────────────────────────
   function calcTotals() {
     const subtotal = cart.reduce((s, i) => s + (parseFloat(i.total) || 0), 0);
-    let disc = parseFloat($('eb-discount-input').value) || 0;
-    if (disc < 0) disc = 0;
+    let discInput = parseFloat($('eb-discount-input').value) || 0;
+    if (discInput < 0) discInput = 0;
+
+    let disc;
+    if (discountMode === 'percent') {
+      if (discInput > 100) discInput = 100;
+      disc = subtotal * (discInput / 100);
+    } else {
+      disc = discInput;
+    }
     if (disc > subtotal) disc = subtotal;
     let net = Math.max(0, subtotal - disc);
 
@@ -381,8 +419,20 @@ import { BTDate } from './bt-date.js';
     }
 
     $('eb-subtotal').textContent = cur() + subtotal.toFixed(2);
-    $('eb-discount-display').textContent = cur() + disc.toFixed(2);
     $('eb-net-total').textContent = cur() + net.toFixed(2);
+
+    // % mode shows the rupee-equivalent underneath so the cashier sees
+    // exactly what "3%" comes out to before checking out; Flat mode has
+    // nothing extra to show since the input already IS the rupee amount.
+    const discAmountRow = $('eb-discount-amount-row');
+    if (discAmountRow) {
+      if (discountMode === 'percent' && discInput > 0) {
+        $('eb-discount-display').textContent = '= ' + cur() + disc.toFixed(2);
+        discAmountRow.style.display = 'flex';
+      } else {
+        discAmountRow.style.display = 'none';
+      }
+    }
 
     const roundRow = $('eb-rounding-row');
     if (roundRow) {
@@ -496,7 +546,7 @@ import { BTDate } from './bt-date.js';
     const hint = $('eb-f9-hint');
     if (!hint) return;
     if (f9Mode && cart.length > 0) {
-      hint.textContent = '⚡ F9 EDIT MODE — Row ' + (f9Row + 1) + '/' + cart.length + ' (↑↓ navigate, Del remove, Esc exit)';
+      hint.textContent = '⚡ F9 EDIT MODE — Row ' + (f9Row + 1) + '/' + cart.length + ' (↑↓ navigate, type a qty or Enter to overwrite, Del remove, Esc exit)';
       hint.style.display = 'block';
     } else {
       hint.style.display = 'none';
@@ -532,17 +582,56 @@ import { BTDate } from './bt-date.js';
     else if (e.key === 'ArrowUp') { e.preventDefault(); if (f9Row > 0) { f9Row--; highlightF9Row(); updateF9Hint(); } }
     else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); removeItem(f9Row); }
     else if (e.key === 'Escape') { f9Mode = false; f9Row = -1; highlightF9Row(); updateF9Hint(); }
+    else if (e.key === 'Enter' || /^[0-9]$/.test(e.key)) {
+      // "F9 goes to inline quantity edit" — jump straight into the
+      // highlighted row's qty field to overwrite it: Enter opens it with
+      // the current value selected (so typing replaces it), a digit key
+      // opens it and starts typing immediately with that digit already
+      // entered — no separate "press Enter first" step needed. Either
+      // way, onCartBodyKeydown() below takes over from there (its own
+      // Enter commits the edit, Escape cancels and reverts).
+      e.preventDefault();
+      const row = document.querySelectorAll('#eb-cart-body .eb-cart-row')[f9Row];
+      const qtyInput = row ? row.querySelector('.eb-qinp') : null;
+      if (qtyInput) {
+        if (e.key === 'Enter') { qtyInput.focus(); qtyInput.select(); }
+        else { qtyInput.value = e.key; qtyInput.focus(); qtyInput.setSelectionRange(1, 1); }
+      }
+    }
+  }
+
+  // Enter inside the F9 inline qty edit commits it (blur → the existing
+  // 'change' listener's setQty() → renderCart(), which re-applies F9's
+  // row highlight from f9Row automatically). Escape reverts to the
+  // pre-edit quantity and backs out without saving — cancel, not commit.
+  function onCartBodyKeydown(e) {
+    const inp = e.target.closest('.eb-qinp');
+    if (!inp) return;
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      inp.blur();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      const idx = parseInt(inp.dataset.idx, 10);
+      if (cart[idx]) inp.value = cart[idx].qty;
+      inp.blur();
+    }
   }
 
   // ── Held bills (localStorage only — see header note) ──────────────
   function holdBill() {
     if (cart.length === 0) { say('Cart is empty — nothing to hold.', true); return; }
     const tag = (prompt('Label this held bill (optional):', '') || '').trim() || ('Bill #' + (heldBills.length + 1));
+    // Freeze the discount as its already-computed rupee amount regardless
+    // of Flat/% mode — held bills are mode-agnostic on recall (see
+    // recallHeld() below), same as this app never having stored anything
+    // but a rupee figure here before % mode existed.
+    const totals = calcTotals();
     heldBills.push({
       tag,
       savedAt: new Date().toISOString(),
       items: JSON.parse(JSON.stringify(cart)),
-      discountAmount: parseFloat($('eb-discount-input').value) || 0,
+      discountAmount: totals.discount,
       customerName: $('eb-customer-name').value.trim(),
       customerPhone: $('eb-customer-phone').value.trim(),
     });
@@ -588,6 +677,9 @@ import { BTDate } from './bt-date.js';
     if (!bill) return;
     if (cart.length > 0 && !confirm('Recalling this held bill will replace your current unsaved bill. Continue?')) return;
     cart = JSON.parse(JSON.stringify(bill.items));
+    // Held discounts are always a frozen rupee amount (see holdBill()) —
+    // recall always restores Flat mode, never %.
+    setDiscountMode('flat', false);
     $('eb-discount-input').value = bill.discountAmount || 0;
     $('eb-customer-name').value = bill.customerName || '';
     $('eb-customer-phone').value = bill.customerPhone || '';
@@ -595,6 +687,7 @@ import { BTDate } from './bt-date.js';
     saveHeld();
     renderHeldBills();
     renderCart();
+    calcTotals();
     say('↩ Bill "' + bill.tag + '" recalled.');
   }
 
@@ -1355,7 +1448,22 @@ import { BTDate } from './bt-date.js';
     });
     $('eb-search-clear').addEventListener('click', () => { searchInput.value = ''; doSearch(''); searchInput.focus(); });
 
-    $('eb-discount-input').addEventListener('input', calcTotals);
+    $('eb-discount-input').addEventListener('input', () => {
+      // Typing a custom % no longer matches any preset chip exactly.
+      if (discountMode === 'percent') {
+        const v = parseFloat($('eb-discount-input').value) || 0;
+        document.querySelectorAll('.eb-discount-preset-btn').forEach(b => b.classList.toggle('active', Number(b.dataset.pct) === v));
+      }
+      calcTotals();
+    });
+    $('eb-discount-mode-toggle').addEventListener('click', e => {
+      const btn = e.target.closest('.eb-discount-mode-btn');
+      if (btn && btn.dataset.mode !== discountMode) setDiscountMode(btn.dataset.mode, true);
+    });
+    $('eb-discount-presets').addEventListener('click', e => {
+      const btn = e.target.closest('.eb-discount-preset-btn');
+      if (btn) applyDiscountPreset(Number(btn.dataset.pct));
+    });
     $('eb-cash-received-input').addEventListener('input', calcTotals);
 
     $('eb-pay-cash').addEventListener('click', () => setPaymentMode('cash'));
@@ -1364,6 +1472,7 @@ import { BTDate } from './bt-date.js';
 
     $('eb-cart-body').addEventListener('click', onCartBodyClick);
     $('eb-cart-body').addEventListener('change', onCartBodyChange);
+    $('eb-cart-body').addEventListener('keydown', onCartBodyKeydown);
     $('eb-held-list').addEventListener('click', onHeldListClick);
     $('eb-recon-list').addEventListener('click', onReconListClick);
 
