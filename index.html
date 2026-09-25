@@ -1577,6 +1577,7 @@ if ('serviceWorker' in navigator) {
       <div class="eb-actions">
         <button class="eb-btn eb-btn-ghost" id="eb-clear-btn" type="button">Clear Bill</button>
         <button class="eb-btn" id="eb-hold-btn" type="button">📋 Hold Bill</button>
+        <button class="eb-btn" id="eb-refund-open-btn" type="button">↩ Refund</button>
         <button class="eb-btn eb-btn-primary" id="eb-checkout-btn" type="button">✅ Checkout</button>
       </div>
     </div>
@@ -1607,6 +1608,25 @@ if ('serviceWorker' in navigator) {
         <button class="eb-btn eb-btn-ghost" id="eb-receipt-close" type="button">Close</button>
         <button class="eb-btn eb-btn-primary" id="eb-receipt-print-btn" type="button">🖨 Print Receipt</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Refund / partial-refund — pulls the original invoice's own line
+       items (js/emergency-billing-bridge.js's fetchInvoiceItems) so a
+       refund can never be typed against products that weren't actually
+       on that sale; server-side record_emergency_refund() is still the
+       real gate against over-refunding (see that RPC's header note). -->
+  <div id="eb-refund-modal">
+    <div class="eb-refund-box">
+      <div class="eb-refund-head">
+        <h3>Refund</h3>
+        <button class="eb-btn eb-btn-ghost eb-btn-sm" id="eb-refund-close" type="button">✕</button>
+      </div>
+      <div class="eb-refund-lookup-row">
+        <input type="text" id="eb-refund-invoice-input" placeholder="Original invoice number (e.g. EB-20261001-0007)">
+        <button class="eb-btn" id="eb-refund-find-btn" type="button">Find</button>
+      </div>
+      <div id="eb-refund-body"></div>
     </div>
   </div>
 </section>

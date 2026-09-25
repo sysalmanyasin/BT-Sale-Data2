@@ -127,6 +127,28 @@ table.eb-cart-table td { padding: 8px 12px; border-bottom: 1px solid var(--borde
 .eb-cover-banner-text { font-size: 13px; color: var(--amber); }
 .eb-cover-banner-text strong { font-weight: 700; }
 
+/* ── Refund modal ──────────────────────────────────────────────── */
+#eb-refund-modal { display: none; position: fixed; inset: 0; background: rgba(15,20,40,.5); z-index: 200; align-items: center; justify-content: center; padding: var(--sp-4); }
+#eb-refund-modal.visible { display: flex; }
+.eb-refund-box { background: var(--surface); color: var(--text); width: 480px; max-width: 100%; max-height: 88vh; overflow-y: auto; border-radius: var(--r-md); box-shadow: var(--sh-lg); padding: var(--sp-4); }
+.eb-refund-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--sp-3); }
+.eb-refund-head h3 { font-size: 15px; }
+.eb-refund-lookup-row { display: flex; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+.eb-refund-lookup-row input { flex: 1; padding: 8px 10px; border-radius: var(--r-sm); border: 1px solid var(--border); }
+.eb-refund-status { color: var(--muted); font-size: 13px; padding: var(--sp-2) 0; }
+.eb-refund-status.eb-refund-error { color: var(--red); }
+.eb-refund-orig-meta { font-size: 12px; color: var(--muted); margin-bottom: var(--sp-2); }
+table.eb-refund-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: var(--sp-3); }
+table.eb-refund-table th { text-align: left; padding: 6px 4px; color: var(--muted); font-size: 11px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+table.eb-refund-table td { padding: 6px 4px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.eb-refund-qty-inp { width: 56px; text-align: center; padding: 4px; border-radius: var(--r-xs); border: 1px solid var(--border); }
+.eb-refund-meta-grid { display: flex; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.eb-refund-meta-grid > div { flex: 1; }
+.eb-refund-meta-grid label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+.eb-refund-meta-grid select, .eb-refund-meta-grid input { width: 100%; padding: 8px; border-radius: var(--r-sm); border: 1px solid var(--border); }
+.eb-refund-total-row { display: flex; justify-content: space-between; font-weight: 700; padding: var(--sp-2) 0; border-top: 1px dashed var(--border-strong); margin-bottom: var(--sp-3); }
+.eb-refund-actions { display: flex; justify-content: flex-end; gap: var(--sp-2); }
+
 /* ── Receipt modal (screen) ─────────────────────────────────────── */
 #eb-receipt-modal { display: none; position: fixed; inset: 0; background: rgba(15,20,40,.5); z-index: 200; align-items: center; justify-content: center; }
 #eb-receipt-modal.visible { display: flex; }
@@ -154,5 +176,5 @@ table.eb-cart-table td { padding: 8px 12px; border-bottom: 1px solid var(--borde
     position: fixed; top: 0; left: 0; width: 80mm; padding: 4mm;
     color: #000; font-family: 'IBM Plex Mono', monospace; font-size: 11px;
   }
-  #eb-receipt-modal, .eb-receipt-modal-actions { display: none !important; }
+  #eb-receipt-modal, .eb-receipt-modal-actions, #eb-refund-modal { display: none !important; }
 }

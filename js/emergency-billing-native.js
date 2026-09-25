@@ -569,9 +569,11 @@ import { BTDate } from './bt-date.js';
     const byDay = {};
     unreconciled.forEach(inv => {
       const key = _localDayKey(inv.billed_at);
-      if (!byDay[key]) byDay[key] = { date: new Date(inv.billed_at), net: 0, count: 0, invoiceNumbers: [] };
-      byDay[key].net += parseFloat(inv.net_total) || 0;
+      if (!byDay[key]) byDay[key] = { date: new Date(inv.billed_at), net: 0, count: 0, refundCount: 0, invoiceNumbers: [] };
+      const amt = parseFloat(inv.net_total) || 0;
+      byDay[key].net += inv.is_refund ? -amt : amt;
       byDay[key].count += 1;
+      if (inv.is_refund) byDay[key].refundCount += 1;
       byDay[key].invoiceNumbers.push(inv.invoice_number);
     });
 
@@ -584,7 +586,9 @@ import { BTDate } from './bt-date.js';
       row.className = 'eb-held-row eb-recon-row';
       row.innerHTML =
         '<div class="eb-held-info"><div class="eb-held-tag">' + esc(_fmtDMY(g.date)) + '</div>' +
-        '<div class="eb-held-meta">' + g.count + ' invoice' + (g.count !== 1 ? 's' : '') + ' · ' + c + g.net.toFixed(2) + ' not yet in Daily Sale Entry</div></div>' +
+        '<div class="eb-held-meta">' + g.count + ' invoice' + (g.count !== 1 ? 's' : '') +
+          (g.refundCount ? ' (' + g.refundCount + ' refund' + (g.refundCount !== 1 ? 's' : '') + ')' : '') +
+          ' · net ' + c + g.net.toFixed(2) + ' not yet in Daily Sale Entry</div></div>' +
         '<div class="eb-held-actions"><button class="eb-btn eb-btn-sm" data-recon="' + esc(key) + '">✅ Mark Reconciled</button></div>';
       wrap.appendChild(row);
       row.dataset.net = g.net;
@@ -605,6 +609,130 @@ import { BTDate } from './bt-date.js';
     const ok = await EBBridge.markReconciled(invoiceNumbers, dmy);
     if (ok) { say('✅ Marked reconciled for ' + dmy); renderReconciliation(); renderCoverBanner(true); }
     else { say('❌ Failed to mark reconciled.', true); btn.disabled = false; btn.textContent = '✅ Mark Reconciled'; }
+  }
+
+  // ── Refund / partial-refund ────────────────────────────────────────
+  // Reads the original invoice + its real line items before offering
+  // anything to refund — a refund line can never target a product that
+  // wasn't actually on that sale. record_emergency_refund() is still
+  // the real gate against over-refunding (row-locked, server-side).
+  let refundOriginal = null;  // the original invoice header row
+  let refundLines = [];       // [{ code, name, price, origQty, refundQty }]
+
+  function openRefundModal() {
+    refundOriginal = null; refundLines = [];
+    $('eb-refund-invoice-input').value = '';
+    $('eb-refund-body').innerHTML = '';
+    $('eb-refund-modal').classList.add('visible');
+    $('eb-refund-invoice-input').focus();
+  }
+  function closeRefundModal() { $('eb-refund-modal').classList.remove('visible'); }
+
+  async function findRefundInvoice() {
+    const num = $('eb-refund-invoice-input').value.trim();
+    const body = $('eb-refund-body');
+    if (!num) { body.innerHTML = '<div class="eb-refund-status eb-refund-error">Enter an invoice number.</div>'; return; }
+    body.innerHTML = '<div class="eb-refund-status">Looking up ' + esc(num) + '…</div>';
+
+    const [invoices, items] = await Promise.all([
+      EBBridge.fetchInvoices({ invoiceNumber: num }),
+      EBBridge.fetchInvoiceItems(num),
+    ]);
+    const invoice = invoices.find(i => !i.is_refund);
+    if (!invoice) {
+      body.innerHTML = '<div class="eb-refund-status eb-refund-error">No original (non-refund) invoice found with that number.</div>';
+      return;
+    }
+    if (!items.length) {
+      body.innerHTML = '<div class="eb-refund-status eb-refund-error">That invoice has no line items on record.</div>';
+      return;
+    }
+
+    refundOriginal = invoice;
+    refundLines = items.map(it => ({
+      code: it.product_code, name: it.product_name, price: parseFloat(it.unit_price) || 0,
+      origQty: it.qty, refundQty: 0,
+    }));
+    renderRefundBody();
+  }
+
+  function renderRefundBody() {
+    const c = cur();
+    const body = $('eb-refund-body');
+    let rowsHTML = '';
+    refundLines.forEach((line, idx) => {
+      rowsHTML += '<tr>' +
+        '<td>' + esc(line.name) + '<br><span class="eb-cc-code">' + esc(line.code) + '</span></td>' +
+        '<td>' + line.origQty + '</td>' +
+        '<td><input type="number" class="eb-refund-qty-inp" data-ridx="' + idx + '" value="' + line.refundQty + '" min="0" max="' + line.origQty + '"></td>' +
+        '<td>' + c + (line.price * line.refundQty).toFixed(2) + '</td>' +
+      '</tr>';
+    });
+
+    body.innerHTML =
+      '<div class="eb-refund-orig-meta">Original: ' + esc(refundOriginal.invoice_number) + ' · ' + new Date(refundOriginal.billed_at).toLocaleString() +
+        (refundOriginal.customer_name ? ' · ' + esc(refundOriginal.customer_name) : '') + '</div>' +
+      '<table class="eb-refund-table"><thead><tr><th>Item</th><th>Sold</th><th>Refund Qty</th><th>Amount</th></tr></thead>' +
+      '<tbody id="eb-refund-lines">' + rowsHTML + '</tbody></table>' +
+      '<div class="eb-refund-meta-grid">' +
+        '<div><label>Refund Method</label><select id="eb-refund-method"><option value="cash">Cash</option><option value="card">Card</option><option value="online">Online</option></select></div>' +
+        '<div><label>Cash Given Back</label><input type="number" id="eb-refund-cash-given" min="0" placeholder="Defaults to refund total"></div>' +
+      '</div>' +
+      '<div class="eb-refund-total-row"><span>Refund Total</span><span id="eb-refund-total-display">' + c + '0.00</span></div>' +
+      '<div class="eb-refund-actions">' +
+        '<button class="eb-btn eb-btn-ghost" id="eb-refund-cancel-btn" type="button">Cancel</button>' +
+        '<button class="eb-btn eb-btn-primary" id="eb-refund-submit-btn" type="button">Process Refund</button>' +
+      '</div>';
+
+    body.querySelector('#eb-refund-lines').addEventListener('change', e => {
+      const inp = e.target.closest('.eb-refund-qty-inp');
+      if (!inp) return;
+      const idx = parseInt(inp.dataset.ridx, 10);
+      let q = parseInt(inp.value, 10) || 0;
+      if (q < 0) q = 0;
+      if (q > refundLines[idx].origQty) q = refundLines[idx].origQty;
+      refundLines[idx].refundQty = q;
+      renderRefundBody();
+    });
+    body.querySelector('#eb-refund-cancel-btn').addEventListener('click', closeRefundModal);
+    body.querySelector('#eb-refund-submit-btn').addEventListener('click', submitRefund);
+
+    const total = refundLines.reduce((s, l) => s + l.price * l.refundQty, 0);
+    body.querySelector('#eb-refund-total-display').textContent = c + total.toFixed(2);
+  }
+
+  async function submitRefund() {
+    const linesToRefund = refundLines.filter(l => l.refundQty > 0);
+    if (!linesToRefund.length) { say('Set a refund quantity for at least one item.', true); return; }
+
+    const method = $('eb-refund-method').value;
+    const cashInput = $('eb-refund-cash-given');
+    const total = linesToRefund.reduce((s, l) => s + l.price * l.refundQty, 0);
+    const cashGiven = cashInput.value !== '' ? parseFloat(cashInput.value) || 0 : total;
+
+    const btn = $('eb-refund-submit-btn');
+    btn.disabled = true; btn.textContent = 'Processing…';
+
+    try {
+      const result = await EBBridge.recordRefund({
+        staffName: $('eb-staff-name').value.trim(),
+        originalInvoiceNumber: refundOriginal.invoice_number,
+        items: linesToRefund.map(l => ({ code: l.code, name: l.name, price: l.price, qty: l.refundQty })),
+        paymentMethod: method,
+        cashGiven,
+      });
+      if (!result || !result.success) {
+        say('❌ Refund failed: ' + ((result && result.message) || 'Unknown error'), true);
+        btn.disabled = false; btn.textContent = 'Process Refund';
+        return;
+      }
+      say('✅ Refund ' + result.invoiceNumber + ' recorded — ' + cur() + result.netTotal.toFixed(2) + ' returned.');
+      closeRefundModal();
+      renderReconciliation();
+    } catch (err) {
+      say('❌ Refund error: ' + (err && err.message ? err.message : String(err)), true);
+      btn.disabled = false; btn.textContent = 'Process Refund';
+    }
   }
 
   // ── Cover signal card ──────────────────────────────────────────────
@@ -629,7 +757,7 @@ import { BTDate } from './bt-date.js';
           EBBridge.fetchInvoices({ unreconciledOnly: true }),
         ]);
         if (!today.length && !unreconciled.length) { _bannerCache = ''; _bannerFetchedAt = Date.now(); mount.innerHTML = ''; return; }
-        const todayNet = today.reduce((s, i) => s + (parseFloat(i.net_total) || 0), 0);
+        const todayNet = today.reduce((s, i) => s + (i.is_refund ? -1 : 1) * (parseFloat(i.net_total) || 0), 0);
         const unreconciledDays = new Set(unreconciled.map(i => _localDayKey(i.billed_at))).size;
         const c = cur();
         const html =
@@ -697,6 +825,12 @@ import { BTDate } from './bt-date.js';
     $('eb-receipt-close').addEventListener('click', closeReceiptModal);
     $('eb-receipt-print-btn').addEventListener('click', printReceipt);
     $('eb-receipt-modal').addEventListener('click', e => { if (e.target.id === 'eb-receipt-modal') closeReceiptModal(); });
+
+    $('eb-refund-open-btn').addEventListener('click', openRefundModal);
+    $('eb-refund-close').addEventListener('click', closeRefundModal);
+    $('eb-refund-find-btn').addEventListener('click', findRefundInvoice);
+    $('eb-refund-invoice-input').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); findRefundInvoice(); } });
+    $('eb-refund-modal').addEventListener('click', e => { if (e.target.id === 'eb-refund-modal') closeRefundModal(); });
 
     document.addEventListener('keydown', onGlobalKeydown);
   }

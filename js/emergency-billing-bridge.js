@@ -187,6 +187,53 @@ export async function recordSale({ staffName, customerName, customerPhone, cartI
   return { success: true, invoiceNumber: row.invoice_number, netTotal, change };
 }
 
+// ── Refunds / partial-refunds — architecture doc §6/§8's deferred
+// phase. Validated server-side against the original invoice's own
+// line items (see record_emergency_refund's header note in the
+// migration) — this function re-resolves each item's CURRENT
+// bridge_synced_at fresh, same as recordSale, so the stock given back
+// lands in whichever sync window is live right now.
+// items: [{ code, name, price, qty }, ...] — qty being refunded.
+// ────────────────────────────────────────────────────────────────
+export async function recordRefund({ staffName, originalInvoiceNumber, items, paymentMethod, cashGiven }) {
+  const client = _getClient();
+  if (!client) return { success: false, message: 'Supabase client not ready' };
+  if (!originalInvoiceNumber) return { success: false, message: 'Original invoice number is required' };
+  if (!items || !items.length) return { success: false, message: 'No items selected to refund' };
+
+  const rpcItems = items.map(item => {
+    const snap = _bridgeSnapshot(item.code);
+    return {
+      product_code: item.code,
+      product_name: item.name || '',
+      unit_price: item.price != null ? item.price : 0,
+      qty: item.qty,
+      // Null when the inventory bridge hasn't loaded — the RPC just
+      // skips the stock give-back for that line rather than failing
+      // the whole refund; the money/audit record still goes through.
+      bridge_synced_at: snap ? snap.syncedAt : null,
+    };
+  });
+
+  const { data, error } = await client.rpc('record_emergency_refund', {
+    p_device_uuid: _deviceUuid(),
+    p_staff_name: staffName || '',
+    p_original_invoice_number: originalInvoiceNumber,
+    p_payment_method: paymentMethod || 'cash',
+    p_cash_given: cashGiven || 0,
+    p_items: rpcItems,
+  });
+
+  if (error) { _lastError = error.message || String(error); return { success: false, message: _lastError }; }
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row || !row.success) return { success: false, message: (row && row.message) || 'Unknown error' };
+
+  if (typeof window.emergencyBillingNativeOnRefresh === 'function') window.emergencyBillingNativeOnRefresh();
+  if (typeof window.renderCoverDashboard === 'function') window.renderCoverDashboard();
+
+  return { success: true, invoiceNumber: row.invoice_number, netTotal: row.net_total };
+}
+
 // ── Reporting reads — used by the reconciliation view (architecture
 // doc §7/§8 phase 6). Paginated the same way inventory-bridge.js's
 // _fetchAllProducts is, in case a busy day exceeds PostgREST's
@@ -213,6 +260,7 @@ export async function fetchInvoices(opts) {
   try {
     return await _fetchAllRows(client, 'emergency_invoices', q => {
       let qq = q.order('billed_at', { ascending: false });
+      if (opts.invoiceNumber) qq = qq.eq('invoice_number', opts.invoiceNumber);
       if (opts.from) qq = qq.gte('billed_at', opts.from);
       if (opts.to) qq = qq.lte('billed_at', opts.to);
       if (opts.unreconciledOnly) qq = qq.eq('reconciled_into_daily', false);
@@ -254,6 +302,7 @@ window.emergencyBillingIsConnected       = isConnected;
 window.emergencyBillingSearch            = searchProducts;
 window.emergencyBillingGetAvailable      = getAvailableQty;
 window.emergencyBillingRecordSale        = recordSale;
+window.emergencyBillingRecordRefund      = recordRefund;
 window.emergencyBillingFetchInvoices     = fetchInvoices;
 window.emergencyBillingFetchInvoiceItems = fetchInvoiceItems;
 window.emergencyBillingMarkReconciled    = markReconciled;
