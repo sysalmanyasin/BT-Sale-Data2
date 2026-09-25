@@ -1,32 +1,15 @@
 -- ════════════════════════════════════════════════════════════════
--- EMERGENCY BILLING DOMAIN — refunds/partial-refunds RPC
--- (architecture doc §6/§8, phase "Held bills / F9 edit / refunds")
+-- EMERGENCY BILLING DOMAIN — fix record_emergency_refund()'s
+-- "column reference invoice_number is ambiguous" error.
 --
--- Adds record_emergency_refund() alongside record_emergency_sale()
--- from 20260924182923_emergency_billing.sql. No new tables — refunds
--- are just another row in emergency_invoices with is_refund = true
--- and original_invoice_id set, per the schema that migration already
--- shipped.
---
--- Two deliberate design choices, in one place so they're easy to
--- revisit later:
---
--- 1. Partial refunds are validated against the ORIGINAL invoice's line
---    items, capped by (original qty - already refunded qty) per
---    product — computed from every prior is_refund=true row pointing
---    at the same original_invoice_id. Same row-lock-then-validate
---    shape as record_emergency_sale's oversell check, for the same
---    reason: two concurrent refunds against the same invoice/product
---    shouldn't both succeed if together they'd over-refund it.
---
--- 2. Stock given back goes into the CURRENT bridge sync window (the
---    client passes today's bridge_synced_at per item, same as a sale
---    does), not the original sale's window. See architecture doc §4's
---    self-cleaning note: a delta keyed to an old, now-superseded sync
---    window no longer affects today's computed availability at all, so
---    crediting stock back there would silently vanish. Crediting the
---    CURRENT window is what actually makes the item available again
---    right now — which is the only thing a refund needs to guarantee.
+-- Root cause: the function's own `returns table(..., invoice_number
+-- text, ...)` makes `invoice_number` an implicit OUT variable inside
+-- the function body, which collided with the *column* invoice_number
+-- wherever it was referenced unqualified (emergency_invoices /
+-- emergency_invoice_items both have that column). This re-creates
+-- the function from 20260925120000_emergency_billing_refunds.sql
+-- with every such reference explicitly table-qualified. Logic is
+-- otherwise unchanged.
 -- ════════════════════════════════════════════════════════════════
 
 create or replace function record_emergency_refund(
@@ -36,8 +19,6 @@ create or replace function record_emergency_refund(
     p_payment_method           text,
     p_cash_given               numeric,
     p_items                    jsonb
-    -- [{ "product_code": "...", "product_name": "...", "unit_price": 12.5,
-    --    "qty": 1, "bridge_synced_at": "2026-10-01T09:00:00Z" }, ...]
 )
 returns table(success boolean, message text, invoice_number text, net_total numeric)
 language plpgsql security definer
