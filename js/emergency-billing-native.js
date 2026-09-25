@@ -87,25 +87,34 @@ import { BTDate } from './bt-date.js';
   // does, every time it's shown, exactly like inventory-native.js's
   // onShowInventory() does — and shows a status line + manual "Refresh"
   // button so staff aren't left guessing why a real product isn't found.
+  // 2026-09-25: matches the same fetchedAt fallback as
+  // emergency-billing-bridge.js's _bridgeSnapshot() / inventory-native.js's
+  // own freshness label — data.lastSync (the real Dropbox sync-log row) is
+  // unreachable in this deployment, so "loaded" has to mean "we have a
+  // product list and know when we fetched it", not "the sync log has a
+  // row". Requiring the latter meant this badge stayed red forever, even
+  // moments after a successful search against a fully fresh cache.
   function _isInventoryLoaded() {
     const data = (typeof window.inventoryBridgeGetFullData === 'function') ? window.inventoryBridgeGetFullData() : null;
-    return !!(data && data.lastSync && data.lastSync.syncedAt && (data.products || []).length);
+    return !!(data && (data.products || []).length && (data.fetchedAt || (data.lastSync && data.lastSync.syncedAt)));
   }
 
   function renderInventoryStatus() {
     const el = $('eb-inv-status');
     if (!el) return;
     const data = (typeof window.inventoryBridgeGetFullData === 'function') ? window.inventoryBridgeGetFullData() : null;
-    if (!data || !data.lastSync || !data.lastSync.syncedAt) {
+    const itemCount = data && (data.products || []).length;
+    if (!data || !itemCount) {
       el.innerHTML = '<span class="eb-inv-dot eb-inv-dot-bad"></span>BT Inventory not loaded yet';
       return;
     }
-    const syncedMs = new Date(data.lastSync.syncedAt).getTime();
+    const syncedAtRaw = (data.lastSync && data.lastSync.syncedAt) || data.fetchedAt;
+    const syncedMs = new Date(syncedAtRaw).getTime();
     const mins = Math.max(0, Math.round((Date.now() - syncedMs) / 60000));
     const ageLabel = mins < 1 ? 'just now' : (mins + ' min' + (mins === 1 ? '' : 's') + ' ago');
     const stale = mins >= 30;
     el.innerHTML = '<span class="eb-inv-dot eb-inv-dot-' + (stale ? 'warn' : 'ok') + '"></span>' +
-      'BT Inventory · ' + (data.products || []).length + ' items · synced ' + ageLabel;
+      'BT Inventory · ' + itemCount + ' items · synced ' + ageLabel;
   }
 
   // force=true bypasses the bridge's own 60s throttle (used for the manual

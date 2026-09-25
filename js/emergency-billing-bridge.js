@@ -81,16 +81,46 @@ export function searchProducts(query, limit) {
   return hits.slice(0, limit);
 }
 
+// Resolves a stable "sync window" key for the currently-cached inventory
+// snapshot: the real Dropbox sync-log timestamp when it's available, else
+// this device's own last-fetch time. Mirrors inventory-native.js's own
+// freshness-label fallback exactly (`data.lastSync ? ... : 'Synced ' +
+// data.fetchedAt`) — inventory-bridge.js's _fetchLastSync() already
+// anticipates inventory_sync_log being unreachable ("table may not exist
+// yet — ignore") and in this deployment it consistently is, so
+// data.lastSync is always null here. Returned as an ISO string either way
+// since this is compared/stored against Postgres's bridge_synced_at.
+function _bridgeSyncKey(data) {
+  if (data.lastSync && data.lastSync.syncedAt) return data.lastSync.syncedAt;
+  if (data.fetchedAt) return new Date(data.fetchedAt).toISOString();
+  return null;
+}
+
 // Resolves the bridge's current qty + sync timestamp for one product.
 // Returns null if the inventory bridge hasn't loaded/synced yet —
 // callers must treat that as "can't verify stock, block the sale",
 // never as "assume unlimited stock".
+//
+// 2026-09-25 fix: this used to require data.lastSync.syncedAt specifically
+// (the real Dropbox sync-log row) before returning anything — but that log
+// is unreachable/unpopulated in this deployment (see _bridgeSyncKey above
+// and inventory-native.js's matching fallback), so this returned null for
+// EVERY product, always, even with a fully fresh product cache. In
+// practice that meant getAvailableQty() never resolved and add-to-cart
+// permanently failed with "Inventory data unavailable" regardless of how
+// recently BT Inventory had synced. Falling back to the device's own
+// fetchedAt keeps the real safety property intact — the row-locked
+// record_emergency_sale() RPC is still the actual oversell gate, per this
+// file's header note; this value only feeds the client-side display
+// estimate and the "sold since this snapshot" bucketing.
 function _bridgeSnapshot(productCode) {
   const data = (typeof window.inventoryBridgeGetFullData === 'function') ? window.inventoryBridgeGetFullData() : null;
-  if (!data || !data.lastSync || !data.lastSync.syncedAt) return null;
+  if (!data) return null;
+  const syncedAt = _bridgeSyncKey(data);
+  if (!syncedAt) return null;
   const product = (data.products || []).find(p => p.code === productCode);
   if (!product) return null;
-  return { bridgeQty: product.qty || 0, syncedAt: data.lastSync.syncedAt, product };
+  return { bridgeQty: product.qty || 0, syncedAt, product };
 }
 
 // Live-reads emergency_stock_deltas for exactly this product + this
