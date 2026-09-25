@@ -207,7 +207,6 @@ import { BTDate } from './bt-date.js';
 
     renderCart();
     renderHeldBills();
-    renderReconciliation();
     setPaymentMode(paymentMethod);
     renderInventoryStatus();
     refreshInventoryStatus(false);
@@ -561,6 +560,17 @@ import { BTDate } from './bt-date.js';
     if (!document.getElementById('page-emergency-billing')?.classList.contains('on')) return;
     const isInput = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
 
+    // Ctrl+S / Cmd+S — checkout, from anywhere on the Billing tab
+    // (including while typing in Staff/Customer Name or the search box),
+    // instead of the browser's "Save Page" dialog.
+    if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+      e.preventDefault();
+      const billingOn = document.getElementById('eb-tab-panel-billing')?.classList.contains('on');
+      const btn = $('eb-checkout-btn');
+      if (billingOn && btn && !btn.disabled) btn.click();
+      return;
+    }
+
     if (e.key === 'F9') {
       e.preventDefault();
       if (cart.length === 0) { say('Cart is empty — nothing to edit.', true); return; }
@@ -842,127 +852,33 @@ import { BTDate } from './bt-date.js';
     setTimeout(() => window.print(), 50);
   }
 
-  // ── Reconciliation (§7, Option A — fully manual) ──────────────────
-  // Groups unreconciled invoices by local calendar day and shows each
-  // day's total; "Mark Reconciled" only flags rows the human has
-  // already, separately, typed into Add Entry — this never writes to
-  // DAILY/bt_salesdata itself (see markReconciled()'s own header note
-  // in the bridge file).
-  function _fmtDMY(d) {
-    return String(d.getDate()).padStart(2, '0') + '/' + BTDate.monthShort[d.getMonth()] + '/' + d.getFullYear();
-  }
+  // ── Local-day helper — still used by the Cover banner's "N days not
+  // yet reconciled" count (see renderCoverBanner() below). The on-page
+  // Reconciliation panel that used to live here (grouped unreconciled
+  // invoices by day + "Mark Reconciled") has been removed from the
+  // Billing tab; reconciliation status is still visible per-invoice as
+  // a badge on the History tab.
   function _localDayKey(isoStr) {
     const d = new Date(isoStr);
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
 
-  async function renderReconciliation() {
-    const wrap = $('eb-recon-list');
-    if (!wrap) return;
-    wrap.innerHTML = '<div class="eb-recon-loading">Loading…</div>';
-
-    let unreconciled = [];
-    try { unreconciled = await EBBridge.fetchInvoices({ unreconciledOnly: true }); }
-    catch (e) { wrap.innerHTML = '<div class="eb-recon-loading">Couldn\'t load — ' + esc(e.message || String(e)) + '</div>'; return; }
-
-    if (!unreconciled.length) {
-      wrap.innerHTML = '<div class="eb-held-empty">Nothing to reconcile — every invoice is caught up.</div>';
-      return;
-    }
-
-    const byDay = {};
-    unreconciled.forEach(inv => {
-      const key = _localDayKey(inv.billed_at);
-      if (!byDay[key]) byDay[key] = { date: new Date(inv.billed_at), net: 0, count: 0, refundCount: 0, invoiceNumbers: [] };
-      const amt = parseFloat(inv.net_total) || 0;
-      byDay[key].net += inv.is_refund ? -amt : amt;
-      byDay[key].count += 1;
-      if (inv.is_refund) byDay[key].refundCount += 1;
-      byDay[key].invoiceNumbers.push(inv.invoice_number);
-    });
-
-    const c = cur();
-    const days = Object.keys(byDay).sort().reverse();
-    wrap.innerHTML = '';
-    days.forEach(key => {
-      const g = byDay[key];
-      const row = document.createElement('div');
-      row.className = 'eb-held-row eb-recon-row';
-      row.innerHTML =
-        '<div class="eb-held-info"><div class="eb-held-tag">' + esc(_fmtDMY(g.date)) + '</div>' +
-        '<div class="eb-held-meta">' + g.count + ' invoice' + (g.count !== 1 ? 's' : '') +
-          (g.refundCount ? ' (' + g.refundCount + ' refund' + (g.refundCount !== 1 ? 's' : '') + ')' : '') +
-          ' · net ' + c + g.net.toFixed(2) + ' not yet in Daily Sale Entry</div></div>' +
-        '<div class="eb-held-actions"><button class="eb-btn eb-btn-sm" data-recon="' + esc(key) + '">✅ Mark Reconciled</button></div>';
-      wrap.appendChild(row);
-      row.dataset.net = g.net;
-      row.dataset.invoices = JSON.stringify(g.invoiceNumbers);
-      row.dataset.dmy = _fmtDMY(g.date);
-    });
-  }
-
-  async function onReconListClick(e) {
-    const btn = e.target.closest('[data-recon]');
-    if (!btn) return;
-    const row = btn.closest('.eb-recon-row');
-    const invoiceNumbers = JSON.parse(row.dataset.invoices || '[]');
-    const net = parseFloat(row.dataset.net) || 0;
-    const dmy = row.dataset.dmy;
-    if (!confirm('Confirm you have already typed ' + cur() + net.toFixed(2) + ' into Sale Data → Add Entry for ' + dmy + '.\n\nThis only flags these ' + invoiceNumbers.length + ' invoice(s) as reconciled here — it does NOT write anything into Daily Sale Entry for you.')) return;
-    btn.disabled = true; btn.textContent = 'Saving…';
-    const ok = await EBBridge.markReconciled(invoiceNumbers, dmy);
-    if (ok) { say('✅ Marked reconciled for ' + dmy); renderReconciliation(); renderCoverBanner(true); }
-    else { say('❌ Failed to mark reconciled.', true); btn.disabled = false; btn.textContent = '✅ Mark Reconciled'; }
-  }
-
-  // ── Refund / partial-refund ────────────────────────────────────────
-  // Reads the original invoice + its real line items before offering
-  // anything to refund — a refund line can never target a product that
-  // wasn't actually on that sale. record_emergency_refund() is still
-  // the real gate against over-refunding (row-locked, server-side).
+  // ── Refund / partial-refund — reachable only from Billing History now:
+  // open a saved bill (openHistoryDetail() below) and use "Refund This",
+  // which swaps the same #eb-history-detail-body inline into this form
+  // (renderRefundFormInline()) instead of hopping to a separate modal on
+  // the Billing tab. Still reads the original invoice's own line items
+  // (already loaded into historyDetail by openHistoryDetail()) so a
+  // refund can never target a product that wasn't actually on that sale
+  // — record_emergency_refund() is still the real gate against
+  // over-refunding (row-locked, server-side).
   let refundOriginal = null;  // the original invoice header row
   let refundLines = [];       // [{ code, name, price, origQty, refundQty }]
 
-  function openRefundModal() {
-    refundOriginal = null; refundLines = [];
-    $('eb-refund-invoice-input').value = '';
-    $('eb-refund-body').innerHTML = '';
-    $('eb-refund-modal').classList.add('visible');
-    $('eb-refund-invoice-input').focus();
-  }
-  function closeRefundModal() { $('eb-refund-modal').classList.remove('visible'); }
-
-  async function findRefundInvoice() {
-    const num = $('eb-refund-invoice-input').value.trim();
-    const body = $('eb-refund-body');
-    if (!num) { body.innerHTML = '<div class="eb-refund-status eb-refund-error">Enter an invoice number.</div>'; return; }
-    body.innerHTML = '<div class="eb-refund-status">Looking up ' + esc(num) + '…</div>';
-
-    const [invoices, items] = await Promise.all([
-      EBBridge.fetchInvoices({ invoiceNumber: num }),
-      EBBridge.fetchInvoiceItems(num),
-    ]);
-    const invoice = invoices.find(i => !i.is_refund);
-    if (!invoice) {
-      body.innerHTML = '<div class="eb-refund-status eb-refund-error">No original (non-refund) invoice found with that number.</div>';
-      return;
-    }
-    if (!items.length) {
-      body.innerHTML = '<div class="eb-refund-status eb-refund-error">That invoice has no line items on record.</div>';
-      return;
-    }
-
-    refundOriginal = invoice;
-    refundLines = items.map(it => ({
-      code: it.product_code, name: it.product_name, price: parseFloat(it.unit_price) || 0,
-      origQty: it.qty, refundQty: 0,
-    }));
-    renderRefundBody();
-  }
-
-  function renderRefundBody() {
+  function renderRefundFormInline() {
     const c = cur();
-    const body = $('eb-refund-body');
+    const body = $('eb-history-detail-body');
+    if (!body || !refundOriginal) return;
     let rowsHTML = '';
     refundLines.forEach((line, idx) => {
       rowsHTML += '<tr>' +
@@ -974,7 +890,7 @@ import { BTDate } from './bt-date.js';
     });
 
     body.innerHTML =
-      '<div class="eb-refund-orig-meta">Original: ' + esc(refundOriginal.invoice_number) + ' · ' + new Date(refundOriginal.billed_at).toLocaleString() +
+      '<div class="eb-refund-orig-meta">Refunding: ' + esc(refundOriginal.invoice_number) + ' · ' + new Date(refundOriginal.billed_at).toLocaleString() +
         (refundOriginal.customer_name ? ' · ' + esc(refundOriginal.customer_name) : '') + '</div>' +
       '<table class="eb-refund-table"><thead><tr><th>Item</th><th>Sold</th><th>Refund Qty</th><th>Amount</th></tr></thead>' +
       '<tbody id="eb-refund-lines">' + rowsHTML + '</tbody></table>' +
@@ -984,7 +900,7 @@ import { BTDate } from './bt-date.js';
       '</div>' +
       '<div class="eb-refund-total-row"><span>Refund Total</span><span id="eb-refund-total-display">' + c + '0.00</span></div>' +
       '<div class="eb-refund-actions">' +
-        '<button class="eb-btn eb-btn-ghost" id="eb-refund-cancel-btn" type="button">Cancel</button>' +
+        '<button class="eb-btn eb-btn-ghost" id="eb-refund-cancel-btn" type="button">← Back</button>' +
         '<button class="eb-btn eb-btn-primary" id="eb-refund-submit-btn" type="button">Process Refund</button>' +
       '</div>';
 
@@ -996,13 +912,30 @@ import { BTDate } from './bt-date.js';
       if (q < 0) q = 0;
       if (q > refundLines[idx].origQty) q = refundLines[idx].origQty;
       refundLines[idx].refundQty = q;
-      renderRefundBody();
+      renderRefundFormInline();
     });
-    body.querySelector('#eb-refund-cancel-btn').addEventListener('click', closeRefundModal);
+    // "← Back" just re-renders the normal read-only detail view for the
+    // same invoice — it doesn't close the modal, since the person is
+    // still looking at this same saved bill.
+    body.querySelector('#eb-refund-cancel-btn').addEventListener('click', renderHistoryDetailBody);
     body.querySelector('#eb-refund-submit-btn').addEventListener('click', submitRefund);
 
     const total = refundLines.reduce((s, l) => s + l.price * l.refundQty, 0);
     body.querySelector('#eb-refund-total-display').textContent = c + total.toFixed(2);
+  }
+
+  // Triggered by the "↩ Refund This" button in renderHistoryDetailBody().
+  // Builds refundLines straight from the items openHistoryDetail() already
+  // fetched for this invoice — no separate lookup step needed since we're
+  // already looking at the saved bill.
+  function refundFromHistory() {
+    if (!historyDetail) return;
+    refundOriginal = historyDetail.invoice;
+    refundLines = (historyDetail.items || []).map(it => ({
+      code: it.product_code, name: it.product_name, price: parseFloat(it.unit_price) || 0,
+      origQty: it.qty, refundQty: 0,
+    }));
+    renderRefundFormInline();
   }
 
   async function submitRefund() {
@@ -1031,8 +964,11 @@ import { BTDate } from './bt-date.js';
         return;
       }
       say('✅ Refund ' + result.invoiceNumber + ' recorded — ' + cur() + result.netTotal.toFixed(2) + ' returned.');
-      closeRefundModal();
-      renderReconciliation();
+      closeHistoryDetailModal();
+      renderCoverBanner(true);
+      // Refresh whatever's on screen in Billing History so the new refund
+      // row (and the original's updated status) show up immediately.
+      if (historyResults.length) runHistorySearch();
     } catch (err) {
       say('❌ Refund error: ' + (err && err.message ? err.message : String(err)), true);
       btn.disabled = false; btn.textContent = 'Process Refund';
@@ -1198,6 +1134,73 @@ import { BTDate } from './bt-date.js';
     applyHistoryPreset('today');
   }
 
+  // ── Export Products (.xlsx) — product-wise summary of the invoices
+  // currently sitting in `historyResults` (i.e. whatever the person just
+  // searched for on this tab: a date range, a product, a customer, etc).
+  // Pulls every line item behind that result set in one bulk query
+  // (EBBridge.fetchInvoiceItemsForInvoices), then aggregates by product
+  // code — qty/amount sold vs. refunded netted against each other — so
+  // it answers "how much of X did we actually move" rather than just
+  // listing raw invoice rows. Uses the same window.XLSX (SheetJS) global
+  // already loaded for every other export in this app (see e.g.
+  // js/excess-working.js's exportExcelSheet()).
+  async function exportHistoryProductsXLSX() {
+    if (!historyResults.length) { say('Search Billing History first — nothing to export.', true); return; }
+    if (!window.XLSX) { say('Excel library not loaded', true); return; }
+
+    const btn = $('eb-hist-export-btn');
+    const origLabel = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Exporting…';
+
+    try {
+      const invoiceNumbers = historyResults.map(r => r.invoice_number);
+      const isRefundByInvoice = {};
+      historyResults.forEach(r => { isRefundByInvoice[r.invoice_number] = !!r.is_refund; });
+
+      const items = await EBBridge.fetchInvoiceItemsForInvoices(invoiceNumbers);
+
+      const byProduct = {}; // code -> { code, name, qtySold, qtyRefunded, amtSold, amtRefunded, invoices:Set }
+      items.forEach(it => {
+        const code = it.product_code || '(no code)';
+        if (!byProduct[code]) byProduct[code] = { code, name: it.product_name || '', qtySold: 0, qtyRefunded: 0, amtSold: 0, amtRefunded: 0, invoices: new Set() };
+        const row = byProduct[code];
+        const qty = parseFloat(it.qty) || 0;
+        const amt = parseFloat(it.total);
+        const lineTotal = isNaN(amt) ? qty * (parseFloat(it.unit_price) || 0) : amt;
+        if (isRefundByInvoice[it.invoice_number]) { row.qtyRefunded += qty; row.amtRefunded += lineTotal; }
+        else { row.qtySold += qty; row.amtSold += lineTotal; }
+        row.invoices.add(it.invoice_number);
+      });
+
+      const rows = Object.values(byProduct).sort((a, b) => (b.amtSold - b.amtRefunded) - (a.amtSold - a.amtRefunded));
+
+      const aoa = [['Product Code', 'Product Name', 'Qty Sold', 'Qty Refunded', 'Net Qty', 'Amount Sold', 'Amount Refunded', 'Net Amount', 'Invoices']];
+      let tQtySold = 0, tQtyRef = 0, tAmtSold = 0, tAmtRef = 0;
+      rows.forEach(r => {
+        tQtySold += r.qtySold; tQtyRef += r.qtyRefunded; tAmtSold += r.amtSold; tAmtRef += r.amtRefunded;
+        aoa.push([
+          r.code, r.name, r.qtySold, r.qtyRefunded, r.qtySold - r.qtyRefunded,
+          Number(r.amtSold.toFixed(2)), Number(r.amtRefunded.toFixed(2)), Number((r.amtSold - r.amtRefunded).toFixed(2)),
+          r.invoices.size,
+        ]);
+      });
+      aoa.push(['TOTAL', '', tQtySold, tQtyRef, tQtySold - tQtyRef, Number(tAmtSold.toFixed(2)), Number(tAmtRef.toFixed(2)), Number((tAmtSold - tAmtRef).toFixed(2)), '']);
+
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!cols'] = [{ wch: 16 }, { wch: 32 }, { wch: 10 }, { wch: 12 }, { wch: 10 }, { wch: 13 }, { wch: 15 }, { wch: 13 }, { wch: 10 }];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Products');
+
+      const stamp = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, 'emergency-billing-products_' + stamp + '.xlsx');
+      say('✅ Exported ' + rows.length + ' product' + (rows.length !== 1 ? 's' : '') + ' from ' + historyResults.length + ' invoice' + (historyResults.length !== 1 ? 's' : '') + '.');
+    } catch (e) {
+      say('❌ Export failed: ' + (e && e.message ? e.message : String(e)), true);
+    } finally {
+      btn.disabled = false; btn.textContent = origLabel;
+    }
+  }
+
   function renderHistoryResults() {
     const wrap = $('eb-hist-results');
     const summary = $('eb-hist-summary');
@@ -1345,19 +1348,6 @@ import { BTDate } from './bt-date.js';
     closeHistoryDetailModal();
   }
 
-  // "↩ Refund This" on a saved bill → jumps back to the Billing tab's
-  // existing Refund modal, pre-filled and pre-looked-up, rather than
-  // duplicating findRefundInvoice()'s own item-lookup logic here.
-  function refundFromHistory() {
-    if (!historyDetail) return;
-    const invoiceNumber = historyDetail.invoice.invoice_number;
-    closeHistoryDetailModal();
-    ebSwitchTab('billing');
-    openRefundModal();
-    $('eb-refund-invoice-input').value = invoiceNumber;
-    findRefundInvoice();
-  }
-
   // ── Settings tab ─────────────────────────────────────────────────────
   function renderSettingsForm() {
     if (!$('eb-set-branch-name')) return; // panel not in the DOM (shouldn't happen, but cheap to guard)
@@ -1474,7 +1464,6 @@ import { BTDate } from './bt-date.js';
     $('eb-cart-body').addEventListener('change', onCartBodyChange);
     $('eb-cart-body').addEventListener('keydown', onCartBodyKeydown);
     $('eb-held-list').addEventListener('click', onHeldListClick);
-    $('eb-recon-list').addEventListener('click', onReconListClick);
 
     $('eb-hold-btn').addEventListener('click', holdBill);
     $('eb-clear-btn').addEventListener('click', clearCart);
@@ -1485,12 +1474,6 @@ import { BTDate } from './bt-date.js';
     $('eb-receipt-modal').addEventListener('click', e => { if (e.target.id === 'eb-receipt-modal') closeReceiptModal(); });
 
     $('eb-inv-refresh-btn').addEventListener('click', () => refreshInventoryStatus(true));
-
-    $('eb-refund-open-btn').addEventListener('click', openRefundModal);
-    $('eb-refund-close').addEventListener('click', closeRefundModal);
-    $('eb-refund-find-btn').addEventListener('click', findRefundInvoice);
-    $('eb-refund-invoice-input').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); findRefundInvoice(); } });
-    $('eb-refund-modal').addEventListener('click', e => { if (e.target.id === 'eb-refund-modal') closeRefundModal(); });
 
     // ── Tabs ──
     $('eb-tabs').addEventListener('click', e => {
@@ -1508,6 +1491,7 @@ import { BTDate } from './bt-date.js';
       runHistorySearch();
     });
     $('eb-hist-reset-btn').addEventListener('click', resetHistoryFilters);
+    $('eb-hist-export-btn').addEventListener('click', exportHistoryProductsXLSX);
     ['eb-hist-invoice', 'eb-hist-product', 'eb-hist-person'].forEach(id => {
       $(id).addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('eb-hist-search-btn').click(); } });
     });
@@ -1527,7 +1511,7 @@ import { BTDate } from './bt-date.js';
   // recordSale) — re-render in case another device/tab's sale affected
   // anything this page is showing. Cart/held bills are per-device
   // localStorage, so this mostly just re-renders what's already there.
-  function onBridgeRefresh() { renderCart(); renderHeldBills(); renderReconciliation(); renderCoverBanner(true); renderInventoryStatus(); }
+  function onBridgeRefresh() { renderCart(); renderHeldBills(); renderCoverBanner(true); renderInventoryStatus(); }
 
   window.ebOnShowEmergencyBilling = onShowEmergencyBilling;
   window.emergencyBillingNativeOnRefresh = onBridgeRefresh;

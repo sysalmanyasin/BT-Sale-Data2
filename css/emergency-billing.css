@@ -68,17 +68,42 @@
   .eb-pos-side { position: static; }
 }
 
-.eb-search-box { position: relative; }
-.eb-search-row { display: flex; gap: var(--sp-2); }
-.eb-search-row input[type="text"] {
-  flex: 1; padding: 12px 14px; border-radius: var(--r-md);
-  border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 14px;
+/* ── Customer box — sits above the search bar so staff capture who the
+   sale is for before they start scanning items. Same card language as
+   the other billing cards, kept compact (two fields side by side). ── */
+.eb-customer-box {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
+  box-shadow: var(--sh); padding: var(--sp-3) var(--sp-4);
 }
-.eb-search-row input[type="text"]:focus { outline: none; box-shadow: var(--focus-ring); border-color: var(--accent); }
-#eb-qty-input { width: 72px; text-align: center; }
+.eb-customer-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+@media (max-width: 560px) { .eb-customer-row { grid-template-columns: 1fr; } }
+.eb-customer-row label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .03em; }
+.eb-customer-row input { width: 100%; padding: 8px 10px; border-radius: var(--r-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+.eb-customer-row input:focus { outline: none; box-shadow: var(--focus-ring); border-color: var(--accent); }
+
+/* ── Product search — the primary action on this page, so it gets its
+   own elevated, accent-bordered "hero" bar instead of a plain text
+   input: bigger type, a search glyph, and a visible accent ring even
+   before focus so it reads as the thing to use next. ── */
+.eb-search-box {
+  position: relative; background: var(--surface); border: 2px solid var(--accent);
+  border-radius: var(--r-lg); box-shadow: var(--sh-lg); padding: var(--sp-2);
+}
+.eb-search-row { display: flex; align-items: center; gap: var(--sp-2); }
+.eb-search-icon { flex: none; font-size: 18px; padding-left: var(--sp-2); opacity: .7; }
+.eb-search-row input[type="text"] {
+  flex: 1; padding: 16px 14px; border-radius: var(--r-md);
+  border: none; background: transparent; color: var(--text); font-size: 17px; font-weight: 600;
+}
+.eb-search-row input[type="text"]::placeholder { font-weight: 400; color: var(--muted); }
+.eb-search-row input[type="text"]:focus { outline: none; }
+#eb-qty-input {
+  width: 72px; text-align: center; padding: 16px 8px; border-radius: var(--r-md);
+  border: 1px solid var(--border); background: var(--s2); color: var(--text); font-size: 15px; font-weight: 700;
+}
 #eb-search-clear {
-  padding: 0 14px; border-radius: var(--r-md); border: 1px solid var(--border);
-  background: var(--s2); color: var(--muted); cursor: pointer; font-size: 13px;
+  padding: 0 16px; align-self: stretch; border-radius: var(--r-md); border: 1px solid var(--border);
+  background: var(--s2); color: var(--muted); cursor: pointer; font-size: 14px;
 }
 
 .eb-search-results {
@@ -259,8 +284,6 @@ table.eb-cart-table th:last-child, table.eb-cart-table td.eb-tc-act { width: 40p
 .eb-held-meta { color: var(--muted); font-size: 12px; }
 .eb-held-actions { display: flex; gap: 6px; }
 
-.eb-recon-card { margin-top: 0; }
-.eb-recon-hint { color: var(--muted); font-size: 12px; margin-bottom: var(--sp-3); line-height: 1.5; }
 .eb-recon-loading { color: var(--muted); font-size: 13px; padding: var(--sp-3) 0; }
 
 /* ── Billing History — filters + results ─────────────────────────── */
@@ -338,15 +361,14 @@ table.eb-hist-detail-table td.num { text-align: right; font-family: var(--mono);
 .eb-cover-banner-text { font-size: 13px; color: var(--amber); }
 .eb-cover-banner-text strong { font-weight: 700; }
 
-/* ── Refund modal (and History's Saved Bill modal, which reuses the same
-   .eb-refund-box shell) ───────────────────────────────────────────── */
-#eb-refund-modal, #eb-history-detail-modal { display: none; position: fixed; inset: 0; background: rgba(15,20,40,.5); z-index: 200; align-items: center; justify-content: center; padding: var(--sp-4); }
-#eb-refund-modal.visible, #eb-history-detail-modal.visible { display: flex; }
+/* ── History's Saved Bill modal shell — also hosts the inline Refund
+   form now (renderRefundFormInline() swaps #eb-history-detail-body's
+   contents in place; same modal, same .eb-refund-box shell). ───────── */
+#eb-history-detail-modal { display: none; position: fixed; inset: 0; background: rgba(15,20,40,.5); z-index: 200; align-items: center; justify-content: center; padding: var(--sp-4); }
+#eb-history-detail-modal.visible { display: flex; }
 .eb-refund-box { background: var(--surface); color: var(--text); width: 480px; max-width: 100%; max-height: 88vh; overflow-y: auto; border-radius: var(--r-md); box-shadow: var(--sh-lg); padding: var(--sp-4); }
 .eb-refund-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--sp-3); }
 .eb-refund-head h3 { font-size: 15px; }
-.eb-refund-lookup-row { display: flex; gap: var(--sp-2); margin-bottom: var(--sp-3); }
-.eb-refund-lookup-row input { flex: 1; padding: 8px 10px; border-radius: var(--r-sm); border: 1px solid var(--border); }
 .eb-refund-status { color: var(--muted); font-size: 13px; padding: var(--sp-2) 0; }
 .eb-refund-status.eb-refund-error { color: var(--red); }
 .eb-refund-orig-meta { font-size: 12px; color: var(--muted); margin-bottom: var(--sp-2); }
@@ -393,5 +415,5 @@ table.eb-refund-table td { padding: 6px 4px; border-bottom: 1px solid var(--bord
      class on #eb-receipt-print itself (see showReceipt() in
      emergency-billing-native.js) rather than a second print stylesheet. */
   #eb-receipt-print.eb-w58 { width: 58mm; font-size: 10px; padding: 3mm; }
-  #eb-receipt-modal, .eb-receipt-modal-actions, #eb-refund-modal, #eb-history-detail-modal { display: none !important; }
+  #eb-receipt-modal, .eb-receipt-modal-actions, #eb-history-detail-modal { display: none !important; }
 }

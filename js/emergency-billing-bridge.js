@@ -341,6 +341,29 @@ export async function fetchInvoiceItems(invoiceNumber) {
   return data || [];
 }
 
+// Bulk sibling of fetchInvoiceItems() above — one paginated query for every
+// line item across a whole set of invoice numbers, instead of the caller
+// looping fetchInvoiceItems() once per invoice. Used by Billing History's
+// "Export Products (.xlsx)" (see js/emergency-billing-native.js's
+// exportHistoryProductsXLSX()), which needs every line item behind the
+// current filtered result set to build a product-wise summary.
+export async function fetchInvoiceItemsForInvoices(invoiceNumbers) {
+  const client = _getClient();
+  if (!client || !invoiceNumbers || !invoiceNumbers.length) return [];
+  try {
+    // Supabase's .in() filter has a practical URL-length limit, so chunk
+    // large result sets rather than sending one huge IN (...) list.
+    const CHUNK = 150;
+    let all = [];
+    for (let i = 0; i < invoiceNumbers.length; i += CHUNK) {
+      const chunk = invoiceNumbers.slice(i, i + CHUNK);
+      const rows = await _fetchAllRows(client, 'emergency_invoice_items', q => q.in('invoice_number', chunk));
+      all = all.concat(rows);
+    }
+    return all;
+  } catch (e) { _lastError = e.message || String(e); return []; }
+}
+
 // Marks invoices as folded into a specific day's DAILY entry — call
 // only after a human has actually typed the reconciled total into Add
 // Entry. Never called automatically; see architecture doc §7/§9.

@@ -81,7 +81,7 @@
 <link rel="stylesheet" href="css/nav.css?v=20260824a">
 <link rel="stylesheet" href="css/closing-native.css?v=20260728a">
 <link rel="stylesheet" href="css/closing-book-print.css?v=20260722a">
-<link rel="stylesheet" href="css/emergency-billing.css?v=20260925b">
+<link rel="stylesheet" href="css/emergency-billing.css?v=20260926b">
 <link rel="stylesheet" href="css/audit-native.css?v=20260722a">
 <link rel="stylesheet" href="css/inventory-native.css?v=20260722a">
 <link rel="stylesheet" href="css/str-report.css?v=20260817a">
@@ -1554,8 +1554,19 @@ if ('serviceWorker' in navigator) {
          emergency-billing.css. -->
     <div class="eb-pos-grid">
       <div class="eb-pos-main">
+        <!-- Customer Name/Phone — moved above the product search bar so
+             staff capture who the sale is for before they start scanning
+             items, instead of it living lower down next to Staff Name. -->
+        <div class="eb-customer-box">
+          <div class="eb-customer-row">
+            <div><label>Customer Name</label><input type="text" id="eb-customer-name" placeholder="Optional"></div>
+            <div><label>Customer Phone</label><input type="text" id="eb-customer-phone" placeholder="Optional"></div>
+          </div>
+        </div>
+
         <div class="eb-search-box">
           <div class="eb-search-row">
+            <span class="eb-search-icon" aria-hidden="true">🔎</span>
             <input type="text" id="eb-search-input" placeholder="Search product by name, code, or generic…" autocomplete="off">
             <input type="number" id="eb-qty-input" value="1" min="1" title="Quantity to add">
             <button id="eb-search-clear" type="button">✕</button>
@@ -1577,24 +1588,6 @@ if ('serviceWorker' in navigator) {
               <tbody id="eb-cart-body"></tbody>
             </table>
           </div>
-        </div>
-
-        <div class="eb-held-card">
-          <h3>Held Bills</h3>
-          <div id="eb-held-list"></div>
-        </div>
-
-        <!-- Reconciliation (§7, Option A — fully manual, no auto-write and
-             no prefill): a read-only summary of unreconciled days. Staff
-             reads the total here, types it into Sale Data → Add Entry
-             themselves, then comes back and taps "Mark Reconciled" to flag
-             those invoices — same read-only-signal-the-human-reconciles
-             philosophy as Closing/STR. This never writes to DAILY/
-             bt_salesdata itself. -->
-        <div class="eb-held-card eb-recon-card">
-          <h3>Reconciliation — Unreconciled Days</h3>
-          <p class="eb-recon-hint">For each day below: open Sale Data → Add Entry, type this total in yourself, then tap "Mark Reconciled" here. Nothing here writes to Daily Sale Entry automatically.</p>
-          <div id="eb-recon-list"></div>
         </div>
       </div>
 
@@ -1635,8 +1628,6 @@ if ('serviceWorker' in navigator) {
 
           <div class="eb-meta-grid">
             <div><label>Staff Name</label><input type="text" id="eb-staff-name" placeholder="Who is billing this?"></div>
-            <div><label>Customer Name</label><input type="text" id="eb-customer-name" placeholder="Optional"></div>
-            <div><label>Customer Phone</label><input type="text" id="eb-customer-phone" placeholder="Optional"></div>
           </div>
 
           <div class="eb-pay-section" id="eb-cash-section">
@@ -1655,11 +1646,17 @@ if ('serviceWorker' in navigator) {
           <div class="eb-actions">
             <button class="eb-btn eb-btn-ghost" id="eb-clear-btn" type="button">Clear Bill</button>
             <button class="eb-btn eb-btn-hold" id="eb-hold-btn" type="button">📋 Hold Bill</button>
-            <button class="eb-btn eb-btn-danger-outline" id="eb-refund-open-btn" type="button">↩ Refund</button>
             <button class="eb-btn eb-btn-primary" id="eb-checkout-btn" type="button">✅ Checkout</button>
           </div>
         </div>
       </aside>
+    </div>
+
+    <!-- Held Bills — moved below everything else on the Billing tab (was
+         previously sandwiched between Current Bill and Reconciliation). -->
+    <div class="eb-held-card">
+      <h3>Held Bills</h3>
+      <div id="eb-held-list"></div>
     </div>
     </div> <!-- /#eb-tab-panel-billing -->
 
@@ -1709,6 +1706,7 @@ if ('serviceWorker' in navigator) {
         <div class="eb-hist-results-head">
           <h3>Results</h3>
           <span id="eb-hist-summary" class="eb-hist-summary"></span>
+          <button class="eb-btn eb-btn-sm" id="eb-hist-export-btn" type="button">⬇ Export Products (.xlsx)</button>
         </div>
         <div id="eb-hist-results"><div class="eb-recon-loading">Choose a date range or filter above, then tap Search.</div></div>
       </div>
@@ -1781,30 +1779,23 @@ if ('serviceWorker' in navigator) {
     </div>
   </div>
 
-  <!-- Refund / partial-refund — pulls the original invoice's own line
-       items (js/emergency-billing-bridge.js's fetchInvoiceItems) so a
-       refund can never be typed against products that weren't actually
-       on that sale; server-side record_emergency_refund() is still the
-       real gate against over-refunding (see that RPC's header note). -->
-  <div id="eb-refund-modal">
-    <div class="eb-refund-box">
-      <div class="eb-refund-head">
-        <h3>Refund</h3>
-        <button class="eb-btn eb-btn-ghost eb-btn-sm" id="eb-refund-close" type="button">✕</button>
-      </div>
-      <div class="eb-refund-lookup-row">
-        <input type="text" id="eb-refund-invoice-input" placeholder="Original invoice number (e.g. EB-20261001-0007)">
-        <button class="eb-btn" id="eb-refund-find-btn" type="button">Find</button>
-      </div>
-      <div id="eb-refund-body"></div>
-    </div>
-  </div>
+  <!-- Refund — reachable only from Billing History now: open a saved
+       bill (js/emergency-billing-native.js's openHistoryDetail()) and use
+       "Refund This" inline (refundFromHistory()/renderRefundFormInline()
+       below), instead of a separate modal reachable from the Billing tab.
+       Pulls the original invoice's own line items (js/emergency-billing-
+       bridge.js's fetchInvoiceItems) so a refund can never be typed
+       against products that weren't actually on that sale;
+       server-side record_emergency_refund() is still the real gate
+       against over-refunding (see that RPC's header note). -->
 
   <!-- History tab's "load a saved bill" view — full read-only itemized
        invoice, opened by clicking a Billing History row. Offers a reprint
        (routes through the same showReceipt()/#eb-receipt-print flow the
-       original checkout used) and, for a non-refund invoice, a shortcut
-       straight into the Refund modal pre-filled with this invoice number. -->
+       original checkout used) and, for a non-refund invoice, "Refund
+       This" swaps this same body inline into the refund form (see
+       refundFromHistory()/renderRefundFormInline() in
+       emergency-billing-native.js) — no separate modal to hop to. -->
   <div id="eb-history-detail-modal">
     <div class="eb-refund-box">
       <div class="eb-refund-head">
@@ -2746,8 +2737,8 @@ if ('serviceWorker' in navigator) {
      emergency-billing-native.js's own header note). Nav entry + Cover
      signal card are a later phase — open directly via #emergency-billing
      for now. -->
-<script type="module" src="js/emergency-billing-bridge.js?v=20260925a"></script>
-<script type="module" src="js/emergency-billing-native.js?v=20260925b"></script>
+<script type="module" src="js/emergency-billing-bridge.js?v=20260926a"></script>
+<script type="module" src="js/emergency-billing-native.js?v=20260926b"></script>
 <script type="module" src="js/str-bridge.js?v=20260818a"></script>
 <script type="module" src="js/str-native.js?v=20260818a"></script>
 <script type="module" src="js/str-report-native.js?v=20260818a"></script>
