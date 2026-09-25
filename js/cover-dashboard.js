@@ -1691,6 +1691,9 @@ export function renderCoverDashboard() {
   // cross-module Cover call already is (renderCoverDashboard itself,
   // closingBridgeRefresh, etc.) since herald-page.js loads after this file.
   if (typeof window.renderICHerald === 'function') window.renderICHerald();
+  // Emergency Billing signal card — guarded the same way as the Herald
+  // call above, since emergency-billing-native.js loads after this file.
+  if (typeof window.ebRenderCoverBanner === 'function') window.ebRenderCoverBanner();
   _renderPinsRow(tiles);
   _updateHeroDate();
   if (invSl && invSl.dataReady) { _renderInventoryChart(invSl, invEw); }

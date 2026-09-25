@@ -28,6 +28,7 @@
 // ══════════════════════════════════════════════════════════════════════
 
 import * as EBBridge from './emergency-billing-bridge.js';
+import { BTDate } from './bt-date.js';
 
 (function () {
   "use strict";
@@ -82,6 +83,7 @@ import * as EBBridge from './emergency-billing-bridge.js';
 
     renderCart();
     renderHeldBills();
+    renderReconciliation();
     setPaymentMode(paymentMethod);
   }
 
@@ -536,6 +538,119 @@ import * as EBBridge from './emergency-billing-bridge.js';
     setTimeout(() => window.print(), 50);
   }
 
+  // ── Reconciliation (§7, Option A — fully manual) ──────────────────
+  // Groups unreconciled invoices by local calendar day and shows each
+  // day's total; "Mark Reconciled" only flags rows the human has
+  // already, separately, typed into Add Entry — this never writes to
+  // DAILY/bt_salesdata itself (see markReconciled()'s own header note
+  // in the bridge file).
+  function _fmtDMY(d) {
+    return String(d.getDate()).padStart(2, '0') + '/' + BTDate.monthShort[d.getMonth()] + '/' + d.getFullYear();
+  }
+  function _localDayKey(isoStr) {
+    const d = new Date(isoStr);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  async function renderReconciliation() {
+    const wrap = $('eb-recon-list');
+    if (!wrap) return;
+    wrap.innerHTML = '<div class="eb-recon-loading">Loading…</div>';
+
+    let unreconciled = [];
+    try { unreconciled = await EBBridge.fetchInvoices({ unreconciledOnly: true }); }
+    catch (e) { wrap.innerHTML = '<div class="eb-recon-loading">Couldn\'t load — ' + esc(e.message || String(e)) + '</div>'; return; }
+
+    if (!unreconciled.length) {
+      wrap.innerHTML = '<div class="eb-held-empty">Nothing to reconcile — every invoice is caught up.</div>';
+      return;
+    }
+
+    const byDay = {};
+    unreconciled.forEach(inv => {
+      const key = _localDayKey(inv.billed_at);
+      if (!byDay[key]) byDay[key] = { date: new Date(inv.billed_at), net: 0, count: 0, invoiceNumbers: [] };
+      byDay[key].net += parseFloat(inv.net_total) || 0;
+      byDay[key].count += 1;
+      byDay[key].invoiceNumbers.push(inv.invoice_number);
+    });
+
+    const c = cur();
+    const days = Object.keys(byDay).sort().reverse();
+    wrap.innerHTML = '';
+    days.forEach(key => {
+      const g = byDay[key];
+      const row = document.createElement('div');
+      row.className = 'eb-held-row eb-recon-row';
+      row.innerHTML =
+        '<div class="eb-held-info"><div class="eb-held-tag">' + esc(_fmtDMY(g.date)) + '</div>' +
+        '<div class="eb-held-meta">' + g.count + ' invoice' + (g.count !== 1 ? 's' : '') + ' · ' + c + g.net.toFixed(2) + ' not yet in Daily Sale Entry</div></div>' +
+        '<div class="eb-held-actions"><button class="eb-btn eb-btn-sm" data-recon="' + esc(key) + '">✅ Mark Reconciled</button></div>';
+      wrap.appendChild(row);
+      row.dataset.net = g.net;
+      row.dataset.invoices = JSON.stringify(g.invoiceNumbers);
+      row.dataset.dmy = _fmtDMY(g.date);
+    });
+  }
+
+  async function onReconListClick(e) {
+    const btn = e.target.closest('[data-recon]');
+    if (!btn) return;
+    const row = btn.closest('.eb-recon-row');
+    const invoiceNumbers = JSON.parse(row.dataset.invoices || '[]');
+    const net = parseFloat(row.dataset.net) || 0;
+    const dmy = row.dataset.dmy;
+    if (!confirm('Confirm you have already typed ' + cur() + net.toFixed(2) + ' into Sale Data → Add Entry for ' + dmy + '.\n\nThis only flags these ' + invoiceNumbers.length + ' invoice(s) as reconciled here — it does NOT write anything into Daily Sale Entry for you.')) return;
+    btn.disabled = true; btn.textContent = 'Saving…';
+    const ok = await EBBridge.markReconciled(invoiceNumbers, dmy);
+    if (ok) { say('✅ Marked reconciled for ' + dmy); renderReconciliation(); renderCoverBanner(true); }
+    else { say('❌ Failed to mark reconciled.', true); btn.disabled = false; btn.textContent = '✅ Mark Reconciled'; }
+  }
+
+  // ── Cover signal card ──────────────────────────────────────────────
+  // Small banner on Cover, not a full domain group tile (see index.html's
+  // #cover-emergency-billing-banner note). Throttled the same way the
+  // other bridges throttle their full-table pulls — Cover re-renders
+  // often (tab switches, drag-reorder, every checkout), and this isn't
+  // data that needs to be second-fresh.
+  const COVER_BANNER_MIN_REFRESH_MS = 60000;
+  let _bannerCache = null, _bannerFetchedAt = 0, _bannerInFlight = null;
+
+  async function renderCoverBanner(force) {
+    const mount = $('cover-emergency-billing-banner');
+    if (!mount) return; // Cover isn't the page currently in the DOM
+    const fresh = !force && _bannerCache && (Date.now() - _bannerFetchedAt < COVER_BANNER_MIN_REFRESH_MS);
+    if (fresh) { mount.innerHTML = _bannerCache; return; }
+    if (_bannerInFlight) return; // a refresh is already underway
+    _bannerInFlight = (async () => {
+      try {
+        const [today, unreconciled] = await Promise.all([
+          EBBridge.fetchInvoices({ from: new Date(new Date().setHours(0,0,0,0)).toISOString(), to: new Date(new Date().setHours(23,59,59,999)).toISOString() }),
+          EBBridge.fetchInvoices({ unreconciledOnly: true }),
+        ]);
+        if (!today.length && !unreconciled.length) { _bannerCache = ''; _bannerFetchedAt = Date.now(); mount.innerHTML = ''; return; }
+        const todayNet = today.reduce((s, i) => s + (parseFloat(i.net_total) || 0), 0);
+        const unreconciledDays = new Set(unreconciled.map(i => _localDayKey(i.billed_at))).size;
+        const c = cur();
+        const html =
+          '<div class="eb-cover-banner" onclick="location.hash=\'#emergency-billing\'">' +
+            '<span class="eb-cover-banner-icon">🚨</span>' +
+            '<div class="eb-cover-banner-text">' +
+              '<strong>Emergency Billing</strong>' +
+              (today.length ? ' — ' + today.length + ' invoice' + (today.length !== 1 ? 's' : '') + ' today · ' + c + todayNet.toFixed(2) : '') +
+              (unreconciledDays ? ' · ' + unreconciledDays + ' day' + (unreconciledDays !== 1 ? 's' : '') + ' not yet reconciled' : '') +
+            '</div>' +
+          '</div>';
+        _bannerCache = html; _bannerFetchedAt = Date.now();
+        mount.innerHTML = html;
+      } catch (e) {
+        console.error('Emergency Billing cover banner failed', e);
+      } finally { _bannerInFlight = null; }
+    })();
+  }
+
+  window.ebRenderCoverBanner = renderCoverBanner;
+
   // ── Wire DOM events once ─────────────────────────────────────────
   function wireEvents() {
     const searchInput = $('eb-search-input');
@@ -573,6 +688,7 @@ import * as EBBridge from './emergency-billing-bridge.js';
     $('eb-cart-body').addEventListener('click', onCartBodyClick);
     $('eb-cart-body').addEventListener('change', onCartBodyChange);
     $('eb-held-list').addEventListener('click', onHeldListClick);
+    $('eb-recon-list').addEventListener('click', onReconListClick);
 
     $('eb-hold-btn').addEventListener('click', holdBill);
     $('eb-clear-btn').addEventListener('click', clearCart);
@@ -591,7 +707,7 @@ import * as EBBridge from './emergency-billing-bridge.js';
   // recordSale) — re-render in case another device/tab's sale affected
   // anything this page is showing. Cart/held bills are per-device
   // localStorage, so this mostly just re-renders what's already there.
-  function onBridgeRefresh() { renderCart(); renderHeldBills(); }
+  function onBridgeRefresh() { renderCart(); renderHeldBills(); renderReconciliation(); renderCoverBanner(true); }
 
   window.ebOnShowEmergencyBilling = onShowEmergencyBilling;
   window.emergencyBillingNativeOnRefresh = onBridgeRefresh;

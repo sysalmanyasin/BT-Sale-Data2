@@ -290,6 +290,24 @@
     // pattern as Audit's own external tile above).
     _pushGroup(groups, _customGroup('reports', 'Reports', '📰', _VIRTUAL.reports.map(r => ({ label: r.label, icon: r.icon, href: r.href, external: true, kids: [] })), 'group-reports'), 'data');
 
+    // New: Emergency Billing — a single, ungrouped page (like Cover and
+    // Tools), not nested inside any domain umbrella and not part of
+    // Cover's per-domain accent-color system (no _domainGroup) — it's a
+    // break-glass tool staff need to find fast regardless of which
+    // domain they're currently in. 'core' section (not 'utility') for
+    // the same reason: this isn't a settings page, it's something
+    // someone reaches for under time pressure.
+    if (flat['emergency-billing']) {
+      groups.push({
+        label: flat['emergency-billing'].label,
+        icon: '🚨',
+        svgKey: 'emergency-billing',
+        href: flat['emergency-billing'].href,
+        kids: [],
+        _section: 'core',
+      });
+    }
+
     // Tools: its own Sync Center collapses into a nested group (with its
     // 6 tabs as sub-subs), followed by every other settings card.
     if (flat.tools) {

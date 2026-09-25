@@ -350,6 +350,12 @@ if ('serviceWorker' in navigator) {
   <a class="bnav-item" href="#str-report" data-page="str-report" data-group="str" data-domain-group="str"><span class="bicon">🧾</span><span class="blabel">Report</span></a>
   <a class="bnav-item" href="#str-zero-dispatch" data-page="str-zero-dispatch" data-group="str" data-domain-group="str"><span class="bicon">🚫</span><span class="blabel">0-Dispatch</span></a>
   <a class="bnav-item" href="#tools" data-page="tools" data-group="tools" data-domain-group="tools"><span class="bicon">⚙️</span><span class="blabel">Tools</span></a>
+  <!-- Emergency Billing — break-glass counter-sale tool (Candela POS
+       down). Deliberately no data-domain-group: like Cover/Tools, it
+       should stay visible/reachable from every domain, not nested under
+       Sales or any other umbrella (see js/nav-sections.js's standalone
+       top-level entry for this same id). -->
+  <a class="bnav-item" href="#emergency-billing" data-page="emergency-billing" data-group="emergency-billing"><span class="bicon">🚨</span><span class="blabel">Emergency Billing</span></a>
 </div>
 
 <!-- Hidden Sale Data sub-tab index — the old top .ntabs "subnav" strip
@@ -407,6 +413,14 @@ if ('serviceWorker' in navigator) {
   </div>
 
   <div id="cover-herald"></div>
+  <!-- Emergency Billing signal card (architecture doc §5/Phase 4) — only
+       a domain-less, single-page tool, so it doesn't get a full
+       cover-group tile like Sales/Inventory/etc; just a small banner,
+       populated by js/emergency-billing-native.js's ebRenderCoverBanner()
+       (called from renderCoverDashboard() below), shown only when
+       there's something to say (today's invoices exist and/or older
+       days are still unreconciled) and hidden otherwise. -->
+  <div id="cover-emergency-billing-banner"></div>
   <div id="cover-pins-row"></div>
 
   <div id="cover-container">Loading…</div>
@@ -1570,6 +1584,19 @@ if ('serviceWorker' in navigator) {
     <div class="eb-held-card">
       <h3>Held Bills</h3>
       <div id="eb-held-list"></div>
+    </div>
+
+    <!-- Reconciliation (§7, Option A — fully manual, no auto-write and
+         no prefill): a read-only summary of unreconciled days. Staff
+         reads the total here, types it into Sale Data → Add Entry
+         themselves, then comes back and taps "Mark Reconciled" to flag
+         those invoices — same read-only-signal-the-human-reconciles
+         philosophy as Closing/STR. This never writes to DAILY/
+         bt_salesdata itself. -->
+    <div class="eb-held-card eb-recon-card">
+      <h3>Reconciliation — Unreconciled Days</h3>
+      <p class="eb-recon-hint">For each day below: open Sale Data → Add Entry, type this total in yourself, then tap "Mark Reconciled" here. Nothing here writes to Daily Sale Entry automatically.</p>
+      <div id="eb-recon-list"></div>
     </div>
   </div>
 

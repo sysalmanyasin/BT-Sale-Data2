@@ -112,6 +112,21 @@ table.eb-cart-table td { padding: 8px 12px; border-bottom: 1px solid var(--borde
 .eb-held-meta { color: var(--muted); font-size: 12px; }
 .eb-held-actions { display: flex; gap: 6px; }
 
+.eb-recon-card { margin-top: var(--sp-4); }
+.eb-recon-hint { color: var(--muted); font-size: 12px; margin-bottom: var(--sp-3); line-height: 1.5; }
+.eb-recon-loading { color: var(--muted); font-size: 13px; padding: var(--sp-3) 0; }
+
+/* ── Cover signal card ──────────────────────────────────────────── */
+.eb-cover-banner {
+  display: flex; align-items: center; gap: var(--sp-3);
+  background: var(--alt2); border: 1px solid var(--amber);
+  border-radius: var(--r-md); padding: var(--sp-3) var(--sp-4);
+  margin: 0 0 var(--sp-3); cursor: pointer;
+}
+.eb-cover-banner-icon { font-size: 18px; }
+.eb-cover-banner-text { font-size: 13px; color: var(--amber); }
+.eb-cover-banner-text strong { font-weight: 700; }
+
 /* ── Receipt modal (screen) ─────────────────────────────────────── */
 #eb-receipt-modal { display: none; position: fixed; inset: 0; background: rgba(15,20,40,.5); z-index: 200; align-items: center; justify-content: center; }
 #eb-receipt-modal.visible { display: flex; }
