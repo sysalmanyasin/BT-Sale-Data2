@@ -283,6 +283,12 @@ async function _fetchAllRows(client, table, queryFn) {
   return all;
 }
 
+// opts.invoiceNumber: exact match (used by the refund lookup, which needs
+// a single specific invoice). opts.invoiceNumberLike: partial/contains
+// match (used by Billing History's search box, where staff usually only
+// remember part of a number). opts.invoiceNumbers: pre-resolved list,
+// used internally by searchInvoiceNumbersByProduct()'s two-step product
+// search below — never something a caller builds by hand.
 export async function fetchInvoices(opts) {
   opts = opts || {};
   const client = _getClient();
@@ -291,11 +297,36 @@ export async function fetchInvoices(opts) {
     return await _fetchAllRows(client, 'emergency_invoices', q => {
       let qq = q.order('billed_at', { ascending: false });
       if (opts.invoiceNumber) qq = qq.eq('invoice_number', opts.invoiceNumber);
+      if (opts.invoiceNumberLike) qq = qq.ilike('invoice_number', '%' + opts.invoiceNumberLike + '%');
+      if (opts.invoiceNumbers) qq = qq.in('invoice_number', opts.invoiceNumbers);
       if (opts.from) qq = qq.gte('billed_at', opts.from);
       if (opts.to) qq = qq.lte('billed_at', opts.to);
       if (opts.unreconciledOnly) qq = qq.eq('reconciled_into_daily', false);
+      if (opts.paymentMethod) qq = qq.eq('payment_method', opts.paymentMethod);
       return qq;
     });
+  } catch (e) { _lastError = e.message || String(e); return []; }
+}
+
+// ── Billing History's "product" filter — emergency_invoices has no
+// product column itself (that lives on emergency_invoice_items), so this
+// is a two-step lookup: find every invoice_number whose line items match
+// the query by code or name, dedupe, then the caller re-uses that list as
+// fetchInvoices({ invoiceNumbers }) above. Returns [] (not null) when the
+// bridge is unreachable or the query is empty, so callers can always
+// treat the result as "the set of matching invoices" without a separate
+// null-check branch. ─────────────────────────────────────────────────
+export async function searchInvoiceNumbersByProduct(query) {
+  const q = (query || '').trim();
+  const client = _getClient();
+  if (!client || !q) return [];
+  try {
+    const escaped = q.replace(/[%,]/g, ''); // strip PostgREST or-filter special chars, not meaningful in a product search anyway
+    if (!escaped) return [];
+    const rows = await _fetchAllRows(client, 'emergency_invoice_items', qq =>
+      qq.or(`product_code.ilike.%${escaped}%,product_name.ilike.%${escaped}%`)
+    );
+    return Array.from(new Set(rows.map(r => r.invoice_number)));
   } catch (e) { _lastError = e.message || String(e); return []; }
 }
 
@@ -335,5 +366,6 @@ window.emergencyBillingRecordSale        = recordSale;
 window.emergencyBillingRecordRefund      = recordRefund;
 window.emergencyBillingFetchInvoices     = fetchInvoices;
 window.emergencyBillingFetchInvoiceItems = fetchInvoiceItems;
+window.emergencyBillingSearchInvoiceNumbersByProduct = searchInvoiceNumbersByProduct;
 window.emergencyBillingMarkReconciled    = markReconciled;
 window.emergencyBillingGetLastError      = getLastError;
