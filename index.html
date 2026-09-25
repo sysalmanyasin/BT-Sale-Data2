@@ -81,7 +81,7 @@
 <link rel="stylesheet" href="css/nav.css?v=20260824a">
 <link rel="stylesheet" href="css/closing-native.css?v=20260728a">
 <link rel="stylesheet" href="css/closing-book-print.css?v=20260722a">
-<link rel="stylesheet" href="css/emergency-billing.css?v=20260924a">
+<link rel="stylesheet" href="css/emergency-billing.css?v=20260925a">
 <link rel="stylesheet" href="css/audit-native.css?v=20260722a">
 <link rel="stylesheet" href="css/inventory-native.css?v=20260722a">
 <link rel="stylesheet" href="css/str-report.css?v=20260817a">
@@ -1530,6 +1530,21 @@ if ('serviceWorker' in navigator) {
         <button class="eb-btn eb-btn-sm eb-btn-ghost" id="eb-inv-refresh-btn" type="button">↻ Refresh Inventory</button>
       </div>
     </header>
+
+    <!-- Tab bar — Billing (the till, default) / History (browse + reprint
+         past invoices) / Settings (branch identity, receipt customization,
+         billing behavior). Plain JS show/hide (js/emergency-billing-native.js's
+         ebSwitchTab()), not a hash sub-route — this page is still a single
+         #emergency-billing entry point (see the "Not yet wired into nav"
+         note below), so a sub-route would have nothing to deep-link from. -->
+    <div class="eb-tabs" id="eb-tabs" role="tablist">
+      <button class="eb-tab-btn active" id="eb-tab-btn-billing" data-eb-tab="billing" type="button" role="tab" aria-selected="true">🧾 Billing</button>
+      <button class="eb-tab-btn" id="eb-tab-btn-history" data-eb-tab="history" type="button" role="tab" aria-selected="false">📜 History</button>
+      <button class="eb-tab-btn" id="eb-tab-btn-settings" data-eb-tab="settings" type="button" role="tab" aria-selected="false">⚙️ Settings</button>
+    </div>
+
+    <!-- ══════════ BILLING TAB — the till itself (unchanged) ══════════ -->
+    <div class="eb-tab-panel on" id="eb-tab-panel-billing">
     <!-- Two-pane POS-style desktop layout: a wide left "till" pane (search
          + itemized bill grid), a narrower right pane pinned in view for
          totals/payment/checkout — same division of labour as Candela's own
@@ -1589,6 +1604,10 @@ if ('serviceWorker' in navigator) {
             <div class="eb-summary-row"><span>Subtotal</span><span id="eb-subtotal">Rs. 0.00</span></div>
             <div class="eb-summary-row eb-discount-row"><span>Discount (flat amount)</span><input type="number" id="eb-discount-input" value="0" min="0"></div>
             <div class="eb-summary-row" style="display:none"><span></span><span id="eb-discount-display">Rs. 0.00</span></div>
+            <!-- Settings > Billing Settings > "Round Net Payable to the nearest
+                 whole rupee" — only shown when that's on AND the rounding is
+                 non-zero (see calcTotals() in emergency-billing-native.js). -->
+            <div class="eb-summary-row eb-rounding-row" id="eb-rounding-row" style="display:none"><span>Rounding</span><span id="eb-rounding-display">Rs. 0.00</span></div>
             <div class="eb-summary-row eb-net"><span>Net Payable</span><span id="eb-net-total">Rs. 0.00</span></div>
           </div>
 
@@ -1620,6 +1639,114 @@ if ('serviceWorker' in navigator) {
         </div>
       </aside>
     </div>
+    </div> <!-- /#eb-tab-panel-billing -->
+
+    <!-- ══════════ HISTORY TAB — browse/search past invoices (both sales
+         and refunds), read-only, click a row to open the full saved bill.
+         Filters run against js/emergency-billing-bridge.js's fetchInvoices()
+         (date range, invoice #, payment method, unreconciled-only) plus the
+         new searchInvoiceNumbersByProduct() for the product filter — see
+         that file's header note on why the product filter is a two-step
+         lookup. ══════════ -->
+    <div class="eb-tab-panel" id="eb-tab-panel-history">
+      <div class="eb-held-card eb-hist-filter-card">
+        <h3>Search Billing History</h3>
+        <div class="eb-hist-presets" id="eb-hist-presets">
+          <button class="eb-hist-preset-btn active" data-preset="today" type="button">Today</button>
+          <button class="eb-hist-preset-btn" data-preset="yesterday" type="button">Yesterday</button>
+          <button class="eb-hist-preset-btn" data-preset="7d" type="button">Last 7 Days</button>
+          <button class="eb-hist-preset-btn" data-preset="month" type="button">This Month</button>
+          <button class="eb-hist-preset-btn" data-preset="all" type="button">All Time</button>
+        </div>
+        <div class="eb-hist-filter-grid">
+          <div><label>From</label><input type="date" id="eb-hist-from"></div>
+          <div><label>To</label><input type="date" id="eb-hist-to"></div>
+          <div><label>Bill / Invoice #</label><input type="text" id="eb-hist-invoice" placeholder="e.g. EB-20261001-0007 or just 0007"></div>
+          <div><label>Product (name or code)</label><input type="text" id="eb-hist-product" placeholder="Search items on the bill…"></div>
+          <div><label>Payment Method</label>
+            <select id="eb-hist-payment">
+              <option value="">Any</option>
+              <option value="cash">Cash</option>
+              <option value="card">Card</option>
+              <option value="online">Online</option>
+            </select>
+          </div>
+          <div><label>Customer / Staff</label><input type="text" id="eb-hist-person" placeholder="Search name or phone…"></div>
+        </div>
+        <div class="eb-hist-check-row">
+          <label class="eb-hist-check"><input type="checkbox" id="eb-hist-unreconciled"> Unreconciled only</label>
+          <label class="eb-hist-check"><input type="checkbox" id="eb-hist-refunds"> Refunds only</label>
+        </div>
+        <div class="eb-hist-filter-actions">
+          <button class="eb-btn eb-btn-ghost" id="eb-hist-reset-btn" type="button">Reset Filters</button>
+          <button class="eb-btn eb-btn-primary" id="eb-hist-search-btn" type="button">🔍 Search</button>
+        </div>
+      </div>
+
+      <div class="eb-held-card eb-hist-results-card">
+        <div class="eb-hist-results-head">
+          <h3>Results</h3>
+          <span id="eb-hist-summary" class="eb-hist-summary"></span>
+        </div>
+        <div id="eb-hist-results"><div class="eb-recon-loading">Choose a date range or filter above, then tap Search.</div></div>
+      </div>
+    </div> <!-- /#eb-tab-panel-history -->
+
+    <!-- ══════════ SETTINGS TAB — Branch Identity, Business Name, Receipt
+         Customization, Billing Settings. Stored in localStorage only
+         (eb_settings_v1), same per-device-convenience reasoning as
+         CART_KEY/HELD_KEY above this page (see emergency-billing-native.js's
+         file header) — this is till configuration for whichever device is
+         physically printing receipts on it, not shared business data, so it
+         deliberately never goes through Repository/Actions/Supabase. Applies
+         immediately on Save: currency symbol, low-stock threshold, and the
+         receipt template all re-read these settings live. ══════════ -->
+    <div class="eb-tab-panel" id="eb-tab-panel-settings">
+      <div class="eb-set-grid">
+        <div class="eb-held-card eb-set-card">
+          <h3>🏢 Branch Identity</h3>
+          <div class="eb-set-field"><label>Branch / Outlet Name</label><input type="text" id="eb-set-branch-name" placeholder="e.g. Bahria Town Sales IC"></div>
+          <div class="eb-set-field"><label>Branch Address</label><textarea id="eb-set-branch-address" rows="2" placeholder="Shown on the printed receipt"></textarea></div>
+          <div class="eb-set-field"><label>Branch Phone</label><input type="text" id="eb-set-branch-phone" placeholder="Optional"></div>
+        </div>
+
+        <div class="eb-held-card eb-set-card">
+          <h3>🏪 Business Name</h3>
+          <div class="eb-set-field"><label>Business / Pharmacy Name</label><input type="text" id="eb-set-business-name" placeholder="Printed as the receipt's main heading"></div>
+          <div class="eb-set-field"><label>NTN / Tax Number</label><input type="text" id="eb-set-tax-number" placeholder="Optional"></div>
+        </div>
+
+        <div class="eb-held-card eb-set-card">
+          <h3>🧾 Receipt Customization</h3>
+          <div class="eb-set-field"><label>Header Note (under business name)</label><input type="text" id="eb-set-receipt-header" placeholder="Optional tagline"></div>
+          <div class="eb-set-field"><label>Footer Note</label><textarea id="eb-set-receipt-footer" rows="2"></textarea></div>
+          <div class="eb-set-field"><label>Receipt Width</label>
+            <select id="eb-set-receipt-width"><option value="80">80mm (standard)</option><option value="58">58mm (narrow)</option></select>
+          </div>
+          <div class="eb-set-field"><label>Currency Symbol / Prefix</label><input type="text" id="eb-set-currency" placeholder="Rs. "></div>
+          <div class="eb-set-check"><label><input type="checkbox" id="eb-set-show-address" checked> Show branch address on receipt</label></div>
+          <div class="eb-set-check"><label><input type="checkbox" id="eb-set-show-phone" checked> Show branch phone on receipt</label></div>
+        </div>
+
+        <div class="eb-held-card eb-set-card">
+          <h3>⚙️ Billing Settings</h3>
+          <div class="eb-set-field"><label>Default Payment Method</label>
+            <select id="eb-set-default-payment"><option value="cash">Cash</option><option value="card">Card</option><option value="online">Online</option></select>
+          </div>
+          <div class="eb-set-field"><label>Low-Stock Warning Threshold</label><input type="number" id="eb-set-low-stock" min="0" placeholder="5"></div>
+          <div class="eb-set-check"><label><input type="checkbox" id="eb-set-require-staff"> Require staff name before checkout</label></div>
+          <div class="eb-set-check"><label><input type="checkbox" id="eb-set-auto-print"> Auto-print receipt after checkout</label></div>
+          <div class="eb-set-check"><label><input type="checkbox" id="eb-set-confirm-clear" checked> Ask for confirmation before clearing a bill</label></div>
+          <div class="eb-set-check"><label><input type="checkbox" id="eb-set-round-net"> Round Net Payable to the nearest whole rupee</label></div>
+        </div>
+      </div>
+
+      <div class="eb-set-actions">
+        <span id="eb-set-status" class="eb-set-status"></span>
+        <button class="eb-btn eb-btn-ghost" id="eb-set-reset-btn" type="button">Reset to Defaults</button>
+        <button class="eb-btn eb-btn-primary" id="eb-set-save-btn" type="button">💾 Save Settings</button>
+      </div>
+    </div> <!-- /#eb-tab-panel-settings -->
   </div>
 
   <div id="eb-receipt-modal">
@@ -1648,6 +1775,21 @@ if ('serviceWorker' in navigator) {
         <button class="eb-btn" id="eb-refund-find-btn" type="button">Find</button>
       </div>
       <div id="eb-refund-body"></div>
+    </div>
+  </div>
+
+  <!-- History tab's "load a saved bill" view — full read-only itemized
+       invoice, opened by clicking a Billing History row. Offers a reprint
+       (routes through the same showReceipt()/#eb-receipt-print flow the
+       original checkout used) and, for a non-refund invoice, a shortcut
+       straight into the Refund modal pre-filled with this invoice number. -->
+  <div id="eb-history-detail-modal">
+    <div class="eb-refund-box">
+      <div class="eb-refund-head">
+        <h3>Saved Bill</h3>
+        <button class="eb-btn eb-btn-ghost eb-btn-sm" id="eb-history-detail-close" type="button">✕</button>
+      </div>
+      <div id="eb-history-detail-body"></div>
     </div>
   </div>
 </section>
@@ -2582,8 +2724,8 @@ if ('serviceWorker' in navigator) {
      emergency-billing-native.js's own header note). Nav entry + Cover
      signal card are a later phase — open directly via #emergency-billing
      for now. -->
-<script type="module" src="js/emergency-billing-bridge.js?v=20260924a"></script>
-<script type="module" src="js/emergency-billing-native.js?v=20260924a"></script>
+<script type="module" src="js/emergency-billing-bridge.js?v=20260925a"></script>
+<script type="module" src="js/emergency-billing-native.js?v=20260925a"></script>
 <script type="module" src="js/str-bridge.js?v=20260818a"></script>
 <script type="module" src="js/str-native.js?v=20260818a"></script>
 <script type="module" src="js/str-report-native.js?v=20260818a"></script>

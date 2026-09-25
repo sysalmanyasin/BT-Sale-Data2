@@ -42,6 +42,22 @@
 .eb-inv-dot-warn { background: var(--amber); box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber) 22%, transparent); }
 .eb-inv-dot-bad { background: var(--red); box-shadow: 0 0 0 3px color-mix(in srgb, var(--red) 22%, transparent); }
 
+/* ── Tab bar (Billing / History / Settings) ─────────────────────────
+   Same pill-tab visual language as the rest of the app's sub-nav strips
+   (Manager's #mgr-tabs, Credit Ledger's .cl-mode-tabs), scoped to this
+   page's own tokens rather than reused classes, since those live in
+   files this domain never imports. ─────────────────────────────────── */
+.eb-tabs { display: flex; gap: var(--sp-2); margin-bottom: var(--sp-4); flex-wrap: wrap; }
+.eb-tab-btn {
+  padding: 9px 18px; border-radius: var(--r-pill); border: 1px solid var(--border);
+  background: var(--surface); color: var(--muted); font-weight: 700; font-size: 13px;
+  cursor: pointer; transition: background .15s, border-color .15s, color .15s;
+}
+.eb-tab-btn:hover { border-color: var(--border-strong); }
+.eb-tab-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.eb-tab-panel { display: none; }
+.eb-tab-panel.on { display: block; }
+
 /* ── Two-pane desktop layout ─────────────────────────────────────── */
 .eb-pos-grid { display: grid; grid-template-columns: 1fr 392px; gap: var(--sp-5); align-items: start; }
 .eb-pos-main { min-width: 0; display: flex; flex-direction: column; gap: var(--sp-4); }
@@ -215,6 +231,70 @@ table.eb-cart-table th:last-child, table.eb-cart-table td.eb-tc-act { width: 40p
 .eb-recon-hint { color: var(--muted); font-size: 12px; margin-bottom: var(--sp-3); line-height: 1.5; }
 .eb-recon-loading { color: var(--muted); font-size: 13px; padding: var(--sp-3) 0; }
 
+/* ── Billing History — filters + results ─────────────────────────── */
+.eb-hist-filter-card { margin-bottom: var(--sp-4); }
+.eb-hist-presets { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-bottom: var(--sp-3); }
+.eb-hist-preset-btn {
+  padding: 6px 14px; border-radius: var(--r-pill); border: 1px solid var(--border);
+  background: var(--s2); color: var(--muted); font-weight: 600; font-size: 12px; cursor: pointer;
+}
+.eb-hist-preset-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.eb-hist-filter-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--sp-3); margin-bottom: var(--sp-3);
+}
+.eb-hist-filter-grid label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .03em; }
+.eb-hist-filter-grid input, .eb-hist-filter-grid select { width: 100%; padding: 8px 10px; border-radius: var(--r-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+.eb-hist-check-row { display: flex; gap: var(--sp-4); flex-wrap: wrap; margin-bottom: var(--sp-3); }
+.eb-hist-check { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text); cursor: pointer; }
+.eb-hist-filter-actions { display: flex; justify-content: flex-end; gap: var(--sp-2); }
+
+.eb-hist-results-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--sp-3); flex-wrap: wrap; gap: var(--sp-2); }
+.eb-hist-summary { font-size: 12px; color: var(--muted); font-weight: 600; }
+
+.eb-hist-table-wrap { overflow-x: auto; }
+table.eb-hist-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 720px; }
+table.eb-hist-table thead th {
+  position: sticky; top: 0; background: var(--grad-header); color: #fff;
+  text-align: left; padding: 8px 10px; font-size: 11px; text-transform: uppercase; letter-spacing: .03em;
+}
+table.eb-hist-table tbody tr { cursor: pointer; border-bottom: 1px solid var(--border); transition: background .1s; }
+table.eb-hist-table tbody tr:hover { background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+table.eb-hist-table td { padding: 8px 10px; vertical-align: middle; }
+table.eb-hist-table td.eb-hist-num { font-family: var(--mono); font-weight: 700; }
+table.eb-hist-table td.eb-hist-total { font-family: var(--mono); text-align: right; font-weight: 700; }
+.eb-hist-badge { display: inline-block; padding: 2px 8px; border-radius: var(--r-pill); font-size: 10.5px; font-weight: 700; }
+.eb-hist-badge-refund { background: var(--rlt); color: var(--red); border: 1px solid var(--red); }
+.eb-hist-badge-unrecon { background: var(--alt2); color: var(--amber); border: 1px solid var(--amber); }
+.eb-hist-badge-recon { background: var(--glt); color: var(--green); border: 1px solid var(--green); }
+
+/* ── Saved-bill detail view (inside #eb-history-detail-modal, reuses
+   .eb-refund-box's shell) ─────────────────────────────────────────── */
+.eb-hist-detail-meta { font-size: 12px; color: var(--muted); margin-bottom: var(--sp-3); line-height: 1.6; }
+.eb-hist-detail-meta strong { color: var(--text); }
+table.eb-hist-detail-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: var(--sp-3); }
+table.eb-hist-detail-table th { text-align: left; padding: 6px 4px; color: var(--muted); font-size: 11px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+table.eb-hist-detail-table td { padding: 6px 4px; border-bottom: 1px solid var(--border); }
+table.eb-hist-detail-table td.num { text-align: right; font-family: var(--mono); }
+.eb-hist-detail-totals { border-top: 1px dashed var(--border-strong); padding-top: var(--sp-2); margin-bottom: var(--sp-3); }
+.eb-hist-detail-totals .eb-summary-row { font-size: 13px; }
+.eb-hist-detail-actions { display: flex; justify-content: flex-end; gap: var(--sp-2); flex-wrap: wrap; }
+
+/* ── Settings form ─────────────────────────────────────────────────── */
+.eb-set-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--sp-4); }
+.eb-set-card h3 { font-size: 14px; margin-bottom: var(--sp-3); }
+.eb-set-field { margin-bottom: var(--sp-3); }
+.eb-set-field label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .03em; }
+.eb-set-field input, .eb-set-field select, .eb-set-field textarea {
+  width: 100%; padding: 8px 10px; border-radius: var(--r-sm); border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); font-family: var(--sans); resize: vertical;
+}
+.eb-set-check { margin-bottom: var(--sp-2); }
+.eb-set-check label { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+.eb-set-actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--sp-3); margin-top: var(--sp-4); flex-wrap: wrap; }
+.eb-set-status { font-size: 12px; color: var(--green); font-weight: 700; opacity: 0; transition: opacity .2s; }
+.eb-set-status.visible { opacity: 1; }
+
 /* ── Cover signal card ──────────────────────────────────────────── */
 .eb-cover-banner {
   display: flex; align-items: center; gap: var(--sp-3);
@@ -226,9 +306,10 @@ table.eb-cart-table th:last-child, table.eb-cart-table td.eb-tc-act { width: 40p
 .eb-cover-banner-text { font-size: 13px; color: var(--amber); }
 .eb-cover-banner-text strong { font-weight: 700; }
 
-/* ── Refund modal ──────────────────────────────────────────────── */
-#eb-refund-modal { display: none; position: fixed; inset: 0; background: rgba(15,20,40,.5); z-index: 200; align-items: center; justify-content: center; padding: var(--sp-4); }
-#eb-refund-modal.visible { display: flex; }
+/* ── Refund modal (and History's Saved Bill modal, which reuses the same
+   .eb-refund-box shell) ───────────────────────────────────────────── */
+#eb-refund-modal, #eb-history-detail-modal { display: none; position: fixed; inset: 0; background: rgba(15,20,40,.5); z-index: 200; align-items: center; justify-content: center; padding: var(--sp-4); }
+#eb-refund-modal.visible, #eb-history-detail-modal.visible { display: flex; }
 .eb-refund-box { background: var(--surface); color: var(--text); width: 480px; max-width: 100%; max-height: 88vh; overflow-y: auto; border-radius: var(--r-md); box-shadow: var(--sh-lg); padding: var(--sp-4); }
 .eb-refund-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--sp-3); }
 .eb-refund-head h3 { font-size: 15px; }
@@ -254,6 +335,7 @@ table.eb-refund-table td { padding: 6px 4px; border-bottom: 1px solid var(--bord
 .eb-receipt-box { background: #fff; color: #111; width: 320px; max-height: 82vh; overflow-y: auto; border-radius: var(--r-md); box-shadow: var(--sh-lg); padding: var(--sp-4); font-family: var(--mono); font-size: 12px; }
 .eb-rcpt-head { text-align: center; margin-bottom: var(--sp-3); }
 .eb-rcpt-head h3 { font-size: 14px; margin-bottom: 2px; }
+.eb-rcpt-head .eb-rcpt-branch { font-weight: 700; font-size: 11px; }
 .eb-rcpt-head p { font-size: 11px; color: #555; }
 .eb-rcpt-row { display: flex; justify-content: space-between; padding: 2px 0; }
 .eb-rcpt-sep { border-top: 1px dashed #999; margin: 8px 0; }
@@ -275,5 +357,9 @@ table.eb-refund-table td { padding: 6px 4px; border-bottom: 1px solid var(--bord
     position: fixed; top: 0; left: 0; width: 80mm; padding: 4mm;
     color: #000; font-family: 'IBM Plex Mono', monospace; font-size: 11px;
   }
-  #eb-receipt-modal, .eb-receipt-modal-actions, #eb-refund-modal { display: none !important; }
+  /* Settings tab's "Receipt Width: 58mm (narrow)" option — applied as a
+     class on #eb-receipt-print itself (see showReceipt() in
+     emergency-billing-native.js) rather than a second print stylesheet. */
+  #eb-receipt-print.eb-w58 { width: 58mm; font-size: 10px; padding: 3mm; }
+  #eb-receipt-modal, .eb-receipt-modal-actions, #eb-refund-modal, #eb-history-detail-modal { display: none !important; }
 }

@@ -35,10 +35,34 @@ import { BTDate } from './bt-date.js';
 
   const HELD_KEY = 'eb_held_bills_v1';
   const CART_KEY = 'eb_active_cart_v1';
+  // Settings tab (Branch Identity / Business Name / Receipt Customization /
+  // Billing Settings) — per-device, localStorage-only, same reasoning as
+  // HELD_KEY/CART_KEY above: this is till configuration for whichever
+  // device is physically printing receipts, not shared business data, so
+  // it deliberately never goes through Repository/Actions/Supabase. If a
+  // future need arises to keep receipt branding identical across several
+  // till devices, this is the key to start syncing — not touched here.
+  const SETTINGS_KEY = 'eb_settings_v1';
+  const DEFAULT_SETTINGS = {
+    // Branch Identity
+    branchName: '', branchAddress: '', branchPhone: '',
+    // Business Name
+    businessName: '', taxNumber: '',
+    // Receipt Customization
+    receiptHeader: '', receiptFooter: 'Emergency Billing — counter sale, unreconciled with Daily Sale Entry until manually entered.',
+    receiptWidth: '80', currencySymbol: 'Rs. ',
+    showAddressOnReceipt: true, showPhoneOnReceipt: true,
+    // Billing Settings
+    defaultPaymentMethod: 'cash', lowStockThreshold: 5,
+    requireStaffName: false, autoPrintReceipt: false,
+    confirmClear: true, roundNet: false,
+  };
 
   // ── State ──────────────────────────────────────────────────────────
   let cart = [];            // [{ code, name, price, qty, total }]
   let heldBills = [];        // [{ tag, savedAt, items, discountAmount, customerName, customerPhone }]
+  let settings = DEFAULT_SETTINGS; // real value assigned by loadSettings() in init()
+  let activeTab = 'billing';       // 'billing' | 'history' | 'settings'
   let paymentMethod = 'cash';
   let activeDropdownIndex = -1;
   let searchResults = [];
@@ -46,9 +70,17 @@ import { BTDate } from './bt-date.js';
   let f9Row = -1;
   let wired = false;         // guards event-listener wiring (idempotent init)
   let lastCheckoutBusy = false;
+  let historyResults = [];       // last Billing History search results
+  let historyDetail = null;      // { invoice, items } for the open Saved Bill modal
 
   // ── Small local helpers ───────────────────────────────────────────
+  // Settings' own Currency Symbol field (default 'Rs. ') wins once the
+  // person has saved anything here — falling back to the app-wide
+  // window._getCurrency() hook only when Settings has never been touched,
+  // same "don't override a value the person actually set" precedent as
+  // the rest of this file's localStorage reads.
   function cur() {
+    if (settings && settings.currencySymbol) return settings.currencySymbol;
     return (typeof window._getCurrency === 'function') ? window._getCurrency() : 'Rs. ';
   }
   function esc(s) {
@@ -69,6 +101,17 @@ import { BTDate } from './bt-date.js';
   }
   function saveCart() { _saveLocal(CART_KEY, cart); }
   function saveHeld() { _saveLocal(HELD_KEY, heldBills); }
+
+  // Merges saved settings over DEFAULT_SETTINGS (not a straight overwrite)
+  // so a future new setting added to DEFAULT_SETTINGS always has a real
+  // value even for a device whose localStorage predates that setting —
+  // same forward-compatible pattern as every migration elsewhere in this
+  // app "never assume a key has every field."
+  function loadSettings() {
+    const saved = _loadLocal(SETTINGS_KEY, null);
+    return Object.assign({}, DEFAULT_SETTINGS, saved || {});
+  }
+  function saveSettings() { _saveLocal(SETTINGS_KEY, settings); }
 
   // ── Inventory-load status ───────────────────────────────────────────
   // Root cause of the "No products found" / "Inventory data unavailable"
@@ -149,8 +192,15 @@ import { BTDate } from './bt-date.js';
       console.error('emergency-billing-native: #page-emergency-billing not found in the DOM yet.');
       return;
     }
+    const firstLoad = !wired;
     cart = _loadLocal(CART_KEY, []);
     heldBills = _loadLocal(HELD_KEY, []);
+    settings = loadSettings();
+    // Only apply the settings-driven default payment method on this
+    // module's very first init — after that, whatever the person picked
+    // this session (or restored via a held bill) should win, same as
+    // paymentMethod already behaves for every other page revisit.
+    if (firstLoad) paymentMethod = settings.defaultPaymentMethod || 'cash';
 
     if (!wired) { wireEvents(); wired = true; }
 
@@ -160,6 +210,7 @@ import { BTDate } from './bt-date.js';
     setPaymentMode(paymentMethod);
     renderInventoryStatus();
     refreshInventoryStatus(false);
+    renderSettingsForm();
   }
 
   // ── Product search ─────────────────────────────────────────────────
@@ -192,7 +243,7 @@ import { BTDate } from './bt-date.js';
     searchResults.forEach((p, i) => {
       const row = document.createElement('div');
       row.className = 'eb-sr-row';
-      const low = Number(p.qty) <= 5;
+      const low = Number(p.qty) <= (settings.lowStockThreshold != null ? settings.lowStockThreshold : 5);
       row.innerHTML =
         '<span class="eb-sr-num">' + (i + 1) + '</span>' +
         '<div class="eb-sr-name"><div>' + esc(p.name) + '</div><div class="eb-sr-code">' + esc(p.code) + '</div></div>' +
@@ -292,7 +343,7 @@ import { BTDate } from './bt-date.js';
 
   function clearCart() {
     if (cart.length === 0) return;
-    if (!confirm('Clear the current bill? This cannot be undone.')) return;
+    if (settings.confirmClear && !confirm('Clear the current bill? This cannot be undone.')) return;
     doClearCart();
   }
   function doClearCart() {
@@ -302,8 +353,8 @@ import { BTDate } from './bt-date.js';
     $('eb-customer-name').value = '';
     $('eb-customer-phone').value = '';
     $('eb-cash-received-input').value = '';
-    paymentMethod = 'cash';
-    setPaymentMode('cash');
+    paymentMethod = settings.defaultPaymentMethod || 'cash';
+    setPaymentMode(paymentMethod);
     renderCart();
   }
 
@@ -313,11 +364,35 @@ import { BTDate } from './bt-date.js';
     let disc = parseFloat($('eb-discount-input').value) || 0;
     if (disc < 0) disc = 0;
     if (disc > subtotal) disc = subtotal;
-    const net = Math.max(0, subtotal - disc);
+    let net = Math.max(0, subtotal - disc);
+
+    // Settings > Billing Settings > "Round Net Payable to the nearest
+    // whole rupee". Folded into `discount` (not left as a separate
+    // unaccounted delta) so subtotal - discount === net stays true for
+    // every downstream consumer (the receipt, the RPC, Billing History) —
+    // the rounding line on screen/receipt is just that delta surfaced for
+    // transparency, not a fourth independent number.
+    let rounding = 0;
+    if (settings.roundNet) {
+      const roundedNet = Math.round(net);
+      rounding = Number((net - roundedNet).toFixed(2));
+      net = roundedNet;
+      disc = Number((disc + rounding).toFixed(2));
+    }
 
     $('eb-subtotal').textContent = cur() + subtotal.toFixed(2);
     $('eb-discount-display').textContent = cur() + disc.toFixed(2);
     $('eb-net-total').textContent = cur() + net.toFixed(2);
+
+    const roundRow = $('eb-rounding-row');
+    if (roundRow) {
+      if (rounding !== 0) {
+        $('eb-rounding-display').textContent = (rounding > 0 ? '−' : '+') + cur() + Math.abs(rounding).toFixed(2);
+        roundRow.style.display = 'flex';
+      } else {
+        roundRow.style.display = 'none';
+      }
+    }
 
     const cashInput = $('eb-cash-received-input');
     const changeRow = $('eb-change-row');
@@ -536,6 +611,14 @@ import { BTDate } from './bt-date.js';
   async function checkout() {
     if (lastCheckoutBusy) return;
     if (cart.length === 0) { say('Cart is empty.', true); return; }
+
+    // Settings > Billing Settings > "Require staff name before checkout".
+    if (settings.requireStaffName && !$('eb-staff-name').value.trim()) {
+      say('⚠️ Staff Name is required before checkout (see Settings).', true);
+      $('eb-staff-name').focus();
+      return;
+    }
+
     const totals = calcTotals();
     const cashInput = $('eb-cash-received-input');
     const cashReceived = paymentMethod === 'cash'
@@ -583,6 +666,12 @@ import { BTDate } from './bt-date.js';
 
       doClearCart();
       say('✅ Invoice ' + result.invoiceNumber + ' saved!');
+      // Settings > Billing Settings > "Auto-print receipt after checkout".
+      // Small delay so the receipt modal/DOM is fully painted before the
+      // browser's print dialog steals focus — same 50ms print.js's own
+      // printReceipt() already uses for the manual button, just triggered
+      // for us instead of waiting for a click.
+      if (settings.autoPrintReceipt) printReceipt();
     } catch (err) {
       say('❌ Checkout error: ' + (err && err.message ? err.message : String(err)), true);
     } finally {
@@ -597,12 +686,24 @@ import { BTDate } from './bt-date.js';
   // this app's shared Print.render() engine in js/print.js, which is
   // built for full-page KPI/table reports, not narrow slips). See
   // css/emergency-billing.css for the print rules that hide everything
-  // else on the page except #eb-receipt-print when printing. ─────────
+  // else on the page except #eb-receipt-print when printing.
+  //
+  // sale.billedAt (optional ISO string) / sale.reprint (optional bool) —
+  // used by the History tab's "🖨 Reprint" action so a reprinted receipt
+  // shows the ORIGINAL sale's real date/time (not "now") and is clearly
+  // marked as a reprint; a fresh checkout omits both and gets today's
+  // date with no reprint marker, same as before this file had a History
+  // tab at all. ─────────────────────────────────────────────────────
   function showReceipt(sale) {
     const box = $('eb-receipt-print');
     if (!box) return;
     const c = cur();
-    const dt = new Date();
+    const dt = sale.billedAt ? new Date(sale.billedAt) : new Date();
+    // Settings > Receipt Customization > "Receipt Width" — 58mm narrow
+    // slips get a smaller font/padding via this modifier class (see
+    // emergency-billing.css's @media print block).
+    box.className = settings.receiptWidth === '58' ? 'eb-w58' : '';
+
     let itemsHTML = '';
     sale.items.forEach(item => {
       itemsHTML += '<div class="eb-rcpt-item">' +
@@ -611,8 +712,22 @@ import { BTDate } from './bt-date.js';
       '</div>';
     });
 
+    // Settings > Branch Identity / Business Name / Receipt Customization —
+    // everything here is optional; an untouched Settings tab (every field
+    // still blank) reproduces the exact receipt this page printed before
+    // Settings existed, just with the fallback heading below.
+    const headLines = [];
+    headLines.push('<h3>' + esc(settings.businessName || 'Emergency Sale Receipt') + '</h3>');
+    if (settings.branchName) headLines.push('<p class="eb-rcpt-branch">' + esc(settings.branchName) + '</p>');
+    if (settings.receiptHeader) headLines.push('<p>' + esc(settings.receiptHeader) + '</p>');
+    if (settings.showAddressOnReceipt && settings.branchAddress) headLines.push('<p>' + esc(settings.branchAddress) + '</p>');
+    if (settings.showPhoneOnReceipt && settings.branchPhone) headLines.push('<p>' + esc(settings.branchPhone) + '</p>');
+    if (settings.taxNumber) headLines.push('<p>NTN/Tax #: ' + esc(settings.taxNumber) + '</p>');
+    headLines.push('<p>' + (sale.reprint ? '↻ REPRINT — ' : '') + 'Invoice ' + esc(sale.invoiceNumber) + '</p>');
+    headLines.push('<p>' + dt.toLocaleString() + '</p>');
+
     box.innerHTML =
-      '<div class="eb-rcpt-head"><h3>Emergency Sale Receipt</h3><p>Invoice ' + esc(sale.invoiceNumber) + '</p><p>' + dt.toLocaleString() + '</p></div>' +
+      '<div class="eb-rcpt-head">' + headLines.join('') + '</div>' +
       (sale.customerName ? '<div class="eb-rcpt-row"><span>Customer</span><span>' + esc(sale.customerName) + (sale.customerPhone ? ' · ' + esc(sale.customerPhone) : '') + '</span></div>' : '') +
       (sale.staffName ? '<div class="eb-rcpt-row"><span>Staff</span><span>' + esc(sale.staffName) + '</span></div>' : '') +
       '<div class="eb-rcpt-sep"></div>' + itemsHTML + '<div class="eb-rcpt-sep"></div>' +
@@ -621,7 +736,7 @@ import { BTDate } from './bt-date.js';
       '<div class="eb-rcpt-row eb-rcpt-net"><span>Net Total</span><span>' + c + sale.net.toFixed(2) + '</span></div>' +
       '<div class="eb-rcpt-row"><span>Payment</span><span>' + esc(sale.paymentMethod) + '</span></div>' +
       (sale.paymentMethod === 'cash' ? '<div class="eb-rcpt-row"><span>Change</span><span>' + c + (sale.change || 0).toFixed(2) + '</span></div>' : '') +
-      '<div class="eb-rcpt-foot">Emergency Billing — counter sale, unreconciled with Daily Sale Entry until manually entered.</div>';
+      '<div class="eb-rcpt-foot">' + esc(settings.receiptFooter || '') + '</div>';
 
     const modal = $('eb-receipt-modal');
     if (modal) modal.classList.add('visible');
@@ -875,6 +990,344 @@ import { BTDate } from './bt-date.js';
 
   window.ebRenderCoverBanner = renderCoverBanner;
 
+  // ── Tabs (Billing / History / Settings) ─────────────────────────────
+  let historyAutoLoaded = false;
+  function ebSwitchTab(tab) {
+    if (tab !== 'billing' && tab !== 'history' && tab !== 'settings') tab = 'billing';
+    activeTab = tab;
+    ['billing', 'history', 'settings'].forEach(t => {
+      const panel = $('eb-tab-panel-' + t);
+      const btn = $('eb-tab-btn-' + t);
+      if (panel) panel.classList.toggle('on', t === tab);
+      if (btn) { btn.classList.toggle('active', t === tab); btn.setAttribute('aria-selected', t === tab ? 'true' : 'false'); }
+    });
+    if (tab === 'history' && !historyAutoLoaded) {
+      // First visit to History this page-load — run the default "Today"
+      // preset so the tab isn't just an empty prompt the very first time
+      // it's opened. Later visits leave whatever the person last searched
+      // in place instead of re-querying every time they switch tabs.
+      applyHistoryPreset('today');
+    } else if (tab === 'settings') {
+      renderSettingsForm();
+    }
+  }
+  window.ebSwitchTab = ebSwitchTab;
+
+  // ── Billing History — search ─────────────────────────────────────────
+  function _dateInputValue(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  function applyHistoryPreset(preset) {
+    const now = new Date();
+    let from = null, to = null;
+    if (preset === 'today') { from = new Date(now); to = new Date(now); }
+    else if (preset === 'yesterday') { from = new Date(now); from.setDate(from.getDate() - 1); to = new Date(from); }
+    else if (preset === '7d') { from = new Date(now); from.setDate(from.getDate() - 6); to = new Date(now); }
+    else if (preset === 'month') { from = new Date(now.getFullYear(), now.getMonth(), 1); to = new Date(now); }
+    // preset === 'all' → leave from/to null (no date filter)
+
+    const fromInput = $('eb-hist-from'), toInput = $('eb-hist-to');
+    if (fromInput) fromInput.value = from ? _dateInputValue(from) : '';
+    if (toInput) toInput.value = to ? _dateInputValue(to) : '';
+
+    document.querySelectorAll('.eb-hist-preset-btn').forEach(b => b.classList.toggle('active', b.dataset.preset === preset));
+    runHistorySearch();
+  }
+
+  // Monotonic sequence number so a slow product-search lookup that
+  // finishes AFTER a newer search was already kicked off can't clobber
+  // the newer (already-rendered) results — the same race a fast typist
+  // or a fast preset-tap could otherwise hit.
+  let _historySearchSeq = 0;
+  async function runHistorySearch() {
+    const seq = ++_historySearchSeq;
+    historyAutoLoaded = true;
+    const wrap = $('eb-hist-results');
+    const summary = $('eb-hist-summary');
+    if (wrap) wrap.innerHTML = '<div class="eb-recon-loading">Searching…</div>';
+    if (summary) summary.textContent = '';
+
+    const fromVal = $('eb-hist-from').value;
+    const toVal = $('eb-hist-to').value;
+    const invoiceQ = $('eb-hist-invoice').value.trim();
+    const productQ = $('eb-hist-product').value.trim();
+    const paymentQ = $('eb-hist-payment').value;
+    const personQ = $('eb-hist-person').value.trim().toLowerCase();
+    const unreconciledOnly = $('eb-hist-unreconciled').checked;
+    const refundsOnly = $('eb-hist-refunds').checked;
+
+    const opts = {};
+    if (fromVal) opts.from = new Date(fromVal + 'T00:00:00').toISOString();
+    if (toVal) opts.to = new Date(toVal + 'T23:59:59.999').toISOString();
+    if (invoiceQ) opts.invoiceNumberLike = invoiceQ;
+    if (paymentQ) opts.paymentMethod = paymentQ;
+    if (unreconciledOnly) opts.unreconciledOnly = true;
+
+    // Product filter is a two-step lookup (see searchInvoiceNumbersByProduct's
+    // header note in emergency-billing-bridge.js) — resolve it to a set of
+    // invoice numbers first, then fold that into the same fetchInvoices()
+    // call as every other filter.
+    if (productQ) {
+      let invoiceNumbers = [];
+      try { invoiceNumbers = await EBBridge.searchInvoiceNumbersByProduct(productQ); }
+      catch (e) { /* fall through with [] — treated as "no matches" below */ }
+      if (seq !== _historySearchSeq) return; // superseded by a newer search
+      if (!invoiceNumbers.length) { historyResults = []; renderHistoryResults(); return; }
+      opts.invoiceNumbers = invoiceNumbers;
+    }
+
+    let rows = [];
+    try { rows = await EBBridge.fetchInvoices(opts); }
+    catch (e) {
+      if (seq !== _historySearchSeq) return;
+      if (wrap) wrap.innerHTML = '<div class="eb-refund-status eb-refund-error">Couldn\'t load Billing History — ' + esc(e && e.message ? e.message : String(e)) + '</div>';
+      return;
+    }
+    if (seq !== _historySearchSeq) return;
+
+    if (refundsOnly) rows = rows.filter(r => r.is_refund);
+    if (personQ) rows = rows.filter(r =>
+      (r.customer_name || '').toLowerCase().includes(personQ) ||
+      (r.customer_phone || '').toLowerCase().includes(personQ) ||
+      (r.staff_name || '').toLowerCase().includes(personQ)
+    );
+
+    historyResults = rows;
+    renderHistoryResults();
+  }
+
+  function resetHistoryFilters() {
+    ['eb-hist-invoice', 'eb-hist-product', 'eb-hist-person'].forEach(id => { $(id).value = ''; });
+    $('eb-hist-payment').value = '';
+    $('eb-hist-unreconciled').checked = false;
+    $('eb-hist-refunds').checked = false;
+    applyHistoryPreset('today');
+  }
+
+  function renderHistoryResults() {
+    const wrap = $('eb-hist-results');
+    const summary = $('eb-hist-summary');
+    if (!wrap) return;
+    if (!historyResults.length) {
+      wrap.innerHTML = '<div class="eb-held-empty">No invoices match these filters.</div>';
+      if (summary) summary.textContent = '';
+      return;
+    }
+    const c = cur();
+    const netSum = historyResults.reduce((s, r) => s + (r.is_refund ? -1 : 1) * (parseFloat(r.net_total) || 0), 0);
+    if (summary) summary.textContent = historyResults.length + ' invoice' + (historyResults.length !== 1 ? 's' : '') + ' · net ' + c + netSum.toFixed(2);
+
+    let rowsHTML = '';
+    historyResults.forEach(inv => {
+      const dt = new Date(inv.billed_at);
+      const badges =
+        (inv.is_refund ? '<span class="eb-hist-badge eb-hist-badge-refund">REFUND</span> ' : '') +
+        (inv.reconciled_into_daily
+          ? '<span class="eb-hist-badge eb-hist-badge-recon">Reconciled</span>'
+          : '<span class="eb-hist-badge eb-hist-badge-unrecon">Unreconciled</span>');
+      rowsHTML += '<tr data-invoice="' + esc(inv.invoice_number) + '">' +
+        '<td class="eb-hist-num">' + esc(inv.invoice_number) + '</td>' +
+        '<td>' + esc(dt.toLocaleString()) + '</td>' +
+        '<td>' + esc(inv.customer_name || '—') + '</td>' +
+        '<td>' + esc(inv.staff_name || '—') + '</td>' +
+        '<td>' + esc(inv.payment_method || '') + '</td>' +
+        '<td>' + badges + '</td>' +
+        '<td class="eb-hist-total">' + (inv.is_refund ? '−' : '') + c + (parseFloat(inv.net_total) || 0).toFixed(2) + '</td>' +
+      '</tr>';
+    });
+
+    wrap.innerHTML =
+      '<div class="eb-hist-table-wrap"><table class="eb-hist-table">' +
+      '<thead><tr><th>Invoice #</th><th>Date/Time</th><th>Customer</th><th>Staff</th><th>Payment</th><th>Status</th><th>Net Total</th></tr></thead>' +
+      '<tbody id="eb-hist-tbody">' + rowsHTML + '</tbody></table></div>';
+
+    $('eb-hist-tbody').addEventListener('click', e => {
+      const tr = e.target.closest('tr[data-invoice]');
+      if (tr) openHistoryDetail(tr.dataset.invoice);
+    });
+  }
+
+  // ── Billing History — "load" a saved bill (view + reprint + refund) ──
+  async function openHistoryDetail(invoiceNumber) {
+    const modal = $('eb-history-detail-modal');
+    const body = $('eb-history-detail-body');
+    if (!modal || !body) return;
+    body.innerHTML = '<div class="eb-recon-loading">Loading…</div>';
+    modal.classList.add('visible');
+
+    let invoices = [], items = [];
+    try {
+      [invoices, items] = await Promise.all([
+        EBBridge.fetchInvoices({ invoiceNumber }),
+        EBBridge.fetchInvoiceItems(invoiceNumber),
+      ]);
+    } catch (e) {
+      body.innerHTML = '<div class="eb-refund-status eb-refund-error">Couldn\'t load this invoice — ' + esc(e && e.message ? e.message : String(e)) + '</div>';
+      return;
+    }
+    const invoice = invoices[0];
+    if (!invoice) { body.innerHTML = '<div class="eb-refund-status eb-refund-error">Invoice not found.</div>'; return; }
+    historyDetail = { invoice, items };
+    renderHistoryDetailBody();
+  }
+
+  function closeHistoryDetailModal() {
+    const modal = $('eb-history-detail-modal');
+    if (modal) modal.classList.remove('visible');
+    historyDetail = null;
+  }
+
+  function renderHistoryDetailBody() {
+    if (!historyDetail) return;
+    const { invoice, items } = historyDetail;
+    const c = cur();
+    const body = $('eb-history-detail-body');
+    if (!body) return;
+
+    let rowsHTML = '';
+    (items || []).forEach(it => {
+      rowsHTML += '<tr>' +
+        '<td>' + esc(it.product_name) + '<br><span class="eb-cc-code">' + esc(it.product_code) + '</span></td>' +
+        '<td class="num">' + esc(it.qty) + '</td>' +
+        '<td class="num">' + c + (parseFloat(it.unit_price) || 0).toFixed(2) + '</td>' +
+        '<td class="num">' + c + (parseFloat(it.total) || 0).toFixed(2) + '</td>' +
+      '</tr>';
+    });
+
+    const badges =
+      (invoice.is_refund ? '<span class="eb-hist-badge eb-hist-badge-refund">REFUND</span> ' : '') +
+      (invoice.reconciled_into_daily
+        ? '<span class="eb-hist-badge eb-hist-badge-recon">Reconciled' + (invoice.reconciled_date ? ' ' + esc(invoice.reconciled_date) : '') + '</span>'
+        : '<span class="eb-hist-badge eb-hist-badge-unrecon">Unreconciled</span>');
+
+    body.innerHTML =
+      '<div class="eb-hist-detail-meta">' +
+        '<strong>' + esc(invoice.invoice_number) + '</strong> · ' + esc(new Date(invoice.billed_at).toLocaleString()) + '<br>' +
+        badges + '<br>' +
+        (invoice.customer_name ? 'Customer: ' + esc(invoice.customer_name) + (invoice.customer_phone ? ' · ' + esc(invoice.customer_phone) : '') + '<br>' : '') +
+        (invoice.staff_name ? 'Staff: ' + esc(invoice.staff_name) : '') +
+      '</div>' +
+      '<table class="eb-hist-detail-table"><thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>' +
+      '<tbody>' + (rowsHTML || '<tr><td colspan="4">No line items found.</td></tr>') + '</tbody></table>' +
+      '<div class="eb-hist-detail-totals">' +
+        '<div class="eb-summary-row"><span>Subtotal</span><span>' + c + (parseFloat(invoice.subtotal) || 0).toFixed(2) + '</span></div>' +
+        (parseFloat(invoice.discount_amount) > 0 ? '<div class="eb-summary-row"><span>Discount</span><span>−' + c + (parseFloat(invoice.discount_amount) || 0).toFixed(2) + '</span></div>' : '') +
+        '<div class="eb-summary-row eb-net"><span>Net Total</span><span>' + c + (parseFloat(invoice.net_total) || 0).toFixed(2) + '</span></div>' +
+        '<div class="eb-summary-row"><span>Payment</span><span>' + esc(invoice.payment_method || '') + '</span></div>' +
+      '</div>' +
+      '<div class="eb-hist-detail-actions">' +
+        '<button class="eb-btn eb-btn-ghost" id="eb-hist-detail-close-btn" type="button">Close</button>' +
+        '<button class="eb-btn" id="eb-hist-detail-print-btn" type="button">🖨 Reprint</button>' +
+        (!invoice.is_refund ? '<button class="eb-btn eb-btn-danger-outline" id="eb-hist-detail-refund-btn" type="button">↩ Refund This</button>' : '') +
+      '</div>';
+
+    body.querySelector('#eb-hist-detail-close-btn').addEventListener('click', closeHistoryDetailModal);
+    body.querySelector('#eb-hist-detail-print-btn').addEventListener('click', printHistoryInvoice);
+    const refundBtn = body.querySelector('#eb-hist-detail-refund-btn');
+    if (refundBtn) refundBtn.addEventListener('click', refundFromHistory);
+  }
+
+  function printHistoryInvoice() {
+    if (!historyDetail) return;
+    const { invoice, items } = historyDetail;
+    showReceipt({
+      invoiceNumber: invoice.invoice_number,
+      billedAt: invoice.billed_at,
+      reprint: true,
+      items: (items || []).map(it => {
+        const price = parseFloat(it.unit_price) || 0;
+        const total = parseFloat(it.total);
+        return { name: it.product_name, code: it.product_code, price, qty: it.qty, total: isNaN(total) ? price * it.qty : total };
+      }),
+      subtotal: parseFloat(invoice.subtotal) || 0,
+      discount: parseFloat(invoice.discount_amount) || 0,
+      net: parseFloat(invoice.net_total) || 0,
+      change: parseFloat(invoice.change_amount) || 0,
+      paymentMethod: invoice.payment_method,
+      customerName: invoice.customer_name,
+      customerPhone: invoice.customer_phone,
+      staffName: invoice.staff_name,
+    });
+    closeHistoryDetailModal();
+  }
+
+  // "↩ Refund This" on a saved bill → jumps back to the Billing tab's
+  // existing Refund modal, pre-filled and pre-looked-up, rather than
+  // duplicating findRefundInvoice()'s own item-lookup logic here.
+  function refundFromHistory() {
+    if (!historyDetail) return;
+    const invoiceNumber = historyDetail.invoice.invoice_number;
+    closeHistoryDetailModal();
+    ebSwitchTab('billing');
+    openRefundModal();
+    $('eb-refund-invoice-input').value = invoiceNumber;
+    findRefundInvoice();
+  }
+
+  // ── Settings tab ─────────────────────────────────────────────────────
+  function renderSettingsForm() {
+    if (!$('eb-set-branch-name')) return; // panel not in the DOM (shouldn't happen, but cheap to guard)
+    $('eb-set-branch-name').value = settings.branchName;
+    $('eb-set-branch-address').value = settings.branchAddress;
+    $('eb-set-branch-phone').value = settings.branchPhone;
+    $('eb-set-business-name').value = settings.businessName;
+    $('eb-set-tax-number').value = settings.taxNumber;
+    $('eb-set-receipt-header').value = settings.receiptHeader;
+    $('eb-set-receipt-footer').value = settings.receiptFooter;
+    $('eb-set-receipt-width').value = settings.receiptWidth;
+    $('eb-set-currency').value = settings.currencySymbol;
+    $('eb-set-show-address').checked = !!settings.showAddressOnReceipt;
+    $('eb-set-show-phone').checked = !!settings.showPhoneOnReceipt;
+    $('eb-set-default-payment').value = settings.defaultPaymentMethod;
+    $('eb-set-low-stock').value = settings.lowStockThreshold;
+    $('eb-set-require-staff').checked = !!settings.requireStaffName;
+    $('eb-set-auto-print').checked = !!settings.autoPrintReceipt;
+    $('eb-set-confirm-clear').checked = !!settings.confirmClear;
+    $('eb-set-round-net').checked = !!settings.roundNet;
+  }
+
+  function saveSettingsFromForm() {
+    settings = {
+      branchName: $('eb-set-branch-name').value.trim(),
+      branchAddress: $('eb-set-branch-address').value.trim(),
+      branchPhone: $('eb-set-branch-phone').value.trim(),
+      businessName: $('eb-set-business-name').value.trim(),
+      taxNumber: $('eb-set-tax-number').value.trim(),
+      receiptHeader: $('eb-set-receipt-header').value.trim(),
+      receiptFooter: $('eb-set-receipt-footer').value,
+      receiptWidth: $('eb-set-receipt-width').value === '58' ? '58' : '80',
+      currencySymbol: $('eb-set-currency').value || 'Rs. ',
+      showAddressOnReceipt: $('eb-set-show-address').checked,
+      showPhoneOnReceipt: $('eb-set-show-phone').checked,
+      defaultPaymentMethod: ['cash', 'card', 'online'].includes($('eb-set-default-payment').value) ? $('eb-set-default-payment').value : 'cash',
+      lowStockThreshold: Math.max(0, parseInt($('eb-set-low-stock').value, 10) || 0),
+      requireStaffName: $('eb-set-require-staff').checked,
+      autoPrintReceipt: $('eb-set-auto-print').checked,
+      confirmClear: $('eb-set-confirm-clear').checked,
+      roundNet: $('eb-set-round-net').checked,
+    };
+    saveSettings();
+    calcTotals();          // currency symbol / rounding may have changed
+    renderInventoryStatus();
+    const status = $('eb-set-status');
+    if (status) {
+      status.textContent = '✓ Settings saved';
+      status.classList.add('visible');
+      setTimeout(() => status.classList.remove('visible'), 2500);
+    }
+    say('✅ Settings saved.');
+  }
+
+  function resetSettingsToDefaults() {
+    if (!confirm('Reset all Emergency Billing settings on this device to their defaults?')) return;
+    settings = Object.assign({}, DEFAULT_SETTINGS);
+    saveSettings();
+    renderSettingsForm();
+    calcTotals();
+    say('Settings reset to defaults.');
+  }
+
   // ── Wire DOM events once ─────────────────────────────────────────
   function wireEvents() {
     const searchInput = $('eb-search-input');
@@ -929,6 +1382,32 @@ import { BTDate } from './bt-date.js';
     $('eb-refund-find-btn').addEventListener('click', findRefundInvoice);
     $('eb-refund-invoice-input').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); findRefundInvoice(); } });
     $('eb-refund-modal').addEventListener('click', e => { if (e.target.id === 'eb-refund-modal') closeRefundModal(); });
+
+    // ── Tabs ──
+    $('eb-tabs').addEventListener('click', e => {
+      const btn = e.target.closest('[data-eb-tab]');
+      if (btn) ebSwitchTab(btn.dataset.ebTab);
+    });
+
+    // ── Billing History ──
+    $('eb-hist-presets').addEventListener('click', e => {
+      const btn = e.target.closest('.eb-hist-preset-btn');
+      if (btn) applyHistoryPreset(btn.dataset.preset);
+    });
+    $('eb-hist-search-btn').addEventListener('click', () => {
+      document.querySelectorAll('.eb-hist-preset-btn').forEach(b => b.classList.remove('active')); // a manual search no longer matches any preset
+      runHistorySearch();
+    });
+    $('eb-hist-reset-btn').addEventListener('click', resetHistoryFilters);
+    ['eb-hist-invoice', 'eb-hist-product', 'eb-hist-person'].forEach(id => {
+      $(id).addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('eb-hist-search-btn').click(); } });
+    });
+    $('eb-history-detail-close').addEventListener('click', closeHistoryDetailModal);
+    $('eb-history-detail-modal').addEventListener('click', e => { if (e.target.id === 'eb-history-detail-modal') closeHistoryDetailModal(); });
+
+    // ── Settings ──
+    $('eb-set-save-btn').addEventListener('click', saveSettingsFromForm);
+    $('eb-set-reset-btn').addEventListener('click', resetSettingsToDefaults);
 
     document.addEventListener('keydown', onGlobalKeydown);
   }
