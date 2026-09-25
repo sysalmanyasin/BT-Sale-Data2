@@ -4,15 +4,43 @@
    file convention (stockledger.css, attendance.css) and its shared
    design tokens (css/variables.css) rather than porting POS's own
    css/components.css literally.
+
+   Layout note (desktop redesign): Candela's own Sale-and-Return screen
+   splits the working area into a wide product/line-item grid on the
+   left and a narrower, always-visible Net Total + payment + save/cancel
+   panel on the right. This file mirrors that split (.eb-pos-grid) so
+   the person never has to scroll past the whole bill to reach Checkout
+   on a desktop-sized screen, while staying inside this app's own token
+   palette (var(--teal)/var(--green)/var(--amber)/var(--red)) instead of
+   Candela's literal hex values, so it still respects dark mode.
    ══════════════════════════════════════════════════════════════════ */
 
 #page-emergency-billing.page { display: none; }
 #page-emergency-billing.page.on { display: block; }
 
 .eb-wrap {
-  max-width: 980px; margin: 0 auto; padding: var(--sp-4) var(--sp-4) var(--sp-7);
+  max-width: 1360px; margin: 0 auto; padding: var(--sp-4) var(--sp-5) var(--sp-7);
   font-family: var(--sans); color: var(--text);
 }
+
+.eb-header {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  flex-wrap: wrap; gap: var(--sp-3); margin-bottom: var(--sp-3);
+}
+
+/* ── Inventory sync status — the actual fix for "No products found" /
+   "Inventory data unavailable" showing up for real products: this page
+   now proactively refreshes BT Inventory on every visit (see
+   emergency-billing-native.js's refreshInventoryStatus()), and always
+   shows staff exactly how fresh that data is plus a one-click retry,
+   instead of the old silent dependence on having visited Cover or the
+   Inventory page first in the same session. ─────────────────────────── */
+.eb-inv-status-box { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
+.eb-inv-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); font-weight: 600; }
+.eb-inv-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+.eb-inv-dot-ok { background: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 22%, transparent); }
+.eb-inv-dot-warn { background: var(--amber); box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber) 22%, transparent); }
+.eb-inv-dot-bad { background: var(--red); box-shadow: 0 0 0 3px color-mix(in srgb, var(--red) 22%, transparent); }
 
 .eb-banner {
   display: flex; align-items: center; gap: var(--sp-3);
@@ -21,7 +49,17 @@
   margin-bottom: var(--sp-4); color: var(--amber); font-size: 13px; font-weight: 600;
 }
 
-.eb-search-box { position: relative; margin-bottom: var(--sp-4); }
+/* ── Two-pane desktop layout ─────────────────────────────────────── */
+.eb-pos-grid { display: grid; grid-template-columns: 1fr 392px; gap: var(--sp-5); align-items: start; }
+.eb-pos-main { min-width: 0; display: flex; flex-direction: column; gap: var(--sp-4); }
+.eb-pos-side { position: sticky; top: var(--sp-4); display: flex; flex-direction: column; gap: var(--sp-4); }
+
+@media (max-width: 980px) {
+  .eb-pos-grid { grid-template-columns: 1fr; }
+  .eb-pos-side { position: static; }
+}
+
+.eb-search-box { position: relative; }
 .eb-search-row { display: flex; gap: var(--sp-2); }
 .eb-search-row input[type="text"] {
   flex: 1; padding: 12px 14px; border-radius: var(--r-md);
@@ -37,7 +75,7 @@
 .eb-search-results {
   display: none; position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; right: 0;
   background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--r-md);
-  box-shadow: var(--sh-lg); max-height: 320px; overflow-y: auto;
+  box-shadow: var(--sh-lg); max-height: 360px; overflow-y: auto;
 }
 .eb-sr-row {
   display: grid; grid-template-columns: 24px 1fr 90px 56px 80px;
@@ -52,54 +90,90 @@
 .eb-sr-stock { font-family: var(--mono); text-align: right; }
 .eb-sr-stock.low { color: var(--red); font-weight: 700; }
 .eb-sr-price { font-family: var(--mono); text-align: right; font-weight: 600; }
-.eb-search-no-results { display: none; padding: var(--sp-3); color: var(--muted); font-size: 13px; }
+.eb-search-no-results { display: none; padding: var(--sp-3); color: var(--amber); font-size: 13px; font-weight: 600; }
 
 .eb-f9-hint {
   display: none; background: var(--purple-lt); color: var(--purple);
   font-weight: 700; font-size: 12px; padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--r-sm); margin-bottom: var(--sp-3);
+  border-radius: var(--r-sm);
 }
 
-.eb-cart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--sh); overflow: hidden; margin-bottom: var(--sp-4); }
-.eb-cart-head { display: flex; justify-content: space-between; align-items: center; padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--border); }
-.eb-cart-head h3 { font-size: 14px; }
-#eb-cart-count { color: var(--muted); font-size: 12px; }
+/* ── Bill grid (left pane) — Candela's own product/line grid is a tall,
+   dense table with a sticky header; scoping the scroll to this card
+   (instead of the whole page) keeps the right-hand totals/checkout
+   panel in view even on a long bill. ────────────────────────────── */
+.eb-cart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--sh); overflow: hidden; }
+.eb-cart-head {
+  display: flex; justify-content: space-between; align-items: center; padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--border); background: var(--grad-header); color: #fff;
+}
+.eb-cart-head h3 { font-size: 14px; font-weight: 700; letter-spacing: .01em; }
+#eb-cart-count { color: rgba(255,255,255,.85); font-size: 12px; font-weight: 600; }
 
+.eb-cart-scroll { max-height: 52vh; overflow-y: auto; }
 table.eb-cart-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-table.eb-cart-table th { text-align: left; padding: 8px 12px; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--border); }
+table.eb-cart-table thead th {
+  position: sticky; top: 0; z-index: 1; background: var(--s2);
+  text-align: left; padding: 8px 12px; color: var(--muted); font-size: 11px;
+  text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--border);
+}
 table.eb-cart-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-.eb-cart-row.f9-active { background: var(--purple-lt); }
+table.eb-cart-table tbody tr:nth-child(even) { background: var(--s2); }
+.eb-cart-row.f9-active { background: var(--purple-lt) !important; }
 .eb-cc-name { font-weight: 600; }
 .eb-cc-code { color: var(--muted); font-size: 11px; font-family: var(--mono); }
 .eb-tc-price, .eb-tc-total { font-family: var(--mono); text-align: right; white-space: nowrap; }
+.eb-tc-total { font-weight: 700; }
 .eb-qwrap { display: flex; align-items: center; gap: 4px; }
 .eb-qbtn { width: 24px; height: 24px; border-radius: var(--r-xs); border: 1px solid var(--border); background: var(--s2); cursor: pointer; font-size: 14px; line-height: 1; }
+.eb-qbtn:hover { background: var(--alt); border-color: var(--accent); }
 .eb-qinp { width: 46px; text-align: center; padding: 4px; border-radius: var(--r-xs); border: 1px solid var(--border); }
 .eb-del { border: none; background: none; color: var(--red); cursor: pointer; font-size: 14px; }
 .eb-empty { text-align: center; padding: var(--sp-6) var(--sp-4); color: var(--muted); font-size: 14px; }
 
-.eb-summary { padding: var(--sp-3) var(--sp-4); border-top: 1px solid var(--border); background: var(--s3); }
-.eb-summary-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
-.eb-summary-row.eb-net { font-weight: 700; font-size: 16px; border-top: 1px dashed var(--border-strong); margin-top: 6px; padding-top: 8px; }
-.eb-discount-row input { width: 110px; text-align: right; padding: 4px 8px; border-radius: var(--r-xs); border: 1px solid var(--border); }
+/* ── Right pane — totals / payment / actions, one continuous card so it
+   reads as a single "till panel" the way Candela's own right rail does. ── */
+.eb-total-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--sh-md); overflow: hidden; }
 
-.eb-meta-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--sp-3); padding: var(--sp-4); border-top: 1px solid var(--border); }
+.eb-summary { padding: var(--sp-4); }
+.eb-summary-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 13px; }
+.eb-discount-row input { width: 110px; text-align: right; padding: 4px 8px; border-radius: var(--r-xs); border: 1px solid var(--border); }
+/* Big, Candela-style Net Total display — this is the number a person
+   scans for from across the counter, so it gets its own tinted panel
+   and a much larger, bolder numeral than the rest of the summary. */
+.eb-summary-row.eb-net {
+  margin-top: var(--sp-2); padding: var(--sp-3) var(--sp-3);
+  border-radius: var(--r-md); border: 1px solid var(--teal);
+  background: var(--tlt); flex-direction: column; align-items: flex-start; gap: 4px;
+}
+.eb-summary-row.eb-net span:first-child { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--teal-dk); align-self: flex-start; }
+.eb-summary-row.eb-net span:last-child { font-size: 30px; font-weight: 800; color: var(--teal-dk); font-family: var(--mono); line-height: 1; }
+
+.eb-meta-grid { display: grid; grid-template-columns: 1fr; gap: var(--sp-3); padding: var(--sp-4); border-top: 1px solid var(--border); }
 .eb-meta-grid label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .03em; }
 .eb-meta-grid input { width: 100%; padding: 8px 10px; border-radius: var(--r-sm); border: 1px solid var(--border); }
 
 .eb-pay-section { padding: var(--sp-4); border-top: 1px solid var(--border); }
 .eb-pay-modes { display: flex; gap: var(--sp-2); margin-bottom: var(--sp-3); }
-.eb-pay-btn { flex: 1; padding: 10px; border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-weight: 600; font-size: 13px; }
-.eb-pay-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.eb-pay-btn { flex: 1; padding: 10px; border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-weight: 600; font-size: 13px; transition: background .15s,border-color .15s,color .15s; }
+.eb-pay-btn.active { background: var(--teal); color: #fff; border-color: var(--teal); }
 .eb-cash-row { display: flex; gap: var(--sp-3); align-items: center; margin-bottom: var(--sp-2); }
 .eb-cash-row input { flex: 1; padding: 8px 10px; border-radius: var(--r-sm); border: 1px solid var(--border); }
 .eb-change-row { display: none; justify-content: space-between; font-weight: 700; padding: 6px 0; }
 
-.eb-actions { display: flex; gap: var(--sp-3); padding: var(--sp-4); border-top: 1px solid var(--border); }
-.eb-btn { padding: 10px 18px; border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-weight: 600; font-size: 13px; }
+/* ── Actions — colour-coded like Candela's own bottom toolbar (green
+   save, amber hold, red cancel/refund, neutral clear), built from this
+   app's existing semantic tokens rather than Candela's literal hex. ── */
+.eb-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--sp-2); padding: var(--sp-4); border-top: 1px solid var(--border); }
+.eb-btn { padding: 11px 16px; border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-weight: 700; font-size: 13px; transition: filter .1s, background .15s, border-color .15s; }
+.eb-btn:hover:not(:disabled) { filter: brightness(0.97); }
+.eb-btn:active:not(:disabled) { filter: brightness(0.93); }
+.eb-btn:disabled { opacity: .5; cursor: not-allowed; }
 .eb-btn-sm { padding: 6px 10px; font-size: 12px; }
 .eb-btn-danger { color: var(--red); }
-.eb-btn-primary { background: var(--teal); border-color: var(--teal); color: #fff; flex: 1; }
+.eb-btn-danger-outline { color: var(--red); border-color: var(--red); background: var(--rlt); }
+.eb-btn-hold { color: var(--amber); border-color: var(--amber); background: var(--alt2); }
+.eb-btn-primary { background: var(--green); border-color: var(--green); color: #fff; grid-column: 1 / -1; padding: 14px 16px; font-size: 15px; }
 .eb-btn-primary:disabled { opacity: .5; cursor: not-allowed; }
 .eb-btn-ghost { color: var(--muted); }
 
@@ -112,7 +186,7 @@ table.eb-cart-table td { padding: 8px 12px; border-bottom: 1px solid var(--borde
 .eb-held-meta { color: var(--muted); font-size: 12px; }
 .eb-held-actions { display: flex; gap: 6px; }
 
-.eb-recon-card { margin-top: var(--sp-4); }
+.eb-recon-card { margin-top: 0; }
 .eb-recon-hint { color: var(--muted); font-size: 12px; margin-bottom: var(--sp-3); line-height: 1.5; }
 .eb-recon-loading { color: var(--muted); font-size: 13px; padding: var(--sp-3) 0; }
 

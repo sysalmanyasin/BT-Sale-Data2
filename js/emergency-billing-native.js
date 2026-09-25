@@ -70,6 +70,70 @@ import { BTDate } from './bt-date.js';
   function saveCart() { _saveLocal(CART_KEY, cart); }
   function saveHeld() { _saveLocal(HELD_KEY, heldBills); }
 
+  // ── Inventory-load status ───────────────────────────────────────────
+  // Root cause of the "No products found" / "Inventory data unavailable"
+  // reports: window.inventoryBridgeGetFullData() (from inventory-bridge.js)
+  // is a passive read of whatever's already in memory/localStorage — it
+  // never fetches anything itself. Historically the ONLY things that ever
+  // called InventoryBridge.refreshFullData() were the Inventory page's own
+  // onShowInventory() and Cover's renderCoverDashboard() (see ui.js's
+  // showPage(), which only renders Cover when id==='cover'). So a user who
+  // deep-links or bookmarks straight to #emergency-billing — never passing
+  // through Cover or Inventory first in that browser session — hit a page
+  // whose product cache was genuinely empty, and got told "No products
+  // found for 000817" for a product that exists, plus "Inventory data
+  // unavailable" the moment they tried to add anything to the cart. This
+  // page now proactively kicks off the same refresh Inventory's own page
+  // does, every time it's shown, exactly like inventory-native.js's
+  // onShowInventory() does — and shows a status line + manual "Refresh"
+  // button so staff aren't left guessing why a real product isn't found.
+  function _isInventoryLoaded() {
+    const data = (typeof window.inventoryBridgeGetFullData === 'function') ? window.inventoryBridgeGetFullData() : null;
+    return !!(data && data.lastSync && data.lastSync.syncedAt && (data.products || []).length);
+  }
+
+  function renderInventoryStatus() {
+    const el = $('eb-inv-status');
+    if (!el) return;
+    const data = (typeof window.inventoryBridgeGetFullData === 'function') ? window.inventoryBridgeGetFullData() : null;
+    if (!data || !data.lastSync || !data.lastSync.syncedAt) {
+      el.innerHTML = '<span class="eb-inv-dot eb-inv-dot-bad"></span>BT Inventory not loaded yet';
+      return;
+    }
+    const syncedMs = new Date(data.lastSync.syncedAt).getTime();
+    const mins = Math.max(0, Math.round((Date.now() - syncedMs) / 60000));
+    const ageLabel = mins < 1 ? 'just now' : (mins + ' min' + (mins === 1 ? '' : 's') + ' ago');
+    const stale = mins >= 30;
+    el.innerHTML = '<span class="eb-inv-dot eb-inv-dot-' + (stale ? 'warn' : 'ok') + '"></span>' +
+      'BT Inventory · ' + (data.products || []).length + ' items · synced ' + ageLabel;
+  }
+
+  // force=true bypasses the bridge's own 60s throttle (used for the manual
+  // "Refresh" button); force=false (page-show) still fetches immediately
+  // whenever nothing is cached yet, and is a near-free no-op when the
+  // bridge is already fresh (see inventory-bridge.js's refreshFullData).
+  let _invRefreshInFlight = false;
+  async function refreshInventoryStatus(force) {
+    const btn = $('eb-inv-refresh-btn');
+    if (_invRefreshInFlight && !force) { renderInventoryStatus(); return; }
+    _invRefreshInFlight = true;
+    if (btn) { btn.disabled = true; btn.textContent = '↻ Refreshing…'; }
+    const el = $('eb-inv-status');
+    if (el && !_isInventoryLoaded()) el.innerHTML = '<span class="eb-inv-dot eb-inv-dot-warn"></span>Loading BT Inventory…';
+    try {
+      if (typeof window.inventoryBridgeRefresh === 'function') {
+        await window.inventoryBridgeRefresh(!!force);
+      }
+    } catch (e) { /* best-effort — status line below reflects whatever we ended up with */ }
+    renderInventoryStatus();
+    if (btn) { btn.disabled = false; btn.textContent = '↻ Refresh Inventory'; }
+    _invRefreshInFlight = false;
+    // If the person already typed a search while this was loading (or is
+    // retrying after a manual refresh), re-run it now that data may exist.
+    const searchInput = $('eb-search-input');
+    if (searchInput && searchInput.value.trim()) doSearch(searchInput.value);
+  }
+
   // ── Init — called every time the page is shown ───────────────────
   function init() {
     if (!$('page-emergency-billing')) {
@@ -85,6 +149,8 @@ import { BTDate } from './bt-date.js';
     renderHeldBills();
     renderReconciliation();
     setPaymentMode(paymentMethod);
+    renderInventoryStatus();
+    refreshInventoryStatus(false);
   }
 
   // ── Product search ─────────────────────────────────────────────────
@@ -99,7 +165,15 @@ import { BTDate } from './bt-date.js';
 
     if (!searchResults.length) {
       panel.style.display = 'none'; panel.innerHTML = '';
-      if (noRes) { noRes.style.display = 'block'; noRes.textContent = 'No products found for "' + q + '"'; }
+      if (noRes) {
+        noRes.style.display = 'block';
+        // Distinguish "genuinely not stocked" from "BT Inventory hasn't
+        // loaded in this session yet" — these used to show the same
+        // confusing "No products found" message even for real products.
+        noRes.textContent = _isInventoryLoaded()
+          ? 'No products found for "' + q + '"'
+          : '⚠️ BT Inventory hasn\'t loaded yet — tap "Refresh Inventory" above, then search again.';
+      }
       return;
     }
     if (noRes) noRes.style.display = 'none';
@@ -144,7 +218,8 @@ import { BTDate } from './bt-date.js';
     const avail = await EBBridge.getAvailableQty(product.code);
 
     if (!avail) {
-      say('⚠️ Inventory data unavailable for ' + product.code + ' — refresh BT Inventory first.', true);
+      say('⚠️ Inventory data unavailable for ' + product.code + ' — tap "Refresh Inventory" above and try again.', true);
+      refreshInventoryStatus(false); // best-effort background retry, same as a manual click
       return;
     }
     if (wantTotal > avail.available) {
@@ -185,7 +260,7 @@ import { BTDate } from './bt-date.js';
     let q = parseInt(val, 10);
     if (isNaN(q) || q <= 0) { renderCart(); return; }
     const avail = await EBBridge.getAvailableQty(item.code);
-    if (!avail) { say('⚠️ Inventory data unavailable — refresh BT Inventory first.', true); renderCart(); return; }
+    if (!avail) { say('⚠️ Inventory data unavailable — tap "Refresh Inventory" above and try again.', true); refreshInventoryStatus(false); renderCart(); return; }
     if (q > avail.available) { q = avail.available; say('⚠️ Capped at ' + q + ' available for ' + esc(item.name) + '.', true); }
     item.qty = q;
     item.total = Number((item.qty * item.price).toFixed(2));
@@ -826,6 +901,8 @@ import { BTDate } from './bt-date.js';
     $('eb-receipt-print-btn').addEventListener('click', printReceipt);
     $('eb-receipt-modal').addEventListener('click', e => { if (e.target.id === 'eb-receipt-modal') closeReceiptModal(); });
 
+    $('eb-inv-refresh-btn').addEventListener('click', () => refreshInventoryStatus(true));
+
     $('eb-refund-open-btn').addEventListener('click', openRefundModal);
     $('eb-refund-close').addEventListener('click', closeRefundModal);
     $('eb-refund-find-btn').addEventListener('click', findRefundInvoice);
@@ -841,7 +918,7 @@ import { BTDate } from './bt-date.js';
   // recordSale) — re-render in case another device/tab's sale affected
   // anything this page is showing. Cart/held bills are per-device
   // localStorage, so this mostly just re-renders what's already there.
-  function onBridgeRefresh() { renderCart(); renderHeldBills(); renderReconciliation(); renderCoverBanner(true); }
+  function onBridgeRefresh() { renderCart(); renderHeldBills(); renderReconciliation(); renderCoverBanner(true); renderInventoryStatus(); }
 
   window.ebOnShowEmergencyBilling = onShowEmergencyBilling;
   window.emergencyBillingNativeOnRefresh = onBridgeRefresh;
