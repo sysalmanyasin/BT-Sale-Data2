@@ -42,13 +42,6 @@
 .eb-inv-dot-warn { background: var(--amber); box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber) 22%, transparent); }
 .eb-inv-dot-bad { background: var(--red); box-shadow: 0 0 0 3px color-mix(in srgb, var(--red) 22%, transparent); }
 
-.eb-banner {
-  display: flex; align-items: center; gap: var(--sp-3);
-  background: var(--alt2); border: 1px solid var(--amber);
-  border-radius: var(--r-md); padding: var(--sp-3) var(--sp-4);
-  margin-bottom: var(--sp-4); color: var(--amber); font-size: 13px; font-weight: 600;
-}
-
 /* ── Two-pane desktop layout ─────────────────────────────────────── */
 .eb-pos-grid { display: grid; grid-template-columns: 1fr 392px; gap: var(--sp-5); align-items: start; }
 .eb-pos-main { min-width: 0; display: flex; flex-direction: column; gap: var(--sp-4); }
@@ -80,10 +73,17 @@
 .eb-sr-row {
   display: grid; grid-template-columns: 24px 1fr 90px 56px 80px;
   gap: var(--sp-2); align-items: center; padding: 8px 12px; cursor: pointer; font-size: 13px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border); border-left: 3px solid transparent;
 }
 .eb-sr-row:last-child { border-bottom: none; }
-.eb-sr-row:hover, .eb-sr-row.selected { background: var(--alt); }
+/* Was var(--alt), a near-white tint indistinguishable from the row
+   background — keyboard ↑/↓ looked like it did nothing. A saturated
+   accent tint + left bar makes the active row obvious, same idea as
+   Candela's own selected-row bar. */
+.eb-sr-row:hover, .eb-sr-row.selected {
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  border-left-color: var(--accent);
+}
 .eb-sr-num { color: var(--muted); font-family: var(--mono); font-size: 11px; }
 .eb-sr-code { color: var(--muted); font-size: 11px; font-family: var(--mono); }
 .eb-sr-generic { color: var(--t2); font-size: 12px; }
@@ -93,9 +93,9 @@
 .eb-search-no-results { display: none; padding: var(--sp-3); color: var(--amber); font-size: 13px; font-weight: 600; }
 
 .eb-f9-hint {
-  display: none; background: var(--purple-lt); color: var(--purple);
+  display: none; background: color-mix(in srgb, var(--accent) 12%, var(--surface)); color: var(--accent-dk);
   font-weight: 700; font-size: 12px; padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--r-sm);
+  border: 1px solid var(--accent); border-radius: var(--r-sm);
 }
 
 /* ── Bill grid (left pane) — Candela's own product/line grid is a tall,
@@ -111,23 +111,48 @@
 #eb-cart-count { color: rgba(255,255,255,.85); font-size: 12px; font-weight: 600; }
 
 .eb-cart-scroll { max-height: 52vh; overflow-y: auto; }
-table.eb-cart-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+/* Full grid (header + body, every cell bordered on all four sides) —
+   matches Candela's own Sale-and-Return grid rather than the old
+   horizontal-rules-only table. */
+table.eb-cart-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
 table.eb-cart-table thead th {
-  position: sticky; top: 0; z-index: 1; background: var(--s2);
-  text-align: left; padding: 8px 12px; color: var(--muted); font-size: 11px;
-  text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 1; background: var(--grad-header); color: #fff;
+  text-align: left; padding: 10px 12px; font-size: 11px;
+  text-transform: uppercase; letter-spacing: .04em;
+  border: 1px solid var(--accent-dk); border-top: none;
 }
-table.eb-cart-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-table.eb-cart-table tbody tr:nth-child(even) { background: var(--s2); }
-.eb-cart-row.f9-active { background: var(--purple-lt) !important; }
+table.eb-cart-table thead th:first-child { border-left: none; }
+table.eb-cart-table thead th:last-child { border-right: none; }
+table.eb-cart-table td { padding: 8px 12px; border: 1px solid var(--grid); vertical-align: middle; }
+table.eb-cart-table td:first-child { border-left: none; }
+table.eb-cart-table td:last-child { border-right: none; }
+table.eb-cart-table tbody tr:last-child td { border-bottom: none; }
+table.eb-cart-table tbody tr:nth-child(even) { background: var(--alt); }
+table.eb-cart-table tbody tr:hover { background: color-mix(in srgb, var(--accent) 6%, var(--surface)); }
+/* Column widths — Qty widened so the −/input/+ controls never wrap or
+   get clipped; # and the trailing delete column stay narrow. */
+table.eb-cart-table th:nth-child(1), table.eb-cart-table td.eb-tc-sr { width: 34px; text-align: center; }
+table.eb-cart-table th:nth-child(4), table.eb-cart-table td.eb-tc-qty { width: 148px; }
+table.eb-cart-table th:nth-child(3), table.eb-cart-table td.eb-tc-price,
+table.eb-cart-table th:nth-child(5), table.eb-cart-table td.eb-tc-total { width: 110px; }
+table.eb-cart-table th:last-child, table.eb-cart-table td.eb-tc-act { width: 40px; text-align: center; }
+/* F9 row-edit highlight — was var(--purple-lt), a near-white tint that
+   was indistinguishable from the surface/banding colors, so toggling
+   F9 and pressing ↑/↓ looked like nothing was happening. A strong
+   accent tint + left bar makes the active row unmistakable. */
+.eb-cart-row.f9-active {
+  background: color-mix(in srgb, var(--accent) 20%, var(--surface)) !important;
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.eb-cart-row.f9-active td { font-weight: 600; }
 .eb-cc-name { font-weight: 600; }
 .eb-cc-code { color: var(--muted); font-size: 11px; font-family: var(--mono); }
 .eb-tc-price, .eb-tc-total { font-family: var(--mono); text-align: right; white-space: nowrap; }
 .eb-tc-total { font-weight: 700; }
-.eb-qwrap { display: flex; align-items: center; gap: 4px; }
-.eb-qbtn { width: 24px; height: 24px; border-radius: var(--r-xs); border: 1px solid var(--border); background: var(--s2); cursor: pointer; font-size: 14px; line-height: 1; }
+.eb-qwrap { display: flex; align-items: center; gap: 6px; }
+.eb-qbtn { width: 26px; height: 26px; flex: none; border-radius: var(--r-xs); border: 1px solid var(--border); background: var(--s2); cursor: pointer; font-size: 15px; line-height: 1; }
 .eb-qbtn:hover { background: var(--alt); border-color: var(--accent); }
-.eb-qinp { width: 46px; text-align: center; padding: 4px; border-radius: var(--r-xs); border: 1px solid var(--border); }
+.eb-qinp { width: 56px; text-align: center; padding: 5px 2px; border-radius: var(--r-xs); border: 1px solid var(--border); font-size: 13px; }
 .eb-del { border: none; background: none; color: var(--red); cursor: pointer; font-size: 14px; }
 .eb-empty { text-align: center; padding: var(--sp-6) var(--sp-4); color: var(--muted); font-size: 14px; }
 

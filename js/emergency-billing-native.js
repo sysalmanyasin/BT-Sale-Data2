@@ -203,6 +203,11 @@ import { BTDate } from './bt-date.js';
       row.addEventListener('click', () => pickProduct(p));
       panel.appendChild(row);
     });
+    // Pre-select the top result so the ↑/↓/Enter flow is usable from the
+    // very first keystroke, instead of requiring a first ArrowDown press
+    // before anything is visibly selected.
+    activeDropdownIndex = 0;
+    panel.firstElementChild.classList.add('selected');
     panel.style.display = 'block';
   }
 
@@ -436,6 +441,13 @@ import { BTDate } from './bt-date.js';
       if (cart.length === 0) { say('Cart is empty — nothing to edit.', true); return; }
       f9Mode = !f9Mode;
       f9Row = f9Mode ? 0 : -1;
+      // Turning F9 on almost always happens right after adding a product,
+      // when focus is still sitting in the search box (pickProduct()
+      // re-focuses it). Since isInput blocks ↑/↓ below, F9 looked "broken"
+      // — it toggled, but arrow keys did nothing until the person clicked
+      // elsewhere first. Blur whatever's focused so row navigation works
+      // the instant F9 is pressed.
+      if (f9Mode && isInput) document.activeElement.blur();
       say(f9Mode ? '⚡ F9 Mode ON' : 'F9 Mode OFF');
       highlightF9Row(); updateF9Hint();
       return;
