@@ -570,8 +570,48 @@ async function gauthSignOutAllDevices() {
 }
 window.gauthSignOutAllDevices = gauthSignOutAllDevices;
 
+// ── Kiosk mode: https://bt.duapharma.com/#pos ───────────────────────
+// A deliberate, narrow bypass of Google Sign-In — scoped to ONLY the
+// POS/Emergency Billing page, nothing else. This is NOT the same as
+// unlockApp(): it never reveals #nav or #status-bar, never starts
+// Supabase sync for DAILY/MONTHLY/STAFF, never touches IndexedDB, and
+// never runs initApp()/rebuildAll(). A #pos visitor gets exactly one
+// page and nothing else — no way to reach sales history, credit,
+// inventory totals, or any other business data from this entry point.
+//
+// This is safe specifically because emergency-billing-bridge.js and
+// inventory-bridge.js already read/write through their own anon-role
+// Supabase clients, independent of this file's Google-authenticated
+// session (see those files' header comments) — the billing page has
+// never actually depended on unlockApp() having run.
+//
+// NOTE: this intentionally makes the POS page reachable by anyone
+// with the link, no login required. Don't widen this alias or reuse
+// this pattern for any other page without re-checking that its data
+// path is equally anon-scoped.
+function _isKioskHash() {
+  const raw = (window.location.hash || '').replace(/^#/, '').split('/')[0];
+  return raw === 'pos';
+}
+function _enterKioskMode() {
+  document.getElementById('pin-gate').style.display = 'none';
+  document.body.classList.add('bt-kiosk-mode');
+  if (typeof showPage === 'function') showPage('emergency-billing');
+}
+// If a kiosk device's hash is ever edited/navigated away from #pos
+// (e.g. someone typing in the address bar), snap back to #pos rather
+// than exposing whatever empty/broken page id they landed on — there's
+// no nav bar to have done this by clicking, so this only guards against
+// a manual URL edit.
+window.addEventListener('hashchange', () => {
+  if (document.body.classList.contains('bt-kiosk-mode') && !_isKioskHash()) {
+    history.replaceState(null, '', '#pos');
+  }
+});
+
 // ── Main gate init ────────────────────────────────────────────────
 function initAuthGate() {
+  if (_isKioskHash()) { _enterKioskMode(); return; }
   // Client ID now comes from Supabase (bt_auth_config) via _gauthSyncFromSupabase();
   // only seed the fallback here if nothing has ever been synced/cached.
   if (!Repository.getItem(GAUTH_CID_K)) {

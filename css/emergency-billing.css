@@ -18,6 +18,17 @@
 #page-emergency-billing.page { display: none; }
 #page-emergency-billing.page.on { display: block; }
 
+/* Kiosk mode (#pos, see auth.js's _enterKioskMode) — belt-and-braces:
+   #nav/#status-bar are already display:none by default and are only
+   ever revealed by unlockApp(), which kiosk mode never calls. This
+   just makes sure nothing else can accidentally surface them or any
+   other page while body carries .bt-kiosk-mode. */
+body.bt-kiosk-mode #nav,
+body.bt-kiosk-mode #status-bar,
+body.bt-kiosk-mode .page:not(#page-emergency-billing) {
+  display: none !important;
+}
+
 .eb-wrap {
   max-width: 1360px; margin: 0 auto; padding: var(--sp-4) var(--sp-5) var(--sp-7);
   font-family: var(--sans); color: var(--text);

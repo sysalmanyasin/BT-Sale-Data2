@@ -276,12 +276,19 @@ const _PAGE_SUBROUTES = {
 // reacts to it. This is what makes Ctrl/Cmd/middle-click → "open in new
 // tab" work: the browser opens a fresh tab at that hash without touching
 // the current tab at all.
+// Short public alias(es) — kept separate from the real page id so
+// internal references (CSS, table names, the Android widget's own
+// deep link) never had to change just to give this one page a
+// friendlier public hash. See auth.js's kiosk-mode gate, which checks
+// this same alias before the Google Sign-In screen ever renders.
+const _HASH_ALIASES = { pos: 'emergency-billing' };
 function _routeFromHash(hash) {
   const raw = (hash || '').replace(/^#/, '');
   if (!raw) return false;
   const slash = raw.indexOf('/');
-  const page = slash === -1 ? raw : raw.slice(0, slash);
+  let page = slash === -1 ? raw : raw.slice(0, slash);
   const sub  = slash === -1 ? '' : raw.slice(slash + 1);
+  page = _HASH_ALIASES[page] || page;
   if (!page || !document.getElementById('page-' + page)) return false;
   const _already = (typeof _curPage !== 'undefined' && _curPage === page);
   const _route = _PAGE_SUBROUTES[page];

@@ -1004,7 +1004,7 @@ import { BTDate } from './bt-date.js';
           '<div class="eb-cover-banner" onclick="location.hash=\'#emergency-billing\'">' +
             '<span class="eb-cover-banner-icon">🚨</span>' +
             '<div class="eb-cover-banner-text">' +
-              '<strong>Emergency Billing</strong>' +
+              '<strong>POS</strong>' +
               (today.length ? ' — ' + today.length + ' invoice' + (today.length !== 1 ? 's' : '') + ' today · ' + c + todayNet.toFixed(2) : '') +
               (unreconciledDays ? ' · ' + unreconciledDays + ' day' + (unreconciledDays !== 1 ? 's' : '') + ' not yet reconciled' : '') +
             '</div>' +
