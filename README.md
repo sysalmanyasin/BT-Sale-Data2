@@ -1,6 +1,6 @@
 Bahria Town Sales Intelligence Centre
 
-BT Sales IC is a personal, single-user pharmacy operations PWA for Bahria Town. It combines daily sales capture, reporting, management tools, inventory intelligence, closing/audit read-only bridges, attendance, spreadsheets, PDF archiving, cross-device sync, and native Android companions in one codebase.
+BT Sales IC is a personal, single-user pharmacy operations PWA for Bahria Town. It combines daily sales capture, reporting, management tools, inventory intelligence, closing/audit read-only bridges, attendance, a break-glass emergency billing counter, spreadsheets, PDF archiving, cross-device sync, and native Android companions in one codebase.
 
 Live app: "bt.duapharma.com"
 Repository: "sysalmanyasin/BT-Sale-Data2"
@@ -15,6 +15,7 @@ Default branch: "main"
 Area| What it provides
 📊 Sales| Dashboard, daily sales entry, history/index, reports, payments, DIFF/reconciliation, cash-deposit reporting
 👔 Manager| Staff Registry, staff notes, Ledger, Targets, Salary, Petty, Credit, Incentive, Manager Overview, Payslip, Attendance
+🧾 Emergency Billing| Break-glass pharmacy counter billing with cart, held bills, receipts, history and validated refunds
 📦 Inventory| BT Inventory, Stock Ledger, Excess Working, Reorder Report, Inventory Health
 🚚 STR| Awaited/Dispatched/Received workflow, detail view, flattened report, Zero Dispatch
 📖 Closing| Native read-only Closing Book + Credit Ledger views
@@ -49,6 +50,7 @@ Backend
 - Supabase Storage
 - Supabase Edge Functions
 - Supabase REST APIs
+- Database RPCs for transaction-sensitive operations (e.g. emergency refunds)
 
 PWA
 
@@ -84,6 +86,7 @@ Testing
 - JavaScript parsing checks
 - DOM/navigation tests
 - Pure-module tests
+- Current suite: 17 test suites / 167 tests, all passing
 
 ---
 
@@ -159,7 +162,7 @@ It uses deterministic application calculations and business rules.
 
 Implementation:
 
-"js/herald/"
+"js/herald/" ("herald-engine.js", "herald-page.js")
 
 ---
 
@@ -261,6 +264,86 @@ Candela POS → Dropbox → Supabase
 pipeline.
 
 It is not the main PWA's primary source of truth.
+
+---
+
+🧾 Emergency Billing
+
+Emergency Billing is a dedicated break-glass counter-billing system, separate from the normal Daily Sale Entry workflow.
+
+Implementation:
+
+- "js/emergency-billing-native.js" — cart, checkout, held bills, receipts, history, refunds, settings
+- "js/emergency-billing-bridge.js" — read-only inventory-availability bridge
+- "css/emergency-billing.css"
+- "supabase/migrations/20260924182923_emergency_billing.sql"
+- "supabase/migrations/20260925120000_emergency_billing_refunds.sql"
+- "supabase/migrations/20260926190000_emergency_billing_refund_fix.sql"
+
+Purpose
+
+Emergency Billing exists for situations where a counter transaction must be recorded against available inventory without forcing it through the normal Daily Sale Entry flow — for example when the main sales-entry workflow is temporarily unavailable or a rapid walk-in sale needs to be captured immediately. It is a supplement to normal sales reporting, not a replacement for it; emergency transactions still require operational reconciliation against Daily Sale Entry.
+
+Cart & Billing Screen
+
+- Product search by name, generic name or product code
+- Live inventory-availability check via the read-only inventory bridge — if availability cannot be verified, adding to cart is blocked rather than allowed to proceed against unknown stock
+- Quantity +/− controls and direct quantity editing
+- "F9" quick-edit: pressing Enter on a cart row opens its quantity field with the value pre-selected, or typing a digit opens the field and starts entry immediately; Enter commits, Escape reverts. The native up/down spinner arrows on the quantity field (and the refund modal's quantity field) are hidden in favour of the custom −/+ buttons
+- Payment method, customer name/phone, staff name, cash received and change calculation
+
+Discounts
+
+Two discount modes, toggled per bill:
+
+- Flat (Rs.) — a rupee amount entered directly
+- Percentage (%) — a percentage of the subtotal, with quick-preset chips (1% / 2% / 3% / 4% / 5%); the rupee-equivalent is shown live underneath the input
+
+Whichever mode is used, the cart's total calculation resolves the discount down to a single rupee amount before it reaches the receipt, the checkout RPC, or held-bill storage — so downstream logic never needs to know which mode was used. A held bill always freezes and restores its discount as a flat rupee figure regardless of the mode it was originally entered in.
+
+Held Bills
+
+Bills can be held and recalled later, for situations such as a customer stepping away from the counter, a prescription needing clarification, or stock needing confirmation.
+
+Held bills are stored locally on the device via localStorage:
+
+- "eb_active_cart_v1"
+- "eb_held_bills_v1"
+
+«Held bills are convenience state, not the central system of record.» Clearing browser/device storage can remove unfinished held transactions.
+
+Checkout & Receipts
+
+- Checkout writes the transaction through the Emergency Billing database layer, not through the main Repository/Actions pipeline
+- Receipts support 58mm and 80mm thermal widths, configurable header/footer, and optional address/phone visibility
+- Round-net-to-nearest-rupee is a configurable option
+
+History & Reprint
+
+- Filter by Today / Yesterday / Last 7 Days / This Month / All, plus invoice, product, payment-method and staff filters
+- Saved transactions open in a read-only detail view
+- History can be exported to XLSX
+- Reprinting a historical invoice preserves the original transaction timestamp rather than presenting it as a new sale
+
+Refunds
+
+Refunds are validated at the database layer through a dedicated RPC rather than relying on frontend checks alone. The refund function:
+
+1. Confirms the original invoice and product line exist
+2. Rejects a non-positive refund quantity
+3. Deducts previously-refunded quantity from the original quantity to compute what remains refundable
+4. Rejects a refund that exceeds the remaining refundable quantity
+5. Restores refunded stock against the current inventory-bridge sync context (not an obsolete historical window)
+
+A later migration ("...refund_fix.sql") fixed an ambiguous "invoice_number" column reference inside "record_emergency_refund()".
+
+Billing Settings
+
+Device-local configuration covering branch identity (name/address/phone), business identity (name/tax number), receipt formatting, default payment method, low-stock threshold, staff-name requirement, auto-print, confirm-before-clear, and round-to-nearest-rupee.
+
+Design note
+
+Emergency Billing intentionally operates through its own transaction and storage architecture rather than the main app's Repository/Actions/EventBus pipeline. This is a deliberate boundary — do not refactor it into the generalized business-data layer without separately accounting for the inventory bridge, the refund RPC, the device-local cart/held-bills, and receipt/reconciliation requirements.
 
 ---
 
@@ -1065,6 +1148,12 @@ Pages should avoid bypassing the business/data layers.
 
 ---
 
+Architecture exception: Emergency Billing
+
+Emergency Billing (see above) intentionally sits outside this Action → Repository → State → EventBus pipeline, using its own device-local cart/held-bills storage and its own database RPCs for checkout and refunds. This is a deliberate boundary, not an oversight — see the Emergency Billing section for the reasoning.
+
+---
+
 🔧 ES Module Migration
 
 The application is undergoing an incremental migration toward ES modules.
@@ -1112,6 +1201,8 @@ Examples include:
 - Bridge caches
 - Inventory preferences
 - STR preferences
+- Emergency Billing active cart and held bills
+- Emergency Billing device-local settings
 
 These should not automatically be treated as business-data migration candidates.
 
@@ -1129,9 +1220,12 @@ These should not automatically be treated as business-data migration candidates.
 ├── js/
 │   ├── shared/
 │   ├── herald/
-│   └── application modules
+│   ├── emergency-billing-native.js
+│   ├── emergency-billing-bridge.js
+│   └── application modules (96 JS files at top level of js/)
 │
 ├── css/
+│   └── emergency-billing.css, str-report.css, herald.css, pdf-library.css, …
 │
 ├── inventory-search/
 │
@@ -1141,6 +1235,9 @@ These should not automatically be treated as business-data migration candidates.
 │
 ├── supabase/
 │   ├── functions/
+│   │   ├── inventory-chat/
+│   │   ├── medicine-ai-info/
+│   │   └── send-daily-whatsapp-briefing/
 │   ├── migrations/
 │   ├── pdf_library/
 │   └── activity_log/
@@ -1172,6 +1269,10 @@ Watch mode
 
 npm run test:watch
 
+Current results
+
+17 test suites, 167 tests, 0 failures, 0 skipped (last verified run).
+
 ---
 
 Testing Coverage
@@ -1186,7 +1287,7 @@ The test suite covers areas including:
 - Pure module behaviour
 - EventBus behaviour
 - Printing API surface
-- Staff Registry integration
+- Staff Registry integration (Repository + Actions smoke tests)
 - DOM behaviour
 - Navigation behaviour
 
@@ -1204,8 +1305,19 @@ The Node/jsdom suite does not completely reproduce:
 - Android background execution
 - OEM battery management
 - Physical GPS behaviour
+- Emergency Billing thermal receipt output
 
-Therefore real-device testing remains essential.
+Therefore real-device testing remains essential, particularly for Attendance and Emergency Billing.
+
+---
+
+🖨️ Service Worker / PWA Versioning
+
+The root service worker tracks a versioned cache name in "sw.js", currently:
+
+"bt-sales-v11.06"
+
+Cache-version bumps are typically accompanied by an inline changelog comment above "CACHE_NAME" describing what changed (e.g. the most recent bump documents the Emergency Billing percentage-discount mode and F9 quantity-edit behaviour described above). Always check the live value in "sw.js" rather than assuming this README's version number is current — bump the version and the comment together whenever shipped files change.
 
 ---
 
@@ -1232,6 +1344,16 @@ Attendance
 - Attendance is not yet automatically connected to Salary deductions.
 - QR fallback should be treated as part of the physical security model.
 - Device/user authentication can be strengthened in a future version.
+
+---
+
+Emergency Billing
+
+- Break-glass workflow, not a replacement for normal Daily Sale Entry — emergency transactions require separate reconciliation.
+- Active cart, held bills and billing settings are device-local (localStorage); clearing storage loses unfinished bills.
+- Inventory availability during billing depends on the freshness of the inventory bridge.
+- Receipt output (58mm/80mm) requires real thermal-printer hardware testing; browser preview is not sufficient.
+- Operates outside the main Repository/Actions/EventBus pipeline by design (see Architecture exception above).
 
 ---
 
@@ -1273,9 +1395,12 @@ Never commit:
 - WhatsApp secrets
 - Google private credentials
 - Database passwords
+- GitHub personal access tokens
 - Other privileged credentials
 
 Client-side public Supabase keys may be required for browser functionality, but they must always be protected by appropriate RLS and backend authorization.
+
+If a credential of any kind is ever pasted into a document, chat, issue, or commit, treat it as compromised immediately: revoke/rotate it and issue a new one rather than continuing to use it.
 
 ---
 
@@ -1292,6 +1417,8 @@ Do not rely solely on README documentation.
 New business-data writes should normally use:
 
 Action → Repository → State → EventBus
+
+(Emergency Billing is the deliberate exception — see above.)
 
 3. Avoid direct state mutation
 
@@ -1333,7 +1460,7 @@ When changing application files:
 
 8. Printing
 
-Test print functionality on actual Android devices before release.
+Test print functionality — including Emergency Billing thermal receipts — on actual Android/hardware before release.
 
 9. Attendance
 
@@ -1353,11 +1480,15 @@ For production Supabase schema changes:
 
 «Add a dated migration.»
 
-Do not silently modify production assumptions.
+Do not silently modify production assumptions. Financial/inventory-sensitive operations (e.g. refunds) should validate at the database/RPC layer, not only in the frontend.
 
 11. Repository-wide cleanup
 
 After refactoring, search the entire repository for stale references before declaring the change complete.
+
+12. Secrets hygiene
+
+Never commit or paste tokens/keys anywhere that persists (commits, issues, chat transcripts, documents). Rotate immediately if one is ever exposed.
 
 ---
 
@@ -1392,7 +1523,8 @@ This project prioritizes:
 - Pharmacy-specific practicality
 - Native Android integration where browser limitations matter
 - Clear separation between deterministic business intelligence and AI-assisted companion tools
+- Clear separation between the main synchronized business-data layer and intentionally local/device-specific systems (e.g. Emergency Billing)
 
 The goal is not simply to create another dashboard.
 
-The goal is to create a single operational intelligence layer for pharmacy management that connects sales, staff, inventory, closing, STR, audit and supporting workflows without unnecessarily duplicating the underlying systems.
+The goal is to create a single operational intelligence layer for pharmacy management that connects sales, staff, inventory, closing, STR, audit, emergency billing and supporting workflows without unnecessarily duplicating the underlying systems.
