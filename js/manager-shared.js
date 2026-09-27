@@ -129,7 +129,11 @@ function _mgrPopSel(selId, current) {
 function _ni(v) { return Math.round(Number(v) || 0); }
 function _fc2(v) { return _ni(v).toLocaleString('en-PK'); }
 function _inp(type, val, cls, oninput, ph) {
-  return `<input type="${type}" value="${val}" class="mgr-inp${cls ? ' ' + cls : ''}" placeholder="${ph||''}" ${oninput ? 'oninput="' + oninput + '"' : ''}>`;
+  // val/ph land inside an HTML attribute — escape both so a typed "
+  // (or <, &, ') in e.g. a credit-entry description can't break out of
+  // the attribute and inject markup/JS. type/cls/oninput stay
+  // caller-controlled constants, never raw user text, so they're left as-is.
+  return `<input type="${type}" value="${_mgrEsc(val)}" class="mgr-inp${cls ? ' ' + cls : ''}" placeholder="${_mgrEsc(ph||'')}" ${oninput ? 'oninput="' + oninput + '"' : ''}>`;
 }
 function _mgrEsc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

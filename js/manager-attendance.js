@@ -247,7 +247,7 @@ function renderManualView() {
     <div class="att-manual-form">
       <label>Staff
         <select id="att-manual-staff">
-          ${active.map(s => `<option value="${s.id}" data-num="${s.staffId || ''}">${_mgrEsc(s.name)}</option>`).join('')}
+          ${active.map(s => `<option value="${s.id}" data-num="${_mgrEsc(s.staffId || '')}">${_mgrEsc(s.name)}</option>`).join('')}
         </select>
       </label>
       <label>Type

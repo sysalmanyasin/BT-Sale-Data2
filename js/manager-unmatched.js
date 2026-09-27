@@ -12,6 +12,7 @@ import { Actions } from './actions.js';
 import { STAFF } from './config.js';
 import { activeStaff } from './manager-staff.js';
 import { _crdData } from './manager-credit.js';
+import { _mgrEsc } from './manager-shared.js';
 
 // UNMATCHED — entries Closing App couldn't confidently match to a
 // real staff member or expense category. Landed here (via
@@ -45,7 +46,7 @@ function renderUnmatchedTab() {
     return;
   }
   const staffOptions = activeStaff().map(e =>
-    `<option value="${e.staffId}">${e.name}</option>`).join('');
+    `<option value="${_mgrEsc(e.staffId)}">${_mgrEsc(e.name)}</option>`).join('');
   const EXPENSE_CATS = [
     ['bill','Bill Amount'], ['fuel','Fuel/HO'], ['soap','Soap/Tissue'],
     ['refresh','Refreshment'], ['extra','Extra'], ['guardIncentive','Guard Incentive'],
@@ -56,10 +57,10 @@ function renderUnmatchedTab() {
   box.innerHTML = entries.map(e => `
     <div class="mgr-card" style="margin-bottom:10px;padding:12px;border:1px solid var(--border);border-radius:8px">
       <div style="display:flex;justify-content:space-between;font-weight:600">
-        <span>${e.kind === 'staffCredit' ? '👤 Staff Credit' : '🧾 Expense'} — "${e.rawLabel}"</span>
+        <span>${e.kind === 'staffCredit' ? '👤 Staff Credit' : '🧾 Expense'} — "${_mgrEsc(e.rawLabel)}"</span>
         <span style="color:var(--red)">Rs ${Number(e.amount||0).toLocaleString('en-PK')}</span>
       </div>
-      <div style="font-size:12px;color:var(--muted);margin:4px 0 8px">${e.date}${e.shift ? ' · ' + e.shift : ''}${e.desc ? ' · ' + e.desc : ''} · from Closing App</div>
+      <div style="font-size:12px;color:var(--muted);margin:4px 0 8px">${_mgrEsc(e.date)}${e.shift ? ' · ' + _mgrEsc(e.shift) : ''}${e.desc ? ' · ' + _mgrEsc(e.desc) : ''} · from Closing App</div>
       ${e.kind === 'staffCredit' ? `
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           <select id="unm-staff-${e.id}" style="flex:1;min-width:140px">${staffOptions}</select>

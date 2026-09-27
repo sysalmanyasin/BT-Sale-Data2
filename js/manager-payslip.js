@@ -19,7 +19,7 @@
 // ══════════════════════════════════════════════════════════════════════
 import { Print } from './print.js';
 import { STAFF } from './config.js';
-import { _ni, _fc2, mgrLoad, _mgrPopSel, mgrMonths } from './manager-shared.js';
+import { _ni, _fc2, _mgrEsc, mgrLoad, _mgrPopSel, mgrMonths } from './manager-shared.js';
 import { _crdNet } from './manager-credit.js';
 import { _genIncentive } from './manager-generic.js';
 import { _salNet } from './manager-salary.js';
@@ -91,7 +91,7 @@ function renderStaffPayslip(name) {
 
   const entryRows = (crdRow.entries || []).length
     ? crdRow.entries.map(e => `<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:11px;color:var(--t2)">
-        <span>${e.date || ''} — ${e.desc || ''}</span>
+        <span>${_mgrEsc(e.date || '')} — ${_mgrEsc(e.desc || '')}</span>
         <span style="font-family:var(--mono);color:${_ni(e.amount)<0?'var(--red,#dc2626)':'var(--green,#16a34a)'}">₨${_fc2(e.amount)}</span>
       </div>`).join('')
     : '<div style="font-size:11px;color:var(--muted);padding:3px 0">No credit entries this month.</div>';
@@ -99,8 +99,8 @@ function renderStaffPayslip(name) {
   cont.innerHTML = `
     <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden">
       <div style="background:var(--accent);color:#fff;padding:12px 16px">
-        <div style="font-size:14px;font-weight:700">${emp.name || name}${sid ? ' <span style="opacity:.8;font-weight:400;font-size:12px">(' + sid + ')</span>' : ''}</div>
-        <div style="font-size:11px;opacity:.85">${salRow.desig || emp.designation || ''} · ${my} · ${salRow.days || 31} days</div>
+        <div style="font-size:14px;font-weight:700">${_mgrEsc(emp.name || name)}${sid ? ' <span style="opacity:.8;font-weight:400;font-size:12px">(' + _mgrEsc(sid) + ')</span>' : ''}</div>
+        <div style="font-size:11px;opacity:.85">${_mgrEsc(salRow.desig || emp.designation || '')} · ${my} · ${salRow.days || 31} days</div>
       </div>
       <div style="padding:12px 16px">
         <div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:2px">Salary</div>
