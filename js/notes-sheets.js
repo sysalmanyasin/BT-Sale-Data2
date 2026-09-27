@@ -197,7 +197,7 @@ function _nsEsc(s)       { return String(s||'').replace(/&/g,'&amp;').replace(/<
 /* ══════════════════════════════════════════════════════════════════════
    MAIN RENDERER
 ══════════════════════════════════════════════════════════════════════ */
-var _nsActivePanel = 'notes';
+let _nsActivePanel = 'notes';
 
 function renderNotesSheets() {
   const host = document.getElementById('mgr-sheets');
@@ -242,7 +242,7 @@ function _nsRenderPanel() {
 /* ══════════════════════════════════════════════════════════════════════
    NOTES PANEL  (unchanged from original)
 ══════════════════════════════════════════════════════════════════════ */
-var _nsNoteSearch = '';
+let _nsNoteSearch = '';
 function _nsSetNoteSearch(v) { _nsNoteSearch = v; _nsRenderPanel(); } // inline onchange/oninput can't assign a module-scoped var directly (see file header)
 
 function _nsRenderNotes(host) {
@@ -472,9 +472,9 @@ function _nsSourceRows(id) {
   }
 }
 
-var _nsDataDomain = 'sales';
-var _nsDataSource = 'monthly';
-var _nsDataSearch = '';
+let _nsDataDomain = 'sales';
+let _nsDataSource = 'monthly';
+let _nsDataSearch = '';
 
 function _nsSetDataDomain(v) {
   _nsDataDomain = v;

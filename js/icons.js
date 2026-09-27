@@ -28,9 +28,9 @@
 (function () {
   'use strict';
 
-  var A = 'width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"';
+  const A = 'width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"';
 
-  var BT_ICONS = {
+  const BT_ICONS = {
     menu: '<svg ' + A + '><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>',
     cover: '<svg ' + A + '><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
     recents: '<svg ' + A + '><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
@@ -65,11 +65,11 @@
   // the drawer calls it itself each time it re-renders, since
   // nav-sections.js rebuilds that markup from scratch on every open).
   function apply(root) {
-    var scope = root || document;
+    const scope = root || document;
     scope.querySelectorAll('.bnav-item[data-page], .side-menu-btn').forEach(function (el) {
-      var key = el.dataset.page || 'menu';
-      var svg = BT_ICONS[key];
-      var span = el.querySelector('.bicon');
+      const key = el.dataset.page || 'menu';
+      const svg = BT_ICONS[key];
+      const span = el.querySelector('.bicon');
       if (svg && span) span.innerHTML = svg;
     });
   }

@@ -29,10 +29,10 @@
   // ─────────────────────────────────────────────────────────────────────
 
   // Month sort helper — converts "July 2026" → numeric 202607
-  var _MON_IDX = { January:1,February:2,March:3,April:4,May:5,June:6,
+  const _MON_IDX = { January:1,February:2,March:3,April:4,May:5,June:6,
                    July:7,August:8,September:9,October:10,November:11,December:12 };
   function _mySort(my) {
-    var p = (my || '').split(' ');
+    const p = (my || '').split(' ');
     return parseInt(p[1] || '0', 10) * 100 + (_MON_IDX[p[0]] || 0);
   }
 
@@ -57,7 +57,7 @@
 
   function _loadTgts() {
     if (!_assertActionsAvailable('loadFeatureData')) return {};
-    var raw = '';
+    let raw = '';
     try { raw = Actions.loadFeatureData('bt_targets') || ''; } catch (e) { console.warn('[ui-extras] _loadTgts: loadFeatureData failed', e); }
     try { return raw ? JSON.parse(raw) : {}; } catch (e) { return {}; }
   }
@@ -68,7 +68,7 @@
   }
 
   function _refreshTargetUI() {
-    var fn = window.renderTargetList || window.loadTargetList  ||
+    const fn = window.renderTargetList || window.loadTargetList  ||
              window.initTargets      || window.buildTargetList ||
              window.refreshTargets   || window.reloadTargets;
     if (typeof fn === 'function') { try { fn(); } catch (e) { console.warn('[ui-extras] _refreshTargetUI: refresh fn threw', e); } }
@@ -78,11 +78,11 @@
     // Need MONTHLY to exist and be a non-empty array
     if (!window.MONTHLY || !Array.isArray(MONTHLY) || !MONTHLY.length) return 0;
 
-    var tgts  = _loadTgts();
-    var added = 0;
+    const tgts  = _loadTgts();
+    let added = 0;
 
     // Build a chronologically-sorted list of all known Month_Year strings
-    var allMY = MONTHLY
+    let allMY = MONTHLY
       .map(function (m) { return (m.Month_Year || '').trim(); })
       .filter(function (my) { return my.length > 0; });
 
@@ -92,7 +92,7 @@
     // Sort oldest → newest so carry-forward works correctly
     allMY.sort(function (a, b) { return _mySort(a) - _mySort(b); });
 
-    var runningTarget = 0; // carry-forward accumulator
+    let runningTarget = 0; // carry-forward accumulator
 
     allMY.forEach(function (my) {
       if (my in tgts) {
@@ -110,11 +110,11 @@
       _refreshTargetUI();
 
       // Also add any missing months to the tgt-sel dropdown
-      var tgtSel = document.getElementById('tgt-sel');
+      const tgtSel = document.getElementById('tgt-sel');
       if (tgtSel) {
         allMY.forEach(function (my) {
           if (!Array.from(tgtSel.options).some(function (o) { return o.value === my; })) {
-            var opt = document.createElement('option');
+            const opt = document.createElement('option');
             opt.value = opt.textContent = my;
             tgtSel.appendChild(opt);
           }
@@ -139,27 +139,27 @@
   // carrying forward the most-recent target value as the default.
   // ─────────────────────────────────────────────────────────────────────
   function _patchAddNewMonth() {
-    var orig = window.addNewMonth;
+    const orig = window.addNewMonth;
     if (!orig || orig._uexPatched) return;
 
     window.addNewMonth = function () {
-      var result = orig.apply(this, arguments);
+      const result = orig.apply(this, arguments);
 
       // Wait for targets.js to finish, then run the full self-heal scan.
       // This covers the new month AND any other gaps that may exist.
       setTimeout(function () {
-        var monEl = document.getElementById('nm-sel');
-        var yrEl  = document.getElementById('nm-year');
-        var mon   = monEl ? (monEl.value || '').trim() : '';
-        var yr    = yrEl  ? (yrEl.value  || '').trim() : '';
-        var newMY = mon && yr ? mon + ' ' + yr : '';
+        const monEl = document.getElementById('nm-sel');
+        const yrEl  = document.getElementById('nm-year');
+        const mon   = monEl ? (monEl.value || '').trim() : '';
+        const yr    = yrEl  ? (yrEl.value  || '').trim() : '';
+        const newMY = mon && yr ? mon + ' ' + yr : '';
 
         // Run the full heal — it will create the new month entry + any others
-        var healed = _autoHealTargets(true); // silent=true, we toast manually below
+        const healed = _autoHealTargets(true); // silent=true, we toast manually below
 
         if (newMY && typeof toast === 'function') {
-          var tgts   = _loadTgts();
-          var carryVal = tgts[newMY] || 0;
+          const tgts   = _loadTgts();
+          const carryVal = tgts[newMY] || 0;
           toast(
             '🎯 Target for ' + newMY + ' created' +
             (carryVal ? ' (₨' + Number(carryVal).toLocaleString() + ' carried forward)' : ' — set it in Monthly Targets'),
@@ -188,8 +188,8 @@
       if (e.shiftKey || e.altKey)   return;
 
       // Skip when typing in an input / textarea / contenteditable
-      var tag = document.activeElement ? document.activeElement.tagName : '';
-      var ce  = document.activeElement && document.activeElement.contentEditable === 'true';
+      const tag = document.activeElement ? document.activeElement.tagName : '';
+      const ce  = document.activeElement && document.activeElement.contentEditable === 'true';
       if (tag === 'INPUT' || tag === 'TEXTAREA' || ce) return;
 
       if (e.key === 'd' || e.key === 'D') {
@@ -208,9 +208,9 @@
     if (window._uexSpPatched || typeof showPage !== 'function') return;
     window._uexSpPatched = true;
 
-    var orig = window.showPage;
+    const orig = window.showPage;
     window.showPage = function (page) {
-      var r = orig.apply(this, arguments);
+      const r = orig.apply(this, arguments);
       // Self-heal targets silently whenever the Tools tab opens
       if (page === 'tools') {
         setTimeout(function () { _autoHealTargets(true); }, 600);

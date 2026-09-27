@@ -22,17 +22,17 @@
 (function () {
   'use strict';
 
-  var REQUIRED = [
+  const REQUIRED = [
     'Repository', 'Actions', 'MONTHLY', 'DAILY', 'STAFF',
     'n', 'ff', 'fc', 'computeDailyTotals', 'recomputeMonthly',
   ];
 
-  var missing = REQUIRED.filter(function (name) {
+  const missing = REQUIRED.filter(function (name) {
     return typeof window[name] === 'undefined';
   });
 
   if (missing.length) {
-    var msg = '[Architecture] BOOT ORDER BROKEN — missing on window: ' +
+    const msg = '[Architecture] BOOT ORDER BROKEN — missing on window: ' +
       missing.join(', ') + '. This means a script ran before ' +
       'config.js/repository.js/actions.js finished loading. Check ' +
       '<script> order in index.html — the module block (bt-format, ' +

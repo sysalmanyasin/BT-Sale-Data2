@@ -164,7 +164,7 @@ function _driveGetAllPetty() {
 // Hook unlockApp to trigger Drive auto-backup after initialization
 // Deferred to window load so unlockApp is guaranteed to be defined
 window.addEventListener('load', function(){
-  var _origUnlock = unlockApp;
+  const _origUnlock = unlockApp;
   unlockApp = function() {
     _origUnlock.apply(this, arguments);
     setTimeout(function(){ _driveAutoBackup(); }, 6000); // run 6s after app loads
