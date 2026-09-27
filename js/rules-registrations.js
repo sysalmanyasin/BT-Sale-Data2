@@ -57,7 +57,7 @@ function n(v) { return Number(v) || 0; }
     const MN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
     const my = MN[d.getMonth()] + ' ' + d.getFullYear();
     let tgts = {};
-    try { tgts = JSON.parse(Repository.getItem('bt_targets') || '{}'); } catch (e) {}
+    try { tgts = JSON.parse(Repository.getItem('bt_targets') || '{}'); } catch (e) { console.warn('[rules-registrations] paceAtRisk: bt_targets parse', e); }
     const p = Analytics.getTargetPaceForMonth(my, tgts);
     if (!p || p.achieved) return null;
     if (p.paceRatio >= 0.8 || p.daysLeft > PACE_URGENT_DAYS_LEFT) return null;

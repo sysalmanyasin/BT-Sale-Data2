@@ -72,29 +72,29 @@ function _getReorderThreshold() {
   const v = parseInt(Repository.getItem(REORDER_THRESHOLD_KEY), 10);
   return [7, 14, 30].indexOf(v) !== -1 ? v : 30;
 }
-function _setReorderThreshold(v) { try { Repository.setItem(REORDER_THRESHOLD_KEY, String(v)); } catch (e) {} }
+function _setReorderThreshold(v) { try { Repository.setItem(REORDER_THRESHOLD_KEY, String(v)); } catch (e) { console.warn('[cover-dashboard] _setReorderThreshold', e); } }
 function _getReorderWindow() {
   const v = parseInt(Repository.getItem(REORDER_WINDOW_KEY), 10);
   return [30, 60, 90].indexOf(v) !== -1 ? v : 60;
 }
-function _setReorderWindow(v) { try { Repository.setItem(REORDER_WINDOW_KEY, String(v)); } catch (e) {} }
+function _setReorderWindow(v) { try { Repository.setItem(REORDER_WINDOW_KEY, String(v)); } catch (e) { console.warn('[cover-dashboard] _setReorderWindow', e); } }
 function _getTopRunWindow() {
   const v = parseInt(Repository.getItem(TOPRUN_WINDOW_KEY), 10);
   return [30, 60, 90].indexOf(v) !== -1 ? v : 30;
 }
-function _setTopRunWindow(v) { try { Repository.setItem(TOPRUN_WINDOW_KEY, String(v)); } catch (e) {} }
+function _setTopRunWindow(v) { try { Repository.setItem(TOPRUN_WINDOW_KEY, String(v)); } catch (e) { console.warn('[cover-dashboard] _setTopRunWindow', e); } }
 function _getTopRunCount() {
   const v = parseInt(Repository.getItem(TOPRUN_COUNT_KEY), 10);
   return [10, 20].indexOf(v) !== -1 ? v : 10;
 }
-function _setTopRunCount(v) { try { Repository.setItem(TOPRUN_COUNT_KEY, String(v)); } catch (e) {} }
+function _setTopRunCount(v) { try { Repository.setItem(TOPRUN_COUNT_KEY, String(v)); } catch (e) { console.warn('[cover-dashboard] _setTopRunCount', e); } }
 // Every group slug that exists today (must mirror GROUP_META's .slug values
 // below). Used only to seed the very first render — once a user has
 // expanded/collapsed anything, their real stored preference (even an empty
 // array, meaning "everything expanded") always wins over this default.
 const ALL_GROUP_SLUGS = ['sales', 'manager', 'notes', 'closing', 'audit', 'inventory', 'str', 'reports'];
 function _getPins() { try { return JSON.parse(Repository.getItem(PIN_KEY) || '[]'); } catch (e) { return []; } }
-function _setPins(arr) { try { Repository.setItem(PIN_KEY, JSON.stringify(arr)); } catch (e) {} }
+function _setPins(arr) { try { Repository.setItem(PIN_KEY, JSON.stringify(arr)); } catch (e) { console.warn('[cover-dashboard] _setPins', e); } }
 function _getCollapsed() {
   try {
     const raw = Repository.getItem(COLLAPSE_KEY);
@@ -102,7 +102,7 @@ function _getCollapsed() {
     return JSON.parse(raw || '[]');
   } catch (e) { return ALL_GROUP_SLUGS.slice(); }
 }
-function _setCollapsed(arr) { try { Repository.setItem(COLLAPSE_KEY, JSON.stringify(arr)); } catch (e) {} }
+function _setCollapsed(arr) { try { Repository.setItem(COLLAPSE_KEY, JSON.stringify(arr)); } catch (e) { console.warn('[cover-dashboard] _setCollapsed', e); } }
 
 function _greetingText() {
   const h = new Date().getHours();
@@ -1208,7 +1208,7 @@ function _getOrder() {
     return saved;
   } catch (e) { return _defaultOrderSlugs(); }
 }
-function _setOrder(arr) { try { Repository.setItem(ORDER_KEY, JSON.stringify(arr)); } catch (e) {} }
+function _setOrder(arr) { try { Repository.setItem(ORDER_KEY, JSON.stringify(arr)); } catch (e) { console.warn('[cover-dashboard] _setOrder', e); } }
 // Resolves the saved slug order back to group names for renderCoverDashboard's
 // own iteration — GROUP_ORDER itself is left untouched as the permanent
 // "this is the full known set" default/reconciliation source, same role

@@ -51,27 +51,27 @@
     if (window.Actions && typeof Actions[fnName] === 'function') return true;
     console.error('[Architecture] ui-extras.js: Actions.' + fnName + ' unavailable — ' +
       'targets self-heal skipped this run. Check js load order in index.html.');
-    try { if (typeof toast === 'function') toast('⚠ Targets sync unavailable — check console', 'e'); } catch (e) {}
+    try { if (typeof toast === 'function') toast('⚠ Targets sync unavailable — check console', 'e'); } catch (e) { console.warn('[ui-extras] _assertActionsAvailable: toast() failed', e); }
     return false;
   }
 
   function _loadTgts() {
     if (!_assertActionsAvailable('loadFeatureData')) return {};
     var raw = '';
-    try { raw = Actions.loadFeatureData('bt_targets') || ''; } catch (e) {}
+    try { raw = Actions.loadFeatureData('bt_targets') || ''; } catch (e) { console.warn('[ui-extras] _loadTgts: loadFeatureData failed', e); }
     try { return raw ? JSON.parse(raw) : {}; } catch (e) { return {}; }
   }
 
   function _saveTgts(tgts) {
     if (!_assertActionsAvailable('saveTargets')) return;
-    try { Actions.saveTargets(JSON.stringify(tgts)); } catch (e) {}
+    try { Actions.saveTargets(JSON.stringify(tgts)); } catch (e) { console.warn('[ui-extras] _saveTgts: saveTargets failed', e); }
   }
 
   function _refreshTargetUI() {
     var fn = window.renderTargetList || window.loadTargetList  ||
              window.initTargets      || window.buildTargetList ||
              window.refreshTargets   || window.reloadTargets;
-    if (typeof fn === 'function') { try { fn(); } catch (e) {} }
+    if (typeof fn === 'function') { try { fn(); } catch (e) { console.warn('[ui-extras] _refreshTargetUI: refresh fn threw', e); } }
   }
 
   function _autoHealTargets(silent) {

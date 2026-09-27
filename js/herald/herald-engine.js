@@ -69,6 +69,12 @@ const DESK_META = {
 const DESK_ORDER = ['sales', 'manager', 'closing', 'inventory', 'audit', 'cross', 'milestone'];
 
 // ── small helpers ────────────────────────────────────────────────────
+// Every candidate-builder block below is wrapped in its own try/catch so
+// one desk's bug can't blank the whole edition — but a swallowed error
+// used to leave zero trace, so a broken block could silently produce no
+// insights forever. _warn() keeps that isolation while still surfacing
+// the failure in the console, tagged with exactly which block threw.
+function _warn(ctx, e) { console.warn('[herald-engine:' + ctx + ']', e); }
 function fmt(v) { return Math.round(Math.abs(n(v))).toLocaleString('en-PK'); }
 function todayISO() {
   const d = new Date();
@@ -85,28 +91,28 @@ function parseDMY(dateStr) {
   return isNaN(d.getTime()) ? null : d;
 }
 function getTgts() {
-  try { return JSON.parse(Repository.getItem('bt_targets') || '{}'); } catch (e) { return {}; }
+  try { return JSON.parse(Repository.getItem('bt_targets') || '{}'); } catch (e) { _warn('getTgts', e); return {}; }
 }
 function safeBuild(fn, ctx, extra) {
-  try { return fn(ctx, extra) || []; } catch (e) { return []; }
+  try { return fn(ctx, extra) || []; } catch (e) { _warn('safeBuild:' + (fn.name || 'anonymous'), e); return []; }
 }
 
 // ── persistence ──────────────────────────────────────────────────────
 function _loadLog() {
-  try { return JSON.parse(Repository.getItem(SHOWN_LOG_KEY) || '[]'); } catch (e) { return []; }
+  try { return JSON.parse(Repository.getItem(SHOWN_LOG_KEY) || '[]'); } catch (e) { _warn('_loadLog', e); return []; }
 }
 function _pruneLog(log) {
   const cutoff = Date.now() - LOG_WINDOW_DAYS * 86400000;
   return (Array.isArray(log) ? log : []).filter(e => e && e.ts >= cutoff);
 }
 function _saveLog(log) {
-  try { Actions.saveFeatureData(SHOWN_LOG_KEY, JSON.stringify(_pruneLog(log))); } catch (e) {}
+  try { Actions.saveFeatureData(SHOWN_LOG_KEY, JSON.stringify(_pruneLog(log))); } catch (e) { _warn('_saveLog', e); }
 }
 function _loadDeskHistory() {
-  try { const h = JSON.parse(Repository.getItem(DESK_HISTORY_KEY) || '[]'); return Array.isArray(h) ? h : []; } catch (e) { return []; }
+  try { const h = JSON.parse(Repository.getItem(DESK_HISTORY_KEY) || '[]'); return Array.isArray(h) ? h : []; } catch (e) { _warn('_loadDeskHistory', e); return []; }
 }
 function _saveDeskHistory(hist) {
-  try { Actions.saveFeatureData(DESK_HISTORY_KEY, JSON.stringify(hist.slice(0, 7))); } catch (e) {}
+  try { Actions.saveFeatureData(DESK_HISTORY_KEY, JSON.stringify(hist.slice(0, 7))); } catch (e) { _warn('_saveDeskHistory', e); }
 }
 function _timesShownWithin(log, id, days) {
   const cutoff = Date.now() - days * 86400000;
@@ -146,7 +152,7 @@ function buildSalesCandidates(ctx) {
     if (window.Analytics && typeof window.Analytics.computeInsightCandidates === 'function') {
       facts = window.Analytics.computeInsightCandidates(ctx.tgts) || [];
     }
-  } catch (e) {}
+  } catch (e) { _warn('buildSalesCandidates:analyticsFacts', e); }
 
   facts.forEach(f => {
     if (f.type === 'targetPace') {
@@ -233,7 +239,7 @@ function buildSalesCandidates(ctx) {
         });
       }
     }
-  } catch (e) {}
+  } catch (e) { _warn('buildSalesCandidates:yoyForecast', e); }
 
   // All-time daily / monthly records
   try {
@@ -250,7 +256,7 @@ function buildSalesCandidates(ctx) {
         });
       }
     }
-  } catch (e) {}
+  } catch (e) { _warn('buildSalesCandidates:allTimeDailyRecord', e); }
   try {
     if (M.length >= 3) {
       const maxMonth = M.reduce((a, b) => n(b.TOTAL) > n(a.TOTAL) ? b : a, M[0]);
@@ -263,7 +269,7 @@ function buildSalesCandidates(ctx) {
         });
       }
     }
-  } catch (e) {}
+  } catch (e) { _warn('buildSalesCandidates:allTimeMonthlyRecord', e); }
 
   // Rolling streak above/below the last-30-filled-days average
   try {
@@ -286,7 +292,7 @@ function buildSalesCandidates(ctx) {
         });
       }
     }
-  } catch (e) {}
+  } catch (e) { _warn('buildSalesCandidates:rollingStreak', e); }
 
   // Cash-share-of-sales shift, last two months
   try {
@@ -306,7 +312,7 @@ function buildSalesCandidates(ctx) {
         });
       }
     }
-  } catch (e) {}
+  } catch (e) { _warn('buildSalesCandidates:cashShareShift', e); }
 
   // Customer count MoM
   try {
@@ -325,7 +331,7 @@ function buildSalesCandidates(ctx) {
         }
       }
     }
-  } catch (e) {}
+  } catch (e) { _warn('buildSalesCandidates:customerTrend', e); }
 
   // Cash-to-Deposit reconciliation — same formula as cash-deposit-
   // report.js's own _cdrCompute(): Cash Sale − Cash Returns + FDPP +
@@ -352,7 +358,7 @@ function buildSalesCandidates(ctx) {
         }
       }
     }
-  } catch (e) {}
+  } catch (e) { _warn('buildSalesCandidates:cashDepositGap', e); }
 
   // Cumulative TOTAL vs COMP SALE gap (DIFF Report), via getDashboardKPIs().cumDiff
   try {
@@ -366,7 +372,7 @@ function buildSalesCandidates(ctx) {
         });
       }
     }
-  } catch (e) {}
+  } catch (e) { _warn('buildSalesCandidates:cumDiff', e); }
 
   // Rule-based sales alerts (diffTolerance / paceAtRisk — rules-registrations.js)
   try {
@@ -378,7 +384,7 @@ function buildSalesCandidates(ctx) {
         detail: 'Rule alert',
       });
     });
-  } catch (e) {}
+  } catch (e) { _warn('buildSalesCandidates:ruleAlerts', e); }
 
   // Missing-entry hygiene flag
   try {
@@ -392,7 +398,7 @@ function buildSalesCandidates(ctx) {
         detail: 'Data hygiene',
       });
     }
-  } catch (e) {}
+  } catch (e) { _warn('buildSalesCandidates:missingEntry', e); }
 
   return out;
 }
@@ -444,7 +450,7 @@ function buildManagerCandidates() {
         }
       }
     }
-  } catch (e) {}
+  } catch (e) { _warn('buildManagerCandidates:creditTrend', e); }
 
   // Salary MTD vs last month
   try {
@@ -465,7 +471,7 @@ function buildManagerCandidates() {
         }
       }
     }
-  } catch (e) {}
+  } catch (e) { _warn('buildManagerCandidates:salaryTrend', e); }
 
   // Petty cash MTD vs last month
   try {
@@ -486,7 +492,7 @@ function buildManagerCandidates() {
         }
       }
     }
-  } catch (e) {}
+  } catch (e) { _warn('buildManagerCandidates:pettyTrend', e); }
 
   // Rule-based manager alerts (advanceExceedsSalary / salarySwing)
   try {
@@ -498,7 +504,7 @@ function buildManagerCandidates() {
         detail: 'Rule alert',
       });
     });
-  } catch (e) {}
+  } catch (e) { _warn('buildManagerCandidates:ruleAlerts', e); }
 
   return out;
 }
@@ -533,7 +539,7 @@ function buildClosingCandidates() {
         });
       }
     }
-  } catch (e) {}
+  } catch (e) { _warn('buildClosingCandidates:todaySummary', e); }
 
   // Credit-ledger trend — light mirror of closing-native.js's
   // clBuildSnapshot() (namedCredits/tierCredits/auxCredits -> outTotalE),
@@ -581,7 +587,7 @@ function buildClosingCandidates() {
         }
       }
     }
-  } catch (e) {}
+  } catch (e) { _warn('buildClosingCandidates:creditTrend', e); }
 
   return out;
 }
@@ -631,7 +637,7 @@ function buildInventoryCandidates() {
         }
       }
     }
-  } catch (e) {}
+  } catch (e) { _warn('buildInventoryCandidates:buckets', e); }
 
   try {
     if (window.ReorderReportApp && typeof window.ReorderReportApp.getFlaggedRows === 'function') {
@@ -644,7 +650,7 @@ function buildInventoryCandidates() {
         });
       }
     }
-  } catch (e) {}
+  } catch (e) { _warn('buildInventoryCandidates:reorderCount', e); }
 
   try {
     const fired = aimRulesCheckAll() || [];
@@ -655,7 +661,7 @@ function buildInventoryCandidates() {
         detail: 'Rule alert',
       });
     });
-  } catch (e) {}
+  } catch (e) { _warn('buildInventoryCandidates:ruleAlerts', e); }
 
   return out;
 }
@@ -694,7 +700,7 @@ function buildAuditCandidates() {
         }
       });
     }
-  } catch (e) {}
+  } catch (e) { _warn('buildAuditCandidates', e); }
   return out;
 }
 
@@ -713,7 +719,7 @@ function buildCrossDomainCandidates(ctx, priorCandidates) {
         detail: 'Sales × Manager',
       });
     }
-  } catch (e) {}
+  } catch (e) { _warn('buildCrossDomainCandidates', e); }
   return out;
 }
 
@@ -737,7 +743,7 @@ function buildMilestoneCandidates() {
         });
       }
     }
-  } catch (e) {}
+  } catch (e) { _warn('buildMilestoneCandidates:cumulative', e); }
 
   try {
     const filled = D.filter(d => n(d.TOTAL) > 0);
@@ -757,7 +763,7 @@ function buildMilestoneCandidates() {
         }
       }
     }
-  } catch (e) {}
+  } catch (e) { _warn('buildMilestoneCandidates:bestWeekdayEver', e); }
 
   return out;
 }
@@ -862,17 +868,17 @@ export function buildTodaysEdition() {
   try {
     const cached = JSON.parse(Repository.getItem(EDITION_CACHE_KEY) || 'null');
     if (cached && cached.date === today && cached.edition) return cached.edition;
-  } catch (e) {}
+  } catch (e) { _warn('buildTodaysEdition:cacheRead', e); }
 
   const edition = _computeEdition();
-  try { Actions.saveFeatureData(EDITION_CACHE_KEY, JSON.stringify({ date: today, edition })); } catch (e) {}
+  try { Actions.saveFeatureData(EDITION_CACHE_KEY, JSON.stringify({ date: today, edition })); } catch (e) { _warn('buildTodaysEdition:cacheWrite', e); }
   return edition;
 }
 
 // Manual "later edition" refresh — same day, but discards the cache and
 // re-scores against current numbers (still logs/rotates normally).
 export function refreshEdition() {
-  try { Repository.setItem(EDITION_CACHE_KEY, ''); } catch (e) {}
+  try { Repository.setItem(EDITION_CACHE_KEY, ''); } catch (e) { _warn('refreshEdition:cacheClear', e); }
   return buildTodaysEdition();
 }
 

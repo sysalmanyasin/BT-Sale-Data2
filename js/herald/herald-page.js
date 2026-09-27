@@ -27,7 +27,7 @@ function _isCollapsed() {
   const raw = Repository.getItem(COLLAPSE_KEY);
   return raw == null ? true : raw === '1'; // default collapsed on first-ever load
 }
-function _setCollapsed(v) { try { Repository.setItem(COLLAPSE_KEY, v ? '1' : '0'); } catch (e) {} }
+function _setCollapsed(v) { try { Repository.setItem(COLLAPSE_KEY, v ? '1' : '0'); } catch (e) { console.warn('[herald-page] _setCollapsed', e); } }
 
 function _printEditionHtml(edition) {
   const parts = [
@@ -56,7 +56,7 @@ export function renderICHerald() {
   if (!el) return;
 
   let edition = null;
-  try { edition = buildTodaysEdition(); } catch (e) {}
+  try { edition = buildTodaysEdition(); } catch (e) { console.warn('[herald-page] renderICHerald: buildTodaysEdition failed', e); }
   if (!edition) { el.innerHTML = ''; return; }
 
   const storyCount = 1 + edition.desks.reduce((s, d) => s + d.items.length, 0);
@@ -129,7 +129,7 @@ export function renderICHerald() {
   const refreshBtn = document.getElementById('herald-refresh-btn');
   if (refreshBtn) refreshBtn.addEventListener('click', ev => {
     ev.stopPropagation();
-    try { edition = refreshEdition(); } catch (e) {}
+    try { edition = refreshEdition(); } catch (e) { console.warn('[herald-page] refresh-btn: refreshEdition failed', e); }
     renderICHerald();
   });
 }

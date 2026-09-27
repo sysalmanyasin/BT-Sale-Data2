@@ -48,6 +48,6 @@
       // before any page has silently rendered wrong numbers.
       alert('⚠ App failed to load correctly (missing: ' + missing.join(', ') + '). ' +
         'Please reload. If this repeats, check the browser console.');
-    } catch (e) {}
+    } catch (e) { console.warn('[boot-guard] alert() failed', e); }
   }
 })();

@@ -108,7 +108,7 @@ function _dashDefaultCreditMonth() {
     const A = window.Analytics;
     const latest = A && typeof A.latestStaffCreditMonth === 'function' ? A.latestStaffCreditMonth() : '';
     if (latest) return latest;
-  } catch (e) {}
+  } catch (e) { console.warn('[dashboard] _dashDefaultCreditMonth', e); }
   return _dashRunningMonth();
 }
 

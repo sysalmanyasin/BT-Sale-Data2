@@ -36,7 +36,7 @@
       const credits = typeof fn === 'function' ? fn() : null;
       const el = document.getElementById('sb-credit-val');
       if (el) el.textContent = credits && credits.value ? credits.value : '—';
-    } catch (e) {}
+    } catch (e) { console.warn('[status-bar] refreshStatusBar: credit pill', e); }
 
     try {
       const fn = window._todaySaleBreakdown;
@@ -48,7 +48,7 @@
       // most recent synced record isn't actually today's — mirror that
       // here so the pill never claims "Today's Sale" for stale data.
       if (lblEl) lblEl.textContent = (sale && /^Latest POS Sale/.test(sale.label || '')) ? 'Latest Sale' : "Today's Sale";
-    } catch (e) {}
+    } catch (e) { console.warn('[status-bar] refreshStatusBar: sale pill', e); }
 
     const stamp = document.getElementById('sb-updated');
     if (stamp) stamp.textContent = new Date().toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' });
