@@ -1,1530 +1,414 @@
-Bahria Town Sales Intelligence Centre
+# Bahria Town Sales Intelligence Centre
 
-BT Sales IC is a personal, single-user pharmacy operations PWA for Bahria Town. It combines daily sales capture, reporting, management tools, inventory intelligence, closing/audit read-only bridges, attendance, a break-glass emergency billing counter, spreadsheets, PDF archiving, cross-device sync, and native Android companions in one codebase.
+[![Live](https://img.shields.io/badge/live-bt.duapharma.com-2ea44f)](https://bt.duapharma.com)
+![Type](https://img.shields.io/badge/type-PWA-5a0fc8)
+![Frontend](https://img.shields.io/badge/frontend-vanilla%20JS%20%7C%20no%20build-f7df1e)
+![Backend](https://img.shields.io/badge/backend-Supabase-3ecf8e)
+![Android](https://img.shields.io/badge/android-Kotlin-7f52ff)
+![Tests](https://img.shields.io/badge/tests-167%20passing-brightgreen)
 
-Live app: "bt.duapharma.com"
-Repository: "sysalmanyasin/BT-Sale-Data2"
-Default branch: "main"
+**BT Sales IC** is a personal, single-user pharmacy operations PWA for Bahria Town. One codebase covers daily sales capture, reporting, management tools, inventory intelligence, read-only closing/audit bridges, attendance, a break-glass emergency billing counter, spreadsheets, PDF archiving, cross-device sync, and native Android companions.
 
-«Documentation note: This README describes the current codebase rather than its historical evolution. When documentation conflicts with implementation, the code and database schema are the source of truth.»
+> **Scope:** built around a single pharmacy and a single primary operator. It is **not** a multi-tenant SaaS.
+>
+> **Source of truth:** this README describes the current codebase. Where it conflicts with the code or database schema, the code and schema win.
 
----
-
-📌 At a Glance
-
-Area| What it provides
-📊 Sales| Dashboard, daily sales entry, history/index, reports, payments, DIFF/reconciliation, cash-deposit reporting
-👔 Manager| Staff Registry, staff notes, Ledger, Targets, Salary, Petty, Credit, Incentive, Manager Overview, Payslip, Attendance
-🧾 Emergency Billing| Break-glass pharmacy counter billing with cart, held bills, receipts, history and validated refunds
-📦 Inventory| BT Inventory, Stock Ledger, Excess Working, Reorder Report, Inventory Health
-🚚 STR| Awaited/Dispatched/Received workflow, detail view, flattened report, Zero Dispatch
-📖 Closing| Native read-only Closing Book + Credit Ledger views
-🧾 Audit| Native read-only Assignments view + external Pharmacy Audit Hub
-📑 Notes & Sheets| Multi-file spreadsheet-style workbooks and live-data materialisation
-🛠️ Utilities| Sync Center, PDF Library, Activity Log, global navigation/search, settings
-🔎 Inventory Search| Standalone Inventory Search PWA with medicine reference AI/chat
-📱 Android| Home-screen widget app + native attendance/geofence app
-🔄 Backup & Sync| Supabase multi-device sync + independent Google Drive backup
-📲 PWA| Installable offline-capable Progressive Web App
-📰 Herald| Deterministic daily operational intelligence across major domains
-
-The application is intentionally designed around a single pharmacy / single primary operational environment. It is not currently a general-purpose multi-tenant SaaS architecture.
-
----
-
-🧰 Tech Stack
-
-Frontend
-
-- Vanilla JavaScript
-- ES modules
-- Legacy "<script>" modules where migration is still in progress
-- HTML/CSS
-- No frontend build step
-- GitHub Pages/custom-domain deployment
-
-Backend
-
-- Supabase PostgreSQL
-- Supabase Authentication
-- Supabase Storage
-- Supabase Edge Functions
-- Supabase REST APIs
-- Database RPCs for transaction-sensitive operations (e.g. emergency refunds)
-
-PWA
-
-- "manifest.json"
-- Root "sw.js"
-- Service-worker caching
-- Offline application shell
-- Automatic update detection
-- Safe reload handling
-
-Libraries
-
-- Chart.js
-- jsPDF
-- jsPDF-AutoTable
-- html2canvas
-- XLSX
-- qrcode-generator
-- jsdom for testing
-
-Android
-
-- Kotlin
-- Gradle
-- Native Android widgets
-- Native Android attendance/geofencing application
-
-Testing
-
-- Node.js built-in test runner
-- jsdom
-- Static integrity checks
-- JavaScript parsing checks
-- DOM/navigation tests
-- Pure-module tests
-- Current suite: 17 test suites / 167 tests, all passing
-
----
-
-🧭 Navigation Architecture
-
-The application uses a unified Search & All Sections / BT Navigation Panel.
-
-Access
-
-- Desktop: ☰ Menu
-- Mobile: bottom navigation → ☰ Menu
-- Long-pressing Cover can open navigation
-
-Navigation is generated from:
-
-"js/nav-sections.js"
-
-rather than maintaining multiple independent navigation lists.
-
-Navigation features
-
-- Nested groups
-- Fuzzy navigation search
-- Staff Registry search integration
-- URL-hash routing
-- Browser back-button support
-- Shared navigation tree
-- Mobile and desktop layouts
-
-The previous Recents drawer and old always-visible tab-strip architecture have been retired.
-
----
-
-🏠 Cover
-
-Cover acts as the main operational hub.
-
-It provides:
-
-- Major domain cards
-- Cross-domain operational signals
-- Quick navigation
-- Inventory alerts
-- Sales indicators
-- Manager indicators
-- Audit signals
-- Herald headlines
-- External companion-app shortcuts
-
-Cards can be reordered.
-
----
-
-📰 IC Herald
-
-The IC Herald is a deterministic daily operational intelligence layer.
-
-It aggregates signals from areas such as:
-
-- Sales
-- Manager
-- Inventory
-- Closing
-- Audit
-
-The Herald generates headlines and operational summaries from application data.
-
-Important
-
-The main Herald system is not generative AI.
-
-It uses deterministic application calculations and business rules.
-
-Implementation:
-
-"js/herald/" ("herald-engine.js", "herald-page.js")
-
----
-
-📊 Sales
-
-Dashboard
-
-The Sales Dashboard provides operational analytics including:
-
-- Daily sales
-- Period comparisons
-- MTD/YTD information
-- Target pace
-- Staff-related signals
-- Operational alerts
-- Forecast calculations
-- Herald signals
-
-The dashboard is a renderer over the application's analytics/business-data layer rather than a separate data source.
-
----
-
-Sale Data
-
-Index
-
-Year → Month → Day navigation for historical sales.
-
-Daily Data
-
-Raw day-by-day sales records.
-
-Add Entry
-
-Daily sales entry interface with intelligent date-aware prefill.
-
-Sale Report
-
-Standard sales reporting and analysis.
-
-Payments
-
-Handles:
-
-- Cash
-- Card
-- Credit
-- Credit-customer detail
-
-DIFF
-
-Reconciliation and difference analysis.
-
-Cash Deposit
-
-Cash-deposit calculation and reporting.
-
----
-
-✍️ Add Entry Prefill
-
-"entry-prefill.js" reduces duplicate manual entry.
-
-Current automatic sources include:
-
-Closing Sheets
-
-Prefills values such as:
-
-- Cash Sale
-- Bank Alfalah
-- Bank Alfalah 2
-- Cash Returns
-
-Sale Payments Bridge
-
-Can supply:
-
-- Total Sale
-- COMP SALE
-- Matching credit-customer information
-
-Manual entry remains available when no reliable live source exists.
-
-Important design
-
-Prefill-owned values are tracked separately from manually entered values.
-
-This prevents changing the selected date from unintentionally overwriting information manually entered by the user.
-
----
-
-💳 Sale Payments Bridge
-
-The Sale Payments integration is a read-only bridge to the separate:
-
-Candela POS → Dropbox → Supabase
-
-pipeline.
-
-It is not the main PWA's primary source of truth.
-
----
-
-🧾 Emergency Billing
-
-Emergency Billing is a dedicated break-glass counter-billing system, separate from the normal Daily Sale Entry workflow.
-
-Implementation:
-
-- "js/emergency-billing-native.js" — cart, checkout, held bills, receipts, history, refunds, settings
-- "js/emergency-billing-bridge.js" — read-only inventory-availability bridge
-- "css/emergency-billing.css"
-- "supabase/migrations/20260924182923_emergency_billing.sql"
-- "supabase/migrations/20260925120000_emergency_billing_refunds.sql"
-- "supabase/migrations/20260926190000_emergency_billing_refund_fix.sql"
-
-Purpose
-
-Emergency Billing exists for situations where a counter transaction must be recorded against available inventory without forcing it through the normal Daily Sale Entry flow — for example when the main sales-entry workflow is temporarily unavailable or a rapid walk-in sale needs to be captured immediately. It is a supplement to normal sales reporting, not a replacement for it; emergency transactions still require operational reconciliation against Daily Sale Entry.
-
-Cart & Billing Screen
-
-- Product search by name, generic name or product code
-- Live inventory-availability check via the read-only inventory bridge — if availability cannot be verified, adding to cart is blocked rather than allowed to proceed against unknown stock
-- Quantity +/− controls and direct quantity editing
-- "F9" quick-edit: pressing Enter on a cart row opens its quantity field with the value pre-selected, or typing a digit opens the field and starts entry immediately; Enter commits, Escape reverts. The native up/down spinner arrows on the quantity field (and the refund modal's quantity field) are hidden in favour of the custom −/+ buttons
-- Payment method, customer name/phone, staff name, cash received and change calculation
-
-Discounts
-
-Two discount modes, toggled per bill:
-
-- Flat (Rs.) — a rupee amount entered directly
-- Percentage (%) — a percentage of the subtotal, with quick-preset chips (1% / 2% / 3% / 4% / 5%); the rupee-equivalent is shown live underneath the input
-
-Whichever mode is used, the cart's total calculation resolves the discount down to a single rupee amount before it reaches the receipt, the checkout RPC, or held-bill storage — so downstream logic never needs to know which mode was used. A held bill always freezes and restores its discount as a flat rupee figure regardless of the mode it was originally entered in.
-
-Held Bills
-
-Bills can be held and recalled later, for situations such as a customer stepping away from the counter, a prescription needing clarification, or stock needing confirmation.
-
-Held bills are stored locally on the device via localStorage:
-
-- "eb_active_cart_v1"
-- "eb_held_bills_v1"
-
-«Held bills are convenience state, not the central system of record.» Clearing browser/device storage can remove unfinished held transactions.
-
-Checkout & Receipts
-
-- Checkout writes the transaction through the Emergency Billing database layer, not through the main Repository/Actions pipeline
-- Receipts support 58mm and 80mm thermal widths, configurable header/footer, and optional address/phone visibility
-- Round-net-to-nearest-rupee is a configurable option
-
-History & Reprint
-
-- Filter by Today / Yesterday / Last 7 Days / This Month / All, plus invoice, product, payment-method and staff filters
-- Saved transactions open in a read-only detail view
-- History can be exported to XLSX
-- Reprinting a historical invoice preserves the original transaction timestamp rather than presenting it as a new sale
-
-Refunds
-
-Refunds are validated at the database layer through a dedicated RPC rather than relying on frontend checks alone. The refund function:
-
-1. Confirms the original invoice and product line exist
-2. Rejects a non-positive refund quantity
-3. Deducts previously-refunded quantity from the original quantity to compute what remains refundable
-4. Rejects a refund that exceeds the remaining refundable quantity
-5. Restores refunded stock against the current inventory-bridge sync context (not an obsolete historical window)
-
-A later migration ("...refund_fix.sql") fixed an ambiguous "invoice_number" column reference inside "record_emergency_refund()".
-
-Billing Settings
-
-Device-local configuration covering branch identity (name/address/phone), business identity (name/tax number), receipt formatting, default payment method, low-stock threshold, staff-name requirement, auto-print, confirm-before-clear, and round-to-nearest-rupee.
-
-Design note
-
-Emergency Billing intentionally operates through its own transaction and storage architecture rather than the main app's Repository/Actions/EventBus pipeline. This is a deliberate boundary — do not refactor it into the generalized business-data layer without separately accounting for the inventory bridge, the refund RPC, the device-local cart/held-bills, and receipt/reconciliation requirements.
-
----
-
-👔 Manager
-
-The Manager domain provides the operational management layer.
-
-Staff Registry
-
-Provides employee management including:
-
-- Staff CRUD
-- Employee identity
-- Staff information
-- Timestamped staff notes
-- Integration with Attendance
-- Integration with Manager modules
-
-Staff Registry is the source of truth for staff identity used by related systems.
-
----
-
-📅 Attendance
-
-Attendance is a major integrated domain with both:
-
-1. Web management
-2. Native Android application
-
----
-
-Manager Attendance
-
-Implementation:
-
-"js/manager-attendance.js"
-
-Today
-
-Displays every active staff member, including visible absences.
-
-Monthly
-
-Provides:
-
-- Present count
-- Absent count
-- Late count
-- Monthly summaries
-
-Raw Log
-
-Recent attendance events.
-
-Manual Entry
-
-Manager-controlled attendance corrections.
-
-Location
-
-Pharmacy geofence/location management.
-
-Notifications
-
-Attendance notification configuration/status.
-
-iPhone Setup
-
-Guidance for devices that cannot use the native Android geofencing application.
-
----
-
-📱 Native Android Attendance
-
-Location:
-
-"android-attendance/"
-
-The native application is designed for:
-
-- Staff phones
-- Manager notification phone
-
-Staff features
-
-- Pharmacy geofence ENTER → Check-in
-- Pharmacy geofence EXIT → Check-out
-- QR manual fallback
-- Device registration
-- Background operation
-- Reboot geofence re-registration
-- Mock-location detection flag
-- Boundary-flapping debounce
-- Offline event queue
-- Automatic retry when connectivity returns
-
-Manager mode
-
-Manager devices can receive attendance notifications without participating in staff geofencing.
-
-Location source
-
-The application uses the active row from:
-
-"attendance_locations"
-
-for the primary pharmacy geofence.
-
-The last known location is cached for reboot/network resilience.
-
----
-
-Attendance Logic
-
-Late detection is optional.
-
-It only activates when a staff member has an explicit:
-
-"shiftStart"
-
-A five-minute grace period is applied.
-
-The system does not attempt to guess employee schedules.
-
----
-
-Attendance Security Considerations
-
-The current attendance architecture is designed around the application's existing single-pharmacy environment.
-
-The attendance tables currently use an anon-role access model with the project's accepted RLS tradeoffs.
-
-Therefore:
-
-«The public client key should not be considered a complete per-device authentication boundary.»
-
-A manager PIN is protected server-side for manager-control functionality, but this is not equivalent to full device/user authentication.
-
-Future security direction
-
-For a future multi-branch or higher-security deployment, attendance should move toward:
-
-- Supabase authenticated users
-- Device identity
-- Server-side authorization
-- Edge Function controlled writes
-- Branch-level access policies
-
----
-
-🎯 Manager Targets
-
-Target management feeds calculations used by dashboard and management surfaces.
-
-Target information can contribute to:
-
-- Target pace
-- Sales comparisons
-- Manager analytics
-- Staff performance views
-
----
-
-📒 Manager Ledger
-
-The generalized Ledger architecture supports:
-
-- Date filtering
-- Date ranges
-- Category grouping
-- Reusable ledger rendering
-- Custom ledger sections
-- JazzCash-related records
-- Inline editing
-
-Important exception
-
-Petty Cash remains a deliberate legacy/separate implementation in:
-
-"manager-petty.js"
-
-It is not currently rendered through the generalized Petty category in:
-
-"ledger-store.js"
-
----
-
-💰 Salary
-
-Manager Salary functionality includes salary-related reporting and payslip functionality.
-
-The architecture keeps salary-related data separate from general ledger presentation.
-
-Important
-
-Attendance is not currently wired as an automatic salary deduction engine.
-
----
-
-🧾 Credit
-
-Manager Credit functionality supports credit-related operational records and reporting.
-
-Credit information is also surfaced through relevant dashboard/closing views.
-
----
-
-🎁 Incentive
-
-Manager Incentive functionality handles incentive-related reporting and calculations.
-
----
-
-📦 Inventory
-
-The Inventory domain is designed for large pharmacy datasets.
-
----
-
-BT Inventory
-
-Provides:
-
-- Product search
-- Manufacturer/supplier grouping
-- Pagination
-- 100-row views
-- Optional-column picker
-- Large-SKU support
-- Read-only integration with the Pharmacy Audit Hub inventory dataset
-
----
-
-📚 Stock Ledger
-
-Stock Ledger provides multiple analytical panels:
-
-Never Sold
-
-Products with no recorded sales.
-
-Dead Stock
-
-Products meeting the application's dead-stock criteria.
-
-Excess
-
-Products with excessive inventory cover.
-
-Pack Issues
-
-Potential packaging/conversion inconsistencies.
-
-Zero Stock
-
-Products currently showing zero inventory.
-
-Each analytical panel maintains its own:
-
-- Search
-- Filter
-- Sort
-- Display state
-
----
-
-📈 Excess Working
-
-Excess Working identifies inventory with excessive stock cover.
-
-Features include:
-
-- Configurable excess logic
-- Working list
-- Retain List
-- Adjustments
-- Reported-HO-value variance
-- Top-N Excel export
-
-Default threshold
-
-The current default excess threshold is:
-
-90+ days of cover
-
----
-
-🔄 Reorder Report
-
-The Reorder Report is designed to identify stock requiring replenishment.
-
-Features:
-
-- Top N
-- All items
-- 30-day sales-value window
-- 60-day sales-value window
-- 90-day sales-value window
-- Cover-days threshold
-- Optional live today's sales
-- Supplier grouping
-- Column visibility
-- Print/export
-- In-Transit quantities
-
-In Transit
+| | |
+|---|---|
+| **Live app** | <https://bt.duapharma.com> |
+| **Default branch** | `main` |
+| **Deployment** | GitHub Pages + custom domain (`CNAME`) |
 
-Inbound STR quantities can be incorporated into reorder calculations.
-
-This prevents stock already moving toward the pharmacy from being treated identically to stock with no incoming supply.
-
----
-
-❤️ Inventory Health
-
-Inventory Health provides a management-level inventory dashboard.
-
-Includes:
-
-- Health classification chart
-- Movers chart
-- Trend chart
-- Supplier breakdown
-- KPI cards
-- Searchable detail table
-- Local reorder-value trend
-
----
-
-🚨 Inventory Alerts
-
-The application can surface inventory-related operational alerts.
-
-Examples include:
-
-- Low-cover-value
-- Excess-item
-- Dead-stock aggregate
-
-These can appear on Cover without requiring the Inventory module to be opened.
-
----
-
-🚚 STR Report
-
-STR is a standalone top-level domain.
-
-The source data is read-only and comes from the Pharmacy Audit Hub Supabase environment.
-
----
-
-STR List / Detail
-
-Supports:
-
-- Dispatch / Receive direction
-- Awaited
-- Dispatched
-- Received
-- Date filtering
-- Supplier grouping
-- Product-code ordering
-- Detail modal
-- Previous/Next navigation
-- Printing
-
-The application derives the business lifecycle from dispatch/receive state rather than relying only on the raw "str_status" field.
-
----
-
-📋 STR Report
-
-The flattened report follows:
-
-Dispatch Branch → STR → Comments → Supplier → Line Items
-
-It supports:
-
-- Same filtering engine as List
-- Column picker
-- Print
-- Detailed operational reporting
-
----
-
-0️⃣ Zero Dispatch
-
-Zero Dispatch isolates STR line items where:
-
-- STR Qty > 0
-- Dispatch Qty = 0
-
-Users can select STR blocks for printing.
-
----
-
-📦 STR Quantity Convention
-
-STR quantities are displayed as pack quantities rather than raw loose units.
-
-Conversion uses:
-
-"conversion_factor"
-
-The same floor/down-rounding convention used by Inventory analysis is applied.
-
-If a reliable conversion factor does not exist:
-
-"conversion_factor = 1"
-
----
-
-📖 Closing
-
-The application contains native read-only views over the standalone Closing system.
-
-Closing Book
-
-Native read-only Closing Book interface.
-
-Credit Ledger
-
-Native Credit Ledger views include:
-
-- Credit
-- Misc/Ongoing
-
-These are deliberately read-only bridges.
-
-The standalone Closing application remains external to this repository.
-
----
-
-🧾 Audit
-
-The application includes a native read-only Assignments view backed by shared Audit Hub data.
-
-The external Pharmacy Audit Hub is also accessible from the navigation.
-
----
-
-📑 Notes & Sheets
-
-A lightweight spreadsheet/workbook environment is built into the PWA.
-
-Features include:
-
-- Multiple files
-- Multiple sheets
-- Editable grid
-- Notes
-- Sheet management
-- Live Data materialisation
-- Spreadsheet import/export
-
----
-
-Live Data
-
-The Data tab can materialise live application data into editable sheet data.
-
-This reduces the need to manually copy operational information between systems.
-
----
-
-🔄 Sync Center
-
-The application uses a single-active-device/control model to reduce simultaneous editing conflicts.
-
-Sync Center provides areas for:
-
-- Session
-- Devices
-- Controls
-- Health
-- Logs
-- Settings
-
-Conflict handling is separated into:
-
-"conflict-ui.js"
-
-This keeps conflict presentation separate from the underlying business logic.
-
----
-
-💾 Backup
-
-The application has two conceptually different persistence mechanisms.
-
-Supabase Sync
-
-Used for application synchronization across supported devices.
-
-Google Drive
-
-Used as an independent backup mechanism.
-
-Google Drive backup should not be confused with Supabase synchronization.
-
----
-
-📚 PDF Library
-
-Generated PDFs can be:
-
-- Viewed
-- Downloaded
-- Saved
-- Retrieved across supported devices
-
-The PDF Library uses Supabase Storage/metadata.
-
-An expiry sweep is triggered during application unlock.
-
----
-
-📝 Activity Log
-
-The Activity Log provides a cross-device change feed.
-
-It records:
-
-- Date/time
-- Section
-- Add
-- Edit
-- Delete activity
-
-It listens to the application's EventBus instead of requiring every Action/page to independently implement logging.
-
----
-
-🔎 Global Search
-
-The unified navigation system provides fuzzy search.
-
-It can search:
-
-- Navigation sections
-- Staff Registry
-- Relevant application destinations
-
-Staff search can fuzzy-rank employee results and help jump toward the relevant Staff Card.
-
----
-
-🔐 Authentication
-
-The main PWA is protected by Google Sign-In.
-
-Current authentication architecture:
-
-1. User initiates Google Sign-In.
-2. Google provides an identity token.
-3. Authorised email configuration is synchronised from Supabase.
-4. Client-side authorization provides an early UX gate.
-5. The Google ID token is exchanged through Supabase "signInWithIdToken".
-6. Supabase establishes an authenticated session.
-7. RLS-aware backend operations can use the authenticated identity.
-
-Security boundary
-
-The client-side authorized-email list is a fast-fail UX gate, not the sole security boundary.
-
-Server-side Supabase authentication/RLS is the important security layer for protected operations.
-
----
-
-🔑 Password / PIN Legacy UI
-
-Some legacy password/reset markup and helper functions remain in the codebase.
-
-However:
-
-«Password/PIN unlock is disabled.»
-
-The supported application unlock mechanism is:
-
-Google Sign-In
-
-The legacy password functions are retained primarily for compatibility with existing UI/code structure and do not provide the active authentication path.
-
----
-
-🤖 AI Architecture
-
-The main PWA is intentionally AI-free.
-
-Previous client-side AI systems such as:
-
-- Assistant
-- Context Engine
-- Daily AI Briefing
-
-have been removed from the main PWA.
-
-Current main-PWA intelligence systems such as Dashboard calculations and Herald are deterministic application logic.
-
----
-
-🧠 AI Companion Systems
-
-AI exists in separate companion/server-side systems.
-
----
-
-🔎 Inventory Search — Medicine Reference
-
-The standalone:
-
-"inventory-search/"
-
-application can request medicine reference information through:
-
-"medicine-ai-info"
-
-Current provider strategy:
-
-1. Groq
-2. Gemini fallback
-
-Results may be cached for approximately 30 days.
-
-The companion PWA does not require login, therefore the Edge Function is designed accordingly.
-
-Safety boundary
-
-The feature is intended for reference information.
-
-It is not a patient-specific prescribing or clinical decision-making system.
-
----
-
-💬 Inventory Search — AI Chat
-
-The Inventory Search companion also provides a conversational interface.
-
-For inventory questions, the assistant is intentionally limited to product context supplied by the client.
-
-It does not maintain an independent server-side copy of the inventory.
-
-General medicine questions may be answered using model knowledge with reference-oriented framing.
-
----
-
-📲 Daily WhatsApp Briefing
-
-The repository also contains:
-
-"send-daily-whatsapp-briefing"
-
-This is a separate server-side Edge Function.
-
-It can:
-
-1. Read closing/inventory information.
-2. Generate a short briefing using the configured AI provider.
-3. Send the briefing through WhatsApp.
-
-This system is separate from the main PWA's deterministic Herald engine.
-
----
-
-📱 Android Applications
-
-The repository currently contains two native Android projects.
-
----
-
-1. "android-widget/"
-
-A Kotlin application providing 22 home-screen widgets.
-
-Widget categories include:
-
-- Closing summaries
-- Sales/target pace
-- Final closing
-- Month totals
-- Live POS sale
-- Recent shifts
-- Credit
-- Ledger aging
-- Inventory health
-- Reorder urgency
-- Excess
-- Top-running products
-- Negative stock
-- Dead stock
-- Never-sold products
-- Native product search shortcut
-- STR Awaited
-- STR Dispatched
-- STR Inbound
-
-The Android implementation mirrors important web business calculations where required so widgets can operate without the main PWA being open.
-
-It has its own Gradle project and GitHub Actions build workflow.
-
----
-
-2. "android-attendance/"
-
-Native attendance/geofencing application.
-
-Primary capabilities:
-
-- Staff geofencing
-- Check-in
-- Check-out
-- QR fallback
-- Offline queue
-- Background processing
-- Device registration
-- Manager notifications
-- Reboot recovery
-- Mock-location flagging
-
 ---
-
-❌ Retired Android Wrapper
-
-The former:
-
-"android-app/"
-
-Trusted Web Activity wrapper has been removed.
-
-The repository now contains:
-
-- "android-widget/"
-- "android-attendance/"
-
----
-
-🧱 Application Architecture
-
-The main PWA follows a layered architecture:
-
-User
-  ↓
-Action
-  ↓
-Repository
-  ↓
-Data / State
-  ↓
-EventBus
-  ↓
-Pages / Components
-
----
-
-Repository
-
-The Repository acts as the primary business-data storage boundary.
-
----
-
-State
-
-State contains the application's in-memory working data.
-
----
-
-Actions
-
-Actions provide the primary mutation boundary.
-
-Business-data writes should normally pass through Actions.
-
----
-
-EventBus
-
-EventBus broadcasts meaningful application changes.
-
-This allows:
-
-- UI updates
-- Activity logging
-- Cross-module reactions
-- Cache invalidation
-- Other observers
-
-without tightly coupling individual modules.
-
----
-
-Components
-
-Reusable UI and utility functionality.
-
----
-
-Pages
-
-Domain-specific rendering and interaction.
-
-Pages should avoid bypassing the business/data layers.
-
----
-
-Architecture exception: Emergency Billing
-
-Emergency Billing (see above) intentionally sits outside this Action → Repository → State → EventBus pipeline, using its own device-local cart/held-bills storage and its own database RPCs for checkout and refunds. This is a deliberate boundary, not an oversight — see the Emergency Billing section for the reasoning.
-
----
-
-🔧 ES Module Migration
-
-The application is undergoing an incremental migration toward ES modules.
-
-Therefore some compatibility bridges remain using:
-
-"window.*"
-
-Important
-
-Do not remove a global bridge merely because an equivalent module export exists.
-
-Before removing one, search for:
-
-- Other JavaScript consumers
-- HTML inline handlers
-- Legacy modules
-- Android/WebView assumptions
-- Cross-module references
-
----
-
-💾 Storage Architecture
-
-The application primarily separates:
-
-Core business data
-
-Managed through:
-
-"Repository"
-
-and related application state/actions.
-
-Non-business/local data
-
-Some information intentionally remains in browser storage.
-
-Examples include:
 
-- Authentication bootstrap state
-- UI preferences
-- Theme settings
-- Drive token caching
-- Bridge caches
-- Inventory preferences
-- STR preferences
-- Emergency Billing active cart and held bills
-- Emergency Billing device-local settings
+## Table of contents
 
-These should not automatically be treated as business-data migration candidates.
+- [At a glance](#at-a-glance)
+- [Quick start](#quick-start)
+- [Tech stack](#tech-stack)
+- [Repository structure](#repository-structure)
+- [Architecture](#architecture)
+- [Features](#features)
+- [Android apps](#android-apps)
+- [AI systems](#ai-systems)
+- [Authentication & security](#authentication--security)
+- [Testing](#testing)
+- [Deployment & PWA versioning](#deployment--pwa-versioning)
+- [Known limitations](#known-limitations)
+- [Development rules](#development-rules)
+- [Philosophy](#philosophy)
 
 ---
 
-📁 Repository Structure
+## At a glance
 
-/
-├── index.html
-├── manifest.json
-├── sw.js
-├── CNAME
-├── package.json
-│
-├── js/
-│   ├── shared/
-│   ├── herald/
-│   ├── emergency-billing-native.js
-│   ├── emergency-billing-bridge.js
-│   └── application modules (96 JS files at top level of js/)
-│
-├── css/
-│   └── emergency-billing.css, str-report.css, herald.css, pdf-library.css, …
-│
-├── inventory-search/
-│
-├── android-widget/
-│
-├── android-attendance/
-│
-├── supabase/
-│   ├── functions/
-│   │   ├── inventory-chat/
-│   │   ├── medicine-ai-info/
-│   │   └── send-daily-whatsapp-briefing/
-│   ├── migrations/
-│   ├── pdf_library/
-│   └── activity_log/
-│
-├── tests/
-│
-└── .github/
-    └── workflows/
+| Area | What it provides |
+|---|---|
+| 📊 **Sales** | Dashboard, daily entry, history index, reports, payments, DIFF/reconciliation, cash-deposit report |
+| 👔 **Manager** | Staff Registry & notes, Ledger, Targets, Salary, Petty, Credit, Incentive, Overview, Payslip, Attendance |
+| 🧾 **Emergency Billing** | Break-glass counter billing: cart, held bills, receipts, history, validated refunds |
+| 📦 **Inventory** | BT Inventory, Stock Ledger, Excess Working, Reorder Report, Inventory Health |
+| 🚚 **STR** | Awaited / Dispatched / Received workflow, flattened report, Zero Dispatch |
+| 📖 **Closing** | Native read-only Closing Book and Credit Ledger |
+| 🔍 **Audit** | Read-only Assignments view + link to the external Pharmacy Audit Hub |
+| 📑 **Notes & Sheets** | Multi-file workbooks with live-data materialisation |
+| 🛠️ **Utilities** | Sync Center, PDF Library, Activity Log, global search, settings |
+| 📰 **Herald** | Deterministic daily operational headlines (no generative AI) |
+| 🔎 **Inventory Search** | Standalone companion PWA with medicine reference + AI chat |
+| 📱 **Android** | 22 home-screen widgets + native attendance/geofence app |
+| 🔄 **Backup & Sync** | Supabase multi-device sync + independent Google Drive backup |
 
 ---
 
-🧪 Testing
+## Quick start
 
-The project uses Node's built-in test runner with jsdom.
+There is **no build step** for the web app. Serve the repo root with any static server.
 
-Install
+```bash
+git clone https://github.com/sysalmanyasin/BT-Sale-Data2.git
+cd BT-Sale-Data2
 
+# Run the tests
 npm install
-
-Run tests
-
 npm test
 
-Verbose tests
+# Serve locally (any static server works)
+npx serve .
+# or: python3 -m http.server 8080
+```
 
-npm run test:verbose
+**Notes**
 
-Watch mode
-
-npm run test:watch
-
-Current results
-
-17 test suites, 167 tests, 0 failures, 0 skipped (last verified run).
-
----
-
-Testing Coverage
-
-The test suite covers areas including:
-
-- Static file integrity
-- Script integrity
-- Manifest validation
-- Service-worker app-shell consistency
-- JavaScript parsing
-- Pure module behaviour
-- EventBus behaviour
-- Printing API surface
-- Staff Registry integration (Repository + Actions smoke tests)
-- DOM behaviour
-- Navigation behaviour
+- Sign-in uses Google Sign-In and a Supabase backend, so a fully working local instance needs your own Supabase project and Google client configuration. The test suite does **not** need either.
+- Service workers require `localhost` or HTTPS.
+- Android apps build through GitHub Actions (see [Android apps](#android-apps)).
 
 ---
 
-Testing Limitations
+## Tech stack
 
-The Node/jsdom suite does not completely reproduce:
-
-- Live Supabase
-- Real Google authentication
-- Real printer hardware
-- Browser rendering
-- Real Android geofencing
-- Android background execution
-- OEM battery management
-- Physical GPS behaviour
-- Emergency Billing thermal receipt output
-
-Therefore real-device testing remains essential, particularly for Attendance and Emergency Billing.
+| Layer | Technology |
+|---|---|
+| **Frontend** | Vanilla JavaScript (ES modules, plus legacy `<script>` modules mid-migration), HTML/CSS, no build step |
+| **Backend** | Supabase: PostgreSQL, Auth, Storage, Edge Functions, REST, RPCs for transaction-sensitive work (e.g. refunds) |
+| **PWA** | `manifest.json`, root `sw.js`, offline app shell, update detection, safe reload |
+| **Libraries** | Chart.js, jsPDF, jsPDF-AutoTable, html2canvas, XLSX, qrcode-generator |
+| **Android** | Kotlin, Gradle, native widgets, geofencing |
+| **Testing** | Node built-in test runner, jsdom |
+| **CI** | GitHub Actions (APK builds) |
 
 ---
 
-🖨️ Service Worker / PWA Versioning
+## Repository structure
 
-The root service worker tracks a versioned cache name in "sw.js", currently:
-
-"bt-sales-v11.06"
-
-Cache-version bumps are typically accompanied by an inline changelog comment above "CACHE_NAME" describing what changed (e.g. the most recent bump documents the Emergency Billing percentage-discount mode and F9 quantity-edit behaviour described above). Always check the live value in "sw.js" rather than assuming this README's version number is current — bump the version and the comment together whenever shipped files change.
-
----
-
-⚠️ Known Limitations & Design Tradeoffs
-
-Main PWA
-
-- Designed around a single pharmacy environment.
-- Not currently a general multi-tenant SaaS architecture.
-- ES-module migration is incomplete.
-- Some global bridges remain intentionally.
-- Petty Cash retains a separate legacy implementation.
-- Some external integrations are read-only bridges.
-- Main PWA does not use generative AI.
-
----
-
-Attendance
-
-- Current attendance security uses the existing anon-role/RLS tradeoff.
-- Native attendance is designed around one primary pharmacy geofence.
-- Multi-branch attendance requires architectural expansion.
-- Android OEM battery-management settings can affect background geofencing.
-- Attendance is not yet automatically connected to Salary deductions.
-- QR fallback should be treated as part of the physical security model.
-- Device/user authentication can be strengthened in a future version.
+```text
+/
+├── index.html                  # App shell
+├── manifest.json, sw.js        # PWA manifest and service worker
+├── CNAME                       # Custom domain
+├── package.json                # Test scripts (only dev dependency: jsdom)
+│
+├── js/                         # ~93 top-level application modules
+│   ├── shared/                 # Shared calculation modules
+│   ├── herald/                 # herald-engine.js, herald-page.js
+│   ├── nav-sections.js         # Single source for all navigation
+│   ├── emergency-billing-native.js
+│   └── emergency-billing-bridge.js
+├── css/                        # Per-domain stylesheets
+├── icons/
+│
+├── inventory-search/           # Standalone Inventory Search PWA
+├── android-widget/             # 22 home-screen widgets (Kotlin)
+├── android-attendance/         # Native attendance / geofencing app (Kotlin)
+│
+├── supabase/
+│   ├── functions/              # inventory-chat, medicine-ai-info, send-daily-whatsapp-briefing
+│   ├── migrations/             # Dated SQL migrations
+│   ├── pdf_library/            # Schema + deploy notes
+│   └── activity_log/           # Schema
+│
+├── tests/                      # static/, unit/, dom/, helpers/
+└── .github/workflows/          # APK build workflows
+```
 
 ---
 
-Emergency Billing
+## Architecture
 
-- Break-glass workflow, not a replacement for normal Daily Sale Entry — emergency transactions require separate reconciliation.
-- Active cart, held bills and billing settings are device-local (localStorage); clearing storage loses unfinished bills.
-- Inventory availability during billing depends on the freshness of the inventory bridge.
-- Receipt output (58mm/80mm) requires real thermal-printer hardware testing; browser preview is not sufficient.
-- Operates outside the main Repository/Actions/EventBus pipeline by design (see Architecture exception above).
+### Layered data flow
 
----
+```text
+User → Action → Repository → Data / State → EventBus → Pages / Components
+```
 
-Inventory Search AI
+| Layer | Responsibility |
+|---|---|
+| **Actions** | Primary mutation boundary. Business-data writes normally go through here. |
+| **Repository** | Business-data storage boundary. |
+| **State** | In-memory working data. |
+| **EventBus** | Broadcasts meaningful changes: UI refresh, activity logging, cache invalidation, cross-module reactions. |
+| **Components** | Reusable UI and utilities. |
+| **Pages** | Domain-specific rendering. They should not bypass the data layers. |
 
-- Reference-oriented rather than clinical decision-making.
-- Provider secrets must remain server-side.
-- Inventory chat only knows live inventory information explicitly supplied as context by the client.
-- The assistant should not be treated as a substitute for a pharmacist/doctor or official medicine information source.
+> **Deliberate exception: Emergency Billing.** It uses its own device-local cart/held-bill storage and its own database RPCs for checkout and refunds. Do not fold it into the generalized pipeline without accounting for the inventory bridge, refund RPC, local storage, and reconciliation requirements.
 
----
+### Navigation
 
-External Integrations
+- One unified **Search & All Sections** panel, generated from `js/nav-sections.js`.
+- Desktop: **☰ Menu**. Mobile: bottom nav → **☰ Menu**. Long-press Cover also opens it.
+- Nested groups, fuzzy search (including Staff Registry), URL-hash routing, back-button support.
 
-The repository contains bridges to several separate systems/projects.
+### Storage
 
-Before modifying an integration, verify:
+- **Core business data** goes through `Repository`.
+- **Intentionally local data** stays in browser storage: auth bootstrap state, UI/theme preferences, Drive token cache, bridge caches, Inventory and STR preferences, Emergency Billing cart, held bills and settings. Do not treat these as business-data migration candidates.
 
-- Supabase project
-- Table name
-- Schema
-- Read/write direction
-- Cache behaviour
-- Source-of-truth ownership
+### ES-module migration
 
-Two similarly named datasets do not necessarily represent the same underlying system.
-
----
-
-🔒 Security Rules
-
-This repository handles real operational and financial information.
-
-Never commit:
-
-- Supabase service-role keys
-- Private API keys
-- AI provider secrets
-- WhatsApp secrets
-- Google private credentials
-- Database passwords
-- GitHub personal access tokens
-- Other privileged credentials
-
-Client-side public Supabase keys may be required for browser functionality, but they must always be protected by appropriate RLS and backend authorization.
-
-If a credential of any kind is ever pasted into a document, chat, issue, or commit, treat it as compromised immediately: revoke/rotate it and issue a new one rather than continuing to use it.
+The migration is incremental, so some `window.*` bridges remain. Do not remove one just because a module export exists (see [Development rules](#development-rules)).
 
 ---
 
-🛠️ Safe Development Rules
+## Features
 
-Before changing the application:
+### Cover & Herald
 
-1. Read the implementation
+**Cover** is the operational hub: domain cards (reorderable), cross-domain signals, inventory/sales/manager/audit indicators, Herald headlines, and shortcuts to companion apps.
 
-Do not rely solely on README documentation.
+**IC Herald** (`js/herald/`) generates daily headlines from Sales, Manager, Inventory, Closing, and Audit data. It is **deterministic business rules, not generative AI**.
 
-2. Preserve architecture
+### Sales
 
-New business-data writes should normally use:
+| Feature | Notes |
+|---|---|
+| **Dashboard** | Daily sales, period comparisons, MTD/YTD, target pace, staff signals, alerts, forecasts. A renderer over the analytics layer, not a separate data source. |
+| **Sale Data** | Index (Year → Month → Day), Daily Data, Add Entry |
+| **Sale Report** | Standard reporting and analysis |
+| **Payments** | Cash, Card, Credit, credit-customer detail |
+| **DIFF** | Reconciliation and difference analysis |
+| **Cash Deposit** | Calculation and reporting |
 
-Action → Repository → State → EventBus
+**Add Entry prefill** (`entry-prefill.js`) pulls from Closing Sheets (Cash Sale, Bank Alfalah, Bank Alfalah 2, Cash Returns) and the Sale Payments bridge (Total Sale, COMP SALE, matching credit customers). Prefilled and manually entered values are tracked separately, so changing the date never overwrites manual input.
 
-(Emergency Billing is the deliberate exception — see above.)
+**Sale Payments bridge** is a read-only view of the separate *Candela POS → Dropbox → Supabase* pipeline. It is not the PWA's source of truth.
 
-3. Avoid direct state mutation
+### Emergency Billing
 
-Do not bypass the established mutation layer without a documented reason.
+A break-glass counter-billing system, separate from Daily Sale Entry. It is a supplement, not a replacement: emergency transactions still need reconciliation against normal sales entry.
 
-4. Preserve EventBus events
+**Files:** `js/emergency-billing-native.js`, `js/emergency-billing-bridge.js`, `css/emergency-billing.css`, and the three `supabase/migrations/2026092*_emergency_billing*.sql` migrations.
 
-Other modules may depend on them.
+- **Cart:** search by name, generic or code. Live availability comes from the read-only inventory bridge. If availability can't be verified, adding to cart is **blocked**.
+- **Quantity editing:** +/− buttons or direct entry. `F9` quick-edit: Enter opens the field with the value selected, a digit starts typing, Enter commits, Escape reverts.
+- **Discounts:** flat (Rs.) or percentage (1–5% presets). Either resolves to a single rupee amount before reaching receipt, checkout RPC or held-bill storage.
+- **Held bills:** stored in `localStorage` (`eb_active_cart_v1`, `eb_held_bills_v1`). Convenience state only; clearing storage loses them. Discounts are always frozen as flat rupees.
+- **Checkout & receipts:** written via the Emergency Billing DB layer. 58 mm and 80 mm thermal formats, configurable header/footer, optional round-to-nearest-rupee.
+- **History:** filters (Today / Yesterday / 7 days / Month / All, invoice, product, payment, staff), read-only detail, XLSX export. Reprints keep the original timestamp.
+- **Refunds:** validated in a database RPC (`record_emergency_refund()`): confirms invoice and line exist, rejects non-positive quantities, deducts previous refunds, rejects over-refunds, restores stock against the current inventory-bridge sync context.
+- **Settings (device-local):** branch/business identity, receipt format, default payment, low-stock threshold, staff-name requirement, auto-print, confirm-before-clear.
 
-5. Storage migrations should be lossless
+### Manager
 
-Prefer:
+| Module | Notes |
+|---|---|
+| **Staff Registry** | Staff CRUD, identity, timestamped notes. Source of truth for staff identity across modules. |
+| **Targets** | Feeds target pace, comparisons, and staff performance views |
+| **Ledger** | Date/range filters, category grouping, custom sections, JazzCash records, inline editing |
+| **Petty Cash** | Deliberate legacy implementation in `manager-petty.js`, not rendered through `ledger-store.js` |
+| **Salary / Payslip** | Kept separate from ledger presentation. Attendance is **not** wired to automatic deductions. |
+| **Credit / Incentive** | Reporting and calculations; credit also surfaces in dashboard and closing views |
 
-Old key
-   ↓
-Migration
-   ↓
-New key
+#### Attendance
 
-Keep the old path until the new system is verified.
+Web management (`js/manager-attendance.js`) plus a native Android app.
 
-6. Module migration
+- **Tabs:** Today (including visible absences), Monthly (present/absent/late), Raw Log, Manual Entry, Location (geofence), Notifications, iPhone Setup.
+- **Late detection** is optional and only applies to staff with an explicit `shiftStart`, with a 5-minute grace period. Schedules are never guessed.
 
-Before removing a "window.*" bridge:
+### Inventory
 
-- Search repository-wide
-- Check inline HTML
-- Check legacy scripts
-- Check external consumers
+Built for large pharmacy datasets.
 
-7. Service worker
+- **BT Inventory:** search, manufacturer/supplier grouping, pagination, 100-row views, column picker. Read-only from the Pharmacy Audit Hub dataset.
+- **Stock Ledger:** panels for Never Sold, Dead Stock, Excess, Pack Issues, Zero Stock. Each keeps its own search/filter/sort state.
+- **Excess Working:** configurable logic (default **90+ days of cover**), Working and Retain lists, adjustments, reported-HO-value variance, Top-N Excel export.
+- **Reorder Report:** Top N or all; 30/60/90-day sales windows; cover-days threshold; optional live today's sales; supplier grouping; print/export. Inbound STR quantities count as **In Transit**.
+- **Inventory Health:** classification, movers and trend charts, supplier breakdown, KPI cards, searchable table.
+- **Alerts:** low-cover-value, excess-item and dead-stock aggregates can appear on Cover without opening Inventory.
 
-When changing application files:
+### STR
 
-- Review "sw.js"
-- Review app-shell caching
-- Review cache versioning
-- Verify update behaviour
+A standalone top-level domain. Data is read-only, from the Pharmacy Audit Hub Supabase project.
 
-8. Printing
+- **List / Detail:** dispatch/receive direction, Awaited / Dispatched / Received, date filters, supplier grouping, detail modal with Previous/Next, printing. Lifecycle is derived from dispatch/receive state, not only the raw `str_status`.
+- **Report:** flattened *Dispatch Branch → STR → Comments → Supplier → Line Items*, same filter engine, column picker, print.
+- **Zero Dispatch:** line items where STR Qty > 0 and Dispatch Qty = 0, with selectable blocks for printing.
+- **Quantities** are shown as pack quantities using `conversion_factor` with the same floor rounding as Inventory (falls back to `1` when no reliable factor exists).
 
-Test print functionality — including Emergency Billing thermal receipts — on actual Android/hardware before release.
+### Closing & Audit
 
-9. Attendance
+- **Closing Book** and **Credit Ledger** (Credit, Misc/Ongoing): native, deliberately read-only. The standalone Closing app lives outside this repo.
+- **Audit:** read-only Assignments view over shared Audit Hub data, plus a link to the external Pharmacy Audit Hub.
 
-Test on the actual staff phones, especially:
+### Notes & Sheets
 
-- Background mode
-- Reboot
-- Weak network
-- GPS boundary
-- Permissions
-- Battery optimization
-- OEM-specific restrictions
+Multiple files and sheets, editable grid, notes, sheet management, import/export, and a **Data** tab that materialises live app data into editable sheets.
 
-10. Database changes
+### Platform utilities
 
-For production Supabase schema changes:
-
-«Add a dated migration.»
-
-Do not silently modify production assumptions. Financial/inventory-sensitive operations (e.g. refunds) should validate at the database/RPC layer, not only in the frontend.
-
-11. Repository-wide cleanup
-
-After refactoring, search the entire repository for stale references before declaring the change complete.
-
-12. Secrets hygiene
-
-Never commit or paste tokens/keys anywhere that persists (commits, issues, chat transcripts, documents). Rotate immediately if one is ever exposed.
-
----
-
-🧭 Source of Truth
-
-When determining how the application actually works, use this order:
-
-1. Running code
-2. Database schema and migrations
-3. Automated tests
-4. Feature/module comments
-5. This README
-6. Historical commits/comments
-
-The README documents the system.
-
-It is not the system itself.
+- **Sync Center:** single-active-device model to reduce edit conflicts. Tabs: Session, Devices, Controls, Health, Logs, Settings. Conflict UI is isolated in `conflict-ui.js`.
+- **Backup:** *Supabase Sync* (cross-device) and *Google Drive* (independent backup) are separate mechanisms.
+- **PDF Library:** generated PDFs are viewable, downloadable and retrievable across devices via Supabase Storage. An expiry sweep runs on unlock.
+- **Activity Log:** cross-device change feed (time, section, add/edit/delete), fed by the EventBus so pages don't log individually.
+- **Global search:** fuzzy search over navigation sections and Staff Registry.
 
 ---
 
-🚀 Development Philosophy
+## Android apps
 
-This project prioritizes:
+Two native Kotlin projects, each with its own Gradle setup and GitHub Actions workflow.
 
-- Operational reliability
-- Data integrity
-- Simple workflows
-- Offline resilience
-- Cross-device continuity
-- Conservative financial calculations
-- Reusable architecture
-- Pharmacy-specific practicality
-- Native Android integration where browser limitations matter
-- Clear separation between deterministic business intelligence and AI-assisted companion tools
-- Clear separation between the main synchronized business-data layer and intentionally local/device-specific systems (e.g. Emergency Billing)
+### `android-widget/`: 22 home-screen widgets
 
-The goal is not simply to create another dashboard.
+Covers Closing, Sales & Target Pace, Aggregated Final Closing, Month totals, live POS sale, recent shifts, Credit, ledger aging, Inventory Health, Reorder, Excess, Top-running, Negative / Dead / Never-sold stock, product search shortcut, and STR Awaited / Dispatched / Inbound.
 
-The goal is to create a single operational intelligence layer for pharmacy management that connects sales, staff, inventory, closing, STR, audit, emergency billing and supporting workflows without unnecessarily duplicating the underlying systems.
+Widgets mirror key web calculations so they work without the PWA open. See [`android-widget/README.md`](android-widget/README.md).
+
+### `android-attendance/`: geofencing app
+
+- **Staff mode:** geofence ENTER → check-in, EXIT → check-out; QR manual fallback; device registration; background operation; re-registration after reboot; mock-location flag; boundary-flap debounce; offline queue with automatic retry.
+- **Manager mode:** receives attendance notifications without taking part in geofencing.
+- **Location** comes from the active row in `attendance_locations`, cached for reboot/network resilience.
+
+See [`android-attendance/README.md`](android-attendance/README.md).
+
+> The former `android-app/` Trusted Web Activity wrapper has been removed.
+
+---
+
+## AI systems
+
+**The main PWA is intentionally AI-free.** Dashboard and Herald are deterministic. The old Assistant, Context Engine and Daily AI Briefing were removed. AI lives only in separate companion or server-side systems:
+
+| System | Where | Behaviour |
+|---|---|---|
+| **Medicine reference** | `inventory-search/` → `medicine-ai-info` Edge Function | Groq first, Gemini fallback; results cached ~30 days; no login required. Reference-only, not clinical decision support. |
+| **Inventory chat** | `inventory-search/` → `inventory-chat` Edge Function | Limited to product context supplied by the client; keeps no server-side inventory copy. |
+| **Daily WhatsApp briefing** | `send-daily-whatsapp-briefing` Edge Function | Reads closing/inventory data, generates a short AI briefing, sends via WhatsApp. Separate from Herald. |
+
+Provider secrets must stay server-side. Deployment notes are in each function's `DEPLOY.md`.
+
+---
+
+## Authentication & security
+
+### Sign-in flow
+
+1. User starts **Google Sign-In**.
+2. Google returns an ID token.
+3. The authorised-email list syncs from Supabase.
+4. A client-side check gives an early UX gate.
+5. The token is exchanged with Supabase via `signInWithIdToken`.
+6. Supabase issues a session, so RLS-aware operations use the authenticated identity.
+
+> The client-side email list is a fast-fail UX gate, **not** the security boundary. Server-side Supabase Auth and RLS are.
+
+Password/PIN unlock is **disabled**. Some legacy markup and helpers remain for compatibility only.
+
+### Attendance security
+
+Attendance tables use the anon role with accepted RLS tradeoffs, so the public client key is **not** a full per-device authentication boundary. A manager PIN is protected server-side but is not equivalent to user authentication. For multi-branch or higher-security use, move to authenticated users, device identity, Edge-Function-controlled writes and branch-level policies.
+
+### Secrets
+
+This repo handles real financial and operational data. **Never commit:** Supabase service-role keys, private API keys, AI provider or WhatsApp secrets, Google private credentials, database passwords, GitHub tokens, or any other privileged credential.
+
+Public Supabase client keys are acceptable only when protected by proper RLS. If a credential is ever pasted into a commit, issue, chat or document, treat it as compromised: revoke, rotate, reissue.
+
+`android-attendance/shared-debug.keystore` is intentionally committed as a low-stakes shared dev/sideload key. `release.keystore` is decoded from a CI secret and must never be committed.
+
+---
+
+## Testing
+
+```bash
+npm install
+npm test                 # run everything
+npm run test:verbose     # spec reporter
+npm run test:watch       # re-run on change
+```
+
+**Last verified:** 17 suites, 167 tests, 0 failures, 0 skipped.
+
+**Coverage:** static file integrity, script references, manifest validation, service-worker shell consistency, JS syntax, pure modules, EventBus, print API surface, Staff Registry (Repository + Actions), DOM and navigation behaviour.
+
+**Not covered** (needs real-device testing): live Supabase, real Google auth, printer hardware and thermal receipts, browser rendering, Android geofencing and background execution, OEM battery management, physical GPS. Test Attendance and Emergency Billing on real devices before release.
+
+More detail in [`tests/README.md`](tests/README.md).
+
+---
+
+## Deployment & PWA versioning
+
+- The web app deploys as static files via GitHub Pages (`.nojekyll`, `CNAME`).
+- `sw.js` defines a versioned `CACHE_NAME` with an inline changelog comment above it. Check the live value in `sw.js` rather than trusting any number in documentation.
+- When shipped files change, bump `CACHE_NAME` **and** its comment together. Also bump `?v=` query strings in `index.html` for changed assets.
+- Database changes ship as dated files in `supabase/migrations/`.
+
+---
+
+## Known limitations
+
+**Main PWA**
+- Single pharmacy, not multi-tenant.
+- ES-module migration incomplete; some `window.*` bridges remain on purpose.
+- Petty Cash keeps a separate legacy implementation.
+- Several integrations are read-only bridges.
+
+**Attendance**
+- Anon-role/RLS tradeoff (see [security](#attendance-security)).
+- One primary pharmacy geofence; multi-branch needs redesign.
+- OEM battery management can affect background geofencing.
+- Not connected to Salary deductions.
+- QR fallback is part of the physical security model.
+
+**Emergency Billing**
+- Break-glass only; needs separate reconciliation.
+- Cart, held bills and settings are device-local.
+- Availability depends on inventory-bridge freshness.
+- Thermal receipts need real-hardware testing.
+- Sits outside the Repository/Actions/EventBus pipeline by design.
+
+**Inventory Search AI**
+- Reference-oriented, not clinical; not a substitute for a pharmacist, doctor or official source.
+- Chat only knows inventory the client supplies.
+
+**External integrations**
+Before changing a bridge, verify the Supabase project, table, schema, read/write direction, cache behaviour and source-of-truth owner. Similarly named datasets may be different systems.
+
+---
+
+## Development rules
+
+1. **Read the code first.** Don't rely on this README alone.
+2. **Preserve the architecture.** New business-data writes go `Action → Repository → State → EventBus` (Emergency Billing excepted).
+3. **Don't mutate state directly** without a documented reason.
+4. **Keep EventBus events stable.** Other modules depend on them.
+5. **Make storage migrations lossless:** old key → migration → new key, keeping the old path until verified.
+6. **Before removing a `window.*` bridge,** search repo-wide, including inline HTML handlers, legacy scripts, external consumers and Android/WebView assumptions.
+7. **Service worker:** review app-shell caching, bump the cache version, verify update behaviour.
+8. **Printing:** test on real Android/hardware, including thermal receipts.
+9. **Attendance:** test on actual staff phones (background, reboot, weak network, GPS boundary, permissions, battery optimisation, OEM quirks).
+10. **Database changes:** add a dated migration. Validate financial/inventory-sensitive operations (e.g. refunds) in the database/RPC layer, not only the frontend.
+11. **After refactors,** search the whole repo for stale references.
+12. **Secrets hygiene:** never commit or paste tokens anywhere persistent; rotate immediately if exposed.
+
+**Order of truth** when things disagree: running code → DB schema & migrations → automated tests → module comments → this README → commit history.
+
+---
+
+## Philosophy
+
+Operational reliability, data integrity, simple workflows, offline resilience, cross-device continuity, conservative financial calculations, and pharmacy-specific practicality. Native Android is used where browser limits matter, deterministic business intelligence stays separate from AI-assisted companions, and the synced business-data layer stays separate from intentionally device-local systems.
+
+The goal isn't another dashboard. It's a single operational intelligence layer connecting sales, staff, inventory, closing, STR, audit, emergency billing and supporting workflows without duplicating the systems underneath.
