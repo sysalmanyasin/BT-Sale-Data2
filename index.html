@@ -2745,10 +2745,10 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/str-zero-dispatch.js?v=20260818a"></script>
 <script type="module" src="js/sale-payments-bridge.js?v=20260807b"></script>
 <script type="module" src="js/sale-payments-native.js?v=20260807b"></script>
-<script defer src="js/stockledger.js?v=20260722a"></script>
-<script defer src="js/excess-working.js?v=20260722a"></script>
-<script defer src="js/reorder-report.js?v=20260823a"></script>
-<script defer src="js/inventory-health-dashboard.js?v=20260731a"></script>
+<script type="module" src="js/stockledger.js?v=20260722a"></script>
+<script type="module" src="js/excess-working.js?v=20260722a"></script>
+<script type="module" src="js/reorder-report.js?v=20260823a"></script>
+<script type="module" src="js/inventory-health-dashboard.js?v=20260731a"></script>
 
 <!-- 3. Auth: Google Sign-In -->
 <script defer src="js/auth.js?v=20260722a"></script>
@@ -2768,7 +2768,7 @@ if ('serviceWorker' in navigator) {
 
 <!-- 6d. Supabase sync (Floor 1 extension — needs Repository + Actions) -->
 <script defer src="js/supabase.js?v=20260901a"></script>
-<script defer src="js/pdf-library.js?v=20260725a"></script>
+<script type="module" src="js/pdf-library.js?v=20260725a"></script>
 <script type="module" src="js/activity-log.js?v=20260811a"></script>
 
 <!-- 7. Targets: monthly target management -->
@@ -2778,52 +2778,52 @@ if ('serviceWorker' in navigator) {
 <script defer src="js/analytics.js?v=20260913a"></script>
 
 <!-- 8b. Dashboard: Floor 5 pure renderer -->
-<script defer src="js/dashboard-controls.js"></script>
-<script defer src="js/dashboard.js?v=20260913a"></script>
-<script defer src="js/dashboard-heatmap.js?v=20260911a"></script>
-<script defer src="js/dashboard-race.js?v=20260913b"></script>
+<script type="module" src="js/dashboard-controls.js"></script>
+<script type="module" src="js/dashboard.js?v=20260913a"></script>
+<script type="module" src="js/dashboard-heatmap.js?v=20260911a"></script>
+<script type="module" src="js/dashboard-race.js?v=20260913b"></script>
 
 <!-- 8b. Dashboard Insights: briefing card, target pace, rotating insight strip, diff badge (Phase 3) -->
 <script type="module" src="js/rules-engine.js?v=20260731a"></script>
 <script type="module" src="js/rules-registrations.js?v=20260731a"></script>
-<script defer src="js/dashboard-insights.js?v=20260722a"></script>
+<script type="module" src="js/dashboard-insights.js?v=20260722a"></script>
 
 <!-- 9. Index page: year/month grid rendering -->
 <script type="module" src="js/index-page.js?v=20260731a"></script>
 
 <!-- 10. Reports: day modal, month modal, all print helpers -->
 <script defer src="js/reports.js?v=20260722a"></script>
-<script defer src="js/cash-deposit-report.js?v=20260727a"></script>
-<script defer src="js/icons.js?v=20260809a"></script>
-<script defer src="js/nav-sections.js?v=20260818a"></script>
-<script defer src="js/global-search.js?v=20260731a"></script>
-<script defer src="js/subtab-strip.js?v=20260814a"></script>
+<script type="module" src="js/cash-deposit-report.js?v=20260727a"></script>
+<script type="module" src="js/icons.js?v=20260809a"></script>
+<script type="module" src="js/nav-sections.js?v=20260818a"></script>
+<script type="module" src="js/global-search.js?v=20260731a"></script>
+<script type="module" src="js/subtab-strip.js?v=20260814a"></script>
 
 <!-- 11. Data page: daily table + entry form -->
-<script defer src="js/data-page.js?v=20260722a"></script>
-<script defer src="js/entry-prefill.js?v=20260819a"></script>
+<script type="module" src="js/data-page.js?v=20260722a"></script>
+<script type="module" src="js/entry-prefill.js?v=20260819a"></script>
 <script type="module" src="js/diff-report.js?v=20260831a"></script>
 
 <!-- 11b. Reports print helpers (extracted from manager.js — Step 8) -->
-<script defer src="js/reports-print.js?v=20260722a"></script>
+<script type="module" src="js/reports-print.js?v=20260722a"></script>
 
 <!-- 11c. Manager Summary Export (Phase 5) -->
-<script defer src="js/manager-export.js?v=20260722a"></script>
+<script type="module" src="js/manager-export.js?v=20260722a"></script>
 
 <!-- 11e-pre. Real Google Sheets integration (replaces the old custom grid
      in notes-sheets.js's Sheets panel — see js/sheets-api.js / sheets-sync.js
      / sheets-app.js header comments). Must load before notes-sheets.js since
      _nsRenderPanel() calls sheetsAppBuild() directly. -->
-<script defer src="js/sheets-api.js?v=20260813a"></script>
-<script defer src="js/sheets-sync.js?v=20260813a"></script>
-<script defer src="js/sheets-picker.js?v=20260813a"></script>
-<script defer src="js/sheets-app.js?v=20260813a"></script>
+<script type="module" src="js/sheets-api.js?v=20260813a"></script>
+<script type="module" src="js/sheets-sync.js?v=20260813a"></script>
+<script type="module" src="js/sheets-picker.js?v=20260813a"></script>
+<script type="module" src="js/sheets-app.js?v=20260813a"></script>
 
 <!-- 11e. Notes & Sheets workspace (Phase 6) -->
 <script type="module" src="js/notes-sheets.js?v=20260801a"></script>
 
 <!-- 11e-patch. Sheets enhancements: copy/paste, File menu, Supabase sync -->
-<script defer src="js/sheets-patch.js?v=20260722a"></script>
+<script type="module" src="js/sheets-patch.js?v=20260722a"></script>
 
 <!-- 12. Manager: salary, generic, expense, credit, petty, incentive.
      Split from one 1906-line manager.js monolith into focused modules
@@ -2865,7 +2865,7 @@ if ('serviceWorker' in navigator) {
 <script defer src="js/quick-add.js?v=20260722a"></script>
 
 <!-- UI extras: left-edge tab strip, floating Dashboard FAB, month→target patch -->
-<script defer src="js/ui-extras.js?v=20260728a"></script>
+<script type="module" src="js/ui-extras.js?v=20260728a"></script>
 
 <!-- 14. Field manager modal -->
 <script defer src="js/fields.js?v=20260722a"></script>
