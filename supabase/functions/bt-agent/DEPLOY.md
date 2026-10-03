@@ -1,5 +1,7 @@
 # bt-agent — deployment
 
+**Status (2026-10-03):** migration `agent_foundation` applied and `bt-agent` v1 deployed (verify_jwt=true) to `wetbugzzchkghpzmowod` via the Supabase integration. Re-deploys happen the same way on each push; the GitHub workflow below is an optional backup and only warns if its secrets are missing.
+
 **Automatic:** every push to `main` that touches `supabase/**` runs `.github/workflows/supabase-deploy.yml` (tests first, then deploys changed functions and applies new migration files). One-time setup: add repo secrets `SUPABASE_ACCESS_TOKEN` and `SUPABASE_DB_URL`. To run the first deploy by hand: Actions → *Deploy to Supabase* → Run workflow → functions `bt-agent`, migrations `20261003100000_agent_foundation.sql`. Manual CLI steps below still work.
 
 Project: `wetbugzzchkghpzmowod` (main BT SALE DATA project).

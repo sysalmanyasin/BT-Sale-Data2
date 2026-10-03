@@ -88,22 +88,28 @@ jobs:
           echo "Functions: $funcs"; echo "Migrations: $migs"
 
       - name: Check required secrets
+        id: check
         env:
           TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           DBURL: ${{ secrets.SUPABASE_DB_URL }}
           FUNCS: ${{ steps.plan.outputs.functions }}
           MIGS: ${{ steps.plan.outputs.migrations }}
         run: |
-          if { [ -n "$FUNCS" ] && [ -z "$TOKEN" ]; }; then echo "::error::SUPABASE_ACCESS_TOKEN secret is missing"; exit 1; fi
-          if { [ -n "$MIGS" ] && [ -z "$DBURL" ]; }; then echo "::error::SUPABASE_DB_URL secret is missing"; exit 1; fi
-          echo "secrets ok"
+          # Missing secrets are a warning, not a failure: deploys can also be
+          # done through the connected Supabase integration, so a push must not
+          # show a red X just because CI isn't configured.
+          skip_funcs=false; skip_migs=false
+          if [ -n "$FUNCS" ] && [ -z "$TOKEN" ]; then echo "::warning::SUPABASE_ACCESS_TOKEN not set - skipping function deploy"; skip_funcs=true; fi
+          if [ -n "$MIGS" ] && [ -z "$DBURL" ]; then echo "::warning::SUPABASE_DB_URL not set - skipping migrations"; skip_migs=true; fi
+          echo "skip_funcs=$skip_funcs" >> "$GITHUB_OUTPUT"
+          echo "skip_migs=$skip_migs" >> "$GITHUB_OUTPUT"
 
       # Migrations run BEFORE functions so new tables exist when new code ships.
       # Only files added/changed in this push are run (never the whole history),
       # each in one transaction, stopping on the first error. Files must be
       # idempotent (create if not exists / drop policy if exists).
       - name: Apply new migrations
-        if: steps.plan.outputs.migrations != ''
+        if: steps.plan.outputs.migrations != '' && steps.check.outputs.skip_migs != 'true'
         env:
           DBURL: ${{ secrets.SUPABASE_DB_URL }}
           MIGS: ${{ steps.plan.outputs.migrations }}
@@ -117,13 +123,13 @@ jobs:
           done
 
       - name: Set up Supabase CLI
-        if: steps.plan.outputs.functions != ''
+        if: steps.plan.outputs.functions != '' && steps.check.outputs.skip_funcs != 'true'
         uses: supabase/setup-cli@v1
         with:
           version: latest
 
       - name: Deploy Edge Functions
-        if: steps.plan.outputs.functions != ''
+        if: steps.plan.outputs.functions != '' && steps.check.outputs.skip_funcs != 'true'
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           FUNCS: ${{ steps.plan.outputs.functions }}
