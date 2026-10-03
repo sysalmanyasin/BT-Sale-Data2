@@ -112,6 +112,7 @@ npx serve .
 │   ├── shared/                 # Shared calculation modules
 │   ├── herald/                 # herald-engine.js, herald-page.js
 │   ├── nav-sections.js         # Single source for all navigation
+│   ├── agent/                  # AI assistant: core/, tools/, ui/
 │   ├── emergency-billing-native.js
 │   └── emergency-billing-bridge.js
 ├── css/                        # Per-domain stylesheets
@@ -122,7 +123,7 @@ npx serve .
 ├── android-attendance/         # Native attendance / geofencing app (Kotlin)
 │
 ├── supabase/
-│   ├── functions/              # inventory-chat, medicine-ai-info, send-daily-whatsapp-briefing
+│   ├── functions/              # bt-agent, inventory-chat, medicine-ai-info, send-daily-whatsapp-briefing
 │   ├── migrations/             # Dated SQL migrations
 │   ├── pdf_library/            # Schema + deploy notes
 │   └── activity_log/           # Schema
@@ -288,13 +289,16 @@ See [`android-attendance/README.md`](android-attendance/README.md).
 
 ## AI systems
 
-**The main PWA is intentionally AI-free.** Dashboard and Herald are deterministic. The old Assistant, Context Engine and Daily AI Briefing were removed. AI lives only in separate companion or server-side systems:
+Deterministic business logic (Dashboard, Herald, calculators) stays AI-free. AI is **additive** and never computes figures itself: it calls read-only tools that use the app's own calculators. The old Assistant/CommandHub (removed in `196bf8d`) kept provider keys in the browser; the current design does not.
 
 | System | Where | Behaviour |
 |---|---|---|
+| **BT Assistant (Phase 1, read-only)** | `js/agent/**`, `css/agent.css`, `bt-agent` Edge Function | Floating ✨ chat on every page. Reads Sales, Staff (no CNIC/phone/address), Ledgers and Inventory through registered tools; can open pages. **Cannot change data.** Browser drives the tool loop, the Edge Function performs one model step per call over a free-provider pool (Groq, Cerebras, Gemini, OpenRouter) with fail-over. Needs a signed-in session **and** an active `bt_authorized_users` row. Sensitive conversations (ledger data) are never sent to providers that may train on free-tier prompts. Tool calls are audited in `agent_audit`. See `supabase/functions/bt-agent/DEPLOY.md`. |
 | **Medicine reference** | `inventory-search/` → `medicine-ai-info` Edge Function | Groq first, Gemini fallback; results cached ~30 days; no login required. Reference-only, not clinical decision support. |
 | **Inventory chat** | `inventory-search/` → `inventory-chat` Edge Function | Limited to product context supplied by the client; keeps no server-side inventory copy. |
 | **Daily WhatsApp briefing** | `send-daily-whatsapp-briefing` Edge Function | Reads closing/inventory data, generates a short AI briefing, sends via WhatsApp. Separate from Herald. |
+
+Agent layout: `js/agent/core/` (tool registry, loop, audit, transport), `js/agent/tools/<domain>.js` (one file per domain), `js/agent/ui/` (panel). New tools are registered with a `risk` level (`read`/`ui`/`write`/`critical`); only `read` and `ui` execute today. Writes (Phase 2) must go through `Actions` with an approval card.
 
 Provider secrets must stay server-side. Deployment notes are in each function's `DEPLOY.md`.
 
