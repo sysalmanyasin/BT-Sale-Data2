@@ -9,6 +9,7 @@ const reg = await import('../../js/agent/core/tool-registry.js');
 const { runAgent, MAX_STEPS } = await import('../../js/agent/core/agent-client.js');
 const { renderMarkdown } = await import('../../js/agent/core/markdown-lite.js');
 
+const state = { ran: 0, undone: 0 };
 const tc = (name, args, id = 'c1') => ({ id, type: 'function', function: { name, arguments: typeof args === 'string' ? args : JSON.stringify(args) } });
 
 beforeEach(() => {
@@ -17,7 +18,15 @@ beforeEach(() => {
     parameters: { type: 'object', required: ['text'], properties: { text: { type: 'string' }, n: { type: 'integer' } } },
     run: a => ({ echoed: a.text, n: a.n ?? null }) });
   reg.registerTool({ name: 'secret_read', description: 's', risk: 'read', sensitive: true, run: () => ({ ok: 1 }) });
-  reg.registerTool({ name: 'delete_all', description: 'd', risk: 'critical', run: () => { throw new Error('must never run'); } });
+  state.ran = 0; state.undone = 0;
+  reg.registerTool({ name: 'delete_all', description: 'd', risk: 'critical',
+    preview: () => ({ title: 'Delete everything', lines: ['all of it'] }), run: () => { state.ran++; return { summary: 'deleted' }; },
+    makeUndo: () => ({ label: 'restore', fn: () => { state.undone++; } }) });
+  reg.registerTool({ name: 'add_thing', description: 'a', risk: 'write',
+    parameters: { type: 'object', required: ['n'], properties: { n: { type: 'number' } } },
+    preview: ({ n }) => { if (n < 0) throw new Error('n must be positive'); return { title: 'Add thing', lines: ['n=' + n], warnings: n > 100 ? ['big'] : [] }; },
+    run: ({ n }) => { state.ran++; return { summary: 'added ' + n }; },
+    makeUndo: () => ({ label: 'remove thing', fn: () => { state.undone++; } }) });
   reg.registerTool({ name: 'boom', description: 'b', risk: 'read', run: () => { throw new Error('kaboom'); } });
   reg.registerTool({ name: 'big', description: 'b', risk: 'read', run: () => ({ blob: 'x'.repeat(20000) }) });
 });
@@ -48,10 +57,12 @@ describe('tool registry', () => {
     assert.equal(bad.ok, false);
     assert.match(bad.text, /valid JSON/);
   });
-  test('write/critical tools are BLOCKED in phase 1 and never executed', async () => {
-    const r = await reg.runTool('delete_all', {});
-    assert.equal(r.ok, false);
-    assert.equal(r.error, 'blocked');
+  test('change tools without preview() cannot be registered', () => {
+    assert.throws(() => reg.registerTool({ name: 'x_write', description: 'x', risk: 'write', run() {} }), /preview/);
+  });
+  test('schemas hide change tools unless writes are unlocked', () => {
+    assert.ok(!reg.getToolSchemas().some(t => t.function.name === 'delete_all'));
+    assert.ok(reg.getToolSchemas({ includeWrites: true }).some(t => t.function.name === 'add_thing'));
   });
   test('tool exceptions become error results; unknown tools are safe', async () => {
     const r = await reg.runTool('boom', {});
@@ -62,6 +73,46 @@ describe('tool registry', () => {
     const r = await reg.runTool('big', {});
     assert.ok(r.text.length < 6300);
     assert.match(r.text, /truncated/);
+  });
+});
+
+describe('change gating (enforced in code, not prompt)', () => {
+  const ok = async () => true, no = async () => false;
+  test('locked: change tool never runs, even with an approver', async () => {
+    const r = await reg.runTool('add_thing', { n: 1 }, { writesEnabled: false, approve: ok });
+    assert.equal(r.ok, false); assert.equal(r.error, 'writes_disabled'); assert.equal(state.ran, 0);
+  });
+  test('unlocked but no approval channel: never runs', async () => {
+    const r = await reg.runTool('add_thing', { n: 1 }, { writesEnabled: true });
+    assert.equal(r.ok, false); assert.equal(state.ran, 0);
+  });
+  test('human rejects: run() is never called and the model is told not to retry', async () => {
+    const r = await reg.runTool('add_thing', { n: 1 }, { writesEnabled: true, approve: no });
+    assert.equal(r.ok, false); assert.equal(r.rejected, true); assert.equal(state.ran, 0);
+    assert.match(r.text, /did NOT approve/);
+  });
+  test('approve() that throws counts as a rejection', async () => {
+    const r = await reg.runTool('add_thing', { n: 1 }, { writesEnabled: true, approve: async () => { throw new Error('ui died'); } });
+    assert.equal(r.rejected, true); assert.equal(state.ran, 0);
+  });
+  test('approved: runs once, returns undo, reports done', async () => {
+    let seen;
+    const r = await reg.runTool('add_thing', { n: 5 }, { writesEnabled: true, approve: async req => { seen = req; return true; } });
+    assert.equal(r.ok, true); assert.equal(state.ran, 1);
+    assert.equal(JSON.parse(r.text).done, true); assert.equal(JSON.parse(r.text).can_undo, true);
+    assert.equal(seen.preview.title, 'Add thing'); assert.equal(seen.risk, 'write');
+    await r.undo.fn(); assert.equal(state.undone, 1);
+  });
+  test('invalid args are caught in preview before any card is shown', async () => {
+    let asked = false;
+    const r = await reg.runTool('add_thing', { n: -3 }, { writesEnabled: true, approve: async () => { asked = true; return true; } });
+    assert.equal(r.ok, false); assert.equal(asked, false); assert.equal(state.ran, 0);
+    assert.match(r.text, /positive/);
+  });
+  test('critical tools always require the strong confirmation flag', async () => {
+    let seen;
+    await reg.runTool('delete_all', {}, { writesEnabled: true, approve: async req => { seen = req; return false; } });
+    assert.equal(seen.preview.strong, true);
   });
 });
 
@@ -101,14 +152,45 @@ describe('agent loop', () => {
     assert.equal(r.sensitive, true);
   });
 
-  test('a write tool requested by the model is refused and the model is told', async () => {
-    let call = 0, toolMsg = null;
-    const callServer = async ({ messages }) => {
+  test('locked by default: change tools are not even offered, and a forced call is refused', async () => {
+    let call = 0, toolMsg = null, offered = null;
+    const callServer = async ({ messages, tools }) => {
+      offered = tools.map(t => t.function.name);
       if (++call === 1) return { message: { tool_calls: [tc('delete_all', {})] } };
-      toolMsg = messages.at(-1); return { message: { content: 'I cannot do that yet.' } };
+      toolMsg = messages.at(-1); return { message: { content: 'Locked.' } };
     };
     await runAgent({ userText: 'wipe it', callServer });
-    assert.match(toolMsg.content, /not enabled/i);
+    assert.ok(!offered.includes('delete_all'));
+    assert.match(toolMsg.content, /switched off/i); assert.equal(state.ran, 0);
+  });
+
+  test('unlocked: approval flows through the loop, undo is surfaced, audit records approval', async () => {
+    let call = 0; const undos = [], audits = [];
+    const callServer = async () => ++call === 1
+      ? { message: { tool_calls: [tc('add_thing', { n: 7 })] } } : { message: { content: 'Added.' } };
+    const r = await runAgent({ userText: 'add', callServer, writesEnabled: true, approve: async () => true, onUndoable: u => undos.push(u), onAudit: a => audits.push(a) });
+    assert.equal(r.text, 'Added.'); assert.equal(state.ran, 1);
+    assert.equal(undos.length, 1); assert.equal(undos[0].label, 'remove thing');
+    assert.equal(audits[0].risk, 'write'); assert.equal(audits[0].args._approval, 'approved');
+  });
+
+  test('rejected change is audited as rejected and never runs', async () => {
+    let call = 0; const audits = [];
+    const callServer = async () => ++call === 1
+      ? { message: { tool_calls: [tc('add_thing', { n: 7 })] } } : { message: { content: 'OK, not doing it.' } };
+    await runAgent({ userText: 'add', callServer, writesEnabled: true, approve: async () => false, onAudit: a => audits.push(a) });
+    assert.equal(state.ran, 0); assert.equal(audits[0].args._approval, 'rejected');
+  });
+
+  test('at most MAX_CHANGES_PER_TURN changes are even proposed in one request', async () => {
+    let call = 0, proposals = 0;
+    const callServer = async () => {
+      call++;
+      if (call <= 7) return { message: { tool_calls: [tc('add_thing', { n: call }, 'c' + call)] } };
+      return { message: { content: 'done' } };
+    };
+    await runAgent({ userText: 'spam', callServer, writesEnabled: true, approve: async () => { proposals++; return true; } });
+    assert.equal(proposals, 5);
   });
 
   test('identical repeated tool calls are cut off', async () => {

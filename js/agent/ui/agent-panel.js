@@ -7,6 +7,8 @@ import { callServer } from '../core/server.js';
 import { logToolCall } from '../core/audit.js';
 import { renderMarkdown } from '../core/markdown-lite.js';
 import { getPageContext } from '../tools/app.js';
+import { getWritesEnabled, setWritesEnabled } from '../core/prefs.js';
+import { pushUndo, runUndo, clearUndo } from '../core/undo.js';
 
 const SUGGESTIONS = [
   "How are today's sales?",
@@ -22,6 +24,8 @@ const TOOL_LABELS = {
   inventory_overview: 'Checking inventory', search_inventory: 'Searching inventory', low_stock_items: 'Finding low stock',
   low_cover_items: 'Checking stock cover', slow_moving_stock: 'Finding slow stock', navigate_to: 'Opening page',
   get_app_context: 'Checking date', list_pages: 'Listing pages',
+  add_staff_note: 'Preparing note', add_ledger_entry: 'Preparing ledger entry', set_monthly_target: 'Preparing target change',
+  edit_daily_sales_field: 'Preparing sales edit',
 };
 
 export function mountAgentPanel() {
@@ -36,8 +40,9 @@ export function mountAgentPanel() {
   const sheet = el('section', { id: 'ag-sheet', class: 'ag-sheet', hidden: '', role: 'dialog', 'aria-label': 'AI assistant' });
   sheet.innerHTML = `
     <header class="ag-head">
-      <div><strong>BT Assistant</strong><span class="ag-sub">Read-only · asks your live data</span></div>
+      <div><strong>BT Assistant</strong><span class="ag-sub" id="ag-sub"></span></div>
       <div class="ag-head-btns">
+        <button class="ag-ico" id="ag-lock" aria-label="Allow changes"></button>
         <button class="ag-ico" id="ag-clear" title="New chat" aria-label="New chat">↺</button>
         <button class="ag-ico" id="ag-close" title="Close" aria-label="Close">✕</button>
       </div>
@@ -54,6 +59,53 @@ export function mountAgentPanel() {
   const text = sheet.querySelector('#ag-text');
   const send = sheet.querySelector('#ag-send');
   const chips = sheet.querySelector('#ag-chips');
+  const lockBtn = sheet.querySelector('#ag-lock');
+  const sub = sheet.querySelector('#ag-sub');
+  const pending = new Set(); // resolvers of open approval cards
+
+  function paintLock() {
+    const on = getWritesEnabled();
+    lockBtn.textContent = on ? '🔓' : '🔒';
+    lockBtn.title = on ? 'Changes allowed (you approve each one). Tap to lock.' : 'Read-only. Tap to allow changes.';
+    lockBtn.classList.toggle('ag-on', on);
+    sub.textContent = on ? 'Can propose changes · you approve each' : 'Read-only · asks your live data';
+  }
+  function rejectAllPending() { pending.forEach(r => r(false)); pending.clear(); }
+
+  // ── approval card ──────────────────────────────────────────────────
+  function approve({ preview }) {
+    return new Promise(resolve => {
+      const card = el('div', { class: 'ag-card' });
+      const warn = (preview.warnings || []).map(w => '<div class="ag-warn">⚠ ' + escHtml(w) + '</div>').join('');
+      card.innerHTML = '<div class="ag-card-t">' + escHtml(preview.title) + '</div>'
+        + '<ul class="ag-card-l">' + preview.lines.map(l => '<li>' + escHtml(l) + '</li>').join('') + '</ul>' + warn
+        + '<div class="ag-card-b"><button class="ag-no">Reject</button><button class="ag-yes">' + (preview.strong ? 'Approve…' : 'Approve') + '</button></div>';
+      log.append(card); log.scrollTop = log.scrollHeight;
+      const yes = card.querySelector('.ag-yes'), no = card.querySelector('.ag-no');
+      let armed = !preview.strong;
+      const done = (ok, label) => { pending.delete(finish); card.classList.add('ag-done'); card.querySelector('.ag-card-b').innerHTML = '<span class="ag-card-r">' + label + '</span>'; resolve(ok); };
+      const finish = ok => done(ok, ok ? '✓ Approved' : '✕ Rejected');
+      pending.add(finish);
+      no.onclick = () => finish(false);
+      yes.onclick = () => {
+        if (!armed) { armed = true; yes.textContent = 'Yes, I am sure'; yes.classList.add('ag-warn-btn'); return; }
+        finish(true);
+      };
+    });
+  }
+
+  function addUndoRow({ tool, label, fn }) {
+    const item = pushUndo({ tool, label, fn });
+    const row = el('div', { class: 'ag-undo' });
+    row.innerHTML = '<span>✓ Saved</span>';
+    const b = el('button', { class: 'ag-undo-btn' }, '↶ Undo: ' + label);
+    b.onclick = async () => {
+      b.disabled = true;
+      const r = await runUndo(item.id);
+      row.innerHTML = r.ok ? '<span>↶ Undone: ' + escHtml(r.label) + '</span>' : '<span class="ag-warn">⚠ ' + escHtml(r.error) + '</span>';
+    };
+    row.append(b); log.append(row); log.scrollTop = log.scrollHeight;
+  }
 
   function renderChips() {
     chips.innerHTML = '';
@@ -62,7 +114,9 @@ export function mountAgentPanel() {
   }
   function welcome() {
     log.innerHTML = '';
-    addBubble('assistant', "Hi! I can read your sales, staff, ledgers and inventory, and open pages for you. I can't change data yet. What would you like to know?");
+    addBubble('assistant', getWritesEnabled()
+      ? "Hi! I can read your data and, with your approval on each one, add ledger entries and staff notes, set targets and correct a day's sales. What do you need?"
+      : "Hi! I can read your sales, staff, ledgers and inventory, and open pages for you. Tap 🔒 above if you want me to be able to propose changes (you'd still approve each one). What would you like to know?");
     renderChips();
   }
   function addBubble(role, content, { html = false } = {}) {
@@ -85,7 +139,11 @@ export function mountAgentPanel() {
     try {
       const r = await runAgent({
         history, userText: q, context: getPageContext(), callServer, signal: abort.signal, sensitive,
-        onEvent: ev => { if (ev.type === 'tool_start') status.textContent = (TOOL_LABELS[ev.name] || 'Working') + '…'; },
+        writesEnabled: getWritesEnabled(), approve, onUndoable: addUndoRow,
+        onEvent: ev => {
+          if (ev.type === 'tool_start') status.textContent = (TOOL_LABELS[ev.name] || 'Working') + '…';
+          if (ev.type === 'tool_end' && !ev.ok && !ev.rejected && ev.error && /writes_disabled/.test(ev.error)) paintLock();
+        },
         onAudit: e => logToolCall(e, { conversationId }),
       });
       history = r.messages; sensitive = r.sensitive;
@@ -103,16 +161,24 @@ export function mountAgentPanel() {
 
   function autosize() { text.style.height = 'auto'; text.style.height = Math.min(text.scrollHeight, 120) + 'px'; }
   function open() { sheet.hidden = false; fab.classList.add('ag-hide'); if (!log.children.length) welcome(); setTimeout(() => text.focus(), 50); }
-  function close() { sheet.hidden = true; fab.classList.remove('ag-hide'); if (abort) abort.abort(); }
+  function close() { rejectAllPending(); sheet.hidden = true; fab.classList.remove('ag-hide'); if (abort) abort.abort(); }
 
   fab.onclick = open;
   sheet.querySelector('#ag-close').onclick = close;
-  sheet.querySelector('#ag-clear').onclick = () => { if (abort) abort.abort(); history = []; sensitive = false; welcome(); };
+  sheet.querySelector('#ag-clear').onclick = () => { rejectAllPending(); if (abort) abort.abort(); history = []; sensitive = false; clearUndo(); welcome(); };
+  lockBtn.onclick = () => {
+    if (getWritesEnabled()) { setWritesEnabled(false); }
+    else if (window.confirm('Allow the assistant to propose changes?\n\nIt can add ledger entries and staff notes, set targets and correct a day\'s sales. Nothing is saved until you tap Approve on each change, and most can be undone.')) setWritesEnabled(true);
+    paintLock(); if (!history.length) welcome();
+  };
+  paintLock();
   send.onclick = () => ask(text.value);
   text.addEventListener('input', autosize);
   text.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(text.value); } });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !sheet.hidden) close(); });
 }
+
+function escHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
 function el(tag, attrs = {}, content) {
   const e = document.createElement(tag);

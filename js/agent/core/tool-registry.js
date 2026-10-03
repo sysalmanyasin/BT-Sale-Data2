@@ -24,6 +24,8 @@ export function registerTool(def) {
   if (!def.description) throw new Error('registerTool: description required for ' + def.name);
   const risk = def.risk || 'read';
   if (!RISKS.includes(risk)) throw new Error('registerTool: bad risk for ' + def.name);
+  const changes = risk === 'write' || risk === 'critical';
+  if (changes && typeof def.preview !== 'function') throw new Error('registerTool: write tools need preview() — ' + def.name);
   _tools.set(def.name, {
     name: def.name,
     description: def.description,
@@ -32,6 +34,8 @@ export function registerTool(def) {
     domain: def.domain || 'app',
     sensitive: !!def.sensitive,
     run: def.run,
+    preview: def.preview || null,   // (args) → {title, lines[], warnings[], strong}; throws on invalid args
+    makeUndo: def.makeUndo || null, // (args, result) → {label, fn} | null
   });
 }
 
@@ -39,9 +43,11 @@ export function getTool(name) { return _tools.get(name) || null; }
 export function listTools() { return [..._tools.values()]; }
 export function clearTools() { _tools.clear(); }
 
-/** OpenAI-format tool schemas for the server. */
-export function getToolSchemas() {
-  return listTools().map(t => ({
+export const isChange = tool => !!tool && (tool.risk === 'write' || tool.risk === 'critical');
+
+/** OpenAI-format tool schemas for the server. Change tools are only offered when writes are unlocked. */
+export function getToolSchemas({ includeWrites = false } = {}) {
+  return listTools().filter(t => includeWrites || !isChange(t)).map(t => ({
     type: 'function',
     function: { name: t.name, description: t.description, parameters: t.parameters },
   }));
@@ -79,15 +85,25 @@ function _cap(value) {
 }
 
 /**
- * Execute a tool. Never throws. `allow` decides which risk levels may run
- * (Phase 1 passes ['read','ui']).
- * @returns {{ok:boolean, text:string, tool:object|null, error?:string}}
+ * Execute a tool. Never throws.
+ *
+ * Read/ui tools run directly. CHANGE tools (write/critical) are enforced here,
+ * in code, not in the prompt:
+ *   1. writes must be unlocked (writesEnabled),
+ *   2. an approve() callback must exist,
+ *   3. preview() validates the arguments and describes the change,
+ *   4. the human must approve — rejection means run() is never called.
+ * @returns {{ok:boolean, text:string, tool:object|null, error?:string, rejected?:boolean, undo?:object, preview?:object}}
  */
-export async function runTool(name, rawArgs, { allow = ['read', 'ui'] } = {}) {
+export async function runTool(name, rawArgs, { allow = ['read', 'ui'], writesEnabled = false, approve = null } = {}) {
   const tool = getTool(name);
   if (!tool) return { ok: false, tool: null, error: 'unknown tool', text: JSON.stringify({ error: 'Unknown tool: ' + name }) };
-  if (!allow.includes(tool.risk)) {
-    return { ok: false, tool, error: 'blocked', text: JSON.stringify({ error: 'Writing/changing data is not enabled yet. Tell the user and offer to open the relevant page.' }) };
+  const changing = isChange(tool);
+  if (changing) {
+    if (!writesEnabled) return { ok: false, tool, error: 'writes_disabled', text: JSON.stringify({ error: 'Changes are switched off. Tell the user to unlock changes with the lock button in the assistant header, then ask again.' }) };
+    if (typeof approve !== 'function') return { ok: false, tool, error: 'blocked', text: JSON.stringify({ error: 'No approval channel available. Nothing was changed.' }) };
+  } else if (!allow.includes(tool.risk)) {
+    return { ok: false, tool, error: 'blocked', text: JSON.stringify({ error: 'This kind of tool is not allowed here.' }) };
   }
   let args = rawArgs;
   if (typeof args === 'string') {
@@ -99,12 +115,31 @@ export async function runTool(name, rawArgs, { allow = ['read', 'ui'] } = {}) {
   args = { ...args };
   const bad = _validateArgs(tool.parameters, args);
   if (bad) return { ok: false, tool, error: bad, text: JSON.stringify({ error: bad }) };
+
+  let preview = null;
+  if (changing) {
+    try {
+      preview = await tool.preview(args);
+    } catch (e) {
+      const msg = (e && e.message) || String(e);
+      return { ok: false, tool, error: msg, text: JSON.stringify({ error: msg, hint: 'Nothing was changed. Fix the arguments or ask the user.' }) };
+    }
+    preview = { title: preview.title || tool.name, lines: preview.lines || [], warnings: preview.warnings || [], strong: !!preview.strong || tool.risk === 'critical' };
+    let approved = false;
+    try { approved = !!(await approve({ tool: tool.name, risk: tool.risk, args, preview })); } catch (_) { approved = false; }
+    if (!approved) {
+      return { ok: false, tool, preview, rejected: true, error: 'rejected', text: JSON.stringify({ rejected: true, message: 'The user did NOT approve this change. Nothing was changed. Do not retry the same change; ask what they would like instead.' }) };
+    }
+  }
   try {
     const out = await tool.run(args);
-    const { text } = _cap(out);
-    return { ok: true, tool, text };
+    let undo = null;
+    if (changing && tool.makeUndo) { try { undo = tool.makeUndo(args, out); } catch (_) { undo = null; } }
+    const payload = changing ? { done: true, can_undo: !!undo, ...(out && typeof out === 'object' ? out : { result: out }) } : out;
+    const { text } = _cap(payload);
+    return { ok: true, tool, text, undo, preview };
   } catch (e) {
     const msg = (e && e.message) || String(e);
-    return { ok: false, tool, error: msg, text: JSON.stringify({ error: msg }) };
+    return { ok: false, tool, error: msg, preview, text: JSON.stringify({ error: msg, note: changing ? 'The change failed; nothing was saved.' : undefined }) };
   }
 }

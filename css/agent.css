@@ -34,3 +34,18 @@ body.bt-kiosk-mode .ag-fab{display:none}
 .ag-input textarea:focus{outline:0;box-shadow:var(--focus-ring)}
 .ag-send{width:42px;height:42px;border-radius:50%;border:0;background:var(--accent);color:#fff;font-size:16px;cursor:pointer}
 .ag-send:disabled{opacity:.5}
+/* Phase 2: approval cards, undo, lock toggle */
+.ag-ico.ag-on{background:var(--amber-lt,var(--s3));border-color:var(--amber,var(--border-strong))}
+.ag-card{align-self:stretch;background:var(--surface);border:1.5px solid var(--accent);border-radius:var(--r-md);padding:10px 12px}
+.ag-card.ag-done{border-color:var(--border);opacity:.8}
+.ag-card-t{font-weight:700;font-size:14px;margin-bottom:4px}
+.ag-card-l{margin:0 0 6px;padding-left:18px;font-size:13px;line-height:1.5}
+.ag-warn{font-size:12px;color:var(--amber,#b45309);margin:3px 0}
+.ag-card-b{display:flex;gap:8px;margin-top:8px}
+.ag-card-b button{flex:1;padding:9px 10px;border-radius:var(--r-sm);border:1px solid var(--border-strong);font-size:14px;font-weight:600;cursor:pointer;background:var(--surface);color:var(--text)}
+.ag-card-b .ag-yes{background:var(--accent);color:#fff;border-color:var(--accent)}
+.ag-card-b .ag-warn-btn{background:var(--red);border-color:var(--red)}
+.ag-card-r{font-size:13px;color:var(--muted)}
+.ag-undo{align-self:flex-start;display:flex;gap:8px;align-items:center;font-size:12px;color:var(--green,#15803d)}
+.ag-undo-btn{border:1px solid var(--border-strong);background:var(--surface);color:var(--t2,var(--text));border-radius:var(--r-pill);padding:5px 10px;font-size:12px;cursor:pointer}
+.ag-undo-btn:disabled{opacity:.5}

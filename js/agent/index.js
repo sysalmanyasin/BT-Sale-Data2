@@ -1,10 +1,11 @@
-// AI agent entry point (Phase 1: read-only assistant).
+// AI agent entry point (Phase 2: read + approval-gated changes).
 // Loaded as a module from index.html. Registers tools, mounts the panel.
 // Purely additive: touches no existing app module, state, or storage.
 import './tools/app.js';
 import './tools/sales.js';
 import './tools/manager.js';
 import './tools/inventory.js';
+import './tools/writes.js';
 import { mountAgentPanel } from './ui/agent-panel.js';
 
 function start() {

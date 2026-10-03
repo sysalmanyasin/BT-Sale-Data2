@@ -8,10 +8,11 @@
 // Dependencies are injected so the loop is unit-testable without a
 // network, DOM, or Supabase.
 // ══════════════════════════════════════════════════════════════════════
-import { getToolSchemas, runTool } from './tool-registry.js';
+import { getToolSchemas, runTool, getTool, isChange } from './tool-registry.js';
 
 export const MAX_STEPS = 8;
 export const MAX_HISTORY = 30;
+export const MAX_CHANGES_PER_TURN = 5;
 
 export class AgentError extends Error {
   constructor(message, { status, code } = {}) { super(message); this.name = 'AgentError'; this.status = status; this.code = code; }
@@ -28,10 +29,11 @@ export class AgentError extends Error {
  * @param {AbortSignal} [o.signal]
  * @returns {Promise<{text:string, messages:Array, steps:number, sensitive:boolean}>}
  */
-export async function runAgent({ history = [], userText, context = {}, callServer, onEvent = () => {}, onAudit = () => {}, signal, sensitive = false, allow }) {
+export async function runAgent({ history = [], userText, context = {}, callServer, onEvent = () => {}, onAudit = () => {}, signal, sensitive = false, allow, writesEnabled = false, approve = null, onUndoable = () => {} }) {
   if (typeof callServer !== 'function') throw new AgentError('callServer is required');
   const messages = [...history, { role: 'user', content: String(userText || '').slice(0, 4000) }];
-  const tools = getToolSchemas();
+  const tools = getToolSchemas({ includeWrites: writesEnabled });
+  let changeAttempts = 0;
   let sawSensitive = !!sensitive;
   let repeatGuard = '';
 
@@ -41,7 +43,7 @@ export async function runAgent({ history = [], userText, context = {}, callServe
     const res = await callServer({
       messages: messages.slice(-MAX_HISTORY),
       tools,
-      context,
+      context: { ...context, writes_enabled: !!writesEnabled },
       sensitivity: sawSensitive ? 'high' : 'normal',
       signal,
     });
@@ -70,13 +72,19 @@ export async function runAgent({ history = [], userText, context = {}, callServe
       let result;
       if (looping) {
         result = { ok: false, tool: null, error: 'repeat', text: JSON.stringify({ error: 'You already made this exact call. Answer using the data you have.' }) };
+      } else if (isChange(getTool(name)) && ++changeAttempts > MAX_CHANGES_PER_TURN) {
+        result = { ok: false, tool: getTool(name), error: 'cap', text: JSON.stringify({ error: 'Too many changes proposed in one request. Stop and summarise what is done.' }) };
       } else {
-        result = await runTool(name, rawArgs, allow ? { allow } : undefined);
+        result = await runTool(name, rawArgs, { ...(allow ? { allow } : {}), writesEnabled, approve });
       }
       if (result.tool && result.tool.sensitive) sawSensitive = true;
-      onEvent({ type: 'tool_end', name, ok: result.ok, error: result.error });
+      onEvent({ type: 'tool_end', name, ok: result.ok, error: result.error, rejected: !!result.rejected });
+      if (result.undo) { try { onUndoable({ tool: name, ...result.undo }); } catch (_) { /* ui only */ } }
       try {
-        onAudit({ tool: name, risk: result.tool ? result.tool.risk : 'unknown', args: safeParse(rawArgs), ok: result.ok, resultChars: result.text.length, error: result.error || null });
+        const risk = result.tool ? result.tool.risk : 'unknown';
+        const a = safeParse(rawArgs);
+        if (risk === 'write' || risk === 'critical') a._approval = result.ok ? 'approved' : (result.rejected ? 'rejected' : 'not_applied');
+        onAudit({ tool: name, risk, args: a, ok: result.ok, resultChars: result.text.length, error: result.error || null });
       } catch (_) { /* audit is best-effort */ }
       messages.push({ role: 'tool', tool_call_id: call.id, name, content: result.text });
     }

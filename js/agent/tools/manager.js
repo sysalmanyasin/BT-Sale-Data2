@@ -66,10 +66,11 @@ registerTool({
     if (f) rows = rows.filter(r => (r.date || '') >= f);
     if (t) rows = rows.filter(r => (r.date || '') <= t);
     const total = rows.length;
-    const sum = rows.reduce((s, r) => s + num(r.amount), 0);
+    const signOf = r => { const c = LedgerStore.getCategory(ledger_type, r.categoryId); return c && c.sign ? c.sign : 1; };
+    const net = rows.reduce((s, r) => s + signOf(r) * num(r.amount), 0);
     rows = rows.slice().reverse().slice(0, clampInt(limit, 1, 50, 20));
-    return { ledger: ledger_type, matching_entries: total, sum_of_amounts: rs(sum), shown: rows.length,
-      entries: rows.map(r => ({ date: r.date, category: r.categoryId, amount: rs(r.amount), desc: r.desc || '', balance_after: rs(r._balance) })) };
+    return { ledger: ledger_type, matching_entries: total, net_effect_on_balance: rs(net), shown: rows.length,
+      entries: rows.map(r => ({ date: r.date, category: r.categoryId, amount: rs(r.amount), effect: signOf(r) > 0 ? '+' : '-', desc: r.desc || '', balance_after: rs(r._balance) })) };
   },
 });
 
@@ -84,10 +85,11 @@ registerTool({
     const [mn, yr] = my.split(' ');
     const prefix = yr + '-' + String(monthIndex(mn) + 1).padStart(2, '0');
     const by = {};
-    let count = 0;
+    let count = 0, net = 0;
     LedgerStore.getEntries(ledger_type).filter(e => String(e.date || '').startsWith(prefix)).forEach(e => {
       by[e.categoryId] = (by[e.categoryId] || 0) + num(e.amount); count++;
+      const c = LedgerStore.getCategory(ledger_type, e.categoryId); net += (c && c.sign ? c.sign : 1) * num(e.amount);
     });
-    return { ledger: ledger_type, month: my, entries: count, by_category: Object.fromEntries(Object.entries(by).map(([k, v]) => [k, rs(v)])), total: rs(Object.values(by).reduce((a, b) => a + b, 0)) };
+    return { ledger: ledger_type, month: my, entries: count, by_category: Object.fromEntries(Object.entries(by).map(([k, v]) => [k, rs(v)])), gross_total: rs(Object.values(by).reduce((a, b) => a + b, 0)), net_effect_on_balance: rs(net) };
   },
 });
