@@ -46,7 +46,13 @@ let _client = null;
 function getClient() {
   if (_client) return _client;
   if (typeof supabase === 'undefined') return null;
-  _client = supabase.createClient(INV_SUPABASE_URL, INV_SUPABASE_ANON_KEY);
+  // This page shares an origin with the main app, so a default client would
+  // pick up any saved Supabase login and send it instead of the anon key.
+  // A logged-in user outside the `staff` table gets zero rows (RLS), which
+  // looked like "No matches". Stay anonymous: no persisted session, no refresh.
+  _client = supabase.createClient(INV_SUPABASE_URL, INV_SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'inv-search-anon' },
+  });
   return _client;
 }
 
@@ -54,17 +60,17 @@ function rowToProduct(row) {
   return {
     code: row.code || '',
     name: row.name || '',
-    qty: row.qty || 0,
-    price: row.price || 0,
+    qty: Number(row.qty) || 0,
+    price: Number(row.price) || 0,
     company: row.company || 'Unassigned Manufacturer',
     generic: row.generic || '',
     supplier: row.supplier || 'Unassigned Supplier',
     lastReceiveDate: row.last_receive_date || null,
     lastSaleDate: row.last_sale_date || null,
-    netQty30Days: row.net_qty_30_days || 0,
-    netQty90Days: row.net_qty_90_days || 0,
-    saleValueInclTax30Days: row.sale_value_incl_tax_30_days || 0,
-    taxPercent: row.tax_percent || 0,
+    netQty30Days: Number(row.net_qty_30_days) || 0,
+    netQty90Days: Number(row.net_qty_90_days) || 0,
+    saleValueInclTax30Days: Number(row.sale_value_incl_tax_30_days) || 0,
+    taxPercent: Number(row.tax_percent) || 0,
     isTaxable: !!row.is_taxable,
   };
 }
@@ -107,21 +113,41 @@ function setStatus(msg, show) {
   els.status.hidden = !show;
 }
 
-async function refresh(force) {
+let _refreshing = null;
+function refresh(force) {
+  // Boot code calls refresh several times; share one in-flight request.
+  if (_refreshing) return _refreshing;
+  _refreshing = doRefresh(force).finally(() => { _refreshing = null; });
+  return _refreshing;
+}
+
+async function doRefresh(force) {
   if (!force && PRODUCTS.length && (Date.now() - fetchedAt) < MIN_REFRESH_MS) return;
   const client = getClient();
   if (!client) { setStatus('Supabase library still loading…', true); return; }
   els.refreshBtn.classList.add('spinning');
   setStatus('Syncing inventory…', true);
   try {
-    const products = await fetchAllProducts(client);
+    let products = await fetchAllProducts(client);
+    // An empty result is suspicious (the sync job reloads the table, or access
+    // is blocked). Retry once before believing it.
+    if (!products.length) {
+      await new Promise(r => setTimeout(r, 3000));
+      products = await fetchAllProducts(client);
+    }
+    if (!products.length) {
+      // Never overwrite a good list/cache with an empty one.
+      setStatus(PRODUCTS.length
+        ? 'Server returned 0 products — keeping last saved data. Tap ⟳ to retry.'
+        : '0 products loaded — inventory is empty or access is blocked. Tap ⟳ to retry.', true);
+      runSearch();
+      return;
+    }
     PRODUCTS = products;
     fetchedAt = Date.now();
     saveCache({ products, fetchedAt });
     setStatus('', false);
-    els.lastSyncLine.textContent = products.length
-      ? products.length.toLocaleString('en-PK') + ' products • synced just now'
-      : '';
+    els.lastSyncLine.textContent = products.length.toLocaleString('en-PK') + ' products • synced just now';
     runSearch();
   } catch (e) {
     setStatus('Sync failed — showing last saved data. ' + (e.message || ''), true);
@@ -144,7 +170,7 @@ function renderResults(items) {
   if (!q) return;
 
   if (!items.length) {
-    els.list.innerHTML = '<div class="empty-sub" style="text-align:center;padding:30px 0;color:var(--text-dim)">No matches.</div>';
+    els.list.innerHTML = '<div class="empty-sub" style="text-align:center;padding:30px 0;color:var(--text-dim)">' + (PRODUCTS.length ? 'No matches.' : 'No inventory loaded yet — tap ⟳ to sync.') + '</div>';
     return;
   }
 
