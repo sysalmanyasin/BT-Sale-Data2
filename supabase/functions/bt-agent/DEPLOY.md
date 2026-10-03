@@ -5,10 +5,11 @@
 Project: `wetbugzzchkghpzmowod` (main BT SALE DATA project).
 
 1. Apply the migration: `supabase/migrations/20261003100000_agent_foundation.sql`
-2. Set secrets (any subset; Groq + Cerebras recommended, they are non-training):
+2. Secrets: **nothing to do for Groq.** Edge Function secrets are project-wide, and `GROQ_API_KEY`
+   (plus `GEMINI_API_KEY`) already exist in project `wetbugzzchkghpzmowod` for `medicine-ai-info`,
+   so `bt-agent` picks them up automatically. Groq is the first-choice provider. Optional extras:
    ```bash
-   supabase secrets set GROQ_API_KEY=... CEREBRAS_API_KEY=... GEMINI_API_KEY=... OPENROUTER_API_KEY=...
-   # optional
+   supabase secrets set CEREBRAS_API_KEY=... OPENROUTER_API_KEY=...   # more fail-over
    supabase secrets set AGENT_PER_MIN=20 AGENT_PER_DAY=400 AGENT_ALLOWED_ORIGINS=https://bt.duapharma.com
    ```
 3. Deploy **with JWT verification ON** (the default) — do not pass `--no-verify-jwt`:
