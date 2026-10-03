@@ -2,7 +2,7 @@
 // All maths is done here (deterministic); the model only explains.
 import { registerTool } from '../core/tool-registry.js';
 import { DAILY, MONTHLY, mBanks, creditSales } from '../../config.js';
-import { num, rs, normMonth, normDay, monthSortVal, currentMonthYear, clampInt, pctChange, dayOfMonth } from './_util.js';
+import { num, rs, normMonth, normDay, monthSortVal, currentMonthYear, clampInt, pctChange, dayOfMonth, sameMonth } from './_util.js';
 
 const targets = () => { try { return typeof window.getTgts === 'function' ? window.getTgts() : {}; } catch (_) { return {}; } };
 
@@ -10,8 +10,8 @@ function latestMonthYear() {
   if (!MONTHLY.length) return null;
   return MONTHLY.map(m => m.Month_Year).sort((a, b) => monthSortVal(a) - monthSortVal(b)).pop();
 }
-function monthRec(my) { return MONTHLY.find(m => m.Month_Year === my) || null; }
-function daysFor(my) { return DAILY.filter(d => d.Month_Year === my); }
+function monthRec(my) { return MONTHLY.find(m => sameMonth(m.Month_Year, my)) || null; }
+function daysFor(my) { return DAILY.filter(d => sameMonth(d.Month_Year, my)); }
 
 function summarise(rec) {
   return {
@@ -29,7 +29,7 @@ function summarise(rec) {
 function resolveMonth(arg) {
   if (!arg) return { my: latestMonthYear() };
   const my = normMonth(arg);
-  return { my, bad: my ? null : 'Could not understand month "' + arg + '". Use e.g. "Sep 2026".' };
+  return { my, bad: my ? null : 'Could not understand month "' + arg + '". Use e.g. "September 2026".' };
 }
 
 registerTool({
@@ -37,7 +37,7 @@ registerTool({
   description: 'List every month that has sales data with its total sale and number of days entered. Use first when unsure which months exist.',
   parameters: { type: 'object', properties: { year: { type: 'string', description: 'Optional 4-digit year filter, e.g. 2026' } } },
   run: ({ year }) => {
-    const rows = MONTHLY.filter(m => !year || String(m.Month_Year).endsWith(' ' + year))
+    const rows = MONTHLY.filter(m => !year || String(m.Month_Year).trim().endsWith(' ' + year))
       .sort((a, b) => monthSortVal(a.Month_Year) - monthSortVal(b.Month_Year))
       .map(m => ({ month: m.Month_Year, total_sale: rs(m.TOTAL), days_entered: daysFor(m.Month_Year).length }));
     return { count: rows.length, months: rows };
@@ -47,20 +47,21 @@ registerTool({
 registerTool({
   name: 'get_sales_summary', domain: 'sales', risk: 'read',
   description: 'Totals for one month: total sale, comparison (COMP) sale, difference, cash, bank, credit, customers, days entered, average per day, plus target and pace if a target is set. Defaults to the latest month.',
-  parameters: { type: 'object', properties: { month_year: { type: 'string', description: 'e.g. "Sep 2026". Omit for the latest month.' } } },
+  parameters: { type: 'object', properties: { month_year: { type: 'string', description: 'e.g. "September 2026". Omit for the latest month.' } } },
   run: ({ month_year }) => {
     const { my, bad } = resolveMonth(month_year);
     if (bad) return { error: bad };
     const rec = my && monthRec(my);
     if (!rec) return { error: 'No sales data for ' + (my || 'any month'), available_latest: latestMonthYear() };
     const days = daysFor(my);
-    const out = { month: my, days_entered: days.length, ...summarise(rec) };
+    const out = { month: rec.Month_Year, days_entered: days.length, ...summarise(rec) };
     out.avg_per_day = days.length ? rs(num(rec.TOTAL) / days.length) : 0;
-    const tgt = num(targets()[my]);
+    const myKey = rec.Month_Year;
+    const tgt = num(targets()[myKey]);
     if (tgt) {
       out.target = rs(tgt);
       const A = window.Analytics;
-      const pace = A && typeof A.getTargetPaceForMonth === 'function' ? A.getTargetPaceForMonth(my, targets()) : null;
+      const pace = A && typeof A.getTargetPaceForMonth === 'function' ? A.getTargetPaceForMonth(myKey, targets()) : null;
       if (pace) Object.assign(out, {
         target_pct_done: pace.pct, remaining_to_target: rs(pace.remaining), days_left: pace.daysLeft,
         needed_per_day: rs(pace.neededPerDay), ideal_per_day: rs(pace.idealPerDay), actual_per_day: rs(pace.actualPerDay),
@@ -97,7 +98,7 @@ registerTool({
   name: 'top_sales_days', domain: 'sales', risk: 'read',
   description: 'Highest or lowest sale days in a month (or across all data if month_year is "all").',
   parameters: { type: 'object', properties: {
-    month_year: { type: 'string', description: 'e.g. "Sep 2026", or "all"' },
+    month_year: { type: 'string', description: 'e.g. "September 2026", or "all"' },
     order: { type: 'string', enum: ['highest', 'lowest'] },
     count: { type: 'integer', description: 'default 5, max 15' },
   } },
@@ -115,12 +116,12 @@ registerTool({
   name: 'compare_sales_months', domain: 'sales', risk: 'read',
   description: 'Compare two months (total, cash, bank, credit, customers, average per day) with absolute and percent change. For a fair comparison of a part-month, set same_days_only to compare only the days both months have entered.',
   parameters: { type: 'object', required: ['month_a', 'month_b'], properties: {
-    month_a: { type: 'string', description: 'e.g. "Sep 2026"' }, month_b: { type: 'string', description: 'month to compare against' },
+    month_a: { type: 'string', description: 'e.g. "September 2026"' }, month_b: { type: 'string', description: 'month to compare against' },
     same_days_only: { type: 'boolean' },
   } },
   run: ({ month_a, month_b, same_days_only }) => {
     const a = normMonth(month_a), b = normMonth(month_b);
-    if (!a || !b) return { error: 'Use month names like "Sep 2026"' };
+    if (!a || !b) return { error: 'Use month names like "September 2026"' };
     if (!monthRec(a) || !monthRec(b)) return { error: 'No data for ' + (!monthRec(a) ? a : b) };
     let da = daysFor(a), db = daysFor(b);
     let note = null;
@@ -173,7 +174,7 @@ registerTool({
   description: 'Month-by-month total sales for a year with the best and worst month and the year total.',
   parameters: { type: 'object', required: ['year'], properties: { year: { type: 'string', description: '4-digit year' } } },
   run: ({ year }) => {
-    const rows = MONTHLY.filter(m => String(m.Month_Year).endsWith(' ' + year))
+    const rows = MONTHLY.filter(m => String(m.Month_Year).trim().endsWith(' ' + year))
       .sort((a, b) => monthSortVal(a.Month_Year) - monthSortVal(b.Month_Year))
       .map(m => ({ month: m.Month_Year, total_sale: rs(m.TOTAL) }));
     if (!rows.length) return { error: 'No data for year ' + year };

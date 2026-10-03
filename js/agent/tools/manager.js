@@ -3,7 +3,7 @@
 import { registerTool } from '../core/tool-registry.js';
 import { Repository } from '../../repository.js';
 import * as LedgerStore from '../../ledger-store.js';
-import { num, rs, clampInt, normDay, normMonth, MON } from './_util.js';
+import { num, rs, clampInt, normDay, normMonth, monthIndex, MON } from './_util.js';
 
 const safeStaff = e => ({
   staff_id: e.staffId, name: e.name, designation: e.designation, active: e.active !== false,
@@ -75,14 +75,14 @@ registerTool({
 
 registerTool({
   name: 'get_ledger_month_totals', domain: 'manager', risk: 'read', sensitive: true,
-  description: 'Per-category totals of one ledger for a month (e.g. petty cash expenses in Sep 2026).',
+  description: 'Per-category totals of one ledger for a month (e.g. petty cash expenses in September 2026).',
   parameters: { type: 'object', required: ['ledger_type', 'month_year'], properties: { ledger_type: { type: 'string' }, month_year: { type: 'string' } } },
   run: ({ ledger_type, month_year }) => {
     const my = normMonth(month_year);
-    if (!my) return { error: 'Use month like "Sep 2026"' };
+    if (!my) return { error: 'Use month like "September 2026"' };
     if (!LedgerStore.getAllLedgerTypes().some(t => t.id === ledger_type)) return { error: 'Unknown ledger "' + ledger_type + '"' };
     const [mn, yr] = my.split(' ');
-    const prefix = yr + '-' + String(MON.indexOf(mn) + 1).padStart(2, '0');
+    const prefix = yr + '-' + String(monthIndex(mn) + 1).padStart(2, '0');
     const by = {};
     let count = 0;
     LedgerStore.getEntries(ledger_type).filter(e => String(e.date || '').startsWith(prefix)).forEach(e => {

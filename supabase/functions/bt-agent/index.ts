@@ -77,7 +77,7 @@ function buildSystemPrompt(ctx: Record<string, unknown>): string {
     '5. Medicine questions: general reference information only, not patient-specific advice; suggest a pharmacist or doctor for individual cases.',
     '6. Prefer one well-chosen tool call over many. Stop calling tools as soon as you can answer.',
     '7. Reply in the user\'s language (English, Urdu or Roman Urdu).',
-    'Dates in the app look like 05/Sep/2026 and months like "Sep 2026".',
+    'Dates in the app look like 05/Sep/2026 and months like "September 2026".',
     `CONTEXT: ${JSON.stringify(ctx).slice(0, 1500)}`,
   ].join('\n');
 }

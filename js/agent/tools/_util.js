@@ -4,22 +4,38 @@ export const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep
 export const num = v => { const x = parseFloat(v); return Number.isFinite(x) ? x : 0; };
 export const rs = v => Math.round(num(v));
 
-/** "Sep 2026" | "september 2026" | "2026-09" | "9/2026" → "Sep 2026" (or null). */
+export const FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+/** Month name/abbrev (any case, "Sep", "sept", "September") → 0-11, or -1. */
+export function monthIndex(name) {
+  const s = String(name || '').trim().toLowerCase().replace(/\.$/, '');
+  if (s.length < 3) return -1;
+  return FULL.findIndex(f => f.toLowerCase().startsWith(s) || (s === 'sept' && f === 'September'));
+}
+
+/**
+ * The app stores Month_Year as the FULL month name + year ("September 2026").
+ * Accepts "Sep 2026", "september 2026", "SEPTEMBER 2026", "2026-09", "9/2026"
+ * and returns the canonical form (or null).
+ */
 export function normMonth(input) {
   if (!input) return null;
   const s = String(input).trim().toLowerCase();
   let m = /^(\d{4})-(\d{1,2})$/.exec(s);
-  if (m) return MON[+m[2] - 1] ? MON[+m[2] - 1] + ' ' + m[1] : null;
+  if (m) return FULL[+m[2] - 1] ? FULL[+m[2] - 1] + ' ' + m[1] : null;
   m = /^(\d{1,2})[/-](\d{4})$/.exec(s);
-  if (m) return MON[+m[1] - 1] ? MON[+m[1] - 1] + ' ' + m[2] : null;
+  if (m) return FULL[+m[1] - 1] ? FULL[+m[1] - 1] + ' ' + m[2] : null;
   m = /^([a-z]{3,9})\.?\s+(\d{4})$/.exec(s);
-  if (m) { const i = MON.findIndex(x => m[1].startsWith(x.toLowerCase())); return i >= 0 ? MON[i] + ' ' + m[2] : null; }
+  if (m) { const i = monthIndex(m[1]); return i >= 0 ? FULL[i] + ' ' + m[2] : null; }
   return null;
 }
 
+/** Case-insensitive month-label equality (the data contains e.g. "JULY 2022"). */
+export const sameMonth = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+
 export function monthSortVal(my) {
-  const [mn, yr] = String(my || '').split(' ');
-  const i = MON.indexOf(mn);
+  const [mn, yr] = String(my || '').trim().split(/\s+/);
+  const i = monthIndex(mn);
   return (parseInt(yr, 10) || 0) * 12 + (i < 0 ? 0 : i);
 }
 
@@ -39,7 +55,7 @@ export function normDay(input, now = new Date()) {
 
 export function dayOfMonth(dateStr) { return parseInt(String(dateStr || '').split('/')[0], 10) || 0; }
 
-export function currentMonthYear(now = new Date()) { return MON[now.getMonth()] + ' ' + now.getFullYear(); }
+export function currentMonthYear(now = new Date()) { return FULL[now.getMonth()] + ' ' + now.getFullYear(); }
 
 export function clampInt(v, lo, hi, dflt) {
   const x = Math.round(Number(v));
