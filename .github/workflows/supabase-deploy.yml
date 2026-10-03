@@ -1,0 +1,140 @@
+name: Deploy to Supabase
+
+# Every push to main that touches supabase/** runs the tests first, then
+# deploys only the Edge Functions that changed and applies only the NEW
+# migration files from that push. Manual run: choose functions/migrations.
+#
+# Required repo secrets (Settings → Secrets and variables → Actions):
+#   SUPABASE_ACCESS_TOKEN  personal access token (supabase.com/dashboard/account/tokens)
+#   SUPABASE_DB_URL        Postgres connection string for the project (only needed for migrations)
+# Provider keys (GROQ_API_KEY etc.) are set once in Supabase, not here.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/**"
+      - "supabase/migrations/**"
+      - "supabase/config.toml"
+      - ".github/workflows/supabase-deploy.yml"
+  workflow_dispatch:
+    inputs:
+      functions:
+        description: "Functions to deploy: 'all' or comma list (e.g. bt-agent,inventory-chat). Empty = none"
+        required: false
+        default: ""
+      migrations:
+        description: "Migration files to apply (comma list of file names in supabase/migrations). Empty = none"
+        required: false
+        default: ""
+
+concurrency:
+  group: supabase-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  PROJECT_REF: wetbugzzchkghpzmowod
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Work out what changed
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          IN_FUNCS: ${{ github.event.inputs.functions }}
+          IN_MIGS: ${{ github.event.inputs.migrations }}
+        run: |
+          set -euo pipefail
+          funcs=""; migs=""
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            if [ "$IN_FUNCS" = "all" ]; then
+              funcs=$(ls -1 supabase/functions | grep -v '^_' | tr '\n' ' ')
+            else
+              funcs=$(echo "$IN_FUNCS" | tr ',' ' ')
+            fi
+            migs=$(echo "$IN_MIGS" | tr ',' ' ')
+          else
+            if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then RANGE="HEAD~1..HEAD"; else RANGE="$BEFORE..HEAD"; fi
+            changed=$(git diff --name-only "$RANGE" || true)
+            funcs=$(echo "$changed" | grep -E '^supabase/functions/[^/]+/' | cut -d/ -f3 | sort -u | tr '\n' ' ' || true)
+            # config.toml change => redeploy every function so JWT settings apply
+            if echo "$changed" | grep -q '^supabase/config.toml$'; then funcs=$(ls -1 supabase/functions | grep -v '^_' | tr '\n' ' '); fi
+            migs=$(echo "$changed" | grep -E '^supabase/migrations/.+\.sql$' | xargs -r -n1 basename | sort | tr '\n' ' ' || true)
+          fi
+          echo "functions=$(echo $funcs | xargs)" >> "$GITHUB_OUTPUT"
+          echo "migrations=$(echo $migs | xargs)" >> "$GITHUB_OUTPUT"
+          echo "Functions: $funcs"; echo "Migrations: $migs"
+
+      - name: Check required secrets
+        env:
+          TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          DBURL: ${{ secrets.SUPABASE_DB_URL }}
+          FUNCS: ${{ steps.plan.outputs.functions }}
+          MIGS: ${{ steps.plan.outputs.migrations }}
+        run: |
+          if { [ -n "$FUNCS" ] && [ -z "$TOKEN" ]; }; then echo "::error::SUPABASE_ACCESS_TOKEN secret is missing"; exit 1; fi
+          if { [ -n "$MIGS" ] && [ -z "$DBURL" ]; }; then echo "::error::SUPABASE_DB_URL secret is missing"; exit 1; fi
+          echo "secrets ok"
+
+      # Migrations run BEFORE functions so new tables exist when new code ships.
+      # Only files added/changed in this push are run (never the whole history),
+      # each in one transaction, stopping on the first error. Files must be
+      # idempotent (create if not exists / drop policy if exists).
+      - name: Apply new migrations
+        if: steps.plan.outputs.migrations != ''
+        env:
+          DBURL: ${{ secrets.SUPABASE_DB_URL }}
+          MIGS: ${{ steps.plan.outputs.migrations }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client >/dev/null
+          for f in $MIGS; do
+            echo "::group::$f"
+            psql "$DBURL" -v ON_ERROR_STOP=1 --single-transaction -f "supabase/migrations/$f"
+            echo "::endgroup::"
+          done
+
+      - name: Set up Supabase CLI
+        if: steps.plan.outputs.functions != ''
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Deploy Edge Functions
+        if: steps.plan.outputs.functions != ''
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          FUNCS: ${{ steps.plan.outputs.functions }}
+        run: |
+          set -euo pipefail
+          for fn in $FUNCS; do
+            if [ -f "supabase/functions/$fn/index.ts" ]; then
+              echo "::group::deploy $fn"
+              supabase functions deploy "$fn" --project-ref "$PROJECT_REF"
+              echo "::endgroup::"
+            else
+              echo "skip $fn (no index.ts — removed or not a function)"
+            fi
+          done

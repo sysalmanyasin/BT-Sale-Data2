@@ -1,0 +1,19 @@
+# Supabase CLI config — pins per-function JWT settings so CI deploys never
+# silently flip them. Project: wetbugzzchkghpzmowod (BT SALE DATA / Closing).
+project_id = "wetbugzzchkghpzmowod"
+
+# AI agent: JWT required (it also checks bt_authorized_users in code).
+[functions.bt-agent]
+verify_jwt = true
+
+# Inventory Search companions are public (no login step in that PWA).
+# These were deployed with verify_jwt=false; keep them that way.
+[functions.inventory-chat]
+verify_jwt = false
+
+[functions.medicine-ai-info]
+verify_jwt = false
+
+# Cron-invoked; no end-user JWT.
+[functions.send-daily-whatsapp-briefing]
+verify_jwt = false
