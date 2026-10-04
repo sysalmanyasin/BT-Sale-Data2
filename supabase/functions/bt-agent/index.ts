@@ -64,6 +64,14 @@ function json(req: Request, body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...cors(req) } });
 }
 
+// Short domain briefings, selected by id only (the client can never inject prompt text).
+const FOCUS: Record<string, string> = {
+  sales: 'FOCUS = SALES. TOTAL is the day\'s sale; COMP SALE is the comparison figure and DIFF = TOTAL - COMP SALE. Use the year or month_year parameters for year/month questions. Targets are per month.',
+  manager: 'FOCUS = STAFF AND MONEY. Ledger entries add or subtract depending on their category sign: use net_effect fields, not raw amounts. Staff credit net = opening balance + entries - salary deduction - less generic (positive means the staff member owes the shop). Never reveal private identity data.',
+  inventory: 'FOCUS = INVENTORY. Cover days = stock / average daily sales over 30 days. Use low_cover_items for what to reorder and slow_moving_stock for dead stock.',
+  analyst: 'FOCUS = ANALYSIS ACROSS AREAS. Fetch each needed figure with one tool call per area, then compare and explain briefly. State which numbers came from where.',
+};
+
 function buildSystemPrompt(ctx: Record<string, unknown>): string {
   return [
     'You are the BT Assistant inside "BT Sales Intelligence Centre", a pharmacy operations app for a single pharmacy in Bahria Town, Pakistan. You talk to the owner/manager.',
@@ -80,6 +88,7 @@ function buildSystemPrompt(ctx: Record<string, unknown>): string {
     '7. Reply in the user\'s language (English, Urdu or Roman Urdu).',
     '8. Never write placeholders or notes such as "(data not returned)". If a tool did not give you what you need, call it again with better arguments (for example a year or month parameter) or say plainly that you could not get it.',
     'Dates in the app look like 05/Sep/2026 and months like "September 2026".',
+    ...(typeof ctx.focus === 'string' && FOCUS[ctx.focus] ? [FOCUS[ctx.focus]] : []),
     `CONTEXT: ${JSON.stringify(ctx).slice(0, 1500)}`,
   ].join('\n');
 }

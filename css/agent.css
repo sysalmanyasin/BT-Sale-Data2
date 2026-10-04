@@ -53,3 +53,4 @@ body.bt-kiosk-mode .ag-fab{display:none}
 .ag-type label{display:block;margin-bottom:4px;color:var(--red)}
 .ag-type-in{width:100%;box-sizing:border-box;border:1.5px solid var(--red);background:var(--bg);color:var(--text);border-radius:var(--r-sm);padding:9px 10px;font-size:16px;text-transform:uppercase}
 .ag-card-b .ag-yes:disabled{opacity:.4}
+.ag-by{margin-top:6px;font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}

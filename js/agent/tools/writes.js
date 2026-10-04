@@ -105,7 +105,7 @@ registerTool({
       title: 'Add ledger entry',
       lines: ['Ledger: ' + t.label, 'Category: ' + c.label, 'Amount: ' + rsFmt(amt) + (c.sign > 0 ? '  (adds)' : c.sign < 0 ? '  (subtracts)' : ''),
         'Date: ' + isoToApp(iso), desc ? 'Note: ' + desc : null, 'Balance: ' + rsFmt(before) + ' → ' + rsFmt(after)].filter(Boolean),
-      warnings: w, strong: amountChecks(amt).strong || dup,
+      warnings: w, strong: amountChecks(amt).strong || dup, amount: amt,
     };
   },
   run: ({ ledger_type, category_id, amount, date, desc }) => {
@@ -243,7 +243,7 @@ registerTool({
       if (avg > 0 && Math.abs(total - avg) / avg > 0.5) w.push('TOTAL ' + rsFmt(total) + ' is far from the recent daily average (' + rsFmt(avg) + ').');
     }
     const lines = ['Day: ' + app, ...Object.entries(entry).filter(([k, v]) => ENTRY_FIELDS.includes(k) && v !== null).map(([k, v]) => k + ': ' + rsFmt(v)), 'TOTAL: ' + rsFmt(total) + (comp ? '  (COMP ' + rsFmt(comp) + ')' : '')];
-    return { title: 'Add sales for ' + app, lines, warnings: w, strong: true };
+    return { title: 'Add sales for ' + app, lines, warnings: w, strong: true, amount: total };
   },
   run: ({ date, fields }) => {
     const { entry, app, my } = buildEntry(date, fields);

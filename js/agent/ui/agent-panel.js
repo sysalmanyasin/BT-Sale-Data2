@@ -9,6 +9,7 @@ import { renderMarkdown } from '../core/markdown-lite.js';
 import { getPageContext } from '../tools/app.js';
 import { getWritesEnabled, setWritesEnabled } from '../core/prefs.js';
 import { pushUndo, runUndo, clearUndo } from '../core/undo.js';
+import { clearSession } from '../core/auditor.js';
 
 const SUGGESTIONS = [
   'What needs my attention today?',
@@ -35,7 +36,7 @@ export function mountAgentPanel() {
   let busy = false;
   let abort = null;
   let sensitive = false;
-  let lastDomains = null;
+  let lastSpecialist = null;
 
   const fab = el('button', { id: 'ag-fab', class: 'ag-fab', 'aria-label': 'Open AI assistant', title: 'AI assistant' }, '✨');
   const sheet = el('section', { id: 'ag-sheet', class: 'ag-sheet', hidden: '', role: 'dialog', 'aria-label': 'AI assistant' });
@@ -147,16 +148,17 @@ export function mountAgentPanel() {
     try {
       const r = await runAgent({
         history, userText: q, context: getPageContext(), callServer, signal: abort.signal, sensitive,
-        writesEnabled: getWritesEnabled(), approve, onUndoable: addUndoRow, prevDomains: lastDomains,
+        writesEnabled: getWritesEnabled(), approve, onUndoable: addUndoRow, prevSpecialist: lastSpecialist,
         onEvent: ev => {
           if (ev.type === 'tool_start') status.textContent = (TOOL_LABELS[ev.name] || 'Working') + '…';
           if (ev.type === 'tool_end' && !ev.ok && !ev.rejected && ev.error && /writes_disabled/.test(ev.error)) paintLock();
         },
         onAudit: e => logToolCall(e, { conversationId }),
       });
-      history = r.messages; sensitive = r.sensitive; lastDomains = r.domains;
+      history = r.messages; sensitive = r.sensitive; lastSpecialist = r.specialist;
       status.remove();
-      addBubble('assistant', r.text);
+      const ab = addBubble('assistant', r.text);
+      if (r.specialist && r.specialist.id !== 'general') ab.append(el('div', { class: 'ag-by' }, r.specialist.label));
     } catch (e) {
       status.remove();
       const msg = e instanceof AgentError ? e.message : 'Something went wrong. Please try again.';
@@ -173,7 +175,7 @@ export function mountAgentPanel() {
 
   fab.onclick = open;
   sheet.querySelector('#ag-close').onclick = close;
-  sheet.querySelector('#ag-clear').onclick = () => { rejectAllPending(); if (abort) abort.abort(); history = []; sensitive = false; lastDomains = null; clearUndo(); welcome(); };
+  sheet.querySelector('#ag-clear').onclick = () => { rejectAllPending(); if (abort) abort.abort(); history = []; sensitive = false; lastSpecialist = null; clearUndo(); clearSession(); welcome(); };
   lockBtn.onclick = () => {
     if (getWritesEnabled()) { setWritesEnabled(false); }
     else if (window.confirm('Allow the assistant to propose changes?\n\nIt can add ledger entries and staff notes, set targets and correct a day\'s sales. Nothing is saved until you tap Approve on each change, and most can be undone.')) setWritesEnabled(true);

@@ -76,3 +76,11 @@ describe('bt-agent resilience', () => {
     assert.match(fn, /NEVER ask the user to type DELETE/); assert.match(fn, /Never write placeholders/);
   });
 });
+
+describe('bt-agent specialists', () => {
+  test('focus text is looked up by id from a server-side table (client cannot inject prompt text)', () => {
+    assert.match(fn, /const FOCUS: Record<string, string>/);
+    assert.match(fn, /typeof ctx\.focus === 'string' && FOCUS\[ctx\.focus\]/);
+    for (const id of ['sales', 'manager', 'inventory', 'analyst']) assert.match(fn, new RegExp('\\b' + id + ': \'FOCUS ='));
+  });
+});

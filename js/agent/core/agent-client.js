@@ -9,7 +9,8 @@
 // network, DOM, or Supabase.
 // ══════════════════════════════════════════════════════════════════════
 import { getToolSchemas, runTool, getTool, isChange } from './tool-registry.js';
-import { selectDomains } from './router.js';
+import { pickSpecialist } from './specialists.js';
+import { reviewChange, recordChange } from './auditor.js';
 
 export const MAX_STEPS = 8;
 export const MAX_HISTORY = 30;
@@ -30,10 +31,11 @@ export class AgentError extends Error {
  * @param {AbortSignal} [o.signal]
  * @returns {Promise<{text:string, messages:Array, steps:number, sensitive:boolean}>}
  */
-export async function runAgent({ history = [], userText, context = {}, callServer, onEvent = () => {}, onAudit = () => {}, signal, sensitive = false, allow, writesEnabled = false, approve = null, onUndoable = () => {}, prevDomains = null }) {
+export async function runAgent({ history = [], userText, context = {}, callServer, onEvent = () => {}, onAudit = () => {}, signal, sensitive = false, allow, writesEnabled = false, approve = null, onUndoable = () => {}, prevSpecialist = null }) {
   if (typeof callServer !== 'function') throw new AgentError('callServer is required');
   const messages = [...history, { role: 'user', content: String(userText || '').slice(0, 4000) }];
-  const domains = selectDomains(userText, prevDomains);
+  const specialist = pickSpecialist(userText, prevSpecialist);
+  const domains = specialist.domains;
   const tools = getToolSchemas({ includeWrites: writesEnabled, domains });
   let changeAttempts = 0;
   let sawSensitive = !!sensitive;
@@ -45,7 +47,7 @@ export async function runAgent({ history = [], userText, context = {}, callServe
     const res = await callServer({
       messages: messages.slice(-MAX_HISTORY),
       tools,
-      context: { ...context, writes_enabled: !!writesEnabled },
+      context: { ...context, writes_enabled: !!writesEnabled, focus: specialist.id },
       sensitivity: sawSensitive ? 'high' : 'normal',
       signal,
     });
@@ -59,7 +61,7 @@ export async function runAgent({ history = [], userText, context = {}, callServe
 
     if (!calls.length) {
       const text = (msg.content || '').trim();
-      return { text: text || 'I could not produce an answer. Please rephrase.', messages: compactHistory(messages), steps: step, sensitive: sawSensitive, domains };
+      return { text: text || 'I could not produce an answer. Please rephrase.', messages: compactHistory(messages), steps: step, sensitive: sawSensitive, domains, specialist };
     }
 
     // Guard against the model looping on the exact same call set.
@@ -77,7 +79,7 @@ export async function runAgent({ history = [], userText, context = {}, callServe
       } else if (isChange(getTool(name)) && ++changeAttempts > MAX_CHANGES_PER_TURN) {
         result = { ok: false, tool: getTool(name), error: 'cap', text: JSON.stringify({ error: 'Too many changes proposed in one request. Stop and summarise what is done.' }) };
       } else {
-        result = await runTool(name, rawArgs, { ...(allow ? { allow } : {}), writesEnabled, approve });
+        result = await runTool(name, rawArgs, { ...(allow ? { allow } : {}), writesEnabled, approve, review: reviewChange, onChanged: recordChange });
       }
       if (result.tool && result.tool.sensitive) sawSensitive = true;
       onEvent({ type: 'tool_end', name, ok: result.ok, error: result.error, rejected: !!result.rejected });
@@ -93,7 +95,7 @@ export async function runAgent({ history = [], userText, context = {}, callServe
   }
   const text = 'I took too many steps without finishing. Try asking a narrower question.';
   messages.push({ role: 'assistant', content: text });
-  return { text, messages: compactHistory(messages), steps: MAX_STEPS, sensitive: sawSensitive, domains };
+  return { text, messages: compactHistory(messages), steps: MAX_STEPS, sensitive: sawSensitive, domains, specialist };
 }
 
 /**

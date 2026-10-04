@@ -96,7 +96,7 @@ function _cap(value) {
  *   4. the human must approve — rejection means run() is never called.
  * @returns {{ok:boolean, text:string, tool:object|null, error?:string, rejected?:boolean, undo?:object, preview?:object}}
  */
-export async function runTool(name, rawArgs, { allow = ['read', 'ui'], writesEnabled = false, approve = null } = {}) {
+export async function runTool(name, rawArgs, { allow = ['read', 'ui'], writesEnabled = false, approve = null, review = null, onChanged = null } = {}) {
   const tool = getTool(name);
   if (!tool) return { ok: false, tool: null, error: 'unknown tool', text: JSON.stringify({ error: 'Unknown tool: ' + name }) };
   const changing = isChange(tool);
@@ -126,6 +126,14 @@ export async function runTool(name, rawArgs, { allow = ['read', 'ui'], writesEna
       return { ok: false, tool, error: msg, text: JSON.stringify({ error: msg, hint: 'Nothing was changed. Fix the arguments or ask the user.' }) };
     }
     preview = { title: preview.title || tool.name, lines: preview.lines || [], warnings: preview.warnings || [], strong: !!preview.strong || tool.risk === 'critical', confirmWord: preview.confirmWord || null };
+    if (typeof review === 'function') {
+      // Second line of defence: the auditor looks at the proposal in the context of the whole session.
+      try {
+        const r = review({ tool: tool.name, risk: tool.risk, args, preview }) || {};
+        if (r.warnings && r.warnings.length) preview.warnings = [...preview.warnings, ...r.warnings];
+        if (r.strong) preview.strong = true;
+      } catch (_) { preview.warnings = [...preview.warnings, 'Auditor check could not run.']; preview.strong = true; }
+    }
     let approved = false;
     try {
       const verdict = await approve({ tool: tool.name, risk: tool.risk, args, preview });
@@ -145,6 +153,7 @@ export async function runTool(name, rawArgs, { allow = ['read', 'ui'], writesEna
     const out = await tool.run(args);
     let undo = null;
     if (changing && tool.makeUndo) { try { undo = tool.makeUndo(args, out); } catch (_) { undo = null; } }
+    if (changing && typeof onChanged === 'function') { try { onChanged({ tool: tool.name, args, preview }); } catch (_) { /* log only */ } }
     const payload = changing ? { done: true, can_undo: !!undo, ...(out && typeof out === 'object' ? out : { result: out }) } : out;
     const { text } = _cap(payload);
     return { ok: true, tool, text, undo, preview };

@@ -31,7 +31,7 @@ before(() => {
     { id: 'e2', staffId: 'EMP-002', name: 'Sara', designation: 'Cashier', active: false, srNum: null },
   ]);
   console.error = quiet;
-  window.getTgts = () => ({ 'September 2026': 10000 });
+  Repository.setItem('bt_targets', JSON.stringify({ 'September 2026': 10000 }));
 });
 
 describe('date helpers', () => {

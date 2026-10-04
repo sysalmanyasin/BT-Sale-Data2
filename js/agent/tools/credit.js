@@ -124,7 +124,7 @@ registerTool({
     return {
       title: p.kind === 'payment' ? 'Record staff payment' : 'Add staff credit',
       lines: ['Staff: ' + p.emp.name + ' (' + p.emp.staffId + ')', 'Month: ' + p.my, (p.kind === 'payment' ? 'Payment received: ' : 'Credit taken: ') + rsFmt(p.amt), 'For: ' + p.text, 'Net owed: ' + rsFmt(before) + ' → ' + rsFmt(after)],
-      warnings: w, strong,
+      warnings: w, strong, amount: p.amt,
     };
   },
   run: args => {

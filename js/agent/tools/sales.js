@@ -1,10 +1,13 @@
 // Sales domain — READ tools over DAILY / MONTHLY / targets.
 // All maths is done here (deterministic); the model only explains.
 import { registerTool } from '../core/tool-registry.js';
+import { Repository } from '../../repository.js';
 import { DAILY, MONTHLY, mBanks, creditSales } from '../../config.js';
 import { num, rs, normMonth, normDay, monthSortVal, currentMonthYear, clampInt, pctChange, dayOfMonth, sameMonth, parseAppDate } from './_util.js';
 
-const targets = () => { try { return typeof window.getTgts === 'function' ? window.getTgts() : {}; } catch (_) { return {}; } };
+const targets = () => {
+  try { const raw = Repository.getItem('bt_targets'); const v = raw ? JSON.parse(raw) : {}; return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; } catch (_) { return {}; }
+};
 
 function latestMonthYear() {
   if (!MONTHLY.length) return null;

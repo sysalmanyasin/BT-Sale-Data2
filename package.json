@@ -2,12 +2,14 @@
   "name": "bt-sales-intelligence-centre",
   "version": "1.0.0",
   "private": true,
-  "description": "Bahria Town Sales Intelligence Centre — pharmacy PWA (daily sales, manager suite, notes/sheets, closing/audit/inventory bridges).",
+  "description": "Bahria Town Sales Intelligence Centre \u2014 pharmacy PWA (daily sales, manager suite, notes/sheets, closing/audit/inventory bridges).",
   "type": "module",
   "scripts": {
     "test": "node --test \"tests/**/*.test.js\"",
     "test:watch": "node --test --watch \"tests/**/*.test.js\"",
-    "test:verbose": "node --test --test-reporter=spec \"tests/**/*.test.js\""
+    "test:verbose": "node --test --test-reporter=spec \"tests/**/*.test.js\"",
+    "eval:live": "node scripts/agent-live-eval.mjs",
+    "eval": "node --test \"tests/eval/*.test.js\""
   },
   "repository": {
     "type": "git",
