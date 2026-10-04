@@ -74,7 +74,7 @@ registerTool({
       const emp = findRow(rows, name);
       if (!emp) return { month: my, staff: name, found: false, note: 'No credit row for this person in ' + my + '.' };
       return { month: my, staff: emp.name, found: true, opening_balance: ni(emp.prevBal), salary_deduction: ni(emp.salary), less_generic: ni(emp.lessGeneric), net_owed: netOf(emp),
-        entries: (emp.entries || []).slice(-30).map(e => ({ date: e.date, desc: e.desc || '', amount: ni(e.amount) })) };
+        entries: (emp.entries || []).map((e, i) => ({ n: i + 1, date: e.date, desc: e.desc || '', amount: ni(e.amount) })).slice(-30) };
     }
     const list = rows.map(e => ({ staff: e.name, net_owed: netOf(e) })).filter(r => r.net_owed !== 0).sort((a, b) => b.net_owed - a.net_owed);
     return { month: my, people_with_balance: list.length, total_net_owed: list.reduce((s, r) => s + r.net_owed, 0), staff: list.slice(0, 40) };

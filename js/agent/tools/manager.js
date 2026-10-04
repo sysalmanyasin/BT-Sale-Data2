@@ -70,7 +70,7 @@ registerTool({
     const net = rows.reduce((s, r) => s + signOf(r) * num(r.amount), 0);
     rows = rows.slice().reverse().slice(0, clampInt(limit, 1, 50, 20));
     return { ledger: ledger_type, matching_entries: total, net_effect_on_balance: rs(net), shown: rows.length,
-      entries: rows.map(r => ({ date: r.date, category: r.categoryId, amount: rs(r.amount), effect: signOf(r) > 0 ? '+' : '-', desc: r.desc || '', balance_after: rs(r._balance) })) };
+      entries: rows.map(r => ({ id: r.id, date: r.date, category: r.categoryId, amount: rs(r.amount), effect: signOf(r) > 0 ? '+' : '-', desc: r.desc || '', balance_after: rs(r._balance) })) };
   },
 });
 

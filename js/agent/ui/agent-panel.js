@@ -25,7 +25,7 @@ const TOOL_LABELS = {
   low_cover_items: 'Checking stock cover', slow_moving_stock: 'Finding slow stock', navigate_to: 'Opening page',
   get_app_context: 'Checking date', list_pages: 'Listing pages',
   add_staff_note: 'Preparing note', add_ledger_entry: 'Preparing ledger entry', set_monthly_target: 'Preparing target change',
-  edit_daily_sales_field: 'Preparing sales edit', add_daily_sales_entry: 'Preparing sales entry', daily_briefing: 'Preparing your briefing', get_staff_credit: 'Reading staff credit', add_staff_credit_entry: 'Preparing credit entry',
+  edit_daily_sales_field: 'Preparing sales edit', add_daily_sales_entry: 'Preparing sales entry', get_staff_notes: 'Reading staff notes', delete_ledger_entry: 'Preparing delete', delete_staff_note: 'Preparing delete', delete_staff_credit_entry: 'Preparing delete', delete_daily_sales_entry: 'Preparing delete', daily_briefing: 'Preparing your briefing', get_staff_credit: 'Reading staff credit', add_staff_credit_entry: 'Preparing credit entry',
 };
 
 export function mountAgentPanel() {
@@ -79,15 +79,22 @@ export function mountAgentPanel() {
       const warn = (preview.warnings || []).map(w => '<div class="ag-warn">⚠ ' + escHtml(w) + '</div>').join('');
       card.innerHTML = '<div class="ag-card-t">' + escHtml(preview.title) + '</div>'
         + '<ul class="ag-card-l">' + preview.lines.map(l => '<li>' + escHtml(l) + '</li>').join('') + '</ul>' + warn
-        + '<div class="ag-card-b"><button class="ag-no">Reject</button><button class="ag-yes">' + (preview.strong ? 'Approve…' : 'Approve') + '</button></div>';
+        + (preview.confirmWord ? '<div class="ag-type"><label>Type <b>' + escHtml(preview.confirmWord) + '</b> to confirm</label><input class="ag-type-in" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false"></div>' : '')
+        + '<div class="ag-card-b"><button class="ag-no">Reject</button><button class="ag-yes">' + (preview.confirmWord ? 'Delete' : preview.strong ? 'Approve…' : 'Approve') + '</button></div>';
       log.append(card); log.scrollTop = log.scrollHeight;
       const yes = card.querySelector('.ag-yes'), no = card.querySelector('.ag-no');
-      let armed = !preview.strong;
-      const done = (ok, label) => { pending.delete(finish); card.classList.add('ag-done'); card.querySelector('.ag-card-b').innerHTML = '<span class="ag-card-r">' + label + '</span>'; resolve(ok); };
-      const finish = ok => done(ok, ok ? '✓ Approved' : '✕ Rejected');
+      let armed = !preview.strong || !!preview.confirmWord;
+      const typeIn = card.querySelector('.ag-type-in');
+      const done = (ok, label, value) => { pending.delete(finish); card.classList.add('ag-done'); card.querySelector('.ag-card-b').innerHTML = '<span class="ag-card-r">' + label + '</span>'; const t = card.querySelector('.ag-type'); if (t) t.remove(); resolve(ok ? (preview.confirmWord ? { approved: true, typed: value } : true) : false); };
+      const finish = ok => done(ok, ok ? '✓ Approved' : '✕ Rejected', typeIn ? typeIn.value : undefined);
       pending.add(finish);
+      if (typeIn) {
+        yes.disabled = true;
+        typeIn.oninput = () => { yes.disabled = typeIn.value.trim().toLowerCase() !== String(preview.confirmWord).toLowerCase(); };
+      }
       no.onclick = () => finish(false);
       yes.onclick = () => {
+        if (yes.disabled) return;
         if (!armed) { armed = true; yes.textContent = 'Yes, I am sure'; yes.classList.add('ag-warn-btn'); return; }
         finish(true);
       };
@@ -115,7 +122,7 @@ export function mountAgentPanel() {
   function welcome() {
     log.innerHTML = '';
     addBubble('assistant', getWritesEnabled()
-      ? "Hi! I can read your data and, with your approval on each one, add ledger entries, staff notes and staff credit, set targets and add or correct a day's sales. What do you need?"
+      ? "Hi! I can read your data and, with your approval on each one, add ledger entries, staff notes and staff credit, set targets and add or correct a day's sales, and delete records (you type DELETE to confirm). What do you need?"
       : "Hi! I can read your sales, staff, ledgers and inventory, and open pages for you. Tap 🔒 above if you want me to be able to propose changes (you'd still approve each one). What would you like to know?");
     renderChips();
   }

@@ -7,6 +7,7 @@ import './tools/manager.js';
 import './tools/inventory.js';
 import './tools/writes.js';
 import './tools/credit.js';
+import './tools/deletes.js';
 import './tools/briefing.js';
 import { mountAgentPanel } from './ui/agent-panel.js';
 

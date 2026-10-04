@@ -22,6 +22,8 @@ beforeEach(() => {
   reg.registerTool({ name: 'delete_all', description: 'd', risk: 'critical',
     preview: () => ({ title: 'Delete everything', lines: ['all of it'] }), run: () => { state.ran++; return { summary: 'deleted' }; },
     makeUndo: () => ({ label: 'restore', fn: () => { state.undone++; } }) });
+  reg.registerTool({ name: 'drop_thing', description: 'd', risk: 'critical',
+    preview: () => ({ title: 'Drop', lines: ['x'], confirmWord: 'DELETE' }), run: () => { state.ran++; return { summary: 'dropped' }; } });
   reg.registerTool({ name: 'add_thing', description: 'a', risk: 'write',
     parameters: { type: 'object', required: ['n'], properties: { n: { type: 'number' } } },
     preview: ({ n }) => { if (n < 0) throw new Error('n must be positive'); return { title: 'Add thing', lines: ['n=' + n], warnings: n > 100 ? ['big'] : [] }; },
@@ -113,6 +115,29 @@ describe('change gating (enforced in code, not prompt)', () => {
     let seen;
     await reg.runTool('delete_all', {}, { writesEnabled: true, approve: async req => { seen = req; return false; } });
     assert.equal(seen.preview.strong, true);
+  });
+});
+
+describe('typed confirmation (deletes)', () => {
+  const go = verdict => reg.runTool('drop_thing', {}, { writesEnabled: true, approve: async () => verdict });
+  test('a bare approve (true / {approved:true}) is NOT enough', async () => {
+    for (const v of [true, { approved: true }, { approved: true, typed: '' }, { approved: true, typed: 'yes' }, { approved: true, typed: 'DELET' }]) {
+      const r = await go(v); assert.equal(r.rejected, true, JSON.stringify(v));
+    }
+    assert.equal(state.ran, 0);
+  });
+  test('the exact word, any case, with surrounding spaces, is accepted', async () => {
+    assert.equal((await go({ approved: true, typed: 'delete' })).ok, true);
+    assert.equal((await go({ approved: true, typed: '  DELETE ' })).ok, true);
+    assert.equal(state.ran, 2);
+  });
+  test('typed word without approved:true is rejected; the card reports confirmWord', async () => {
+    assert.equal((await go({ typed: 'DELETE' })).rejected, true);
+    let seen; await reg.runTool('drop_thing', {}, { writesEnabled: true, approve: async r => { seen = r; return false; } });
+    assert.equal(seen.preview.confirmWord, 'DELETE');
+  });
+  test('tools without confirmWord still accept {approved:true}', async () => {
+    assert.equal((await reg.runTool('add_thing', { n: 1 }, { writesEnabled: true, approve: async () => ({ approved: true }) })).ok, true);
   });
 });
 

@@ -124,9 +124,18 @@ export async function runTool(name, rawArgs, { allow = ['read', 'ui'], writesEna
       const msg = (e && e.message) || String(e);
       return { ok: false, tool, error: msg, text: JSON.stringify({ error: msg, hint: 'Nothing was changed. Fix the arguments or ask the user.' }) };
     }
-    preview = { title: preview.title || tool.name, lines: preview.lines || [], warnings: preview.warnings || [], strong: !!preview.strong || tool.risk === 'critical' };
+    preview = { title: preview.title || tool.name, lines: preview.lines || [], warnings: preview.warnings || [], strong: !!preview.strong || tool.risk === 'critical', confirmWord: preview.confirmWord || null };
     let approved = false;
-    try { approved = !!(await approve({ tool: tool.name, risk: tool.risk, args, preview })); } catch (_) { approved = false; }
+    try {
+      const verdict = await approve({ tool: tool.name, risk: tool.risk, args, preview });
+      if (preview.confirmWord) {
+        // Typed confirmation (deletes): a bare "true" is NOT enough. The approver must hand back
+        // the word the person actually typed, and it must match exactly (case-insensitive).
+        approved = !!(verdict && verdict.approved === true && String(verdict.typed || '').trim().toLowerCase() === String(preview.confirmWord).toLowerCase());
+      } else {
+        approved = verdict === true || !!(verdict && verdict.approved === true);
+      }
+    } catch (_) { approved = false; }
     if (!approved) {
       return { ok: false, tool, preview, rejected: true, error: 'rejected', text: JSON.stringify({ rejected: true, message: 'The user did NOT approve this change. Nothing was changed. Do not retry the same change; ask what they would like instead.' }) };
     }
