@@ -6,7 +6,7 @@
 //   - nothing is bulk: one record per call; no staff, month, ledger-section or credit-row deletes,
 //   - each delete is undoable for the session by restoring the saved copy.
 import { registerTool } from '../core/tool-registry.js';
-import { rsFmt } from '../core/guard.js';
+import { rsFmt, isoToApp } from '../core/guard.js';
 import { afterWrite } from '../core/after-write.js';
 import { Repository } from '../../repository.js';
 import { Actions } from '../../actions.js';
@@ -42,7 +42,7 @@ registerTool({
     const before = LedgerStore.getCurrentBalance(t.id);
     const after = before - (c && c.sign ? c.sign : 0) * num(e.amount);
     return { title: 'Delete ledger entry', confirmWord: CONFIRM,
-      lines: ['Ledger: ' + t.label, 'Date: ' + e.date, 'Category: ' + (c ? c.label : e.categoryId), 'Amount: ' + rsFmt(e.amount), e.desc ? 'Note: ' + e.desc : null, 'Balance: ' + rsFmt(before) + ' → ' + rsFmt(after)].filter(Boolean),
+      lines: ['Ledger: ' + t.label, 'Date: ' + (/^\d{4}-\d{2}-\d{2}$/.test(e.date) ? isoToApp(e.date) : e.date), 'Category: ' + (c ? c.label : e.categoryId), 'Amount: ' + rsFmt(e.amount), e.desc ? 'Note: ' + e.desc : null, 'Balance: ' + rsFmt(before) + ' → ' + rsFmt(after)].filter(Boolean),
       warnings: ['This permanently removes the entry.'] };
   },
   run: ({ entry_id }) => {

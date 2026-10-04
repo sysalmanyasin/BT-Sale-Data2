@@ -35,6 +35,7 @@ export function mountAgentPanel() {
   let busy = false;
   let abort = null;
   let sensitive = false;
+  let lastDomains = null;
 
   const fab = el('button', { id: 'ag-fab', class: 'ag-fab', 'aria-label': 'Open AI assistant', title: 'AI assistant' }, '✨');
   const sheet = el('section', { id: 'ag-sheet', class: 'ag-sheet', hidden: '', role: 'dialog', 'aria-label': 'AI assistant' });
@@ -146,14 +147,14 @@ export function mountAgentPanel() {
     try {
       const r = await runAgent({
         history, userText: q, context: getPageContext(), callServer, signal: abort.signal, sensitive,
-        writesEnabled: getWritesEnabled(), approve, onUndoable: addUndoRow,
+        writesEnabled: getWritesEnabled(), approve, onUndoable: addUndoRow, prevDomains: lastDomains,
         onEvent: ev => {
           if (ev.type === 'tool_start') status.textContent = (TOOL_LABELS[ev.name] || 'Working') + '…';
           if (ev.type === 'tool_end' && !ev.ok && !ev.rejected && ev.error && /writes_disabled/.test(ev.error)) paintLock();
         },
         onAudit: e => logToolCall(e, { conversationId }),
       });
-      history = r.messages; sensitive = r.sensitive;
+      history = r.messages; sensitive = r.sensitive; lastDomains = r.domains;
       status.remove();
       addBubble('assistant', r.text);
     } catch (e) {
@@ -172,7 +173,7 @@ export function mountAgentPanel() {
 
   fab.onclick = open;
   sheet.querySelector('#ag-close').onclick = close;
-  sheet.querySelector('#ag-clear').onclick = () => { rejectAllPending(); if (abort) abort.abort(); history = []; sensitive = false; clearUndo(); welcome(); };
+  sheet.querySelector('#ag-clear').onclick = () => { rejectAllPending(); if (abort) abort.abort(); history = []; sensitive = false; lastDomains = null; clearUndo(); welcome(); };
   lockBtn.onclick = () => {
     if (getWritesEnabled()) { setWritesEnabled(false); }
     else if (window.confirm('Allow the assistant to propose changes?\n\nIt can add ledger entries and staff notes, set targets and correct a day\'s sales. Nothing is saved until you tap Approve on each change, and most can be undone.')) setWritesEnabled(true);

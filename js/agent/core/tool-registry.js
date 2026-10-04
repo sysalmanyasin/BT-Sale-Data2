@@ -46,8 +46,9 @@ export function clearTools() { _tools.clear(); }
 export const isChange = tool => !!tool && (tool.risk === 'write' || tool.risk === 'critical');
 
 /** OpenAI-format tool schemas for the server. Change tools are only offered when writes are unlocked. */
-export function getToolSchemas({ includeWrites = false } = {}) {
-  return listTools().filter(t => includeWrites || !isChange(t)).map(t => ({
+export function getToolSchemas({ includeWrites = false, domains = null } = {}) {
+  const want = domains ? new Set([...domains, 'app']) : null;
+  return listTools().filter(t => (includeWrites || !isChange(t)) && (!want || want.has(t.domain))).map(t => ({
     type: 'function',
     function: { name: t.name, description: t.description, parameters: t.parameters },
   }));

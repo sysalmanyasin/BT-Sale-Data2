@@ -12,7 +12,26 @@ export async function getAccessToken() {
   return data.session.access_token;
 }
 
-export async function callServer({ messages, tools, context, sensitivity, signal }) {
+export const retry = { delayMs: 4000 }; // tests set this to 0
+
+const sleep = (ms, signal) => new Promise((resolve, reject) => {
+  const t = setTimeout(resolve, ms);
+  if (signal) signal.addEventListener('abort', () => { clearTimeout(t); reject(new AgentError('Cancelled', { code: 'aborted' })); }, { once: true });
+});
+
+/** One automatic retry when providers are busy / rate-limited (free-tier limits reset quickly). */
+export async function callServer(args) {
+  try { return await callServerOnce(args); }
+  catch (e) {
+    if (e instanceof AgentError && (e.status === 503 || e.status === 429) && !/Daily AI request limit/.test(e.message)) {
+      await sleep(retry.delayMs, args.signal);
+      return callServerOnce(args);
+    }
+    throw e;
+  }
+}
+
+async function callServerOnce({ messages, tools, context, sensitivity, signal }) {
   const token = await getAccessToken();
   let res;
   try {

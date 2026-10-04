@@ -2,7 +2,7 @@
 // All maths is done here (deterministic); the model only explains.
 import { registerTool } from '../core/tool-registry.js';
 import { DAILY, MONTHLY, mBanks, creditSales } from '../../config.js';
-import { num, rs, normMonth, normDay, monthSortVal, currentMonthYear, clampInt, pctChange, dayOfMonth, sameMonth } from './_util.js';
+import { num, rs, normMonth, normDay, monthSortVal, currentMonthYear, clampInt, pctChange, dayOfMonth, sameMonth, parseAppDate } from './_util.js';
 
 const targets = () => { try { return typeof window.getTgts === 'function' ? window.getTgts() : {}; } catch (_) { return {}; } };
 
@@ -96,19 +96,26 @@ registerTool({
 
 registerTool({
   name: 'top_sales_days', domain: 'sales', risk: 'read',
-  description: 'Highest or lowest sale days in a month (or across all data if month_year is "all").',
+  description: 'Highest or lowest sale days. Scope by `year` (e.g. "2022") OR `month_year` (e.g. "September 2026"); month_year "all" = every year. Defaults to the latest month.',
   parameters: { type: 'object', properties: {
+    year: { type: 'string', description: '4-digit year, e.g. 2022' },
     month_year: { type: 'string', description: 'e.g. "September 2026", or "all"' },
     order: { type: 'string', enum: ['highest', 'lowest'] },
     count: { type: 'integer', description: 'default 5, max 15' },
   } },
-  run: ({ month_year, order, count }) => {
-    let pool;
-    if (String(month_year || '').toLowerCase() === 'all') pool = DAILY;
-    else { const { my, bad } = resolveMonth(month_year); if (bad) return { error: bad }; pool = daysFor(my); }
+  run: ({ year, month_year, order, count }) => {
+    let pool, scope;
+    if (year) {
+      if (!/^\d{4}$/.test(String(year).trim())) return { error: 'year must be 4 digits, e.g. 2022' };
+      const y = Number(year);
+      pool = DAILY.filter(d => { const t = parseAppDate(d.Date); return t && t.getFullYear() === y; });
+      scope = String(y);
+      if (!pool.length) return { error: 'No daily sales data for ' + y };
+    } else if (String(month_year || '').toLowerCase() === 'all') { pool = DAILY; scope = 'all years'; }
+    else { const { my, bad } = resolveMonth(month_year); if (bad) return { error: bad }; pool = daysFor(my); scope = my; }
     const sorted = pool.filter(d => num(d.TOTAL) > 0).slice().sort((a, b) => num(b.TOTAL) - num(a.TOTAL));
     const pick = (order === 'lowest' ? sorted.reverse() : sorted).slice(0, clampInt(count, 1, 15, 5));
-    return { order: order || 'highest', days: pick.map(d => ({ date: d.Date, total_sale: rs(d.TOTAL) })) };
+    return { scope, order: order || 'highest', days_considered: sorted.length, days: pick.map(d => ({ date: d.Date, total_sale: rs(d.TOTAL) })) };
   },
 });
 

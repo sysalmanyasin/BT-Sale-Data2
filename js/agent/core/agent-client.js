@@ -9,6 +9,7 @@
 // network, DOM, or Supabase.
 // ══════════════════════════════════════════════════════════════════════
 import { getToolSchemas, runTool, getTool, isChange } from './tool-registry.js';
+import { selectDomains } from './router.js';
 
 export const MAX_STEPS = 8;
 export const MAX_HISTORY = 30;
@@ -29,10 +30,11 @@ export class AgentError extends Error {
  * @param {AbortSignal} [o.signal]
  * @returns {Promise<{text:string, messages:Array, steps:number, sensitive:boolean}>}
  */
-export async function runAgent({ history = [], userText, context = {}, callServer, onEvent = () => {}, onAudit = () => {}, signal, sensitive = false, allow, writesEnabled = false, approve = null, onUndoable = () => {} }) {
+export async function runAgent({ history = [], userText, context = {}, callServer, onEvent = () => {}, onAudit = () => {}, signal, sensitive = false, allow, writesEnabled = false, approve = null, onUndoable = () => {}, prevDomains = null }) {
   if (typeof callServer !== 'function') throw new AgentError('callServer is required');
   const messages = [...history, { role: 'user', content: String(userText || '').slice(0, 4000) }];
-  const tools = getToolSchemas({ includeWrites: writesEnabled });
+  const domains = selectDomains(userText, prevDomains);
+  const tools = getToolSchemas({ includeWrites: writesEnabled, domains });
   let changeAttempts = 0;
   let sawSensitive = !!sensitive;
   let repeatGuard = '';
@@ -57,7 +59,7 @@ export async function runAgent({ history = [], userText, context = {}, callServe
 
     if (!calls.length) {
       const text = (msg.content || '').trim();
-      return { text: text || 'I could not produce an answer. Please rephrase.', messages, steps: step, sensitive: sawSensitive };
+      return { text: text || 'I could not produce an answer. Please rephrase.', messages: compactHistory(messages), steps: step, sensitive: sawSensitive, domains };
     }
 
     // Guard against the model looping on the exact same call set.
@@ -91,7 +93,16 @@ export async function runAgent({ history = [], userText, context = {}, callServe
   }
   const text = 'I took too many steps without finishing. Try asking a narrower question.';
   messages.push({ role: 'assistant', content: text });
-  return { text, messages, steps: MAX_STEPS, sensitive: sawSensitive };
+  return { text, messages: compactHistory(messages), steps: MAX_STEPS, sensitive: sawSensitive, domains };
+}
+
+/**
+ * Keep only what later turns need: the user's questions and the assistant's final
+ * text answers. Old tool calls/results are dropped (the model re-reads data when
+ * it needs it), which keeps every later request small.
+ */
+export function compactHistory(messages) {
+  return messages.filter(m => (m.role === 'user' || m.role === 'assistant') && !m.tool_calls && typeof m.content === 'string' && m.content.trim());
 }
 
 function safeParse(s) { try { return typeof s === 'string' ? JSON.parse(s || '{}') : (s || {}); } catch (_) { return { _raw: String(s).slice(0, 200) }; } }
