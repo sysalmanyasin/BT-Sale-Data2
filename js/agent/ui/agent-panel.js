@@ -25,7 +25,7 @@ const TOOL_LABELS = {
   low_cover_items: 'Checking stock cover', slow_moving_stock: 'Finding slow stock', navigate_to: 'Opening page',
   get_app_context: 'Checking date', list_pages: 'Listing pages',
   add_staff_note: 'Preparing note', add_ledger_entry: 'Preparing ledger entry', set_monthly_target: 'Preparing target change',
-  edit_daily_sales_field: 'Preparing sales edit', add_daily_sales_entry: 'Preparing sales entry', daily_briefing: 'Preparing your briefing',
+  edit_daily_sales_field: 'Preparing sales edit', add_daily_sales_entry: 'Preparing sales entry', daily_briefing: 'Preparing your briefing', get_staff_credit: 'Reading staff credit', add_staff_credit_entry: 'Preparing credit entry',
 };
 
 export function mountAgentPanel() {
@@ -115,7 +115,7 @@ export function mountAgentPanel() {
   function welcome() {
     log.innerHTML = '';
     addBubble('assistant', getWritesEnabled()
-      ? "Hi! I can read your data and, with your approval on each one, add ledger entries and staff notes, set targets and correct a day's sales. What do you need?"
+      ? "Hi! I can read your data and, with your approval on each one, add ledger entries, staff notes and staff credit, set targets and add or correct a day's sales. What do you need?"
       : "Hi! I can read your sales, staff, ledgers and inventory, and open pages for you. Tap 🔒 above if you want me to be able to propose changes (you'd still approve each one). What would you like to know?");
     renderChips();
   }
