@@ -7,16 +7,21 @@
 // "medicine") appear in questions about every area and used to drag a second group in,
 // sending simple staff questions to the Analyst. A 4-digit year counts as a sales cue.
 const RULES = {
-  sales: /\b(sale|sales|sold|selling|revenue|target|targets|pace|daily|comp|customers?|best|worst|top|highest|lowest|total|totals|compare|comparison|diff|bikri|20(1[5-9]|2\d|3[0-5]))\b/i,
+  sales: /\b(sale|sales|sold|selling|revenue|target|targets|pace|daily|comp|customers?|best|worst|top|highest|lowest|total|totals|compare|comparison|diff|bikri)\b/i,
   manager: /\b(staff|employee|employees|salary|payslip|ledger|jazz|jazzcash|petty|expense|expenses|credit|owe|owes|owed|note|notes|payment|paid|pay|balance|salesman|cashier|incentive|attendance|advance|udhar|udhaar)\b/i,
   inventory: /\b(stock|inventory|product|products|reorder|expiry|supplier|item|items|cover|slow|dead|panadol)\b/i,
 };
 export const ALL_DOMAINS = ['sales', 'manager', 'inventory'];
 
 /** Groups whose keywords appear in the text (empty when nothing matches). */
+// A bare year ("September 2026") is a sales cue ONLY when nothing else matched; with other
+// cues it is just a date ("Mian Usman credit detail for September 2026" is a staff question).
+const YEAR = /\b20(1[5-9]|2\d|3[0-5])\b/;
+
 export function matchDomains(userText) {
   const t = String(userText || '');
-  return Object.entries(RULES).filter(([, re]) => re.test(t)).map(([d]) => d);
+  const hit = Object.entries(RULES).filter(([, re]) => re.test(t)).map(([d]) => d);
+  return hit.length === 0 && YEAR.test(t) ? ['sales'] : hit;
 }
 
 /** @returns {string[]} domains to offer (always combined with 'app' by the caller) */

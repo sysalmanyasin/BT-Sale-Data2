@@ -4,6 +4,7 @@ import { registerTool } from '../core/tool-registry.js';
 import { Repository } from '../../repository.js';
 import * as LedgerStore from '../../ledger-store.js';
 import { num, rs, clampInt, normDay, normMonth, monthIndex, MON } from './_util.js';
+import { staffCandidates } from './_names.js';
 
 const safeStaff = e => ({
   staff_id: e.staffId, name: e.name, designation: e.designation, active: e.active !== false,
@@ -31,8 +32,7 @@ registerTool({
   description: 'Find one staff member by (part of) name or staff id such as EMP-003.',
   parameters: { type: 'object', required: ['query'], properties: { query: { type: 'string' } } },
   run: ({ query }) => {
-    const q = lc(query);
-    const hits = Repository.getStaff().filter(e => lc(e.name).includes(q) || lc(e.staffId) === q);
+    const hits = staffCandidates(query);
     return { count: hits.length, matches: hits.slice(0, 8).map(safeStaff) };
   },
 });

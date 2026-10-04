@@ -33,7 +33,7 @@ export const CASES = [
   { say: 'What was the diff yesterday?', specialist: S, domains: [S], offer: ['get_daily_sales'] },
 
   // ── Staff & money ──────────────────────────────────────────────────
-  { say: 'List active staff', specialist: M, domains: [M], offer: ['list_staff'], call: { tool: 'list_staff', args: {}, expect: { count: 2 } } },
+  { say: 'List active staff', specialist: M, domains: [M], offer: ['list_staff'], call: { tool: 'list_staff', args: {}, expect: { count: 3 } } },
   { say: 'Find staff EMP-003', specialist: M, domains: [M], offer: ['find_staff'], call: { tool: 'find_staff', args: { query: 'EMP-003' }, expect: { count: 1, matches: [{ name: 'Bilal' }] } } },
   { say: 'How much does Ali owe this month?', specialist: M, domains: [M], offer: ['get_staff_credit'], call: { tool: 'get_staff_credit', args: { staff: 'Ali Khan', month_year: 'October 2026' }, expect: { opening_balance: 2000, net_owed: 1900 } } },
   { say: 'Who has credit pending?', specialist: M, domains: [M], offer: ['get_staff_credit'], call: { tool: 'get_staff_credit', args: { month_year: 'October 2026' }, expect: { people_with_balance: 1, total_net_owed: 1900 } } },
@@ -49,6 +49,8 @@ export const CASES = [
   { say: "Remove Ali's credit entry number 2", specialist: M, domains: [M], writes: true, offer: ['delete_staff_credit_entry', 'get_staff_credit'] },
   { say: 'Delete the note I added for Sara', specialist: M, domains: [M], writes: true, offer: ['delete_staff_note', 'get_staff_notes'] },
   { say: "What is each staff member's salary deduction?", specialist: M, domains: [M], offer: ['get_staff_credit', 'list_staff'] },
+  { say: 'Mian Usman Credit detail for September 2026', specialist: M, domains: [M], offer: ['get_staff_credit'], call: { tool: 'get_staff_credit', args: { staff: 'Mian Usman', month_year: 'September 2026' }, expect: { found: true, staff: 'Mian Muhammad Usman', net_owed: 1500, entries: [{ n: 1 }, { n: 2 }] } } },
+  { say: 'Credit of Waqas in September', specialist: M, domains: [M], offer: ['get_staff_credit'], call: { tool: 'get_staff_credit', args: { staff: 'waqas', month_year: 'September 2026' }, expect: { found: true, staff: 'Mian Waqas', net_owed: 300 } } },
   { say: 'Ali ka udhar kitna hai', specialist: M, domains: [M], offer: ['get_staff_credit'] },
   { say: 'Who is Ali Khan?', specialist: G, domains: ALL, offer: ['find_staff', 'search_inventory'] },
 

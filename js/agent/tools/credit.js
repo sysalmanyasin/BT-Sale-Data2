@@ -10,6 +10,7 @@ import { afterWrite } from '../core/after-write.js';
 import { Repository } from '../../repository.js';
 import { Actions } from '../../actions.js';
 import { num, rs, normDay, normMonth, currentMonthYear, FULL, MON, clampInt } from './_util.js';
+import { resolveStaff, findCreditRow, normName } from './_names.js';
 
 const MGR_KEY = 'BT_ManagerWork_v1';
 const lc = s => String(s || '').trim().toLowerCase();
@@ -26,22 +27,11 @@ function loadMgr() {
   return v;
 }
 const rowsFor = (data, my) => (data.credit && Array.isArray(data.credit[my]) ? data.credit[my] : []);
-const findRow = (rows, name) => rows.find(e => lc(e.name) === lc(name)) || null;
 
 function prevMonthLabel(my) {
   const [mn, yr] = my.split(' ');
   const i = FULL.indexOf(mn);
   return i === 0 ? FULL[11] + ' ' + (+yr - 1) : FULL[i - 1] + ' ' + yr;
-}
-
-function oneStaff(query) {
-  const q = lc(query);
-  const all = Repository.getStaff();
-  const exact = all.filter(e => lc(e.name) === q || lc(e.staffId) === q);
-  const hits = exact.length ? exact : all.filter(e => lc(e.name).includes(q));
-  if (!hits.length) throw new Error('No staff member matches "' + query + '". Use find_staff first.');
-  if (hits.length > 1) throw new Error('"' + query + '" matches several staff: ' + hits.slice(0, 5).map(e => e.name + ' (' + e.staffId + ')').join(', ') + '. Ask the user which one.');
-  return hits[0];
 }
 
 function isoFromInput(input) {
@@ -69,21 +59,20 @@ registerTool({
     if (!my) return { error: 'Use a month like "October 2026".' };
     const rows = rowsFor(loadMgr(), my);
     if (staff) {
-      let name = staff;
-      try { name = oneStaff(staff).name; } catch (_) { /* fall back to the typed name against credit rows */ }
-      const emp = findRow(rows, name);
-      if (!emp) return { month: my, staff: name, found: false, note: 'No credit row for this person in ' + my + '.' };
-      return { month: my, staff: emp.name, found: true, opening_balance: ni(emp.prevBal), salary_deduction: ni(emp.salary), less_generic: ni(emp.lessGeneric), net_owed: netOf(emp),
+      const { row: emp, ambiguous } = findCreditRow(rows, staff);
+      if (ambiguous) return { month: my, error: '"' + staff + '" matches several people on the credit sheet: ' + ambiguous.join(', ') + '. Ask which one.' };
+      if (!emp) return { month: my, staff, found: false, note: 'No credit row for "' + staff + '" in ' + my + '.', names_on_sheet_this_month: rows.map(r => String(r.name).trim()).slice(0, 25) };
+      return { month: my, staff: String(emp.name).trim(), found: true, opening_balance: ni(emp.prevBal), salary_deduction: ni(emp.salary), less_generic: ni(emp.lessGeneric), net_owed: netOf(emp),
         entries: (emp.entries || []).map((e, i) => ({ n: i + 1, date: e.date, desc: e.desc || '', amount: ni(e.amount) })).slice(-30) };
     }
     const list = rows.map(e => ({ staff: e.name, net_owed: netOf(e) })).filter(r => r.net_owed !== 0).sort((a, b) => b.net_owed - a.net_owed);
-    return { month: my, people_with_balance: list.length, total_net_owed: list.reduce((s, r) => s + r.net_owed, 0), staff: list.slice(0, 40) };
+    return { month: my, people_with_balance: list.length, total_net_owed: list.reduce((s, r) => s + r.net_owed, 0), staff: list.slice(0, 40).map(r => ({ ...r, staff: String(r.staff).trim() })) };
   },
 });
 
 // ── Write: add one credit / payment entry ────────────────────────────
 function plan({ staff, amount, kind, desc, date }) {
-  const emp = oneStaff(staff);
+  const emp = resolveStaff(staff);
   const amt = Math.abs(num(amount));
   if (!(amt > 0) || amt > 100000000) throw new Error('Amount must be a positive number.');
   const k = kind === 'payment' ? 'payment' : 'credit';
@@ -91,7 +80,14 @@ function plan({ staff, amount, kind, desc, date }) {
   const my = monthOfIso(iso);
   const text = String(desc || '').trim().slice(0, 120) || k;
   const signed = k === 'payment' ? -ni(amt) : ni(amt);
-  return { emp, amt: ni(amt), kind: k, iso, my, text, signed };
+  // The row name on the credit sheet may differ from the registry ("Mian Muhammad Usman" vs "Mian Usman").
+  // Use the existing row (this month, else last month) so credit is never split across two spellings.
+  const data = loadMgr();
+  const here = findCreditRow(rowsFor(data, my), emp.name);
+  if (here.ambiguous) throw new Error('"' + emp.name + '" matches several rows on the credit sheet: ' + here.ambiguous.join(', ') + '. Ask which one.');
+  const prior = here.row ? null : findCreditRow(rowsFor(data, prevMonthLabel(my)), emp.name);
+  const sheetName = String((here.row || (prior && prior.row) || { name: emp.name }).name).trim();
+  return { emp, amt: ni(amt), kind: k, iso, my, text, signed, sheetName, existing: here.row || null };
 }
 
 registerTool({
@@ -107,23 +103,22 @@ registerTool({
   preview: args => {
     const p = plan(args);
     const data = loadMgr();
-    const rows = rowsFor(data, p.my);
-    const row = findRow(rows, p.emp.name);
+    const row = p.existing;
     const before = row ? netOf(row) : 0;
     const after = before + p.signed;
     const w = [...amountChecks(p.amt).warnings, ...dateChecks(p.iso).warnings];
     let strong = amountChecks(p.amt).strong;
-    if (p.emp.active === false) w.push(p.emp.name + ' is marked inactive.');
+    if (p.emp.active === false) w.push(p.sheetName + ' is marked inactive.');
     if (p.kind === 'payment' && after < 0) w.push('This payment is more than the balance owed (' + rsFmt(before) + '); the net would go negative.');
     if (row && (row.entries || []).some(e => e.date === entryDate(p.iso) && ni(e.amount) === p.signed && lc(e.desc) === lc(p.text))) { w.push('An identical entry already exists for this date. This may be a duplicate.'); strong = true; }
     if (!row) {
-      const prev = findRow(rowsFor(data, prevMonthLabel(p.my)), p.emp.name);
-      w.push('No ' + p.my + ' credit row exists for ' + p.emp.name + '; one will be created with opening balance 0.');
+      const prev = findCreditRow(rowsFor(data, prevMonthLabel(p.my)), p.emp.name).row;
+      w.push('No ' + p.my + ' credit row exists for ' + p.sheetName + '; one will be created with opening balance 0.');
       if (prev && netOf(prev) !== 0) w.push('Last month\'s balance (' + rsFmt(netOf(prev)) + ') is NOT carried over automatically. Use Credit Ledger → Copy → Next Month.');
     }
     return {
       title: p.kind === 'payment' ? 'Record staff payment' : 'Add staff credit',
-      lines: ['Staff: ' + p.emp.name + ' (' + p.emp.staffId + ')', 'Month: ' + p.my, (p.kind === 'payment' ? 'Payment received: ' : 'Credit taken: ') + rsFmt(p.amt), 'For: ' + p.text, 'Net owed: ' + rsFmt(before) + ' → ' + rsFmt(after)],
+      lines: ['Staff: ' + p.sheetName + ' (' + p.emp.staffId + ')', 'Month: ' + p.my, (p.kind === 'payment' ? 'Payment received: ' : 'Credit taken: ') + rsFmt(p.amt), 'For: ' + p.text, 'Net owed: ' + rsFmt(before) + ' → ' + rsFmt(after)],
       warnings: w, strong, amount: p.amt,
     };
   },
@@ -132,24 +127,24 @@ registerTool({
     const data = loadMgr();
     if (!data.credit || typeof data.credit !== 'object') data.credit = {};
     if (!Array.isArray(data.credit[p.my])) data.credit[p.my] = [];
-    let row = findRow(data.credit[p.my], p.emp.name);
+    let row = findCreditRow(data.credit[p.my], p.emp.name).row;
     const created = !row;
-    if (!row) { row = { name: p.emp.name, prevBal: 0, entries: [], salary: 0, lessGeneric: 0 }; data.credit[p.my].push(row); }
+    if (!row) { row = { name: p.sheetName, prevBal: 0, entries: [], salary: 0, lessGeneric: 0 }; data.credit[p.my].push(row); }
     if (!Array.isArray(row.entries)) row.entries = [];
     const entry = { date: entryDate(p.iso), desc: p.text, amount: p.signed };
     row.entries.push(entry);
     Actions.saveFeatureData(MGR_KEY, JSON.stringify(data));
     refreshCreditUi(p.my);
     afterWrite();
-    return { summary: (p.kind === 'payment' ? 'Recorded payment of ' : 'Added credit of ') + rsFmt(p.amt) + ' for ' + p.emp.name + ' (' + p.my + ')',
-      staff: p.emp.name, month: p.my, entry, row_created: created, net_owed_now: netOf(row) };
+    return { summary: (p.kind === 'payment' ? 'Recorded payment of ' : 'Added credit of ') + rsFmt(p.amt) + ' for ' + p.sheetName + ' (' + p.my + ')',
+      staff: String(row.name).trim(), month: p.my, entry, row_created: created, net_owed_now: netOf(row) };
   },
   makeUndo: (args, out) => ({
     label: 'Remove ' + rsFmt(Math.abs(out.entry.amount)) + ' entry for ' + out.staff,
     fn: () => {
       const data = loadMgr();
       const rows = rowsFor(data, out.month);
-      const row = findRow(rows, out.staff);
+      const row = rows.find(r => normName(r.name) === normName(out.staff));
       if (!row) throw new Error('The credit row is gone; nothing to undo.');
       let i = -1;
       for (let k = row.entries.length - 1; k >= 0; k--) { const e = row.entries[k]; if (e.date === out.entry.date && ni(e.amount) === out.entry.amount && (e.desc || '') === out.entry.desc) { i = k; break; } }

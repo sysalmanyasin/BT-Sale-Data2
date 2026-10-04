@@ -15,6 +15,7 @@ import * as LedgerStore from '../../ledger-store.js';
 import { getNotes, keyForStaff } from '../../staff-notes.js';
 import { DAILY, MONTHLY } from '../../config.js';
 import { num, normDay, sameMonth, normMonth } from './_util.js';
+import { staffCandidates, findCreditRow, normName } from './_names.js';
 
 const CONFIRM = 'DELETE';
 const lc = s => String(s || '').trim().toLowerCase();
@@ -68,12 +69,9 @@ registerTool({
   description: 'Read the notes on one staff member\'s card (each has an id, needed for delete_staff_note).',
   parameters: { type: 'object', required: ['staff'], properties: { staff: { type: 'string', description: 'name or id like EMP-003' } } },
   run: ({ staff }) => {
-    const q = lc(staff);
-    const all = Repository.getStaff();
-    const hits = all.filter(e => lc(e.name) === q || lc(e.staffId) === q);
-    const list = hits.length ? hits : all.filter(e => lc(e.name).includes(q));
+    const list = staffCandidates(staff);
     if (!list.length) return { error: 'No staff member matches "' + staff + '".' };
-    if (list.length > 1) return { error: 'Several staff match: ' + list.slice(0, 5).map(e => e.name + ' (' + e.staffId + ')').join(', ') };
+    if (list.length > 1) return { error: 'Several staff match: ' + list.slice(0, 5).map(e => String(e.name).trim() + ' (' + e.staffId + ')').join(', ') };
     const emp = list[0];
     return { staff: emp.name, notes: getNotes(keyForStaff(emp)).slice(0, 20).map(n => ({ id: n.id, at: n.ts, text: n.text })) };
   },
@@ -112,17 +110,16 @@ const creditNet = r => ni(r.prevBal) + (r.entries || []).reduce((s, e) => s + ni
 function findCredit({ staff, month_year, entry_number, expected_amount }) {
   const my = normMonth(month_year);
   if (!my) throw new Error('Use a month like "October 2026".');
-  const emp = Repository.getStaff().find(e => lc(e.name) === lc(staff) || lc(e.staffId) === lc(staff)) || Repository.getStaff().find(e => lc(e.name).includes(lc(staff)));
-  const name = emp ? emp.name : staff;
   const data = readMgr();
   const rows = (data.credit && data.credit[my]) || [];
-  const row = rows.find(r => lc(r.name) === lc(name));
-  if (!row) throw new Error('No credit row for ' + name + ' in ' + my + '.');
+  const { row, ambiguous } = findCreditRow(rows, staff);
+  if (ambiguous) throw new Error('"' + staff + '" matches several people on the credit sheet: ' + ambiguous.join(', ') + '. Ask which one.');
+  if (!row) throw new Error('No credit row for "' + staff + '" in ' + my + '.');
   const i = Math.round(num(entry_number)) - 1;
   const entry = (row.entries || [])[i];
   if (!entry) throw new Error('Entry number ' + entry_number + ' does not exist (there are ' + (row.entries || []).length + '). Read it first with get_staff_credit.');
   if (Math.abs(ni(entry.amount)) !== Math.abs(ni(expected_amount))) throw new Error('Entry ' + entry_number + ' is ' + rsFmt(Math.abs(ni(entry.amount))) + ', not ' + rsFmt(Math.abs(ni(expected_amount))) + '. The list may have changed: read it again with get_staff_credit.');
-  return { data, my, row, i, entry, name: row.name };
+  return { data, my, row, i, entry, name: String(row.name).trim() };
 }
 
 registerTool({
@@ -152,7 +149,7 @@ registerTool({
   },
   makeUndo: (args, out) => ({ label: 'Restore credit entry for ' + out.staff, fn: () => {
     const data = readMgr();
-    const row = ((data.credit && data.credit[out.month]) || []).find(r => lc(r.name) === lc(out.staff));
+    const row = ((data.credit && data.credit[out.month]) || []).find(r => normName(r.name) === normName(out.staff));
     if (!row) throw new Error('The credit row is gone; cannot restore.');
     row.entries.splice(Math.min(out.index, row.entries.length), 0, out.saved);
     Actions.saveFeatureData(MGR_KEY, JSON.stringify(data));

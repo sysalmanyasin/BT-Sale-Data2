@@ -39,6 +39,21 @@ export function buildBriefing(now = new Date()) {
   out.missing_sales_days = missing.length;
   if (missing.length) add('warn', 'sales', missing.length + ' day(s) this month have no sales entry: ' + missing.slice(0, 8).join(', ') + (missing.length > 8 ? ', …' : '') + '.');
 
+  // ── Alert rules shared with the ntfy briefing (send-daily-ntfy-briefing) ──
+  // On the LATEST entered day: cash DIFF of Rs 10,000+ and a sale 30%+ below the same weekday last week.
+  if (entered.length) {
+    const L0 = entered[0];
+    const diffV = num(L0.d.DIFF);
+    if (Math.abs(diffV) >= 10000) add('warn', 'sales', 'Cash DIFF Rs ' + rs(diffV).toLocaleString('en-PK') + ' on ' + L0.d.Date + '.');
+    const wkAgo = new Date(L0.t); wkAgo.setDate(wkAgo.getDate() - 7);
+    const wkRec = DAILY.find(d => d.Date === dayStr(wkAgo));
+    if (wkRec && num(wkRec.TOTAL) > 0 && num(L0.d.TOTAL) < num(wkRec.TOTAL) * 0.7) {
+      const p = Math.round((1 - num(L0.d.TOTAL) / num(wkRec.TOTAL)) * 100);
+      add('warn', 'sales', 'Sale on ' + L0.d.Date + ' was ' + p + '% below the same weekday last week.');
+      out.latest_vs_last_week_pct = -p;
+    }
+  }
+
   // ── Yesterday vs recent average ────────────────────────────────────
   const yest = new Date(today); yest.setDate(yest.getDate() - 1);
   const yRec = DAILY.find(d => d.Date === dayStr(yest));
@@ -49,7 +64,7 @@ export function buildBriefing(now = new Date()) {
       const avg = prior.reduce((a, b) => a + b, 0) / prior.length;
       const pct = Math.round(((num(yRec.TOTAL) - avg) / avg) * 100);
       out.yesterday.vs_recent_avg_pct = pct;
-      if (Math.abs(pct) >= 30) add(pct < 0 ? 'warn' : 'info', 'sales', 'Yesterday was ' + Math.abs(pct) + '% ' + (pct < 0 ? 'below' : 'above') + ' the recent daily average (Rs ' + rs(avg).toLocaleString('en-PK') + ').');
+      if (Math.abs(pct) >= 30) add('info', 'sales', 'Yesterday was ' + Math.abs(pct) + '% ' + (pct < 0 ? 'below' : 'above') + ' the recent daily average (Rs ' + rs(avg).toLocaleString('en-PK') + ').');
     }
   } else if (entered.length && today.getDate() > 1) {
     add('info', 'sales', 'Yesterday (' + dayStr(yest) + ') has no sales entry yet.');
@@ -69,7 +84,8 @@ export function buildBriefing(now = new Date()) {
     const remainingDays = Math.max(0, dim - lastDay);
     out.target = { target: rs(tgt), sold_so_far: rs(sold), pct_done: Math.round((sold / tgt) * 1000) / 10, projected_month_end: projected, days_left: remainingDays, needed_per_day: remainingDays ? rs(Math.max(0, tgt - sold) / remainingDays) : 0 };
     if (sold >= tgt) add('good', 'target', 'Target for ' + my + ' is already achieved.');
-    else if (projected < tgt * 0.9) add('warn', 'target', 'At the current pace ' + my + ' ends near Rs ' + projected.toLocaleString('en-PK') + ' vs target Rs ' + rs(tgt).toLocaleString('en-PK') + '. Need Rs ' + out.target.needed_per_day.toLocaleString('en-PK') + '/day for the remaining ' + remainingDays + ' day(s).');
+    else if (lastDay >= 10 && projected < tgt * 0.9) add('warn', 'target', 'At the current pace ' + my + ' ends near Rs ' + projected.toLocaleString('en-PK') + ' vs target Rs ' + rs(tgt).toLocaleString('en-PK') + '. Need Rs ' + out.target.needed_per_day.toLocaleString('en-PK') + '/day for the remaining ' + remainingDays + ' day(s).');
+    else if (projected < tgt * 0.9) add('info', 'target', 'Too early to project ' + my + ' (day ' + lastDay + '): at this pace it ends near Rs ' + projected.toLocaleString('en-PK') + ' vs target Rs ' + rs(tgt).toLocaleString('en-PK') + '.');
     else add('good', 'target', 'On pace for the ' + my + ' target.');
   }
 

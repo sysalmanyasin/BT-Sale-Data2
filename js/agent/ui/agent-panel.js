@@ -7,7 +7,9 @@ import { callServer } from '../core/server.js';
 import { logToolCall } from '../core/audit.js';
 import { renderMarkdown } from '../core/markdown-lite.js';
 import { getPageContext } from '../tools/app.js';
-import { getWritesEnabled, setWritesEnabled } from '../core/prefs.js';
+import { getWritesEnabled, setWritesEnabled, getBriefingSeen, setBriefingSeen } from '../core/prefs.js';
+import { buildBriefing } from '../tools/briefing.js';
+import { badgeState, cardItems } from '../core/briefing-badge.js';
 import { pushUndo, runUndo, clearUndo } from '../core/undo.js';
 import { clearSession } from '../core/auditor.js';
 
@@ -72,6 +74,35 @@ export function mountAgentPanel() {
     lockBtn.classList.toggle('ag-on', on);
     sub.textContent = on ? 'Can propose changes · you approve each' : 'Read-only · asks your live data';
   }
+  // ── proactive briefing: badge on the ✨ button + a "Today" card (no AI call, no tokens) ──
+  let briefing = null;
+  const todayStr = () => new Date().toISOString().slice(0, 10);
+  const badge = el('span', { class: 'ag-badge', hidden: '' });
+  fab.append(badge);
+  function refreshBriefing() {
+    try { briefing = buildBriefing(new Date()); } catch (e) { console.error('[agent] briefing', e); briefing = null; }
+    const b = badgeState(briefing, getBriefingSeen(), todayStr());
+    badge.textContent = b.label; badge.hidden = !b.show;
+  }
+  function markSeen() {
+    if (!briefing) return;
+    setBriefingSeen(todayStr(), badgeState(briefing, null, todayStr()).count);
+    badge.hidden = true;
+  }
+  function addBriefingCard() {
+    if (!briefing) return;
+    const { items, more, clear } = cardItems(briefing);
+    const card = el('div', { class: 'ag-today' });
+    if (clear) card.innerHTML = '<div class="ag-today-t">✓ Nothing urgent today</div>';
+    else {
+      card.innerHTML = '<div class="ag-today-t">' + items.length + (more ? '+' : '') + ' thing' + (items.length + more === 1 ? '' : 's') + ' need attention</div><ul>'
+        + items.map(i => '<li>' + escHtml(i.message) + '</li>').join('') + (more ? '<li>…and ' + more + ' more</li>' : '') + '</ul>';
+      const b = el('button', { class: 'ag-today-b' }, 'Explain and suggest actions');
+      b.onclick = () => ask('What needs my attention today?');
+      card.append(b);
+    }
+    log.append(card);
+  }
   function rejectAllPending() { pending.forEach(r => r(false)); pending.clear(); }
 
   // ── approval card ──────────────────────────────────────────────────
@@ -126,6 +157,7 @@ export function mountAgentPanel() {
     addBubble('assistant', getWritesEnabled()
       ? "Hi! I can read your data and, with your approval on each one, add ledger entries, staff notes and staff credit, set targets and add or correct a day's sales, and delete records (you type DELETE to confirm). What do you need?"
       : "Hi! I can read your sales, staff, ledgers and inventory, and open pages for you. Tap 🔒 above if you want me to be able to propose changes (you'd still approve each one). What would you like to know?");
+    refreshBriefing(); addBriefingCard(); markSeen();
     renderChips();
   }
   function addBubble(role, content, { html = false } = {}) {

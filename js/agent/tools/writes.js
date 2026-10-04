@@ -14,6 +14,7 @@ import * as LedgerStore from '../../ledger-store.js';
 import { addNote, deleteNote, keyForStaff } from '../../staff-notes.js';
 import { DAILY, MONTHLY, DAILY_ADD_KEYS, DAILY_SUB_KEYS, RETURN_FIELDS, computeDailyTotals, negR } from '../../config.js';
 import { num, normDay, normMonth, sameMonth, MON, FULL } from './_util.js';
+import { resolveStaff as oneStaff } from './_names.js';
 
 const lc = s => String(s || '').toLowerCase().trim();
 // Read the stored targets exactly as the app does. If they cannot be parsed we
@@ -35,16 +36,6 @@ function toIso(input) {
   if (!app) throw new Error('Could not understand date "' + input + '". Use e.g. 2026-10-03.');
   const [d, m, y] = app.split('/');
   return y + '-' + String(MON.indexOf(m) + 1).padStart(2, '0') + '-' + d;
-}
-
-function oneStaff(query) {
-  const q = lc(query);
-  const all = Repository.getStaff();
-  const exact = all.filter(e => lc(e.name) === q || lc(e.staffId) === q);
-  const hits = exact.length ? exact : all.filter(e => lc(e.name).includes(q));
-  if (!hits.length) throw new Error('No staff member matches "' + query + '". Use find_staff first.');
-  if (hits.length > 1) throw new Error('"' + query + '" matches several staff: ' + hits.slice(0, 5).map(e => e.name + ' (' + e.staffId + ')').join(', ') + '. Ask the user which one.');
-  return hits[0];
 }
 
 // ── Staff note ───────────────────────────────────────────────────────

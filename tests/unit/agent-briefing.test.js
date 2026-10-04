@@ -43,10 +43,11 @@ describe('daily briefing', () => {
     assert.ok(b.yesterday.vs_recent_avg_pct <= -30);
     assert.ok(has('sales', /below the recent daily average/));
   });
-  test('target pace warns when the month is heading well short', () => {
+  test('early in the month the pace is information, not an alarm (same as the ntfy rule: from day 10)', () => {
     assert.equal(b.target.target, 4000000);
     assert.ok(b.target.projected_month_end < 3600000);
-    assert.ok(has('target', /At the current pace/));
+    assert.ok(b.attention.some(a => a.area === 'target' && a.level === 'info' && /Too early to project/.test(a.message)));
+    assert.ok(!b.attention.some(a => a.area === 'target' && a.level === 'warn'));
     assert.ok(b.target.needed_per_day > 0);
   });
   test('inventory findings', () => {
@@ -77,5 +78,38 @@ describe('daily briefing', () => {
     assert.equal(r.ok, true);
     assert.ok(JSON.parse(r.text).attention);
     assert.equal(reg.getTool('daily_briefing').risk, 'read');
+  });
+});
+
+describe('briefing: alert rules shared with the ntfy briefing', () => {
+  const NOW2 = new Date(2026, 9, 13, 9, 0); // 13 Oct → last filled day will be 11
+  before(() => {
+    const q = console.error; console.error = () => {};
+    [8, 9, 10].forEach(d => cfg.DAILY.push(day(d, 100000)));
+    cfg.DAILY.push({ ...day(11, 40000), DIFF: '12000' });
+    cfg.MONTHLY.splice(cfg.MONTHLY.findIndex(m => m.Month_Year === 'October 2026'), 1,
+      { Month_Year: 'October 2026', TOTAL: String(100000 * 8 + 40000), 'COMP SALE': '0', Customers: '90' });
+    console.error = q;
+  });
+  const warns = (x, area) => x.attention.filter(a => a.level === 'warn' && a.area === area).map(a => a.message).join(' | ');
+
+  test('projection below 90% of target warns once the month is past day 10', () => {
+    const x = buildBriefing(NOW2);
+    assert.match(warns(x, 'target'), /At the current pace/);
+  });
+  test('cash DIFF of Rs 10,000+ on the latest entry warns', () => {
+    assert.match(warns(buildBriefing(NOW2), 'sales'), /Cash DIFF Rs 12,000 on 11\/Oct\/2026/);
+  });
+  test('a sale 30%+ below the same weekday last week warns', () => {
+    const x = buildBriefing(NOW2);
+    assert.match(warns(x, 'sales'), /60% below the same weekday last week/); // 40,000 vs 100,000 on 04/Oct
+    assert.equal(x.latest_vs_last_week_pct, -60);
+  });
+  test('a small DIFF or a normal day does not warn', () => {
+    const rec = cfg.DAILY.find(d => d.Date === '11/Oct/2026'); const keep = { ...rec };
+    rec.DIFF = '9999'; rec.TOTAL = '95000';
+    const x = buildBriefing(NOW2);
+    assert.ok(!/Cash DIFF/.test(warns(x, 'sales')) && !/same weekday/.test(warns(x, 'sales')));
+    Object.assign(rec, keep);
   });
 });
