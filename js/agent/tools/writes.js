@@ -6,13 +6,14 @@
 //   - returns an undo that reverses exactly what it did.
 import { registerTool } from '../core/tool-registry.js';
 import { amountChecks, dateChecks, isoToday, isoToApp, rsFmt } from '../core/guard.js';
+import { afterWrite } from '../core/after-write.js';
 import { Repository } from '../../repository.js';
 import { Actions } from '../../actions.js';
 import { LedgerActions } from '../../ledger-actions.js';
 import * as LedgerStore from '../../ledger-store.js';
 import { addNote, deleteNote, keyForStaff } from '../../staff-notes.js';
-import { DAILY, DAILY_ADD_KEYS, DAILY_SUB_KEYS } from '../../config.js';
-import { num, normDay, normMonth, sameMonth, MON } from './_util.js';
+import { DAILY, MONTHLY, DAILY_ADD_KEYS, DAILY_SUB_KEYS, RETURN_FIELDS, computeDailyTotals, negR } from '../../config.js';
+import { num, normDay, normMonth, sameMonth, MON, FULL } from './_util.js';
 
 const lc = s => String(s || '').toLowerCase().trim();
 // Read the stored targets exactly as the app does. If they cannot be parsed we
@@ -64,9 +65,10 @@ registerTool({
     const emp = oneStaff(staff);
     const note = addNote(keyForStaff(emp), String(text).trim().slice(0, 400));
     if (!note) throw new Error('Note was not saved.');
+    afterWrite();
     return { summary: 'Note added to ' + emp.name, note_id: note.id };
   },
-  makeUndo: (args, out) => ({ label: 'Remove note from ' + String(out.summary).replace('Note added to ', ''), fn: () => deleteNote(out.note_id) }),
+  makeUndo: (args, out) => ({ label: 'Remove note from ' + String(out.summary).replace('Note added to ', ''), fn: () => { deleteNote(out.note_id); afterWrite(); } }),
 });
 
 // ── Ledger entry ─────────────────────────────────────────────────────
@@ -109,9 +111,10 @@ registerTool({
   run: ({ ledger_type, category_id, amount, date, desc }) => {
     const { t, c } = resolveLedger(ledger_type, category_id);
     const entry = LedgerActions.addEntry(t.id, { date: toIso(date), categoryId: c.id, amount: Math.abs(num(amount)), desc: desc || '', source: 'ai_assistant' });
+    afterWrite();
     return { summary: 'Added ' + rsFmt(entry.amount) + ' to ' + t.label + ' (' + c.label + ')', entry_id: entry.id, new_balance: Math.round(LedgerStore.getCurrentBalance(t.id)) };
   },
-  makeUndo: (args, out) => ({ label: 'Remove ledger entry', fn: () => LedgerActions.removeEntry(out.entry_id) }),
+  makeUndo: (args, out) => ({ label: 'Remove ledger entry', fn: () => { LedgerActions.removeEntry(out.entry_id); afterWrite(); } }),
 });
 
 // ── Monthly target ───────────────────────────────────────────────────
@@ -137,11 +140,12 @@ registerTool({
     const prev = cur[my];
     cur[my] = Math.round(num(amount));
     Actions.saveTargets(JSON.stringify(cur));
+    afterWrite({ rebuild: true });
     return { summary: 'Target for ' + my + ' set to ' + rsFmt(cur[my]), month: my, previous: prev === undefined ? null : prev };
   },
   makeUndo: (args, out) => ({
     label: 'Restore target for ' + out.month,
-    fn: () => { const cur = { ...targets() }; if (out.previous === null) delete cur[out.month]; else cur[out.month] = out.previous; Actions.saveTargets(JSON.stringify(cur)); },
+    fn: () => { const cur = { ...targets() }; if (out.previous === null) delete cur[out.month]; else cur[out.month] = out.previous; Actions.saveTargets(JSON.stringify(cur)); afterWrite({ rebuild: true }); },
   }),
 });
 
@@ -152,7 +156,7 @@ function findDay(date) {
   const nd = normDay(date);
   if (!nd) throw new Error('Could not understand date "' + date + '".');
   const rec = DAILY.find(d => d.Date === nd);
-  if (!rec) throw new Error('No sales entry exists for ' + nd + '. New days must be added on the Entry page (use navigate_to "entry").');
+  if (!rec) throw new Error('No sales entry exists for ' + nd + '. To create a new day use add_daily_sales_entry.');
   return rec;
 }
 function pickField(field) {
@@ -163,7 +167,7 @@ function pickField(field) {
 
 registerTool({
   name: 'edit_daily_sales_field', domain: 'sales', risk: 'critical',
-  description: 'Correct ONE field of an EXISTING daily sales entry (e.g. Cash Sale, HBL, COMP SALE, Customers). TOTAL and DIFF are recalculated automatically. Cannot create new days.',
+  description: 'Correct ONE field of an EXISTING daily sales entry (e.g. Cash Sale, HBL, COMP SALE, Customers). TOTAL and DIFF are recalculated automatically. Cannot create new days (use add_daily_sales_entry).',
   parameters: { type: 'object', required: ['date', 'field', 'value'], properties: {
     date: { type: 'string', description: 'e.g. 2026-10-02 or 02/Oct/2026' }, field: { type: 'string' }, value: { type: 'number', description: 'new value (>= 0)' },
   } },
@@ -182,10 +186,84 @@ registerTool({
     const my = rec.Month_Year, day = rec.Date;
     Actions.editDailyEntry(day, my, { [f]: String(num(value)) });
     Actions.recomputeMonth(my);
+    afterWrite({ rebuild: true });
     return { summary: day + ': ' + f + ' set to ' + rsFmt(num(value)), day, month: my, field: f, previous: old, new_total: Math.round(num(DAILY.find(d => d.Date === day && d.Month_Year === my).TOTAL)) };
   },
   makeUndo: (args, out) => ({
     label: 'Restore ' + out.field + ' on ' + out.day,
-    fn: () => { Actions.editDailyEntry(out.day, out.month, { [out.field]: out.previous === null ? '' : out.previous }); Actions.recomputeMonth(out.month); },
+    fn: () => { Actions.editDailyEntry(out.day, out.month, { [out.field]: out.previous === null ? '' : out.previous }); Actions.recomputeMonth(out.month); afterWrite({ rebuild: true }); },
+  }),
+});
+
+// ── Add a NEW daily sales entry (mirrors the Entry page's saveEntry) ──
+const ENTRY_FIELDS = [...DAILY_ADD_KEYS, ...DAILY_SUB_KEYS, 'COMP SALE', 'Customers'];
+
+function appDateToTime(app) { const [d, m, y] = String(app).split('/'); const i = MON.indexOf(m); return i < 0 ? NaN : new Date(+y, i, +d).getTime(); }
+
+function buildEntry(date, fields) {
+  if (!fields || typeof fields !== 'object' || Array.isArray(fields)) throw new Error('"fields" must be an object like {"Cash Sale": 150000, "COMP SALE": 170000, "Customers": 140}.');
+  const iso = toIso(date);
+  const [y, m, d] = iso.split('-');
+  const app = d + '/' + MON[+m - 1] + '/' + y;
+  const my = FULL[+m - 1] + ' ' + y;
+  const entry = { Month_Year: my, Date: app };
+  ENTRY_FIELDS.forEach(k => { entry[k] = null; });
+  const given = Object.entries(fields);
+  if (!given.length) throw new Error('Give at least one field, e.g. {"Cash Sale": 150000}.');
+  for (const [k, v] of given) {
+    const f = ENTRY_FIELDS.find(x => lc(x) === lc(k));
+    if (!f) throw new Error('Unknown field "' + k + '". Valid: ' + ENTRY_FIELDS.join(', '));
+    const val = num(v);
+    if (!(val >= 0) || val > 1000000000) throw new Error('Field "' + f + '" must be 0 or more.');
+    entry[f] = RETURN_FIELDS.has(f) ? negR(val) : val; // returns always reduce the total, same as the Entry page
+  }
+  computeDailyTotals(entry);
+  entry['Sale Plus'] = null;
+  return { entry, iso, app, my };
+}
+
+registerTool({
+  name: 'add_daily_sales_entry', domain: 'sales', risk: 'critical',
+  description: 'Create a NEW day in the sales data (same as the Entry page). Fails if that date already exists (use edit_daily_sales_field instead). Pass `fields` as a map of field name to rupees, e.g. {"Cash Sale":150000,"HBL":20000,"Cash Returns":3000,"COMP SALE":170000,"Customers":140}. TOTAL and DIFF are calculated automatically. Always include COMP SALE.',
+  parameters: { type: 'object', required: ['date', 'fields'], properties: {
+    date: { type: 'string', description: 'YYYY-MM-DD (or "today"/"yesterday")' },
+    fields: { type: 'object', description: 'field name → number. Return fields are entered as positive numbers.' },
+  } },
+  preview: ({ date, fields }) => {
+    const { entry, iso, app } = buildEntry(date, fields);
+    if (DAILY.some(d => d.Date === app)) throw new Error('A sales entry for ' + app + ' already exists. Use edit_daily_sales_field to correct it.');
+    const total = num(entry.TOTAL), comp = num(entry['COMP SALE']);
+    const w = [...dateChecks(iso).warnings];
+    if (entry['COMP SALE'] === null) w.push('COMP SALE not given, so DIFF will equal the whole TOTAL.');
+    else if (entry.DIFF) w.push('DIFF (TOTAL − COMP SALE) will be ' + rsFmt(num(entry.DIFF)) + '.');
+    const t = appDateToTime(app);
+    const prior = DAILY.filter(d => num(d.TOTAL) > 0 && appDateToTime(d.Date) < t).sort((a, b) => appDateToTime(b.Date) - appDateToTime(a.Date)).slice(0, 14);
+    if (prior.length >= 5) {
+      const avg = prior.reduce((s, d) => s + num(d.TOTAL), 0) / prior.length;
+      if (avg > 0 && Math.abs(total - avg) / avg > 0.5) w.push('TOTAL ' + rsFmt(total) + ' is far from the recent daily average (' + rsFmt(avg) + ').');
+    }
+    const lines = ['Day: ' + app, ...Object.entries(entry).filter(([k, v]) => ENTRY_FIELDS.includes(k) && v !== null).map(([k, v]) => k + ': ' + rsFmt(v)), 'TOTAL: ' + rsFmt(total) + (comp ? '  (COMP ' + rsFmt(comp) + ')' : '')];
+    return { title: 'Add sales for ' + app, lines, warnings: w, strong: true };
+  },
+  run: ({ date, fields }) => {
+    const { entry, app, my } = buildEntry(date, fields);
+    if (DAILY.some(d => d.Date === app)) throw new Error('A sales entry for ' + app + ' already exists.');
+    const monthWasNew = !MONTHLY.some(m => sameMonth(m.Month_Year, my));
+    Actions.addDailyEntry(entry);
+    Actions.recordPendingEntry(entry);
+    Actions.recomputeMonth(my);
+    afterWrite({ rebuild: true });
+    const rec = MONTHLY.find(m => sameMonth(m.Month_Year, my));
+    return { summary: 'Added sales for ' + app + ': TOTAL ' + rsFmt(num(entry.TOTAL)), day: app, month: my, month_was_new: monthWasNew, day_total: Math.round(num(entry.TOTAL)), month_total_now: rec ? Math.round(num(rec.TOTAL)) : null };
+  },
+  makeUndo: (args, out) => ({
+    label: 'Remove sales entry for ' + out.day,
+    fn: () => {
+      Actions.removeDailyEntry(out.day, out.month);
+      Actions.forgetPendingEntry(out.day, out.month);
+      Actions.recomputeMonth(out.month);
+      if (out.month_was_new && !DAILY.some(d => sameMonth(d.Month_Year, out.month))) Actions.removeMonth(out.month);
+      afterWrite({ rebuild: true });
+    },
   }),
 });

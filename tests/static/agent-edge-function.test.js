@@ -54,6 +54,7 @@ describe('bt-agent prompt: change tools', () => {
   test('prompt switches on writes_enabled and requires approval-aware behaviour', () => {
     assert.match(fn, /ctx\.writes_enabled === true/);
     assert.match(fn, /approval card/);
+    assert.ok(!/add_staff_note/.test(fn.slice(fn.indexOf('buildSystemPrompt'), fn.indexOf('function isValidTool'))), 'prompt must not hard-code tool names');
     assert.match(fn, /do not retry it/);
   });
   test('locked prompt tells the model changes are locked', () => assert.match(fn, /changes are locked/));

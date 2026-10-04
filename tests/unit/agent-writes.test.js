@@ -7,7 +7,9 @@ import { installDomEnv } from '../helpers/dom-env.js';
 installDomEnv();
 globalThis.invalidateRenderCache = () => {}; // classic-script global the real app defines
 const cfg = await import('../../js/config.js');
+globalThis.recomputeMonthly = cfg.recomputeMonthly; // browser globals the real app has (classic-script scope)
 const { Repository } = await import('../../js/repository.js');
+globalThis.Repository = Repository;
 const LedgerStore = await import('../../js/ledger-store.js');
 const reg = await import('../../js/agent/core/tool-registry.js');
 await import('../../js/agent/tools/writes.js');
@@ -144,6 +146,69 @@ describe('edit_daily_sales_field', () => {
     assert.match((await call('edit_daily_sales_field', { date: '2026-10-02', field: 'TOTAL', value: 1 })).text, /cannot be edited/);
     assert.match((await call('edit_daily_sales_field', { date: '2026-10-09', field: 'Cash Sale', value: 1 })).text, /No sales entry/);
     assert.match((await call('edit_daily_sales_field', { date: '2026-10-02', field: 'Cash Sale', value: -5 })).text, /0 or more/);
+  });
+});
+
+describe('add_daily_sales_entry', () => {
+  const add = (date, fields, o) => call('add_daily_sales_entry', { date, fields }, o);
+  test('refuses a date that already exists', async () => {
+    const r = await add('2026-10-02', { 'Cash Sale': 1, 'COMP SALE': 1 });
+    assert.equal(r.ok, false); assert.match(r.text, /already exists/);
+  });
+  test('rejects unknown fields, negatives, empty and non-object fields', async () => {
+    assert.match((await add('2026-10-04', { Bogus: 5 })).text, /Unknown field/);
+    assert.match((await add('2026-10-04', { 'Cash Sale': -5 })).text, /0 or more/);
+    assert.match((await add('2026-10-04', {})).text, /at least one field/);
+    assert.match((await add('2026-10-04', 'cash 5')).text, /must be an object/);
+  });
+  test('critical: strong confirm, preview shows TOTAL; reject writes nothing', async () => {
+    const n = cfg.DAILY.length; let p;
+    const r = await add('2026-10-04', { 'Cash Sale': 100000, HBL: 20000, 'COMP SALE': 120000 }, opts(async req => { p = req.preview; return false; }));
+    assert.equal(r.rejected, true); assert.equal(cfg.DAILY.length, n);
+    assert.equal(p.strong, true); assert.match(p.lines.join('|'), /TOTAL: Rs 120,000/);
+  });
+  test('approved: stored like the Entry page (returns negative, TOTAL/DIFF computed), month recomputed', async () => {
+    const r = await add('2026-10-04', { 'Cash Sale': 100000, HBL: 20000, 'Cash Returns': 5000, 'COMP SALE': 114000, Customers: 90 });
+    assert.equal(r.ok, true);
+    const rec = cfg.DAILY.find(d => d.Date === '04/Oct/2026');
+    assert.equal(rec.Month_Year, 'October 2026');
+    assert.equal(rec['Cash Returns'], -5000);
+    assert.equal(rec.TOTAL, '115000');
+    assert.equal(rec.DIFF, '1000');
+    assert.equal(rec['Sale Plus'], null);
+    assert.equal(body(r).day_total, 115000);
+    assert.ok(Repository.getPendingEntries().some(e => e.Date === '04/Oct/2026'));
+    await r.undo.fn();
+    assert.ok(!cfg.DAILY.some(d => d.Date === '04/Oct/2026'));
+    assert.ok(!Repository.getPendingEntries().some(e => e.Date === '04/Oct/2026'));
+  });
+  test('missing COMP SALE and far-from-average totals are warned', async () => {
+    for (let i = 10; i < 18; i++) cfg.DAILY.push({ Date: String(i) + '/Sep/2026', Month_Year: 'September 2026', 'Cash Sale': '100000', TOTAL: '100000', 'COMP SALE': '100000' });
+    let p;
+    await add('2026-09-20', { 'Cash Sale': 400000 }, opts(async req => { p = req.preview; return false; }));
+    assert.match(p.warnings.join(' '), /COMP SALE not given/);
+    assert.match(p.warnings.join(' '), /far from the recent daily average/);
+  });
+  test('undo removes a month that the add created', async () => {
+    const r = await add('2027-01-05', { 'Cash Sale': 5000, 'COMP SALE': 5000 });
+    assert.equal(r.ok, true);
+    assert.ok(cfg.MONTHLY.some(m => m.Month_Year === 'January 2027'));
+    await r.undo.fn();
+    assert.ok(!cfg.MONTHLY.some(m => m.Month_Year === 'January 2027'));
+  });
+});
+
+describe('after-write hook (dashboards refresh + auto-save push, like the app pages)', () => {
+  test('rebuildAll and pushToSupabase fire after a daily edit when auto-save is on', async () => {
+    let rebuilt = 0, pushed = 0;
+    window.rebuildAll = () => { rebuilt++; }; window.pushToSupabase = () => { pushed++; };
+    Repository.setItem('bt_auto_save', '1');
+    const r = await call('edit_daily_sales_field', { date: '2026-10-02', field: 'Customers', value: 31 });
+    assert.equal(r.ok, true); assert.equal(rebuilt, 1); assert.equal(pushed, 1);
+    await r.undo.fn(); assert.equal(rebuilt, 2); assert.equal(pushed, 2);
+    Repository.setItem('bt_auto_save', '0');
+    await call('add_staff_note', { staff: 'EMP-003', text: 'x' });
+    assert.equal(pushed, 2); // auto-save off => no push
   });
 });
 
