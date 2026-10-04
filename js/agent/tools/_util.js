@@ -64,3 +64,11 @@ export function clampInt(v, lo, hi, dflt) {
 }
 
 export const pctChange = (a, b) => (b ? Math.round(((a - b) / Math.abs(b)) * 1000) / 10 : null);
+
+/** "05/Sep/2026" → Date at local midnight (or null). */
+export function parseAppDate(app) {
+  const [d, m, y] = String(app || '').split('/');
+  const i = MON.findIndex(x => x.toLowerCase() === String(m || '').toLowerCase());
+  if (i < 0 || !+d || !+y) return null;
+  return new Date(+y, i, +d);
+}

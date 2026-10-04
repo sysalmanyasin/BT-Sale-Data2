@@ -11,10 +11,10 @@ import { getWritesEnabled, setWritesEnabled } from '../core/prefs.js';
 import { pushUndo, runUndo, clearUndo } from '../core/undo.js';
 
 const SUGGESTIONS = [
+  'What needs my attention today?',
   "How are today's sales?",
   'Target pace this month',
   'What is low on stock?',
-  'Compare this month with last month',
 ];
 const TOOL_LABELS = {
   get_sales_summary: 'Checking monthly sales', get_daily_sales: 'Reading daily sales', top_sales_days: 'Ranking sale days',
@@ -25,7 +25,7 @@ const TOOL_LABELS = {
   low_cover_items: 'Checking stock cover', slow_moving_stock: 'Finding slow stock', navigate_to: 'Opening page',
   get_app_context: 'Checking date', list_pages: 'Listing pages',
   add_staff_note: 'Preparing note', add_ledger_entry: 'Preparing ledger entry', set_monthly_target: 'Preparing target change',
-  edit_daily_sales_field: 'Preparing sales edit',
+  edit_daily_sales_field: 'Preparing sales edit', add_daily_sales_entry: 'Preparing sales entry', daily_briefing: 'Preparing your briefing',
 };
 
 export function mountAgentPanel() {

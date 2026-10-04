@@ -1,0 +1,81 @@
+// "What needs my attention today?" — deterministic briefing checks.
+import { test, describe, before } from 'node:test';
+import assert from 'node:assert/strict';
+import { installDomEnv } from '../helpers/dom-env.js';
+
+installDomEnv();
+globalThis.invalidateRenderCache = () => {};
+const cfg = await import('../../js/config.js');
+const { Repository } = await import('../../js/repository.js');
+const { buildBriefing } = await import('../../js/agent/tools/briefing.js');
+const reg = await import('../../js/agent/core/tool-registry.js');
+
+const day = (d, total, comp = total) => ({ Date: String(d).padStart(2, '0') + '/Oct/2026', Month_Year: 'October 2026', TOTAL: String(total), 'COMP SALE': String(comp), Customers: '10' });
+const NOW = new Date(2026, 9, 8, 9, 0); // 08 Oct 2026
+
+before(() => {
+  const q = console.error; console.error = () => {};
+  for (let d = 20; d <= 30; d++) cfg.DAILY.push({ Date: d + '/Sep/2026', Month_Year: 'September 2026', TOTAL: '100000', 'COMP SALE': '100000', Customers: '10' });
+  [1, 2, 3, 4, 6].forEach(d => cfg.DAILY.push(day(d, 100000)));   // the 5th has no entry
+  cfg.DAILY.push(day(7, 40000));                                  // yesterday: present but weak
+  cfg.MONTHLY.push({ Month_Year: 'October 2026', TOTAL: String(100000 * 5 + 40000), 'COMP SALE': '640000', Customers: '60' });
+  Repository.setItem('bt_targets', JSON.stringify({ 'October 2026': 4000000 }));
+  window.inventoryBridgeGetFullData = () => ({ lastSync: { syncedAt: '2026-10-08T00:00:00Z' }, products: [
+    { name: 'Panadol', qty: 3, price: 50, netQty30Days: 60, lastSaleDate: '2026-10-07' },
+    { name: 'Gone Item', qty: 0, price: 10, netQty30Days: 12, lastSaleDate: '2026-10-05' },
+    { name: 'Old Syrup', qty: 40, price: 100, netQty30Days: 0, lastSaleDate: '2025-01-01' },
+    { name: 'Steady', qty: 500, price: 5, netQty30Days: 30, lastSaleDate: '2026-10-07' },
+  ] });
+  console.error = q;
+});
+
+describe('daily briefing', () => {
+  const b = buildBriefing(NOW);
+  const has = (area, re) => b.attention.some(a => a.area === area && re.test(a.message));
+
+  test('header facts', () => { assert.equal(b.date, '08/Oct/2026'); assert.equal(b.month, 'October 2026'); });
+  test('lists missing sales days this month', () => {
+    assert.equal(b.missing_sales_days, 1); // only the 5th
+    assert.ok(has('sales', /05\/Oct\/2026/));
+  });
+  test('yesterday is compared with the recent average', () => {
+    assert.equal(b.yesterday.total_sale, 40000);
+    assert.ok(b.yesterday.vs_recent_avg_pct <= -30);
+    assert.ok(has('sales', /below the recent daily average/));
+  });
+  test('target pace warns when the month is heading well short', () => {
+    assert.equal(b.target.target, 4000000);
+    assert.ok(b.target.projected_month_end < 3600000);
+    assert.ok(has('target', /At the current pace/));
+    assert.ok(b.target.needed_per_day > 0);
+  });
+  test('inventory findings', () => {
+    assert.equal(b.inventory.out_of_stock_but_selling, 1);
+    assert.equal(b.inventory.running_out_within_7_days, 1);
+    assert.equal(b.inventory.most_urgent[0].name, 'Panadol');
+    assert.equal(b.inventory.slow_moving_stock_value, 4000);
+  });
+  test('warnings are sorted first and counted', () => {
+    assert.equal(b.attention[0].level, 'warn');
+    assert.equal(b.needs_action, b.attention.filter(a => a.level === 'warn').length);
+  });
+  test('no target set → informational note, not a crash', () => {
+    Repository.setItem('bt_targets', '{}');
+    const x = buildBriefing(NOW);
+    assert.ok(x.attention.some(a => a.area === 'target' && /No sales target/.test(a.message)));
+    Repository.setItem('bt_targets', JSON.stringify({ 'October 2026': 4000000 }));
+  });
+  test('inventory not loaded → says so', () => {
+    const keep = window.inventoryBridgeGetFullData; window.inventoryBridgeGetFullData = () => null;
+    const x = buildBriefing(NOW);
+    assert.equal(x.inventory, null);
+    assert.ok(x.attention.some(a => a.area === 'inventory' && /not loaded/.test(a.message)));
+    window.inventoryBridgeGetFullData = keep;
+  });
+  test('registered as a read tool and runs through the registry', async () => {
+    const r = await reg.runTool('daily_briefing', {});
+    assert.equal(r.ok, true);
+    assert.ok(JSON.parse(r.text).attention);
+    assert.equal(reg.getTool('daily_briefing').risk, 'read');
+  });
+});
