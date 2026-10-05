@@ -24,3 +24,12 @@ verify_jwt = false
 
 [functions.closing-ntfy-notify]
 verify_jwt = false
+
+# Closing App staff logins. verify_jwt stays off, but the function itself requires a signed-in
+# ACTIVE bt_authorized_users session (v21). Do not remove that check.
+[functions.set-staff-login]
+verify_jwt = false
+
+# Drive backup/restore: JWT on (anon key passes) + Admin PIN / auto key enforced in code.
+[functions.google-drive]
+verify_jwt = true

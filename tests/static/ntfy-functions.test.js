@@ -54,3 +54,37 @@ describe('no secrets in function sources (the repo is public)', () => {
     }
   });
 });
+
+describe('set-staff-login requires a signed-in authorised user', () => {
+  const ssl = fs.readFileSync(path.join(fnDir, 'set-staff-login/index.ts'), 'utf8');
+  const cfg = fs.readFileSync(path.join(root, 'supabase/config.toml'), 'utf8');
+  test('rejects missing / invalid sessions and non-authorised emails before touching any account', () => {
+    const authAt = ssl.indexOf('auth.getUser(token)');
+    assert.ok(authAt > 0, 'must verify the session');
+    assert.match(ssl, /return json\(\{ error: 'Not signed in' \}, 401\)/);
+    assert.match(ssl, /return json\(\{ error: 'Invalid session' \}, 401\)/);
+    assert.match(ssl, /from\('bt_authorized_users'\)[\s\S]*?\.eq\('active', true\)/);
+    assert.match(ssl, /return json\(\{ error: 'Not authorised' \}, 403\)/);
+    // the auth gate must come BEFORE any account is created or changed
+    for (const op of ['createUser', 'updateUserById', "from('staff_auth_link')", "from('bt_staff')"]) {
+      assert.ok(ssl.indexOf(op) > authAt, op + ' must come after the auth check');
+    }
+  });
+  test('config pins it (jwt off, auth in code) and Drive backup (jwt on)', () => {
+    assert.match(cfg, /\[functions\.set-staff-login\]\s*\nverify_jwt = false/);
+    assert.match(cfg, /\[functions\.google-drive\]\s*\nverify_jwt = true/);
+  });
+});
+
+describe('google-drive keeps every action behind the Admin PIN', () => {
+  const gd = fs.readFileSync(path.join(fnDir, 'google-drive/index.ts'), 'utf8');
+  test('only "backup" may use the auto key; all other actions call requireAdmin first', () => {
+    const backupAt = gd.indexOf("if (action === 'backup')");
+    const adminAt = gd.indexOf('await requireAdmin(pin);', backupAt);
+    assert.ok(backupAt > 0 && adminAt > backupAt);
+    for (const a of ['status', 'oauth_callback', 'disconnect', 'list_versions', 'restore', 'set_auto_key']) {
+      assert.ok(gd.indexOf("action === '" + a + "'") > adminAt, a + ' must be behind requireAdmin');
+    }
+    assert.match(gd, /Deno\.env\.get\('GOOGLE_CLIENT_SECRET'\)/);
+  });
+});
