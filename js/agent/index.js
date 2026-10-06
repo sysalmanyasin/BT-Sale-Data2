@@ -9,6 +9,8 @@ import './tools/writes.js';
 import './tools/credit.js';
 import './tools/deletes.js';
 import './tools/briefing.js';
+import './tools/str.js';
+import './tools/closing.js';
 import { mountAgentPanel } from './ui/agent-panel.js';
 
 function start() {

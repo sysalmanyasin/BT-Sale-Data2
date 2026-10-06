@@ -4,7 +4,8 @@ const LOCAL_KEY = 'bt_agent_audit_local_v1'; // intentionally device-local, not 
 const MAX_LOCAL = 100;
 
 export function logToolCall(entry, { conversationId = null } = {}) {
-  const row = { ...entry, at: new Date().toISOString(), conversationId };
+  const { undo, ...entryNoUndo } = entry; // the recipe goes to Supabase only, never into the local ring buffer
+  const row = { ...entryNoUndo, at: new Date().toISOString(), conversationId };
   try {
     const arr = JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]');
     arr.unshift(row); arr.length = Math.min(arr.length, MAX_LOCAL);
@@ -16,6 +17,7 @@ export function logToolCall(entry, { conversationId = null } = {}) {
     sb.from('agent_audit').insert({
       conversation_id: conversationId, tool: entry.tool, risk: entry.risk || 'read',
       args: entry.args || {}, ok: !!entry.ok, result_chars: entry.resultChars || 0, error: entry.error || null,
+      ...(undo ? { undo, undo_key: undo.key } : {}),
     }).then(() => {}, () => {});
   } catch (_) { /* ignore */ }
 }

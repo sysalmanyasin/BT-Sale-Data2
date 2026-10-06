@@ -12,6 +12,12 @@ import { buildBriefing } from '../tools/briefing.js';
 import { badgeState, cardItems } from '../core/briefing-badge.js';
 import { pushUndo, runUndo, clearUndo } from '../core/undo.js';
 import { clearSession } from '../core/auditor.js';
+import { tryInstant } from '../core/instant.js';
+import { getKillState, setKillState } from '../core/kill-switch.js';
+import { loadPendingUndos, markUndone } from '../core/undo-store.js';
+import { summarizeUsage, summarizeAudit, fetchUsage, fetchAudit } from '../core/usage-stats.js';
+
+const getSb = () => (typeof window.btGetSupabaseClient === 'function' ? window.btGetSupabaseClient() : null);
 
 const SUGGESTIONS = [
   'What needs my attention today?',
@@ -26,6 +32,7 @@ const TOOL_LABELS = {
   list_ledger_types: 'Listing ledgers', get_ledger_entries: 'Reading ledger', get_ledger_month_totals: 'Totalling ledger',
   inventory_overview: 'Checking inventory', search_inventory: 'Searching inventory', low_stock_items: 'Finding low stock',
   low_cover_items: 'Checking stock cover', slow_moving_stock: 'Finding slow stock', navigate_to: 'Opening page',
+  str_overview: 'Checking transfers', list_pending_strs: 'Finding pending transfers', get_str_detail: 'Reading transfer', closing_status: 'Checking closing', closing_recent_days: 'Checking recent closings',
   get_app_context: 'Checking date', list_pages: 'Listing pages',
   add_staff_note: 'Preparing note', add_ledger_entry: 'Preparing ledger entry', set_monthly_target: 'Preparing target change',
   edit_daily_sales_field: 'Preparing sales edit', add_daily_sales_entry: 'Preparing sales entry', get_staff_notes: 'Reading staff notes', delete_ledger_entry: 'Preparing delete', delete_staff_note: 'Preparing delete', delete_staff_credit_entry: 'Preparing delete', delete_daily_sales_entry: 'Preparing delete', daily_briefing: 'Preparing your briefing', get_staff_credit: 'Reading staff credit', add_staff_credit_entry: 'Preparing credit entry',
@@ -46,6 +53,8 @@ export function mountAgentPanel() {
     <header class="ag-head">
       <div><strong>BT Assistant</strong><span class="ag-sub" id="ag-sub"></span></div>
       <div class="ag-head-btns">
+        <button class="ag-ico" id="ag-stats" title="Usage and activity" aria-label="Usage and activity">📊</button>
+        <button class="ag-ico" id="ag-kill" aria-label="Stop all AI changes on every device"></button>
         <button class="ag-ico" id="ag-lock" aria-label="Allow changes"></button>
         <button class="ag-ico" id="ag-clear" title="New chat" aria-label="New chat">↺</button>
         <button class="ag-ico" id="ag-close" title="Close" aria-label="Close">✕</button>
@@ -67,12 +76,22 @@ export function mountAgentPanel() {
   const sub = sheet.querySelector('#ag-sub');
   const pending = new Set(); // resolvers of open approval cards
 
+  let killed = true; // fail safe until the server state is known
+  const killBtn = sheet.querySelector('#ag-kill');
+  async function refreshKill() {
+    const k = await getKillState(getSb());
+    killed = k.killed; paintLock();
+    return k;
+  }
   function paintLock() {
-    const on = getWritesEnabled();
+    killBtn.textContent = killed ? '⛔' : '🛡';
+    killBtn.title = killed ? 'AI changes are STOPPED on all devices. Tap to resume.' : 'Tap to stop all AI changes on every device.';
+    killBtn.classList.toggle('ag-on', killed);
+    const on = getWritesEnabled() && !killed;
     lockBtn.textContent = on ? '🔓' : '🔒';
     lockBtn.title = on ? 'Changes allowed (you approve each one). Tap to lock.' : 'Read-only. Tap to allow changes.';
     lockBtn.classList.toggle('ag-on', on);
-    sub.textContent = on ? 'Can propose changes · you approve each' : 'Read-only · asks your live data';
+    sub.textContent = killed ? 'Changes stopped on all devices' : on ? 'Can propose changes · you approve each' : 'Read-only · asks your live data';
   }
   // ── proactive briefing: badge on the ✨ button + a "Today" card (no AI call, no tokens) ──
   let briefing = null;
@@ -134,17 +153,36 @@ export function mountAgentPanel() {
     });
   }
 
-  function addUndoRow({ tool, label, fn }) {
-    const item = pushUndo({ tool, label, fn });
+  function addUndoRow({ tool, label, fn, key = null }) {
+    const item = pushUndo({ tool, label, fn, key });
     const row = el('div', { class: 'ag-undo' });
     row.innerHTML = '<span>✓ Saved</span>';
     const b = el('button', { class: 'ag-undo-btn' }, '↶ Undo: ' + label);
     b.onclick = async () => {
       b.disabled = true;
       const r = await runUndo(item.id);
+      if (r.ok && r.key) markUndone(getSb(), r.key);
       row.innerHTML = r.ok ? '<span>↶ Undone: ' + escHtml(r.label) + '</span>' : '<span class="ag-warn">⚠ ' + escHtml(r.error) + '</span>';
     };
     row.append(b); log.append(row); log.scrollTop = log.scrollHeight;
+  }
+
+  // ── usage + activity screen (own rows only) ──
+  async function showStats() {
+    const card = el('div', { class: 'ag-card' });
+    card.innerHTML = '<div class="ag-card-t">Usage and activity</div><div class="ag-warn">Loading…</div>';
+    log.append(card); log.scrollTop = log.scrollHeight;
+    const sb = getSb();
+    const [u, a] = await Promise.all([fetchUsage(sb, 24), fetchAudit(sb, 12)]);
+    const prov = summarizeUsage(u), acts = summarizeAudit(a);
+    const pHtml = prov.length ? '<ul class="ag-card-l">' + prov.map(p => '<li><b>' + escHtml(p.provider) + '</b>: ' + p.calls + ' calls · ' + p.failed + ' failed' + (p.rateLimited ? ' (' + p.rateLimited + ' rate-limited)' : '') + (p.avgLatencyMs != null ? ' · ' + p.avgLatencyMs + ' ms' : '') + '</li>').join('') + '</ul>' : '<div class="ag-warn">No AI calls in the last 24 hours.</div>';
+    const aHtml = acts.length ? '<ul class="ag-card-l">' + acts.map(x => '<li>' + escHtml(x.tool) + ' — ' + escHtml(x.status) + ' <small>' + escHtml(new Date(x.at).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })) + '</small></li>').join('') + '</ul>' : '<div class="ag-warn">No tool activity yet.</div>';
+    card.innerHTML = '<div class="ag-card-t">AI calls, last 24h</div>' + pHtml + '<div class="ag-card-t">Recent tool activity</div>' + aHtml;
+    log.scrollTop = log.scrollHeight;
+  }
+  async function showPendingUndos() {
+    const items = await loadPendingUndos(getSb());
+    items.slice(0, 5).forEach(it => addUndoRow({ tool: it.tool, label: it.label, fn: it.fn, key: it.key }));
   }
 
   function renderChips() {
@@ -157,7 +195,7 @@ export function mountAgentPanel() {
     addBubble('assistant', getWritesEnabled()
       ? "Hi! I can read your data and, with your approval on each one, add ledger entries, staff notes and staff credit, set targets and add or correct a day's sales, and delete records (you type DELETE to confirm). What do you need?"
       : "Hi! I can read your sales, staff, ledgers and inventory, and open pages for you. Tap 🔒 above if you want me to be able to propose changes (you'd still approve each one). What would you like to know?");
-    refreshBriefing(); addBriefingCard(); markSeen();
+    refreshBriefing(); addBriefingCard(); markSeen(); showPendingUndos();
     renderChips();
   }
   function addBubble(role, content, { html = false } = {}) {
@@ -174,15 +212,22 @@ export function mountAgentPanel() {
     text.value = ''; autosize();
     chips.innerHTML = '';
     addBubble('user', q);
+    // Instant path: common one-liners are answered locally, with no AI call at all.
+    try {
+      const quick = await tryInstant(q);
+      if (quick) { const b = addBubble('assistant', quick.text); b.append(el('div', { class: 'ag-by' }, 'Instant · no AI used')); logToolCall({ tool: quick.tool, risk: quick.kind === 'navigate' ? 'ui' : 'read', args: {}, ok: true, resultChars: quick.text.length }, { conversationId }); return; }
+    } catch (e) { console.error('[agent] instant', e); }
     const status = addBubble('status', 'Thinking…');
     setBusy(true);
     abort = new AbortController();
     try {
+      await refreshKill(); // server-side switch: checked before every request
       const r = await runAgent({
         history, userText: q, context: getPageContext(), callServer, signal: abort.signal, sensitive,
-        writesEnabled: getWritesEnabled(), approve, onUndoable: addUndoRow, prevSpecialist: lastSpecialist,
+        writesEnabled: getWritesEnabled(), writesKilled: killed, approve, onUndoable: addUndoRow, prevSpecialist: lastSpecialist,
         onEvent: ev => {
           if (ev.type === 'tool_start') status.textContent = (TOOL_LABELS[ev.name] || 'Working') + '…';
+          if (ev.type === 'writes_killed') { killed = true; paintLock(); }
           if (ev.type === 'tool_end' && !ev.ok && !ev.rejected && ev.error && /writes_disabled/.test(ev.error)) paintLock();
         },
         onAudit: e => logToolCall(e, { conversationId }),
@@ -202,7 +247,7 @@ export function mountAgentPanel() {
   }
 
   function autosize() { text.style.height = 'auto'; text.style.height = Math.min(text.scrollHeight, 120) + 'px'; }
-  function open() { sheet.hidden = false; fab.classList.add('ag-hide'); if (!log.children.length) welcome(); setTimeout(() => text.focus(), 50); }
+  function open() { sheet.hidden = false; refreshKill(); fab.classList.add('ag-hide'); if (!log.children.length) welcome(); setTimeout(() => text.focus(), 50); }
   function close() { rejectAllPending(); sheet.hidden = true; fab.classList.remove('ag-hide'); if (abort) abort.abort(); }
 
   fab.onclick = open;
@@ -213,7 +258,16 @@ export function mountAgentPanel() {
     else if (window.confirm('Allow the assistant to propose changes?\n\nIt can add ledger entries and staff notes, set targets and correct a day\'s sales. Nothing is saved until you tap Approve on each change, and most can be undone.')) setWritesEnabled(true);
     paintLock(); if (!history.length) welcome();
   };
-  paintLock();
+  killBtn.onclick = async () => {
+    const turningOn = !killed;
+    if (turningOn && !window.confirm('Stop ALL AI changes on every device?\n\nThe assistant can still answer questions. You can resume any time.')) return;
+    if (!turningOn && !window.confirm('Resume AI changes on every device?\n\n(Each device still has its own lock, and you approve every change.)')) return;
+    const r = await setKillState(getSb(), turningOn, (window.currentUserEmail || null));
+    if (!r.ok) { addBubble('error', 'Could not change the switch: ' + r.error); return; }
+    killed = r.killed; rejectAllPending(); paintLock();
+  };
+  sheet.querySelector('#ag-stats').onclick = showStats;
+  paintLock(); refreshKill();
   send.onclick = () => ask(text.value);
   text.addEventListener('input', autosize);
   text.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(text.value); } });

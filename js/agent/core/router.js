@@ -10,7 +10,11 @@ const RULES = {
   sales: /\b(sale|sales|sold|selling|revenue|target|targets|pace|daily|comp|customers?|best|worst|top|highest|lowest|total|totals|compare|comparison|diff|bikri)\b/i,
   manager: /\b(staff|employee|employees|salary|payslip|ledger|jazz|jazzcash|petty|expense|expenses|credit|owe|owes|owed|note|notes|payment|paid|pay|balance|salesman|cashier|incentive|attendance|advance|udhar|udhaar)\b/i,
   inventory: /\b(stock|inventory|product|products|reorder|expiry|supplier|item|items|cover|slow|dead|panadol)\b/i,
+  str: /\b(str|strs|transfer|transfers|awaited|dispatch|dispatched|dispatching|in transit|zero.?dispatch)\b/i,
+  closing: /\b(closing|closed|closings|shift|shifts|closing book)\b/i,
 };
+// Vague questions get the three core groups only; STR and Closing tools are offered when the
+// question mentions them (keeps the tool list, and so the tokens per request, small).
 export const ALL_DOMAINS = ['sales', 'manager', 'inventory'];
 
 /** Groups whose keywords appear in the text (empty when nothing matches). */

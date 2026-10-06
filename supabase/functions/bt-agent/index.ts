@@ -19,7 +19,7 @@
 //
 // Secrets: GROQ_API_KEY, CEREBRAS_API_KEY, GEMINI_API_KEY, OPENROUTER_API_KEY
 //          (any subset; at least one required). Optional: AGENT_PER_MIN,
-//          AGENT_PER_DAY, AGENT_ALLOWED_ORIGINS.
+//          AGENT_PER_DAY, AGENT_ALLOWED_ORIGINS (default https://bt.duapharma.com).
 // Auto-provided by Supabase: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
 // ══════════════════════════════════════════════════════════════════════
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
@@ -28,31 +28,34 @@ type Msg = { role: 'system' | 'user' | 'assistant' | 'tool'; content?: string | 
 type Provider = {
   id: string; baseUrl: string; keyEnv: string; models: string[];
   trainsOnFreeTier: boolean; extra?: Record<string, unknown>;
+  dailyCap?: number; // soft cap on successful calls per day (shared, counted from agent_usage); skip the provider once reached
 };
 
 // Config-driven pool. Order = preference. Free-tier limits change often,
 // so edit this list (or move it to a table) rather than touching the logic.
 const PROVIDERS: Provider[] = [
   { id: 'groq', baseUrl: 'https://api.groq.com/openai/v1', keyEnv: 'GROQ_API_KEY',
-    models: ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'meta-llama/llama-4-scout-17b-16e-instruct', 'openai/gpt-oss-20b'], trainsOnFreeTier: false },
+    models: ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'meta-llama/llama-4-scout-17b-16e-instruct', 'openai/gpt-oss-20b'], trainsOnFreeTier: false, dailyCap: 13_000 },
   { id: 'cerebras', baseUrl: 'https://api.cerebras.ai/v1', keyEnv: 'CEREBRAS_API_KEY',
     models: ['gpt-oss-120b', 'llama-3.3-70b'], trainsOnFreeTier: false },
   { id: 'gemini', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', keyEnv: 'GEMINI_API_KEY',
-    models: ['gemini-2.5-flash', 'gemini-2.0-flash'], trainsOnFreeTier: true },
+    models: ['gemini-2.5-flash', 'gemini-2.0-flash'], trainsOnFreeTier: true, dailyCap: 1_400 },
   { id: 'openrouter', baseUrl: 'https://openrouter.ai/api/v1', keyEnv: 'OPENROUTER_API_KEY',
-    models: ['openai/gpt-oss-120b:free', 'meta-llama/llama-3.3-70b-instruct:free'], trainsOnFreeTier: true },
+    models: ['openai/gpt-oss-120b:free', 'meta-llama/llama-3.3-70b-instruct:free'], trainsOnFreeTier: true, dailyCap: 45 },
 ];
 
 const MAX_MESSAGES = 40;
 const MAX_TOOLS = 40;
 const MAX_BODY_CHARS = 300_000;
 const COOLDOWN_MS = 60_000;
-const cooldownUntil = new Map<string, number>(); // provider:model → ts (per isolate)
+const cooldownUntil = new Map<string, number>(); // provider:model → ts (per isolate; the DB tracker below makes this shared)
 
-const allowedOrigins = (Deno.env.get('AGENT_ALLOWED_ORIGINS') || '*').split(',').map(s => s.trim());
+// Locked to the production site by default. Override with AGENT_ALLOWED_ORIGINS (comma list; use for local dev).
+const DEFAULT_ORIGIN = 'https://bt.duapharma.com';
+const allowedOrigins = (Deno.env.get('AGENT_ALLOWED_ORIGINS') || DEFAULT_ORIGIN).split(',').map(s => s.trim()).filter(Boolean);
 function cors(req: Request) {
   const origin = req.headers.get('origin') || '';
-  const allow = allowedOrigins.includes('*') ? '*' : (allowedOrigins.includes(origin) ? origin : allowedOrigins[0]);
+  const allow = allowedOrigins.includes('*') ? '*' : (allowedOrigins.includes(origin) ? origin : allowedOrigins[0] || DEFAULT_ORIGIN);
   return {
     'Access-Control-Allow-Origin': allow,
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -69,6 +72,8 @@ const FOCUS: Record<string, string> = {
   sales: 'FOCUS = SALES. TOTAL is the day\'s sale; COMP SALE is the comparison figure and DIFF = TOTAL - COMP SALE. Use the year or month_year parameters for year/month questions. Targets are per month.',
   manager: 'FOCUS = STAFF AND MONEY. Ledger entries add or subtract depending on their category sign: use net_effect fields, not raw amounts. Staff credit net = opening balance + entries - salary deduction - less generic (positive means the staff member owes the shop). Never reveal private identity data.',
   inventory: 'FOCUS = INVENTORY. Cover days = stock / average daily sales over 30 days. Use low_cover_items for what to reorder and slow_moving_stock for dead stock.',
+  str: 'FOCUS = STOCK TRANSFERS (STR). Stages: awaited (not yet dispatched), dispatched (sent, not received), received. Direction in = Bahria Town receives, out = Bahria Town dispatches. Chase oldest first and always give the age in days. Quantities are in packs.',
+  closing: 'FOCUS = CLOSING BOOK. Each day has three shifts (Night, Morning, Evening), each pending, draft or closed. Net sale comes from the closed sheet; never estimate it. Point out days with shifts that are not closed.',
   analyst: 'FOCUS = ANALYSIS ACROSS AREAS. Fetch each needed figure with one tool call per area, then compare and explain briefly. State which numbers came from where.',
 };
 
@@ -179,42 +184,80 @@ Deno.serve(async (req: Request) => {
   const perDay = Number(Deno.env.get('AGENT_PER_DAY') || 400);
   const since = (ms: number) => new Date(Date.now() - ms).toISOString();
   const [{ count: cMin }, { count: cDay }] = await Promise.all([
-    sb.from('agent_usage').select('id', { count: 'exact', head: true }).eq('user_id', user.id).gte('created_at', since(60_000)),
-    sb.from('agent_usage').select('id', { count: 'exact', head: true }).eq('user_id', user.id).gte('created_at', since(86_400_000)),
+    sb.from('agent_usage').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('kind', 'request').gte('created_at', since(60_000)),
+    sb.from('agent_usage').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('kind', 'request').gte('created_at', since(86_400_000)),
   ]);
   if ((cMin || 0) >= perMin) return json(req, { error: 'Slow down: too many requests this minute.' }, 429);
   if ((cDay || 0) >= perDay) return json(req, { error: 'Daily AI request limit reached.' }, 429);
 
-  // ── 4. Provider fail-over ──────────────────────────────────────────
-  const messages: Msg[] = [{ role: 'system', content: buildSystemPrompt(body.context || {}) }, ...history];
+  // ── 4. Kill switch + shared provider state ─────────────────────────
+  // writes_killed lives in agent_settings so ONE tap disables AI changes on every device.
+  const { data: killRow } = await sb.from('agent_settings').select('value').eq('key', 'writes_killed').maybeSingle();
+  const writesKilled = killRow ? killRow.value === true : false;
+  const ctx = { ...(body.context || {}) };
+  if (writesKilled) ctx.writes_enabled = false;
+
+  const state = await loadProviderState(sb);
+
+  // ── 5. Provider fail-over ──────────────────────────────────────────
+  const messages: Msg[] = [{ role: 'system', content: buildSystemPrompt(ctx) }, ...history];
   const errors: string[] = [];
   const started = Date.now();
+  const track = (row: Record<string, unknown>) => sb.from('agent_usage').insert({ user_id: user.id, email: user.email, sensitivity, ...row }).then(() => {}, (e: unknown) => console.error('[bt-agent] usage insert failed', e));
   for (const p of PROVIDERS) {
     if (sensitivity === 'high' && p.trainsOnFreeTier) continue;
     if (!Deno.env.get(p.keyEnv)) continue;
+    if (p.dailyCap && (state.today.get(p.id) || 0) >= p.dailyCap) { errors.push(p.id + ' daily cap reached'); continue; }
     for (const model of p.models) {
       const ck = p.id + ':' + model;
-      if ((cooldownUntil.get(ck) || 0) > Date.now()) continue;
+      if ((cooldownUntil.get(ck) || 0) > Date.now() || (state.cooling.get(ck) || 0) > Date.now()) continue;
+      const t0 = Date.now();
       try {
         const r = await callProvider(p, model, messages, tools);
-        await sb.from('agent_usage').insert({
-          user_id: user.id, email: user.email, provider: p.id, model, ok: true, status: 200,
-          latency_ms: Date.now() - started, prompt_tokens: r.usage.prompt_tokens ?? null,
-          completion_tokens: r.usage.completion_tokens ?? null, sensitivity,
-        });
-        return json(req, { message: r.message, provider: p.id, model, usage: r.usage });
+        await track({ kind: 'attempt', provider: p.id, model, ok: true, status: 200, latency_ms: Date.now() - t0,
+          prompt_tokens: r.usage.prompt_tokens ?? null, completion_tokens: r.usage.completion_tokens ?? null });
+        await track({ kind: 'request', provider: p.id, model, ok: true, status: 200, latency_ms: Date.now() - started,
+          prompt_tokens: r.usage.prompt_tokens ?? null, completion_tokens: r.usage.completion_tokens ?? null });
+        return json(req, { message: r.message, provider: p.id, model, usage: r.usage, settings: { writes_killed: writesKilled } });
       } catch (e) {
         const err = e as Error & { status?: number; skip?: boolean };
         if (err.skip) break;
         errors.push(err.message);
         console.error('[bt-agent] provider failed:', err.message);
+        // Every failed attempt is recorded, so the cooldown below is shared by all function instances.
+        await track({ kind: 'attempt', provider: p.id, model, ok: false, status: err.status ?? 0, latency_ms: Date.now() - t0, error: err.message.slice(0, 200) });
         if (!err.status || err.status === 429 || err.status >= 500 || err.status === 404) cooldownUntil.set(ck, Date.now() + COOLDOWN_MS);
         if (err.status === 401 || err.status === 403) break; // bad key for this provider
       }
     }
   }
-  await sb.from('agent_usage').insert({ user_id: user.id, email: user.email, ok: false, status: 502,
-    latency_ms: Date.now() - started, sensitivity });
+  await track({ kind: 'request', ok: false, status: 502, latency_ms: Date.now() - started });
   const why = sensitivity === 'high' ? ' (sensitive data: only non-training providers are allowed)' : '';
-  return json(req, { error: 'All AI providers are busy or unavailable' + why + '. Try again shortly.', detail: errors.slice(-3) }, 503);
+  return json(req, { error: 'All AI providers are busy or unavailable' + why + '. Try again shortly.', detail: errors.slice(-3), settings: { writes_killed: writesKilled } }, 503);
 });
+
+// Shared provider state, read from agent_usage once per request:
+//  - cooling: provider:model → time until which recent 429/5xx/404 failures (last COOLDOWN_MS) say to skip it
+//  - today:   provider → successful calls in the last 24h (for the soft daily caps)
+async function loadProviderState(sb: ReturnType<typeof createClient>) {
+  const cooling = new Map<string, number>();
+  const today = new Map<string, number>();
+  try {
+    const { data: fails } = await sb.from('agent_usage').select('provider, model, status, created_at')
+      .eq('kind', 'attempt').eq('ok', false).gte('created_at', new Date(Date.now() - COOLDOWN_MS).toISOString()).limit(200);
+    for (const f of (fails || []) as Array<{ provider: string; model: string; status: number; created_at: string }>) {
+      if (f.status === 0 || f.status === 429 || f.status === 404 || f.status >= 500) {
+        const until = new Date(f.created_at).getTime() + COOLDOWN_MS;
+        const k = f.provider + ':' + f.model;
+        if (until > (cooling.get(k) || 0)) cooling.set(k, until);
+      }
+    }
+    const since = new Date(Date.now() - 86_400_000).toISOString();
+    await Promise.all(PROVIDERS.filter(p => p.dailyCap).map(async p => {
+      const { count } = await sb.from('agent_usage').select('id', { count: 'exact', head: true })
+        .eq('kind', 'attempt').eq('ok', true).eq('provider', p.id).gte('created_at', since);
+      today.set(p.id, count || 0);
+    }));
+  } catch (e) { console.error('[bt-agent] provider state unavailable', e); } // tracking must never block answers
+  return { cooling, today };
+}

@@ -34,5 +34,17 @@ export async function seedEvalData({ cfg, Repository, LedgerStore, LedgerActions
     { name: 'Steady', qty: 500, price: 5, netQty30Days: 30, lastSaleDate: '2026-10-07' },
     { name: 'Brufen', qty: 10, price: 80, netQty30Days: 15, lastSaleDate: '2026-10-01' },
   ] });
+  // STR bridge: headers are dated relative to "now" so ages are stable whenever the suite runs.
+  const ago = n => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+  const hdr = (strId, strNumber, daysAgo, dispatch, receive, direction, extra = {}) => ({ strId, strNumber, strDate: ago(daysAgo), dispatchStatus: dispatch, receiveStatus: receive, direction, dispatchBranch: direction === 'out' ? 'Bahria Town' : 'Main', receiveBranch: direction === 'out' ? 'Main' : 'Bahria Town', refNo: '', comments: '', ...extra });
+  globalThis.window.strBridgeGetFullData = () => ({ fetchedAt: Date.now(),
+    headers: [hdr(1, 'STR-1', 20, '', '', 'in'), hdr(2, 'STR-2', 8, 'Dispatched', '', 'in'), hdr(3, 'STR-3', 3, '', '', 'out'), hdr(4, 'STR-4', 30, 'Dispatched', 'Received', 'out', { refNo: 'REF-4' })],
+    lineItems: [{ strId: 4, productCode: 'P1', productName: 'Panadol', strQty: 20, dispatchQty: 20, receiveQty: 10, productPrice: 60, costPrice: 40 }],
+    supplierByCode: { P1: 'GSK' }, packFactorByCode: { P1: 10 } });
+  // Closing bridge: today's Night shift closed, Morning draft, Evening pending; yesterday fully closed.
+  const dISO = n => { const d = new Date(); d.setDate(d.getDate() - n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  globalThis.window.closingBridgeGetFullDb = () => ({ sheets: {
+    [dISO(0) + '_Night']: { outNetSale: 5000 }, [dISO(0) + '_Morning']: { draft: true },
+    [dISO(1) + '_Night']: { outNetSale: 4000 }, [dISO(1) + '_Morning']: { outNetSale: 6000 }, [dISO(1) + '_Evening']: { profileMode: 'final', finalNetSale: 7000 } } });
   console.error = quiet;
 }

@@ -13,6 +13,8 @@
 // Pure module: no DOM, no app imports. Safe to unit test.
 // ══════════════════════════════════════════════════════════════════════
 
+import { blockedByName, blockedByArgs } from './hard-blocks.js';
+
 const RESULT_CHAR_CAP = 6000;
 const _tools = new Map();
 
@@ -22,6 +24,8 @@ export function registerTool(def) {
   if (!def || !/^[a-zA-Z0-9_-]{1,64}$/.test(def.name || '')) throw new Error('registerTool: invalid name');
   if (typeof def.run !== 'function') throw new Error('registerTool: run() required for ' + def.name);
   if (!def.description) throw new Error('registerTool: description required for ' + def.name);
+  const hard = blockedByName(def.name);
+  if (hard) throw new Error('registerTool: "' + def.name + '" is hard-blocked. ' + hard);
   const risk = def.risk || 'read';
   if (!RISKS.includes(risk)) throw new Error('registerTool: bad risk for ' + def.name);
   const changes = risk === 'write' || risk === 'critical';
@@ -100,6 +104,10 @@ export async function runTool(name, rawArgs, { allow = ['read', 'ui'], writesEna
   const tool = getTool(name);
   if (!tool) return { ok: false, tool: null, error: 'unknown tool', text: JSON.stringify({ error: 'Unknown tool: ' + name }) };
   const changing = isChange(tool);
+  { // Hard blocks come first: no unlock, approval or typed word can override them.
+    const hard = blockedByName(name);
+    if (hard) return { ok: false, tool, error: 'hard_blocked', text: JSON.stringify({ error: hard, hard_blocked: true, note: 'Tell the user this is never done by the assistant.' }) };
+  }
   if (changing) {
     if (!writesEnabled) return { ok: false, tool, error: 'writes_disabled', text: JSON.stringify({ error: 'Changes are switched off. Tell the user to unlock changes with the lock button in the assistant header, then ask again.' }) };
     if (typeof approve !== 'function') return { ok: false, tool, error: 'blocked', text: JSON.stringify({ error: 'No approval channel available. Nothing was changed.' }) };
@@ -114,6 +122,8 @@ export async function runTool(name, rawArgs, { allow = ['read', 'ui'], writesEna
   }
   if (!args || typeof args !== 'object' || Array.isArray(args)) args = {};
   args = { ...args };
+  { const hard = blockedByArgs(name, args);
+    if (hard) return { ok: false, tool, error: 'hard_blocked', text: JSON.stringify({ error: hard, hard_blocked: true, note: 'Tell the user this is never done by the assistant.' }) }; }
   const bad = _validateArgs(tool.parameters, args);
   if (bad) return { ok: false, tool, error: bad, text: JSON.stringify({ error: bad }) };
 
@@ -156,7 +166,7 @@ export async function runTool(name, rawArgs, { allow = ['read', 'ui'], writesEna
     if (changing && typeof onChanged === 'function') { try { onChanged({ tool: tool.name, args, preview }); } catch (_) { /* log only */ } }
     const payload = changing ? { done: true, can_undo: !!undo, ...(out && typeof out === 'object' ? out : { result: out }) } : out;
     const { text } = _cap(payload);
-    return { ok: true, tool, text, undo, preview };
+    return { ok: true, tool, text, undo, undoData: undo ? { args, out } : null, preview };
   } catch (e) {
     const msg = (e && e.message) || String(e);
     return { ok: false, tool, error: msg, preview, text: JSON.stringify({ error: msg, note: changing ? 'The change failed; nothing was saved.' : undefined }) };

@@ -10,6 +10,7 @@
 // so a new tool cannot ship without an evaluation case.
 const S = 'sales', M = 'manager', I = 'inventory', A = 'analyst', G = 'general';
 const ALL = ['sales', 'manager', 'inventory'];
+const T = 'str', C = 'closing';
 
 export const CASES = [
   // ── Sales ──────────────────────────────────────────────────────────
@@ -66,6 +67,20 @@ export const CASES = [
   { say: 'What is the stock value?', specialist: I, domains: [I], offer: ['inventory_overview'] },
   { say: 'Stock kitna hai Panadol ka', specialist: I, domains: [I], offer: ['search_inventory'] },
   { say: 'Search paracetamol', specialist: G, domains: ALL, offer: ['search_inventory'] },
+
+  // ── STR (stock transfers) ──────────────────────────────────────────
+  { say: 'STR overview', specialist: T, domains: [T], offer: ['str_overview'], call: { tool: 'str_overview', args: {}, expect: { total: 4, received: 1, awaited: { all: 2, in: 1, out: 1 }, dispatched_not_received: { all: 1 }, oldest_open: { str: 'STR-1', age_days: 20 } } } },
+  { say: 'Which STRs are still awaited?', specialist: T, domains: [T], offer: ['list_pending_strs'], call: { tool: 'list_pending_strs', args: { stage: 'awaited' }, expect: { matching: 2, items: [{ str: 'STR-1' }, { str: 'STR-3' }] } } },
+  { say: 'Show dispatched transfers not received', specialist: T, domains: [T], offer: ['list_pending_strs'], call: { tool: 'list_pending_strs', args: { stage: 'dispatched' }, expect: { matching: 1, items: [{ str: 'STR-2' }] } } },
+  { say: 'Pending transfers older than 10 days', specialist: T, domains: [T], offer: ['list_pending_strs'], call: { tool: 'list_pending_strs', args: { min_age_days: 10 }, expect: { matching: 1, items: [{ str: 'STR-1', age_days: 20 }] } } },
+  { say: 'Details of STR-4', specialist: T, domains: [T], offer: ['get_str_detail'], call: { tool: 'get_str_detail', args: { str_number: 'STR-4' }, expect: { found: true, line_count: 1, differences: [{ product: 'Panadol', packs_short: 1 }] } } },
+  { say: 'Which transfers are in transit?', specialist: T, domains: [T], offer: ['list_pending_strs'] },
+  { say: 'STR sales and stock', specialist: A, domains: [S, I, T], offer: ['str_overview', 'inventory_overview'] },
+
+  // ── Closing book ───────────────────────────────────────────────────
+  { say: 'Closing status today', specialist: C, domains: [C], offer: ['closing_status'], call: { tool: 'closing_status', args: {}, expect: { closed: 1, net_sale_total: 5000, shifts: [{ shift: 'Night', status: 'closed' }, { shift: 'Morning', status: 'draft' }, { shift: 'Evening', status: 'pending' }] } } },
+  { say: 'Which shifts are not closed this week?', specialist: C, domains: [C], offer: ['closing_recent_days'], call: { tool: 'closing_recent_days', args: { days: 2 }, expect: { days: [{ closed: 1 }, { closed: 3, net_sale_total: 17000 }], incomplete_days: [{ missing: ['Morning (draft)', 'Evening (pending)'] }] } } },
+  { say: 'Did we close the night shift yesterday?', specialist: C, domains: [C], offer: ['closing_status'] },
 
   // ── App / briefing / small talk ────────────────────────────────────
   { say: 'What needs my attention today?', specialist: G, domains: [], offer: ['daily_briefing'] },

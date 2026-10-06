@@ -233,6 +233,7 @@ window.closingBridgeRefresh = refreshOnPageShow;
 window.closingBridgeIsConnected = isConnected;
 window.closingBridgeGetCachedSummary = getCachedSummary;
 window.closingBridgeGetOnlineStaff = getOnlineStaff;
+window.closingBridgeGetFullDb = getFullDb; // read-only; used by the AI assistant's closing tools
 
 // ── Auto-refresh, always on — baked-in key means there's no
 // connect/disconnect state to gate this behind anymore, same as

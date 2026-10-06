@@ -11,6 +11,7 @@
 import { getToolSchemas, runTool, getTool, isChange } from './tool-registry.js';
 import { pickSpecialist } from './specialists.js';
 import { reviewChange, recordChange } from './auditor.js';
+import { newUndoKey, makeRecipe } from './undo-store.js';
 
 export const MAX_STEPS = 8;
 export const MAX_HISTORY = 30;
@@ -31,12 +32,15 @@ export class AgentError extends Error {
  * @param {AbortSignal} [o.signal]
  * @returns {Promise<{text:string, messages:Array, steps:number, sensitive:boolean}>}
  */
-export async function runAgent({ history = [], userText, context = {}, callServer, onEvent = () => {}, onAudit = () => {}, signal, sensitive = false, allow, writesEnabled = false, approve = null, onUndoable = () => {}, prevSpecialist = null }) {
+export async function runAgent({ history = [], userText, context = {}, callServer, onEvent = () => {}, onAudit = () => {}, signal, sensitive = false, allow, writesEnabled = false, approve = null, onUndoable = () => {}, prevSpecialist = null, writesKilled = false }) {
   if (typeof callServer !== 'function') throw new AgentError('callServer is required');
   const messages = [...history, { role: 'user', content: String(userText || '').slice(0, 4000) }];
   const specialist = pickSpecialist(userText, prevSpecialist);
   const domains = specialist.domains;
-  const tools = getToolSchemas({ includeWrites: writesEnabled, domains });
+  // Server kill switch: when on, change tools are neither offered nor executed, whatever the local lock says.
+  let killed = !!writesKilled;
+  const canWrite = () => !!writesEnabled && !killed;
+  let tools = getToolSchemas({ includeWrites: canWrite(), domains });
   let changeAttempts = 0;
   let sawSensitive = !!sensitive;
   let repeatGuard = '';
@@ -47,12 +51,13 @@ export async function runAgent({ history = [], userText, context = {}, callServe
     const res = await callServer({
       messages: messages.slice(-MAX_HISTORY),
       tools,
-      context: { ...context, writes_enabled: !!writesEnabled, focus: specialist.id },
+      context: { ...context, writes_enabled: canWrite(), focus: specialist.id },
       sensitivity: sawSensitive ? 'high' : 'normal',
       signal,
     });
     const msg = res && res.message;
     if (!msg) throw new AgentError('Empty response from AI');
+    if (res.settings && res.settings.writes_killed === true && !killed) { killed = true; tools = getToolSchemas({ includeWrites: false, domains }); onEvent({ type: 'writes_killed' }); }
 
     const calls = Array.isArray(msg.tool_calls) ? msg.tool_calls : [];
     const assistantMsg = { role: 'assistant', content: msg.content || null };
@@ -79,16 +84,18 @@ export async function runAgent({ history = [], userText, context = {}, callServe
       } else if (isChange(getTool(name)) && ++changeAttempts > MAX_CHANGES_PER_TURN) {
         result = { ok: false, tool: getTool(name), error: 'cap', text: JSON.stringify({ error: 'Too many changes proposed in one request. Stop and summarise what is done.' }) };
       } else {
-        result = await runTool(name, rawArgs, { ...(allow ? { allow } : {}), writesEnabled, approve, review: reviewChange, onChanged: recordChange });
+        result = await runTool(name, rawArgs, { ...(allow ? { allow } : {}), writesEnabled: canWrite(), approve, review: reviewChange, onChanged: recordChange });
       }
       if (result.tool && result.tool.sensitive) sawSensitive = true;
       onEvent({ type: 'tool_end', name, ok: result.ok, error: result.error, rejected: !!result.rejected });
-      if (result.undo) { try { onUndoable({ tool: name, ...result.undo }); } catch (_) { /* ui only */ } }
+      const undoKey = result.undo ? newUndoKey() : null;
+      if (result.undo) { try { onUndoable({ tool: name, key: undoKey, ...result.undo }); } catch (_) { /* ui only */ } }
       try {
         const risk = result.tool ? result.tool.risk : 'unknown';
         const a = safeParse(rawArgs);
         if (risk === 'write' || risk === 'critical') a._approval = result.ok ? 'approved' : (result.rejected ? 'rejected' : 'not_applied');
-        onAudit({ tool: name, risk, args: a, ok: result.ok, resultChars: result.text.length, error: result.error || null });
+        const undo = undoKey && result.undoData ? makeRecipe({ key: undoKey, tool: name, label: result.undo.label, args: result.undoData.args, out: result.undoData.out }) : null;
+        onAudit({ tool: name, risk, args: a, ok: result.ok, resultChars: result.text.length, error: result.error || null, ...(undo ? { undo } : {}) });
       } catch (_) { /* audit is best-effort */ }
       messages.push({ role: 'tool', tool_call_id: call.id, name, content: result.text });
     }

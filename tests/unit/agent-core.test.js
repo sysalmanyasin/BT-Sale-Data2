@@ -19,7 +19,7 @@ beforeEach(() => {
     run: a => ({ echoed: a.text, n: a.n ?? null }) });
   reg.registerTool({ name: 'secret_read', description: 's', risk: 'read', sensitive: true, run: () => ({ ok: 1 }) });
   state.ran = 0; state.undone = 0;
-  reg.registerTool({ name: 'delete_all', description: 'd', risk: 'critical',
+  reg.registerTool({ name: 'critical_demo', description: 'd', risk: 'critical',
     preview: () => ({ title: 'Delete everything', lines: ['all of it'] }), run: () => { state.ran++; return { summary: 'deleted' }; },
     makeUndo: () => ({ label: 'restore', fn: () => { state.undone++; } }) });
   reg.registerTool({ name: 'drop_thing', description: 'd', risk: 'critical',
@@ -63,7 +63,7 @@ describe('tool registry', () => {
     assert.throws(() => reg.registerTool({ name: 'x_write', description: 'x', risk: 'write', run() {} }), /preview/);
   });
   test('schemas hide change tools unless writes are unlocked', () => {
-    assert.ok(!reg.getToolSchemas().some(t => t.function.name === 'delete_all'));
+    assert.ok(!reg.getToolSchemas().some(t => t.function.name === 'critical_demo'));
     assert.ok(reg.getToolSchemas({ includeWrites: true }).some(t => t.function.name === 'add_thing'));
   });
   test('tool exceptions become error results; unknown tools are safe', async () => {
@@ -113,7 +113,7 @@ describe('change gating (enforced in code, not prompt)', () => {
   });
   test('critical tools always require the strong confirmation flag', async () => {
     let seen;
-    await reg.runTool('delete_all', {}, { writesEnabled: true, approve: async req => { seen = req; return false; } });
+    await reg.runTool('critical_demo', {}, { writesEnabled: true, approve: async req => { seen = req; return false; } });
     assert.equal(seen.preview.strong, true);
   });
 });
@@ -181,11 +181,11 @@ describe('agent loop', () => {
     let call = 0, toolMsg = null, offered = null;
     const callServer = async ({ messages, tools }) => {
       offered = tools.map(t => t.function.name);
-      if (++call === 1) return { message: { tool_calls: [tc('delete_all', {})] } };
+      if (++call === 1) return { message: { tool_calls: [tc('critical_demo', {})] } };
       toolMsg = messages.at(-1); return { message: { content: 'Locked.' } };
     };
     await runAgent({ userText: 'wipe it', callServer });
-    assert.ok(!offered.includes('delete_all'));
+    assert.ok(!offered.includes('critical_demo'));
     assert.match(toolMsg.content, /switched off/i); assert.equal(state.ran, 0);
   });
 

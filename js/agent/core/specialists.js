@@ -11,6 +11,8 @@ export const SPECIALISTS = Object.freeze({
   sales:     { id: 'sales',     label: 'Sales' },
   manager:   { id: 'manager',   label: 'Staff & money' },
   inventory: { id: 'inventory', label: 'Inventory' },
+  str:       { id: 'str',       label: 'Stock transfers' },
+  closing:   { id: 'closing',   label: 'Closing' },
   analyst:   { id: 'analyst',   label: 'Analyst' },
   general:   { id: 'general',   label: 'Assistant' },
 });
