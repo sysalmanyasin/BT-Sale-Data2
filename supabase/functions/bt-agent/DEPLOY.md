@@ -26,3 +26,22 @@ The function additionally checks that the signed-in email is an active row in
 Gemini and OpenRouter free tiers may use prompts for training. Requests the
 client marks `sensitivity: "high"` (anything that touched salary/credit/staff
 detail) are never sent to those providers.
+
+
+## Gaps A–E update (migrations + behaviour)
+
+Apply, in order (all idempotent), **before** deploying the function:
+
+1. `20261005100000_agent_quota_and_settings.sql` — `agent_usage.kind/error` (per-attempt provider tracking), `agent_settings` (server kill switch), `agent_is_authorized()`.
+2. `20261005110000_agent_undo.sql` — undo recipes on `agent_audit` (only `undone_at` may be updated).
+3. `20261005120000_agent_memory_rules.sql` — `agent_memory` (facts) and `agent_rules` (versioned house-rules document).
+4. `20261005130000_agent_schedules.sql` — `agent_schedules` (definitions only; **no runner yet**).
+
+Then deploy `bt-agent` and `send-daily-ntfy-briefing` (it now imports `credit-alerts.js`, a byte-identical copy of `js/shared/credit-alerts.js`; a test keeps them equal).
+
+Behaviour changes to know about:
+
+- **CORS** now defaults to `https://bt.duapharma.com`. Set `AGENT_ALLOWED_ORIGINS` (comma list) only for local development; `*` still works if you set it explicitly.
+- **Provider quota tracking** is shared across function instances through `agent_usage` (`kind = 'attempt'`). A provider/model that failed with 429/5xx/404 in the last 60 s is skipped by every instance. Soft daily caps (`dailyCap` in `PROVIDERS`: Groq 13,000, Gemini 1,400, OpenRouter 45) skip a provider once reached. Edit the numbers if your tier differs.
+- **Kill switch**: ⛔ in the panel header flips `agent_settings.writes_killed`. The function reads it on every request, forces read-only prompts, and tells the browser, which stops offering and running change tools. If the browser can't read the switch it treats writes as stopped. To flip it by hand: `update agent_settings set value = 'true'::jsonb where key = 'writes_killed';`
+- **House rules + facts** (🧠) are read server-side per user and appended to the system prompt (rules ≤ 4,000 chars, ≤ 40 facts of ≤ 300 chars), ranked below the safety rules. The model has no tool that writes them.

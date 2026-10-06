@@ -28,6 +28,7 @@
 //   GROQ_API_KEY / GROQ_MODEL      optional, AI insight section
 
 import { computeInventoryBuckets, normalizeInventoryRow, computeInventoryHealth } from "./summary-calc.js";
+import { creditAlertMessages } from "./credit-alerts.js"; // byte-identical copy of js/shared/credit-alerts.js (same rules as the in-app briefing)
 
 const PKT_MS = 5 * 3600 * 1000;
 const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -237,6 +238,7 @@ async function managerSection() {
 
   const L: string[] = ["## 👔 Manager"];
   const facts: any = {};
+  const alerts: string[] = [];
 
   const credit = byMonthDesc("credit")[0];
   if (credit) {
@@ -249,6 +251,12 @@ async function managerSection() {
     per.slice(0, 5).forEach((p: any) => L.push(`- ${p.name} **${n0(p.amt)}**`));
     if (per.length > 5) L.push(`- Others: ${per.slice(5).map((p: any) => `${p.name} ${n0(p.amt)}`).join(" · ")}`);
     facts.credit = { month: credit.month, total: tot, staff: per.length };
+    // Duplicate-entry and carried-over (aged) credit: same rules and wording as the in-app briefing.
+    const ca = creditAlertMessages(credit.data);
+    alerts.push(...ca.duplicates);
+    if (ca.aged) { alerts.push(ca.aged); L.push(`- ⏳ Carried-over credit: Rs ${n0(ca.agedTotal)}`); }
+    if (ca.duplicates.length) L.push(`- ♊ ${ca.duplicates.length} possible duplicate credit entr${ca.duplicates.length === 1 ? "y" : "ies"}`);
+    facts.credit.aged_total = Math.round(ca.agedTotal); facts.credit.duplicates = ca.duplicates.length;
   } else {
     L.push("", "> No staff credit data");
   }
@@ -288,7 +296,7 @@ async function managerSection() {
     } catch (_) { /* optional */ }
   }
 
-  return { text: L.join("\n"), facts };
+  return { text: L.join("\n"), alerts, facts };
 }
 
 // ---------- STR (open transfers touching Bahria Town, from the Audit project) ----------

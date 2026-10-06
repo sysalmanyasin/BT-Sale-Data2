@@ -3,7 +3,9 @@
 import { registerTool } from '../core/tool-registry.js';
 import { DAILY, MONTHLY } from '../../config.js';
 import { Repository } from '../../repository.js';
-import { num, rs, FULL, MON, sameMonth, parseAppDate } from './_util.js';
+import { num, rs, FULL, MON, sameMonth, parseAppDate, monthSortVal } from './_util.js';
+import { creditAlertMessages } from '../../shared/credit-alerts.js';
+import * as LedgerStore from '../../ledger-store.js';
 
 const dayStr = d => String(d.getDate()).padStart(2, '0') + '/' + MON[d.getMonth()] + '/' + d.getFullYear();
 const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -89,6 +91,40 @@ export function buildBriefing(now = new Date()) {
     else add('good', 'target', 'On pace for the ' + my + ' target.');
   }
 
+  // ── Credit: duplicate entries + carried-over (aged) balances ───────
+  // Same rules as the ntfy push (shared js/shared/credit-alerts.js), run on the latest credit month.
+  try {
+    const mgr = JSON.parse(Repository.getItem('BT_ManagerWork_v1') || '{}');
+    const months = Object.keys((mgr && mgr.credit) || {}).filter(m => Array.isArray(mgr.credit[m])).sort((a, b) => monthSortVal(b) - monthSortVal(a));
+    if (months.length) {
+      const ca = creditAlertMessages(mgr.credit[months[0]]);
+      out.credit = { month: months[0], carried_over_total: Math.round(ca.agedTotal), possible_duplicates: ca.duplicates.length };
+      ca.duplicates.forEach(m => add('warn', 'credit', m + '.'));
+      if (ca.aged) add('warn', 'credit', ca.aged + '.');
+    }
+  } catch (_) { /* credit data unreadable: skip, never break the briefing */ }
+
+  // ── Ledgers: the same entry recorded twice in the last 7 days (in-app only) ──
+  try {
+    const cutoff = startOfDay(now).getTime() - 7 * 86400000;
+    const dups = [];
+    for (const t of LedgerStore.getAllLedgerTypes()) {
+      const seen = new Map();
+      for (const e of LedgerStore.getEntries(t.id)) {
+        const when = new Date(String(e.date) + 'T00:00:00').getTime();
+        if (!Number.isFinite(when) || when < cutoff || !num(e.amount)) continue;
+        const k = [e.date, e.categoryId, num(e.amount), String(e.desc || '').trim().toLowerCase()].join('|');
+        const hit = seen.get(k); if (hit) hit.n++; else seen.set(k, { n: 1, ledger: t.label || t.id, date: e.date, amount: num(e.amount) });
+      }
+      seen.forEach(v => { if (v.n >= 2) dups.push(v); });
+    }
+    if (dups.length) {
+      out.possible_duplicate_ledger_entries = dups.length;
+      const d = dups[0];
+      add('warn', 'ledger', 'Possible duplicate ledger entry: ' + d.ledger + ' Rs ' + Math.round(d.amount).toLocaleString('en-PK') + ' on ' + d.date + ' entered ' + d.n + ' times' + (dups.length > 1 ? ' (+' + (dups.length - 1) + ' more)' : '') + '.');
+    }
+  } catch (_) { /* ledger store unavailable: skip */ }
+
   // ── Inventory ──────────────────────────────────────────────────────
   const inv = inventoryProducts();
   if (inv) {
@@ -119,7 +155,7 @@ export function buildBriefing(now = new Date()) {
 
 registerTool({
   name: 'daily_briefing', domain: 'app', risk: 'read',
-  description: 'The morning check: what needs the owner\'s attention today across sales entry gaps, yesterday vs average, target pace and stock (out-of-stock sellers, running out soon, dead stock). Use for "what needs my attention", "morning briefing", "anything I should know today".',
+  description: 'The morning check: what needs the owner\'s attention today across sales entry gaps, yesterday vs average, target pace, duplicate entries, carried-over staff credit and stock (out-of-stock sellers, running out soon, dead stock). Use for "what needs my attention", "morning briefing", "anything I should know today".',
   parameters: { type: 'object', properties: {} },
   run: () => buildBriefing(new Date()),
 });

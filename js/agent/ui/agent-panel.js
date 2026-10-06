@@ -12,6 +12,7 @@ import { buildBriefing } from '../tools/briefing.js';
 import { badgeState, cardItems } from '../core/briefing-badge.js';
 import { pushUndo, runUndo, clearUndo } from '../core/undo.js';
 import { clearSession } from '../core/auditor.js';
+import { listFacts, addFact, deleteFact, getRules, saveRules, MAX_RULES, MAX_FACT } from '../core/memory.js';
 import { tryInstant } from '../core/instant.js';
 import { getKillState, setKillState } from '../core/kill-switch.js';
 import { loadPendingUndos, markUndone } from '../core/undo-store.js';
@@ -53,6 +54,7 @@ export function mountAgentPanel() {
     <header class="ag-head">
       <div><strong>BT Assistant</strong><span class="ag-sub" id="ag-sub"></span></div>
       <div class="ag-head-btns">
+        <button class="ag-ico" id="ag-mem" title="Memory and house rules" aria-label="Memory and house rules">🧠</button>
         <button class="ag-ico" id="ag-stats" title="Usage and activity" aria-label="Usage and activity">📊</button>
         <button class="ag-ico" id="ag-kill" aria-label="Stop all AI changes on every device"></button>
         <button class="ag-ico" id="ag-lock" aria-label="Allow changes"></button>
@@ -180,6 +182,39 @@ export function mountAgentPanel() {
     card.innerHTML = '<div class="ag-card-t">AI calls, last 24h</div>' + pHtml + '<div class="ag-card-t">Recent tool activity</div>' + aHtml;
     log.scrollTop = log.scrollHeight;
   }
+  // ── memory + house rules (the owner's own words; the model cannot write these) ──
+  async function showMemory() {
+    const sb = getSb();
+    const card = el('div', { class: 'ag-card' });
+    card.innerHTML = '<div class="ag-card-t">Memory</div><div class="ag-warn">Loading…</div>';
+    log.append(card); log.scrollTop = log.scrollHeight;
+    const [facts, rules] = await Promise.all([listFacts(sb), getRules(sb)]);
+    let version = rules.version;
+    const paint = () => {
+      card.innerHTML = '<div class="ag-card-t">How I run this pharmacy</div>'
+        + '<textarea class="ag-type-in ag-rules" rows="5" maxlength="' + MAX_RULES + '" placeholder="e.g. Closing is at 10pm. Ali is the senior salesman. Call credit above Rs 5,000 \'high\'.">' + escHtml(rules.body) + '</textarea>'
+        + '<div class="ag-card-b"><button class="ag-yes ag-save-rules">Save rules</button></div><div class="ag-rules-msg"></div>'
+        + '<div class="ag-card-t">Remembered facts</div>'
+        + '<ul class="ag-card-l">' + (facts.length ? facts.map(f => '<li data-id="' + f.id + '">' + escHtml(f.fact) + ' <button class="ag-undo-btn ag-del">✕</button></li>').join('') : '<li>Nothing yet.</li>') + '</ul>'
+        + '<div class="ag-type"><input class="ag-type-in ag-new-fact" type="text" maxlength="' + MAX_FACT + '" placeholder="Add a fact, e.g. closing is at 10pm"></div>'
+        + '<div class="ag-card-b"><button class="ag-yes ag-add-fact">Add fact</button></div>';
+      const msg = t => { card.querySelector('.ag-rules-msg').textContent = t; };
+      card.querySelector('.ag-save-rules').onclick = async () => {
+        const r = await saveRules(sb, card.querySelector('.ag-rules').value, version);
+        if (r.ok) { version = r.version; rules.body = card.querySelector('.ag-rules').value.trim(); msg('Saved (version ' + version + '). Used from your next message.'); } else msg('⚠ ' + r.error);
+      };
+      card.querySelector('.ag-add-fact').onclick = async () => {
+        const inp = card.querySelector('.ag-new-fact');
+        const r = await addFact(sb, inp.value, facts.length);
+        if (r.ok && r.row) { facts.unshift(r.row); paint(); } else if (!r.ok) msg('⚠ ' + r.error);
+      };
+      card.querySelectorAll('.ag-del').forEach(b => { b.onclick = async () => {
+        const id = Number(b.parentElement.dataset.id); const r = await deleteFact(sb, id);
+        if (r.ok) { facts.splice(facts.findIndex(f => f.id === id), 1); paint(); } else msg('⚠ ' + r.error);
+      }; });
+    };
+    paint(); log.scrollTop = log.scrollHeight;
+  }
   async function showPendingUndos() {
     const items = await loadPendingUndos(getSb());
     items.slice(0, 5).forEach(it => addUndoRow({ tool: it.tool, label: it.label, fn: it.fn, key: it.key }));
@@ -267,6 +302,7 @@ export function mountAgentPanel() {
     killed = r.killed; rejectAllPending(); paintLock();
   };
   sheet.querySelector('#ag-stats').onclick = showStats;
+  sheet.querySelector('#ag-mem').onclick = showMemory;
   paintLock(); refreshKill();
   send.onclick = () => ask(text.value);
   text.addEventListener('input', autosize);

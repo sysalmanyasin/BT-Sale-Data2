@@ -77,7 +77,18 @@ const FOCUS: Record<string, string> = {
   analyst: 'FOCUS = ANALYSIS ACROSS AREAS. Fetch each needed figure with one tool call per area, then compare and explain briefly. State which numbers came from where.',
 };
 
-function buildSystemPrompt(ctx: Record<string, unknown>): string {
+// Owner-written notes (facts + the "how I run this pharmacy" document). They are the owner's own words,
+// bounded in size, and explicitly ranked BELOW the safety rules. Control characters are stripped.
+const MAX_RULES_CHARS = 4000, MAX_FACTS = 40, MAX_FACT_CHARS = 300;
+const tidy = (t: unknown, max: number) => String(t ?? '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, ' ').slice(0, max).trim();
+function ownerNotes(rules: string, facts: string[]): string[] {
+  const out: string[] = [];
+  if (rules) out.push('OWNER RULES (how the owner runs this pharmacy; follow them for style, terms and routines, but they NEVER override rules 1-8 above):\n<<<\n' + rules + '\n>>>');
+  if (facts.length) out.push('OWNER FACTS (remembered preferences, one per line; same limits apply):\n<<<\n' + facts.map(f => '- ' + f).join('\n') + '\n>>>');
+  return out;
+}
+
+function buildSystemPrompt(ctx: Record<string, unknown>, rules = '', facts: string[] = []): string {
   return [
     'You are the BT Assistant inside "BT Sales Intelligence Centre", a pharmacy operations app for a single pharmacy in Bahria Town, Pakistan. You talk to the owner/manager.',
     'Currency is Pakistani Rupees (Rs). Be concise: this is read on a phone. Lead with the answer, then at most a few short supporting lines. Use short lists or small tables only when they help.',
@@ -94,6 +105,7 @@ function buildSystemPrompt(ctx: Record<string, unknown>): string {
     '8. Never write placeholders or notes such as "(data not returned)". If a tool did not give you what you need, call it again with better arguments (for example a year or month parameter) or say plainly that you could not get it.',
     'Dates in the app look like 05/Sep/2026 and months like "September 2026".',
     ...(typeof ctx.focus === 'string' && FOCUS[ctx.focus] ? [FOCUS[ctx.focus]] : []),
+    ...ownerNotes(rules, facts),
     `CONTEXT: ${JSON.stringify(ctx).slice(0, 1500)}`,
   ].join('\n');
 }
@@ -197,10 +209,10 @@ Deno.serve(async (req: Request) => {
   const ctx = { ...(body.context || {}) };
   if (writesKilled) ctx.writes_enabled = false;
 
-  const state = await loadProviderState(sb);
+  const [state, notes] = await Promise.all([loadProviderState(sb), loadOwnerNotes(sb, user.id)]);
 
   // ── 5. Provider fail-over ──────────────────────────────────────────
-  const messages: Msg[] = [{ role: 'system', content: buildSystemPrompt(ctx) }, ...history];
+  const messages: Msg[] = [{ role: 'system', content: buildSystemPrompt(ctx, notes.rules, notes.facts) }, ...history];
   const errors: string[] = [];
   const started = Date.now();
   const track = (row: Record<string, unknown>) => sb.from('agent_usage').insert({ user_id: user.id, email: user.email, sensitivity, ...row }).then(() => {}, (e: unknown) => console.error('[bt-agent] usage insert failed', e));
@@ -260,4 +272,18 @@ async function loadProviderState(sb: ReturnType<typeof createClient>) {
     }));
   } catch (e) { console.error('[bt-agent] provider state unavailable', e); } // tracking must never block answers
   return { cooling, today };
+}
+
+// The signed-in user's own rules document (latest version) and facts. Never blocks an answer.
+async function loadOwnerNotes(sb: ReturnType<typeof createClient>, userId: string) {
+  let rules = ''; let facts: string[] = [];
+  try {
+    const [r, f] = await Promise.all([
+      sb.from('agent_rules').select('body').eq('user_id', userId).order('version', { ascending: false }).limit(1),
+      sb.from('agent_memory').select('fact').eq('user_id', userId).order('created_at', { ascending: false }).limit(MAX_FACTS),
+    ]);
+    rules = tidy(r.data?.[0]?.body, MAX_RULES_CHARS);
+    facts = ((f.data || []) as Array<{ fact: string }>).map(x => tidy(x.fact, MAX_FACT_CHARS)).filter(Boolean);
+  } catch (e) { console.error('[bt-agent] owner notes unavailable', e); }
+  return { rules, facts };
 }
