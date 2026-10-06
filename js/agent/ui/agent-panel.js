@@ -3,7 +3,9 @@
 // Pure presentation: delegates everything to runAgent().
 // ══════════════════════════════════════════════════════════════════════
 import { runAgent, AgentError } from '../core/agent-client.js';
-import { callServer } from '../core/server.js';
+import { callServer, callAction } from '../core/server.js';
+import { createConversation, appendTurn, listConversations, loadConversation, deleteConversation, deleteAllConversations, pruneOld } from '../core/history.js';
+import { syncKnowledge, getPrefs as getKnowPrefs, setPrefs as setKnowPrefs, clearManifest } from '../core/knowledge.js';
 import { logToolCall } from '../core/audit.js';
 import { renderMarkdown } from '../core/markdown-lite.js';
 import { getPageContext } from '../tools/app.js';
@@ -34,6 +36,8 @@ const TOOL_LABELS = {
   inventory_overview: 'Checking inventory', search_inventory: 'Searching inventory', low_stock_items: 'Finding low stock',
   low_cover_items: 'Checking stock cover', slow_moving_stock: 'Finding slow stock', navigate_to: 'Opening page',
   str_overview: 'Checking transfers', list_pending_strs: 'Finding pending transfers', get_str_detail: 'Reading transfer', closing_status: 'Checking closing', closing_recent_days: 'Checking recent closings',
+  billing_overview: 'Checking emergency billing', list_emergency_invoices: 'Listing invoices', get_emergency_invoice: 'Reading invoice',
+  search_notes: 'Searching notes', get_note: 'Reading note', list_sheets: 'Listing sheets', read_sheet: 'Reading sheet', search_knowledge: 'Searching your notes and sheets', remember_fact: 'Preparing memory',
   get_app_context: 'Checking date', list_pages: 'Listing pages',
   add_staff_note: 'Preparing note', add_ledger_entry: 'Preparing ledger entry', set_monthly_target: 'Preparing target change',
   edit_daily_sales_field: 'Preparing sales edit', add_daily_sales_entry: 'Preparing sales entry', get_staff_notes: 'Reading staff notes', delete_ledger_entry: 'Preparing delete', delete_staff_note: 'Preparing delete', delete_staff_credit_entry: 'Preparing delete', delete_daily_sales_entry: 'Preparing delete', daily_briefing: 'Preparing your briefing', get_staff_credit: 'Reading staff credit', add_staff_credit_entry: 'Preparing credit entry',
@@ -43,6 +47,8 @@ export function mountAgentPanel() {
   if (document.getElementById('ag-fab')) return;
   const conversationId = 'c_' + Date.now().toString(36);
   let history = [];
+  let convDbId = null;   // saved-conversation id (created on the first answer)
+  let pruned = false;
   let busy = false;
   let abort = null;
   let sensitive = false;
@@ -54,6 +60,7 @@ export function mountAgentPanel() {
     <header class="ag-head">
       <div><strong>BT Assistant</strong><span class="ag-sub" id="ag-sub"></span></div>
       <div class="ag-head-btns">
+        <button class="ag-ico" id="ag-hist" title="Past conversations" aria-label="Past conversations">🕘</button>
         <button class="ag-ico" id="ag-mem" title="Memory and house rules" aria-label="Memory and house rules">🧠</button>
         <button class="ag-ico" id="ag-stats" title="Usage and activity" aria-label="Usage and activity">📊</button>
         <button class="ag-ico" id="ag-kill" aria-label="Stop all AI changes on every device"></button>
@@ -182,6 +189,33 @@ export function mountAgentPanel() {
     card.innerHTML = '<div class="ag-card-t">AI calls, last 24h</div>' + pHtml + '<div class="ag-card-t">Recent tool activity</div>' + aHtml;
     log.scrollTop = log.scrollHeight;
   }
+  // ── saved conversations ──
+  async function saveTurn(q, answer, specialistId) {
+    const sb = getSb(); if (!sb) return;
+    if (!convDbId) convDbId = await createConversation(sb, q, specialistId || null);
+    if (convDbId) appendTurn(sb, convDbId, q, answer);
+    if (!pruned) { pruned = true; pruneOld(sb); }
+  }
+  async function showHistory() {
+    const sb = getSb();
+    const card = el('div', { class: 'ag-card' });
+    card.innerHTML = '<div class="ag-card-t">Past conversations</div><div class="ag-warn">Loading…</div>';
+    log.append(card); log.scrollTop = log.scrollHeight;
+    const rows = await listConversations(sb, 15);
+    const fmt = t => new Date(t).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+    card.innerHTML = '<div class="ag-card-t">Past conversations</div>'
+      + (rows.length ? '<ul class="ag-card-l">' + rows.map(r => '<li data-id="' + escHtml(r.id) + '"><button class="ag-undo-btn ag-open">' + escHtml(r.title || 'Untitled') + '</button> <small>' + escHtml(fmt(r.updated_at)) + '</small> <button class="ag-undo-btn ag-delc" aria-label="Delete">✕</button></li>').join('') + '</ul><div class="ag-card-b"><button class="ag-no ag-delall">Delete all history</button></div>' : '<div class="ag-warn">Nothing saved yet. Conversations are kept for 90 days.</div>');
+    card.querySelectorAll('.ag-open').forEach(b => { b.onclick = async () => {
+      const id = b.closest('li').dataset.id; const msgs = await loadConversation(sb, id);
+      if (!msgs.length) return;
+      rejectAllPending(); history = msgs.map(m => ({ role: m.role, content: m.content })); convDbId = id; sensitive = true; lastSpecialist = null; // restored text may hold private data: stay on non-training providers
+      log.innerHTML = ''; msgs.forEach(m => addBubble(m.role, m.content)); addBubble('status', 'Conversation restored. Ask a follow-up.');
+    }; });
+    card.querySelectorAll('.ag-delc').forEach(b => { b.onclick = async () => { const li = b.closest('li'); if (await deleteConversation(sb, li.dataset.id)) { if (convDbId === li.dataset.id) convDbId = null; li.remove(); } }; });
+    const da = card.querySelector('.ag-delall'); if (da) da.onclick = async () => { if (window.confirm('Delete ALL saved conversations?')) { if (await deleteAllConversations(sb)) { convDbId = null; card.querySelector('.ag-card-l').remove(); da.remove(); } } };
+    log.scrollTop = log.scrollHeight;
+  }
+
   // ── memory + house rules (the owner's own words; the model cannot write these) ──
   async function showMemory() {
     const sb = getSb();
@@ -190,6 +224,7 @@ export function mountAgentPanel() {
     log.append(card); log.scrollTop = log.scrollHeight;
     const [facts, rules] = await Promise.all([listFacts(sb), getRules(sb)]);
     let version = rules.version;
+    const kp = getKnowPrefs();
     const paint = () => {
       card.innerHTML = '<div class="ag-card-t">How I run this pharmacy</div>'
         + '<textarea class="ag-type-in ag-rules" rows="5" maxlength="' + MAX_RULES + '" placeholder="e.g. Closing is at 10pm. Ali is the senior salesman. Call credit above Rs 5,000 \'high\'.">' + escHtml(rules.body) + '</textarea>'
@@ -197,7 +232,12 @@ export function mountAgentPanel() {
         + '<div class="ag-card-t">Remembered facts</div>'
         + '<ul class="ag-card-l">' + (facts.length ? facts.map(f => '<li data-id="' + f.id + '">' + escHtml(f.fact) + ' <button class="ag-undo-btn ag-del">✕</button></li>').join('') : '<li>Nothing yet.</li>') + '</ul>'
         + '<div class="ag-type"><input class="ag-type-in ag-new-fact" type="text" maxlength="' + MAX_FACT + '" placeholder="Add a fact, e.g. closing is at 10pm"></div>'
-        + '<div class="ag-card-b"><button class="ag-yes ag-add-fact">Add fact</button></div>';
+        + '<div class="ag-card-b"><button class="ag-yes ag-add-fact">Add fact</button></div>'
+        + '<div class="ag-card-t">Search my notes and sheets</div>'
+        + '<div class="ag-warn">Indexing sends the text of your Notes and Sheets (with phone numbers, CNICs and emails removed) to the free embedding service, so the assistant can search by meaning. Nothing is sent until you tap Index now.</div>'
+        + '<label class="ag-warn"><input type="checkbox" class="ag-k-staff"' + (kp.staffNotes ? ' checked' : '') + '> Include staff notes (only used if a private embedding service is set up)</label>'
+        + '<label class="ag-warn"><input type="checkbox" class="ag-k-auto"' + (kp.auto ? ' checked' : '') + '> Keep the index updated automatically</label>'
+        + '<div class="ag-card-b"><button class="ag-yes ag-k-run">Index now</button> <button class="ag-no ag-k-clear">Delete index</button></div><div class="ag-k-msg ag-warn">' + (kp.lastSync ? 'Last indexed ' + new Date(kp.lastSync).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) + '.' : 'Not indexed yet.') + '</div>';
       const msg = t => { card.querySelector('.ag-rules-msg').textContent = t; };
       card.querySelector('.ag-save-rules').onclick = async () => {
         const r = await saveRules(sb, card.querySelector('.ag-rules').value, version);
@@ -207,6 +247,19 @@ export function mountAgentPanel() {
         const inp = card.querySelector('.ag-new-fact');
         const r = await addFact(sb, inp.value, facts.length);
         if (r.ok && r.row) { facts.unshift(r.row); paint(); } else if (!r.ok) msg('⚠ ' + r.error);
+      };
+      const kmsg = t => { card.querySelector('.ag-k-msg').textContent = t; };
+      card.querySelector('.ag-k-staff').onchange = e => { kp.staffNotes = e.target.checked; setKnowPrefs({ staffNotes: kp.staffNotes }); };
+      card.querySelector('.ag-k-auto').onchange = e => { kp.auto = e.target.checked; setKnowPrefs({ auto: kp.auto }); };
+      card.querySelector('.ag-k-run').onclick = async () => {
+        kmsg('Indexing…');
+        const r = await syncKnowledge({ sb, callAction, includeStaffNotes: kp.staffNotes, onProgress: p => kmsg('Indexing… ' + p.batch + '/' + p.of) });
+        kmsg((r.ok ? 'Done. ' : '⚠ ' + r.error + ' ') + r.indexedItems + ' items updated, ' + r.unchanged + ' unchanged' + (r.removed ? ', ' + r.removed + ' removed' : '') + (r.skippedStaff ? '. ' + r.skippedStaff + ' staff-note parts were not indexed (needs a private embedding service)' : '') + '.');
+      };
+      card.querySelector('.ag-k-clear').onclick = async () => {
+        if (!window.confirm('Delete the whole search index? Your notes and sheets are not touched.')) return;
+        const { error } = await sb.from('agent_knowledge').delete().not('id', 'is', null);
+        if (error) kmsg('⚠ ' + error.message); else { clearManifest(); kmsg('Index deleted.'); }
       };
       card.querySelectorAll('.ag-del').forEach(b => { b.onclick = async () => {
         const id = Number(b.parentElement.dataset.id); const r = await deleteFact(sb, id);
@@ -250,29 +303,35 @@ export function mountAgentPanel() {
     // Instant path: common one-liners are answered locally, with no AI call at all.
     try {
       const quick = await tryInstant(q);
-      if (quick) { const b = addBubble('assistant', quick.text); b.append(el('div', { class: 'ag-by' }, 'Instant · no AI used')); logToolCall({ tool: quick.tool, risk: quick.kind === 'navigate' ? 'ui' : 'read', args: {}, ok: true, resultChars: quick.text.length }, { conversationId }); return; }
+      if (quick) { saveTurn(q, quick.text); const b = addBubble('assistant', quick.text); b.append(el('div', { class: 'ag-by' }, 'Instant · no AI used')); logToolCall({ tool: quick.tool, risk: quick.kind === 'navigate' ? 'ui' : 'read', args: {}, ok: true, resultChars: quick.text.length }, { conversationId }); return; }
     } catch (e) { console.error('[agent] instant', e); }
     const status = addBubble('status', 'Thinking…');
+    let live = null, liveText = ''; // the bubble that fills in as the answer streams
     setBusy(true);
     abort = new AbortController();
     try {
       await refreshKill(); // server-side switch: checked before every request
       const r = await runAgent({
-        history, userText: q, context: getPageContext(), callServer, signal: abort.signal, sensitive,
+        history, userText: q, context: getPageContext(), callServer, signal: abort.signal, sensitive, stream: true,
+        routeServer: t => callAction('route', { text: t }).then(r => r.domains || []),
+        reviewServer: p => callAction('review', { proposal: { tool: p.tool, title: p.preview && p.preview.title, lines: ((p.preview && p.preview.lines) || []).map(String), amount: p.preview && p.preview.amount, today: new Date().toISOString().slice(0, 10) } }),
         writesEnabled: getWritesEnabled(), writesKilled: killed, approve, onUndoable: addUndoRow, prevSpecialist: lastSpecialist,
         onEvent: ev => {
           if (ev.type === 'tool_start') status.textContent = (TOOL_LABELS[ev.name] || 'Working') + '…';
+          if (ev.type === 'token') { liveText += ev.text; if (!live) { status.remove(); live = el('div', { class: 'ag-msg ag-assistant' }); log.append(live); } live.textContent = liveText; log.scrollTop = log.scrollHeight; }
+          if (ev.type === 'reset') { liveText = ''; if (live) { live.remove(); live = null; if (!status.isConnected) log.append(status); } }
           if (ev.type === 'writes_killed') { killed = true; paintLock(); }
           if (ev.type === 'tool_end' && !ev.ok && !ev.rejected && ev.error && /writes_disabled/.test(ev.error)) paintLock();
         },
         onAudit: e => logToolCall(e, { conversationId }),
       });
       history = r.messages; sensitive = r.sensitive; lastSpecialist = r.specialist;
-      status.remove();
+      status.remove(); if (live) { live.remove(); live = null; }
       const ab = addBubble('assistant', r.text);
+      saveTurn(q, r.text, r.specialist && r.specialist.id);
       if (r.specialist && r.specialist.id !== 'general') ab.append(el('div', { class: 'ag-by' }, r.specialist.label));
     } catch (e) {
-      status.remove();
+      status.remove(); if (live) { live.remove(); live = null; }
       const msg = e instanceof AgentError ? e.message : 'Something went wrong. Please try again.';
       if (!(e instanceof AgentError) || e.code !== 'aborted') addBubble('error', msg);
       if (!(e instanceof AgentError)) console.error('[agent]', e);
@@ -281,13 +340,18 @@ export function mountAgentPanel() {
     }
   }
 
+  function autoIndex() {
+    const kp = getKnowPrefs();
+    if (!kp.auto || Date.now() - (kp.lastSync || 0) < 12 * 3600 * 1000) return;
+    syncKnowledge({ sb: getSb(), callAction, includeStaffNotes: kp.staffNotes }).catch(() => {});
+  }
   function autosize() { text.style.height = 'auto'; text.style.height = Math.min(text.scrollHeight, 120) + 'px'; }
-  function open() { sheet.hidden = false; refreshKill(); fab.classList.add('ag-hide'); if (!log.children.length) welcome(); setTimeout(() => text.focus(), 50); }
+  function open() { sheet.hidden = false; refreshKill(); autoIndex(); fab.classList.add('ag-hide'); if (!log.children.length) welcome(); setTimeout(() => text.focus(), 50); }
   function close() { rejectAllPending(); sheet.hidden = true; fab.classList.remove('ag-hide'); if (abort) abort.abort(); }
 
   fab.onclick = open;
   sheet.querySelector('#ag-close').onclick = close;
-  sheet.querySelector('#ag-clear').onclick = () => { rejectAllPending(); if (abort) abort.abort(); history = []; sensitive = false; lastSpecialist = null; clearUndo(); clearSession(); welcome(); };
+  sheet.querySelector('#ag-clear').onclick = () => { rejectAllPending(); if (abort) abort.abort(); history = []; convDbId = null; sensitive = false; lastSpecialist = null; clearUndo(); clearSession(); welcome(); };
   lockBtn.onclick = () => {
     if (getWritesEnabled()) { setWritesEnabled(false); }
     else if (window.confirm('Allow the assistant to propose changes?\n\nIt can add ledger entries and staff notes, set targets and correct a day\'s sales. Nothing is saved until you tap Approve on each change, and most can be undone.')) setWritesEnabled(true);
@@ -303,6 +367,7 @@ export function mountAgentPanel() {
   };
   sheet.querySelector('#ag-stats').onclick = showStats;
   sheet.querySelector('#ag-mem').onclick = showMemory;
+  sheet.querySelector('#ag-hist').onclick = showHistory;
   paintLock(); refreshKill();
   send.onclick = () => ask(text.value);
   text.addEventListener('input', autosize);

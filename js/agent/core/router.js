@@ -12,6 +12,8 @@ const RULES = {
   inventory: /\b(stock|inventory|product|products|reorder|expiry|supplier|item|items|cover|slow|dead|panadol)\b/i,
   str: /\b(str|strs|transfer|transfers|awaited|dispatch|dispatched|dispatching|in transit|zero.?dispatch)\b/i,
   closing: /\b(closing|closed|closings|shift|shifts|closing book)\b/i,
+  billing: /\b(emergency|invoice|invoices|billing|bills?|refunds?|refunded|reconciled|unreconciled)\b/i,
+  documents: /\b(sheets?|spreadsheets?|documents?|knowledge|policy|policies|sop|my notes|the notes|all notes|saved notes|notes?\s*(?:and|&)\s*sheets?)\b/i,
 };
 // Vague questions get the three core groups only; STR and Closing tools are offered when the
 // question mentions them (keeps the tool list, and so the tokens per request, small).
@@ -22,9 +24,15 @@ export const ALL_DOMAINS = ['sales', 'manager', 'inventory'];
 // cues it is just a date ("Mian Usman credit detail for September 2026" is a staff question).
 const YEAR = /\b20(1[5-9]|2\d|3[0-5])\b/;
 
+// "my notes", "saved notes" and "notes and sheets" mean the owner's Notes app (documents), not staff notes (manager).
+const OWNER_NOTES = /\b(?:(?:my|the|all|saved) notes?|notes?\s*(?:and|&)\s*sheets?)\b/gi;
+
 export function matchDomains(userText) {
   const t = String(userText || '');
-  const hit = Object.entries(RULES).filter(([, re]) => re.test(t)).map(([d]) => d);
+  const hit = Object.entries(RULES).filter(([d, re]) => {
+    if (d === 'manager' && RULES.documents.test(t)) return re.test(t.replace(OWNER_NOTES, ' '));
+    return re.test(t);
+  }).map(([d]) => d);
   return hit.length === 0 && YEAR.test(t) ? ['sales'] : hit;
 }
 

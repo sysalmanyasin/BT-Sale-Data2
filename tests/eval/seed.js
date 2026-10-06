@@ -46,5 +46,27 @@ export async function seedEvalData({ cfg, Repository, LedgerStore, LedgerActions
   globalThis.window.closingBridgeGetFullDb = () => ({ sheets: {
     [dISO(0) + '_Night']: { outNetSale: 5000 }, [dISO(0) + '_Morning']: { draft: true },
     [dISO(1) + '_Night']: { outNetSale: 4000 }, [dISO(1) + '_Morning']: { outNetSale: 6000 }, [dISO(1) + '_Evening']: { profileMode: 'final', finalNetSale: 7000 } } });
+  // Emergency Billing (read-only bridge). Refunds are already reconciled so "unreconciled" is exactly EB-1.
+  const nowIso = new Date().toISOString();
+  const INVOICES = [
+    { invoice_number: 'EB-1', billed_at: nowIso, staff_name: 'Ali', net_total: 1000, subtotal: 1000, discount_amount: 0, payment_method: 'cash', is_refund: false, status: 'completed', reconciled_into_daily: false },
+    { invoice_number: 'EB-2', billed_at: nowIso, staff_name: 'Sara', net_total: 2500, subtotal: 2600, discount_amount: 100, payment_method: 'card', is_refund: false, status: 'completed', reconciled_into_daily: true },
+    { invoice_number: 'EB-3', billed_at: nowIso, staff_name: 'Ali', net_total: -500, payment_method: 'cash', is_refund: true, status: 'completed', reconciled_into_daily: true, original_invoice_id: 'EB-1', customer_phone: '0300-1234567' },
+  ];
+  globalThis.window.emergencyBillingFetchInvoices = async o => INVOICES.filter(r => (!o.invoiceNumber || r.invoice_number === o.invoiceNumber) && (!o.unreconciledOnly || !r.reconciled_into_daily) && (!o.paymentMethod || r.payment_method === o.paymentMethod));
+  globalThis.window.emergencyBillingFetchInvoiceItems = async n => (n === 'EB-2' ? [{ product_code: 'P1', product_name: 'Panadol', qty: 2, unit_price: 1300, total: 2600 }] : []);
+  // Notes + sheets (a tiny fake of the two Supabase tables the documents tools read).
+  Repository.setItem('bt_notes_v1', JSON.stringify([
+    { id: 'n1', title: 'Delivery rider', body: 'Rider Bilal collects the evening orders at 6pm. Pay him weekly.', tags: ['delivery'], createdAt: '2026-09-01' },
+    { id: 'n2', title: 'Cash drawer', body: 'Count the drawer twice before closing.', tags: [] } ]));
+  const TABLES = {
+    bt_sheets: [{ spreadsheet_id: 's1', title: 'Budget', updated_at: '2026-10-01', pinned: false }],
+    bt_sheets_cache: [{ tab_name: 'Jan', tab_index: 0, snapshot_at: '2026-10-01', values_json: [['Item', 'Qty'], ['A', 1]] }],
+  };
+  globalThis.window.btGetSupabaseClient = () => ({
+    auth: { getSession: async () => ({ data: { session: { access_token: 't' } }, error: null }) },
+    from: tbl => { const q = { select: () => q, eq: () => q, ilike: () => q, order: () => q, limit: () => q, then: (res, rej) => Promise.resolve({ data: TABLES[tbl] || [], error: null }).then(res, rej) }; return q; },
+  });
+  globalThis.fetch = async () => ({ ok: true, status: 200, headers: { get: () => 'application/json' }, json: async () => ({ mode: 'semantic', results: [{ source: 'note', source_id: 'n1', title: 'Delivery rider', snippet: 'Rider Bilal collects the evening orders at 6pm.', similarity: 0.82 }] }) });
   console.error = quiet;
 }

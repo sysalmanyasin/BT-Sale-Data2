@@ -1,0 +1,50 @@
+name: Agent live eval
+
+# Measures how often the REAL model picks the right tool first (the offline suite already proves routing and
+# tool correctness on every push). Advisory only: it never blocks a deploy, because free-tier models and limits vary.
+# Needs a repository secret GROQ_API_KEY; without it the job skips with a notice.
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: 'Groq model id'
+        required: false
+        default: 'openai/gpt-oss-120b'
+  schedule:
+    - cron: '0 3 * * 1'   # Mondays 03:00 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  live-eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      MODEL: ${{ github.event.inputs.model || 'openai/gpt-oss-120b' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Skip when no key is configured
+        id: gate
+        run: |
+          if [ -z "$GROQ_API_KEY" ]; then
+            echo "::notice::GROQ_API_KEY secret is not set; skipping the live evaluation."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Run live evaluation
+        if: steps.gate.outputs.run == 'true'
+        run: node scripts/agent-live-eval.mjs | tee live-eval.txt
+      - name: Keep the report
+        if: always() && steps.gate.outputs.run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-live-eval
+          path: live-eval.txt

@@ -9,13 +9,19 @@
 // network, DOM, or Supabase.
 // ══════════════════════════════════════════════════════════════════════
 import { getToolSchemas, runTool, getTool, isChange } from './tool-registry.js';
-import { pickSpecialist } from './specialists.js';
+import { pickSpecialist, needsModelRoute, specialistForDomains } from './specialists.js';
 import { reviewChange, recordChange } from './auditor.js';
 import { newUndoKey, makeRecipe } from './undo-store.js';
 
 export const MAX_STEPS = 8;
 export const MAX_HISTORY = 30;
 export const MAX_CHANGES_PER_TURN = 5;
+export const ROUTE_TIMEOUT_MS = 3500, REVIEW_TIMEOUT_MS = 4500, REVIEW_MIN_AMOUNT = 20000;
+
+function withTimeout(promise, ms) {
+  let t; const timer = new Promise((_, rej) => { t = setTimeout(() => rej(new Error('timeout')), ms); });
+  return Promise.race([Promise.resolve(promise), timer]).finally(() => clearTimeout(t));
+}
 
 export class AgentError extends Error {
   constructor(message, { status, code } = {}) { super(message); this.name = 'AgentError'; this.status = status; this.code = code; }
@@ -32,11 +38,26 @@ export class AgentError extends Error {
  * @param {AbortSignal} [o.signal]
  * @returns {Promise<{text:string, messages:Array, steps:number, sensitive:boolean}>}
  */
-export async function runAgent({ history = [], userText, context = {}, callServer, onEvent = () => {}, onAudit = () => {}, signal, sensitive = false, allow, writesEnabled = false, approve = null, onUndoable = () => {}, prevSpecialist = null, writesKilled = false }) {
+export async function runAgent({ history = [], userText, context = {}, callServer, onEvent = () => {}, onAudit = () => {}, signal, sensitive = false, allow, writesEnabled = false, approve = null, onUndoable = () => {}, prevSpecialist = null, writesKilled = false, stream = false, routeServer = null, reviewServer = null }) {
   if (typeof callServer !== 'function') throw new AgentError('callServer is required');
   const messages = [...history, { role: 'user', content: String(userText || '').slice(0, 4000) }];
-  const specialist = pickSpecialist(userText, prevSpecialist);
+  let specialist = pickSpecialist(userText, prevSpecialist);
+  // Keyword routing first (free, instant). Only a message with no clues at all costs one small model call.
+  if (typeof routeServer === 'function' && needsModelRoute(userText, prevSpecialist)) {
+    try { const picked = specialistForDomains(await withTimeout(routeServer(String(userText).slice(0, 400)), ROUTE_TIMEOUT_MS)); if (picked) { specialist = picked; onEvent({ type: 'routed', specialist: picked.id }); } }
+    catch (_) { /* keyword fallback already chosen */ }
+  }
   const domains = specialist.domains;
+  // Advisory model reviewer: can only ADD a warning to the approval card, never remove one or approve anything.
+  const review = async (p) => {
+    const base = reviewChange(p);
+    if (typeof reviewServer !== 'function' || !(p.risk === 'critical' || (Number(p.preview && p.preview.amount) || 0) >= REVIEW_MIN_AMOUNT)) return base;
+    try {
+      const r = await withTimeout(reviewServer(p), REVIEW_TIMEOUT_MS);
+      if (r && typeof r.concern === 'string' && r.concern.trim()) { base.warnings = [...base.warnings, 'AI reviewer: ' + r.concern.trim().slice(0, 200)]; if (r.severity === 'high') base.strong = true; }
+    } catch (_) { /* reviewer unavailable: the rules above still apply */ }
+    return base;
+  };
   // Server kill switch: when on, change tools are neither offered nor executed, whatever the local lock says.
   let killed = !!writesKilled;
   const canWrite = () => !!writesEnabled && !killed;
@@ -54,6 +75,7 @@ export async function runAgent({ history = [], userText, context = {}, callServe
       context: { ...context, writes_enabled: canWrite(), focus: specialist.id },
       sensitivity: sawSensitive ? 'high' : 'normal',
       signal,
+      ...(stream ? { onToken: t => onEvent({ type: 'token', text: t }), onReset: () => onEvent({ type: 'reset' }) } : {}),
     });
     const msg = res && res.message;
     if (!msg) throw new AgentError('Empty response from AI');
@@ -64,6 +86,7 @@ export async function runAgent({ history = [], userText, context = {}, callServe
     if (calls.length) assistantMsg.tool_calls = calls;
     messages.push(assistantMsg);
 
+    if (calls.length) onEvent({ type: 'reset' }); // text streamed before a tool call is narration, not the answer
     if (!calls.length) {
       const text = (msg.content || '').trim();
       return { text: text || 'I could not produce an answer. Please rephrase.', messages: compactHistory(messages), steps: step, sensitive: sawSensitive, domains, specialist };
@@ -84,7 +107,7 @@ export async function runAgent({ history = [], userText, context = {}, callServe
       } else if (isChange(getTool(name)) && ++changeAttempts > MAX_CHANGES_PER_TURN) {
         result = { ok: false, tool: getTool(name), error: 'cap', text: JSON.stringify({ error: 'Too many changes proposed in one request. Stop and summarise what is done.' }) };
       } else {
-        result = await runTool(name, rawArgs, { ...(allow ? { allow } : {}), writesEnabled: canWrite(), approve, review: reviewChange, onChanged: recordChange });
+        result = await runTool(name, rawArgs, { ...(allow ? { allow } : {}), writesEnabled: canWrite(), approve, review, onChanged: recordChange });
       }
       if (result.tool && result.tool.sensitive) sawSensitive = true;
       onEvent({ type: 'tool_end', name, ok: result.ok, error: result.error, rejected: !!result.rejected });

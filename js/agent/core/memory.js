@@ -23,15 +23,15 @@ export function validateRules(text) {
 export async function listFacts(sb) {
   if (!sb) return [];
   try {
-    const { data, error } = await sb.from('agent_memory').select('id, fact, created_at').order('created_at', { ascending: false }).limit(MAX_FACTS);
+    const { data, error } = await sb.from('agent_memory').select('id, fact, source, created_at').order('created_at', { ascending: false }).limit(MAX_FACTS);
     return error || !Array.isArray(data) ? [] : data;
   } catch (_) { return []; }
 }
-export async function addFact(sb, text, current = 0) {
+export async function addFact(sb, text, current = 0, source = 'user') {
   const v = validateFact(text); if (!v.ok) return v;
   if (current >= MAX_FACTS) return bad('Memory is full (' + MAX_FACTS + ' facts). Delete one first.');
   try {
-    const { data, error } = await sb.from('agent_memory').insert({ fact: v.text }).select('id, fact, created_at');
+    const { data, error } = await sb.from('agent_memory').insert(source === 'assistant' ? { fact: v.text, source: 'assistant' } : { fact: v.text }).select('id, fact, created_at');
     return error ? bad(error.message || 'Could not save.') : { ok: true, row: data && data[0] };
   } catch (e) { return bad((e && e.message) || 'Could not save.'); }
 }

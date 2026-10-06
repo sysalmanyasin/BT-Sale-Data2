@@ -13,6 +13,8 @@ export const SPECIALISTS = Object.freeze({
   inventory: { id: 'inventory', label: 'Inventory' },
   str:       { id: 'str',       label: 'Stock transfers' },
   closing:   { id: 'closing',   label: 'Closing' },
+  billing:   { id: 'billing',   label: 'Emergency billing' },
+  documents: { id: 'documents', label: 'Notes & sheets' },
   analyst:   { id: 'analyst',   label: 'Analyst' },
   general:   { id: 'general',   label: 'Assistant' },
 });
@@ -32,4 +34,24 @@ export function pickSpecialist(userText, prev = null) {
   if (hits.length > 1) return { ...SPECIALISTS.analyst, domains: hits };
   if (prev && prev.id && prev.id !== 'general' && Array.isArray(prev.domains) && prev.domains.length) return { ...prev };
   return { ...SPECIALISTS.general, domains: ALL_DOMAINS };
+}
+
+/**
+ * True when the keyword router has nothing to go on: no domain words, no usable previous specialist, not a pure
+ * app/briefing question. Only then is it worth one cheap model call to classify the message.
+ */
+export function needsModelRoute(userText, prev = null) {
+  const text = String(userText || '').trim();
+  if (text.length < 8 || BRIEFING.test(text) || APP_ONLY.test(text)) return false;
+  if (matchDomains(text).length) return false;
+  return !(prev && prev.id && prev.id !== 'general' && Array.isArray(prev.domains) && prev.domains.length);
+}
+
+export const ROUTABLE = Object.freeze(['sales', 'manager', 'inventory', 'str', 'closing', 'billing', 'documents']);
+
+/** Specialist for a model-chosen domain list (validated against ROUTABLE). Null if nothing usable. */
+export function specialistForDomains(domains) {
+  const d = (Array.isArray(domains) ? domains : []).filter(x => ROUTABLE.includes(x)).slice(0, 2);
+  if (!d.length) return null;
+  return d.length === 1 ? { ...SPECIALISTS[d[0]], domains: d } : { ...SPECIALISTS.analyst, domains: d };
 }

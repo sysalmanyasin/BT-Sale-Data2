@@ -52,7 +52,7 @@ describe('memory safety (static)', () => {
   const fn = fs.readFileSync(path.join(root, 'supabase/functions/bt-agent/index.ts'), 'utf8');
   const mig = fs.readFileSync(path.join(root, 'supabase/migrations/20261005120000_agent_memory_rules.sql'), 'utf8');
   test('server adds owner notes to the prompt, bounded, and ranked below the safety rules', () => {
-    assert.match(fn, /loadOwnerNotes\(sb, user\.id\)/);
+    assert.match(fn, /loadOwnerNotes\(c\.sb, c\.user\.id\)/);
     assert.match(fn, /buildSystemPrompt\(ctx, notes\.rules, notes\.facts\)/);
     assert.match(fn, /NEVER override rules 1-8/);
     assert.match(fn, /MAX_RULES_CHARS = 4000/);
@@ -70,8 +70,19 @@ describe('memory safety (static)', () => {
     assert.match(mig, /grant select, insert on public\.agent_rules/);
     assert.match(mig, /user_id = auth\.uid\(\)/);
   });
-  test('no registered agent tool can write memory or rules', () => {
+  test('only remember_fact (approval-gated, labelled "assistant") touches memory; nothing touches the rules document', () => {
     const dir = path.join(root, 'js/agent/tools');
-    for (const f of fs.readdirSync(dir)) assert.ok(!/agent_memory|agent_rules|core\/memory\.js/.test(fs.readFileSync(path.join(dir, f), 'utf8')), f);
+    for (const f of fs.readdirSync(dir)) {
+      const src = fs.readFileSync(path.join(dir, f), 'utf8');
+      assert.ok(!/agent_rules|saveRules/.test(src), f + ' must not touch the rules document');
+      if (f !== 'memory-tool.js') assert.ok(!/agent_memory|core\/memory\.js/.test(src), f);
+    }
+    const t = fs.readFileSync(path.join(dir, 'memory-tool.js'), 'utf8');
+    assert.match(t, /risk: 'write'/); assert.match(t, /preview:/); assert.match(t, /'assistant'/);
+  });
+  test('addFact labels assistant facts and leaves user facts unlabelled', async () => {
+    const seen = []; const sb = { from: () => ({ insert: v => { seen.push(v); return { select: async () => ({ data: [{ id: 1, fact: v.fact }], error: null }) }; } }) };
+    await addFact(sb, 'a', 0); await addFact(sb, 'b', 0, 'assistant');
+    assert.deepEqual(seen, [{ fact: 'a' }, { fact: 'b', source: 'assistant' }]);
   });
 });

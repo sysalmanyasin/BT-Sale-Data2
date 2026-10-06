@@ -11,6 +11,9 @@ import './tools/deletes.js';
 import './tools/briefing.js';
 import './tools/str.js';
 import './tools/closing.js';
+import './tools/billing.js';
+import './tools/documents.js';
+import './tools/memory-tool.js';
 import { mountAgentPanel } from './ui/agent-panel.js';
 
 function start() {

@@ -21,7 +21,7 @@ const { LedgerActions } = await import('../../js/ledger-actions.js');
 const notes = await import('../../js/staff-notes.js');
 const reg = await import('../../js/agent/core/tool-registry.js');
 const { pickSpecialist } = await import('../../js/agent/core/specialists.js');
-for (const f of ['app', 'sales', 'manager', 'inventory', 'writes', 'credit', 'deletes', 'briefing', 'str', 'closing']) await import('../../js/agent/tools/' + f + '.js');
+for (const f of ['app', 'sales', 'manager', 'inventory', 'writes', 'credit', 'deletes', 'briefing', 'str', 'closing', 'billing', 'documents', 'memory-tool']) await import('../../js/agent/tools/' + f + '.js');
 
 const PREV = { sales: { id: 'sales', label: 'Sales', domains: ['sales'] }, manager: { id: 'manager', label: 'Staff & money', domains: ['manager'] }, inventory: { id: 'inventory', label: 'Inventory', domains: ['inventory'] } };
 const offered = (domains, writes) => reg.getToolSchemas({ includeWrites: writes, domains }).map(t => t.function.name);

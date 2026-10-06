@@ -10,7 +10,7 @@
 // so a new tool cannot ship without an evaluation case.
 const S = 'sales', M = 'manager', I = 'inventory', A = 'analyst', G = 'general';
 const ALL = ['sales', 'manager', 'inventory'];
-const T = 'str', C = 'closing';
+const T = 'str', C = 'closing', B = 'billing', D = 'documents';
 
 export const CASES = [
   // ── Sales ──────────────────────────────────────────────────────────
@@ -81,6 +81,26 @@ export const CASES = [
   { say: 'Closing status today', specialist: C, domains: [C], offer: ['closing_status'], call: { tool: 'closing_status', args: {}, expect: { closed: 1, net_sale_total: 5000, shifts: [{ shift: 'Night', status: 'closed' }, { shift: 'Morning', status: 'draft' }, { shift: 'Evening', status: 'pending' }] } } },
   { say: 'Which shifts are not closed this week?', specialist: C, domains: [C], offer: ['closing_recent_days'], call: { tool: 'closing_recent_days', args: { days: 2 }, expect: { days: [{ closed: 1 }, { closed: 3, net_sale_total: 17000 }], incomplete_days: [{ missing: ['Morning (draft)', 'Evening (pending)'] }] } } },
   { say: 'Did we close the night shift yesterday?', specialist: C, domains: [C], offer: ['closing_status'] },
+
+  // ── Emergency Billing (read-only) ──────────────────────────────────
+  { say: 'Emergency billing summary for today', specialist: B, domains: [B], offer: ['billing_overview'], call: { tool: 'billing_overview', args: {}, expect: { invoices: 2, total: 3500, by_payment: { cash: { count: 1, total: 1000 }, card: { count: 1, total: 2500 } }, refunds: { count: 1, total: 500 }, not_reconciled: { count: 1, total: 1000 } } } },
+  { say: 'Show unreconciled invoices', specialist: B, domains: [B], offer: ['list_emergency_invoices'], call: { tool: 'list_emergency_invoices', args: { unreconciled_only: true }, expect: { matching: 1, items: [{ invoice: 'EB-1', reconciled: false }] } } },
+  { say: 'Which refunds were made today?', specialist: B, domains: [B], offer: ['list_emergency_invoices'], call: { tool: 'list_emergency_invoices', args: { refunds_only: true }, expect: { matching: 1, items: [{ invoice: 'EB-3', is_refund: true }] } } },
+  { say: 'Show emergency invoice EB-2', specialist: B, domains: [B], offer: ['get_emergency_invoice'], call: { tool: 'get_emergency_invoice', args: { invoice_number: 'EB-2' }, expect: { found: true, discount: 100, items: [{ code: 'P1', qty: 2 }] } } },
+  { say: 'Emergency billing and stock', specialist: A, domains: [B, I], offer: ['billing_overview', 'inventory_overview'] },
+
+  // ── Notes, sheets and the knowledge index ──────────────────────────
+  { say: 'Find in my notes the delivery rider', specialist: D, domains: [D], offer: ['search_notes'], call: { tool: 'search_notes', args: { query: 'rider' }, expect: { matching: 1, items: [{ id: 'n1' }] } } },
+  { say: 'Read the saved notes about the rider', specialist: D, domains: [D], offer: ['get_note'], call: { tool: 'get_note', args: { id: 'n1' }, expect: { found: true, title: 'Delivery rider' } } },
+  { say: 'List my spreadsheets', specialist: D, domains: [D], offer: ['list_sheets'], call: { tool: 'list_sheets', args: {}, expect: { items: [{ spreadsheet_id: 's1', title: 'Budget' }] } } },
+  { say: 'Show the Budget sheet', specialist: D, domains: [D], offer: ['read_sheet'], call: { tool: 'read_sheet', args: { sheet: 'Budget' }, expect: { found: true, tab: 'Jan', total_rows: 2, rows: [['Item', 'Qty'], ['A', '1']] } } },
+  { say: 'What did we decide in the delivery policy?', specialist: D, domains: [D], offer: ['search_knowledge'], call: { tool: 'search_knowledge', args: { query: 'delivery rider policy' }, expect: { mode: 'semantic', matching: 1, results: [{ source: 'note', id: 'n1' }] } } },
+  { say: 'Search my notes and sheets for the cash drawer', specialist: D, domains: [D], offer: ['search_knowledge', 'search_notes'] },
+
+  { say: 'Any staff notes about Ali?', specialist: M, domains: [M], offer: ['get_staff_notes'] },
+
+  // ── Long-term memory (approval-gated) ──────────────────────────────
+  { say: 'Please remember that our pharmacist works only evenings', specialist: G, domains: ALL, writes: true, offer: ['remember_fact'] },
 
   // ── App / briefing / small talk ────────────────────────────────────
   { say: 'What needs my attention today?', specialist: G, domains: [], offer: ['daily_briefing'] },

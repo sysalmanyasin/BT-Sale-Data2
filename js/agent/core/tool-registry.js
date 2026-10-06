@@ -135,11 +135,12 @@ export async function runTool(name, rawArgs, { allow = ['read', 'ui'], writesEna
       const msg = (e && e.message) || String(e);
       return { ok: false, tool, error: msg, text: JSON.stringify({ error: msg, hint: 'Nothing was changed. Fix the arguments or ask the user.' }) };
     }
-    preview = { title: preview.title || tool.name, lines: preview.lines || [], warnings: preview.warnings || [], strong: !!preview.strong || tool.risk === 'critical', confirmWord: preview.confirmWord || null };
+    preview = { title: preview.title || tool.name, lines: preview.lines || [], warnings: preview.warnings || [], strong: !!preview.strong || tool.risk === 'critical', confirmWord: preview.confirmWord || null,
+      amount: Number(preview.amount) || 0 }; // the auditor's hourly-total rule and the reviewer both need the rupee amount
     if (typeof review === 'function') {
       // Second line of defence: the auditor looks at the proposal in the context of the whole session.
       try {
-        const r = review({ tool: tool.name, risk: tool.risk, args, preview }) || {};
+        const r = await review({ tool: tool.name, risk: tool.risk, args, preview }) || {};
         if (r.warnings && r.warnings.length) preview.warnings = [...preview.warnings, ...r.warnings];
         if (r.strong) preview.strong = true;
       } catch (_) { preview.warnings = [...preview.warnings, 'Auditor check could not run.']; preview.strong = true; }

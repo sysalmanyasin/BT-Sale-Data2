@@ -10,13 +10,14 @@
 //   lenient  = it is one of the tools the case says must be offered
 //   strict   = it is exactly the case's canonical `call.tool` (cases that have one)
 // Free-tier limits apply: it paces itself. Exit code 1 if strict < 70%.
+// In CI it runs weekly and on demand (.github/workflows/agent-live-eval.yml); it is advisory, never a deploy gate.
 import { installDomEnv } from '../tests/helpers/dom-env.js';
 installDomEnv();
 globalThis.invalidateRenderCache = () => {};
 const { CASES } = await import('../tests/eval/cases.js');
 const reg = await import('../js/agent/core/tool-registry.js');
 const { pickSpecialist } = await import('../js/agent/core/specialists.js');
-for (const f of ['app', 'sales', 'manager', 'inventory', 'credit', 'briefing']) await import('../js/agent/tools/' + f + '.js');
+for (const f of ['app', 'sales', 'manager', 'inventory', 'credit', 'briefing', 'str', 'closing', 'billing', 'documents']) await import('../js/agent/tools/' + f + '.js');
 
 const key = process.env.GROQ_API_KEY;
 if (!key) { console.error('Set GROQ_API_KEY'); process.exit(2); }
