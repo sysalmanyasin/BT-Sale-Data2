@@ -194,3 +194,15 @@ describe('live eval is wired into CI (advisory)', () => {
     for (const d of ['str', 'closing', 'billing', 'documents']) assert.ok(script.includes("'" + d + "'"), d);
   });
 });
+
+describe('least-privilege grants migration', () => {
+  const mig = fs.readFileSync(path.join(root, 'supabase/migrations/20261006110000_agent_tighten_grants.sql'), 'utf8');
+  test('browsers cannot write the knowledge index or usage, or edit messages/rules/audit history', () => {
+    assert.match(mig, /revoke insert, update\s+on public\.agent_knowledge from authenticated/);
+    assert.match(mig, /revoke insert, update, delete\s+on public\.agent_usage\s+from authenticated/);
+    assert.match(mig, /revoke update, delete\s+on public\.agent_messages\s+from authenticated/);
+    assert.match(mig, /revoke update, delete\s+on public\.agent_rules\s+from authenticated/);
+    assert.match(mig, /revoke delete\s+on public\.agent_audit\s+from authenticated/);
+    assert.ok(!/\bgrant\b/i.test(mig.replace(/--.*$/gm, '')), 'a tightening migration must not grant anything');
+  });
+});
