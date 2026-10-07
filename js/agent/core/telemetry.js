@@ -60,6 +60,25 @@ export function emit(evt) {
   } catch (_) { return null; }
 }
 
+/**
+ * Load events recorded in EARLIER sessions (from telemetry-store.js) in front of this session's events.
+ * They are flagged `historical`: they feed history, stats and the timeline, but never make the Center think a
+ * request is still running (a tab closed mid-request must not look like BT is working forever).
+ */
+export function hydrate(events) {
+  try {
+    const old = (events || []).filter(e => e && typeof e.type === 'string' && Number.isFinite(e.timestamp)).map((e, i) => ({
+      event_id: 'h_' + (e.event_id || i), timestamp: e.timestamp, type: e.type, source: e.source || 'agent', agent: e.agent || null, tool: e.tool || null, domain: e.domain || null,
+      status: e.status || null, duration: Number.isFinite(e.duration) ? e.duration : null, severity: e.severity || 'info', entity_reference: e.entity_reference || null,
+      request_id: e.request_id || null, metadata: e.metadata && typeof e.metadata === 'object' ? e.metadata : {}, historical: true,
+    }));
+    const seen = new Set(_events.filter(e => e.historical).map(e => e.event_id));
+    const fresh = old.filter(e => !seen.has(e.event_id));
+    _events = [...fresh, ..._events].sort((a, b) => a.timestamp - b.timestamp).slice(-MAX_EVENTS);
+    return fresh.length;
+  } catch (_) { return 0; }
+}
+
 export function subscribe(fn) { _subs.add(fn); return () => _subs.delete(fn); }
 export function recent(limit = 100, predicate = null) {
   const list = predicate ? _events.filter(predicate) : _events;
@@ -91,7 +110,7 @@ export function toolStats() {
 export function liveState(now = Date.now()) {
   const closed = new Set(), started = new Map();
   for (const e of _events) {
-    if (!e.request_id) continue;
+    if (!e.request_id || e.historical) continue;
     if (e.type === 'request_start') started.set(e.request_id, e);
     if (e.type === 'answer' || e.type === 'error' || e.type === 'cancelled') closed.add(e.request_id);
   }

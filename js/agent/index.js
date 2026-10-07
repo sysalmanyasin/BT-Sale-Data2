@@ -16,8 +16,12 @@ import './tools/documents.js';
 import './tools/memory-tool.js';
 import './tools/verify.js'; // read-only verifiers for the change tools (must come after the tools register)
 import { mountAgentPanel } from './ui/agent-panel.js';
+import * as Telemetry from './core/telemetry.js';
+import { startPersistence } from './core/telemetry-store.js';
 
 function start() {
+  // Earlier sessions' (redacted, device-local) events first, then keep saving real events as they happen.
+  try { const store = startPersistence({ storage: window.localStorage, telemetry: Telemetry }); window.addEventListener('pagehide', () => store.flush()); } catch (e) { console.error('[agent] telemetry store', e); }
   try { mountAgentPanel(); } catch (e) { console.error('[agent] failed to mount', e); }
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();

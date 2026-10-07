@@ -1,7 +1,7 @@
 // remember_fact — the ONLY way the assistant can add to long-term memory, and only with the owner's tap.
 // Every fact is labelled source = 'assistant' so it can be told apart in the Memory card, and it can be
 // undone. The tool description forbids saving anything that came from a note, sheet or tool result.
-import { registerTool } from '../core/tool-registry.js';
+import { registerTool, setVerifier } from '../core/tool-registry.js';
 import { addFact, deleteFact, listFacts, validateFact, MAX_FACT } from '../core/memory.js';
 
 const sb = () => { const c = typeof window.btGetSupabaseClient === 'function' ? window.btGetSupabaseClient() : null; if (!c) throw new Error('App is still loading. Try again in a moment.'); return c; };
@@ -21,4 +21,12 @@ registerTool({
     return { saved: true, id: r.row && r.row.id, fact: r.row && r.row.fact };
   },
   makeUndo: (args, out) => ({ label: 'Forget "' + String((out && out.fact) || args.fact).slice(0, 40) + '"', fn: async () => { const r = await deleteFact(sb(), out.id); if (!r.ok) throw new Error(r.error); } }),
+});
+
+// VERIFY: read the fact back from long-term memory (the write went to Supabase, not to a local store).
+setVerifier('remember_fact', async (a, out) => {
+  const c = typeof window !== 'undefined' && typeof window.btGetSupabaseClient === 'function' ? window.btGetSupabaseClient() : null;
+  if (!c) return { ok: false, checks: [{ label: 'Memory could be read back', ok: false, detail: 'app still loading' }] };
+  const facts = await listFacts(c);
+  return { ok: Array.isArray(facts) && facts.some(f => f.id === out.id), checks: [{ label: 'Fact is in long-term memory', ok: Array.isArray(facts) && facts.some(f => f.id === out.id), detail: '' }] };
 });

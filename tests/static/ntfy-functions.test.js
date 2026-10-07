@@ -27,7 +27,7 @@ describe('briefing: the official sale is TOTAL', () => {
     assert.match(briefing, /sale < saleOf\(wk\.x\) \* 0\.7/);
     assert.match(briefing, /ld >= 10 && projected < target \* 0\.9/);
     const app = fs.readFileSync(path.join(root, 'js/agent/tools/briefing.js'), 'utf8');
-    assert.match(app, /Math\.abs\(diffV\) >= 10000/); assert.match(app, /\* 0\.7/); assert.match(app, /lastDay >= 10/);
+    assert.match(app, /Math\.abs\(diffV\) >= 10000/); assert.match(app, /\* 0\.7/); assert.match(app, /daysElapsed >= 10/); // same day-10 threshold; days elapsed now comes from Analytics (last filled day), which is what the server's `ld` is
   });
   test('requires the cron secret header and supports a dry run', () => {
     assert.match(briefing, /req\.headers\.get\("x-cron-secret"\) !== secret/);

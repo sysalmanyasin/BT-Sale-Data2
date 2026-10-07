@@ -13,13 +13,12 @@ import { setVerifier } from '../core/tool-registry.js';
 import './writes.js';
 import './credit.js';
 import './deletes.js';
-import './memory-tool.js';
+import './memory-tool.js'; // registers remember_fact (its verifier lives in that file)
 import { Repository } from '../../repository.js';
 import * as LedgerStore from '../../ledger-store.js';
 import { DAILY, MONTHLY } from '../../config.js';
 import { num, sameMonth } from './_util.js';
 import { normName } from './_names.js';
-import { listFacts } from '../core/memory.js';
 
 const ni = v => Math.round(Number(v) || 0);
 const chk = (label, ok, detail) => ({ label, ok: !!ok, detail: detail == null ? '' : String(detail) });
@@ -98,10 +97,4 @@ setVerifier('delete_daily_sales_entry', (a, out) => {
   return done([chk('Day is gone from the sales data', !dayRec(out.day, out.month)), chk('Month total still exists', !!m)]);
 });
 
-// remember_fact lives in Supabase (agent memory table): verify by reading it back.
-setVerifier('remember_fact', async (a, out) => {
-  const sb = typeof window !== 'undefined' && typeof window.btGetSupabaseClient === 'function' ? window.btGetSupabaseClient() : null;
-  if (!sb) return done([chk('Memory could be read back', false, 'app still loading')]);
-  const facts = await listFacts(sb);
-  return done([chk('Fact is in long-term memory', Array.isArray(facts) && facts.some(f => f.id === out.id))]);
-});
+// remember_fact's verifier lives in memory-tool.js: only that file is allowed to touch the memory table.

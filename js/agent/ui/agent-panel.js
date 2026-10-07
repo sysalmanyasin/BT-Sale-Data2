@@ -136,7 +136,10 @@ export function mountAgentPanel() {
   function rejectAllPending() { pending.forEach(r => r(false)); pending.clear(); }
 
   // ── approval card ──────────────────────────────────────────────────
-  function approve({ preview }) {
+  // ONE approval system. The card below and the AI Center's approval view both drive the same controller, so the
+  // typed-word check for deletes and the second "Yes, I am sure" tap for strong changes are enforced in one place.
+  const approvals = new Map(); // approval id → controller (only while the human has not decided yet)
+  function approve({ preview, tool, risk, approval_id }) {
     return new Promise(resolve => {
       const card = el('div', { class: 'ag-card' });
       const warn = (preview.warnings || []).map(w => '<div class="ag-warn">⚠ ' + escHtml(w) + '</div>').join('');
@@ -148,19 +151,28 @@ export function mountAgentPanel() {
       const yes = card.querySelector('.ag-yes'), no = card.querySelector('.ag-no');
       let armed = !preview.strong || !!preview.confirmWord;
       const typeIn = card.querySelector('.ag-type-in');
-      const done = (ok, label, value) => { pending.delete(finish); card.classList.add('ag-done'); card.querySelector('.ag-card-b').innerHTML = '<span class="ag-card-r">' + label + '</span>'; const t = card.querySelector('.ag-type'); if (t) t.remove(); resolve(ok ? (preview.confirmWord ? { approved: true, typed: value } : true) : false); };
+      const id = approval_id || ('ap_local_' + Date.now().toString(36));
+      const done = (ok, label, value) => { pending.delete(finish); approvals.delete(id); card.classList.add('ag-done'); card.querySelector('.ag-card-b').innerHTML = '<span class="ag-card-r">' + label + '</span>'; const t = card.querySelector('.ag-type'); if (t) t.remove(); resolve(ok ? (preview.confirmWord ? { approved: true, typed: value } : true) : false); };
       const finish = ok => done(ok, ok ? '✓ Approved' : '✕ Rejected', typeIn ? typeIn.value : undefined);
       pending.add(finish);
       if (typeIn) {
         yes.disabled = true;
         typeIn.oninput = () => { yes.disabled = typeIn.value.trim().toLowerCase() !== String(preview.confirmWord).toLowerCase(); };
       }
-      no.onclick = () => finish(false);
-      yes.onclick = () => {
-        if (yes.disabled) return;
-        if (!armed) { armed = true; yes.textContent = 'Yes, I am sure'; yes.classList.add('ag-warn-btn'); return; }
-        finish(true);
+      // The single place where an approval is granted. Returns { ok } or { ok:false, needs:'type'|'confirm' }.
+      const grant = typed => {
+        if (preview.confirmWord) {
+          const t = String(typed != null ? typed : (typeIn ? typeIn.value : ''));
+          if (t.trim().toLowerCase() !== String(preview.confirmWord).toLowerCase()) return { ok: false, needs: 'type', word: preview.confirmWord };
+          if (typeIn) typeIn.value = t;
+          finish(true); return { ok: true };
+        }
+        if (!armed) { armed = true; yes.textContent = 'Yes, I am sure'; yes.classList.add('ag-warn-btn'); return { ok: false, needs: 'confirm' }; }
+        finish(true); return { ok: true };
       };
+      approvals.set(id, { id, tool, risk, preview, armed: () => armed, grant, reject: () => { finish(false); return { ok: true }; } });
+      no.onclick = () => finish(false);
+      yes.onclick = () => { if (yes.disabled) return; grant(); };
     });
   }
 
@@ -369,7 +381,25 @@ export function mountAgentPanel() {
   };
   sheet.querySelector('#ag-center').onclick = () => { close(); window.location.hash = '#ai-center'; };
   // Public hook for the AI Center command bar: the SAME agent, panel and approval cards. No second chatbot.
-  window.BTAgent = Object.freeze({ ask: q => ask(q), open, isBusy: () => busy, writesAllowed: () => getWritesEnabled() && !killed, killed: () => killed });
+  window.BTAgent = Object.freeze({
+    ask: q => ask(q), open, isBusy: () => busy, writesAllowed: () => getWritesEnabled() && !killed, killed: () => killed,
+    // Pending approvals, for the AI Center's approval view (read-only snapshot of the real proposals).
+    approvals: () => [...approvals.values()].map(c => ({ id: c.id, tool: c.tool, risk: c.risk, preview: c.preview, armed: c.armed() })),
+    /**
+     * Decide a pending approval through the SAME controller the card uses. Approving requires a trusted user gesture
+     * (`gesture.isTrusted === true`, i.e. a real click event): script-made events cannot approve a change.
+     * Rejecting never needs one. Kill switch / lock / hard blocks are enforced before any approval exists and again by runTool.
+     */
+    decide: (id, action, { typed, gesture } = {}) => {
+      const c = approvals.get(id);
+      if (!c) return { ok: false, error: 'This request is no longer waiting (it was already decided or cancelled).' };
+      if (action === 'reject') return c.reject();
+      if (action !== 'approve') return { ok: false, error: 'Unknown action.' };
+      if (killed) return { ok: false, error: 'AI changes are stopped (kill switch).' };
+      if (!gesture || gesture.isTrusted !== true) return { ok: false, error: 'Approval needs a real tap or click.' };
+      return c.grant(typed);
+    },
+  });
   sheet.querySelector('#ag-stats').onclick = showStats;
   sheet.querySelector('#ag-mem').onclick = showMemory;
   sheet.querySelector('#ag-hist').onclick = showHistory;

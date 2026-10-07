@@ -80,7 +80,7 @@ export async function runAgent({ history = [], userText, context = {}, callServe
         metadata: { approval_id: approvalId, risk: p.risk, title: pv.title, strong: !!pv.strong, amount: pv.amount, confirm_word: !!pv.confirmWord, reversible: typeof def.makeUndo === 'function', sensitive: !!def.sensitive,
           lines: (pv.lines || []).slice(0, 8).map(String), warnings: (pv.warnings || []).slice(0, 5).map(String), args: p.args, question: String(userText || '').slice(0, 100), specialist: specialist.id } });
       const t0 = Date.now();
-      const v = await approve(p);
+      const v = await approve({ ...p, approval_id: approvalId });
       const ok = v === true || !!(v && v.approved === true);
       tel('approval_resolved', { tool: p.tool, status: ok ? 'approved' : 'rejected', entity_reference: approvalId, duration: Date.now() - t0, metadata: { risk: p.risk, approval_id: approvalId } });
       return v;
