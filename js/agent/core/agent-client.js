@@ -70,10 +70,19 @@ export async function runAgent({ history = [], userText, context = {}, callServe
   let approveTel = approve;
   if (typeof approve === 'function') {
     approveTel = async (p) => {
-      tel('approval_requested', { tool: p.tool, domain: (getTool(p.tool) || {}).domain || null, severity: p.risk === 'critical' ? 'critical' : 'warning', metadata: { risk: p.risk, title: p.preview && p.preview.title, strong: !!(p.preview && p.preview.strong), amount: p.preview && p.preview.amount } });
+      // Everything the AI Center needs to show a proper approval view comes from the REAL proposal (tool preview),
+      // never from model prose. `args` are redacted by emit(); the approval itself is still decided by the human
+      // through the one approval card/controller.
+      const approvalId = 'ap_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+      const def = getTool(p.tool) || {};
+      const pv = p.preview || {};
+      tel('approval_requested', { tool: p.tool, domain: def.domain || null, severity: p.risk === 'critical' ? 'critical' : 'warning', entity_reference: approvalId,
+        metadata: { approval_id: approvalId, risk: p.risk, title: pv.title, strong: !!pv.strong, amount: pv.amount, confirm_word: !!pv.confirmWord, reversible: typeof def.makeUndo === 'function', sensitive: !!def.sensitive,
+          lines: (pv.lines || []).slice(0, 8).map(String), warnings: (pv.warnings || []).slice(0, 5).map(String), args: p.args, question: String(userText || '').slice(0, 100), specialist: specialist.id } });
+      const t0 = Date.now();
       const v = await approve(p);
       const ok = v === true || !!(v && v.approved === true);
-      tel('approval_resolved', { tool: p.tool, status: ok ? 'approved' : 'rejected', metadata: { risk: p.risk } });
+      tel('approval_resolved', { tool: p.tool, status: ok ? 'approved' : 'rejected', entity_reference: approvalId, duration: Date.now() - t0, metadata: { risk: p.risk, approval_id: approvalId } });
       return v;
     };
   }
@@ -132,11 +141,15 @@ export async function runAgent({ history = [], userText, context = {}, callServe
       } else if (isChange(getTool(name)) && ++changeAttempts > MAX_CHANGES_PER_TURN) {
         result = { ok: false, tool: getTool(name), error: 'cap', text: JSON.stringify({ error: 'Too many changes proposed in one request. Stop and summarise what is done.' }) };
       } else {
-        result = await runTool(name, rawArgs, { ...(allow ? { allow } : {}), writesEnabled: canWrite(), approve: approveTel, review, onChanged: recordChange });
+        result = await runTool(name, rawArgs, { ...(allow ? { allow } : {}), writesEnabled: canWrite(), approve: approveTel, review, onChanged: recordChange,
+          // Real VERIFY step: the tool's verifier reads the change back from the app's store (see tools/verify.js).
+          onVerify: ev => ev.phase === 'start'
+            ? tel('verify_start', { tool: name, domain: toolDef ? toolDef.domain : null, entity_reference: callRef })
+            : tel('verify_end', { tool: name, domain: toolDef ? toolDef.domain : null, entity_reference: callRef, status: ev.verified && ev.verified.ok ? 'ok' : 'failed', duration: ev.verified ? ev.verified.ms : null, severity: ev.verified && ev.verified.ok ? 'info' : 'warning', metadata: { checks: ev.verified ? ev.verified.checks : [] } }) });
       }
       if (result.tool && result.tool.sensitive) sawSensitive = true;
       onEvent({ type: 'tool_end', name, ok: result.ok, error: result.error, rejected: !!result.rejected });
-      tel('tool_end', { tool: name, domain: toolDef ? toolDef.domain : null, entity_reference: callRef, status: result.ok ? 'ok' : (result.rejected ? 'rejected' : 'failed'), duration: Date.now() - t0, severity: result.ok || result.rejected ? 'info' : 'warning', metadata: { risk: toolDef ? toolDef.risk : 'unknown', error: result.ok ? undefined : result.error } });
+      tel('tool_end', { tool: name, domain: toolDef ? toolDef.domain : null, entity_reference: callRef, status: result.ok ? 'ok' : (result.rejected ? 'rejected' : 'failed'), duration: Date.now() - t0, severity: result.ok || result.rejected ? 'info' : 'warning', metadata: { risk: toolDef ? toolDef.risk : 'unknown', error: result.ok ? undefined : result.error, verified: result.verified ? result.verified.ok : undefined, undoable: result.ok && !!result.undo } });
       const undoKey = result.undo ? newUndoKey() : null;
       if (result.undo) { try { onUndoable({ tool: name, key: undoKey, ...result.undo }); } catch (_) { /* ui only */ } }
       try {

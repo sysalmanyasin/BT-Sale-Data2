@@ -40,7 +40,20 @@ export function registerTool(def) {
     run: def.run,
     preview: def.preview || null,   // (args) → {title, lines[], warnings[], strong}; throws on invalid args
     makeUndo: def.makeUndo || null, // (args, result) → {label, fn} | null
+    verify: null,                   // set by setVerifier(): (args, result, preview) → {ok, checks[]}; read-only
   });
+}
+
+/**
+ * Attach a read-only VERIFIER to an existing change tool. After the tool's run() succeeds, runTool calls it to
+ * read the result back from the app's own data store and report whether the change is really there.
+ * Verifiers must not write anything. Returns false (and attaches nothing) for unknown or non-change tools.
+ */
+export function setVerifier(name, fn) {
+  const t = _tools.get(name);
+  if (!t || !(t.risk === 'write' || t.risk === 'critical') || typeof fn !== 'function') return false;
+  t.verify = fn;
+  return true;
 }
 
 export function getTool(name) { return _tools.get(name) || null; }
@@ -100,7 +113,7 @@ function _cap(value) {
  *   4. the human must approve — rejection means run() is never called.
  * @returns {{ok:boolean, text:string, tool:object|null, error?:string, rejected?:boolean, undo?:object, preview?:object}}
  */
-export async function runTool(name, rawArgs, { allow = ['read', 'ui'], writesEnabled = false, approve = null, review = null, onChanged = null } = {}) {
+export async function runTool(name, rawArgs, { allow = ['read', 'ui'], writesEnabled = false, approve = null, review = null, onChanged = null, onVerify = null } = {}) {
   const tool = getTool(name);
   if (!tool) return { ok: false, tool: null, error: 'unknown tool', text: JSON.stringify({ error: 'Unknown tool: ' + name }) };
   const changing = isChange(tool);
@@ -165,9 +178,24 @@ export async function runTool(name, rawArgs, { allow = ['read', 'ui'], writesEna
     let undo = null;
     if (changing && tool.makeUndo) { try { undo = tool.makeUndo(args, out); } catch (_) { undo = null; } }
     if (changing && typeof onChanged === 'function') { try { onChanged({ tool: tool.name, args, preview }); } catch (_) { /* log only */ } }
-    const payload = changing ? { done: true, can_undo: !!undo, ...(out && typeof out === 'object' ? out : { result: out }) } : out;
+    // VERIFY: read the change back from the app's own store. The write already happened, so a failed or
+    // impossible verification never turns into a failure of the tool: it is reported as "not verified".
+    let verified = null;
+    if (changing && typeof tool.verify === 'function') {
+      const v0 = Date.now();
+      try { if (typeof onVerify === 'function') onVerify({ phase: 'start', tool: tool.name }); } catch (_) { /* telemetry only */ }
+      try {
+        const r = await tool.verify(args, out, preview);
+        const checks = Array.isArray(r && r.checks) ? r.checks.slice(0, 8).map(c => ({ label: String(c.label || '').slice(0, 80), ok: !!c.ok, detail: c.detail == null ? '' : String(c.detail).slice(0, 120) })) : [];
+        verified = { ok: !!(r && r.ok) && checks.every(c => c.ok), checks, ms: Date.now() - v0 };
+      } catch (e) {
+        verified = { ok: false, checks: [{ label: 'Verification could not run', ok: false, detail: String((e && e.message) || e).slice(0, 120) }], ms: Date.now() - v0 };
+      }
+      try { if (typeof onVerify === 'function') onVerify({ phase: 'end', tool: tool.name, verified }); } catch (_) { /* telemetry only */ }
+    }
+    const payload = changing ? { done: true, can_undo: !!undo, ...(verified ? { verified: verified.ok, ...(verified.ok ? {} : { verification_problem: verified.checks.filter(c => !c.ok).map(c => c.label + (c.detail ? ' (' + c.detail + ')' : '')).join('; ') }) } : {}), ...(out && typeof out === 'object' ? out : { result: out }) } : out;
     const { text } = _cap(payload);
-    return { ok: true, tool, text, undo, undoData: undo ? { args, out } : null, preview };
+    return { ok: true, tool, text, undo, undoData: undo ? { args, out } : null, preview, ...(verified ? { verified } : {}) };
   } catch (e) {
     const msg = (e && e.message) || String(e);
     return { ok: false, tool, error: msg, preview, text: JSON.stringify({ error: msg, note: changing ? 'The change failed; nothing was saved.' : undefined }) };

@@ -6,9 +6,13 @@ import { installDomEnv } from '../helpers/dom-env.js';
 installDomEnv();
 globalThis.invalidateRenderCache = () => {};
 const cfg = await import('../../js/config.js');
+const { loadClassicScript } = await import('../helpers/load-classic-script.js');
 const { Repository } = await import('../../js/repository.js');
 const { buildBriefing } = await import('../../js/agent/tools/briefing.js');
 const reg = await import('../../js/agent/core/tool-registry.js');
+await import('../../js/agent/tools/sales.js');
+// The briefing's target pace is delegated to Analytics (one implementation), so load the real one.
+loadClassicScript('js/analytics.js', window);
 
 const day = (d, total, comp = total) => ({ Date: String(d).padStart(2, '0') + '/Oct/2026', Month_Year: 'October 2026', TOTAL: String(total), 'COMP SALE': String(comp), Customers: '10' });
 const NOW = new Date(2026, 9, 8, 9, 0); // 08 Oct 2026
@@ -49,6 +53,27 @@ describe('daily briefing', () => {
     assert.ok(b.attention.some(a => a.area === 'target' && a.level === 'info' && /Too early to project/.test(a.message)));
     assert.ok(!b.attention.some(a => a.area === 'target' && a.level === 'warn'));
     assert.ok(b.target.needed_per_day > 0);
+  });
+  test('target pace has ONE implementation: briefing numbers equal Analytics and the get_target_pace tool', async () => {
+    const A = window.Analytics.getTargetPaceForMonth('October 2026', JSON.parse(Repository.getItem('bt_targets')));
+    assert.equal(b.target.sold_so_far, Math.round(A.soFar));
+    assert.equal(b.target.days_left, A.daysLeft);
+    assert.equal(b.target.needed_per_day, Math.round(A.neededPerDay));
+    assert.equal(b.target.projected_month_end, Math.round(A.actualPerDay * A.daysInMonth));
+    const t = JSON.parse((await reg.runTool('get_target_pace', {})).text);
+    assert.equal(b.target.days_left, t.days_left);
+    assert.equal(b.target.needed_per_day, t.needed_per_day);
+    assert.equal(b.target.sold_so_far, t.sold_so_far);
+    // Days are counted from the last FILLED day (the 7th), not from the number of entries (6): 540000 / 7 per day.
+    assert.equal(A.daysElapsed, 7);
+    assert.equal(b.target.projected_month_end, Math.round(540000 / 7 * 31));
+  });
+  test('when the pace calculation is not loaded the briefing says so instead of recomputing it', () => {
+    const keep = window.Analytics; window.Analytics = undefined;
+    const x = buildBriefing(NOW);
+    window.Analytics = keep;
+    assert.equal(x.target, null);
+    assert.ok(x.attention.some(a => a.area === 'target' && /not available/.test(a.message)));
   });
   test('inventory findings', () => {
     assert.equal(b.inventory.out_of_stock_but_selling, 1);

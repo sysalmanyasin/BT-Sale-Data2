@@ -1,7 +1,7 @@
 // Cross-domain "what needs my attention today?" — deterministic checks
 // (read-only). The model only turns the findings into a short summary.
 import { registerTool } from '../core/tool-registry.js';
-import { DAILY, MONTHLY } from '../../config.js';
+import { DAILY } from '../../config.js';
 import { Repository } from '../../repository.js';
 import { num, rs, FULL, MON, sameMonth, parseAppDate, monthSortVal } from './_util.js';
 import { creditAlertMessages } from '../../shared/credit-alerts.js';
@@ -73,22 +73,28 @@ export function buildBriefing(now = new Date()) {
   }
 
   // ── Target pace ────────────────────────────────────────────────────
+  // ONE implementation: Analytics.getTargetPaceForMonth (what the Dashboard and the get_target_pace tool use).
+  // This used to carry a second, slightly different calculation (average per ENTERED day × days in month,
+  // days-left counted from the latest entry even if its TOTAL was 0). Both now come from the same function,
+  // so the briefing, the Dashboard, get_target_pace and the AI Center can never disagree.
+  // The month-end projection is the same straight-line pace the Dashboard shows: actual per day × days in month.
   const tgt = num(targetsMap()[my]);
-  const mRec = MONTHLY.find(m => sameMonth(m.Month_Year, my));
   if (!tgt) {
     add('info', 'target', 'No sales target is set for ' + my + '.');
-  } else if (mRec && monthDays.length) {
-    const sold = num(mRec.TOTAL);
-    const dim = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-    const lastDay = Math.max(...monthDays.map(d => parseAppDate(d.Date).getDate()));
-    const avg = sold / monthDays.length;
-    const projected = Math.round(avg * dim);
-    const remainingDays = Math.max(0, dim - lastDay);
-    out.target = { target: rs(tgt), sold_so_far: rs(sold), pct_done: Math.round((sold / tgt) * 1000) / 10, projected_month_end: projected, days_left: remainingDays, needed_per_day: remainingDays ? rs(Math.max(0, tgt - sold) / remainingDays) : 0 };
-    if (sold >= tgt) add('good', 'target', 'Target for ' + my + ' is already achieved.');
-    else if (lastDay >= 10 && projected < tgt * 0.9) add('warn', 'target', 'At the current pace ' + my + ' ends near Rs ' + projected.toLocaleString('en-PK') + ' vs target Rs ' + rs(tgt).toLocaleString('en-PK') + '. Need Rs ' + out.target.needed_per_day.toLocaleString('en-PK') + '/day for the remaining ' + remainingDays + ' day(s).');
-    else if (projected < tgt * 0.9) add('info', 'target', 'Too early to project ' + my + ' (day ' + lastDay + '): at this pace it ends near Rs ' + projected.toLocaleString('en-PK') + ' vs target Rs ' + rs(tgt).toLocaleString('en-PK') + '.');
-    else add('good', 'target', 'On pace for the ' + my + ' target.');
+  } else {
+    const A = typeof window !== 'undefined' ? window.Analytics : null;
+    const p = A && typeof A.getTargetPaceForMonth === 'function' ? A.getTargetPaceForMonth(my, targetsMap()) : null;
+    if (!p) {
+      out.target = null;
+      add('info', 'target', 'Target pace is not available right now (the pace calculation is not loaded).');
+    } else if (monthDays.length) {
+      const projected = Math.round(p.actualPerDay * p.daysInMonth);
+      out.target = { target: rs(p.tgt), sold_so_far: rs(p.soFar), pct_done: Math.round((p.soFar / p.tgt) * 1000) / 10, projected_month_end: projected, days_left: p.daysLeft, needed_per_day: rs(p.neededPerDay), source: 'Analytics.getTargetPaceForMonth' };
+      if (p.achieved) add('good', 'target', 'Target for ' + my + ' is already achieved.');
+      else if (p.daysElapsed >= 10 && projected < p.tgt * 0.9) add('warn', 'target', 'At the current pace ' + my + ' ends near Rs ' + projected.toLocaleString('en-PK') + ' vs target Rs ' + rs(p.tgt).toLocaleString('en-PK') + '. Need Rs ' + out.target.needed_per_day.toLocaleString('en-PK') + '/day for the remaining ' + p.daysLeft + ' day(s).');
+      else if (projected < p.tgt * 0.9) add('info', 'target', 'Too early to project ' + my + ' (day ' + p.daysElapsed + '): at this pace it ends near Rs ' + projected.toLocaleString('en-PK') + ' vs target Rs ' + rs(p.tgt).toLocaleString('en-PK') + '.');
+      else add('good', 'target', 'On pace for the ' + my + ' target.');
+    }
   }
 
   // ── Credit: duplicate entries + carried-over (aged) balances ───────
