@@ -101,7 +101,8 @@
 <link rel="stylesheet" href="css/pages.css?v=20260824a">
 <link rel="stylesheet" href="css/cover-dashboard.css?v=20260824a">
 <link rel="stylesheet" href="css/herald.css?v=20260915a">
-<link rel="stylesheet" href="css/agent.css?v=20261006a">
+<link rel="stylesheet" href="css/agent.css?v=20261007a">
+<link rel="stylesheet" href="css/ai-center.css?v=20261007a">
 <link rel="stylesheet" href="css/mobile.css?v=20260824a">
 
 <!-- Service Worker registration -->
@@ -350,6 +351,7 @@ if ('serviceWorker' in navigator) {
   <a class="bnav-item" href="#str" data-page="str" data-group="str" data-domain-group="str"><span class="bicon">📋</span><span class="blabel">STR Report</span></a>
   <a class="bnav-item" href="#str-report" data-page="str-report" data-group="str" data-domain-group="str"><span class="bicon">🧾</span><span class="blabel">Report</span></a>
   <a class="bnav-item" href="#str-zero-dispatch" data-page="str-zero-dispatch" data-group="str" data-domain-group="str"><span class="bicon">🚫</span><span class="blabel">0-Dispatch</span></a>
+  <a class="bnav-item" href="#ai-center" data-page="ai-center" data-group="ai-center" data-domain-group="aicenter"><span class="bicon">🛰</span><span class="blabel">AI Center</span></a>
   <a class="bnav-item" href="#tools" data-page="tools" data-group="tools" data-domain-group="tools"><span class="bicon">⚙️</span><span class="blabel">Tools</span></a>
   <!-- Emergency Billing — break-glass counter-sale tool (Candela POS
        down). Deliberately no data-domain-group: like Cover/Tools, it
@@ -2582,6 +2584,9 @@ if ('serviceWorker' in navigator) {
      (2600+/500+ lines) both hardcode that id throughout, so relocating
      the container here (rather than renaming it) reuses all of that
      proven logic with zero risk instead of re-risking it on a rename. -->
+<!-- BT AI Center (js/ai-center/*): rendered entirely from real tool results + agent telemetry. -->
+<div class="page aic-page" id="page-ai-center"><div id="aic-root" class="aic"></div></div>
+
 <div class="page" id="page-notesheets">
   <div class="hero"><h1 class="htitle">📑 Notes &amp; Sheets</h1><p class="hsub">Notes, multi-sheet workbooks, and a live read-only view of Sale Data / Staff.</p></div>
   <div id="mgr-sheets" style="min-height:500px">
@@ -2868,7 +2873,9 @@ if ('serviceWorker' in navigator) {
 <!-- UI extras: left-edge tab strip, floating Dashboard FAB, month→target patch -->
 <script type="module" src="js/ui-extras.js?v=20260728a"></script>
 <!-- AI assistant (Phase 2: read + approval-gated changes). Needs Supabase session + bt-agent Edge Function. -->
-<script type="module" src="js/agent/index.js?v=20261006a"></script>
+<script type="module" src="js/agent/index.js?v=20261007a"></script>
+<!-- BT AI Center: the control room over the assistant above. Adapters + UI only; no second agent. -->
+<script type="module" src="js/ai-center/index.js?v=20261007a"></script>
 
 <!-- 14. Field manager modal -->
 <script defer src="js/fields.js?v=20260722a"></script>

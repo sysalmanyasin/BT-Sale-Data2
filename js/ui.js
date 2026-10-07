@@ -112,6 +112,9 @@ function showPage(id) {
     // (see js/reorder-report.js) — same "safe to call every visit" pattern.
     if (id === 'reorder' && window.ReorderReportApp && typeof window.ReorderReportApp.init === 'function') window.ReorderReportApp.init();
     if (id === 'inv-health' && window.InventoryHealthDashboard && typeof window.InventoryHealthDashboard.init === 'function') window.InventoryHealthDashboard.init();
+    // BT AI Center — control room over the existing assistant (js/ai-center/*). Safe on every visit.
+    document.body.classList.toggle('aic-open', id === 'ai-center');
+    if (id === 'ai-center' && window.AICenter && typeof window.AICenter.onShow === 'function') window.AICenter.onShow();
     if (id === 'pdf-library' && window.PdfLibrary && typeof window.PdfLibrary.onShow === 'function') window.PdfLibrary.onShow();
     if (id === 'activity-log' && window.ActivityLog && typeof window.ActivityLog.onShow === 'function') window.ActivityLog.onShow();
     _curPage = id;

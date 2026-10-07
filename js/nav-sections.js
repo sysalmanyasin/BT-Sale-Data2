@@ -308,6 +308,11 @@
       });
     }
 
+    // BT AI Center — the control room over the existing AI assistant (js/ai-center/*).
+    if (flat['ai-center']) {
+      groups.push({ label: 'BT AI Center', icon: '🛰', svgKey: 'ai-center', href: flat['ai-center'].href, kids: [], _section: 'core' });
+    }
+
     // Tools: its own Sync Center collapses into a nested group (with its
     // 6 tabs as sub-subs), followed by every other settings card.
     if (flat.tools) {

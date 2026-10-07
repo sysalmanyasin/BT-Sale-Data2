@@ -18,6 +18,7 @@ import { listFacts, addFact, deleteFact, getRules, saveRules, MAX_RULES, MAX_FAC
 import { tryInstant } from '../core/instant.js';
 import { getKillState, setKillState } from '../core/kill-switch.js';
 import { loadPendingUndos, markUndone } from '../core/undo-store.js';
+import { emit as emitTelemetry } from '../core/telemetry.js';
 import { summarizeUsage, summarizeAudit, fetchUsage, fetchAudit } from '../core/usage-stats.js';
 
 const getSb = () => (typeof window.btGetSupabaseClient === 'function' ? window.btGetSupabaseClient() : null);
@@ -60,6 +61,7 @@ export function mountAgentPanel() {
     <header class="ag-head">
       <div><strong>BT Assistant</strong><span class="ag-sub" id="ag-sub"></span></div>
       <div class="ag-head-btns">
+        <button class="ag-ico" id="ag-center" title="Open BT AI Center" aria-label="Open BT AI Center">🛰</button>
         <button class="ag-ico" id="ag-hist" title="Past conversations" aria-label="Past conversations">🕘</button>
         <button class="ag-ico" id="ag-mem" title="Memory and house rules" aria-label="Memory and house rules">🧠</button>
         <button class="ag-ico" id="ag-stats" title="Usage and activity" aria-label="Usage and activity">📊</button>
@@ -303,7 +305,7 @@ export function mountAgentPanel() {
     // Instant path: common one-liners are answered locally, with no AI call at all.
     try {
       const quick = await tryInstant(q);
-      if (quick) { saveTurn(q, quick.text); const b = addBubble('assistant', quick.text); b.append(el('div', { class: 'ag-by' }, 'Instant · no AI used')); logToolCall({ tool: quick.tool, risk: quick.kind === 'navigate' ? 'ui' : 'read', args: {}, ok: true, resultChars: quick.text.length }, { conversationId }); return; }
+      if (quick) { emitTelemetry({ type: 'instant', source: 'instant-path', tool: quick.tool, status: 'ok', metadata: { question: q.slice(0, 100), model_used: false, text: String(quick.text || '').slice(0, 1200) } }); saveTurn(q, quick.text); const b = addBubble('assistant', quick.text); b.append(el('div', { class: 'ag-by' }, 'Instant · no AI used')); logToolCall({ tool: quick.tool, risk: quick.kind === 'navigate' ? 'ui' : 'read', args: {}, ok: true, resultChars: quick.text.length }, { conversationId }); return; }
     } catch (e) { console.error('[agent] instant', e); }
     const status = addBubble('status', 'Thinking…');
     let live = null, liveText = ''; // the bubble that fills in as the answer streams
@@ -365,6 +367,9 @@ export function mountAgentPanel() {
     if (!r.ok) { addBubble('error', 'Could not change the switch: ' + r.error); return; }
     killed = r.killed; rejectAllPending(); paintLock();
   };
+  sheet.querySelector('#ag-center').onclick = () => { close(); window.location.hash = '#ai-center'; };
+  // Public hook for the AI Center command bar: the SAME agent, panel and approval cards. No second chatbot.
+  window.BTAgent = Object.freeze({ ask: q => ask(q), open, isBusy: () => busy, writesAllowed: () => getWritesEnabled() && !killed, killed: () => killed });
   sheet.querySelector('#ag-stats').onclick = showStats;
   sheet.querySelector('#ag-mem').onclick = showMemory;
   sheet.querySelector('#ag-hist').onclick = showHistory;

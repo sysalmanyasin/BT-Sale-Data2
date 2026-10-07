@@ -12,6 +12,7 @@ import { getToolSchemas, runTool, getTool, isChange } from './tool-registry.js';
 import { pickSpecialist, needsModelRoute, specialistForDomains } from './specialists.js';
 import { reviewChange, recordChange } from './auditor.js';
 import { newUndoKey, makeRecipe } from './undo-store.js';
+import { emit } from './telemetry.js';
 
 export const MAX_STEPS = 8;
 export const MAX_HISTORY = 30;
@@ -42,12 +43,17 @@ export async function runAgent({ history = [], userText, context = {}, callServe
   if (typeof callServer !== 'function') throw new AgentError('callServer is required');
   const messages = [...history, { role: 'user', content: String(userText || '').slice(0, 4000) }];
   let specialist = pickSpecialist(userText, prevSpecialist);
+  // Real-event telemetry for the AI Center (in-memory only; args are redacted). Never affects the loop.
+  const requestId = 'rq_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const tel = (type, extra = {}) => emit({ type, request_id: requestId, agent: specialist.label, ...extra });
+  tel('request_start', { metadata: { question: String(userText || '').slice(0, 100), specialist: specialist.id } });
   // Keyword routing first (free, instant). Only a message with no clues at all costs one small model call.
   if (typeof routeServer === 'function' && needsModelRoute(userText, prevSpecialist)) {
-    try { const picked = specialistForDomains(await withTimeout(routeServer(String(userText).slice(0, 400)), ROUTE_TIMEOUT_MS)); if (picked) { specialist = picked; onEvent({ type: 'routed', specialist: picked.id }); } }
+    try { const picked = specialistForDomains(await withTimeout(routeServer(String(userText).slice(0, 400)), ROUTE_TIMEOUT_MS)); if (picked) { specialist = picked; onEvent({ type: 'routed', specialist: picked.id }); tel('routed', { agent: picked.label, metadata: { specialist: picked.id, by: 'model' } }); } }
     catch (_) { /* keyword fallback already chosen */ }
   }
   const domains = specialist.domains;
+  tel('routed', { metadata: { specialist: specialist.id, domains, by: 'rules' } });
   // Advisory model reviewer: can only ADD a warning to the approval card, never remove one or approve anything.
   const review = async (p) => {
     const base = reviewChange(p);
@@ -61,6 +67,16 @@ export async function runAgent({ history = [], userText, context = {}, callServe
   // Server kill switch: when on, change tools are neither offered nor executed, whatever the local lock says.
   let killed = !!writesKilled;
   const canWrite = () => !!writesEnabled && !killed;
+  let approveTel = approve;
+  if (typeof approve === 'function') {
+    approveTel = async (p) => {
+      tel('approval_requested', { tool: p.tool, domain: (getTool(p.tool) || {}).domain || null, severity: p.risk === 'critical' ? 'critical' : 'warning', metadata: { risk: p.risk, title: p.preview && p.preview.title, strong: !!(p.preview && p.preview.strong), amount: p.preview && p.preview.amount } });
+      const v = await approve(p);
+      const ok = v === true || !!(v && v.approved === true);
+      tel('approval_resolved', { tool: p.tool, status: ok ? 'approved' : 'rejected', metadata: { risk: p.risk } });
+      return v;
+    };
+  }
   let tools = getToolSchemas({ includeWrites: canWrite(), domains });
   let changeAttempts = 0;
   let sawSensitive = !!sensitive;
@@ -69,17 +85,22 @@ export async function runAgent({ history = [], userText, context = {}, callServe
   for (let step = 1; step <= MAX_STEPS; step++) {
     if (signal && signal.aborted) throw new AgentError('Cancelled', { code: 'aborted' });
     onEvent({ type: 'step', step });
-    const res = await callServer({
+    tel('step', { metadata: { step, max: MAX_STEPS } });
+    let res;
+    try { res = await callServer({
       messages: messages.slice(-MAX_HISTORY),
       tools,
       context: { ...context, writes_enabled: canWrite(), focus: specialist.id },
       sensitivity: sawSensitive ? 'high' : 'normal',
       signal,
       ...(stream ? { onToken: t => onEvent({ type: 'token', text: t }), onReset: () => onEvent({ type: 'reset' }) } : {}),
-    });
+    }); } catch (e) {
+      tel(e && e.code === 'aborted' ? 'cancelled' : 'error', { status: 'failed', severity: 'error', metadata: { message: String((e && e.message) || e).slice(0, 140), http_status: e && e.status } });
+      throw e;
+    }
     const msg = res && res.message;
     if (!msg) throw new AgentError('Empty response from AI');
-    if (res.settings && res.settings.writes_killed === true && !killed) { killed = true; tools = getToolSchemas({ includeWrites: false, domains }); onEvent({ type: 'writes_killed' }); }
+    if (res.settings && res.settings.writes_killed === true && !killed) { tel('writes_killed', { source: 'server', severity: 'warning' }); killed = true; tools = getToolSchemas({ includeWrites: false, domains }); onEvent({ type: 'writes_killed' }); }
 
     const calls = Array.isArray(msg.tool_calls) ? msg.tool_calls : [];
     const assistantMsg = { role: 'assistant', content: msg.content || null };
@@ -89,6 +110,7 @@ export async function runAgent({ history = [], userText, context = {}, callServe
     if (calls.length) onEvent({ type: 'reset' }); // text streamed before a tool call is narration, not the answer
     if (!calls.length) {
       const text = (msg.content || '').trim();
+      tel('answer', { status: 'ok', metadata: { steps: step, chars: text.length, text: text.slice(0, 1200) } });
       return { text: text || 'I could not produce an answer. Please rephrase.', messages: compactHistory(messages), steps: step, sensitive: sawSensitive, domains, specialist };
     }
 
@@ -101,16 +123,20 @@ export async function runAgent({ history = [], userText, context = {}, callServe
       const name = call.function && call.function.name;
       const rawArgs = call.function && call.function.arguments;
       onEvent({ type: 'tool_start', name, args: rawArgs });
+      const callRef = String(call.id || name) + ':' + step;
+      const t0 = Date.now(), toolDef = getTool(name);
+      tel('tool_start', { tool: name, domain: toolDef ? toolDef.domain : null, entity_reference: callRef, metadata: { risk: toolDef ? toolDef.risk : 'unknown', args: safeParse(rawArgs) } });
       let result;
       if (looping) {
         result = { ok: false, tool: null, error: 'repeat', text: JSON.stringify({ error: 'You already made this exact call. Answer using the data you have.' }) };
       } else if (isChange(getTool(name)) && ++changeAttempts > MAX_CHANGES_PER_TURN) {
         result = { ok: false, tool: getTool(name), error: 'cap', text: JSON.stringify({ error: 'Too many changes proposed in one request. Stop and summarise what is done.' }) };
       } else {
-        result = await runTool(name, rawArgs, { ...(allow ? { allow } : {}), writesEnabled: canWrite(), approve, review, onChanged: recordChange });
+        result = await runTool(name, rawArgs, { ...(allow ? { allow } : {}), writesEnabled: canWrite(), approve: approveTel, review, onChanged: recordChange });
       }
       if (result.tool && result.tool.sensitive) sawSensitive = true;
       onEvent({ type: 'tool_end', name, ok: result.ok, error: result.error, rejected: !!result.rejected });
+      tel('tool_end', { tool: name, domain: toolDef ? toolDef.domain : null, entity_reference: callRef, status: result.ok ? 'ok' : (result.rejected ? 'rejected' : 'failed'), duration: Date.now() - t0, severity: result.ok || result.rejected ? 'info' : 'warning', metadata: { risk: toolDef ? toolDef.risk : 'unknown', error: result.ok ? undefined : result.error } });
       const undoKey = result.undo ? newUndoKey() : null;
       if (result.undo) { try { onUndoable({ tool: name, key: undoKey, ...result.undo }); } catch (_) { /* ui only */ } }
       try {
@@ -124,6 +150,7 @@ export async function runAgent({ history = [], userText, context = {}, callServe
     }
   }
   const text = 'I took too many steps without finishing. Try asking a narrower question.';
+  tel('error', { status: 'failed', severity: 'warning', metadata: { message: 'step limit reached' } });
   messages.push({ role: 'assistant', content: text });
   return { text, messages: compactHistory(messages), steps: MAX_STEPS, sensitive: sawSensitive, domains, specialist };
 }

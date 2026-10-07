@@ -10,7 +10,7 @@ body.bt-kiosk-mode .ag-fab{display:none}
 .ag-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--border);background:var(--s2);border-radius:inherit;border-bottom-left-radius:0;border-bottom-right-radius:0}
 .ag-head strong{display:block;font-size:15px}
 .ag-sub{display:block;font-size:11px;color:var(--muted)}
-.ag-head-btns{display:flex;gap:6px}
+.ag-head-btns{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}.ag-ico{flex:none}
 .ag-ico{width:34px;height:34px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;font-size:15px}
 .ag-log{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;-webkit-overflow-scrolling:touch}
 .ag-msg{max-width:88%;padding:9px 12px;border-radius:var(--r-md);font-size:14px;line-height:1.45;word-wrap:break-word;overflow-wrap:anywhere}
