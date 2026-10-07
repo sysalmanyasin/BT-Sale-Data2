@@ -32,6 +32,7 @@ const META = {
   answer: m => ({ steps: num(m.steps), chars: num(m.chars) }),
   instant: m => ({ question: clip(m.question), model_used: false }),
   error: m => ({ message: clip(m.message, 140), http_status: num(m.http_status) }),
+  retry: m => ({ http_status: num(m.http_status), delay_ms: num(m.delay_ms) }),
   cancelled: () => ({}),
   writes_killed: () => ({}),
   finding_new: m => ({ title: clip(m.title, 120) }),

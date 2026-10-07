@@ -136,3 +136,20 @@ body.aic-open .ag-fab{display:none}
 .aic-toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(150px + env(safe-area-inset-bottom,0px));z-index:2100;background:#07111d;color:#e6f1fa;border:1px solid #00d9ff;border-radius:4px;padding:8px 14px;font-size:13px;max-width:90vw}
 @media(prefers-reduced-motion:reduce){.aic-ring,.aic-skel i{animation:none}}
 @media print{.aic-page{display:none!important}}
+
+/* v11.22: approval view, verify step, history labels, correlations, deeper views */
+.aic-ap2{display:grid;gap:6px;padding:12px;border-radius:12px}
+.aic-ap2 .aic-k{margin-top:6px}
+.aic-ap2.aic-t-cr{border-color:var(--aic-cr,#ff5d6c)}
+.aic-ap2 .aic-pin{width:100%;box-sizing:border-box;min-height:44px}
+.aic-ap2 .aic-row button{min-height:44px;flex:1}
+.aic-life li.fail{color:var(--aic-cr,#ff5d6c)}
+.aic-life li.fail::after{content:" \2717"}
+.aic-stage[data-s="verifying"] .aic-ring.r2{animation-duration:2.2s}
+.aic-earlier{opacity:.7;font-size:10px}
+.aic-hist-ev{opacity:.72}
+.aic-corr .aic-fh{display:flex;gap:6px;flex-wrap:wrap}
+.aic-dv{margin:6px 0}.aic-dv .aic-sub{margin-left:6px}
+.aic-deep{margin-top:6px}
+.aic-purp{max-width:220px;white-space:normal;font-size:12px;opacity:.85}
+@media (prefers-reduced-motion: reduce){.aic-stage[data-s="verifying"] .aic-ring{animation:none}}

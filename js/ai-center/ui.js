@@ -17,7 +17,7 @@ import { renderMarkdown } from '../agent/core/markdown-lite.js';
 import { pushUndo, runUndo } from '../agent/core/undo.js';
 import { markUndone } from '../agent/core/undo-store.js';
 import { fetchAudit, summarizeAudit } from '../agent/core/usage-stats.js';
-import { collectSnapshot, collectHealth, collectActions, getSb } from './adapters.js';
+import { collectSnapshot, collectHealth, collectActions, getSb, readTool } from './adapters.js';
 import * as M from './model.js';
 
 const PAGE_ID = 'page-ai-center';
@@ -27,7 +27,7 @@ const STALE_MS = 5 * 60000, REFRESH_MS = 45000;
 const S = {
   snap: null, health: null, actions: null, history: [], loading: false, error: null,
   mode: 'monitor', filter: 'all', baseline: null, started: false, tick: 0, toolsOpen: false,
-  awaitingFor: null, assess: {}, lastRefreshAt: 0, mounted: false, rafId: 0,
+  awaitingFor: null, assess: {}, lastRefreshAt: 0, mounted: false, rafId: 0, deep: {},
 };
 
 // ───────────────────────── tiny DOM helpers ─────────────────────────
@@ -47,6 +47,7 @@ function h(tag, attrs, ...kids) {
 const $ = sel => document.querySelector(sel);
 const root = () => document.getElementById('aic-root');
 const pageOn = () => { const p = document.getElementById(PAGE_ID); return !!(p && p.classList.contains('on')); };
+const clockFull = ts => (ts ? new Date(ts).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '');
 const clock = ts => ts ? new Date(ts).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—';
 const tone = status => M.STATUS_TONE[status] || 'mu';
 const pill = (status, text) => h('span', { class: 'aic-pill aic-' + tone(status), text: text || status });
@@ -176,7 +177,7 @@ function secCore(info) {
         h('span', {}, 'Elapsed ', h('b', { text: Math.round(live.elapsedMs / 1000) + 's' }))),
       live.activeTool ? h('div', { class: 'aic-mcur' }, 'Now: ', h('b', { text: live.activeTool.tool })) : h('div', { class: 'aic-mcur', text: 'Now: model is reasoning over the results so far' }),
       live.tools.length ? h('ul', { class: 'aic-mtools' }, live.tools.map(t => h('li', {}, h('span', { class: 'aic-pill aic-' + (t.status === 'ok' ? 'ok' : t.status === 'rejected' ? 'wn' : 'cr'), text: t.status }), ' ', t.tool, t.duration != null ? ' · ' + t.duration + ' ms' : ''))) : null,
-      live.pendingApproval ? h('div', { class: 'aic-appr' }, h('b', { text: 'Waiting for you. ' }), (live.pendingApproval.metadata && live.pendingApproval.metadata.title) || live.pendingApproval.tool, ' ', h('button', { class: 'aic-p', text: 'Review', onclick: () => window.BTAgent && window.BTAgent.open() })) : null)
+      live.pendingApproval ? h('div', { class: 'aic-appr' }, h('b', { text: 'Waiting for you. ' }), (live.pendingApproval.metadata && live.pendingApproval.metadata.title) || live.pendingApproval.tool, ' ', h('button', { class: 'aic-p', text: 'Review', onclick: reviewApproval })) : null)
     : lastMissionNode();
   const life = M.deriveLifecycle(requestEvents(m || lastRequestStart()), !!S.snap);
   return card('core', 'monitor investigate',
@@ -184,9 +185,10 @@ function secCore(info) {
       h('i', { class: 'aic-ring r1' }), h('i', { class: 'aic-ring r2' }), h('i', { class: 'aic-ring r3' }),
       h('div', { class: 'aic-orb' }, h('div', {}, h('b', { text: 'BT' }), h('small', { text: core.state.replace(/_/g, ' ') })))),
     h('div', { class: 'aic-cs' }, h('h2', { text: core.state.replace(/_/g, ' ') }), h('p', { text: core.detail })),
-    h('ol', { class: 'aic-life', 'aria-label': 'Intelligence lifecycle' }, life.map(s => h('li', { class: (s.reached ? 'on ' : '') + (s.available ? '' : 'na'), title: s.available ? (s.reached ? 'Happened in the latest request' : 'Not reached in the latest request') : 'BT has no automated verification step yet', text: s.label }))),
+    h('ol', { class: 'aic-life', 'aria-label': 'Intelligence lifecycle' }, life.map(s => h('li', { class: (s.reached ? (s.failed ? 'on fail ' : 'on ') : '') + (s.available ? '' : 'na'), title: s.available ? (s.reached ? 'Happened in the latest request' : 'Not reached in the latest request') : 'BT has no automated verification step yet', text: s.label }))),
     mission);
 }
+function reviewApproval() { if (window.BTAgent && typeof window.BTAgent.approvals === 'function') goMode('act', 'aic-actc'); else if (window.BTAgent) window.BTAgent.open(); }
 const lastRequestStart = () => T.recent(400).find(e => e.type === 'request_start') || null;
 const requestEvents = start => start ? T.recent(400, e => e.request_id === start.request_id) : [];
 function lastMissionNode() {
@@ -288,7 +290,7 @@ function openAgent(id) {
   const sp = SPECIALISTS[id], st = agentStats(id), tools = listTools().filter(t => t.domain === id);
   const ev = T.recent(60, e => e.agent === sp.label).slice(0, 10);
   openModal(sp.label + ' specialist', h('div', {},
-    h('dl', { class: 'aic-met' }, [['Runs this session', String(st.runs)], ['Last run', st.last ? M.ageLabel(st.last) : 'not run yet'], ['Tools', String(id === 'analyst' ? 'all domains it is routed to' : tools.length)]].map(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })])),
+    h('dl', { class: 'aic-met' }, [['Runs (7 days, this device)', String(st.runs)], ['Last run', st.last ? M.ageLabel(st.last) : 'not run yet'], ['Tools', String(id === 'analyst' ? 'all domains it is routed to' : tools.length)]].map(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })])),
     tools.length ? h('ul', { class: 'aic-list' }, tools.map(t => h('li', {}, h('b', { text: t.name }), ' ', h('span', { class: 'aic-pill aic-' + (t.risk === 'read' || t.risk === 'ui' ? 'ok' : 'wn'), text: t.risk }), h('div', { class: 'aic-sub', text: t.description.slice(0, 140) })))) : null,
     ev.length ? [h('div', { class: 'aic-k', text: 'RECENT EVENTS' }), eventList(ev)] : empty('No events from this specialist yet in this session.')));
 }
@@ -306,7 +308,10 @@ function openFinding(f) {
     A ? h('div', { class: 'aic-assess' }, h('div', {}, h('span', { class: 'aic-tag aic-k-ai', text: 'AI INTERPRETATION' }), ' ', h('span', { class: 'aic-sub', text: 'Confidence not rated. Treat as an explanation to check against the evidence above, not as a calculation.' })), h('div', { class: 'aic-md', html: null }, mdNode(A.text)))
       : h('p', { class: 'aic-sub', text: 'BT has not been asked about this yet. The detection above is rule-based, with no AI involved.' }),
     h('div', { class: 'aic-k', text: 'WHY AM I SEEING THIS' }), h('p', { class: 'aic-sub', text: 'Rule-based check "' + f.source + '" ran on your current data. Known: the FACT and CALCULATION rows. Not known: the cause. That needs investigation.' }),
-    h('div', { class: 'aic-k', text: 'RECOMMENDATION' }), h('p', { class: 'aic-sub', text: 'No automated recommendation for this rule. Review the source page, or ask BT to investigate. BT will never change data without your approval.' }),
+    h('div', { class: 'aic-k', text: 'RECOMMENDATION' }), h('p', {}, tagEl('RECOMMENDATION'), ' ', h('span', { class: 'aic-sub', text: '(fixed rule, not AI) ' }), f.recommendation, ' BT will never change data without your approval.'),
+    h('div', { class: 'aic-k', text: 'WHAT HAPPENS IF I ACT' }), h('p', { class: 'aic-sub', text: f.if_act }),
+    h('div', { class: 'aic-k', text: 'RELATED RECORDS' }), h('div', { class: 'aic-path' }, (f.related_entities || []).map(r => h('span', { class: 'aic-tag', text: r.kind + ': ' + r.value }))),
+    h('div', { class: 'aic-k', text: 'AUDIT REFERENCE' }), h('p', { class: 'aic-sub', text: f.audit_reference + '. Read-only detection: nothing was changed. Changes made later through BT appear in the audit log with their own reference.' }),
     h('div', { class: 'aic-row' },
       h('button', { class: 'aic-p', text: 'Investigate with BT', onclick: () => investigate(f) }),
       h('button', { text: 'Open source page', onclick: () => openPage(f.action.href) }),
@@ -325,15 +330,16 @@ function openSystem(name) {
     h('div', { class: 'aic-k', text: 'CURRENT NUMBERS (from existing tools)' }), s.metrics.length ? h('dl', { class: 'aic-met aic-big' }, s.metrics.map(m => [h('dt', { text: m.label, title: m.src }), h('dd', { text: m.value })])) : empty(s.availability.reason || 'No data'),
     h('div', { class: 'aic-k', text: 'FINDINGS' }), fs.length ? fs.map(findingCard) : empty('No open findings for this system.'),
     h('div', { class: 'aic-k', text: 'RELATED AGENTS AND TOOLS' }), h('div', { class: 'aic-path' }, src.agents.map(a => h('span', { class: 'aic-tag', text: a })), h('div', { class: 'aic-sub', text: src.tools.join(', ') })),
-    h('div', { class: 'aic-k', text: 'RECENT ACTIVITY' }), ev.length ? eventList(ev) : empty('No activity for this system yet in this session.'),
+    deepViews(name),
+    h('div', { class: 'aic-k', text: 'RECENT ACTIVITY' }), ev.length ? eventList(ev) : empty('No activity for this system yet on this device.'),
     h('div', { class: 'aic-row' }, h('button', { class: 'aic-p', text: 'Investigate with BT', onclick: () => { closeModal(); ask(SYSTEM_ASK[name]); } }), h('button', { text: 'Open ' + name.toLowerCase() + ' page', onclick: () => openPage(M.SYSTEM_PAGE[name]) }))),
   { tonec: tone(s.status) });
 }
 
 // ── activity ──
 function eventList(evs) {
-  return h('ul', { class: 'aic-ev' }, evs.map(e => h('li', { class: 'aic-evi aic-sev-' + (e.severity || 'info') },
-    h('time', { text: clock(e.timestamp) }), h('span', { class: 'aic-evt', text: M.describeEvent(e) }),
+  return h('ul', { class: 'aic-ev' }, evs.map(e => h('li', { class: 'aic-evi aic-sev-' + (e.severity || 'info') + (e.historical ? ' aic-hist-ev' : '') },
+    h('time', { text: e.historical ? clockFull(e.timestamp) : clock(e.timestamp) }), e.historical ? h('span', { class: 'aic-tag aic-earlier', text: 'EARLIER', title: 'Restored from a previous session on this device. Not live.' }) : null, h('span', { class: 'aic-evt', text: M.describeEvent(e) }),
     (e.type === 'tool_end' || e.type === 'tool_start') ? h('button', { class: 'aic-g aic-insp', text: 'inspect', onclick: () => inspect(e) }) : null)));
 }
 function inspect(e) {
@@ -360,7 +366,7 @@ function secActions(info) {
   const body = [];
   body.push(h('div', { class: 'aic-gate aic-' + (killed ? 'cr' : A_ok ? 'ok' : 'wn') }, killed ? '⛔ AI changes are stopped on all devices (kill switch).' : A_ok ? '🔓 Changes allowed on this device. You approve every one.' : '🔒 Read-only on this device. BT can recommend but not change anything. Unlock from the assistant header.'));
   body.push(h('div', { class: 'aic-k', text: 'PENDING APPROVAL' }));
-  body.push(pending ? h('div', { class: 'aic-appr' }, h('b', { text: (pending.metadata && pending.metadata.title) || pending.tool }), h('div', { class: 'aic-sub', text: 'Risk: ' + (pending.metadata && pending.metadata.risk) + (pending.metadata && pending.metadata.strong ? ' · needs a second confirming tap' : '') + (pending.metadata && pending.metadata.amount ? ' · Rs ' + M.fmtNum(pending.metadata.amount) : '') }), h('div', { class: 'aic-row' }, h('button', { class: 'aic-p', text: 'Review and decide', onclick: () => window.BTAgent && window.BTAgent.open() }))) : empty('Nothing is waiting for approval.'));
+  body.push(...approvalNodes(info));
   body.push(h('div', { class: 'aic-k', text: 'UNDOABLE (last 48 hours)' }));
   if (!A) body.push(skeleton(2));
   else if (A.state === 'error') body.push(h('div', { class: 'aic-err', text: 'Could not read the audit log: ' + A.error }));
@@ -370,6 +376,83 @@ function secActions(info) {
     body.push(A.recent.length ? h('ul', { class: 'aic-ev' }, A.recent.map(r => h('li', { class: 'aic-evi' }, h('time', { text: new Date(r.at).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) }), h('span', { class: 'aic-evt', text: r.tool + ' · ' + r.status + (r.error ? ' (' + r.error + ')' : '') }), h('span', { class: 'aic-sub', text: r.ref })))) : empty('No AI changes recorded.'));
   }
   return card('actc', 'act', sectionHeader('ACTION CENTER', h('span', { class: 'aic-sub', text: 'BT proposes · you approve' })), body);
+}
+
+//  approval view (section 25): the real proposal, decided through the ONE shared controller
+const tagEl = k => h('span', { class: 'aic-tag aic-k-' + String(k).split(' ')[0].toLowerCase(), text: k });
+function afterDecision(r, action) {
+  if (!r || r.ok !== true) {
+    toast(r && r.needs === 'type' ? 'Type the confirmation word first.' : r && r.needs === 'confirm' ? 'Tap once more to confirm.' : (r && r.error) || 'Could not record that decision.');
+  } else toast(action === 'approve' ? 'Approved. BT will apply the change, then read it back to verify.' : 'Rejected. Nothing was changed.');
+  render();
+}
+function approvalNodes(info) {
+  const A = window.BTAgent, list = A && typeof A.approvals === 'function' ? A.approvals() : null, pending = info.live.pendingApproval;
+  if (!list) return [pending ? h('div', { class: 'aic-appr' }, h('b', { text: (pending.metadata && pending.metadata.title) || pending.tool }), h('div', { class: 'aic-row' }, h('button', { class: 'aic-p', text: 'Review and decide', onclick: () => A && A.open() }))) : empty('Nothing is waiting for approval.')];
+  if (!list.length) return [empty('Nothing is waiting for approval.')];
+  return list.map(approvalCard);
+}
+function approvalCard(p) {
+  const req = T.recent(400, e => e.type === 'approval_requested' && e.entity_reference === p.id)[0] || null, v = M.approvalView(p, req), A = window.BTAgent;
+  const typed = v.gate.kind === 'type' ? h('input', { class: 'aic-pin', type: 'text', placeholder: 'Type ' + v.gate.word, 'aria-label': 'Type the confirmation word', autocomplete: 'off' }) : null;
+  const killed = A.killed(), decide = (action, ev) => afterDecision(A.decide(p.id, action, { typed: typed ? typed.value : undefined, gesture: ev }), action);
+  const sec = (label, ...kids) => [h('div', { class: 'aic-k', text: label }), ...kids];
+  return h('div', { class: 'aic-appr aic-ap2 aic-t-' + v.tone, role: 'group', 'aria-label': 'Approval request: ' + v.title },
+    h('div', { class: 'aic-row' }, h('b', { text: v.title }), pill(v.risk === 'critical' ? 'ERROR' : 'WARNING', v.risk.toUpperCase())),
+    sec('WHY BT IS ASKING', h('div', { class: 'aic-sub' }, tagEl(v.why.kind), ' ', v.why.text)),
+    sec('EVIDENCE (the exact proposal)', v.evidence.length ? h('ul', { class: 'aic-list' }, v.evidence.map(e => h('li', {}, tagEl(e.kind), ' ', h('b', { text: e.label + ': ' }), e.value))) : h('div', { class: 'aic-sub', text: 'The tool gave no detail lines.' })),
+    v.warnings.length ? sec('WARNINGS', h('ul', { class: 'aic-list' }, v.warnings.map(w => h('li', { text: w })))) : null,
+    sec('EXPECTED RESULT', h('div', { class: 'aic-sub', text: v.expected + ' ' + v.verification })),
+    sec('REVERSIBILITY', h('div', { class: 'aic-sub aic-' + (v.reversibility.ok ? 'ok' : 'cr'), text: v.reversibility.text })),
+    v.affected.length ? sec('AFFECTED RECORDS', h('dl', { class: 'aic-met' }, v.affected.map(a => [h('dt', { text: a.label }), h('dd', { text: a.value })]))) : null,
+    h('div', { class: 'aic-sub', text: v.gate.text }), typed,
+    h('div', { class: 'aic-row' },
+      h('button', { class: 'aic-p', text: v.gate.kind === 'twotap' && p.armed ? 'Yes, I am sure' : 'Approve', disabled: killed, onclick: ev => decide('approve', ev) }),
+      h('button', { text: 'Reject', onclick: ev => decide('reject', ev) })),
+    killed ? h('div', { class: 'aic-err', text: 'Kill switch is ON: changes are stopped.' }) : null);
+}
+
+//  correlation (rule-based co-occurrence of findings; never a claim of cause)
+function secCorrelation() {
+  if (!S.snap) return null;
+  const c = M.correlate(visibleFindings());
+  return card('corr', 'monitor', sectionHeader('CROSS-AREA SIGNALS', h('span', { class: 'aic-sub', text: 'rule-based, not proof' })),
+    c.length ? c.map(x => h('div', { class: 'aic-f aic-sev-warning aic-corr' }, h('div', { class: 'aic-fh' }, x.systems.map(sy => h('span', { class: 'aic-tag', text: sy })), tagEl('CORRELATION')),
+      h('div', { class: 'aic-ft', text: x.title }), h('div', { class: 'aic-sub', text: x.why }), h('div', { class: 'aic-row' }, h('button', { text: 'Ask BT to check', onclick: () => ask('Check whether these are connected, using your tools, and say what is known and what is uncertain: ' + x.parts.map(p => p.title).join(' / ')) }))))
+      : empty('No findings in two areas at once right now.'));
+}
+
+//  observability (section 42): measured from real recorded events (last 7 days on this device + this session)
+function secObs() {
+  const o = M.observability(T.recent(400).reverse()), na = 'no data yet';
+  const row = (k, v) => [h('dt', { text: k }), h('dd', { text: v })];
+  return card('obs', 'investigate', sectionHeader('OBSERVABILITY', h('span', { class: 'aic-sub', text: 'last 7 days, this device' })),
+    h('dl', { class: 'aic-met aic-big' }, [
+      ...row('REQUESTS', o.requests + ' (' + o.answered + ' answered, ' + o.errors + ' failed)'), ...row('AVG INVESTIGATION', o.avgInvestigationMs != null ? M.fmtDur(o.avgInvestigationMs) : na), ...row('LONGEST', o.maxInvestigationMs != null ? M.fmtDur(o.maxInvestigationMs) : na),
+      ...row('APPROVALS', o.approvals + ' decided (' + o.approvalsRejected + ' rejected)'), ...row('AVG APPROVAL WAIT', o.avgApprovalWaitMs != null ? M.fmtDur(o.avgApprovalWaitMs) : na), ...row('RETRIES', String(o.retries)),
+      ...row('VERIFIED CHANGES', o.verified + ' passed, ' + o.verifyFailed + ' failed')]),
+    h('div', { class: 'aic-sub', text: 'Older than 7 days, or from another device, is not included. Cross-device history lives in the audit log.' }));
+}
+
+//  deeper system views: existing READ tools, loaded only when you ask
+const DEEP = {
+  INVENTORY: [['Fast movers running out', 'low_cover_items', { max_days: 15, limit: 8 }], ['Out of stock but selling', 'low_stock_items', { max_qty: 0, only_selling: true, limit: 8 }], ['Slow movers (no sale 30+ days)', 'slow_moving_stock', { days: 30, limit: 8 }], ['Dead stock (no sale 90+ days)', 'slow_moving_stock', { days: 90, limit: 8 }]],
+  SALES: [['Best sales days', 'top_sales_days', {}]], STR: [['Incoming STRs not received', 'list_pending_strs', { direction: 'in', limit: 8 }]], CLOSING: [['Last 14 days of closing', 'closing_recent_days', { days: 14 }]],
+};
+const scalar = v => v != null && typeof v !== 'object';
+function renderDeep(data) {
+  const arr = Object.entries(data || {}).find(([, v]) => Array.isArray(v)), head = Object.entries(data || {}).filter(([, v]) => scalar(v)).slice(0, 6);
+  return h('div', {}, head.length ? h('dl', { class: 'aic-met' }, head.map(([k, v]) => [h('dt', { text: k.replace(/_/g, ' ') }), h('dd', { text: typeof v === 'number' ? M.fmtNum(v) : String(v) })])) : null,
+    arr && arr[1].length ? h('ul', { class: 'aic-list' }, arr[1].slice(0, 12).map(it => { const o = it && typeof it === 'object' ? it : { value: it }, first = o.name || o.str || o.date || o.value || ''; const rest = Object.entries(o).filter(([k, v]) => scalar(v) && v !== first && !['name', 'str', 'date'].includes(k)).slice(0, 5).map(([k, v]) => k.replace(/_/g, ' ') + ' ' + (typeof v === 'number' ? M.fmtNum(v) : v)).join('  |  '); return h('li', {}, h('b', { text: String(first) }), rest ? h('div', { class: 'aic-sub', text: rest }) : null); })) : h('div', { class: 'aic-sub', text: 'Nothing matched.' }));
+}
+function deepViews(name) {
+  const defs = DEEP[name]; if (!defs) return null;
+  return h('div', {}, h('div', { class: 'aic-k', text: 'DEEPER VIEWS (existing read-only tools, loaded on request)' }), defs.map(([label, tool, args]) => {
+    const key = name + ':' + label, out = h('div', { class: 'aic-deep' });
+    const paint2 = () => { const d = S.deep[key]; out.replaceChildren(d ? (d.error ? h('div', { class: 'aic-err', text: d.error }) : renderDeep(d.data)) : ''); };
+    paint2();
+    return h('div', { class: 'aic-dv' }, h('button', { text: label, onclick: async ev => { const b = ev.currentTarget; b.disabled = true; try { S.deep[key] = { data: await readTool(tool, args) }; } catch (e) { S.deep[key] = { error: (e && e.message) || 'Could not read this.' }; } b.disabled = false; paint2(); } }), h('span', { class: 'aic-sub', text: ' ' + tool }), out);
+  }));
 }
 
 // ── health ──
@@ -382,15 +465,15 @@ function secHealth() {
 // ── tools (lazy) ──
 function secTools() {
   const body = h('div', { class: 'aic-toolsbody' });
-  const det = h('details', { class: 'aic-tooldet', ontoggle: ev => { S.toolsOpen = ev.target.open; if (S.toolsOpen) fillTools(body); } }, h('summary', { text: listTools().length + ' registered tools · risk, approval and live stats' }), body);
+  const det = h('details', { class: 'aic-tooldet', ontoggle: ev => { S.toolsOpen = ev.target.open; if (S.toolsOpen) fillTools(body); } }, h('summary', { text: listTools().length + ' registered tools · risk, approval and 7-day stats on this device' }), body);
   if (S.toolsOpen) { det.setAttribute('open', ''); fillTools(body); }
   return card('tools', 'investigate', sectionHeader('TOOL INTELLIGENCE'), det);
 }
 function fillTools(el) {
-  const stats = T.toolStats(), by = {};
+  const stats = T.toolStats(), by = {}, gate = { writesAllowed: window.BTAgent ? window.BTAgent.writesAllowed() : false, killed: window.BTAgent ? window.BTAgent.killed() : true };
   listTools().forEach(t => (by[t.domain] = by[t.domain] || []).push(t));
-  el.replaceChildren(...Object.keys(by).sort().map(d => h('div', { class: 'aic-tg' }, h('div', { class: 'aic-k', text: d.toUpperCase() + ' TOOLS' }), h('div', { class: 'aic-twrap' }, h('table', {}, h('thead', {}, h('tr', {}, ['Tool', 'R/W', 'Risk', 'Approval', 'Runs', 'Success', 'Avg', 'Last used'].map(x => h('th', { text: x })))),
-    h('tbody', {}, by[d].map(t => { const st = stats[t.name], chg = t.risk === 'write' || t.risk === 'critical'; return h('tr', {}, h('td', { text: t.name, title: t.description }), h('td', { text: chg ? 'Write' : t.risk === 'ui' ? 'UI' : 'Read' }), h('td', {}, h('span', { class: 'aic-pill aic-' + (chg ? (t.risk === 'critical' ? 'cr' : 'wn') : 'ok'), text: t.risk })), h('td', { text: chg ? 'Required' + (t.risk === 'critical' ? ' + typed word' : '') : 'No' }), h('td', { text: st ? String(st.calls) : '0' }), h('td', { text: st && st.successRate != null ? st.successRate + '%' : '—' }), h('td', { text: st && st.avgMs != null ? st.avgMs + ' ms' : '—' }), h('td', { text: st ? M.ageLabel(st.lastAt) : 'not this session' })); }))))))); }
+  el.replaceChildren(...Object.keys(by).sort().map(d => h('div', { class: 'aic-tg' }, h('div', { class: 'aic-k', text: d.toUpperCase() + ' TOOLS' }), h('div', { class: 'aic-twrap' }, h('table', {}, h('thead', {}, h('tr', {}, ['Tool', 'Purpose', 'Status', 'R/W', 'Risk', 'Approval', 'Runs', 'Success', 'Avg', 'Last used'].map(x => h('th', { text: x })))),
+    h('tbody', {}, by[d].map(t => { const st = stats[t.name], chg = t.risk === 'write' || t.risk === 'critical'; const ts = M.toolStatus(t, gate); return h('tr', {}, h('td', { text: t.name, title: t.description }), h('td', { class: 'aic-purp', text: M.toolPurpose(t) }), h('td', {}, h('span', { class: 'aic-pill aic-' + M.toolTone(ts.status), text: ts.status, title: ts.detail })), h('td', { text: chg ? 'Write' : t.risk === 'ui' ? 'UI' : 'Read' }), h('td', {}, h('span', { class: 'aic-pill aic-' + (chg ? (t.risk === 'critical' ? 'cr' : 'wn') : 'ok'), text: t.risk })), h('td', { text: chg ? 'Required' + (t.risk === 'critical' ? ' + typed word' : '') : 'No' }), h('td', { text: st ? String(st.calls) : '0' }), h('td', { text: st && st.successRate != null ? st.successRate + '%' : '—' }), h('td', { text: st && st.avgMs != null ? st.avgMs + ' ms' : '—' }), h('td', { text: st ? M.ageLabel(st.lastAt) : 'not in 7 days' })); }))))))); }
 
 // ── repository intelligence (honest placeholder) ──
 function secRepo() {
@@ -460,7 +543,7 @@ function openPalette() {
 function paint() {
   const r = root(); if (!r || !pageOn()) return;
   const info = coreInfo();
-  const cards = [secCore(info), secAttention(), secSince(), secSystems(), secForecast(), secNetwork(info), secResponse(), secActions(info), secActivity(), secHealth(), secTools(), secRepo()]
+  const cards = [secCore(info), secAttention(), secCorrelation(), secSince(), secSystems(), secForecast(), secNetwork(info), secResponse(), secActions(info), secActivity(), secObs(), secHealth(), secTools(), secRepo()]
     .filter(c => c && c.getAttribute('data-modes').split(' ').includes(S.mode));
   const main = h('main', { class: 'aic-main', 'data-mode': S.mode }, cards);
   const offline = navigator.onLine === false ? h('div', { class: 'aic-offline', role: 'alert' }, h('b', { text: 'BT OFFLINE · ' }), 'Showing last known data' + (S.snap ? ' from ' + clock(S.snap.at) : '') + '. Some intelligence may be unavailable.') : null;
@@ -474,7 +557,7 @@ function paint() {
 // ───────────────────────── lifecycle ─────────────────────────
 function onTelemetry(e) {
   if (!S.mounted) return;
-  if (e.type === 'approval_requested' && window.BTAgent && pageOn()) { toast('BT needs your approval.'); window.BTAgent.open(); }
+  if (e.type === 'approval_requested' && window.BTAgent && pageOn()) { toast('BT needs your approval.'); if (typeof window.BTAgent.approvals === 'function') S.mode = 'act'; else window.BTAgent.open(); }
   if (e.type === 'answer' && S.awaitingFor) { S.assess[S.awaitingFor] = { text: (e.metadata && e.metadata.text) || '', at: e.timestamp }; S.awaitingFor = null; }
   if (e.type === 'error' || e.type === 'cancelled') S.awaitingFor = null;
   if (e.type === 'tool_end' && e.status === 'ok' && e.metadata && (e.metadata.risk === 'write' || e.metadata.risk === 'critical') && e.source !== 'ai-center') setTimeout(() => refresh({ force: true }), 800);

@@ -116,10 +116,10 @@ export function liveState(now = Date.now()) {
   }
   const open = [...started.values()].filter(e => !closed.has(e.request_id)).pop() || null;
   const lastClosed = [..._events].reverse().find(e => e.type === 'answer' || e.type === 'error') || null;
-  if (!open) return { open: null, lastClosed, pendingApproval: null, activeTool: null, steps: 0, tools: [], elapsedMs: 0 };
+  if (!open) return { open: null, lastClosed, pendingApproval: null, activeTool: null, verifying: null, steps: 0, tools: [], elapsedMs: 0 };
   const mine = _events.filter(e => e.request_id === open.request_id);
   const activeCalls = new Map();
-  let pendingApproval = null, steps = 0;
+  let pendingApproval = null, steps = 0, verifying = null;
   const tools = [];
   for (const e of mine) {
     if (e.type === 'step') steps = Math.max(steps, Number(e.metadata && e.metadata.step) || 0);
@@ -127,8 +127,10 @@ export function liveState(now = Date.now()) {
     if (e.type === 'tool_end') { activeCalls.delete(e.tool + '#' + e.entity_reference); tools.push({ tool: e.tool, status: e.status, duration: e.duration, domain: e.domain }); }
     if (e.type === 'approval_requested') pendingApproval = e;
     if (e.type === 'approval_resolved') pendingApproval = null;
+    if (e.type === 'verify_start') verifying = e;
+    if (e.type === 'verify_end') verifying = null;
   }
   const act = [...activeCalls.values()].pop() || null;
   const routed = mine.filter(e => e.type === 'routed').pop() || null;
-  return { open, lastClosed, pendingApproval, activeTool: act, steps, tools, routed, elapsedMs: now - open.timestamp };
+  return { open, lastClosed, pendingApproval, activeTool: act, verifying, steps, tools, routed, elapsedMs: now - open.timestamp };
 }

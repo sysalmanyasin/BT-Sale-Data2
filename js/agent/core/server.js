@@ -1,6 +1,7 @@
 // Thin transport to the bt-agent Edge Function. Uses the app's real
 // Supabase session JWT (Google sign-in) — never an API key.
 import { AgentError } from './agent-client.js';
+import { emit as telEmit } from './telemetry.js';
 import { parseSSE } from '../../shared/agent-shared.js';
 
 const FN_URL = 'https://wetbugzzchkghpzmowod.supabase.co/functions/v1/bt-agent';
@@ -28,6 +29,8 @@ export async function callServer(args) {
   catch (e) {
     if (e instanceof AgentError && (e.status === 503 || e.status === 429) && !/Daily AI request limit/.test(e.message)) {
       if (typeof args.onReset === 'function') args.onReset();
+      // A REAL retry (busy / rate-limited provider): recorded so the AI Center can show retries honestly.
+      telEmit({ type: 'retry', source: 'server', status: String(e.status), severity: 'warning', metadata: { http_status: e.status, delay_ms: retry.delayMs } });
       await sleep(retry.delayMs, args.signal);
       return callServerOnce(args);
     }

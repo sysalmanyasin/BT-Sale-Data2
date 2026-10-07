@@ -81,6 +81,18 @@ describe('client retry on busy providers', () => {
     const r = await server.callServer({ messages: [], tools: [], context: {}, sensitivity: 'normal' });
     assert.equal(r.message.content, 'hi'); assert.equal(calls, 2);
   });
+  test('a real retry is recorded as a telemetry event (and only a real one)', async () => {
+    const T = await import('../../js/agent/core/telemetry.js');
+    T.clear();
+    globalThis.fetch = async () => (++calls === 1 ? reply(503, { error: 'busy' }) : reply(200, { message: { content: 'hi' } }));
+    await server.callServer({ messages: [], tools: [], context: {}, sensitivity: 'normal' });
+    const r = T.recent(10).filter(e => e.type === 'retry');
+    assert.equal(r.length, 1); assert.equal(r[0].metadata.http_status, 503);
+    T.clear(); calls = 0;
+    globalThis.fetch = async () => { calls++; return reply(200, { message: { content: 'ok' } }); };
+    await server.callServer({ messages: [], tools: [], context: {}, sensitivity: 'normal' });
+    assert.equal(T.recent(10).filter(e => e.type === 'retry').length, 0, 'no retry, no event');
+  });
   test('gives up after one retry', async () => {
     globalThis.fetch = async () => { calls++; return reply(503, { error: 'busy' }); };
     await assert.rejects(server.callServer({ messages: [], tools: [], context: {}, sensitivity: 'normal' }), /busy/);

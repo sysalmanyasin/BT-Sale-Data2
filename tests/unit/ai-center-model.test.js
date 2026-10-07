@@ -86,7 +86,13 @@ describe('core state comes only from real signals', () => {
     assert.equal(M.deriveCoreState({ ...base, now, live: { open: null, lastClosed: { type: 'error', timestamp: now - 5000, metadata: { message: 'boom' } } } }).state, 'ERROR');
   });
   test('states BT cannot truthfully report are not in the vocabulary', () => {
-    assert.ok(!M.CORE_STATES.includes('VERIFYING')); assert.ok(!M.CORE_STATES.includes('RECOMMENDING'));
+    assert.ok(!M.CORE_STATES.includes('RECOMMENDING'));
+  });
+  test('VERIFYING is reported only while a real read-back is open', () => {
+    const base = { online: true, authed: true, snapshotReady: true, now: 1e12 };
+    const open = { request_id: 'r1', metadata: {} };
+    assert.equal(M.deriveCoreState({ ...base, live: { open, tools: [], verifying: { tool: 'add_staff_note' } } }).state, 'VERIFYING');
+    assert.notEqual(M.deriveCoreState({ ...base, live: { open, tools: [], verifying: null } }).state, 'VERIFYING');
   });
 });
 
@@ -96,13 +102,16 @@ describe('lifecycle strip', () => {
     assert.deepEqual(l.filter(s => s.reached).map(s => s.id), ['detect']);
     assert.deepEqual(M.deriveLifecycle([], false).filter(s => s.reached), []);
   });
-  test('stages light up only from matching real events; verify is never claimed', () => {
+  test('stages light up only from matching real events; verify only after a real verify_end', () => {
     const evs = [{ type: 'routed', metadata: { domains: ['sales', 'str'] } }, { type: 'tool_start' }, { type: 'tool_end', status: 'ok', metadata: { risk: 'read' } }, { type: 'step' }, { type: 'answer' }];
     const on = M.deriveLifecycle(evs, true).filter(s => s.reached).map(s => s.id);
     assert.deepEqual(on, ['detect', 'understand', 'investigate', 'correlate', 'reason', 'recommend']);
     const w = M.deriveLifecycle([{ type: 'approval_requested' }, { type: 'tool_end', status: 'ok', metadata: { risk: 'write' } }], false);
     assert.ok(w.find(s => s.id === 'act').reached); assert.ok(w.find(s => s.id === 'approve').reached);
-    assert.equal(w.find(s => s.id === 'verify').reached, false); assert.equal(w.find(s => s.id === 'verify').available, false);
+    assert.equal(w.find(s => s.id === 'verify').reached, false); assert.equal(w.find(s => s.id === 'verify').available, true);
+    const v1 = M.deriveLifecycle([{ type: 'verify_end', status: 'ok' }], false).find(s => s.id === 'verify');
+    assert.equal(v1.reached, true); assert.equal(v1.failed, false);
+    assert.equal(M.deriveLifecycle([{ type: 'verify_end', status: 'failed' }], false).find(s => s.id === 'verify').failed, true);
   });
 });
 

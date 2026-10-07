@@ -10,12 +10,12 @@
 // source 'ai-center' so the Activity timeline shows exactly what was read.
 // ══════════════════════════════════════════════════════════════════════
 import { runTool, listTools, getTool } from '../agent/core/tool-registry.js';
-import { emit, redact, toolStats } from '../agent/core/telemetry.js';
+import { emit, redact, toolStats, recent } from '../agent/core/telemetry.js';
 import { fetchUsage, summarizeUsage } from '../agent/core/usage-stats.js';
 import { getKillState } from '../agent/core/kill-switch.js';
 import { loadPendingUndos } from '../agent/core/undo-store.js';
 import { SPECIALISTS } from '../agent/core/specialists.js';
-import { buildFindings, systemStatus, buildForecast, freshness, providerHealth, SYSTEMS, fmtNum } from './model.js';
+import { buildFindings, systemStatus, buildForecast, freshness, providerHealth, specialistStats, specialistsHealth, realtimeHealth, SYSTEMS, fmtNum } from './model.js';
 
 export const getSb = () => (typeof window.btGetSupabaseClient === 'function' ? window.btGetSupabaseClient() : null);
 
@@ -127,9 +127,15 @@ export async function collectHealth(snapshot, now = Date.now()) {
   }
   const stats = toolStats(), tcalls = Object.values(stats).reduce((a, s) => a + s.calls, 0), tfail = Object.values(stats).reduce((a, s) => a + s.failed, 0);
   add('tools', 'Tools', tcalls >= 5 && tfail / tcalls >= 0.15 ? 'DEGRADED' : 'HEALTHY', listTools().length + ' registered · ' + (tcalls ? tfail + ' failed of ' + tcalls + ' runs this session' : 'no runs yet this session'));
-  add('specialists', 'Specialists', 'UNKNOWN', Object.keys(SPECIALISTS).length - 1 + ' defined · status appears after a request runs');
-  add('edge', 'Other Edge Functions', 'UNKNOWN', 'Not instrumented (briefing push, closing push, Drive backup)');
-  add('realtime', 'Realtime', 'UNKNOWN', 'Not instrumented');
+  // Specialists: measured from real request_start / error events (this session + the 7-day device history).
+  const sh = specialistsHealth(specialistStats(recent(400).reverse()), Object.keys(SPECIALISTS).length - 1);
+  add('specialists', 'Specialists', sh.status, sh.detail);
+  add('edge', 'Other Edge Functions', 'UNKNOWN', 'No heartbeat exists for the push briefing, closing push or Drive backup, so their health cannot be measured from the app. Not guessed.');
+  // Realtime: the app's own bt-sync channel state (window._sbGetChannel is the existing getter used by Sync Center).
+  let rtState = null;
+  try { const ch = typeof window._sbGetChannel === 'function' ? window._sbGetChannel() : undefined; rtState = ch === undefined ? null : (ch ? (ch.state || '') : ''); } catch (_) { rtState = null; }
+  const rt = realtimeHealth(rtState);
+  add('realtime', 'Realtime', rt.status, rt.detail);
   const fs = snapshot ? ['INVENTORY', 'STR', 'SALES'].map(s => snapshot.systems[s].fresh) : [];
   const worst = fs.some(f => f.status === 'ERROR') ? 'ERROR' : fs.some(f => f.status === 'WARNING') ? 'WARNING' : fs.some(f => f.status === 'HEALTHY') ? 'HEALTHY' : 'UNKNOWN';
   add('sync', 'Data sync', worst, snapshot ? ['Inventory ' + snapshot.systems.INVENTORY.fresh.label, 'STR ' + snapshot.systems.STR.fresh.label, 'Sales ' + snapshot.systems.SALES.fresh.label].join(' · ') : 'No snapshot');

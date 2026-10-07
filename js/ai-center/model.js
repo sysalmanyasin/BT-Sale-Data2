@@ -84,6 +84,7 @@ export function evidenceFor(item, b) {
   return ev;
 }
 
+export const fmtDur = ms => (ms == null ? '' : ms < 1000 ? Math.round(ms) + ' ms' : ms < 60000 ? (ms / 1000).toFixed(1) + ' s' : Math.floor(ms / 60000) + ' min ' + Math.round((ms % 60000) / 1000) + ' s');
 export const fmtNum = v => { const n = Number(v); return Number.isFinite(n) ? Math.round(n).toLocaleString('en-PK') : String(v); };
 
 const SEVERITY = { warn: 'warning', info: 'info', good: 'good' };
@@ -142,6 +143,14 @@ export function buildFindings(snap) {
     });
   }
 
+  // Fixed, rule-based guidance + entity/audit references for every finding (section 11). Not AI-written.
+  out.forEach(f => {
+    const g = guidanceFor(f.type, f.system);
+    f.recommendation = f.recommendation || g.rec;
+    f.if_act = g.ifAct;
+    f.related_entities = relatedEntitiesOf(f);
+    f.audit_reference = 'rule:' + f.source + '#' + f.id;
+  });
   const rank = { warning: 0, error: 0, info: 1, good: 2 };
   return out.sort((a, b2) => (rank[a.severity] ?? 3) - (rank[b2.severity] ?? 3));
 }
@@ -160,12 +169,13 @@ export function systemStatus(system, findings, availability) {
 }
 
 // ───────────────────────── BT core state (from REAL telemetry) ─────────────────────────
-export const CORE_STATES = Object.freeze(['IDLE', 'MONITORING', 'DETECTING', 'INVESTIGATING', 'CORRELATING', 'ANALYZING', 'WAITING_FOR_APPROVAL', 'EXECUTING', 'COMPLETE', 'ERROR', 'OFFLINE']);
+export const CORE_STATES = Object.freeze(['IDLE', 'MONITORING', 'DETECTING', 'INVESTIGATING', 'CORRELATING', 'ANALYZING', 'WAITING_FOR_APPROVAL', 'EXECUTING', 'VERIFYING', 'COMPLETE', 'ERROR', 'OFFLINE']);
 const DONE_FLASH_MS = 12000, ERROR_FLASH_MS = 60000;
 
 /**
  * @param {object} i { online, authed, snapshotLoading, snapshotReady, live (telemetry.liveState()), now }
- * RECOMMENDING / VERIFYING are deliberately never reported: nothing in BT emits those moments, so claiming them would be invented.
+ * RECOMMENDING is deliberately never reported: nothing in BT emits that moment. VERIFYING is real: it is reported only between a
+ * verify_start and verify_end event (the read-back that runs after an approved change).
  */
 export function deriveCoreState({ online = true, authed = true, snapshotLoading = false, snapshotReady = false, live = null, now = Date.now() } = {}) {
   if (!online) return { state: 'OFFLINE', detail: 'No network connection. Showing last known data.' };
@@ -173,6 +183,7 @@ export function deriveCoreState({ online = true, authed = true, snapshotLoading 
   if (live && live.open) {
     const q = live.open.metadata && live.open.metadata.question;
     if (live.pendingApproval) return { state: 'WAITING_FOR_APPROVAL', detail: 'Waiting for your approval: ' + ((live.pendingApproval.metadata && live.pendingApproval.metadata.title) || live.pendingApproval.tool) };
+    if (live.verifying) return { state: 'VERIFYING', detail: 'Reading the change back from the app data to confirm it: ' + live.verifying.tool };
     const at = live.activeTool;
     if (at && at.metadata && (at.metadata.risk === 'write' || at.metadata.risk === 'critical')) return { state: 'EXECUTING', detail: 'Running ' + at.tool };
     const multi = live.routed && live.routed.metadata && Array.isArray(live.routed.metadata.domains) && live.routed.metadata.domains.length > 1;
@@ -202,9 +213,10 @@ export function deriveLifecycle(events, detected) {
   const writeDone = ev.some(e => e.type === 'tool_end' && e.status === 'ok' && e.metadata && (e.metadata.risk === 'write' || e.metadata.risk === 'critical'));
   const reached = {
     detect: !!detected, understand: has('routed'), investigate: has('tool_start'), correlate: multi && has('tool_end'),
-    reason: has('step'), recommend: has('answer'), approve: has('approval_requested'), act: writeDone, verify: false, audit: writeDone,
+    reason: has('step'), recommend: has('answer'), approve: has('approval_requested'), act: writeDone, verify: has('verify_end'), audit: writeDone,
   };
-  return LIFECYCLE.map(([id, label]) => ({ id, label, reached: !!reached[id], available: id !== 'verify' }));
+  const vEnd = ev.find(e => e.type === 'verify_end');
+  return LIFECYCLE.map(([id, label]) => ({ id, label, reached: !!reached[id], available: true, ...(id === 'verify' && vEnd ? { failed: vEnd.status !== 'ok' } : {}) }));
 }
 
 // ───────────────────────── freshness + health rules ─────────────────────────
@@ -264,11 +276,11 @@ export function eventMatches(e, filter) {
   switch (filter) {
     case 'bt': return ['request_start', 'answer', 'instant', 'error', 'cancelled', 'writes_killed'].includes(e.type);
     case 'agents': return ['request_start', 'routed', 'step'].includes(e.type);
-    case 'tools': return e.type === 'tool_start' || e.type === 'tool_end';
+    case 'tools': return e.type === 'tool_start' || e.type === 'tool_end' || e.type === 'verify_start' || e.type === 'verify_end';
     case 'findings': return e.type === 'finding_new' || e.type === 'finding_cleared';
-    case 'actions': return (e.type === 'tool_end' || e.type === 'tool_start') && isChangeRisk(e);
+    case 'actions': return ((e.type === 'tool_end' || e.type === 'tool_start') && isChangeRisk(e)) || e.type === 'verify_start' || e.type === 'verify_end';
     case 'approvals': return e.type === 'approval_requested' || e.type === 'approval_resolved';
-    case 'system': return e.source === 'ai-center' || e.source === 'server' || e.type === 'snapshot';
+    case 'system': return e.source === 'ai-center' || e.source === 'server' || e.type === 'snapshot' || e.type === 'retry';
     default: return true;
   }
 }
@@ -283,7 +295,10 @@ export function describeEvent(e) {
     case 'tool_start': return (e.source === 'ai-center' ? 'AI Center read ' : 'Running ') + e.tool;
     case 'tool_end': return e.tool + (e.status === 'ok' ? ' finished' : e.status === 'rejected' ? ' rejected by you' : ' failed' + (m.error ? ': ' + m.error : '')) + (e.duration != null ? ' · ' + e.duration + ' ms' : '');
     case 'approval_requested': return 'Approval requested: ' + (m.title || e.tool);
-    case 'approval_resolved': return 'Change ' + e.status + ': ' + e.tool;
+    case 'approval_resolved': return 'Change ' + e.status + ': ' + e.tool + (e.duration != null ? ' (you took ' + fmtDur(e.duration) + ')' : '');
+    case 'verify_start': return 'Reading back the change: ' + e.tool;
+    case 'verify_end': { const c = Array.isArray(m.checks) ? m.checks : null; const okN = c ? c.filter(x => x && x.ok).length : m.passed, tot = c ? c.length : m.total; return (e.status === 'ok' ? 'Verified: ' : 'NOT verified: ') + e.tool + (tot != null ? ' (' + okN + ' of ' + tot + ' checks passed)' : ''); }
+    case 'retry': return 'Provider busy (HTTP ' + (m.http_status || e.status) + '): retrying once';
     case 'answer': return 'Answer produced in ' + m.steps + ' step(s)';
     case 'instant': return 'Answered instantly with no model call (' + (e.tool || 'local') + ')';
     case 'error': return 'Request failed: ' + (m.message || 'unknown error');
@@ -300,4 +315,147 @@ export function describeEvent(e) {
 export function diffFindings(prev, curr) {
   const p = new Map((prev || []).map(f => [f.id, f])), c = new Map((curr || []).map(f => [f.id, f]));
   return { added: [...c.values()].filter(f => !p.has(f.id)), cleared: [...p.values()].filter(f => !c.has(f.id)) };
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// APPROVAL VIEW (section 25) — built ONLY from the real proposal (tool preview) and the real approval_requested event.
+// Nothing here is model prose. `why` quotes the person's own question; `expected` is the preview's own change lines.
+// ══════════════════════════════════════════════════════════════════════
+const AFFECTED_KEYS = ['date', 'month', 'month_year', 'name', 'staff', 'staff_name', 'type', 'ledger_type', 'field', 'id', 'entry_id', 'item', 'product', 'str'];
+
+/**
+ * @param pending   one item of BTAgent.approvals(): { id, tool, risk, preview, armed }
+ * @param reqEvent  the matching approval_requested telemetry event (same approval id) or null
+ */
+export function approvalView(pending, reqEvent) {
+  const pv = pending.preview || {}, m = (reqEvent && reqEvent.metadata) || {}, args = m.args && typeof m.args === 'object' ? m.args : {};
+  const affected = AFFECTED_KEYS.filter(k => args[k] != null && typeof args[k] !== 'object').map(k => ({ label: k.replace(/_/g, ' '), value: String(args[k]) }));
+  if (pv.amount != null && pv.amount !== '' && Number.isFinite(Number(pv.amount)) && Number(pv.amount) !== 0) affected.push({ label: 'amount', value: 'Rs ' + fmtNum(pv.amount) });
+  const reversible = m.reversible === true;
+  const risk = pending.risk || m.risk || 'write';
+  return {
+    id: pending.id, tool: pending.tool, risk, tone: risk === 'critical' || pv.strong ? 'cr' : 'wn',
+    title: pv.title || pending.tool,
+    why: m.question ? { kind: 'FACT', text: 'You asked: "' + m.question + '"' + (m.specialist ? ' (handled by the ' + m.specialist + ' specialist)' : '') }
+      : { kind: 'FACT', text: 'BT proposed this change while working on your request.' },
+    evidence: (pv.lines || []).map(String).map(t => ({ kind: 'FACT', label: 'Proposed', value: t })),
+    warnings: (pv.warnings || []).map(String),
+    expected: (pv.lines || []).length ? 'If you approve, exactly this is written: ' + (pv.lines || []).slice(0, 4).map(String).join('; ') + '.' : 'If you approve, "' + (pv.title || pending.tool) + '" is applied.',
+    verification: 'After the change, BT reads it back from the app data and reports verified or not verified.',
+    reversibility: reversible ? { ok: true, text: 'Can be undone: from the Action Center for 48 hours.' } : { ok: false, text: 'Cannot be undone automatically. Check carefully before approving.' },
+    affected,
+    gate: pv.confirmWord ? { kind: 'type', word: String(pv.confirmWord), text: 'Type "' + pv.confirmWord + '" to approve.' }
+      : pv.strong ? { kind: 'twotap', text: pending.armed ? 'Tap once more to confirm.' : 'Needs two taps: Approve, then "Yes, I am sure".' } : { kind: 'tap', text: 'One tap to approve.' },
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// FINDING GUIDANCE (sections 11, 44) — fixed, rule-based wording per finding TYPE. Not AI. Labelled RECOMMENDATION (rule-based).
+// ══════════════════════════════════════════════════════════════════════
+const GUIDE = {
+  CASH: { rec: 'Compare the cash and bank figures for that day with the till count, then correct the daily entry if one of them is wrong.', ifAct: 'Opening the page changes nothing. If you correct the entry (yourself or through BT with your approval), the day\'s DIFF is recalculated from the new figures.' },
+  ANOMALY: { rec: 'Open the source page and compare the flagged days or entries before deciding. A drop can be genuine (weather, a holiday) or a missing entry.', ifAct: 'Reviewing changes nothing. A correction made through BT needs your approval, is read back to verify, and can be undone for 48 hours.' },
+  PERFORMANCE: { rec: 'No action needed. This is a positive signal.', ifAct: 'Nothing to act on.' },
+  FORECAST: { rec: 'Compare "needed per day" with "actual per day" on the Dashboard. Ask BT what would have to change to reach the target.', ifAct: 'Asking BT is read-only. Changing the target itself is a separate, approval-gated change.' },
+  INVENTORY: { rec: 'Review the listed products in Inventory Health. Items that are out of stock but selling are the first to reorder or request by STR.', ifAct: 'Reviewing is read-only. BT has no tool that places purchase orders.' },
+  STAFF: { rec: 'Open the staff credit view and check carried-over balances and possible duplicates against your records.', ifAct: 'Reviewing is read-only. Adding or removing a credit entry through BT needs your approval and can be undone for 48 hours.' },
+  WARNING: { rec: 'Add the missing daily sales entry so reports, cash difference and target pace are based on complete data.', ifAct: 'Once the entry exists, this finding clears on the next refresh, and pace and cash figures include that day.' },
+  CLOSING: { rec: 'Open the Closing Book and close the listed shifts.', ifAct: 'Closing the shifts completes that day\'s record. This finding clears on the next refresh.' },
+  STR: { rec: 'Open the STR page, follow up the oldest transfer, and mark it received when the stock arrives.', ifAct: 'Following up is outside BT. Marking received happens on the STR page and updates STR counts.' },
+};
+const DATE_RE = /\b(\d{1,2}\/[A-Za-z]{3}\/\d{4}|\d{4}-\d{2}-\d{2})\b/g;
+const STR_RE = /\bSTR[-\s]?[A-Za-z0-9-]{3,}\b/g;
+
+export function guidanceFor(type, system) {
+  return GUIDE[type] || GUIDE[system] || GUIDE.ANOMALY;
+}
+export function relatedEntitiesOf(f) {
+  const hay = [f.title, f.description, ...(f.evidence || []).map(e => e.value)].join(' | '), out = [], seen = new Set();
+  const add = (kind, value) => { const k = kind + ':' + value; if (!seen.has(k)) { seen.add(k); out.push({ kind, value }); } };
+  (hay.match(DATE_RE) || []).forEach(v => add('date', v));
+  (hay.match(STR_RE) || []).forEach(v => add('str', v));
+  add('system', f.system);
+  return out.slice(0, 8);
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// CORRELATION (section 7) — rule-based CO-OCCURRENCE of findings across systems. It says "these appear together", never "A caused B".
+// ══════════════════════════════════════════════════════════════════════
+export function correlate(findings) {
+  const f = (findings || []).filter(x => x.severity === 'warning' || x.severity === 'error');
+  const by = (sys, re) => f.filter(x => x.system === sys && (!re || re.test(x.title)));
+  const out = [];
+  const add = (id, systems, title, why, parts) => out.push({ id, systems, kind: 'CORRELATION', confidence: 'co-occurrence', title, why, parts: parts.map(p => ({ id: p.id, title: p.title })) });
+  const cash = by('CASH'), sales = f.filter(x => x.system === 'SALES' && /below the same weekday|below the recent|recent daily average|weekday/i.test(x.title)), inv = by('INVENTORY', /out of stock|run out/i), strs = by('STR');
+  if (cash.length && sales.length) add('c_cash_sales', ['CASH', 'SALES'], 'Cash difference and weak sales appear together', 'Both rules fired on the same data. A weak day is not evidence of a cash problem, and a cash difference is not evidence of weak sales. Check the day\'s entry first.', [cash[0], sales[0]]);
+  if (inv.length && sales.length) add('c_inv_sales', ['INVENTORY', 'SALES'], 'Out-of-stock items while sales are below normal', 'Products that were selling are out of stock or about to be, at a time sales are below the recent level. It is possible the two are linked. It is not proven.', [inv[0], sales[0]]);
+  if (strs.length && inv.length) add('c_str_inv', ['STR', 'INVENTORY'], 'Delayed incoming transfers while stock is short', 'Incoming STRs are overdue while items are out of stock or running out. If the delayed transfers contain those items, receiving them would help. Verify the contents of the oldest STR.', [strs[0], inv[0]]);
+  return out;
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// TOOL INTELLIGENCE (section 16)
+// ══════════════════════════════════════════════════════════════════════
+export function toolPurpose(t) {
+  const d = String((t && t.description) || '').replace(/\s+/g, ' ').trim();
+  const first = d.split(/(?<=[.!?])\s/)[0] || d;
+  return first.length > 110 ? first.slice(0, 107) + '...' : first;
+}
+/** Status of a tool right now, from REAL gates only (kill switch, per-device writes toggle, risk class). */
+export function toolStatus(t, { writesAllowed = false, killed = false } = {}) {
+  const change = t.risk === 'write' || t.risk === 'critical';
+  if (!change) return { status: 'AVAILABLE', detail: t.risk === 'ui' ? 'Opens an app view' : 'Read-only' };
+  if (killed) return { status: 'BLOCKED', detail: 'Kill switch is ON' };
+  if (!writesAllowed) return { status: 'READ-ONLY', detail: 'Changes are off on this device' };
+  return { status: 'APPROVAL', detail: 'Needs your approval each time' };
+}
+const TOOL_TONE = { AVAILABLE: 'ok', APPROVAL: 'wn', 'READ-ONLY': 'mu', BLOCKED: 'cr' };
+export const toolTone = s => TOOL_TONE[s] || 'mu';
+
+// ══════════════════════════════════════════════════════════════════════
+// OBSERVABILITY + HEALTH (sections 28, 42) — computed from real recorded events only.
+// ══════════════════════════════════════════════════════════════════════
+/** @param events any order. Real request durations, approval waits, retries, failures. */
+export function observability(events) {
+  const ev = (events || []).filter(e => e && !e.synthetic);
+  const starts = new Map(), ends = new Map();
+  ev.forEach(e => {
+    if (!e.request_id) return;
+    if (e.type === 'request_start') starts.set(e.request_id, e);
+    if (e.type === 'answer' || e.type === 'error' || e.type === 'cancelled') ends.set(e.request_id, e);
+  });
+  const durs = [];
+  starts.forEach((s, id) => { const en = ends.get(id); if (en && en.type === 'answer') durs.push(en.timestamp - s.timestamp); });
+  const waits = ev.filter(e => e.type === 'approval_resolved' && Number.isFinite(e.duration)).map(e => e.duration);
+  const avg = a => (a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length) : null);
+  const verifies = ev.filter(e => e.type === 'verify_end');
+  return {
+    requests: starts.size, answered: durs.length, errors: ev.filter(e => e.type === 'error').length,
+    avgInvestigationMs: avg(durs), maxInvestigationMs: durs.length ? Math.max(...durs) : null,
+    approvals: waits.length, avgApprovalWaitMs: avg(waits), maxApprovalWaitMs: waits.length ? Math.max(...waits) : null,
+    approvalsRejected: ev.filter(e => e.type === 'approval_resolved' && e.status === 'rejected').length,
+    retries: ev.filter(e => e.type === 'retry').length,
+    verified: verifies.filter(e => e.status === 'ok').length, verifyFailed: verifies.filter(e => e.status !== 'ok').length,
+  };
+}
+/** Per specialist: runs, failures, last run — from request_start + error events. */
+export function specialistStats(events) {
+  const ev = events || [], by = {}, owner = new Map();
+  ev.forEach(e => { if (e.type === 'request_start' && e.agent && e.request_id) { owner.set(e.request_id, e.agent); const o = by[e.agent] = by[e.agent] || { runs: 0, failed: 0, lastAt: 0 }; o.runs++; o.lastAt = Math.max(o.lastAt, e.timestamp); } });
+  ev.forEach(e => { if (e.type === 'error' && owner.has(e.request_id)) by[owner.get(e.request_id)].failed++; });
+  return by;
+}
+export function specialistsHealth(stats, definedCount) {
+  const rows = Object.values(stats || {}), runs = rows.reduce((a, r) => a + r.runs, 0), failed = rows.reduce((a, r) => a + r.failed, 0);
+  if (!runs) return { status: 'UNKNOWN', detail: definedCount + ' defined. No requests recorded in the last 7 days on this device.' };
+  const rate = failed / runs;
+  return { status: rate >= 0.5 ? 'ERROR' : rate >= 0.15 ? 'DEGRADED' : 'HEALTHY', detail: Object.keys(stats).length + ' of ' + definedCount + ' used. ' + runs + ' request(s), ' + failed + ' failed (last 7 days, this device).' };
+}
+/** Realtime channel state string (the app's own bt-sync channel) -> health. */
+export function realtimeHealth(state) {
+  if (state == null) return { status: 'UNKNOWN', detail: 'Realtime channel is not available in this view.' };
+  if (state === '') return { status: 'WARNING', detail: 'Channel not started yet.' };
+  if (state === 'joined') return { status: 'HEALTHY', detail: 'bt-sync channel joined.' };
+  if (state === 'joining') return { status: 'WARNING', detail: 'bt-sync channel is connecting.' };
+  return { status: 'ERROR', detail: 'bt-sync channel is ' + state + '. The app retries on its own.' };
 }

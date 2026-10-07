@@ -61,14 +61,15 @@ describe('AI Center page', () => {
     ui.__test.S.mode = 'investigate'; ui.__test.paint();
     assert.match(q('#aic-repo').textContent, /NOT CONNECTED/);
   });
-  test('verify lifecycle step is marked unavailable', () => {
+  test('verify lifecycle step is real but not lit without a real verify event', () => {
     const v = [...document.querySelectorAll('.aic-life li')].find(li => li.textContent === 'Verify');
-    assert.ok(v.classList.contains('na'));
+    assert.ok(!v.classList.contains('na')); assert.ok(!v.classList.contains('on'));
   });
   test('health rows are measured; unmeasured subsystems stay UNKNOWN', () => {
     ui.__test.S.mode = 'monitor'; ui.__test.paint();
     const t = q('#aic-health').textContent;
-    assert.match(t, /Realtime/); assert.match(t, /Not instrumented/);
+    assert.match(t, /Realtime/); assert.match(t, /not available in this view|not started|channel/i);
+    assert.match(t, /cannot be measured|Not guessed/); // Edge Functions have no heartbeat: stated, not invented
   });
   test('modes filter the cards', async () => {
     ui.__test.S.mode = 'act'; ui.__test.paint();
