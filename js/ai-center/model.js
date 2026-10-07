@@ -459,3 +459,30 @@ export function realtimeHealth(state) {
   if (state === 'joining') return { status: 'WARNING', detail: 'bt-sync channel is connecting.' };
   return { status: 'ERROR', detail: 'bt-sync channel is ' + state + '. The app retries on its own.' };
 }
+
+// ══════════════════════════════════════════════════════════════════════
+// REPOSITORY INTELLIGENCE (sections 8, 47) — search over the secret-filtered SYMBOL index built by scripts/build-repo-index.mjs.
+// The index holds names, line numbers and one-line file summaries. It never holds source code, so nothing here can quote code.
+// ══════════════════════════════════════════════════════════════════════
+export function validRepoIndex(idx) { return !!(idx && idx.version === 1 && Array.isArray(idx.index) && idx.index.length); }
+export function searchRepoIndex(idx, query, limit = 12) {
+  if (!validRepoIndex(idx)) return [];
+  const terms = String(query || '').toLowerCase().split(/[^a-z0-9_]+/).filter(t => t.length > 1).slice(0, 6);
+  if (!terms.length) return [];
+  const out = [];
+  for (const f of idx.index) {
+    const path = f.f.toLowerCase(), sum = String(f.s || '').toLowerCase(), pen = path.startsWith('tests/') ? -3 : 0;
+    for (const s of [...(f.sym || []), ...(f.tools || [])]) {
+      const n = String(s.n).toLowerCase(); let score = 0;
+      for (const t of terms) { if (n === t) score += 10; else if (n.includes(t)) score += 5; else if (path.includes(t) || sum.includes(t)) score += 1; else { score = -1; break; } }
+      if (score > 0) out.push({ file: f.f, line: s.l, name: s.n, kind: s.k, domain: s.d || '', risk: s.r || '', summary: f.s || '', score: score + (s.k === 'tool' ? 2 : 0) + pen });
+    }
+    if (terms.every(t => path.includes(t) || sum.includes(t))) out.push({ file: f.f, line: 1, name: f.f, kind: 'file', domain: '', risk: '', summary: f.s || '', score: 2 + pen });
+  }
+  return out.sort((a, b) => b.score - a.score || a.file.localeCompare(b.file)).slice(0, limit);
+}
+export function repoIndexInfo(idx, now = Date.now()) {
+  if (!validRepoIndex(idx)) return null;
+  const at = Date.parse(idx.generated_at), age = Number.isFinite(at) ? now - at : null;
+  return { files: idx.files, symbols: idx.symbols, commit: idx.commit || 'unknown', builtAt: at, age: ageLabel(at, now), stale: age != null && age > 14 * 86400000 };
+}

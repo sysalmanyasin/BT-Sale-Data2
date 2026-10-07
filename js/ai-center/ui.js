@@ -27,7 +27,7 @@ const STALE_MS = 5 * 60000, REFRESH_MS = 45000;
 const S = {
   snap: null, health: null, actions: null, history: [], loading: false, error: null,
   mode: 'monitor', filter: 'all', baseline: null, started: false, tick: 0, toolsOpen: false,
-  awaitingFor: null, assess: {}, lastRefreshAt: 0, mounted: false, rafId: 0, deep: {},
+  awaitingFor: null, assess: {}, lastRefreshAt: 0, mounted: false, rafId: 0, deep: {}, repo: { state: 'idle', idx: null }, repoQ: '',
 };
 
 // ───────────────────────── tiny DOM helpers ─────────────────────────
@@ -476,9 +476,33 @@ function fillTools(el) {
     h('tbody', {}, by[d].map(t => { const st = stats[t.name], chg = t.risk === 'write' || t.risk === 'critical'; const ts = M.toolStatus(t, gate); return h('tr', {}, h('td', { text: t.name, title: t.description }), h('td', { class: 'aic-purp', text: M.toolPurpose(t) }), h('td', {}, h('span', { class: 'aic-pill aic-' + M.toolTone(ts.status), text: ts.status, title: ts.detail })), h('td', { text: chg ? 'Write' : t.risk === 'ui' ? 'UI' : 'Read' }), h('td', {}, h('span', { class: 'aic-pill aic-' + (chg ? (t.risk === 'critical' ? 'cr' : 'wn') : 'ok'), text: t.risk })), h('td', { text: chg ? 'Required' + (t.risk === 'critical' ? ' + typed word' : '') : 'No' }), h('td', { text: st ? String(st.calls) : '0' }), h('td', { text: st && st.successRate != null ? st.successRate + '%' : '—' }), h('td', { text: st && st.avgMs != null ? st.avgMs + ' ms' : '—' }), h('td', { text: st ? M.ageLabel(st.lastAt) : 'not in 7 days' })); }))))))); }
 
 // ── repository intelligence (honest placeholder) ──
+function loadRepoIndex() {
+  if (S.repo.state !== 'idle') return;
+  S.repo.state = 'loading';
+  Promise.resolve().then(() => (typeof fetch === 'function' ? fetch('js/ai-center/repo-index.json', { cache: 'no-cache' }) : Promise.reject(new Error('no fetch'))))
+    .then(r => (r && r.ok ? r.json() : Promise.reject(new Error('HTTP ' + (r && r.status)))))
+    .then(j => { if (!M.validRepoIndex(j)) throw new Error('bad index'); S.repo = { state: 'ready', idx: j }; })
+    .catch(() => { S.repo = { state: 'error', idx: null }; })
+    .then(() => render());
+}
 function secRepo() {
-  return card('repo', 'investigate', sectionHeader('REPOSITORY INTELLIGENCE', pill('OFFLINE', 'NOT CONNECTED')),
-    h('p', { class: 'aic-sub', text: 'Understanding the BT source code (how a KPI is calculated, which tool powers it, what a change could break) needs a read-only, secret-filtered code index that does not exist in this app yet. Nothing here pretends otherwise. Business intelligence above is unaffected.' }));
+  loadRepoIndex();
+  const R = S.repo, info = R.state === 'ready' ? M.repoIndexInfo(R.idx) : null;
+  const head = sectionHeader('REPOSITORY INTELLIGENCE', info ? pill(info.stale ? 'WARNING' : 'HEALTHY', info.stale ? 'INDEX OLD' : 'INDEX READY') : pill(R.state === 'loading' ? 'UNKNOWN' : 'OFFLINE', R.state === 'loading' ? 'LOADING' : 'NOT CONNECTED'));
+  if (!info) return card('repo', 'investigate', head, h('p', { class: 'aic-sub', text: R.state === 'loading' ? 'Loading the code index...' : 'The code index (js/ai-center/repo-index.json) could not be loaded, so BT cannot say where things are calculated. Nothing here pretends otherwise. Build it with: npm run index:repo' }));
+  const results = h('div', { class: 'aic-rres' });
+  const draw = () => {
+    const q = S.repoQ.trim(), hits = M.searchRepoIndex(R.idx, q, 10);
+    results.replaceChildren(!q ? h('div', { class: 'aic-sub', text: 'Try: target pace, cash diff, low stock, closing, approval.' }) : !hits.length ? empty('No symbol, tool or file matches "' + q + '".')
+      : h('ul', { class: 'aic-list' }, hits.map(x => h('li', {}, tagEl(x.kind.toUpperCase()), ' ', h('b', { text: x.name }), x.kind === 'tool' ? h('span', { class: 'aic-sub', text: '  ' + x.domain + ' / ' + x.risk }) : null, h('div', { class: 'aic-sub', text: x.file + ':' + x.line + (x.summary ? '  |  ' + x.summary : '') })))));
+  };
+  const input = h('input', { id: 'aic-rq', class: 'aic-pin', type: 'search', placeholder: 'Where is it calculated? e.g. target pace', 'aria-label': 'Search the code index', autocomplete: 'off', value: S.repoQ });
+  input.addEventListener('input', () => { S.repoQ = input.value; draw(); });
+  draw();
+  return card('repo', 'investigate', head,
+    h('p', { class: 'aic-sub', text: info.files + ' files, ' + info.symbols + ' symbols. Built ' + info.age + ' at commit ' + info.commit + '. Names and locations only: no source code is stored or shown, and secret-bearing files are excluded. This is a snapshot, not live.' }),
+    info.stale ? h('div', { class: 'aic-note', text: 'This index is more than 14 days old. Rebuild it with: npm run index:repo' }) : null,
+    input, results);
 }
 
 // ── latest answer ──
@@ -516,7 +540,7 @@ const COMMANDS = () => [
   ['View approvals / actions', 'Act', () => goMode('act', 'aic-actc')], ['View activity', 'Investigate', () => goMode('investigate', 'aic-act')], ['View system health', 'Monitor', () => goMode('monitor', 'aic-health')],
   ...M.SYSTEMS.map(s => ['View ' + s.toLowerCase(), 'System', () => openSystem(s)]),
   ['Run health check', 'System', () => refresh({ force: true })],
-  ['Search repository', 'Unavailable', () => toast('Repository Intelligence is not connected yet.')], ['Explain architecture', 'Unavailable', () => toast('Repository Intelligence is not connected yet.')],
+  ['Search repository', 'Investigate', () => { goMode('investigate', 'aic-repo'); setTimeout(() => { const i = $('#aic-rq'); if (i) i.focus(); }, 60); }], ['Explain architecture', 'Docs', () => toast('Architecture notes: docs/ai-center-architecture.md in the repository.')],
   ['Open Dashboard', 'Go to', () => openPage('#dashboard')], ['Open Closing Book', 'Go to', () => openPage('#closing-book')], ['Open STR Report', 'Go to', () => openPage('#str')], ['Open Inventory Health', 'Go to', () => openPage('#inv-health')], ['Open Cover', 'Go to', () => openPage('#cover')],
 ];
 function goMode(mode, id) { closeModal(); S.mode = mode; paint(); const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
@@ -548,9 +572,11 @@ function paint() {
   const main = h('main', { class: 'aic-main', 'data-mode': S.mode }, cards);
   const offline = navigator.onLine === false ? h('div', { class: 'aic-offline', role: 'alert' }, h('b', { text: 'BT OFFLINE · ' }), 'Showing last known data' + (S.snap ? ' from ' + clock(S.snap.at) : '') + '. Some intelligence may be unavailable.') : null;
   const keep = $('#aic-q'), val = keep ? keep.value : '', hadFocus = keep && document.activeElement === keep;
+  const rqHad = !!(document.activeElement && document.activeElement.id === 'aic-rq');
   const scroll = window.scrollY;
   r.replaceChildren(secHeaderBar(info.core), secModes(), offline, S.error && S.snap ? h('div', { class: 'aic-err', text: 'Last refresh failed: ' + S.error }) : null, main, cmdBar());
   const q = $('#aic-q'); if (q) { q.value = val; if (hadFocus) q.focus(); }
+  if (rqHad) { const r2 = $('#aic-rq'); if (r2) { r2.focus(); const n = r2.value.length; try { r2.setSelectionRange(n, n); } catch (_) { /* not a text input */ } } }
   if (Math.abs(window.scrollY - scroll) > 1) window.scrollTo(0, scroll);
 }
 

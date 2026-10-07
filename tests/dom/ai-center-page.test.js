@@ -99,10 +99,10 @@ describe('AI Center page', () => {
     assert.equal(document.querySelectorAll('#aic-root img').length, 0);
     assert.match(text(), /<img src=x onerror=alert\(1\)>/);
   });
-  test('palette opens, filters, and unavailable commands say so', async () => {
+  test('palette opens and filters', async () => {
     ui.__test.openPalette();
     const inp = q('.aic-pin'); inp.value = 'repository'; inp.dispatchEvent(new window.Event('input'));
-    assert.match(q('.aic-plist').textContent, /Search repository/); assert.match(q('.aic-plist').textContent, /Unavailable/);
+    assert.match(q('.aic-plist').textContent, /Search repository/); assert.match(q('.aic-plist').textContent, /Investigate/);
     q('.aic-x').click();
   });
   test('tool failure: the page keeps working and says what is unavailable', async () => {

@@ -138,3 +138,27 @@ describe('history and restricted tools', () => {
     assert.ok(Object.isFrozen(window.BTAgent), 'BTAgent surface cannot be tampered with');
   });
 });
+
+describe('repository intelligence in the Center', () => {
+  test('with the real index it finds where a KPI is calculated, and shows no source code', async () => {
+    const { readFileSync } = await import('node:fs');
+    const real = JSON.parse(readFileSync(new URL('../../js/ai-center/repo-index.json', import.meta.url), 'utf8'));
+    const prev = globalThis.fetch;
+    globalThis.fetch = async u => (String(u).includes('repo-index.json') ? { ok: true, status: 200, json: async () => real } : prev(u));
+    ui.__test.S.repo = { state: 'idle', idx: null }; ui.__test.S.repoQ = '';
+    await show('investigate'); await wait(60);
+    assert.match(q('#aic-repo').textContent, /INDEX READY/); assert.doesNotMatch(q('#aic-repo').textContent, /NOT CONNECTED/);
+    const inp = q('#aic-rq'); inp.value = 'target pace'; inp.dispatchEvent(new window.Event('input'));
+    assert.match(q('.aic-rres').textContent, /getTargetPaceForMonth/); assert.match(q('.aic-rres').textContent, /js\/analytics\.js:\d+/);
+    assert.match(q('#aic-repo').textContent, /no source code/i);
+    globalThis.fetch = prev;
+  });
+  test('if the index cannot be loaded it says NOT CONNECTED and invents nothing', async () => {
+    const prev = globalThis.fetch;
+    globalThis.fetch = async () => { throw new Error('offline'); };
+    ui.__test.S.repo = { state: 'idle', idx: null };
+    await show('investigate'); await wait(60);
+    assert.match(q('#aic-repo').textContent, /NOT CONNECTED/); assert.ok(!q('#aic-rq'));
+    globalThis.fetch = prev;
+  });
+});
