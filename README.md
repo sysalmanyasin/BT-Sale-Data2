@@ -359,7 +359,7 @@ npm run test:verbose     # spec reporter
 npm run test:watch       # re-run on change
 ```
 
-**Last verified:** 17 suites, 167 tests, 0 failures, 0 skipped.
+**Last verified (2026-10-08, `npm test`, Node 22.22.2):** 170 suites, 909 tests, 909 pass, 0 failures, 0 skipped.
 
 **Coverage:** static file integrity, script references, manifest validation, service-worker shell consistency, JS syntax, pure modules, EventBus, print API surface, Staff Registry (Repository + Actions), DOM and navigation behaviour.
 

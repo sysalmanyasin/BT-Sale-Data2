@@ -16,7 +16,7 @@ Listed live in the Center (Tool Intelligence): domain, purpose, status (AVAILABL
 Every change: preview, trusted tap (2 taps if strong, typed word for deletes), kill switch, writes lock, audit, 48 h undo, and now an automatic read-back verify. The Center cannot approve anything by script.
 
 ## Tests
-Unit and DOM suites run with `npm test` (790 at the time of writing). New this round: model v2, approval/verify/history/security end to end through the real UI and panel, repo-index secret filtering and search, retry telemetry.
+Measured 2026-10-08 by running `npm test` (Node 22.22.2, jsdom, clean `npm ci`): 170 suites, 909 tests, 909 pass, 0 fail, 0 skipped, about 56 s. Earlier counts in this file (790) and the README (167) were stale. New this round: model v2, approval/verify/history/security end to end through the real UI and panel, repo-index secret filtering and search, retry telemetry.
 
 ## Known limitations (honest list)
 1. **Not yet seen in a real browser**: layout on desktop/tablet/phone, animation, sticky command bar over the bottom nav. Needs your screenshots.
@@ -29,3 +29,23 @@ Unit and DOM suites run with `npm test` (790 at the time of writing). New this r
 8. **Repository index** is a snapshot built by `npm run index:repo` (names and locations only; it cannot explain code). It needs a rebuild after code changes; the Center shows its age and commit. It is a static file, not an Edge Function.
 9. **Correlations** are rule-based co-occurrence, labelled not-proof. No statistical or AI correlation runs automatically.
 10. **Recommendations** are fixed rule text per finding type, not AI.
+
+## Completion status (audited 2026-10-08, HEAD 8506935)
+Status is based only on what was run in a sandbox with no browser, no Supabase credentials and no model access.
+
+| Requirement | Status | Evidence / blocker |
+|---|---|---|
+| Full test suite | DONE | 909/909 pass, 0 fail (run, not quoted from commits) |
+| Docs and test counts | DONE | README and this report corrected |
+| Repo index and SW cache | DONE | Index rebuilt at HEAD gives the same content (260 files, 2553 symbols); SW cache is v11.26 and precaches repo-index.json |
+| Approval, reject, write, VERIFY, audit, undo (code paths) | PARTIAL | Covered by DOM and unit tests against fakes; not run against production Supabase |
+| Six-system KPI accuracy vs production | NOT VERIFIED | Needs live data; checklist in ai-center-kpi-verification.md |
+| UNKNOWN / OFFLINE / DEGRADED states | PARTIAL | Test-covered; not observed live |
+| Single / multi-specialist investigations | PARTIAL | Orchestrator and UI tests pass; real model-backed runs not executed |
+| Repository Intelligence through the UI | PARTIAL | jsdom UI tests pass; not seen in a browser |
+| Responsive UI (desktop / tablet / mobile), accessibility | NOT VERIFIED | No browser in this environment; known limitation 1 stands |
+| Security: auth expiry, kill switch, redaction, failures | PARTIAL | Static and unit tests pass; live auth expiry and realtime failure not exercised |
+| Cash and Staff as separate specialists | NOT DONE (by design) | Served by one Staff & money specialist; no fake specialists added |
+| Voice | NOT DONE | Disabled pending decision (privacy) |
+
+Overall: the code and test suite are healthy, but production readiness is not proven. Remaining blockers are live-data KPI checks, a real-browser responsive pass, and live write/approve/VERIFY/undo runs.
