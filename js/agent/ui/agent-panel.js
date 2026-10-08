@@ -3,6 +3,7 @@
 // Pure presentation: delegates everything to runAgent().
 // ══════════════════════════════════════════════════════════════════════
 import { runAgent, AgentError } from '../core/agent-client.js';
+import { planInvestigation, runInvestigation } from '../core/orchestrator.js';
 import { callServer, callAction } from '../core/server.js';
 import { createConversation, appendTurn, listConversations, loadConversation, deleteConversation, deleteAllConversations, pruneOld } from '../core/history.js';
 import { syncKnowledge, getPrefs as getKnowPrefs, setPrefs as setKnowPrefs, clearManifest } from '../core/knowledge.js';
@@ -329,25 +330,30 @@ export function mountAgentPanel() {
     abort = new AbortController();
     try {
       await refreshKill(); // server-side switch: checked before every request
-      const r = await runAgent({
+      // "Why ..." questions that touch several business areas are investigated by independent specialists and
+      // synthesised by the Analyst (read-only). Plain look-ups keep the single cheap specialist run below.
+      const plan = planInvestigation(q);
+      const onEvent = ev => {
+        if (ev.type === 'phase') status.textContent = ev.text + '...';
+        if (ev.type === 'tool_start') status.textContent = (TOOL_LABELS[ev.name] || 'Working') + '...';
+        if (ev.type === 'token') { liveText += ev.text; if (!live) { status.remove(); live = el('div', { class: 'ag-msg ag-assistant' }); log.append(live); } live.textContent = liveText; log.scrollTop = log.scrollHeight; }
+        if (ev.type === 'reset') { liveText = ''; if (live) { live.remove(); live = null; if (!status.isConnected) log.append(status); } }
+        if (ev.type === 'writes_killed') { killed = true; paintLock(); }
+        if (ev.type === 'tool_end' && !ev.ok && !ev.rejected && ev.error && /writes_disabled/.test(ev.error)) paintLock();
+      };
+      const r = plan.orchestrate ? await runInvestigation({ question: q, plan, callServer, context: getPageContext(), signal: abort.signal, sensitive, onEvent }) : await runAgent({
         history, userText: q, context: getPageContext(), callServer, signal: abort.signal, sensitive, stream: true,
         routeServer: t => callAction('route', { text: t }).then(r => r.domains || []),
         reviewServer: p => callAction('review', { proposal: { tool: p.tool, title: p.preview && p.preview.title, lines: ((p.preview && p.preview.lines) || []).map(String), amount: p.preview && p.preview.amount, today: new Date().toISOString().slice(0, 10) } }),
         writesEnabled: getWritesEnabled(), writesKilled: killed, approve, onUndoable: addUndoRow, prevSpecialist: lastSpecialist,
-        onEvent: ev => {
-          if (ev.type === 'tool_start') status.textContent = (TOOL_LABELS[ev.name] || 'Working') + '…';
-          if (ev.type === 'token') { liveText += ev.text; if (!live) { status.remove(); live = el('div', { class: 'ag-msg ag-assistant' }); log.append(live); } live.textContent = liveText; log.scrollTop = log.scrollHeight; }
-          if (ev.type === 'reset') { liveText = ''; if (live) { live.remove(); live = null; if (!status.isConnected) log.append(status); } }
-          if (ev.type === 'writes_killed') { killed = true; paintLock(); }
-          if (ev.type === 'tool_end' && !ev.ok && !ev.rejected && ev.error && /writes_disabled/.test(ev.error)) paintLock();
-        },
+        onEvent,
         onAudit: e => logToolCall(e, { conversationId }),
       });
-      history = r.messages; sensitive = r.sensitive; lastSpecialist = r.specialist;
+      history = r.investigation ? [...history, ...r.messages].slice(-30) : r.messages; sensitive = r.sensitive; lastSpecialist = r.specialist;
       status.remove(); if (live) { live.remove(); live = null; }
       const ab = addBubble('assistant', r.text);
       saveTurn(q, r.text, r.specialist && r.specialist.id);
-      if (r.specialist && r.specialist.id !== 'general') ab.append(el('div', { class: 'ag-by' }, r.specialist.label));
+      if (r.specialist && r.specialist.id !== 'general') ab.append(el('div', { class: 'ag-by' }, r.investigation ? 'Analyst - ' + r.investigation.plan.members.map(m => m.label).join(' + ') : r.specialist.label));
     } catch (e) {
       status.remove(); if (live) { live.remove(); live = null; }
       const msg = e instanceof AgentError ? e.message : 'Something went wrong. Please try again.';

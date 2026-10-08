@@ -17,6 +17,7 @@ import { emit } from './telemetry.js';
 export const MAX_STEPS = 8;
 export const MAX_HISTORY = 30;
 export const MAX_CHANGES_PER_TURN = 5;
+export const TOOL_TEXT_CAP = 1800; // per tool output kept for the evidence bundle (the model already saw the full text)
 export const ROUTE_TIMEOUT_MS = 3500, REVIEW_TIMEOUT_MS = 4500, REVIEW_MIN_AMOUNT = 20000;
 
 function withTimeout(promise, ms) {
@@ -37,31 +38,39 @@ export class AgentError extends Error {
  * @param {Function} [o.onEvent]    ({type:'tool_start'|'tool_end'|'step', ...})
  * @param {Function} [o.onAudit]    ({tool,risk,args,ok,resultChars,error})
  * @param {AbortSignal} [o.signal]
+ * @param {object} [o.forceSpecialist]  run exactly this specialist ({id,label,domains}); skips routing. Used by the orchestrator.
+ * @param {{requestId:string,investigationId:string}} [o.member]  this run is ONE member of an investigation: it shares the
+ *        investigation's request_id, emits no request_start/answer/error/cancelled of its own (the orchestrator owns the
+ *        request's life-cycle), and its tool-call refs are namespaced so parallel members never collide.
  * @returns {Promise<{text:string, messages:Array, steps:number, sensitive:boolean}>}
  */
-export async function runAgent({ history = [], userText, context = {}, callServer, onEvent = () => {}, onAudit = () => {}, signal, sensitive = false, allow, writesEnabled = false, approve = null, onUndoable = () => {}, prevSpecialist = null, writesKilled = false, stream = false, routeServer = null, reviewServer = null }) {
+export async function runAgent({ history = [], userText, context = {}, callServer, onEvent = () => {}, onAudit = () => {}, signal, sensitive = false, allow, writesEnabled = false, approve = null, onUndoable = () => {}, prevSpecialist = null, writesKilled = false, stream = false, routeServer = null, reviewServer = null, forceSpecialist = null, member = null }) {
   if (typeof callServer !== 'function') throw new AgentError('callServer is required');
   const messages = [...history, { role: 'user', content: String(userText || '').slice(0, 4000) }];
-  let specialist = pickSpecialist(userText, prevSpecialist);
+  let specialist = forceSpecialist ? { ...forceSpecialist, domains: Array.isArray(forceSpecialist.domains) ? forceSpecialist.domains : [] } : pickSpecialist(userText, prevSpecialist);
   // Real-event telemetry for the AI Center (in-memory only; args are redacted). Never affects the loop.
-  const requestId = 'rq_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const requestId = member ? member.requestId : 'rq_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const tel = (type, extra = {}) => emit({ type, request_id: requestId, agent: specialist.label, ...extra });
-  tel('request_start', { metadata: { question: String(userText || '').slice(0, 100), specialist: specialist.id } });
+  // A member run never closes the request: only the orchestrator emits request_start / answer / error / cancelled.
+  const telTop = (type, extra) => { if (!member) tel(type, extra); };
+  const toolLog = [];
+  if (!member) tel('request_start', { metadata: { question: String(userText || '').slice(0, 100), specialist: specialist.id } });
   // Keyword routing first (free, instant). Only a message with no clues at all costs one small model call.
-  if (typeof routeServer === 'function' && needsModelRoute(userText, prevSpecialist)) {
+  if (!forceSpecialist && typeof routeServer === 'function' && needsModelRoute(userText, prevSpecialist)) {
     try { const picked = specialistForDomains(await withTimeout(routeServer(String(userText).slice(0, 400)), ROUTE_TIMEOUT_MS)); if (picked) { specialist = picked; onEvent({ type: 'routed', specialist: picked.id }); tel('routed', { agent: picked.label, metadata: { specialist: picked.id, by: 'model' } }); } }
     catch (_) { /* keyword fallback already chosen */ }
   }
   const domains = specialist.domains;
-  tel('routed', { metadata: { specialist: specialist.id, domains, by: 'rules' } });
+  if (!member) tel('routed', { metadata: { specialist: specialist.id, domains, by: 'rules' } });
   // One specialist run = one focused model conversation (its tool group + domain briefing). `mode: single_run` is
   // deliberate: a multi-domain question is still ONE Analyst run here, not several independent specialists.
   const specT0 = Date.now();
   let specEnded = false;
-  tel('specialist_start', { metadata: { specialist: specialist.id, domains, mode: 'single_run' } });
-  const endSpec = (status, steps) => {
+  const mode = member ? 'independent' : 'single_run';
+  tel('specialist_start', { metadata: { specialist: specialist.id, domains, mode, ...(member ? { investigation_id: member.investigationId } : {}) } });
+  const endSpec = (status, steps, error = null) => {
     if (specEnded) return; specEnded = true;
-    tel('specialist_end', { status, duration: Date.now() - specT0, severity: status === 'ok' ? 'info' : 'warning', metadata: { specialist: specialist.id, domains, mode: 'single_run', steps } });
+    tel('specialist_end', { status, duration: Date.now() - specT0, severity: status === 'ok' ? 'info' : 'warning', metadata: { specialist: specialist.id, domains, mode, steps, tools: toolLog.length, ...(error ? { error: String(error).slice(0, 140) } : {}), ...(member ? { investigation_id: member.investigationId } : {}) } });
   };
   // Advisory model reviewer: can only ADD a warning to the approval card, never remove one or approve anything.
   const review = async (p) => {
@@ -105,7 +114,7 @@ export async function runAgent({ history = [], userText, context = {}, callServe
   let repeatGuard = '';
 
   for (let step = 1; step <= MAX_STEPS; step++) {
-    if (signal && signal.aborted) { tel('cancelled', { status: 'failed', severity: 'info' }); endSpec('cancelled', step - 1); throw new AgentError('Cancelled', { code: 'aborted' }); }
+    if (signal && signal.aborted) { telTop('cancelled', { status: 'failed', severity: 'info' }); endSpec('cancelled', step - 1); throw new AgentError('Cancelled', { code: 'aborted' }); }
     onEvent({ type: 'step', step });
     tel('step', { metadata: { step, max: MAX_STEPS } });
     let res;
@@ -117,13 +126,13 @@ export async function runAgent({ history = [], userText, context = {}, callServe
       signal,
       ...(stream ? { onToken: t => onEvent({ type: 'token', text: t }), onReset: () => onEvent({ type: 'reset' }) } : {}),
     }); } catch (e) {
-      tel(e && e.code === 'aborted' ? 'cancelled' : 'error', { status: 'failed', severity: 'error', metadata: { message: String((e && e.message) || e).slice(0, 140), http_status: e && e.status } });
-      endSpec(e && e.code === 'aborted' ? 'cancelled' : 'failed', step);
+      telTop(e && e.code === 'aborted' ? 'cancelled' : 'error', { status: 'failed', severity: 'error', metadata: { message: String((e && e.message) || e).slice(0, 140), http_status: e && e.status } });
+      endSpec(e && e.code === 'aborted' ? 'cancelled' : 'failed', step, e && e.message);
       throw e;
     }
     const msg = res && res.message;
-    if (!msg) { tel('error', { status: 'failed', severity: 'error', metadata: { message: 'empty response from AI' } }); endSpec('failed', step); throw new AgentError('Empty response from AI'); }
-    if (res.settings && res.settings.writes_killed === true && !killed) { tel('writes_killed', { source: 'server', severity: 'warning' }); killed = true; tools = getToolSchemas({ includeWrites: false, domains }); onEvent({ type: 'writes_killed' }); }
+    if (!msg) { telTop('error', { status: 'failed', severity: 'error', metadata: { message: 'empty response from AI' } }); endSpec('failed', step, 'empty response from AI'); throw new AgentError('Empty response from AI'); }
+    if (res.settings && res.settings.writes_killed === true && !killed) { telTop('writes_killed', { source: 'server', severity: 'warning' }); killed = true; tools = getToolSchemas({ includeWrites: false, domains }); onEvent({ type: 'writes_killed' }); }
 
     const calls = Array.isArray(msg.tool_calls) ? msg.tool_calls : [];
     const assistantMsg = { role: 'assistant', content: msg.content || null };
@@ -133,9 +142,9 @@ export async function runAgent({ history = [], userText, context = {}, callServe
     if (calls.length) onEvent({ type: 'reset' }); // text streamed before a tool call is narration, not the answer
     if (!calls.length) {
       const text = (msg.content || '').trim();
-      tel('answer', { status: 'ok', metadata: { steps: step, chars: text.length, text: text.slice(0, 1200) } });
+      telTop('answer', { status: 'ok', metadata: { steps: step, chars: text.length, text: text.slice(0, 1200) } });
       endSpec('ok', step);
-      return { text: text || 'I could not produce an answer. Please rephrase.', messages: compactHistory(messages), steps: step, sensitive: sawSensitive, domains, specialist };
+      return { text: text || 'I could not produce an answer. Please rephrase.', messages: compactHistory(messages), steps: step, sensitive: sawSensitive, domains, specialist, toolLog };
     }
 
     // Guard against the model looping on the exact same call set.
@@ -147,7 +156,7 @@ export async function runAgent({ history = [], userText, context = {}, callServe
       const name = call.function && call.function.name;
       const rawArgs = call.function && call.function.arguments;
       onEvent({ type: 'tool_start', name, args: rawArgs });
-      const callRef = String(call.id || name) + ':' + step;
+      const callRef = (member ? specialist.id + '/' : '') + String(call.id || name) + ':' + step;
       const t0 = Date.now(), toolDef = getTool(name);
       tel('tool_start', { tool: name, domain: toolDef ? toolDef.domain : null, entity_reference: callRef, metadata: { risk: toolDef ? toolDef.risk : 'unknown', args: safeParse(rawArgs) } });
       let result;
@@ -165,6 +174,7 @@ export async function runAgent({ history = [], userText, context = {}, callServe
       if (result.tool && result.tool.sensitive) sawSensitive = true;
       onEvent({ type: 'tool_end', name, ok: result.ok, error: result.error, rejected: !!result.rejected });
       tel('tool_end', { tool: name, domain: toolDef ? toolDef.domain : null, entity_reference: callRef, status: result.ok ? 'ok' : (result.rejected ? 'rejected' : 'failed'), duration: Date.now() - t0, severity: result.ok || result.rejected ? 'info' : 'warning', metadata: { risk: toolDef ? toolDef.risk : 'unknown', error: result.ok ? undefined : result.error, verified: result.verified ? result.verified.ok : undefined, undoable: result.ok && !!result.undo } });
+      toolLog.push({ tool: name, domain: toolDef ? toolDef.domain : null, ok: !!result.ok, error: result.error || null, ms: Date.now() - t0, args: safeParse(rawArgs), text: String(result.text || '').slice(0, TOOL_TEXT_CAP) });
       const undoKey = result.undo ? newUndoKey() : null;
       if (result.undo) { try { onUndoable({ tool: name, key: undoKey, ...result.undo }); } catch (_) { /* ui only */ } }
       try {
@@ -188,10 +198,10 @@ export async function runAgent({ history = [], userText, context = {}, callServe
     }
   }
   const text = 'I took too many steps without finishing. Try asking a narrower question.';
-  tel('error', { status: 'failed', severity: 'warning', metadata: { message: 'step limit reached' } });
-  endSpec('failed', MAX_STEPS);
+  telTop('error', { status: 'failed', severity: 'warning', metadata: { message: 'step limit reached' } });
+  endSpec('failed', MAX_STEPS, 'step limit reached');
   messages.push({ role: 'assistant', content: text });
-  return { text, messages: compactHistory(messages), steps: MAX_STEPS, sensitive: sawSensitive, domains, specialist };
+  return { text, messages: compactHistory(messages), steps: MAX_STEPS, sensitive: sawSensitive, domains, specialist, toolLog, incomplete: true };
 }
 
 /**
