@@ -14,7 +14,8 @@ import './tools/closing.js';
 import './tools/billing.js';
 import './tools/documents.js';
 import './tools/memory-tool.js';
-import './tools/verify.js'; // read-only verifiers for the change tools (must come after the tools register)
+import './tools/verify.js';
+import './tools/manager-intelligence-v2.js'; // read-only verifiers for the change tools (must come after the tools register)
 import { mountAgentPanel } from './ui/agent-panel.js';
 import * as Telemetry from './core/telemetry.js';
 import { startPersistence } from './core/telemetry-store.js';

@@ -158,14 +158,14 @@ function secHeaderBar(core) {
   return h('header', { class: 'aic-hdr' },
     h('div', { class: 'aic-hr1' },
       h('h1', { text: 'BT AI CENTER' }),
-      h('span', { class: 'aic-live aic-' + (core.state === 'OFFLINE' || core.state === 'ERROR' ? 'cr' : core.state === 'MONITORING' || core.state === 'IDLE' ? 'ok' : 'cy'), 'aria-live': 'polite' }, h('i', { class: 'aic-dot' }), core.state.replace(/_/g, ' '))),
+      h('span', { class: 'aic-live aic-' + (core.state === 'OFFLINE' || core.state === 'ERROR' ? 'cr' : core.state === 'READY' || core.state === 'IDLE' ? 'ok' : 'cy'), 'aria-live': 'polite' }, h('i', { class: 'aic-dot' }), core.state === 'READY' ? 'READY' : core.state.replace(/_/g, ' '))),
     h('div', { class: 'aic-tele', 'aria-label': 'Telemetry' },
       chip('SYSTEMS', M.SYSTEMS.length + ' monitored'),
       chip('FINDINGS', S.snap ? String(f.length) : '—'),
       chip('NEED REVIEW', S.snap ? String(warns) : '—', warns ? 'wn' : ''),
       chip('DATA AS OF', S.snap ? clock(S.snap.at) + ' (' + M.ageLabel(S.snap.at) + ')' : '—', stale ? 'wn' : ''),
       stale ? chip('STALE', 'refresh to update', 'wn') : null,
-      chip('MONITORING', 'on view · no background polling')));
+      chip('DATA VIEW', S.snap ? 'current snapshot loaded' : 'waiting for data')));
 }
 
 function secModes() {
@@ -335,7 +335,7 @@ function openFinding(f) {
   const A = S.assess[f.id];
   const ev = f.evidence.map(e => h('li', {}, h('span', { class: 'aic-tag aic-k-' + e.kind.split(' ')[0].toLowerCase(), text: e.kind }), ' ', h('b', { text: e.label + ': ' }), e.value));
   openModal(f.title.length > 60 ? f.type + ' · ' + f.system : f.title, h('div', { class: 'aic-find' },
-    h('div', { class: 'aic-row' }, pill(f.severity === 'warning' ? 'WARNING' : f.severity === 'good' ? 'HEALTHY' : 'UNKNOWN', f.severity.toUpperCase()), h('span', { class: 'aic-tag', text: f.system }), h('span', { class: 'aic-tag', text: f.type }), h('span', { class: 'aic-sub', text: 'Observed ' + M.ageLabel(f.detected_at) + ' · ' + clock(f.detected_at) })),
+    h('div', { class: 'aic-row' }, pill(f.severity === 'warning' ? 'WARNING' : f.severity === 'good' ? 'HEALTHY' : 'INFO', f.severity.toUpperCase()), h('span', { class: 'aic-tag', text: f.system }), h('span', { class: 'aic-tag', text: f.type }), h('span', { class: 'aic-sub', text: 'Observed ' + M.ageLabel(f.detected_at) + ' · ' + clock(f.detected_at) })),
     h('div', { class: 'aic-k', text: 'WHAT HAPPENED' }), h('p', { text: f.description }),
     h('div', { class: 'aic-k', text: 'EVIDENCE' }), h('ul', { class: 'aic-list' }, ev),
     h('div', { class: 'aic-k', text: 'INVESTIGATION PATH' }), h('div', { class: 'aic-path' }, f.related_agents.map((a, i) => [i ? h('span', { class: 'aic-arrow', text: '→' }) : null, h('span', { class: 'aic-tag', text: a })]), h('div', { class: 'aic-sub', text: 'Tools: ' + f.related_tools.join(', ') })),
@@ -523,7 +523,7 @@ function loadRepoIndex() {
 function secRepo() {
   loadRepoIndex();
   const R = S.repo, info = R.state === 'ready' ? M.repoIndexInfo(R.idx) : null;
-  const head = sectionHeader('REPOSITORY INTELLIGENCE', info ? pill(info.stale ? 'WARNING' : 'HEALTHY', info.stale ? 'INDEX OLD' : 'INDEX READY') : pill(R.state === 'loading' ? 'UNKNOWN' : 'OFFLINE', R.state === 'loading' ? 'LOADING' : 'NOT CONNECTED'));
+  const head = sectionHeader('REPOSITORY INTELLIGENCE', info ? pill(info.stale ? 'WARNING' : 'HEALTHY', info.stale ? 'INDEX OLD' : 'INDEX READY') : pill(R.state === 'loading' ? 'NOT_MEASURED' : 'OFFLINE', R.state === 'loading' ? 'LOADING' : 'NOT CONNECTED'));
   if (!info) return card('repo', 'investigate', head, h('p', { class: 'aic-sub', text: R.state === 'loading' ? 'Loading the code index...' : 'The code index (js/ai-center/repo-index.json) could not be loaded, so BT cannot say where things are calculated. Nothing here pretends otherwise. Build it with: npm run index:repo' }));
   const results = h('div', { class: 'aic-rres' });
   const locNode = l => h('li', {}, tagEl(String(l.kind || 'file').toUpperCase()), ' ', h('b', { text: l.symbol || l.file }),

@@ -165,7 +165,7 @@ export function isoDay(d) { return d.getFullYear() + '-' + String(d.getMonth() +
 /** Health of one business system. NEVER a made-up percentage: a status word + the real counts behind it. */
 export function systemStatus(system, findings, availability) {
   if (availability && availability.state && availability.state !== 'ready') {
-    return { status: availability.state === 'unauthorized' ? 'UNAUTHORIZED' : 'UNKNOWN', reason: availability.reason || 'Data not available', warnings: 0 };
+    return { status: availability.state === 'unauthorized' ? 'UNAUTHORIZED' : 'DATA_UNAVAILABLE', reason: availability.reason || 'Data not available', warnings: 0 };
   }
   const mine = findings.filter(f => f.system === system);
   const warns = mine.filter(f => f.severity === 'warning' || f.severity === 'error').length;
@@ -174,7 +174,7 @@ export function systemStatus(system, findings, availability) {
 }
 
 // ───────────────────────── BT core state (from REAL telemetry) ─────────────────────────
-export const CORE_STATES = Object.freeze(['IDLE', 'MONITORING', 'DETECTING', 'INVESTIGATING', 'CORRELATING', 'ANALYZING', 'WAITING_FOR_APPROVAL', 'EXECUTING', 'VERIFYING', 'COMPLETE', 'ERROR', 'OFFLINE']);
+export const CORE_STATES = Object.freeze(['IDLE', 'READY', 'DETECTING', 'INVESTIGATING', 'CORRELATING', 'ANALYZING', 'WAITING_FOR_APPROVAL', 'EXECUTING', 'VERIFYING', 'COMPLETE', 'ERROR', 'OFFLINE']);
 const DONE_FLASH_MS = 12000, ERROR_FLASH_MS = 60000;
 
 /**
@@ -199,7 +199,7 @@ export function deriveCoreState({ online = true, authed = true, snapshotLoading 
   if (lc && lc.type === 'error' && now - lc.timestamp < ERROR_FLASH_MS) return { state: 'ERROR', detail: (lc.metadata && lc.metadata.message) || 'The last request failed.' };
   if (lc && lc.type === 'answer' && now - lc.timestamp < DONE_FLASH_MS) return { state: 'COMPLETE', detail: 'Last request finished.' };
   if (snapshotLoading) return { state: 'DETECTING', detail: 'Reading current business data.' };
-  if (snapshotReady) return { state: 'MONITORING', detail: 'Watching your business data.' };
+  if (snapshotReady) return { state: 'READY', detail: 'Current business snapshot loaded. Refresh to update; no background polling.' };
   return { state: 'IDLE', detail: 'Waiting for first read.' };
 }
 
@@ -239,7 +239,7 @@ export function ageLabel(ts, now = Date.now()) {
 
 /** age → HEALTHY / WARNING / ERROR by thresholds. null/NaN age → UNKNOWN. */
 export function freshness(ts, { warnMs, errMs }, now = Date.now()) {
-  if (!ts || !Number.isFinite(ts)) return { status: 'UNKNOWN', label: 'no timestamp' };
+  if (!ts || !Number.isFinite(ts)) return { status: 'NOT_MONITORED', label: 'No freshness signal is exposed.' };
   const age = now - ts;
   return { status: age > errMs ? 'ERROR' : age > warnMs ? 'WARNING' : 'HEALTHY', label: ageLabel(ts, now), stale: age > warnMs };
 }
@@ -247,13 +247,13 @@ export function freshness(ts, { warnMs, errMs }, now = Date.now()) {
 /** summarizeUsage() rows → agent/provider health. UNKNOWN when there were no calls (we do not guess). */
 export function providerHealth(rows) {
   const calls = rows.reduce((a, r) => a + r.calls, 0), failed = rows.reduce((a, r) => a + r.failed, 0);
-  if (!calls) return { status: 'UNKNOWN', detail: 'No AI calls in the last 24 hours.' };
+  if (!calls) return { status: 'NOT_MEASURED', detail: 'No AI calls in the last 24 hours, so provider health is not measured.' };
   const rate = failed / calls;
   const detail = calls + ' calls · ' + failed + ' failed in 24h';
   return { status: rate >= 0.5 ? 'ERROR' : rate >= 0.15 ? 'DEGRADED' : 'HEALTHY', detail };
 }
 
-export const STATUS_TONE = Object.freeze({ HEALTHY: 'ok', CLEAR: 'ok', DEGRADED: 'wn', WARNING: 'wn', ATTENTION: 'wn', ERROR: 'cr', OFFLINE: 'cr', UNAUTHORIZED: 'cr', UNKNOWN: 'mu' });
+export const STATUS_TONE = Object.freeze({ HEALTHY: 'ok', CLEAR: 'ok', DEGRADED: 'wn', WARNING: 'wn', ATTENTION: 'wn', ERROR: 'cr', OFFLINE: 'cr', UNAUTHORIZED: 'cr', DATA_UNAVAILABLE: 'wn', NOT_MONITORED: 'mu', NOT_MEASURED: 'mu', CHECK_FAILED: 'wn', INFO: 'mu' });
 
 // ───────────────────────── forecast (two existing calculations, shown side by side) ─────────────────────────
 /**

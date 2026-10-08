@@ -54,8 +54,8 @@ describe('system status', () => {
     assert.equal(M.systemStatus('STR', [warn], { state: 'ready' }).status, 'ATTENTION');
     assert.equal(M.systemStatus('SALES', [warn], { state: 'ready' }).status, 'CLEAR');
   });
-  test('unavailable data is UNKNOWN, never CLEAR', () => {
-    assert.equal(M.systemStatus('STR', [], { state: 'error', reason: 'STR data is not loaded yet.' }).status, 'UNKNOWN');
+  test('unavailable data is DATA_UNAVAILABLE, never CLEAR', () => {
+    assert.equal(M.systemStatus('STR', [], { state: 'error', reason: 'STR data is not loaded yet.' }).status, 'DATA_UNAVAILABLE');
     assert.equal(M.systemStatus('INVENTORY', [], { state: 'empty', reason: 'x' }).status, 'UNKNOWN');
   });
 });
@@ -64,7 +64,7 @@ describe('core state comes only from real signals', () => {
   const base = { online: true, authed: true, snapshotReady: true, live: { open: null, lastClosed: null } };
   test('idle → monitoring → detecting', () => {
     assert.equal(M.deriveCoreState({ online: true, authed: true }).state, 'IDLE');
-    assert.equal(M.deriveCoreState(base).state, 'MONITORING');
+    assert.equal(M.deriveCoreState(base).state, 'READY');
     assert.equal(M.deriveCoreState({ ...base, snapshotLoading: true, snapshotReady: false }).state, 'DETECTING');
   });
   test('offline and signed-out win over everything', () => {

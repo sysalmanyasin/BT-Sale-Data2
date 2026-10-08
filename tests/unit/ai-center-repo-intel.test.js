@@ -51,7 +51,7 @@ describe('the spec questions, answered from the real index', () => {
   test('Where is approval implemented?', () => {
     const a = ask('Where is approval implemented?');
     assert.equal(a.kind, 'architecture'); assert.match(a.title, /Approval/);
-    const r = loc(a, 'js/agent/core/tool-registry.js', 'runTool'), p = loc(a, 'js/ai-center/ui.js', 'approve');
+    const r = loc(a, 'js/agent/core/tool-registry.js', 'runTool'), p = loc(a, 'js/ai-center/ui.js', 'approvalCard');
     assert.ok(r && Number.isInteger(r.line) && r.line > 1 && r.summary.length > 0 && r.role); assert.ok(p && p.line > 1);
     assert.ok(sourceLine(r.file, r.line).includes('runTool')); assert.ok(sourceLine(p.file, p.line).includes('approve'));
   });
@@ -62,7 +62,7 @@ describe('honesty', () => {
     for (const q of [...RI.SAMPLE_QUESTIONS, 'target pace', 'logToolCall']) {
       const a = ask(q); const text = JSON.stringify(a);
       assert.equal(isSecretLine(text), false, q);
-      for (const l of a.locations) { assert.ok(l.summary.length <= 140, q); assert.deepEqual(Object.keys(l).sort(), ['file', 'github', 'kind', 'line', 'note', 'related', 'role', 'summary', 'symbol'], q); }
+      for (const l of a.locations) { assert.ok(l.summary.length <= 140, q); assert.deepEqual(Object.keys(l).sort(), ['file', 'github', 'kind', 'line', 'note', 'related', 'role', 'summary', 'symbol', 'verified'], q); }
     }
   });
 });

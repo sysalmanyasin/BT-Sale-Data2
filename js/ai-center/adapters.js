@@ -101,8 +101,8 @@ function freshnessFor(s, r, now) {
   if (s === 'INVENTORY') return freshness(bridgeStamp('inventory'), { warnMs: 26 * H, errMs: 3 * DAY }, now);
   if (s === 'STR') return freshness(bridgeStamp('str'), { warnMs: 26 * H, errMs: 3 * DAY }, now);
   if (s === 'STAFF' && b && b.credit) return { status: 'HEALTHY', label: 'from local ledgers' };
-  if (s === 'CLOSING') return { status: 'UNKNOWN', label: 'no sync stamp exposed' };
-  return { status: 'UNKNOWN', label: 'no timestamp' };
+  if (s === 'CLOSING') return { status: 'NOT_MONITORED', label: 'No freshness signal is exposed for closing.' };
+  return { status: 'NOT_MONITORED', label: 'No freshness signal is exposed.' };
 }
 
 // ───────────────────────────────────────── system health ─────────────────────────────────────────
@@ -116,21 +116,21 @@ export async function collectHealth(snapshot, now = Date.now()) {
     try {
       const { data, error } = await sb.auth.getSession(); const s = data && data.session;
       add('auth', 'Authentication', error || !s ? 'UNAUTHORIZED' : 'HEALTHY', s ? 'Signed in · session valid until ' + new Date(s.expires_at * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'No active session');
-    } catch (_) { add('auth', 'Authentication', 'UNKNOWN', 'Session check failed'); }
+    } catch (_) { add('auth', 'Authentication', 'CHECK_FAILED', 'Session check could not be measured.'); }
     const usage = await fetchUsage(sb, 24); const ph = providerHealth(summarizeUsage(usage));
     add('agent', 'Agent (bt-agent function)', ph.status, ph.detail);
     try {
       const { error } = await sb.from('agent_audit').select('id', { head: true, count: 'exact' }).limit(1);
       add('audit', 'Audit log', error ? 'ERROR' : 'HEALTHY', error ? 'agent_audit is not readable' : 'agent_audit readable');
-    } catch (_) { add('audit', 'Audit log', 'UNKNOWN', 'Check failed'); }
-    add('approvals', 'Approvals / changes', kill.known ? (kill.killed ? 'WARNING' : 'HEALTHY') : 'UNKNOWN', !kill.known ? 'Kill-switch state unknown (changes treated as stopped)' : kill.killed ? 'Kill switch ON: all AI changes are stopped' : 'Gate active: every change needs your approval');
+    } catch (_) { add('audit', 'Audit log', 'CHECK_FAILED', 'Audit log health could not be measured.'); }
+    add('approvals', 'Approvals / changes', kill.known ? (kill.killed ? 'WARNING' : 'HEALTHY') : 'CHECK_FAILED', !kill.known ? 'Kill-switch state could not be checked; changes are treated as stopped' : kill.killed ? 'Kill switch ON: all AI changes are stopped' : 'Gate active: every change needs your approval');
   }
   const stats = toolStats(), tcalls = Object.values(stats).reduce((a, s) => a + s.calls, 0), tfail = Object.values(stats).reduce((a, s) => a + s.failed, 0);
   add('tools', 'Tools', tcalls >= 5 && tfail / tcalls >= 0.15 ? 'DEGRADED' : 'HEALTHY', listTools().length + ' registered · ' + (tcalls ? tfail + ' failed of ' + tcalls + ' runs this session' : 'no runs yet this session'));
   // Specialists: measured from real request_start / error events (this session + the 7-day device history).
   const sh = specialistsHealth(specialistStats(recent(400).reverse()), Object.keys(SPECIALISTS).length - 1);
   add('specialists', 'Specialists', sh.status, sh.detail);
-  add('edge', 'Other Edge Functions', 'UNKNOWN', 'No heartbeat exists for the push briefing, closing push or Drive backup, so their health cannot be measured from the app. Not guessed.');
+  add('edge', 'Other Edge Functions', 'NOT_MONITORED', 'Push briefing, closing push and Drive backup do not expose an in-app heartbeat. Health is not claimed.');
   // Realtime: the app's own bt-sync channel state (window._sbGetChannel is the existing getter used by Sync Center).
   let rtState = null;
   try { const ch = typeof window._sbGetChannel === 'function' ? window._sbGetChannel() : undefined; rtState = ch === undefined ? null : (ch ? (ch.state || '') : ''); } catch (_) { rtState = null; }
