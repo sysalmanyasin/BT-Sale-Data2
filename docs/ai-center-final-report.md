@@ -28,7 +28,7 @@ Measured 2026-10-08 by running `npm test` (Node 22.22.2, jsdom, clean `npm ci`):
 7. **Stored questions**: the first 100 characters of each question are kept in device history.
 8. **Repository index** is a snapshot built by `npm run index:repo` (names and locations only; it cannot explain code). It needs a rebuild after code changes; the Center shows its age and commit. It is a static file, not an Edge Function.
 9. **Correlations** are rule-based co-occurrence, labelled not-proof. No statistical or AI correlation runs automatically.
-10. **Recommendations** are fixed rule text per finding type, not AI.
+10. **Recommendations have two distinct paths.** (a) Every finding carries fixed rule-based guidance (`guidanceFor` in `js/ai-center/model.js`), labelled as rule text, not AI. (b) When an investigation runs, the orchestrator may emit a structured AI recommendation (`investigation_advice`, basis `analyst_synthesis`, `js/agent/core/orchestrator.js`), shown only when evidence supports it. The AI path is covered by unit tests only; it has not been exercised against a live model.
 
 ## Completion status (audited 2026-10-08, HEAD 8506935)
 Status is based only on what was run in a sandbox with no browser, no Supabase credentials and no model access.
