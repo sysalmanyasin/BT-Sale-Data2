@@ -44,7 +44,7 @@ body.aic-open .ag-fab{display:none}
 .aic-pill{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.1em;padding:1px 7px;border-radius:2px;border:1px solid currentColor;text-transform:uppercase}
 .aic-pill.aic-ok{color:var(--aic-ok)}.aic-pill.aic-wn{color:var(--aic-wn)}.aic-pill.aic-cr{color:var(--aic-cr)}.aic-pill.aic-mu{color:var(--aic-mu)}
 .aic-tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.12em;color:var(--aic-cy);border:1px solid var(--aic-ln);padding:0 6px;border-radius:2px}
-.aic-k-fact{color:var(--aic-ok)}.aic-k-calculation{color:var(--aic-bl)}.aic-k-detection{color:var(--aic-wn)}.aic-k-prediction{color:#c79bff}.aic-k-ai{color:#ff9bd5}
+.aic-k-fact{color:var(--aic-ok)}.aic-k-calculation{color:var(--aic-bl)}.aic-k-detection{color:var(--aic-wn)}.aic-k-prediction{color:#c79bff}.aic-k-ai{color:#ff9bd5}.aic-k-correlation{color:#ffd166}.aic-k-recommendation{color:#7bdff2}.aic-spec-ok{color:var(--aic-ok)}.aic-spec-bad{color:var(--aic-wn)}
 /* core */
 .aic-stage{--c:var(--aic-cy);position:relative;width:min(260px,70%);aspect-ratio:1;margin:4px auto}
 .aic-stage[data-s=investigating],.aic-stage[data-s=correlating],.aic-stage[data-s=analyzing],.aic-stage[data-s=detecting]{--c:var(--aic-bl)}

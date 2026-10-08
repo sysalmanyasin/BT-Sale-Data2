@@ -29,6 +29,11 @@ export const SYSTEM_SOURCES = Object.freeze({
   CLOSING:   { agents: ['Closing'],               tools: ['closing_status', 'closing_recent_days'] },
 });
 
+// Which business-area specialists investigate a finding of this system (the orchestrator then adds related areas).
+// CASH and STAFF are both owned by the 'Staff & money' specialist (ledger, credit, notes).
+export const FINDING_DOMAINS = Object.freeze({ SALES: ['sales'], CASH: ['manager'], INVENTORY: ['inventory'], STAFF: ['manager'], STR: ['str'], CLOSING: ['closing'] });
+export const domainsForFinding = f => (f && FINDING_DOMAINS[f.system] ? [...FINDING_DOMAINS[f.system]] : []);
+
 export const EVIDENCE_KINDS = Object.freeze(['FACT', 'CALCULATION', 'DETECTION', 'CORRELATION', 'AI INTERPRETATION', 'PREDICTION', 'RECOMMENDATION']);
 
 const digitsToHash = s => String(s || '').toLowerCase().replace(/[0-9][0-9,./]*/g, '#').replace(/\s+/g, ' ').trim();
@@ -298,7 +303,9 @@ export function describeEvent(e) {
     case 'evidence_bundle': return 'Evidence gathered: ' + m.grounded + ' of ' + m.members + ' specialists returned tool data' + (m.failed ? ', ' + m.failed + ' failed' : '') + (m.ungrounded && m.ungrounded.length ? ', ' + m.ungrounded.length + ' answered without data (not used)' : '');
     case 'synthesis': return e.status === 'failed' ? 'Analyst could not combine the evidence' + (m.error ? ': ' + m.error : '') : 'Analyst assessment: confidence ' + (m.confidence || 'not rated') + ', ' + (m.agreements || 0) + ' agreement(s), ' + (m.conflicts || 0) + ' conflict(s), ' + (m.correlations || 0) + ' possible correlation(s)' + (e.status === 'unstructured' ? ' (unstructured reply)' : '');
     case 'correlation': return 'Possible correlation (not proof of cause): ' + ((m.between || []).join(' / ')) + ' - ' + (m.statement || '') + (m.causal_language ? ' [wording claimed a cause: unproven]' : '');
-    case 'recommendation': return 'Recommendation: ' + (m.title || e.tool) + (m.requires_approval ? ' (needs your approval' + (m.reversible ? ', reversible)' : ', not reversible)') : '');
+    case 'recommendation': return m.kind === 'investigation_advice'
+      ? 'Recommendation (' + (m.action_type || 'advice') + (m.requires_approval ? ', any change needs your approval' : ', changes nothing') + (m.confidence && m.confidence !== 'unrated' ? ', confidence ' + m.confidence : '') + '): ' + (m.title || '')
+      : 'Recommendation: ' + (m.title || e.tool) + (m.requires_approval ? ' (needs your approval' + (m.reversible ? ', reversible)' : ', not reversible)') : '');
     case 'audit': return e.status === 'ok' ? 'Audit recorded: ' + e.tool : e.status === 'local_only' ? 'Audit kept on this device only (cloud log unavailable): ' + e.tool : 'AUDIT NOT RECORDED: ' + e.tool + (m.error ? ' (' + m.error + ')' : '');
     case 'undo': return (e.status === 'ok' ? 'Undone: ' : 'Undo failed: ') + (m.label || e.tool) + (e.status === 'ok' ? '' : (m.error ? ' (' + m.error + ')' : ''));
     case 'step': return 'Model step ' + m.step + ' of max ' + m.max;

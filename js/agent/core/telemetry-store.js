@@ -20,7 +20,7 @@ const num = v => (Number.isFinite(Number(v)) ? Number(v) : undefined);
 
 // Allow-list: the ONLY metadata fields that are ever persisted, per event type.
 const META = {
-  request_start: m => ({ question: clip(m.question), specialist: clip(m.specialist, 24) }),
+  request_start: m => ({ question: clip(m.question), specialist: clip(m.specialist, 24), investigation: m.investigation === true ? true : undefined, finding_id: clip(m.finding_id, 40) }),
   routed: m => ({ specialist: clip(m.specialist, 24), domains: Array.isArray(m.domains) ? m.domains.slice(0, 4).map(d => clip(d, 24)) : undefined, by: clip(m.by, 12), members: Array.isArray(m.members) ? m.members.slice(0, 4).map(d => clip(d, 24)) : undefined }),
   step: m => ({ step: num(m.step), max: num(m.max) }),
   tool_start: m => ({ risk: clip(m.risk, 12) }),
@@ -30,9 +30,9 @@ const META = {
   specialist_start: m => ({ specialist: clip(m.specialist, 24), domains: Array.isArray(m.domains) ? m.domains.slice(0, 4).map(d => clip(d, 24)) : undefined, mode: clip(m.mode, 16), investigation_id: clip(m.investigation_id, 32) }),
   specialist_end: m => ({ specialist: clip(m.specialist, 24), mode: clip(m.mode, 16), steps: num(m.steps), tools: num(m.tools), error: clip(m.error, 120), investigation_id: clip(m.investigation_id, 32) }),
   evidence_bundle: m => ({ members: num(m.members), ok: num(m.ok), failed: num(m.failed), grounded: num(m.grounded), tools: num(m.tools), tool_failures: num(m.tool_failures), ungrounded: Array.isArray(m.ungrounded) ? m.ungrounded.slice(0, 4).map(d => clip(d, 24)) : undefined }),
-  synthesis: m => ({ dropped_claims: num(m.dropped_claims), confidence: clip(m.confidence, 10), agreements: num(m.agreements), conflicts: num(m.conflicts), correlations: num(m.correlations), dropped_correlations: num(m.dropped_correlations), gaps: num(m.gaps), structured: typeof m.structured === 'boolean' ? m.structured : undefined, members: num(m.members), error: clip(m.error, 120) }),
+  synthesis: m => ({ dropped_recommendation: typeof m.dropped_recommendation === 'boolean' ? m.dropped_recommendation : undefined, dropped_claims: num(m.dropped_claims), confidence: clip(m.confidence, 10), agreements: num(m.agreements), conflicts: num(m.conflicts), correlations: num(m.correlations), dropped_correlations: num(m.dropped_correlations), gaps: num(m.gaps), structured: typeof m.structured === 'boolean' ? m.structured : undefined, members: num(m.members), error: clip(m.error, 120) }),
   correlation: m => ({ between: Array.isArray(m.between) ? m.between.slice(0, 2).map(d => clip(d, 24)) : undefined, kind: clip(m.kind, 16), statement: clip(m.statement, 200), evidence_class: clip(m.evidence_class, 20), causal: false, causal_language: !!m.causal_language }),
-  recommendation: m => ({ kind: clip(m.kind, 24), basis: clip(m.basis, 24), title: clip(m.title, 80), risk: clip(m.risk, 12), requires_approval: !!m.requires_approval, reversible: !!m.reversible, specialist: clip(m.specialist, 24) }),
+  recommendation: m => ({ kind: clip(m.kind, 24), basis: clip(m.basis, 24), title: clip(m.title, 80), risk: clip(m.risk, 12), action_type: clip(m.action_type, 10), requires_approval: !!m.requires_approval, reversible: typeof m.reversible === 'boolean' ? m.reversible : undefined, specialist: clip(m.specialist, 24), confidence: clip(m.confidence, 10), investigation_id: clip(m.investigation_id, 32), finding_id: clip(m.finding_id, 40) }),
   audit: m => ({ risk: clip(m.risk, 12), approval: clip(m.approval, 16), ok: !!m.ok, undoable: !!m.undoable, sink: clip(m.sink, 12), error: clip(m.error, 120) }),
   undo: m => ({ label: clip(m.label, 80), error: clip(m.error, 120) }),
   verify_start: () => ({}),

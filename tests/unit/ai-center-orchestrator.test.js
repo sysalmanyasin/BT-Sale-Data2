@@ -240,3 +240,132 @@ describe('lifecycle, persistence, labels for investigations', () => {
     for (const t of ['evidence_bundle', 'synthesis', 'correlation']) assert.ok(M.eventMatches({ type: t }, 'agents'), t);
   });
 });
+
+// ───────────────────────── Phase 3: finding context, typed evidence, recommendation ─────────────────────────
+import { parseRecommendation, buildEvidenceItems, EVIDENCE_CLASSES, synthesisPrompt } from '../../js/agent/core/orchestrator.js';
+
+const REC = (over = {}) => ({ needed: true, action: 'Reorder the two out-of-stock items today', why: 'Both items were selling and are at zero stock', expected_result: 'Sales of those items resume', risk: 'low', action_type: 'advice', affected: ['Panadol', 'Brufen'], evidence_from: ['inventory'], ...over });
+const FINDING = { id: 'f_abc', title: 'Yesterday Rs 41,000 is 30% below the recent average', system: 'SALES', source: 'daily_briefing',
+  evidence: [{ kind: 'DETECTION', label: 'Rule', value: 'below average' }, { kind: 'CALCULATION', label: 'vs recent average', value: '-30%' }, { kind: 'WEIRD', label: 'x', value: 'y' }] };
+
+describe('parseRecommendation', () => {
+  test('a data-backed recommendation keeps its fields; approval/verification/reversibility come from code, not the model', () => {
+    const { rec } = parseRecommendation(REC({ approval_required: false, how_verified: 'trust me', reversible: true }), ['inventory']);
+    assert.equal(rec.action_type, 'advice'); assert.equal(rec.approval_required, false); assert.equal(rec.reversible, null);
+    assert.match(rec.how_verified, /nothing to verify/i); assert.match(rec.reversibility_note, /Not applicable/); assert.deepEqual(rec.evidence_from, ['inventory']);
+  });
+  test('a change recommendation always requires approval and defers reversibility to the tool\'s approval card', () => {
+    const { rec } = parseRecommendation(REC({ action_type: 'change' }), ['inventory']);
+    assert.equal(rec.approval_required, true); assert.match(rec.how_verified, /VERIFY/); assert.match(rec.reversibility_note, /approval card/);
+  });
+  test('unsupported advice is withheld: no why, or no grounded specialist cited', () => {
+    assert.deepEqual(parseRecommendation(REC({ why: '' }), ['inventory']), { rec: null, dropped: true });
+    assert.deepEqual(parseRecommendation(REC({ evidence_from: ['sales'] }), ['inventory']), { rec: null, dropped: true });
+    assert.deepEqual(parseRecommendation(REC({ evidence_from: [] }), ['inventory']), { rec: null, dropped: true });
+  });
+  test('needed=false, empty or malformed -> no recommendation and nothing dropped', () => {
+    for (const r of [{ needed: false, action: 'x' }, { needed: true }, null, 'text', 5]) assert.deepEqual(parseRecommendation(r, ['inventory']), { rec: null, dropped: false });
+  });
+  test('bad risk/type are normalised; cause wording in the reasoning is flagged', () => {
+    const { rec } = parseRecommendation(REC({ risk: 'catastrophic', action_type: 'delete everything', why: 'Stock-outs caused the dip' }), ['inventory']);
+    assert.equal(rec.risk, 'unrated'); assert.equal(rec.action_type, 'advice'); assert.equal(rec.causal_language, true);
+  });
+});
+
+describe('investigating a finding', () => {
+  beforeEach(() => { T.clear(); ran.length = 0; });
+  test('the finding and its rule evidence reach the members and the Analyst (as app-detected, not AI)', async () => {
+    const srv = makeServer();
+    await runInvestigation({ question: 'Investigate this finding', plan: plan(['sales', 'inventory']), callServer: srv, finding: FINDING });
+    const member = srv.calls.find(c => c.focus === 'sales').messages[0].content;
+    assert.match(member, /flagged this finding/); assert.match(member, /30% below the recent average/); assert.match(member, /vs recent average: -30%/);
+    const a = srv.calls.find(c => c.focus === 'analyst').messages[0].content;
+    assert.match(a, /detected by the app's rules, not by AI/);
+    assert.equal(evs().find(e => e.type === 'request_start').metadata.finding_id, 'f_abc');
+  });
+  test('onResult is called with the structured result BEFORE the answer event; finding_id is attached', async () => {
+    let seenTypes = null, got = null;
+    await runInvestigation({ question: 'Investigate', plan: plan(['sales', 'inventory']), callServer: makeServer({ syn: SYN({ recommendation: REC() }) }), finding: FINDING,
+      onResult: r => { got = r; seenTypes = types(); } });
+    assert.equal(seenTypes.includes('answer'), false, 'result must be readable before the answer event fires');
+    assert.equal(got.finding_id, 'f_abc'); assert.ok(got.synthesis.recommendation); assert.ok(got.text.length > 0);
+  });
+  test('a throwing onResult never breaks the investigation', async () => {
+    const r = await runInvestigation({ question: 'Why?', plan: plan(['sales', 'inventory']), callServer: makeServer(), onResult: () => { throw new Error('ui'); } });
+    assert.ok(r.text);
+  });
+});
+
+describe('recommendation event + lifecycle', () => {
+  beforeEach(() => T.clear());
+  test('a valid recommendation emits ONE recommendation event, after synthesis and before the answer; Recommend lights, Approve/Act do not', async () => {
+    const r = await runInvestigation({ question: 'Why are sales weak?', plan: plan(['sales', 'inventory']), callServer: makeServer({ syn: SYN({ recommendation: REC() }) }), finding: FINDING });
+    const t = types();
+    assert.equal(t.filter(x => x === 'recommendation').length, 1);
+    assert.ok(t.indexOf('synthesis') < t.indexOf('recommendation') && t.indexOf('recommendation') < t.indexOf('answer'));
+    const e = evs().find(x => x.type === 'recommendation');
+    assert.equal(e.metadata.kind, 'investigation_advice'); assert.equal(e.metadata.requires_approval, false); assert.equal(e.metadata.finding_id, 'f_abc'); assert.equal(e.metadata.reversible, undefined);
+    const on = M.deriveLifecycle(evs().reverse(), false).filter(s => s.reached).map(s => s.id);
+    assert.ok(on.includes('recommend')); assert.equal(on.includes('approve'), false); assert.equal(on.includes('act'), false);
+    assert.match(r.text, /\*\*Recommendation\*\*/); assert.match(r.text, /Approval: not needed/); assert.match(r.text, /Verification: Nothing is changed/);
+    assert.match(M.describeEvent(e), /changes nothing/);
+  });
+  test('no recommendation event when the Analyst gave none, or when it was withheld as unsupported', async () => {
+    await runInvestigation({ question: 'Why?', plan: plan(['sales', 'inventory']), callServer: makeServer() });
+    assert.equal(types().includes('recommendation'), false);
+    T.clear();
+    const r = await runInvestigation({ question: 'Why?', plan: plan(['sales', 'inventory']), callServer: makeServer({ syn: SYN({ recommendation: REC({ evidence_from: ['closing'] }) }) }) });
+    assert.equal(types().includes('recommendation'), false); assert.equal(r.investigation.synthesis.dropped_recommendation, true);
+    assert.match(r.text, /recommendation was withheld/); assert.equal(evs().find(e => e.type === 'synthesis').metadata.dropped_recommendation, true);
+  });
+  test('a change-type recommendation says approval is required but still changes nothing by itself', async () => {
+    const r = await runInvestigation({ question: 'Why?', plan: plan(['sales', 'inventory']), callServer: makeServer({ syn: SYN({ recommendation: REC({ action_type: 'change' }) }) }) });
+    assert.equal(evs().find(e => e.type === 'recommendation').metadata.requires_approval, true);
+    assert.equal(types().includes('approval_requested'), false, 'a recommendation to change something is not itself a change request');
+    assert.equal(ran.includes('WRITE'), false); assert.match(r.text, /Approval: required for any change/);
+  });
+  test('the recommendation persists slim: no free-form fields leak', () => {
+    const s = Store.toStored({ type: 'recommendation', timestamp: 1, metadata: { kind: 'investigation_advice', title: 'T', action_type: 'advice', finding_id: 'f', why: 'secret reasoning', args: { password: 'x' } } });
+    assert.equal(s.metadata.why, undefined); assert.equal(s.metadata.args, undefined); assert.equal(s.metadata.finding_id, 'f');
+    assert.equal(Store.toStored({ type: 'recommendation', timestamp: 1, metadata: { reversible: true } }).metadata.reversible, true);
+  });
+});
+
+describe('typed evidence', () => {
+  beforeEach(() => { T.clear(); ran.length = 0; });
+  test('classes are exactly the AI Center\'s evidence kinds', () => { assert.deepEqual([...EVIDENCE_CLASSES], [...M.EVIDENCE_KINDS]); });
+  test('tool outputs are FACT with their tool as source; model statements are never FACT or CALCULATION', async () => {
+    const r = await runInvestigation({ question: 'Why?', plan: plan(['sales', 'inventory']), callServer: makeServer({ syn: SYN({ recommendation: REC() }) }), finding: FINDING });
+    const items = r.investigation.synthesis.evidence_items;
+    assert.ok(items.filter(i => i.class === 'FACT').length === 2); assert.ok(items.filter(i => i.class === 'FACT').every(i => i.origin === 'tool' && /^orch_/.test(i.source)));
+    assert.ok(items.filter(i => i.origin === 'analyst').every(i => !['FACT', 'CALCULATION', 'DETECTION', 'PREDICTION'].includes(i.class)), 'analyst output must never be FACT/CALCULATION/DETECTION/PREDICTION');
+    const classes = new Set(items.map(i => i.class));
+    for (const c of ['FACT', 'DETECTION', 'CALCULATION', 'CORRELATION', 'AI INTERPRETATION', 'RECOMMENDATION']) assert.ok(classes.has(c), c);
+    assert.equal(items.find(i => i.class === 'CORRELATION').causal, false);
+  });
+  test('finding rule rows keep their kind; an unknown kind becomes DETECTION, never FACT', () => {
+    const it = buildEvidenceItems([], null, FINDING).filter(i => i.origin === 'finding');
+    assert.deepEqual(it.map(i => i.class), ['DETECTION', 'CALCULATION', 'DETECTION']);
+    assert.ok(it.every(i => /^rule: /.test(i.source)));
+  });
+  test('a failed member contributes no evidence items', async () => {
+    const r = await runInvestigation({ question: 'Why?', plan: plan(['sales', 'inventory']), callServer: makeServer({ failFocus: 'inventory' }) });
+    assert.equal(r.investigation.synthesis.evidence_items.filter(i => i.class === 'FACT' && i.specialist === 'inventory').length, 0);
+  });
+  test('synthesisPrompt tells the Analyst how to recommend and asks for evidence_from', () => {
+    const p = synthesisPrompt('q', [], null);
+    assert.match(p, /"recommendation"/); assert.match(p, /evidence_from/); assert.match(p, /needed=false/);
+  });
+});
+
+describe('finding -> specialists mapping', () => {
+  test('every system maps to the owning specialist; unknown -> none; returns a copy', () => {
+    assert.deepEqual(M.domainsForFinding({ system: 'CASH' }), ['manager']); assert.deepEqual(M.domainsForFinding({ system: 'INVENTORY' }), ['inventory']);
+    assert.deepEqual(M.domainsForFinding({ system: 'STR' }), ['str']); assert.deepEqual(M.domainsForFinding({ system: 'NOPE' }), []);
+    const a = M.domainsForFinding({ system: 'SALES' }); a.push('x'); assert.deepEqual(M.domainsForFinding({ system: 'SALES' }), ['sales']);
+  });
+  test('a sales finding plans sales + related areas; a cash finding plans staff&money + sales + closing', () => {
+    assert.deepEqual(planInvestigation('Investigate', { force: true, domains: M.domainsForFinding({ system: 'SALES' }) }).members.map(m => m.id), ['sales', 'inventory', 'manager', 'closing']);
+    assert.deepEqual(planInvestigation('Investigate', { force: true, domains: M.domainsForFinding({ system: 'CASH' }) }).members.map(m => m.id), ['manager', 'sales', 'closing']);
+  });
+});

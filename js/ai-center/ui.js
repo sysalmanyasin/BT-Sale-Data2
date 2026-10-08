@@ -81,6 +81,17 @@ function ask(q) {
   Promise.resolve(A.ask(q)).catch(() => {});
 }
 function investigate(f) {
+  const A = window.BTAgent;
+  if (A && typeof A.investigate === 'function') {
+    if (A.isBusy()) { toast('BT is already working on a request.'); return; }
+    S.awaitingFor = f.id; closeModal(); S.mode = 'investigate'; render();
+    // A real investigation: the finding (with the rule evidence) goes to the orchestrator, which runs the relevant specialists.
+    Promise.resolve(A.investigate({
+      question: 'Investigate this finding: "' + f.title + '"', domains: M.domainsForFinding(f),
+      finding: { id: f.id, title: f.title, system: f.system, source: f.source, evidence: (f.evidence || []).map(e => ({ kind: e.kind, label: e.label, value: e.value })) },
+    })).catch(() => {});
+    return;
+  }
   S.awaitingFor = f.id;
   closeModal();
   ask('Investigate this finding and show the evidence for it. Check the relevant data with your tools and say what is known and what is uncertain: "' + f.title + '"');
@@ -296,6 +307,29 @@ function openAgent(id) {
 }
 
 // ── findings ──
+// BT's assessment. An orchestrated investigation shows what really happened (which specialists ran, what each returned), typed
+// evidence, the Analyst's confidence and the recommendation. A plain Ask BT answer keeps the old text-only view.
+const CLASS_NOTE = { 'AI INTERPRETATION': 'interpretation, not a calculation', CORRELATION: 'moved together, not proof of cause', FACT: 'as returned by the tool', RECOMMENDATION: 'advice from the Analyst' };
+function assessmentNode(A) {
+  const inv = A.investigation;
+  if (!inv || !inv.synthesis) return h('div', { class: 'aic-assess' }, h('div', {}, h('span', { class: 'aic-tag aic-k-ai', text: 'AI INTERPRETATION' }), ' ', h('span', { class: 'aic-sub', text: 'Confidence not rated. Treat as an explanation to check against the evidence above, not as a calculation.' })), h('div', { class: 'aic-md', html: null }, mdNode(A.text)));
+  const syn = inv.synthesis, st = inv.stats, rec = syn.recommendation;
+  const ran = inv.entries.map(e => h('span', { class: 'aic-tag aic-spec-' + (e.status === 'ok' && e.grounded ? 'ok' : 'bad'), title: e.error || '', text: e.label + ': ' + (e.status !== 'ok' ? e.status.toUpperCase() : e.grounded ? e.tools.length + ' tool call(s)' : 'NO DATA') }));
+  const items = (syn.evidence_items || []).map(it => h('li', {}, tagEl(it.class), ' ', h('b', { text: it.label + ': ' }), it.text, ' ', h('span', { class: 'aic-sub', text: '(' + it.source + (CLASS_NOTE[it.class] ? ', ' + CLASS_NOTE[it.class] : '') + (it.causal_language ? ', wording claimed a cause: unproven' : '') + ')' })));
+  return h('div', { class: 'aic-assess' },
+    h('div', {}, h('span', { class: 'aic-tag aic-k-ai', text: 'AI INTERPRETATION' }), ' ', h('span', { class: 'aic-sub', text: 'Confidence: ' + syn.confidence + (syn.confidence_reason ? ' - ' + syn.confidence_reason : '') + '. An explanation to check against the evidence, not a calculation.' })),
+    h('p', { text: syn.conclusion }),
+    h('div', { class: 'aic-k', text: 'SPECIALISTS THAT ACTUALLY RAN (' + st.grounded + ' of ' + st.members + ' returned data)' }), h('div', { class: 'aic-path' }, ran),
+    h('div', { class: 'aic-k', text: 'EVIDENCE USED' }), items.length ? h('ul', { class: 'aic-list' }, items) : empty('No evidence rows.'),
+    syn.conflicts.length ? [h('div', { class: 'aic-k', text: 'CONFLICTS BETWEEN SPECIALISTS' }), h('ul', { class: 'aic-list' }, syn.conflicts.map(c => h('li', { text: c.statement })))] : null,
+    syn.gaps.length || st.failed || st.ungrounded.length ? [h('div', { class: 'aic-k', text: 'NOT CHECKED / MISSING' }), h('ul', { class: 'aic-list' }, [...syn.gaps.map(g => h('li', { text: g })), ...inv.entries.filter(e => e.status !== 'ok').map(e => h('li', { text: e.label + ' specialist ' + e.status + (e.error ? ' (' + e.error + ')' : '') + ': its area was not checked.' })), ...st.ungrounded.map(id => h('li', { text: id + ' specialist retrieved no data, so it was not used as evidence.' }))])] : null,
+    rec
+      ? [h('div', { class: 'aic-k', text: 'AI RECOMMENDATION' }), h('div', {}, tagEl('RECOMMENDATION'), ' ', h('b', { text: rec.action })),
+        h('dl', { class: 'aic-met' }, [['Why', rec.why], ['Expected result', rec.expected_result || 'not stated'], ['Risk', rec.risk], ['Affects', rec.affected.join(', ') || 'not stated'], ['Based on', rec.evidence_from.join(' + ')],
+          ['Approval', rec.approval_required ? 'Required for any change; ' + rec.reversibility_note : 'Not needed: advice only, nothing is changed'], ['Verification', rec.how_verified]].map(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })]))]
+      : [h('div', { class: 'aic-k', text: 'AI RECOMMENDATION' }), h('p', { class: 'aic-sub', text: syn.dropped_recommendation ? 'Withheld: the Analyst suggested something that was not tied to data a specialist retrieved.' : 'The Analyst did not recommend an action.' })],
+    h('div', { class: 'aic-sub', text: 'Investigation ' + inv.id + ' took ' + M.fmtDur(inv.ms) + '. Agreement/conflict and correlation are the Analyst\'s reading of the evidence; the tool outputs are the facts.' }));
+}
 function openFinding(f) {
   const A = S.assess[f.id];
   const ev = f.evidence.map(e => h('li', {}, h('span', { class: 'aic-tag aic-k-' + e.kind.split(' ')[0].toLowerCase(), text: e.kind }), ' ', h('b', { text: e.label + ': ' }), e.value));
@@ -305,7 +339,7 @@ function openFinding(f) {
     h('div', { class: 'aic-k', text: 'EVIDENCE' }), h('ul', { class: 'aic-list' }, ev),
     h('div', { class: 'aic-k', text: 'INVESTIGATION PATH' }), h('div', { class: 'aic-path' }, f.related_agents.map((a, i) => [i ? h('span', { class: 'aic-arrow', text: '→' }) : null, h('span', { class: 'aic-tag', text: a })]), h('div', { class: 'aic-sub', text: 'Tools: ' + f.related_tools.join(', ') })),
     h('div', { class: 'aic-k', text: "BT'S ASSESSMENT" }),
-    A ? h('div', { class: 'aic-assess' }, h('div', {}, h('span', { class: 'aic-tag aic-k-ai', text: 'AI INTERPRETATION' }), ' ', h('span', { class: 'aic-sub', text: 'Confidence not rated. Treat as an explanation to check against the evidence above, not as a calculation.' })), h('div', { class: 'aic-md', html: null }, mdNode(A.text)))
+    A ? assessmentNode(A)
       : h('p', { class: 'aic-sub', text: 'BT has not been asked about this yet. The detection above is rule-based, with no AI involved.' }),
     h('div', { class: 'aic-k', text: 'WHY AM I SEEING THIS' }), h('p', { class: 'aic-sub', text: 'Rule-based check "' + f.source + '" ran on your current data. Known: the FACT and CALCULATION rows. Not known: the cause. That needs investigation.' }),
     h('div', { class: 'aic-k', text: 'RECOMMENDATION' }), h('p', {}, tagEl('RECOMMENDATION'), ' ', h('span', { class: 'aic-sub', text: '(fixed rule, not AI) ' }), f.recommendation, ' BT will never change data without your approval.'),
@@ -584,7 +618,7 @@ function paint() {
 function onTelemetry(e) {
   if (!S.mounted) return;
   if (e.type === 'approval_requested' && window.BTAgent && pageOn()) { toast('BT needs your approval.'); if (typeof window.BTAgent.approvals === 'function') S.mode = 'act'; else window.BTAgent.open(); }
-  if (e.type === 'answer' && S.awaitingFor) { S.assess[S.awaitingFor] = { text: (e.metadata && e.metadata.text) || '', at: e.timestamp }; S.awaitingFor = null; }
+  if (e.type === 'answer' && S.awaitingFor) { S.assess[S.awaitingFor] = { text: (e.metadata && e.metadata.text) || '', at: e.timestamp, investigation: window.BTAgent && typeof window.BTAgent.investigationFor === 'function' ? window.BTAgent.investigationFor(S.awaitingFor) : null }; S.awaitingFor = null; }
   if (e.type === 'error' || e.type === 'cancelled') S.awaitingFor = null;
   if (e.type === 'tool_end' && e.status === 'ok' && e.metadata && (e.metadata.risk === 'write' || e.metadata.risk === 'critical') && e.source !== 'ai-center') setTimeout(() => refresh({ force: true }), 800);
   if (pageOn()) render();
@@ -616,4 +650,4 @@ export function onShow() {
   refresh();
 }
 
-export const __test = { S, refresh, paint, openFinding, openSystem, openPalette };
+export const __test = { S, refresh, paint, openFinding, openSystem, openPalette, investigate };

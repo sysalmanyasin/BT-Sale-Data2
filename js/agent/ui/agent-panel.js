@@ -313,7 +313,13 @@ export function mountAgentPanel() {
   }
   function setBusy(v) { busy = v; send.disabled = v; text.disabled = v; sheet.classList.toggle('ag-busy', v); }
 
-  async function ask(q) {
+  // Structured results of orchestrated investigations (in memory only, last 10): the AI Center reads them to show typed
+  // evidence, confidence and the recommendation. Never persisted: they can contain business figures.
+  const investigationResults = [];
+  const keepInvestigation = r => { investigationResults.unshift(r); investigationResults.length = Math.min(investigationResults.length, 10); };
+
+  /** @param {{investigate?:{domains?:string[], finding?:object}}} [opts]  investigate: run the orchestrator even for a plain-worded question (used by "Investigate with BT"). */
+  async function ask(q, opts = {}) {
     q = String(q || '').trim();
     if (!q || busy) return;
     text.value = ''; autosize();
@@ -321,7 +327,7 @@ export function mountAgentPanel() {
     addBubble('user', q);
     // Instant path: common one-liners are answered locally, with no AI call at all.
     try {
-      const quick = await tryInstant(q);
+      const quick = opts.investigate ? null : await tryInstant(q);
       if (quick) { emitTelemetry({ type: 'instant', source: 'instant-path', tool: quick.tool, status: 'ok', metadata: { question: q.slice(0, 100), model_used: false, text: String(quick.text || '').slice(0, 1200) } }); saveTurn(q, quick.text); const b = addBubble('assistant', quick.text); b.append(el('div', { class: 'ag-by' }, 'Instant · no AI used')); logToolCall({ tool: quick.tool, risk: quick.kind === 'navigate' ? 'ui' : 'read', args: {}, ok: true, resultChars: quick.text.length }, { conversationId }); return; }
     } catch (e) { console.error('[agent] instant', e); }
     const status = addBubble('status', 'Thinking…');
@@ -332,7 +338,7 @@ export function mountAgentPanel() {
       await refreshKill(); // server-side switch: checked before every request
       // "Why ..." questions that touch several business areas are investigated by independent specialists and
       // synthesised by the Analyst (read-only). Plain look-ups keep the single cheap specialist run below.
-      const plan = planInvestigation(q);
+      const plan = opts.investigate ? planInvestigation(q, { force: true, domains: opts.investigate.domains }) : planInvestigation(q);
       const onEvent = ev => {
         if (ev.type === 'phase') status.textContent = ev.text + '...';
         if (ev.type === 'tool_start') status.textContent = (TOOL_LABELS[ev.name] || 'Working') + '...';
@@ -341,7 +347,7 @@ export function mountAgentPanel() {
         if (ev.type === 'writes_killed') { killed = true; paintLock(); }
         if (ev.type === 'tool_end' && !ev.ok && !ev.rejected && ev.error && /writes_disabled/.test(ev.error)) paintLock();
       };
-      const r = plan.orchestrate ? await runInvestigation({ question: q, plan, callServer, context: getPageContext(), signal: abort.signal, sensitive, onEvent }) : await runAgent({
+      const r = plan.orchestrate ? await runInvestigation({ question: q, plan, callServer, context: getPageContext(), signal: abort.signal, sensitive, onEvent, finding: opts.investigate ? opts.investigate.finding || null : null, onResult: keepInvestigation }) : await runAgent({
         history, userText: q, context: getPageContext(), callServer, signal: abort.signal, sensitive, stream: true,
         routeServer: t => callAction('route', { text: t }).then(r => r.domains || []),
         reviewServer: p => callAction('review', { proposal: { tool: p.tool, title: p.preview && p.preview.title, lines: ((p.preview && p.preview.lines) || []).map(String), amount: p.preview && p.preview.amount, today: new Date().toISOString().slice(0, 10) } }),
@@ -392,7 +398,11 @@ export function mountAgentPanel() {
   sheet.querySelector('#ag-center').onclick = () => { close(); window.location.hash = '#ai-center'; };
   // Public hook for the AI Center command bar: the SAME agent, panel and approval cards. No second chatbot.
   window.BTAgent = Object.freeze({
-    ask: q => ask(q), open, isBusy: () => busy, writesAllowed: () => getWritesEnabled() && !killed, killed: () => killed,
+    ask: q => ask(q), open,
+    // Start a REAL investigation (independent specialists + Analyst synthesis) from a finding. Falls back to a single run, honestly
+    // labelled in telemetry, when fewer than two areas are relevant.
+    investigate: ({ question, domains, finding } = {}) => ask(question, { investigate: { domains: Array.isArray(domains) ? domains : [], finding: finding || null } }),
+    investigationFor: findingId => investigationResults.find(r => r.finding_id === String(findingId)) || null, isBusy: () => busy, writesAllowed: () => getWritesEnabled() && !killed, killed: () => killed,
     // Pending approvals, for the AI Center's approval view (read-only snapshot of the real proposals).
     approvals: () => [...approvals.values()].map(c => ({ id: c.id, tool: c.tool, risk: c.risk, preview: c.preview, armed: c.armed() })),
     /**
