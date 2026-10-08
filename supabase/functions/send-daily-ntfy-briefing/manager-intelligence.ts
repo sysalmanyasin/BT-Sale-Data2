@@ -16,7 +16,6 @@ export async function managerIntelligence(rest: Rest, auditRest: Rest) {
   } catch (_) { blocks.push('## 💸 Money at risk · stockouts\n> Inventory ranking unavailable'); }
 
   try {
-    // Read all line columns so older Audit schemas do not fail because a receive column is absent.
     const lines = await auditRest('str_line_items?select=*&limit=3000');
     const received = (x:any) => n(x.receive_qty ?? x.received_qty ?? x.received_quantity ?? x.recv_qty ?? x.received);
     const dispatched = (x:any) => x.dispatch_qty == null ? n(x.str_qty ?? x.requested_qty) : n(x.dispatch_qty);
@@ -45,7 +44,8 @@ export async function managerIntelligence(rest: Rest, auditRest: Rest) {
   try {
     const rows=await rest('bt_daily?select=date,data,updated_at&order=updated_at.desc&limit=30');
     const vals=(rows||[]).map((r:any)=>({date:r.date,sale:n((r.data||{})['TOTAL']),diff:n((r.data||{})['DIFF'])})).reverse();
-    const calc=(days:number)=>{const a=vals.slice(-days);return{days,sales_per_day:Math.round(a.reduce((s:number,r:any)=>s+r.sale,0)/Math.max(1,a.length)),avg_abs_diff:Math.round(a.reduce((s:number,r:any)=>s+Math.abs(r.diff),0)/Math.max(1,a.length))}};  facts.trends={seven_day:calc(7),thirty_day:calc(30),as_of:rows?.[0]?.updated_at||null};
+    const calc=(days:number)=>{const a=vals.slice(-days);return{days,sales_per_day:Math.round(a.reduce((s:number,r:any)=>s+r.sale,0)/Math.max(1,a.length)),avg_abs_diff:Math.round(a.reduce((s:number,r:any)=>s+Math.abs(r.diff),0)/Math.max(1,a.length))};};
+    facts.trends={seven_day:calc(7),thirty_day:calc(30),as_of:rows?.[0]?.updated_at||null};
     blocks.push(`## 📈 Trends\n- 7d sales/day: Rs ${facts.trends.seven_day.sales_per_day.toLocaleString('en-PK')} · avg abs DIFF Rs ${facts.trends.seven_day.avg_abs_diff.toLocaleString('en-PK')}\n- 30d sales/day: Rs ${facts.trends.thirty_day.sales_per_day.toLocaleString('en-PK')} · avg abs DIFF Rs ${facts.trends.thirty_day.avg_abs_diff.toLocaleString('en-PK')}`);
   } catch (_) {}
   return { blocks, alerts, facts, as_of: new Date().toISOString() };
