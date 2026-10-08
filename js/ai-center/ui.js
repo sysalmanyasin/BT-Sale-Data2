@@ -19,6 +19,7 @@ import { markUndone } from '../agent/core/undo-store.js';
 import { fetchAudit, summarizeAudit } from '../agent/core/usage-stats.js';
 import { collectSnapshot, collectHealth, collectActions, getSb, readTool } from './adapters.js';
 import * as M from './model.js';
+import * as RI from './repo-intel.js';
 
 const PAGE_ID = 'page-ai-center';
 const LS_VISIT = 'bt_aic_last_visit_v1', LS_DISMISS = 'bt_aic_dismissed_v1';
@@ -525,18 +526,36 @@ function secRepo() {
   const head = sectionHeader('REPOSITORY INTELLIGENCE', info ? pill(info.stale ? 'WARNING' : 'HEALTHY', info.stale ? 'INDEX OLD' : 'INDEX READY') : pill(R.state === 'loading' ? 'UNKNOWN' : 'OFFLINE', R.state === 'loading' ? 'LOADING' : 'NOT CONNECTED'));
   if (!info) return card('repo', 'investigate', head, h('p', { class: 'aic-sub', text: R.state === 'loading' ? 'Loading the code index...' : 'The code index (js/ai-center/repo-index.json) could not be loaded, so BT cannot say where things are calculated. Nothing here pretends otherwise. Build it with: npm run index:repo' }));
   const results = h('div', { class: 'aic-rres' });
+  const locNode = l => h('li', {}, tagEl(String(l.kind || 'file').toUpperCase()), ' ', h('b', { text: l.symbol || l.file }),
+    l.domain ? h('span', { class: 'aic-sub', text: '  ' + l.domain + ' / ' + l.risk }) : null,
+    h('div', { class: 'aic-sub', text: l.file + ':' + l.line + (l.role ? '  |  ' + l.role : '') }),
+    l.summary ? h('div', { class: 'aic-sub', text: l.summary }) : null,
+    l.related && (l.related.tools.length || l.related.features.length) ? h('div', { class: 'aic-path' }, l.related.tools.slice(0, 4).map(t => h('span', { class: 'aic-tag', text: 'tool: ' + t })), l.related.features.slice(0, 3).map(f => h('span', { class: 'aic-tag', text: 'feature: ' + f }))) : null,
+    l.github ? h('a', { class: 'aic-sub', href: l.github, target: '_blank', rel: 'noopener noreferrer', text: 'Read the code on GitHub (indexed commit)' }) : null);
   const draw = () => {
-    const q = S.repoQ.trim(), hits = M.searchRepoIndex(R.idx, q, 10);
-    results.replaceChildren(!q ? h('div', { class: 'aic-sub', text: 'Try: target pace, cash diff, low stock, closing, approval.' }) : !hits.length ? empty('No symbol, tool or file matches "' + q + '".')
-      : h('ul', { class: 'aic-list' }, hits.map(x => h('li', {}, tagEl(x.kind.toUpperCase()), ' ', h('b', { text: x.name }), x.kind === 'tool' ? h('span', { class: 'aic-sub', text: '  ' + x.domain + ' / ' + x.risk }) : null, h('div', { class: 'aic-sub', text: x.file + ':' + x.line + (x.summary ? '  |  ' + x.summary : '') })))));
+    const q = S.repoQ.trim();
+    if (!q) { results.replaceChildren(h('div', { class: 'aic-sub', text: 'Ask where something is, or pick an example or topic below. Try: target pace, cash diff, low stock, closing, approval.' })); return; }
+    // the real service: curated, index-verified architecture notes + tool lookup + symbol search
+    const a = RI.answerRepoQuestion(R.idx, q, { registered: listTools().map(t => t.name), limit: 10 });
+    if (!a.ok || a.kind === 'none') { results.replaceChildren(empty(a.explanation || a.reason || 'No symbol, tool or file matches "' + q + '".')); return; }
+    results.replaceChildren(
+      h('div', { class: 'aic-k', text: a.title.toUpperCase() }),
+      a.explanation ? h('div', {}, h('span', { class: 'aic-tag aic-k-ai', text: a.kind === 'tools' ? 'FROM THE INDEX' : 'ARCHITECTURE NOTE' }), ' ', h('span', { class: 'aic-sub', text: a.source || '' }), h('p', { text: a.explanation })) : null,
+      h('ul', { class: 'aic-list' }, a.locations.map(locNode)),
+      a.unresolved.length ? h('div', { class: 'aic-note', text: a.unresolved.length + ' location(s) in the note could not be found in the current index and are not shown: ' + a.unresolved.map(u => u.file + (u.symbol ? '#' + u.symbol : '')).join(', ') }) : null,
+      h('div', { class: 'aic-sub', text: a.notes.join(' ') }));
   };
-  const input = h('input', { id: 'aic-rq', class: 'aic-pin', type: 'search', placeholder: 'Where is it calculated? e.g. target pace', 'aria-label': 'Search the code index', autocomplete: 'off', value: S.repoQ });
+  const input = h('input', { id: 'aic-rq', class: 'aic-pin', type: 'search', placeholder: 'Where is it implemented? e.g. approval, VERIFY, target pace', 'aria-label': 'Ask the code index', autocomplete: 'off', value: S.repoQ });
+  const setQ = v => { S.repoQ = v; input.value = v; draw(); };
   input.addEventListener('input', () => { S.repoQ = input.value; draw(); });
   draw();
   return card('repo', 'investigate', head,
-    h('p', { class: 'aic-sub', text: info.files + ' files, ' + info.symbols + ' symbols. Built ' + info.age + ' at commit ' + info.commit + '. Names and locations only: no source code is stored or shown, and secret-bearing files are excluded. This is a snapshot, not live.' }),
+    h('p', { class: 'aic-sub', text: info.files + ' files, ' + info.symbols + ' symbols. Built ' + info.age + ' at commit ' + info.commit + '. It tells you WHERE things are implemented (file, line, summary, related tool). It holds no source code: use the GitHub link to read it. Secret-bearing files are excluded. This is a snapshot, not live.' }),
     info.stale ? h('div', { class: 'aic-note', text: 'This index is more than 14 days old. Rebuild it with: npm run index:repo' }) : null,
-    input, results);
+    input,
+    h('div', { class: 'aic-chips', 'aria-label': 'Example questions' }, RI.SAMPLE_QUESTIONS.map(x => h('button', { text: x, onclick: () => setQ(x) }))),
+    h('div', { class: 'aic-chips', 'aria-label': 'Architecture topics' }, RI.CONCEPTS.map(c => h('button', { class: 'aic-g', text: c.title, onclick: () => setQ(c.title) }))),
+    results);
 }
 
 // ── latest answer ──
@@ -574,7 +593,7 @@ const COMMANDS = () => [
   ['View approvals / actions', 'Act', () => goMode('act', 'aic-actc')], ['View activity', 'Investigate', () => goMode('investigate', 'aic-act')], ['View system health', 'Monitor', () => goMode('monitor', 'aic-health')],
   ...M.SYSTEMS.map(s => ['View ' + s.toLowerCase(), 'System', () => openSystem(s)]),
   ['Run health check', 'System', () => refresh({ force: true })],
-  ['Search repository', 'Investigate', () => { goMode('investigate', 'aic-repo'); setTimeout(() => { const i = $('#aic-rq'); if (i) i.focus(); }, 60); }], ['Explain architecture', 'Docs', () => toast('Architecture notes: docs/ai-center-architecture.md in the repository.')],
+  ['Search repository', 'Investigate', () => { goMode('investigate', 'aic-repo'); setTimeout(() => { const i = $('#aic-rq'); if (i) i.focus(); }, 60); }], ['Explain architecture', 'Investigate', () => { goMode('investigate', 'aic-repo'); S.repoQ = RI.SAMPLE_QUESTIONS[4]; paint(); setTimeout(() => { const i = $('#aic-rq'); if (i) i.focus(); }, 60); }],
   ['Open Dashboard', 'Go to', () => openPage('#dashboard')], ['Open Closing Book', 'Go to', () => openPage('#closing-book')], ['Open STR Report', 'Go to', () => openPage('#str')], ['Open Inventory Health', 'Go to', () => openPage('#inv-health')], ['Open Cover', 'Go to', () => openPage('#cover')],
 ];
 function goMode(mode, id) { closeModal(); S.mode = mode; paint(); const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }

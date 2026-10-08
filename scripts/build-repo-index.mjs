@@ -58,7 +58,8 @@ export function indexFile(rel, text) {
     if (rel.endsWith('.js') || rel.endsWith('.mjs') || rel.endsWith('.ts')) {
       for (const [re, kind, g] of FN) { const m = ln.match(re); if (m) { symbols.push({ n: m[g], k: kind, l: i + 1 }); break; } }
       const mm = ln.match(METHOD); if (mm) symbols.push({ n: mm[2], k: 'method', l: i + 1 });
-      if (TOOL.test(ln)) {
+      // Tools registered in tests are stubs, not part of the product: never index them as tools (they would answer "which tool provides X").
+      if (TOOL.test(ln) && !rel.startsWith('tests/')) {
         const blob = lines.slice(i, i + 4).join(' '), nm = blob.match(/name:\s*'([a-z0-9_]+)'/), dm = blob.match(/domain:\s*'([a-z]+)'/), rm = blob.match(/risk:\s*'([a-z]+)'/);
         if (nm) tools.push({ n: nm[1], k: 'tool', l: i + 1, d: dm ? dm[1] : '', r: rm ? rm[1] : '' });
       }

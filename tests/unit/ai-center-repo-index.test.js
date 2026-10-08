@@ -1,7 +1,7 @@
 // Repository Intelligence: the index builder is secret-filtered and stores no source code; search ranks sensibly.
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { indexFile, isSecretLine, skipFile, buildIndex } from '../../scripts/build-repo-index.mjs';
 import * as M from '../../js/ai-center/model.js';
 
@@ -48,7 +48,9 @@ describe('the committed index', () => {
   test('a live rebuild matches what is committed in shape (builder works on this checkout)', () => {
     const live = buildIndex('.');
     assert.ok(live.files > 100 && live.symbols > 1000);
-    assert.ok(live.index.flatMap(f => f.tools).length >= 60, 'tools are discovered');
+    // exactly the product's registered tools: every registerTool( in js/agent/tools is indexed, and test stubs are not
+    const real = readdirSync('js/agent/tools').filter(n => n.endsWith('.js')).reduce((a, n) => a + (readFileSync('js/agent/tools/' + n, 'utf8').match(/registerTool\(/g) || []).length, 0);
+    assert.equal(live.index.flatMap(f => f.tools).length, real, 'indexed tools must equal the registerTool( calls in js/agent/tools');
   });
 });
 
