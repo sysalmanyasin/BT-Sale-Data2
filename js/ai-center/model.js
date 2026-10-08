@@ -208,15 +208,17 @@ export const LIFECYCLE = Object.freeze([
 export function deriveLifecycle(events, detected) {
   const ev = events || [];
   const has = t => ev.some(e => e.type === t);
-  const routed = ev.find(e => e.type === 'routed');
-  const multi = !!(routed && routed.metadata && Array.isArray(routed.metadata.domains) && routed.metadata.domains.length > 1);
   const writeDone = ev.some(e => e.type === 'tool_end' && e.status === 'ok' && e.metadata && (e.metadata.risk === 'write' || e.metadata.risk === 'critical'));
   const reached = {
-    detect: !!detected, understand: has('routed'), investigate: has('tool_start'), correlate: multi && has('tool_end'),
-    reason: has('step'), recommend: has('answer'), approve: has('approval_requested'), act: writeDone, verify: has('verify_end'), audit: writeDone,
+    // Every stage needs ITS OWN real event. `recommend` is no longer inferred from `answer`, `correlate` is no longer
+    // inferred from "two domains + a tool finished", and `audit` is no longer inferred from "a write succeeded":
+    // a stage lights only when the matching event (recommendation / correlation / audit) was actually emitted.
+    detect: !!detected, understand: has('routed'), investigate: has('tool_start'), correlate: has('correlation'),
+    reason: has('step'), recommend: has('recommendation'), approve: has('approval_requested'), act: writeDone, verify: has('verify_end'), audit: has('audit'),
   };
-  const vEnd = ev.find(e => e.type === 'verify_end');
-  return LIFECYCLE.map(([id, label]) => ({ id, label, reached: !!reached[id], available: true, ...(id === 'verify' && vEnd ? { failed: vEnd.status !== 'ok' } : {}) }));
+  const vEnd = ev.find(e => e.type === 'verify_end'), aud = ev.find(e => e.type === 'audit');
+  return LIFECYCLE.map(([id, label]) => ({ id, label, reached: !!reached[id], available: true,
+    ...(id === 'verify' && vEnd ? { failed: vEnd.status !== 'ok' } : {}), ...(id === 'audit' && aud ? { failed: aud.status === 'failed' } : {}) }));
 }
 
 // ───────────────────────── freshness + health rules ─────────────────────────
@@ -275,10 +277,10 @@ const isChangeRisk = e => !!(e.metadata && (e.metadata.risk === 'write' || e.met
 export function eventMatches(e, filter) {
   switch (filter) {
     case 'bt': return ['request_start', 'answer', 'instant', 'error', 'cancelled', 'writes_killed'].includes(e.type);
-    case 'agents': return ['request_start', 'routed', 'step'].includes(e.type);
+    case 'agents': return ['request_start', 'routed', 'step', 'specialist_start', 'specialist_end'].includes(e.type);
     case 'tools': return e.type === 'tool_start' || e.type === 'tool_end' || e.type === 'verify_start' || e.type === 'verify_end';
     case 'findings': return e.type === 'finding_new' || e.type === 'finding_cleared';
-    case 'actions': return ((e.type === 'tool_end' || e.type === 'tool_start') && isChangeRisk(e)) || e.type === 'verify_start' || e.type === 'verify_end';
+    case 'actions': return ((e.type === 'tool_end' || e.type === 'tool_start') && isChangeRisk(e)) || ['verify_start', 'verify_end', 'recommendation', 'audit', 'undo'].includes(e.type);
     case 'approvals': return e.type === 'approval_requested' || e.type === 'approval_resolved';
     case 'system': return e.source === 'ai-center' || e.source === 'server' || e.type === 'snapshot' || e.type === 'retry';
     default: return true;
@@ -291,6 +293,11 @@ export function describeEvent(e) {
   switch (e.type) {
     case 'request_start': return 'Request received' + (m.question ? ': "' + m.question + '"' : '');
     case 'routed': return who + 'handling this (' + (m.by === 'model' ? 'model-assisted' : 'rule') + ' routing' + (m.domains && m.domains.length > 1 ? ', cross-domain: ' + m.domains.join(' + ') : '') + ')';
+    case 'specialist_start': return (m.specialist || 'specialist') + ' specialist started' + (m.mode === 'single_run' ? ' (one run; domains: ' + ((m.domains || []).join(' + ') || 'general') + ')' : '');
+    case 'specialist_end': return (m.specialist || 'specialist') + ' specialist ' + (e.status === 'ok' ? 'finished' : e.status === 'cancelled' ? 'was cancelled' : 'failed') + (e.duration != null ? ' in ' + fmtDur(e.duration) : '');
+    case 'recommendation': return 'Recommendation: ' + (m.title || e.tool) + (m.requires_approval ? ' (needs your approval' + (m.reversible ? ', reversible)' : ', not reversible)') : '');
+    case 'audit': return e.status === 'ok' ? 'Audit recorded: ' + e.tool : e.status === 'local_only' ? 'Audit kept on this device only (cloud log unavailable): ' + e.tool : 'AUDIT NOT RECORDED: ' + e.tool + (m.error ? ' (' + m.error + ')' : '');
+    case 'undo': return (e.status === 'ok' ? 'Undone: ' : 'Undo failed: ') + (m.label || e.tool) + (e.status === 'ok' ? '' : (m.error ? ' (' + m.error + ')' : ''));
     case 'step': return 'Model step ' + m.step + ' of max ' + m.max;
     case 'tool_start': return (e.source === 'ai-center' ? 'AI Center read ' : 'Running ') + e.tool;
     case 'tool_end': return e.tool + (e.status === 'ok' ? ' finished' : e.status === 'rejected' ? ' rejected by you' : ' failed' + (m.error ? ': ' + m.error : '')) + (e.duration != null ? ' · ' + e.duration + ' ms' : '');

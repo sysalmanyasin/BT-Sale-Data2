@@ -15,7 +15,7 @@ describe('runAgent telemetry', () => {
   test('tool call → request_start, routed, step, tool_start/end (args redacted), answer', async () => {
     await runAgent({ userText: 'sales today', callServer: server([{ tool_calls: [call('ev_read', 'c1')] }, { content: 'done' }]) });
     const types = T.recent(50).reverse().map(e => e.type);
-    assert.deepEqual(types, ['request_start', 'routed', 'step', 'tool_start', 'tool_end', 'step', 'answer']);
+    assert.deepEqual(types, ['request_start', 'routed', 'specialist_start', 'step', 'tool_start', 'tool_end', 'step', 'answer', 'specialist_end']);
     const start = T.recent(50).find(e => e.type === 'tool_start');
     assert.equal(start.metadata.args.password, '[redacted]');
     assert.equal(T.recent(50).find(e => e.type === 'tool_end').status, 'ok');
@@ -29,6 +29,9 @@ describe('runAgent telemetry', () => {
   });
   test('server failure emits an error event and still throws', async () => {
     await assert.rejects(runAgent({ userText: 'x', callServer: async () => { throw new Error('providers down'); } }));
-    assert.equal(T.recent(50)[0].type, 'error');
+    const ev = T.recent(50).reverse();
+    assert.ok(ev.some(e => e.type === 'error'));
+    assert.equal(ev[ev.length - 1].type, 'specialist_end');
+    assert.equal(ev[ev.length - 1].status, 'failed');
   });
 });

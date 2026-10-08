@@ -105,13 +105,23 @@ describe('lifecycle strip', () => {
   test('stages light up only from matching real events; verify only after a real verify_end', () => {
     const evs = [{ type: 'routed', metadata: { domains: ['sales', 'str'] } }, { type: 'tool_start' }, { type: 'tool_end', status: 'ok', metadata: { risk: 'read' } }, { type: 'step' }, { type: 'answer' }];
     const on = M.deriveLifecycle(evs, true).filter(s => s.reached).map(s => s.id);
-    assert.deepEqual(on, ['detect', 'understand', 'investigate', 'correlate', 'reason', 'recommend']);
+    // an answer is NOT a recommendation, and two domains + a finished tool is NOT a correlation
+    assert.deepEqual(on, ['detect', 'understand', 'investigate', 'reason']);
     const w = M.deriveLifecycle([{ type: 'approval_requested' }, { type: 'tool_end', status: 'ok', metadata: { risk: 'write' } }], false);
     assert.ok(w.find(s => s.id === 'act').reached); assert.ok(w.find(s => s.id === 'approve').reached);
+    assert.equal(w.find(s => s.id === 'audit').reached, false, 'a successful write is not an audit record');
     assert.equal(w.find(s => s.id === 'verify').reached, false); assert.equal(w.find(s => s.id === 'verify').available, true);
     const v1 = M.deriveLifecycle([{ type: 'verify_end', status: 'ok' }], false).find(s => s.id === 'verify');
     assert.equal(v1.reached, true); assert.equal(v1.failed, false);
     assert.equal(M.deriveLifecycle([{ type: 'verify_end', status: 'failed' }], false).find(s => s.id === 'verify').failed, true);
+  });
+  test('recommend, correlate and audit light only from their own events; a failed audit is flagged', () => {
+    const on = evs => M.deriveLifecycle(evs, false).filter(s => s.reached).map(s => s.id);
+    assert.deepEqual(on([{ type: 'recommendation' }]), ['recommend']);
+    assert.deepEqual(on([{ type: 'correlation' }]), ['correlate']);
+    assert.deepEqual(on([{ type: 'audit', status: 'ok' }]), ['audit']);
+    assert.equal(M.deriveLifecycle([{ type: 'audit', status: 'ok' }], false).find(s => s.id === 'audit').failed, false);
+    assert.equal(M.deriveLifecycle([{ type: 'audit', status: 'failed' }], false).find(s => s.id === 'audit').failed, true);
   });
 });
 

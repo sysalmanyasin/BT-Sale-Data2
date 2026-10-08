@@ -183,8 +183,12 @@ export function mountAgentPanel() {
     const b = el('button', { class: 'ag-undo-btn' }, '↶ Undo: ' + label);
     b.onclick = async () => {
       b.disabled = true;
+      const t0 = Date.now();
       const r = await runUndo(item.id);
       if (r.ok && r.key) markUndone(getSb(), r.key);
+      // Real event: the person pressed Undo and runUndo() reported this outcome. (Read-back verification of the undo is separate work.)
+      emitTelemetry({ type: 'undo', source: 'panel', tool, status: r.ok ? 'ok' : 'failed', duration: Date.now() - t0, severity: r.ok ? 'info' : 'warning', entity_reference: key || item.id,
+        metadata: { label, error: r.ok ? undefined : r.error } });
       row.innerHTML = r.ok ? '<span>↶ Undone: ' + escHtml(r.label) + '</span>' : '<span class="ag-warn">⚠ ' + escHtml(r.error) + '</span>';
     };
     row.append(b); log.append(row); log.scrollTop = log.scrollHeight;

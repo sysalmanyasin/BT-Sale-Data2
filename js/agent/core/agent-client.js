@@ -54,6 +54,15 @@ export async function runAgent({ history = [], userText, context = {}, callServe
   }
   const domains = specialist.domains;
   tel('routed', { metadata: { specialist: specialist.id, domains, by: 'rules' } });
+  // One specialist run = one focused model conversation (its tool group + domain briefing). `mode: single_run` is
+  // deliberate: a multi-domain question is still ONE Analyst run here, not several independent specialists.
+  const specT0 = Date.now();
+  let specEnded = false;
+  tel('specialist_start', { metadata: { specialist: specialist.id, domains, mode: 'single_run' } });
+  const endSpec = (status, steps) => {
+    if (specEnded) return; specEnded = true;
+    tel('specialist_end', { status, duration: Date.now() - specT0, severity: status === 'ok' ? 'info' : 'warning', metadata: { specialist: specialist.id, domains, mode: 'single_run', steps } });
+  };
   // Advisory model reviewer: can only ADD a warning to the approval card, never remove one or approve anything.
   const review = async (p) => {
     const base = reviewChange(p);
@@ -76,6 +85,10 @@ export async function runAgent({ history = [], userText, context = {}, callServe
       const approvalId = 'ap_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
       const def = getTool(p.tool) || {};
       const pv = p.preview || {};
+      // A proposed change IS a recommendation, and it exists before the human is asked. Built only from the real
+      // proposal (tool, preview, undo capability); the reasoning text is the model's and is not copied here.
+      tel('recommendation', { tool: p.tool, domain: def.domain || null, severity: p.risk === 'critical' ? 'critical' : 'info', entity_reference: approvalId,
+        metadata: { kind: 'change_proposal', basis: 'tool_proposal', approval_id: approvalId, title: pv.title, risk: p.risk, requires_approval: true, reversible: typeof def.makeUndo === 'function', specialist: specialist.id } });
       tel('approval_requested', { tool: p.tool, domain: def.domain || null, severity: p.risk === 'critical' ? 'critical' : 'warning', entity_reference: approvalId,
         metadata: { approval_id: approvalId, risk: p.risk, title: pv.title, strong: !!pv.strong, amount: pv.amount, confirm_word: !!pv.confirmWord, reversible: typeof def.makeUndo === 'function', sensitive: !!def.sensitive,
           lines: (pv.lines || []).slice(0, 8).map(String), warnings: (pv.warnings || []).slice(0, 5).map(String), args: p.args, question: String(userText || '').slice(0, 100), specialist: specialist.id } });
@@ -92,7 +105,7 @@ export async function runAgent({ history = [], userText, context = {}, callServe
   let repeatGuard = '';
 
   for (let step = 1; step <= MAX_STEPS; step++) {
-    if (signal && signal.aborted) throw new AgentError('Cancelled', { code: 'aborted' });
+    if (signal && signal.aborted) { tel('cancelled', { status: 'failed', severity: 'info' }); endSpec('cancelled', step - 1); throw new AgentError('Cancelled', { code: 'aborted' }); }
     onEvent({ type: 'step', step });
     tel('step', { metadata: { step, max: MAX_STEPS } });
     let res;
@@ -105,10 +118,11 @@ export async function runAgent({ history = [], userText, context = {}, callServe
       ...(stream ? { onToken: t => onEvent({ type: 'token', text: t }), onReset: () => onEvent({ type: 'reset' }) } : {}),
     }); } catch (e) {
       tel(e && e.code === 'aborted' ? 'cancelled' : 'error', { status: 'failed', severity: 'error', metadata: { message: String((e && e.message) || e).slice(0, 140), http_status: e && e.status } });
+      endSpec(e && e.code === 'aborted' ? 'cancelled' : 'failed', step);
       throw e;
     }
     const msg = res && res.message;
-    if (!msg) throw new AgentError('Empty response from AI');
+    if (!msg) { tel('error', { status: 'failed', severity: 'error', metadata: { message: 'empty response from AI' } }); endSpec('failed', step); throw new AgentError('Empty response from AI'); }
     if (res.settings && res.settings.writes_killed === true && !killed) { tel('writes_killed', { source: 'server', severity: 'warning' }); killed = true; tools = getToolSchemas({ includeWrites: false, domains }); onEvent({ type: 'writes_killed' }); }
 
     const calls = Array.isArray(msg.tool_calls) ? msg.tool_calls : [];
@@ -120,6 +134,7 @@ export async function runAgent({ history = [], userText, context = {}, callServe
     if (!calls.length) {
       const text = (msg.content || '').trim();
       tel('answer', { status: 'ok', metadata: { steps: step, chars: text.length, text: text.slice(0, 1200) } });
+      endSpec('ok', step);
       return { text: text || 'I could not produce an answer. Please rephrase.', messages: compactHistory(messages), steps: step, sensitive: sawSensitive, domains, specialist };
     }
 
@@ -157,13 +172,24 @@ export async function runAgent({ history = [], userText, context = {}, callServe
         const a = safeParse(rawArgs);
         if (risk === 'write' || risk === 'critical') a._approval = result.ok ? 'approved' : (result.rejected ? 'rejected' : 'not_applied');
         const undo = undoKey && result.undoData ? makeRecipe({ key: undoKey, tool: name, label: result.undo.label, args: result.undoData.args, out: result.undoData.out }) : null;
-        onAudit({ tool: name, risk, args: a, ok: result.ok, resultChars: result.text.length, error: result.error || null, ...(undo ? { undo } : {}) });
+        const logged = onAudit({ tool: name, risk, args: a, ok: result.ok, resultChars: result.text.length, error: result.error || null, ...(undo ? { undo } : {}) });
+        // `audit` is emitted only for change tools, and only once the audit write has actually resolved. A caller
+        // whose onAudit returns nothing (tests, scripts) records no audit event: we never claim an audit we did not see.
+        if ((risk === 'write' || risk === 'critical') && logged && typeof logged.then === 'function') {
+          const base = { tool: name, domain: toolDef ? toolDef.domain : null, entity_reference: callRef };
+          logged.then(r => {
+            const sink = r && r.sink;
+            tel('audit', { ...base, status: sink === 'cloud' ? 'ok' : sink === 'local_only' ? 'local_only' : 'failed', severity: sink === 'cloud' ? 'info' : 'warning',
+              metadata: { risk, approval: a._approval, ok: !!result.ok, undoable: !!undo, sink: sink || 'unknown', error: r && r.error } });
+          }, () => tel('audit', { ...base, status: 'failed', severity: 'warning', metadata: { risk, approval: a._approval, ok: !!result.ok, undoable: !!undo, sink: 'failed' } }));
+        }
       } catch (_) { /* audit is best-effort */ }
       messages.push({ role: 'tool', tool_call_id: call.id, name, content: result.text });
     }
   }
   const text = 'I took too many steps without finishing. Try asking a narrower question.';
   tel('error', { status: 'failed', severity: 'warning', metadata: { message: 'step limit reached' } });
+  endSpec('failed', MAX_STEPS);
   messages.push({ role: 'assistant', content: text });
   return { text, messages: compactHistory(messages), steps: MAX_STEPS, sensitive: sawSensitive, domains, specialist };
 }
