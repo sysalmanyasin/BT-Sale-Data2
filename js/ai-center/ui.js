@@ -108,6 +108,10 @@ async function refresh({ force = false } = {}) {
     const prev = S.snap && S.snap.findings;
     const snap = await collectSnapshot();
     S.snap = snap; S.lastRefreshAt = Date.now();
+    // Sales data can still be loading right after the page opens: re-read a few times instead of showing false alarms.
+    const pending = snap.raw && snap.raw.briefing && snap.raw.briefing.sales_data_ready === false;
+    S.pendingTries = pending ? (S.pendingTries || 0) + 1 : 0;
+    if (pending && S.pendingTries <= 6) setTimeout(() => { S.lastRefreshAt = 0; refresh({ force: true }); }, 2500);
     const d = M.diffFindings(prev, snap.findings);
     if (prev) {
       d.added.forEach(f => T.emit({ type: 'finding_new', source: 'ai-center', severity: f.severity, domain: f.system.toLowerCase(), entity_reference: f.id, metadata: { title: f.title } }));
@@ -238,7 +242,7 @@ function secSince() {
   const b = S.baseline;
   const body = !b ? empty('This is your first visit. The next visit will show what changed.')
     : (() => { const d = M.diffFindings(b.findings, S.snap.findings); return h('div', { class: 'aic-since' }, h('div', {}, h('b', { text: '+' + d.added.length }), ' new'), h('div', {}, h('b', { text: String(d.cleared.length) }), ' no longer present'), h('div', { class: 'aic-sub', text: 'Since ' + new Date(b.at).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) })); })();
-  return card('since', 'monitor', sectionHeader('SINCE YOUR LAST VISIT'), body);
+  return card('since', 'investigate', sectionHeader('SINCE YOUR LAST VISIT'), body);
 }
 
 function systemCard(name) {
@@ -451,6 +455,7 @@ function approvalCard(p) {
 function secCorrelation() {
   if (!S.snap) return null;
   const c = M.correlate(visibleFindings());
+  if (!c.length) return null; // no empty card
   return card('corr', 'monitor', sectionHeader('CROSS-AREA SIGNALS', h('span', { class: 'aic-sub', text: 'rule-based, not proof' })),
     c.length ? c.map(x => h('div', { class: 'aic-f aic-sev-warning aic-corr' }, h('div', { class: 'aic-fh' }, x.systems.map(sy => h('span', { class: 'aic-tag', text: sy })), tagEl('CORRELATION')),
       h('div', { class: 'aic-ft', text: x.title }), h('div', { class: 'aic-sub', text: x.why }), h('div', { class: 'aic-row' }, h('button', { text: 'Ask BT to check', onclick: () => ask('Check whether these are connected, using your tools, and say what is known and what is uncertain: ' + x.parts.map(p => p.title).join(' / ')) }))))
@@ -493,7 +498,7 @@ function deepViews(name) {
 // ── health ──
 function secHealth() {
   const rows = S.health;
-  return card('health', 'monitor', sectionHeader('SYSTEM HEALTH', h('span', { class: 'aic-sub', text: 'measured, not assumed' })),
+  return card('health', 'investigate', sectionHeader('SYSTEM HEALTH', h('span', { class: 'aic-sub', text: 'measured, not assumed' })),
     rows ? h('ul', { class: 'aic-hl' }, rows.map(r => h('li', {}, h('span', { class: 'aic-hn', text: r.label }), pill(r.status), h('span', { class: 'aic-sub', text: r.detail })))) : skeleton(4));
 }
 
@@ -590,7 +595,7 @@ const COMMANDS = () => [
   ['Prepare me for closing', 'Ask BT', () => ask('Prepare me for closing: what is not closed, and what should I check first?')],
   ['Show forecast', 'Ask BT', () => ask('Interpret my target pace for this month.')],
   ['View findings', 'Monitor', () => goMode('monitor', 'aic-att')], ['View agents', 'Investigate', () => goMode('investigate', 'aic-net')], ['View tools', 'Investigate', () => { S.toolsOpen = true; goMode('investigate', 'aic-tools'); }],
-  ['View approvals / actions', 'Act', () => goMode('act', 'aic-actc')], ['View activity', 'Investigate', () => goMode('investigate', 'aic-act')], ['View system health', 'Monitor', () => goMode('monitor', 'aic-health')],
+  ['View approvals / actions', 'Act', () => goMode('act', 'aic-actc')], ['View activity', 'Investigate', () => goMode('investigate', 'aic-act')], ['View system health', 'Investigate', () => goMode('investigate', 'aic-health')],
   ...M.SYSTEMS.map(s => ['View ' + s.toLowerCase(), 'System', () => openSystem(s)]),
   ['Run health check', 'System', () => refresh({ force: true })],
   ['Search repository', 'Investigate', () => { goMode('investigate', 'aic-repo'); setTimeout(() => { const i = $('#aic-rq'); if (i) i.focus(); }, 60); }], ['Explain architecture', 'Investigate', () => { goMode('investigate', 'aic-repo'); S.repoQ = RI.SAMPLE_QUESTIONS[4]; paint(); setTimeout(() => { const i = $('#aic-rq'); if (i) i.focus(); }, 60); }],
@@ -627,7 +632,7 @@ function paint() {
   const keep = $('#aic-q'), val = keep ? keep.value : '', hadFocus = keep && document.activeElement === keep;
   const rqHad = !!(document.activeElement && document.activeElement.id === 'aic-rq');
   const scroll = window.scrollY;
-  r.replaceChildren(secHeaderBar(info.core), secModes(), offline, S.error && S.snap ? h('div', { class: 'aic-err', text: 'Last refresh failed: ' + S.error }) : null, main, cmdBar());
+  r.replaceChildren(...[secHeaderBar(info.core), secModes(), offline, S.error && S.snap ? h('div', { class: 'aic-err', text: 'Last refresh failed: ' + S.error }) : null, main, cmdBar()].filter(Boolean)); // null args would render the text "null"
   const q = $('#aic-q'); if (q) { q.value = val; if (hadFocus) q.focus(); }
   if (rqHad) { const r2 = $('#aic-rq'); if (r2) { r2.focus(); const n = r2.value.length; try { r2.setSelectionRange(n, n); } catch (_) { /* not a text input */ } } }
   if (Math.abs(window.scrollY - scroll) > 1) window.scrollTo(0, scroll);

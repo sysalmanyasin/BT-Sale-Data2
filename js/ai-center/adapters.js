@@ -63,7 +63,7 @@ export async function collectSnapshot(now = Date.now()) {
   };
   const systems = {};
   for (const s of SYSTEMS) systems[s] = { ...systemStatus(s, findings, avail[s]), availability: avail[s], metrics: metricsFor(s, raw), fresh: freshnessFor(s, raw, now) };
-  return { at: now, raw, findings, systems, errors, forecast: buildForecast(raw.pace, briefing && briefing.target), tableReadyErrors: Object.values(errors).filter(Boolean).length };
+  return { at: now, raw, findings, systems, errors, forecast: (briefing && briefing.sales_data_ready === false) ? { available: false, reason: 'Sales data is still loading.' } : buildForecast(raw.pace, briefing && briefing.target), tableReadyErrors: Object.values(errors).filter(Boolean).length };
 }
 
 function metricsFor(s, r) {

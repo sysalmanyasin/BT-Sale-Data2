@@ -407,6 +407,10 @@ export function correlate(findings) {
   if (cash.length && sales.length) add('c_cash_sales', ['CASH', 'SALES'], 'Cash difference and weak sales appear together', 'Both rules fired on the same data. A weak day is not evidence of a cash problem, and a cash difference is not evidence of weak sales. Check the day\'s entry first.', [cash[0], sales[0]]);
   if (inv.length && sales.length) add('c_inv_sales', ['INVENTORY', 'SALES'], 'Out-of-stock items while sales are below normal', 'Products that were selling are out of stock or about to be, at a time sales are below the recent level. It is possible the two are linked. It is not proven.', [inv[0], sales[0]]);
   if (strs.length && inv.length) add('c_str_inv', ['STR', 'INVENTORY'], 'Delayed incoming transfers while stock is short', 'Incoming STRs are overdue while items are out of stock or running out. If the delayed transfers contain those items, receiving them would help. Verify the contents of the oldest STR.', [strs[0], inv[0]]);
+  // More pairs (co-occurrence only, never causal wording)
+  const missingSales = f.filter(x => x.system === 'SALES' && /no sales entry|latest sales entry/i.test(x.title)), pace = f.filter(x => x.system === 'FORECAST' || (x.system === 'SALES' && /pace|target/i.test(x.title))), closing = by('CLOSING');
+  if (missingSales.length && pace.length) add('c_missing_pace', ['SALES', 'FORECAST'], 'Missing sales entry and a weak target pace appear together', 'Target pace is calculated from entered days, so a missing entry can make the pace look worse than it is. Add the entry, refresh, then judge the pace.', [missingSales[0], pace[0]]);
+  if (closing.length && cash.length) add('c_closing_cash', ['CLOSING', 'CASH'], 'Incomplete closing and a cash difference appear together', 'Unclosed shifts can leave the day\'s cash figures incomplete. Close the listed shifts first, then re-check the cash difference.', [closing[0], cash[0]]);
   return out;
 }
 

@@ -32,12 +32,17 @@ export function buildBriefing(now = new Date()) {
     const last = entered[0];
     const gap = Math.round((today - last.t) / 86400000);
     out.last_sales_entry = { date: last.d.Date, total_sale: rs(last.d.TOTAL), days_ago: gap };
-    if (gap >= 2) add('warn', 'sales', 'Latest sales entry is ' + last.d.Date + ' (' + gap + ' days ago).');
+    if (gap >= 2) { out.latest_gap_flagged = true; add('warn', 'sales', 'Latest sales entry is ' + last.d.Date + ' (' + gap + ' days ago).'); }
   }
+  // Sales data not loaded yet (page just opened): say so instead of reporting every day as missing.
+  const salesReady = DAILY.length > 0;
+  out.sales_data_ready = salesReady;
+  if (!salesReady) add('info', 'sales', 'Sales data is still loading. Findings will update in a moment.');
   const monthDays = DAILY.filter(d => sameMonth(d.Month_Year, my));
   const have = new Set(monthDays.map(d => parseAppDate(d.Date) && parseAppDate(d.Date).getDate()));
   const missing = [];
-  for (let day = 1; day < today.getDate(); day++) if (!have.has(day)) missing.push(dayStr(new Date(today.getFullYear(), today.getMonth(), day)));
+  // Yesterday is excluded here: it is already covered by 'Latest sales entry is ...' / 'Yesterday ... has no sales entry'.
+  if (salesReady) for (let day = 1; day < today.getDate() - 1; day++) if (!have.has(day)) missing.push(dayStr(new Date(today.getFullYear(), today.getMonth(), day)));
   out.missing_sales_days = missing.length;
   if (missing.length) add('warn', 'sales', missing.length + ' day(s) this month have no sales entry: ' + missing.slice(0, 8).join(', ') + (missing.length > 8 ? ', …' : '') + '.');
 
@@ -68,7 +73,7 @@ export function buildBriefing(now = new Date()) {
       out.yesterday.vs_recent_avg_pct = pct;
       if (Math.abs(pct) >= 30) add('info', 'sales', 'Yesterday was ' + Math.abs(pct) + '% ' + (pct < 0 ? 'below' : 'above') + ' the recent daily average (Rs ' + rs(avg).toLocaleString('en-PK') + ').');
     }
-  } else if (entered.length && today.getDate() > 1) {
+  } else if (salesReady && entered.length && today.getDate() > 1 && !out.latest_gap_flagged) {
     add('info', 'sales', 'Yesterday (' + dayStr(yest) + ') has no sales entry yet.');
   }
 
