@@ -117,7 +117,9 @@ export function buildBriefing(now = new Date()) {
       ca.duplicates.forEach(m => add('warn', 'credit', m + '.'));
       // Rollover gap: the latest month carries nothing over although the month before it closed with money owed.
       const gap = months.length > 1 ? findUnrolledCredit(mgr.credit[months[1]], mgr.credit[months[0]]) : null;
-      if (gap) { out.credit.unrolled_from = months[1]; out.credit.unrolled_owed = Math.round(gap.owed); add('warn', 'credit', months[1] + ' closed with Rs ' + Math.round(gap.owed).toLocaleString('en-PK') + ' still owed by ' + gap.staff + ' staff, but ' + months[0] + ' carries nothing over. Roll the credit month forward so balances are not lost.'); }
+      if (gap) { out.credit.unrolled_from = months[1]; out.credit.unrolled_owed = Math.round(gap.owed);
+        // Salaries are settled around the 10th-12th and the rollover follows, so before the 10th this is expected, not a problem.
+        add(now.getDate() >= 10 ? 'warn' : 'info', 'credit', months[1] + ' closed with Rs ' + Math.round(gap.owed).toLocaleString('en-PK') + ' still owed by ' + gap.staff + ' staff, but ' + months[0] + ' carries nothing over. Roll the credit month forward so balances are not lost.'); }
       if (ca.aged) add('warn', 'credit', ca.aged + '.');
     }
   } catch (_) { /* credit data unreadable: skip, never break the briefing */ }

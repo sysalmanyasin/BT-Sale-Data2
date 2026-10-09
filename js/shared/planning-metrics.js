@@ -209,11 +209,16 @@ export function strFillRate({ headers, rowsByStr, now = new Date(), days = 7 } =
  * @param {Record<string, number>} cur       category → month-to-date total
  * @param {Array<Record<string, number>>} prev  earlier months, each category → total over the SAME day-range
  */
-export function categorySpikes(cur, prev, { ratio = 1.5, minDelta = 5000 } = {}) {
+export function categorySpikes(cur, prev, { ratio = 1.5, minDelta = 5000, fullMonths = [] } = {}) {
   const months = (Array.isArray(prev) ? prev : []).filter(Boolean);
+  const full = (Array.isArray(fullMonths) ? fullMonths : []).filter(Boolean);
   const out = [];
   for (const [cat, amt] of Object.entries(cur || {})) {
     const base = months.length ? mean(months.map(m => n(m[cat]))) : 0;
+    // Timing, not a spike: a category that is normally big later in the month (salary on the 10th-12th) has a ~0
+    // same-day-range baseline. If this month's total is still within a normal FULL-month total, do not flag it.
+    const usualFull = full.length ? mean(full.map(m => n(m[cat]))) : 0;
+    if (usualFull > 0 && amt <= usualFull * 1.25) continue;
     if (amt - base >= minDelta && (base === 0 || amt >= base * ratio)) out.push({ category: cat, month_to_date: r0(amt), usual_same_period: r0(base), extra: r0(amt - base), times_usual: base > 0 ? Math.round(amt / base * 10) / 10 : null });
   }
   return out.sort((a, b) => b.extra - a.extra);

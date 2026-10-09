@@ -101,6 +101,13 @@ registerTool({
   },
   run: ({ ledger_type, category_id, amount, date, desc }) => {
     const { t, c } = resolveLedger(ledger_type, category_id);
+    // Idempotency: a retry or double-tap must not write the same entry twice. Entry ids embed their creation time
+    // ("ldg_<ms>_<rand>"), so an identical assistant entry made in the last 2 minutes is treated as this same request.
+    const iso = toIso(date), amt = Math.abs(num(amount)), now = Date.now();
+    const recent = LedgerStore.getEntries(t.id).find(e => e.source === 'ai_assistant' && e.date === iso && e.categoryId === c.id
+      && Math.abs(num(e.amount) - amt) < 0.5 && lc(e.desc) === lc(desc)
+      && now - (Number(String(e.id || '').split('_')[1]) || 0) < 120000);
+    if (recent) throw new Error('The same entry was just added (id ' + recent.id + '). Nothing new was written, so it is not duplicated.');
     const entry = LedgerActions.addEntry(t.id, { date: toIso(date), categoryId: c.id, amount: Math.abs(num(amount)), desc: desc || '', source: 'ai_assistant' });
     afterWrite();
     return { summary: 'Added ' + rsFmt(entry.amount) + ' to ' + t.label + ' (' + c.label + ')', entry_id: entry.id, new_balance: Math.round(LedgerStore.getCurrentBalance(t.id)) };

@@ -9,6 +9,7 @@ const { Repository } = await import('../../js/repository.js');
 globalThis.Repository = Repository;
 const reg = await import('../../js/agent/core/tool-registry.js');
 await import('../../js/agent/tools/credit.js');
+await import('../../js/agent/tools/verify.js'); // registers the read-back verifiers
 
 const KEY = 'BT_ManagerWork_v1';
 const yes = async () => true;
@@ -141,5 +142,64 @@ describe('add_staff_credit_entry', () => {
     await call('add_staff_credit_entry', { staff: 'Sara', amount: 10, date: '2026-10-05' });
     assert.equal(synced, 'October 2026'); assert.equal(reg2, 1); assert.equal(pushed, 1);
     Repository.setItem('bt_auto_save', '0');
+  });
+});
+
+describe('roll_credit_forward', () => {
+  const seedRoll = (octRows) => Repository.setItem(KEY, JSON.stringify({ other: { keep: 'me' }, credit: {
+    'September 2026': [
+      { name: 'Ali Khan', prevBal: 0, entries: [{ date: '10-Sep-2026', desc: 'x', amount: 9000 }], salary: 0, lessGeneric: 0 },
+      { name: 'Sara', prevBal: 0, entries: [{ date: '11-Sep-2026', desc: 'y', amount: 2000 }], salary: 500, lessGeneric: 0 },
+      { name: 'Bilal', prevBal: 0, entries: [], salary: 0, lessGeneric: 0 },
+    ],
+    'October 2026': octRows,
+  } }));
+  const zero = name => ({ name, prevBal: 0, entries: [], salary: 0, lessGeneric: 0 });
+
+  test('fills opening balances from last month net, adds missing people, keeps everything else, verifies', async () => {
+    seedRoll([zero('Ali Khan')]);
+    let pv;
+    const r = await call('roll_credit_forward', {}, opts(async req => { pv = req.preview; return true; }));
+    assert.equal(r.ok, true, r.text);
+    assert.equal(pv.strong, true);
+    assert.match(pv.lines.join('|'), /From: September 2026/);
+    const oct = blob().credit['October 2026'];
+    assert.equal(oct.find(x => x.name === 'Ali Khan').prevBal, 9000);
+    assert.equal(oct.find(x => x.name === 'Sara').prevBal, 1500);   // 2000 - 500 salary
+    assert.ok(!oct.some(x => x.name === 'Bilal'), 'people owing nothing are not added to an existing sheet');
+    assert.equal(blob().other.keep, 'me');
+    assert.equal(r.verified.ok, true, JSON.stringify(r.verified));
+    assert.equal(body(r).total, 10500);
+  });
+  test('undo restores the next month exactly as it was', async () => {
+    seedRoll([zero('Ali Khan')]);
+    const before = JSON.stringify(blob().credit['October 2026']);
+    const r = await call('roll_credit_forward', {});
+    await r.undo.fn();
+    assert.equal(JSON.stringify(blob().credit['October 2026']), before);
+  });
+  test('never overwrites a different non-zero opening balance, and says so', async () => {
+    seedRoll([{ ...zero('Ali Khan'), prevBal: 4000 }, zero('Sara')]);
+    let pv;
+    const r = await call('roll_credit_forward', { month_year: 'September 2026' }, opts(async req => { pv = req.preview; return true; }));
+    assert.equal(r.ok, true);
+    assert.equal(blob().credit['October 2026'].find(x => x.name === 'Ali Khan').prevBal, 4000);
+    assert.match(pv.warnings.join(' '), /Ali Khan/);
+  });
+  test('running it again has nothing to do and changes nothing', async () => {
+    seedRoll([zero('Ali Khan')]);
+    await call('roll_credit_forward', {});
+    const snap = Repository.getItem(KEY);
+    const again = await call('roll_credit_forward', {});
+    assert.equal(again.ok, false);
+    assert.match(again.text, /No month needs rolling forward|Nothing to roll/);
+    assert.equal(Repository.getItem(KEY), snap);
+  });
+  test('rejecting the card writes nothing', async () => {
+    seedRoll([zero('Ali Khan')]);
+    const snap = Repository.getItem(KEY);
+    const r = await call('roll_credit_forward', {}, opts(async () => false));
+    assert.equal(r.rejected, true);
+    assert.equal(Repository.getItem(KEY), snap);
   });
 });

@@ -78,6 +78,13 @@ setVerifier('add_staff_credit_entry', (a, out) => {
   return done([chk('Credit sheet is readable', readable), chk('Entry is on the staff credit row', has), chk('Net owed matches the reported figure', net !== null && net === ni(out.net_owed_now), net !== null ? 'Rs ' + net : 'missing')]);
 });
 
+setVerifier('roll_credit_forward', (a, out) => {
+  const m = json(MGR_KEY, {}), rows = (m && m.credit && m.credit[out.to]) || [];
+  const readable = m !== undefined;
+  const missing = (out.expected || []).filter(x => { const r = rows.find(r => normName(r.name) === normName(x.name)); return !r || ni(r.prevBal) !== ni(x.net); });
+  return done([chk('Credit sheet is readable', readable), chk('Opening balances match last month\'s net', !missing.length, missing.length ? missing.slice(0, 3).map(x => x.name).join(', ') : (out.expected || []).length + ' rows')]);
+});
+
 setVerifier('delete_ledger_entry', (a) => done([chk('Entry is gone from every ledger', !ledgerEntry(a.entry_id))]));
 
 setVerifier('delete_staff_note', (a) => {

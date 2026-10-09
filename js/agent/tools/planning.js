@@ -97,7 +97,8 @@ registerTool({
       try {
         const cur = monthTotals(t.id, y, m, 31);
         const history = [1, 2, 3].map(k => { const [yy, mm] = prev(k); return monthTotals(t.id, yy, mm, day); });
-        const spikes = categorySpikes(cur, history);
+        const fullMonths = [1, 2, 3].map(k => { const [yy, mm] = prev(k); return monthTotals(t.id, yy, mm, 31); });
+        const spikes = categorySpikes(cur, history, { fullMonths });
         const lab = id => { const c = LedgerStore.getCategory(t.id, id); return (c && c.label) || id; };
         out.ledgers.push({
           ledger: t.label || t.id, month_to_date_total: rs(Object.values(cur).reduce((s, v) => s + v, 0)),

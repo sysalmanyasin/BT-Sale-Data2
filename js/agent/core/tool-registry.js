@@ -15,7 +15,10 @@
 
 import { blockedByName, blockedByArgs } from './hard-blocks.js';
 
-const RESULT_CHAR_CAP = 6000;
+// Model-facing cap. UI readers (the BT Intelligence dashboard) pass a larger `resultCap` because they parse the
+// JSON themselves and a cut-off string is not valid JSON.
+export const RESULT_CHAR_CAP = 6000;
+export const UI_RESULT_CHAR_CAP = 200000;
 const _tools = new Map();
 
 export const RISKS = Object.freeze(['read', 'ui', 'write', 'critical']);
@@ -147,7 +150,7 @@ const _cap = capResult;
  *   4. the human must approve — rejection means run() is never called.
  * @returns {{ok:boolean, text:string, tool:object|null, error?:string, rejected?:boolean, undo?:object, preview?:object}}
  */
-export async function runTool(name, rawArgs, { allow = ['read', 'ui'], writesEnabled = false, approve = null, review = null, onChanged = null, onVerify = null } = {}) {
+export async function runTool(name, rawArgs, { allow = ['read', 'ui'], writesEnabled = false, approve = null, review = null, onChanged = null, onVerify = null, resultCap = RESULT_CHAR_CAP } = {}) {
   const tool = getTool(name);
   if (!tool) return { ok: false, tool: null, error: 'unknown tool', text: JSON.stringify({ error: 'Unknown tool: ' + name }) };
   const changing = isChange(tool);
@@ -228,7 +231,7 @@ export async function runTool(name, rawArgs, { allow = ['read', 'ui'], writesEna
       try { if (typeof onVerify === 'function') onVerify({ phase: 'end', tool: tool.name, verified }); } catch (_) { /* telemetry only */ }
     }
     const payload = changing ? { done: true, can_undo: !!undo, ...(verified ? { verified: verified.ok, ...(verified.ok ? {} : { verification_problem: verified.checks.filter(c => !c.ok).map(c => c.label + (c.detail ? ' (' + c.detail + ')' : '')).join('; ') }) } : {}), ...(out && typeof out === 'object' ? out : { result: out }) } : out;
-    const { text } = _cap(payload);
+    const { text } = _cap(payload, resultCap);
     return { ok: true, tool, text, undo, undoData: undo ? { args, out } : null, preview, ...(verified ? { verified } : {}) };
   } catch (e) {
     const msg = (e && e.message) || String(e);

@@ -299,16 +299,25 @@ export function freshness(ts, { warnMs, errMs }, now = Date.now()) {
   return { status: age > errMs ? 'ERROR' : age > warnMs ? 'WARNING' : 'HEALTHY', label: ageLabel(ts, now), stale: age > warnMs };
 }
 
+/**
+ * ONE failure rule for every health row (agent calls, tool runs, specialists), so they cannot disagree.
+ * A handful of failures is shown amber (WARNING) instead of staying green: >= 3 failures AND >= 5% of runs.
+ */
+export function failureStatus(calls, failed) {
+  if (!calls) return 'NOT_MEASURED';
+  const rate = failed / calls;
+  return rate >= 0.5 ? 'ERROR' : rate >= 0.15 ? 'DEGRADED' : (failed >= 3 && rate >= 0.05) ? 'WARNING' : 'HEALTHY';
+}
+
 /** summarizeUsage() rows → agent/provider health. NOT_MEASURED when there were no calls (we do not guess). */
 export function providerHealth(rows) {
   const calls = rows.reduce((a, r) => a + r.calls, 0), failed = rows.reduce((a, r) => a + r.failed, 0);
   if (!calls) return { status: 'NOT_MEASURED', detail: 'No AI calls in the last 24 hours, so provider health is not measured.' };
-  const rate = failed / calls;
   const detail = calls + ' calls · ' + failed + ' failed in 24h';
-  return { status: rate >= 0.5 ? 'ERROR' : rate >= 0.15 ? 'DEGRADED' : 'HEALTHY', detail };
+  return { status: failureStatus(calls, failed), detail };
 }
 
-export const STATUS_TONE = Object.freeze({ HEALTHY: 'ok', CLEAR: 'ok', DEGRADED: 'wn', WARNING: 'wn', ATTENTION: 'wn', ERROR: 'cr', OFFLINE: 'cr', UNAUTHORIZED: 'cr', DATA_UNAVAILABLE: 'wn', NOT_MONITORED: 'mu', NOT_MEASURED: 'mu', CHECK_FAILED: 'wn', INFO: 'mu' });
+export const STATUS_TONE = Object.freeze({ HEALTHY: 'ok', CLEAR: 'ok', STALE: 'wn', DEGRADED: 'wn', WARNING: 'wn', ATTENTION: 'wn', ERROR: 'cr', OFFLINE: 'cr', UNAUTHORIZED: 'cr', DATA_UNAVAILABLE: 'wn', NOT_MONITORED: 'mu', NOT_MEASURED: 'mu', CHECK_FAILED: 'wn', INFO: 'mu' });
 
 // ───────────────────────── forecast (two existing calculations, shown side by side) ─────────────────────────
 /**
@@ -384,6 +393,17 @@ export function describeEvent(e) {
 }
 
 /** Compare two finding lists → what is new / what disappeared (by stable id). */
+/** True while sales data is still loading: findings are incomplete, so comparing snapshots would only produce false 'new / cleared' noise. */
+export function isPartialSnapshot(snap) { return !!(snap && snap.raw && snap.raw.briefing && snap.raw.briefing.sales_data_ready === false); }
+
+/** A system that looks CLEAR but whose data is out of date is STALE, never CLEAR. */
+export function applyStale(status, fresh) {
+  if (status && status.status === 'CLEAR' && fresh && (fresh.status === 'WARNING' || fresh.status === 'ERROR')) {
+    return { ...status, status: 'STALE', reason: 'Data is out of date: ' + fresh.label };
+  }
+  return status;
+}
+
 export function diffFindings(prev, curr) {
   const p = new Map((prev || []).map(f => [f.id, f])), c = new Map((curr || []).map(f => [f.id, f]));
   return { added: [...c.values()].filter(f => !p.has(f.id)), cleared: [...p.values()].filter(f => !c.has(f.id)) };
@@ -524,8 +544,7 @@ export function specialistStats(events) {
 export function specialistsHealth(stats, definedCount) {
   const rows = Object.values(stats || {}), runs = rows.reduce((a, r) => a + r.runs, 0), failed = rows.reduce((a, r) => a + r.failed, 0);
   if (!runs) return { status: 'NOT_MEASURED', detail: definedCount + ' defined. No requests recorded in the last 7 days on this device.' };
-  const rate = failed / runs;
-  return { status: rate >= 0.5 ? 'ERROR' : rate >= 0.15 ? 'DEGRADED' : 'HEALTHY', detail: Object.keys(stats).length + ' of ' + definedCount + ' used. ' + runs + ' request(s), ' + failed + ' failed (last 7 days, this device).' };
+  return { status: failureStatus(runs, failed), detail: Object.keys(stats).length + ' of ' + definedCount + ' used. ' + runs + ' request(s), ' + failed + ' failed (last 7 days, this device).' };
 }
 /** Realtime channel state string (the app's own bt-sync channel) -> health. */
 export function realtimeHealth(state) {

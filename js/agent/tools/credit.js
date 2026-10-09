@@ -9,7 +9,8 @@ import { amountChecks, dateChecks, isoToday, rsFmt } from '../core/guard.js';
 import { afterWrite } from '../core/after-write.js';
 import { Repository } from '../../repository.js';
 import { Actions } from '../../actions.js';
-import { num, rs, normDay, normMonth, currentMonthYear, FULL, MON, clampInt } from './_util.js';
+import { num, rs, normDay, normMonth, currentMonthYear, FULL, MON, clampInt, monthSortVal } from './_util.js';
+import { findUnrolledCredit } from '../../shared/credit-alerts.js';
 import { resolveStaff, findCreditRow, normName } from './_names.js';
 
 const MGR_KEY = 'BT_ManagerWork_v1';
@@ -168,3 +169,84 @@ function refreshCreditUi(my) {
     if (n && n.textContent && typeof window.renderStaffCreditCurrent === 'function') window.renderStaffCreditCurrent(n.textContent);
   } catch (e) { console.error('[agent] card refresh', e); }
 }
+
+// ── Write: roll one credit month forward (same rule as Credit Ledger → Copy → Next Month) ──
+// Each person's net owed in `from` becomes the opening balance (prevBal) of the next month. Safe by design:
+//  - an existing next-month row is only filled when its opening balance is still 0 (a different non-zero balance is
+//    reported and left alone, never overwritten),
+//  - people missing from the next month are added with their balance,
+//  - the previous state of the next month is saved so the whole step can be undone.
+function planRoll(fromArg) {
+  const data = loadMgr();
+  const months = Object.keys(data.credit || {}).filter(m => Array.isArray(data.credit[m]) && data.credit[m].length);
+  let from = fromArg ? normMonth(fromArg) : null;
+  if (fromArg && !from) throw new Error('Use a month like "September 2026".');
+  if (!from) {
+    // default: the newest month whose following month carries nothing over although money is owed
+    const sorted = months.sort((a, b) => monthSortVal(b) - monthSortVal(a));
+    from = sorted.find(m => { const nx = nextMonthLabel(m); return nx && Array.isArray(data.credit[nx]) && findUnrolledCredit(data.credit[m], data.credit[nx]); }) || null; // only a month whose next-month sheet already exists: the running month is never rolled early
+    if (!from) throw new Error('No month needs rolling forward: every month with money owed already carries into the next one.');
+  }
+  const src = rowsFor(data, from);
+  if (!src.length) throw new Error('There is no credit sheet for ' + from + '.');
+  const to = nextMonthLabel(from);
+  const existing = rowsFor(data, to);
+  const fill = [], add = [], skipped = [];
+  for (const r of src) {
+    const net = netOf(r);
+    const hit = findCreditRow(existing, r.name);
+    if (hit.ambiguous) { skipped.push(String(r.name).trim() + ' (matches several rows in ' + to + ')'); continue; }
+    if (hit.row) {
+      if (ni(hit.row.prevBal) === net) continue; // already correct
+      if (ni(hit.row.prevBal) === 0) fill.push({ name: String(hit.row.name).trim(), net });
+      else skipped.push(String(r.name).trim() + ' (' + to + ' opening balance is already ' + rsFmt(ni(hit.row.prevBal)) + ', not Rs ' + net.toLocaleString('en-PK') + ')');
+    } else if (net !== 0 || !existing.length) add.push({ name: String(r.name).trim(), net });
+  }
+  return { from, to, fill, add, skipped, total: [...fill, ...add].reduce((s, x) => s + x.net, 0), hadNext: existing.length > 0 };
+}
+function nextMonthLabel(my) {
+  const [mn, yr] = String(my).split(' ');
+  const i = FULL.indexOf(mn);
+  if (i < 0) return null;
+  return i === 11 ? FULL[0] + ' ' + (+yr + 1) : FULL[i + 1] + ' ' + yr;
+}
+
+registerTool({
+  name: 'roll_credit_forward', domain: 'manager', risk: 'write', sensitive: true,
+  description: 'Roll the staff Credit Ledger forward: each person\'s net owed in the month becomes their opening balance in the next month (same as Credit Ledger → Copy → Next Month). Never overwrites a different non-zero opening balance. Optional month_year = the month to roll FROM; default is the newest month that is not carried into the next one.',
+  parameters: { type: 'object', properties: { month_year: { type: 'string', description: 'month to roll from, e.g. "September 2026"' } } },
+  preview: ({ month_year }) => {
+    const p = planRoll(month_year);
+    const n = p.fill.length + p.add.length;
+    if (!n) throw new Error('Nothing to roll: ' + p.to + ' already carries ' + p.from + '\'s balances.' + (p.skipped.length ? ' Left alone: ' + p.skipped.join('; ') + '.' : ''));
+    const w = p.skipped.map(s => 'Not changed: ' + s);
+    if (p.hadNext) w.push(p.to + ' already has a credit sheet; only opening balances are filled in, entries and salary are kept.');
+    return { title: 'Roll credit forward', strong: true, amount: Math.max(0, p.total),
+      lines: ['From: ' + p.from, 'To: ' + p.to, 'People updated: ' + n, 'Total carried: ' + rsFmt(p.total), ...[...p.fill, ...p.add].sort((a, b) => b.net - a.net).slice(0, 6).map(x => '  ' + x.name + ': ' + rsFmt(x.net))], warnings: w };
+  },
+  run: ({ month_year }) => {
+    const p = planRoll(month_year);
+    const data = loadMgr();
+    if (!data.credit || typeof data.credit !== 'object') data.credit = {};
+    const before = Array.isArray(data.credit[p.to]) ? JSON.parse(JSON.stringify(data.credit[p.to])) : null;
+    const rows = Array.isArray(data.credit[p.to]) ? data.credit[p.to] : (data.credit[p.to] = []);
+    for (const f of p.fill) { const r = findCreditRow(rows, f.name).row; if (r) r.prevBal = f.net; }
+    for (const a of p.add) rows.push({ name: a.name, prevBal: a.net, entries: [], salary: 0, lessGeneric: 0 });
+    Actions.saveFeatureData(MGR_KEY, JSON.stringify(data));
+    refreshCreditUi(p.to);
+    afterWrite();
+    return { summary: 'Rolled ' + rsFmt(p.total) + ' forward from ' + p.from + ' to ' + p.to + ' (' + (p.fill.length + p.add.length) + ' people)', from: p.from, to: p.to, total: p.total,
+      expected: [...p.fill, ...p.add].map(x => ({ name: x.name, net: x.net })), before };
+  },
+  makeUndo: (args, out) => ({
+    label: 'Undo credit roll-forward to ' + out.to,
+    fn: () => {
+      const data = loadMgr();
+      if (!data.credit) data.credit = {};
+      if (out.before === null) delete data.credit[out.to]; else data.credit[out.to] = out.before;
+      Actions.saveFeatureData(MGR_KEY, JSON.stringify(data));
+      refreshCreditUi(out.to);
+      afterWrite();
+    },
+  }),
+});

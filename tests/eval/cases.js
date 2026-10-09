@@ -45,6 +45,7 @@ export const CASES = [
   { say: 'Add a note for Sara: arrived late today', specialist: M, domains: [M], writes: true, offer: ['add_staff_note'] },
   { say: 'Ali took Rs 800 on credit for medicine', specialist: M, domains: [M], writes: true, offer: ['add_staff_credit_entry'] },
   { say: 'Ali paid back 500', specialist: M, domains: [M], writes: true, offer: ['add_staff_credit_entry'] },
+  { say: 'Roll the staff credit forward to October', specialist: M, domains: [M], writes: true, offer: ['roll_credit_forward'] },
   { say: 'Add Rs 500 petty expense', specialist: M, domains: [M], writes: true, offer: ['add_ledger_entry'] },
   { say: 'Delete the last JazzCash entry', specialist: M, domains: [M], writes: true, offer: ['delete_ledger_entry', 'get_ledger_entries'] },
   { say: "Remove Ali's credit entry number 2", specialist: M, domains: [M], writes: true, offer: ['delete_staff_credit_entry', 'get_staff_credit'] },

@@ -9,13 +9,13 @@
 // Reads made for monitoring are recorded as real telemetry events with
 // source 'ai-center' so the Activity timeline shows exactly what was read.
 // ══════════════════════════════════════════════════════════════════════
-import { runTool, listTools, getTool } from '../agent/core/tool-registry.js';
+import { runTool, listTools, getTool, UI_RESULT_CHAR_CAP } from '../agent/core/tool-registry.js';
 import { emit, redact, toolStats, recent } from '../agent/core/telemetry.js';
 import { fetchUsage, summarizeUsage } from '../agent/core/usage-stats.js';
 import { getKillState } from '../agent/core/kill-switch.js';
 import { loadPendingUndos } from '../agent/core/undo-store.js';
 import { SPECIALISTS } from '../agent/core/specialists.js';
-import { buildFindings, systemStatus, buildForecast, freshness, providerHealth, specialistStats, specialistsHealth, realtimeHealth, SYSTEMS, fmtNum } from './model.js';
+import { buildFindings, failureStatus, applyStale, systemStatus, buildForecast, freshness, providerHealth, specialistStats, specialistsHealth, realtimeHealth, SYSTEMS, fmtNum } from './model.js';
 
 export const getSb = () => (typeof window.btGetSupabaseClient === 'function' ? window.btGetSupabaseClient() : null);
 
@@ -23,7 +23,7 @@ export const getSb = () => (typeof window.btGetSupabaseClient === 'function' ? w
 export async function readTool(name, args = {}) {
   const t0 = Date.now(), def = getTool(name), ref = 'aic:' + name + ':' + t0;
   emit({ type: 'tool_start', source: 'ai-center', tool: name, domain: def ? def.domain : null, entity_reference: ref, metadata: { risk: def ? def.risk : 'unknown', args } });
-  const res = await runTool(name, args, { allow: ['read'] });
+  const res = await runTool(name, args, { allow: ['read'], resultCap: UI_RESULT_CHAR_CAP });
   let data = null, err = null;
   if (!res.ok) { try { err = (JSON.parse(res.text).error) || res.error; } catch (_) { err = res.error || 'failed'; } }
   else { try { data = JSON.parse(res.text); } catch (_) { err = 'Result was too large to read safely.'; } }
@@ -85,7 +85,7 @@ export async function collectSnapshot(now = Date.now()) {
     CLOSING: clR.ok ? { state: 'ready' } : { state: 'error', reason: clR.e },
   };
   const systems = {};
-  for (const s of SYSTEMS) systems[s] = { ...systemStatus(s, findings, avail[s]), availability: avail[s], metrics: metricsFor(s, raw), fresh: freshnessFor(s, raw, now) };
+  for (const s of SYSTEMS) { const fresh = freshnessFor(s, raw, now); systems[s] = { ...applyStale(systemStatus(s, findings, avail[s]), fresh), availability: avail[s], metrics: metricsFor(s, raw), fresh }; }
   return { at: now, raw, findings, systems, errors, forecast: (briefing && briefing.sales_data_ready === false) ? { available: false, reason: 'Sales data is still loading.' } : buildForecast(raw.pace, briefing && briefing.target), tableReadyErrors: Object.values(errors).filter(Boolean).length };
 }
 
@@ -138,7 +138,7 @@ function stampFreshness(kind, thresholds, now) {
 const DAY = 86400000, H = 3600000;
 function freshnessFor(s, r, now) {
   const b = r.briefing;
-  if ((s === 'SALES' || s === 'CASH') && b && b.last_sales_entry) { const d = b.last_sales_entry.days_ago; return { status: d >= 2 ? 'WARNING' : 'HEALTHY', label: d === 0 ? 'entry for today' : d + ' day(s) since last sales entry' }; }
+  if ((s === 'SALES' || s === 'CASH') && b && b.last_sales_entry) { const d = b.last_sales_entry.days_ago, late = new Date(now).getHours() >= 20; return { status: d >= 2 || (d === 1 && late) ? 'WARNING' : 'HEALTHY', label: d === 0 ? 'entry for today' : d + ' day(s) since last sales entry' }; }
   if (s === 'INVENTORY') return stampFreshness('inventory', { warnMs: 26 * H, errMs: 3 * DAY }, now);
   if (s === 'STR') return stampFreshness('str', { warnMs: 26 * H, errMs: 3 * DAY }, now);
   if (s === 'STAFF' && b && b.credit) return { status: 'HEALTHY', label: 'from local ledgers' };
@@ -167,7 +167,7 @@ export async function collectHealth(snapshot, now = Date.now()) {
     add('approvals', 'Approvals / changes', kill.known ? (kill.killed ? 'WARNING' : 'HEALTHY') : 'CHECK_FAILED', !kill.known ? 'Kill-switch state could not be checked; changes are treated as stopped' : kill.killed ? 'Kill switch ON: all AI changes are stopped' : 'Gate active: every change needs your approval');
   }
   const stats = toolStats(), tcalls = Object.values(stats).reduce((a, s) => a + s.calls, 0), tfail = Object.values(stats).reduce((a, s) => a + s.failed, 0);
-  add('tools', 'Tools', tcalls >= 5 && tfail / tcalls >= 0.15 ? 'DEGRADED' : 'HEALTHY', listTools().length + ' registered · ' + (tcalls ? tfail + ' failed of ' + tcalls + ' runs this session' : 'no runs yet this session'));
+  add('tools', 'Tools', tcalls >= 5 ? failureStatus(tcalls, tfail) : 'HEALTHY', listTools().length + ' registered · ' + (tcalls ? tfail + ' failed of ' + tcalls + ' runs this session' : 'no runs yet this session'));
   // Specialists: measured from real request_start / error events (this session + the 7-day device history).
   const sh = specialistsHealth(specialistStats(recent(400).reverse()), Object.keys(SPECIALISTS).length - 1);
   add('specialists', 'Specialists', sh.status, sh.detail);

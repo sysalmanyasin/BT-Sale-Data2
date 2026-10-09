@@ -106,7 +106,7 @@ async function refresh({ force = false } = {}) {
   if (!force && S.snap && Date.now() - S.lastRefreshAt < REFRESH_MS) return;
   S.loading = true; S.error = null; render();
   try {
-    const prev = S.snap && S.snap.findings;
+    const prev = S.snap && S.snap.findings, prevPartial = M.isPartialSnapshot(S.snap);
     const snap = await collectSnapshot();
     S.snap = snap; S.lastRefreshAt = Date.now();
     // Sales data can still be loading right after the page opens: re-read a few times instead of showing false alarms.
@@ -114,7 +114,7 @@ async function refresh({ force = false } = {}) {
     S.pendingTries = pending ? (S.pendingTries || 0) + 1 : 0;
     if (pending && S.pendingTries <= 6) setTimeout(() => { S.lastRefreshAt = 0; refresh({ force: true }); }, 2500);
     const d = M.diffFindings(prev, snap.findings);
-    if (prev) {
+    if (prev && !prevPartial && !M.isPartialSnapshot(snap)) { // while sales is still loading the findings are incomplete: do not log false new/cleared events
       d.added.forEach(f => T.emit({ type: 'finding_new', source: 'ai-center', severity: f.severity, domain: f.system.toLowerCase(), entity_reference: f.id, metadata: { title: f.title } }));
       d.cleared.forEach(f => T.emit({ type: 'finding_cleared', source: 'ai-center', domain: f.system.toLowerCase(), entity_reference: f.id, metadata: { title: f.title } }));
     }
@@ -127,7 +127,7 @@ async function refresh({ force = false } = {}) {
   S.loading = false; render();
 }
 function persistVisit() {
-  if (!S.snap) return;
+  if (!S.snap || M.isPartialSnapshot(S.snap)) return;
   lsSet(LS_VISIT, { at: Date.now(), findings: S.snap.findings.map(f => ({ id: f.id, title: f.title })) });
 }
 
@@ -190,8 +190,8 @@ function secHeaderBar(core) {
       h('span', { class: 'aic-live aic-' + (core.state === 'OFFLINE' || core.state === 'ERROR' ? 'cr' : core.state === 'READY' || core.state === 'IDLE' ? 'ok' : 'cy'), 'aria-live': 'polite' }, h('i', { class: 'aic-dot' }), core.state === 'READY' ? 'READY' : core.state.replace(/_/g, ' '))),
     h('div', { class: 'aic-tele', 'aria-label': 'Telemetry' },
       chip('SYSTEMS', M.SYSTEMS.length + ' monitored'),
-      chip('FINDINGS', S.snap ? String(f.length) : '—'),
-      chip('NEED REVIEW', S.snap ? String(warns) : '—', warns ? 'wn' : ''),
+      chip('FINDINGS', S.snap && !M.isPartialSnapshot(S.snap) ? String(f.length) : '…'), // '…' while sales data is still loading: the count is not final yet
+      chip('NEED REVIEW', S.snap && !M.isPartialSnapshot(S.snap) ? String(warns) : '…', warns && !M.isPartialSnapshot(S.snap) ? 'wn' : ''),
       chip('DATA AS OF', S.snap ? clock(S.snap.at) + ' (' + M.ageLabel(S.snap.at) + ')' : '—', stale ? 'wn' : ''),
       stale ? chip('STALE', 'refresh to update', 'wn') : null,
       chip('DATA VIEW', S.snap ? 'current snapshot loaded' : 'waiting for data')));
@@ -595,8 +595,9 @@ function secObs() {
     h('dl', { class: 'aic-met aic-big' }, [
       ...row('REQUESTS', o.requests + ' (' + o.answered + ' answered, ' + o.errors + ' failed)'), ...row('AVG INVESTIGATION', o.avgInvestigationMs != null ? M.fmtDur(o.avgInvestigationMs) : na), ...row('LONGEST', o.maxInvestigationMs != null ? M.fmtDur(o.maxInvestigationMs) : na),
       ...row('APPROVALS', o.approvals + ' decided (' + o.approvalsRejected + ' rejected)'), ...row('AVG APPROVAL WAIT', o.avgApprovalWaitMs != null ? M.fmtDur(o.avgApprovalWaitMs) : na), ...row('RETRIES', String(o.retries)),
+      ...row('TOOL RUNS (THIS SESSION)', (() => { const st = T.toolStats(), c = Object.values(st).reduce((a, x) => a + x.calls, 0), f = Object.values(st).reduce((a, x) => a + x.failed, 0); return c ? c + ' (' + f + ' failed)' : na; })()),
       ...row('VERIFIED CHANGES', o.verified + ' passed, ' + o.verifyFailed + ' failed')]),
-    h('div', { class: 'aic-sub', text: 'Older than 7 days, or from another device, is not included. Cross-device history lives in the audit log.' }));
+    h('div', { class: 'aic-sub', text: 'Requests = assistant questions on this device. System Health counts server calls from every device, so the two numbers can differ. Older than 7 days, or from another device, is not included. Cross-device history lives in the audit log.' }));
 }
 
 //  deeper system views: existing READ tools, loaded only when you ask

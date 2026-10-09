@@ -674,3 +674,17 @@ body.aic-open .ag-fab{display:none}
 .aic-met dd,.aic-hero b{white-space:nowrap;word-break:normal;overflow-wrap:normal;font-variant-numeric:tabular-nums}
 .aic-met{grid-template-columns:minmax(0,1fr) auto}
 .aic-met dt{min-width:0;overflow-wrap:anywhere}
+/* ── Phone fixes (BT Intelligence) ─────────────────────────────────────────────────────────────
+   1) Business Systems: one card per row on phones, so figures like "Rs 163,664" never wrap one digit per line.
+   2) Audit / activity rows: the date no longer overlaps the action name.
+   3) The bottom command bar is opaque behind the input, so the page text cannot show through. */
+.aic-evi time{white-space:nowrap}
+.aic-evi{grid-template-columns:max-content minmax(0,1fr) auto}
+@media (max-width:480px){
+  .aic-grid6{grid-template-columns:minmax(0,1fr)}
+  .aic-evi{grid-template-columns:max-content minmax(0,1fr)}
+  .aic-evi>:last-child{grid-column:1/-1}
+  .aic-evi .aic-sub{grid-column:1/-1}
+  .aic-twrap{max-width:100%;-webkit-overflow-scrolling:touch}
+}
+.aic-cmd,.aic-page .aic-cmd{background:linear-gradient(to bottom,transparent 0,var(--bg) 12px,var(--bg) 100%)}

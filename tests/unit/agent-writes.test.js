@@ -221,3 +221,23 @@ describe('undo stack', () => {
     assert.equal(n, 1); assert.equal(undo.listUndo().length, 0);
   });
 });
+
+describe('add_ledger_entry idempotency (retry / double-tap)', () => {
+  test('an identical entry approved again within 2 minutes is refused and nothing is written', async () => {
+    const args = { ledger_type: 'jazzcash', category_id: 'credit', amount: 777, date: '2026-10-03', desc: 'retry-test' };
+    const first = await call('add_ledger_entry', args);
+    assert.equal(first.ok, true);
+    const n = LedgerStore.getEntries('jazzcash').length;
+    const second = await call('add_ledger_entry', args);
+    assert.equal(second.ok, false);
+    assert.match(second.text, /just added/);
+    assert.equal(LedgerStore.getEntries('jazzcash').length, n, 'no second row');
+    await first.undo.fn();
+  });
+  test('a different amount, date or note is a different entry and is allowed', async () => {
+    const a = await call('add_ledger_entry', { ledger_type: 'jazzcash', category_id: 'credit', amount: 50, date: '2026-10-03', desc: 'tea' });
+    const b = await call('add_ledger_entry', { ledger_type: 'jazzcash', category_id: 'credit', amount: 50, date: '2026-10-03', desc: 'tea 2' });
+    assert.equal(a.ok, true); assert.equal(b.ok, true);
+    await a.undo.fn(); await b.undo.fn();
+  });
+});
