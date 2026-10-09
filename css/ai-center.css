@@ -408,3 +408,108 @@ body.aic-open .ag-fab{display:none}
     transition-duration:.01ms!important;
   }
 }
+/* BT Intelligence Centre — Premium Intelligence v2.
+   Additive presentation-only refinement built on the shared BT tokens.
+   Keep state, action permissions, approval gates, audit and undo logic untouched. */
+.aic-page{
+  --aic-bg:var(--bg);
+  --aic-bg2:var(--surface);
+  --aic-cd:var(--surface);
+  --aic-tx:var(--text);
+  --aic-mu:var(--muted);
+  --aic-ln:var(--border);
+  --aic-ac:var(--accent);
+  --aic-cy:var(--accent);
+  --aic-bl:var(--accent-dk);
+  --aic-ok:var(--green);
+  --aic-wn:var(--amber);
+  --aic-cr:var(--red);
+  color-scheme:light;
+}
+.aic{
+  font-family:var(--sans,Inter,system-ui,-apple-system,"Segoe UI",sans-serif);
+  font-variant-numeric:tabular-nums;
+  text-rendering:optimizeLegibility;
+}
+.aic-hdr{border-bottom:1px solid color-mix(in srgb,var(--border) 72%,transparent)}
+.aic-hr1 h1{color:var(--text);font-weight:800;letter-spacing:.13em}
+.aic-live{letter-spacing:.04em}
+.aic-dot{box-shadow:none}
+.aic-chip{background:var(--surface);border-color:var(--border);box-shadow:none}
+.aic-chip b{font-weight:750}
+.aic-tool{align-items:center}
+.aic-seg{padding:3px;border:1px solid var(--border);background:var(--s3,var(--bg));border-radius:12px}
+.aic-seg button{border:0;background:transparent;border-radius:8px!important;box-shadow:none}
+.aic-seg button.on{background:var(--accent);color:#fff;box-shadow:0 1px 2px rgba(21,29,58,.12)}
+.aic-main{align-items:stretch}
+.aic-card{
+  background:var(--surface);
+  border-color:var(--border);
+  box-shadow:0 1px 2px rgba(21,29,58,.035),0 5px 18px -14px rgba(21,29,58,.18);
+}
+.aic-card:hover{border-color:color-mix(in srgb,var(--accent) 32%,var(--border));box-shadow:0 6px 22px -16px rgba(21,29,58,.24)}
+.aic-sh{padding-bottom:9px;border-bottom:1px solid color-mix(in srgb,var(--border) 76%,transparent)}
+.aic-sh h2{color:var(--text);font-weight:800;letter-spacing:.09em}
+.aic-k{letter-spacing:.08em;font-weight:750}
+.aic-pill{border-radius:999px;letter-spacing:.025em;padding:3px 8px}
+.aic-tag{letter-spacing:.025em}
+.aic-sys{background:var(--s2,var(--surface));border-color:var(--border);border-left-width:3px}
+.aic-sys .aic-row button{box-shadow:none}
+.aic-f{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--amber)}
+.aic-f.aic-sev-info{border-left-color:var(--accent)}
+.aic-f.aic-sev-good{border-left-color:var(--green)}
+.aic-f:hover{background:var(--alt);border-color:color-mix(in srgb,var(--accent) 28%,var(--border))}
+.aic-appr,.aic-note{border-radius:10px;background:var(--alt2);border-color:color-mix(in srgb,var(--amber) 38%,var(--border))}
+.aic-evi{border-bottom-color:var(--border);}
+.aic-evi time{font-variant-numeric:tabular-nums;white-space:nowrap}
+.aic-evi.aic-sev-warning .aic-evt{color:var(--amber)}
+.aic-evi.aic-sev-error .aic-evt{color:var(--red)}
+.aic-evi.aic-sev-success .aic-evt{color:var(--green)}
+.aic-twrap table{border-collapse:separate;border-spacing:0}
+.aic-twrap th{position:sticky;top:0;background:var(--s2,var(--bg));color:var(--muted);font-weight:750;white-space:nowrap}
+.aic-twrap td,.aic-twrap th{padding:9px 10px;border-bottom:1px solid var(--border)}
+.aic-twrap tbody tr:hover{background:var(--alt)}
+.aic-form input{border-color:var(--border);box-shadow:0 1px 2px rgba(21,29,58,.04)}
+.aic-form input:focus-visible{border-color:var(--accent);box-shadow:var(--focus-ring)}
+.aic-cmd{background:linear-gradient(transparent,color-mix(in srgb,var(--bg) 94%,transparent) 20%,var(--bg) 48%)}
+.aic-chips button{background:var(--surface);box-shadow:none}
+.aic-chips button:hover:not(:disabled){background:var(--alt)}
+.aic-modal{border-color:var(--border);box-shadow:var(--sh-lg)}
+.aic-modal .aic-mh{border-bottom:1px solid var(--border);padding-bottom:12px}
+.aic-toast{border-color:var(--accent);box-shadow:var(--sh-lg)}
+.aic button:focus-visible,.aic-modal button:focus-visible,.aic-modal input:focus-visible,.aic-modal select:focus-visible,.aic-modal textarea:focus-visible{
+  outline:3px solid color-mix(in srgb,var(--accent) 52%,transparent);outline-offset:2px;
+}
+.aic button:disabled{box-shadow:none}
+@media(min-width:861px){
+  .aic-hdr{top:0}
+  .aic-main{gap:18px}
+  .aic-card{scroll-margin-top:112px}
+}
+@media(max-width:860px){
+  .aic-hdr{position:relative;backdrop-filter:none;-webkit-backdrop-filter:none}
+  .aic-tool .aic-seg{display:flex}
+  .aic-seg button{min-height:44px}
+  .aic-card{box-shadow:0 1px 2px rgba(21,29,58,.04)}
+  .aic-sh{align-items:center}
+  .aic-cmd{backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+}
+@media(max-width:620px){
+  .aic{padding-inline:12px}
+  .aic-card{padding:14px}
+  .aic-sh{gap:8px}
+  .aic-sh h2{font-size:11px;letter-spacing:.07em}
+  .aic-chip{font-size:11px}
+  .aic-evi{grid-template-columns:54px minmax(0,1fr);}
+  .aic-evi .aic-sub{grid-column:2}
+  .aic-twrap table{min-width:520px}
+  .aic-cmd{backdrop-filter:none;-webkit-backdrop-filter:none}
+}
+@media(max-width:360px){
+  .aic{padding-inline:8px}
+  .aic-card{padding:11px}
+  .aic-seg button{letter-spacing:0}
+}
+@media(prefers-reduced-motion:reduce){
+  .aic-card,.aic button{transition:none!important}
+}
