@@ -196,7 +196,7 @@ function secCore(info) {
       live.pendingApproval ? h('div', { class: 'aic-appr' }, h('b', { text: 'Waiting for you. ' }), (live.pendingApproval.metadata && live.pendingApproval.metadata.title) || live.pendingApproval.tool, ' ', h('button', { class: 'aic-p', text: 'Review', onclick: reviewApproval })) : null)
     : lastMissionNode();
   const life = M.deriveLifecycle(requestEvents(m || lastRequestStart()), !!S.snap);
-  return card('core', 'monitor investigate',
+  return card('core', live.open ? 'monitor investigate' : 'investigate',
     h('div', { class: 'aic-stage', 'data-s': core.state.toLowerCase() },
       h('i', { class: 'aic-ring r1' }), h('i', { class: 'aic-ring r2' }), h('i', { class: 'aic-ring r3' }),
       h('div', { class: 'aic-orb' }, h('div', {}, h('b', { text: 'BT' }), h('small', { text: core.state.replace(/_/g, ' ') })))),
@@ -218,10 +218,20 @@ function lastMissionNode() {
 }
 
 function findingCard(f) {
+  const area = f.system ? f.system.charAt(0) + f.system.slice(1).toLowerCase() : '';
   return h('button', { class: 'aic-f aic-sev-' + f.severity, onclick: () => openFinding(f), 'aria-label': f.system + ': ' + f.title },
-    h('div', { class: 'aic-fh' }, h('span', { class: 'aic-tag', text: f.system }), h('span', { class: 'aic-type', text: f.type })),
-    h('div', { class: 'aic-ft', text: f.title }),
-    h('div', { class: 'aic-fs', text: 'Source: ' + f.source + ' · observed ' + M.ageLabel(f.detected_at) }));
+    h('i', { class: 'aic-dot2', 'aria-hidden': 'true' }),
+    h('span', { class: 'aic-fb' }, h('span', { class: 'aic-ft', text: f.title }), h('span', { class: 'aic-fs', text: area + '  ' + M.ageLabel(f.detected_at) })),
+    h('span', { class: 'aic-chev', 'aria-hidden': 'true', text: '\u203a' }));
+}
+// One-line answer to "do I need to do anything?" (replaces the big orb on the Monitor view).
+function secSummary(info) {
+  if (!S.snap) return null;
+  const open = visibleFindings().filter(x => x.severity !== 'good');
+  const tn = open.some(x => x.severity === 'error') ? 'cr' : open.length ? 'wn' : 'ok';
+  const text = open.length ? (open.length === 1 ? '1 thing needs you today' : open.length + ' things need you today') : 'All clear. Nothing needs you right now.';
+  return card('sum', 'monitor', h('div', { class: 'aic-sumrow' }, h('i', { class: 'aic-dot2 aic-d-' + tn, 'aria-hidden': 'true' }),
+    h('div', {}, h('div', { class: 'aic-sumt', text }), h('div', { class: 'aic-sub', text: 'BT ' + info.core.state.replace(/_/g, ' ').toLowerCase() + '  data as of ' + clock(S.snap.at) }))));
 }
 function secAttention() {
   let body;
@@ -251,7 +261,8 @@ function systemCard(name) {
   return h('div', { class: 'aic-sys aic-edge-' + tone(s.status) },
     h('div', { class: 'aic-sysh' }, h('b', { text: name }), pill(s.status)),
     h('div', { class: 'aic-sub', text: s.reason }),
-    s.metrics.length ? h('dl', { class: 'aic-met' }, s.metrics.slice(0, 4).map(m => [h('dt', { text: m.label, title: 'Source: ' + m.src }), h('dd', { text: m.value })])) : h('div', { class: 'aic-sub', text: s.availability.reason || 'No data' }),
+    s.metrics.length ? h('div', { class: 'aic-hero', title: 'Source: ' + s.metrics[0].src }, h('b', { text: s.metrics[0].value }), h('span', { text: s.metrics[0].label })) : null,
+    s.metrics.length > 1 ? h('dl', { class: 'aic-met' }, s.metrics.slice(1, 3).map(m => [h('dt', { text: m.label, title: 'Source: ' + m.src }), h('dd', { text: m.value })])) : (s.metrics.length ? null : h('div', { class: 'aic-sub', text: s.availability.reason || 'No data' })),
     h('div', { class: 'aic-fresh aic-' + tone(s.fresh.status), text: 'Data: ' + s.fresh.label }),
     h('div', { class: 'aic-row' }, h('button', { text: 'Open', onclick: () => openSystem(name) }), h('button', { text: 'Investigate', onclick: () => ask(SYSTEM_ASK[name]) })));
 }
@@ -575,7 +586,7 @@ function secResponse() {
 }
 
 // ───────────────────────── command bar + palette ─────────────────────────
-const CHIPS = ['What needs my attention?', 'What is blocking closing?', 'Which STRs are delayed?', 'What inventory is at risk?', 'Forecast this month'];
+const CHIPS = ['What needs my attention?', 'What is blocking closing?', 'What inventory is at risk?'];
 function cmdBar() {
   const input = h('input', { id: 'aic-q', type: 'text', placeholder: 'Ask BT anything about your business…', 'aria-label': 'Ask BT', autocomplete: 'off', enterkeyhint: 'send', maxlength: '2000' });
   const go = () => { const v = input.value; if (v.trim()) { input.value = ''; ask(v); } };
@@ -625,7 +636,7 @@ function openPalette() {
 function paint() {
   const r = root(); if (!r || !pageOn()) return;
   const info = coreInfo();
-  const cards = [secCore(info), secAttention(), secCorrelation(), secSince(), secSystems(), secForecast(), secNetwork(info), secResponse(), secActions(info), secActivity(), secObs(), secHealth(), secTools(), secRepo()]
+  const cards = [secSummary(info), secCore(info), secAttention(), secCorrelation(), secSince(), secSystems(), secForecast(), secNetwork(info), secResponse(), secActions(info), secActivity(), secObs(), secHealth(), secTools(), secRepo()]
     .filter(c => c && c.getAttribute('data-modes').split(' ').includes(S.mode));
   const main = h('main', { class: 'aic-main', 'data-mode': S.mode }, cards);
   const offline = navigator.onLine === false ? h('div', { class: 'aic-offline', role: 'alert' }, h('b', { text: 'BT OFFLINE · ' }), 'Showing last known data' + (S.snap ? ' from ' + clock(S.snap.at) : '') + '. Some intelligence may be unavailable.') : null;

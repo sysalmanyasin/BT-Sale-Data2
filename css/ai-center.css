@@ -184,3 +184,28 @@ body.aic-open .ag-fab{display:none}
 .aic-page .aic-modal .aic-pin{background:var(--surface);color:var(--text);border-color:var(--border)}
 .aic-page .aic-plist li.on,.aic-page .aic-plist li:hover{background:var(--alt)}
 .aic-page .aic-toast{background:var(--surface);color:var(--text);border-color:var(--accent);box-shadow:var(--sh-lg)}
+
+/* ── Design pass 2026-10-09: calm status colours, one-line summary, finding rows, hero metrics ──
+   Colour meaning: green = OK, amber = check, red = act now, blue = tappable/selected. Nothing else is coloured. */
+.aic-dot2{flex:none;width:10px;height:10px;border-radius:50%;background:var(--aic-wn);margin-top:6px}
+.aic-sev-info .aic-dot2{background:var(--aic-bl)}.aic-sev-good .aic-dot2,.aic-d-ok{background:var(--aic-ok)}
+.aic-sev-error .aic-dot2,.aic-d-cr{background:var(--aic-cr)}.aic-d-wn{background:var(--aic-wn)}
+.aic-sumrow{display:flex;gap:12px;align-items:flex-start}.aic-sumrow .aic-dot2{width:14px;height:14px;margin-top:5px}
+.aic-sumt{font-size:16px;font-weight:700;line-height:1.3}
+.aic .aic-f{display:flex;flex-direction:row;align-items:flex-start;gap:10px;border-left-width:0;border:1px solid var(--aic-ln);border-radius:10px;padding:12px;min-height:56px}
+.aic .aic-f.aic-sev-error{border-color:color-mix(in srgb,var(--aic-cr) 55%,var(--aic-ln))}
+.aic-fb{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.aic .aic-ft{font-size:14px;font-weight:600;margin:0;line-height:1.35}
+.aic .aic-fs{font-size:12px;color:var(--aic-mu)}
+.aic-chev{flex:none;align-self:center;font-size:20px;color:var(--aic-mu);line-height:1}
+.aic-hero{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}.aic-hero b{font-size:22px;line-height:1.15}.aic-hero span{font-size:12px;color:var(--aic-mu)}
+.aic-sysh{letter-spacing:.04em}.aic-sysh .aic-pill{font-size:12px;padding:2px 9px;border-radius:99px;letter-spacing:.04em}
+.aic-sys{padding:12px 14px}
+.aic-grid6{grid-template-columns:1fr 1fr}@media(min-width:1000px){.aic-grid6{grid-template-columns:1fr 1fr 1fr}}
+@media(max-width:420px){.aic-grid6{grid-template-columns:1fr}}
+.aic-sys .aic-row{margin-top:auto}.aic-sys .aic-row button{flex:1}
+.aic button{min-height:44px}.aic-chips button{min-height:40px}
+.aic-seg{display:flex;width:100%}.aic-seg button{flex:1;justify-content:center}
+.aic-tool .aic-seg:first-child{flex:1 1 100%}
+.aic-tag{border:0;padding:0;letter-spacing:.06em;color:var(--aic-mu);font-weight:600}
+.aic-sh h2,.aic-sh h3{letter-spacing:.14em}
