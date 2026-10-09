@@ -214,3 +214,197 @@ body.aic-open .ag-fab{display:none}
 .aic-det ul{margin:6px 0 2px;padding-left:18px;font-size:13px;display:grid;gap:3px}
 .aic-wf{margin-top:10px;display:grid;gap:6px}.aic-led{margin-top:12px;display:grid;gap:4px}
 .aic-k{font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--aic-mu)}
+
+/* BT Intelligence Centre — premium responsive presentation layer.
+   Additive CSS only: does not alter data, assistant, approvals or audit behavior. */
+.aic-page{
+  --aic-radius:14px;
+  --aic-space:14px;
+  color-scheme:light;
+}
+.aic{
+  width:100%;
+  max-width:1500px;
+  padding:16px 20px 176px;
+  line-height:1.55;
+  -webkit-text-size-adjust:100%;
+}
+.aic *{box-sizing:border-box}
+.aic button{
+  min-height:44px;
+  border-radius:10px;
+  font-weight:550;
+  touch-action:manipulation;
+}
+.aic button:focus-visible,
+.aic input:focus-visible,
+.aic textarea:focus-visible,
+.aic select:focus-visible{
+  outline:3px solid color-mix(in srgb,var(--aic-ac) 58%,transparent);
+  outline-offset:2px;
+}
+.aic-hdr{
+  padding:12px 0 14px;
+  background:color-mix(in srgb,var(--aic-bg) 92%,transparent);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+}
+.aic-hr1 h1{font-size:14px;letter-spacing:.2em;line-height:1.4}
+.aic-tele{gap:8px;padding:3px 1px 7px;scrollbar-width:none}
+.aic-tele::-webkit-scrollbar{display:none}
+.aic-chip{padding:6px 11px;font-size:11px;line-height:1.4}
+.aic-tool{align-items:center;gap:10px;margin:10px 0 14px}
+.aic-seg{min-width:0;overflow:hidden;border-radius:11px}
+.aic-seg button{
+  min-width:0;
+  min-height:46px;
+  padding-inline:14px;
+  border-radius:0;
+  box-shadow:none;
+}
+.aic-seg button:first-child{border-radius:10px 0 0 10px}
+.aic-seg button:last-child{border-radius:0 10px 10px 0}
+.aic-seg button.on{
+  box-shadow:inset 0 -2px 0 color-mix(in srgb,#fff 42%,transparent);
+}
+.aic-main{gap:14px}
+.aic-card{
+  min-width:0;
+  padding:18px;
+  border-radius:var(--aic-radius);
+  box-shadow:0 2px 8px color-mix(in srgb,var(--aic-tx) 4%,transparent);
+  scroll-margin-top:100px;
+}
+.aic-card:hover{
+  box-shadow:0 5px 18px color-mix(in srgb,var(--aic-tx) 7%,transparent);
+}
+.aic-sh{gap:10px;margin-bottom:12px}
+.aic-sh h2{font-size:12px;letter-spacing:.13em;line-height:1.5}
+.aic-sub,.aic-fs,.aic-card p,.aic-card li{line-height:1.6}
+.aic .aic-f{padding:14px;border-radius:12px;gap:12px}
+.aic .aic-ft{font-size:14px;line-height:1.45}
+.aic .aic-fs{font-size:12px;overflow-wrap:anywhere}
+.aic-det{margin-bottom:8px;padding:8px 12px;border-radius:11px}
+.aic-det summary{min-height:40px;line-height:1.45}
+.aic-wf,.aic-led{gap:8px}
+.aic-grid6{gap:12px}
+.aic-sys{min-width:0;border-radius:12px;padding:14px;gap:8px}
+.aic-sysh{gap:8px;line-height:1.45}
+.aic-sys .aic-row{display:flex;flex-wrap:wrap;gap:8px}
+.aic-sys .aic-row button{flex:1 1 auto}
+.aic-hero{gap:8px}
+.aic-hero b{font-size:clamp(20px,2vw,28px);font-variant-numeric:tabular-nums}
+.aic-evi{
+  grid-template-columns:76px minmax(0,1fr) auto;
+  gap:10px;
+  align-items:start;
+  padding:9px 0;
+  line-height:1.5;
+}
+.aic-evi .aic-sub{grid-column:2/4;overflow-wrap:anywhere}
+.aic-twrap,.aic-md,.aic-card .ag-tbl{
+  max-width:100%;
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+}
+.aic-twrap table{min-width:540px}
+.aic-card table{max-width:100%}
+.aic-cmd{
+  padding:16px 18px calc(10px + env(safe-area-inset-bottom,0px));
+  background:linear-gradient(transparent,var(--aic-bg) 22%);
+}
+.aic-form{gap:8px;align-items:stretch}
+.aic-form input{min-height:48px;border-radius:12px}
+.aic-modal{
+  width:min(760px,calc(100vw - 32px));
+  max-height:min(86dvh,920px);
+  overflow:auto;
+  overscroll-behavior:contain;
+  border-radius:16px;
+}
+.aic-modal .aic-row{gap:8px}
+.aic-modal .aic-evi{
+  grid-template-columns:76px minmax(0,1fr) auto;
+  gap:8px;
+  overflow-wrap:anywhere;
+}
+.aic-toast{
+  width:max-content;
+  max-width:calc(100vw - 32px);
+  line-height:1.5;
+}
+
+/* Desktop: calmer whitespace and predictable multi-column rhythm. */
+@media (min-width:861px){
+  .aic{padding:20px 26px 150px}
+  .aic-main{gap:16px}
+  .aic-grid6{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+  .aic-card{padding:20px}
+  .aic-cmd{left:50%;right:auto;width:min(100%,1500px);transform:translateX(-50%)}
+}
+@media (min-width:1250px){
+  .aic{padding-inline:32px}
+  .aic-grid6{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .aic-card{padding:22px}
+}
+
+/* Tablet and phone: stack controls, retain legibility, avoid page-wide overflow. */
+@media (max-width:860px){
+  .aic{padding:10px 12px calc(180px + env(safe-area-inset-bottom,0px))}
+  .aic-main{grid-template-columns:minmax(0,1fr);gap:12px}
+  .aic-tool{display:flex;flex-direction:column;align-items:stretch;gap:8px}
+  .aic-tool>.aic-seg,.aic-tool>.aic-row,.aic-tool>div{max-width:100%;min-width:0}
+  .aic-tool .aic-seg{width:100%}
+  .aic-seg button{flex:1 1 0;padding-inline:8px;font-size:12px}
+  .aic-cmd{left:0;right:0;bottom:calc(58px + env(safe-area-inset-bottom,0px));width:100%;transform:none}
+  .aic-modal{width:calc(100vw - 24px);max-height:calc(100dvh - 24px - env(safe-area-inset-bottom,0px))}
+}
+@media (max-width:620px){
+  .aic{padding:8px 10px calc(176px + env(safe-area-inset-bottom,0px));font-size:14px}
+  .aic-hdr{padding:8px 0 10px}
+  .aic-hr1{align-items:center;gap:8px}
+  .aic-hr1 h1{font-size:12px;letter-spacing:.15em}
+  .aic-live{font-size:10px;letter-spacing:.07em}
+  .aic-tele{gap:6px;margin-top:8px}
+  .aic-chip{padding:5px 8px;font-size:10px}
+  .aic-card{padding:13px;border-radius:12px}
+  .aic-sh{align-items:flex-start;margin-bottom:10px}
+  .aic-sh h2{font-size:11px;letter-spacing:.1em}
+  .aic .aic-f{padding:12px;gap:10px}
+  .aic .aic-ft{font-size:13px}
+  .aic .aic-fs,.aic-sub{font-size:12px}
+  .aic-grid6{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .aic-sys{padding:11px;gap:7px}
+  .aic-sysh{align-items:flex-start;flex-wrap:wrap;font-size:11px}
+  .aic-hero b{font-size:21px}
+  .aic-evi{grid-template-columns:58px minmax(0,1fr);gap:8px;font-size:12px}
+  .aic-evi>:last-child{grid-column:2}
+  .aic-evi .aic-sub{grid-column:2}
+  .aic-evi time{font-size:10px}
+  .aic-filters{gap:6px}
+  .aic-filters button{min-height:38px;padding-inline:10px}
+  .aic-twrap table{min-width:500px}
+  .aic-cmd{padding:10px 10px calc(8px + env(safe-area-inset-bottom,0px))}
+  .aic-form{gap:6px}
+  .aic-form input{min-width:0;font-size:16px;padding-inline:10px}
+  .aic-modal{width:calc(100vw - 16px);border-radius:14px}
+  .aic-modal .aic-met{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr)}
+  .aic-modal .aic-met dd{max-width:100%;overflow-wrap:anywhere}
+  .aic-toast{bottom:calc(132px + env(safe-area-inset-bottom,0px))}
+}
+@media (max-width:380px){
+  .aic{padding-inline:7px}
+  .aic-grid6{grid-template-columns:minmax(0,1fr)}
+  .aic-seg button{padding-inline:4px;font-size:11px}
+  .aic-card{padding:11px}
+}
+@media (prefers-reduced-motion:reduce){
+  .aic *,
+  .aic *::before,
+  .aic *::after{
+    scroll-behavior:auto!important;
+    animation-duration:.01ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.01ms!important;
+  }
+}
