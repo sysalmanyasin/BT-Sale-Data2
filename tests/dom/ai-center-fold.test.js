@@ -51,3 +51,15 @@ describe('AI Center collapsible cards', () => {
     assert.equal(q('#aic-b-att').hidden, false, 'open state must persist across repaint');
   });
 });
+
+describe('AI Center chat assistant button', () => {
+  test('the command bar has an Open chat assistant button that calls BTAgent.open', async () => {
+    let opened = 0;
+    window.BTAgent = { open: () => { opened++; } };
+    const b = q('.aic-chatbtn');
+    assert.ok(b, 'chat button missing');
+    assert.equal(b.getAttribute('aria-label'), 'Open chat assistant');
+    b.click();
+    assert.equal(opened, 1);
+  });
+});

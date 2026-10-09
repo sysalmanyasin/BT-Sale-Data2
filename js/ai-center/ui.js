@@ -701,6 +701,7 @@ function secResponse() {
 
 // ───────────────────────── command bar + palette ─────────────────────────
 const CHIPS = ['What needs my attention?', 'What is blocking closing?', 'What inventory is at risk?'];
+function openChat() { if (window.BTAgent && typeof window.BTAgent.open === 'function') window.BTAgent.open(); else toast('The chat assistant is still loading. Try again in a moment.'); }
 function cmdBar() {
   const input = h('input', { id: 'aic-q', type: 'text', placeholder: 'Ask BT anything about your business…', 'aria-label': 'Ask BT', autocomplete: 'off', enterkeyhint: 'send', maxlength: '2000' });
   const go = () => { const v = input.value; if (v.trim()) { input.value = ''; ask(v); } };
@@ -709,6 +710,7 @@ function cmdBar() {
     h('div', { class: 'aic-chips' }, CHIPS.map(c => h('button', { text: c, onclick: () => ask(c) }))),
     h('div', { class: 'aic-form' }, input,
       h('button', { class: 'aic-mic', disabled: true, title: 'Voice is not available: BT has no voice pipeline yet', 'aria-label': 'Voice input unavailable', text: '🎙' }),
+      h('button', { class: 'aic-chatbtn', title: 'Open chat assistant', 'aria-label': 'Open chat assistant', onclick: openChat }, h('span', { 'aria-hidden': 'true', text: '\u{1F4AC}' }), h('span', { class: 'aic-chatbtn-t', text: 'Chat' })),
       h('button', { class: 'aic-p', 'aria-label': 'Send', text: '➤', onclick: go }),
       h('button', { 'aria-label': 'Open command palette', text: '⌘K', onclick: openPalette })));
 }

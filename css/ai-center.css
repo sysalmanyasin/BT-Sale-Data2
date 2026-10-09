@@ -664,3 +664,8 @@ body.aic-open .ag-fab{display:none}
 .aic-page .aic-fold>.aic-sh .aic-caret{order:3}
 @media(max-width:620px){.aic-page .aic-fold>.aic-sh .aic-sub{display:none}}
 @media(prefers-reduced-motion:reduce){.aic-page .aic-caret{transition:none}}
+
+/* Chat assistant button in the command bar */
+.aic-page .aic-chatbtn{flex:none;gap:7px;padding:0 14px;font-weight:700;color:var(--accent-dk);border-color:var(--ag-line2,var(--border));background:color-mix(in srgb,var(--accent) 8%,var(--surface))}
+.aic-page .aic-chatbtn-t{letter-spacing:.02em}
+@media(max-width:620px){.aic-page .aic-chatbtn{padding:0 12px}.aic-page .aic-chatbtn-t{display:none}}
