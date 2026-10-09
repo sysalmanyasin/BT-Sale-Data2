@@ -56,13 +56,12 @@ export function mountAgentPanel() {
   let sensitive = false;
   let lastSpecialist = null;
 
-  const fab = el('button', { id: 'ag-fab', class: 'ag-fab', 'aria-label': 'Open AI assistant', title: 'AI assistant' }, '✨');
+  const fab = el('button', { id: 'ag-fab', class: 'ag-fab', 'aria-label': 'Open BT Intelligence', title: 'BT Intelligence' }, '✨');
   const sheet = el('section', { id: 'ag-sheet', class: 'ag-sheet', hidden: '', role: 'dialog', 'aria-label': 'AI assistant' });
   sheet.innerHTML = `
     <header class="ag-head">
       <div><strong>BT Assistant</strong><span class="ag-sub" id="ag-sub"></span></div>
       <div class="ag-head-btns">
-        <button class="ag-ico" id="ag-center" title="Open BT AI Center" aria-label="Open BT AI Center">🛰</button>
         <button class="ag-ico" id="ag-hist" title="Past conversations" aria-label="Past conversations">🕘</button>
         <button class="ag-ico" id="ag-mem" title="Memory and house rules" aria-label="Memory and house rules">🧠</button>
         <button class="ag-ico" id="ag-stats" title="Usage and activity" aria-label="Usage and activity">📊</button>
@@ -376,8 +375,18 @@ export function mountAgentPanel() {
     syncKnowledge({ sb: getSb(), callAction, includeStaffNotes: kp.staffNotes }).catch(() => {});
   }
   function autosize() { text.style.height = 'auto'; text.style.height = Math.min(text.scrollHeight, 120) + 'px'; }
-  function open() { sheet.hidden = false; refreshKill(); autoIndex(); fab.classList.add('ag-hide'); if (!log.children.length) welcome(); setTimeout(() => text.focus(), 50); }
+  // The assistant lives on the BT Intelligence page ONLY. Everywhere else the button just takes you there and opens the chat on arrival.
+  const onCenter = () => document.body.classList.contains('aic-open');
+  function openHere() { sheet.hidden = false; refreshKill(); autoIndex(); fab.classList.add('ag-hide'); if (!log.children.length) welcome(); setTimeout(() => text.focus(), 50); }
+  function open() {
+    if (onCenter()) { openHere(); return; }
+    window.location.hash = '#ai-center';
+    let tries = 0;
+    const t = setInterval(() => { if (onCenter()) { clearInterval(t); openHere(); } else if (++tries > 40) clearInterval(t); }, 50);
+  }
   function close() { rejectAllPending(); sheet.hidden = true; fab.classList.remove('ag-hide'); if (abort) abort.abort(); }
+  // Leaving BT Intelligence closes the chat (pending approvals are rejected, exactly like pressing close).
+  window.addEventListener('hashchange', () => setTimeout(() => { if (!sheet.hidden && !onCenter()) close(); }, 150));
 
   fab.onclick = open;
   sheet.querySelector('#ag-close').onclick = close;
@@ -395,7 +404,6 @@ export function mountAgentPanel() {
     if (!r.ok) { addBubble('error', 'Could not change the switch: ' + r.error); return; }
     killed = r.killed; rejectAllPending(); paintLock();
   };
-  sheet.querySelector('#ag-center').onclick = () => { close(); window.location.hash = '#ai-center'; };
   // Public hook for the AI Center command bar: the SAME agent, panel and approval cards. No second chatbot.
   window.BTAgent = Object.freeze({
     ask: q => ask(q), open,

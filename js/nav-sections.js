@@ -310,7 +310,7 @@
 
     // BT AI Center — the control room over the existing AI assistant (js/ai-center/*).
     if (flat['ai-center']) {
-      groups.push({ label: 'BT AI Center', icon: '🛰', svgKey: 'ai-center', href: flat['ai-center'].href, kids: [], _section: 'core' });
+      groups.push({ label: 'BT Intelligence', icon: '🛰', svgKey: 'ai-center', href: flat['ai-center'].href, kids: [], _section: 'core' });
     }
 
     // Tools: its own Sync Center collapses into a nested group (with its

@@ -36,7 +36,7 @@ describe('AI Center page', () => {
   before(async () => { ui.onShow(); await wait(80); });
 
   test('shows real values from the tools, in all six systems', () => {
-    assert.match(text(), /BT AI CENTER/);
+    assert.match(text(), /BT INTELLIGENCE/);
     ['SALES', 'CASH', 'INVENTORY', 'STAFF', 'STR', 'CLOSING'].forEach(s => assert.ok(text().includes(s), s + ' card missing'));
     assert.match(text(), /Cash DIFF Rs 12,000/);
     assert.match(text(), /Rs 12,000/); // CASH metric from get_daily_sales

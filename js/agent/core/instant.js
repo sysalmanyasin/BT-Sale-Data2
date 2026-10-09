@@ -57,7 +57,7 @@ const COMMANDS = [
     say: r => r.error ? String(r.error)
       : 'Reorder draft: ' + r.total_lines + ' lines (' + r.out_of_stock_selling + ' out of stock but selling, ' + r.low_cover + ' running low), about ' + rs(r.est_value_at_sale_price) + ' at sale price, net of stock in transit.'
         + (r.groups.length ? ' Most urgent: ' + r.groups.flatMap(g => g.items).filter(i => i.status !== 'reorder').slice(0, 5).map(i => i.name + ' (buy ' + i.suggested_qty + ')').join(', ') + '.' : '')
-        + ' The full supplier-grouped list is in the AI Center.' },
+        + ' The full supplier-grouped list is in BT Intelligence.' },
   { re: /^(str fill rate|fill rate|transfer fill rate|str fill)$/,
     tool: 'str_fill_rate', args: {},
     say: r => r.error ? String(r.error)

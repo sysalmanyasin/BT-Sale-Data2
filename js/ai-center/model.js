@@ -355,7 +355,7 @@ export function describeEvent(e) {
     case 'audit': return e.status === 'ok' ? 'Audit recorded: ' + e.tool : e.status === 'local_only' ? 'Audit kept on this device only (cloud log unavailable): ' + e.tool : 'AUDIT NOT RECORDED: ' + e.tool + (m.error ? ' (' + m.error + ')' : '');
     case 'undo': return (e.status === 'ok' ? 'Undone: ' : 'Undo failed: ') + (m.label || e.tool) + (e.status === 'ok' ? '' : (m.error ? ' (' + m.error + ')' : ''));
     case 'step': return 'Model step ' + m.step + ' of max ' + m.max;
-    case 'tool_start': return (e.source === 'ai-center' ? 'AI Center read ' : 'Running ') + e.tool;
+    case 'tool_start': return (e.source === 'ai-center' ? 'BT Intelligence read ' : 'Running ') + e.tool;
     case 'tool_end': return e.tool + (e.status === 'ok' ? ' finished' : e.status === 'rejected' ? ' rejected by you' : ' failed' + (m.error ? ': ' + m.error : '')) + (e.duration != null ? ' · ' + e.duration + ' ms' : '');
     case 'approval_requested': return 'Approval requested: ' + (m.title || e.tool);
     case 'approval_resolved': return 'Change ' + e.status + ': ' + e.tool + (e.duration != null ? ' (you took ' + fmtDur(e.duration) + ')' : '');

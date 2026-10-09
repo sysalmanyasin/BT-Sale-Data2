@@ -186,7 +186,7 @@ function secHeaderBar(core) {
   const chip = (k, v, cls) => h('span', { class: 'aic-chip ' + (cls || '') }, k + ' ', h('b', { text: v }));
   return h('header', { class: 'aic-hdr' },
     h('div', { class: 'aic-hr1' },
-      h('h1', { text: 'BT AI CENTER' }),
+      h('h1', { text: 'BT INTELLIGENCE' }),
       h('span', { class: 'aic-live aic-' + (core.state === 'OFFLINE' || core.state === 'ERROR' ? 'cr' : core.state === 'READY' || core.state === 'IDLE' ? 'ok' : 'cy'), 'aria-live': 'polite' }, h('i', { class: 'aic-dot' }), core.state === 'READY' ? 'READY' : core.state.replace(/_/g, ' '))),
     h('div', { class: 'aic-tele', 'aria-label': 'Telemetry' },
       chip('SYSTEMS', M.SYSTEMS.length + ' monitored'),
@@ -510,7 +510,7 @@ function inspect(e) {
   const start = T.recent(400, x => x.type === 'tool_start' && x.entity_reference === e.entity_reference)[0];
   const end = T.recent(400, x => x.type === 'tool_end' && x.entity_reference === e.entity_reference)[0];
   const def = listTools().find(t => t.name === e.tool);
-  const rows = [['Agent', e.agent || (e.source === 'ai-center' ? 'AI Center monitoring read' : '—')], ['Tool', e.tool], ['Domain', e.domain || '—'], ['Risk', (e.metadata && e.metadata.risk) || (def && def.risk) || '—'],
+  const rows = [['Agent', e.agent || (e.source === 'ai-center' ? 'BT Intelligence monitoring read' : '—')], ['Tool', e.tool], ['Domain', e.domain || '—'], ['Risk', (e.metadata && e.metadata.risk) || (def && def.risk) || '—'],
     ['Input', JSON.stringify((start && start.metadata && start.metadata.args) || {}) + '  (sensitive keys redacted)'], ['Data source', 'Existing app data via the tool registry'], ['Status', (end && end.status) || 'running'], ['Duration', end && end.duration != null ? end.duration + ' ms' : '—'], ['Result', 'Not retained here. Results stay in the assistant conversation.'], ['Started', clock(start && start.timestamp)]];
   openModal('Tool execution', h('dl', { class: 'aic-met aic-big aic-insp-dl' }, rows.map(([k, v]) => [h('dt', { text: k }), h('dd', { text: String(v) })])), { sub: 'Agent → Tool → Input → Result' });
 }
