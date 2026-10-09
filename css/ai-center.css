@@ -669,3 +669,8 @@ body.aic-open .ag-fab{display:none}
 .aic-page .aic-chatbtn{flex:none;gap:7px;padding:0 14px;font-weight:700;color:var(--accent-dk);border-color:var(--ag-line2,var(--border));background:color-mix(in srgb,var(--accent) 8%,var(--surface))}
 .aic-page .aic-chatbtn-t{letter-spacing:.02em}
 @media(max-width:620px){.aic-page .aic-chatbtn{padding:0 12px}.aic-page .aic-chatbtn-t{display:none}}
+
+/* Mobile: keep figures on one line (no "R s 1 6 3 , 6 6 4" stacking) */
+.aic-met dd,.aic-hero b{white-space:nowrap;word-break:normal;overflow-wrap:normal;font-variant-numeric:tabular-nums}
+.aic-met{grid-template-columns:minmax(0,1fr) auto}
+.aic-met dt{min-width:0;overflow-wrap:anywhere}

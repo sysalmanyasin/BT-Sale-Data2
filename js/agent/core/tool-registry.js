@@ -95,12 +95,46 @@ function _validateArgs(schema, args) {
   return null;
 }
 
-function _cap(value) {
+const TRUNC_NOTE = 'truncated: narrow your query with filters or a smaller limit';
+
+// Find the array (anywhere inside value) whose JSON is longest; null when nothing can shrink further.
+function _longestArray(node, best = { arr: null, len: 0 }) {
+  if (Array.isArray(node)) {
+    if (node.length > 1) { const l = JSON.stringify(node).length; if (l > best.len) { best.arr = node; best.len = l; } }
+    node.forEach(x => _longestArray(x, best));
+  } else if (node && typeof node === 'object') {
+    Object.values(node).forEach(x => _longestArray(x, best));
+  }
+  return best.arr;
+}
+
+/**
+ * Serialise a tool result so it fits `cap` characters AND is still valid JSON.
+ * (Chopping the string mid-way used to make JSON.parse fail in callers: "Result was too large to read safely".)
+ * Strategy: halve the longest array until it fits, flag `_truncated`; last resort, a JSON wrapper with a text preview.
+ */
+export function capResult(value, cap = RESULT_CHAR_CAP) {
   let s;
   try { s = JSON.stringify(value === undefined ? null : value); } catch (e) { s = JSON.stringify({ error: 'result not serialisable' }); }
-  if (s.length <= RESULT_CHAR_CAP) return { text: s, truncated: false };
-  return { text: s.slice(0, RESULT_CHAR_CAP) + '…[truncated: narrow your query with filters or a smaller limit]', truncated: true };
+  if (s.length <= cap) return { text: s, truncated: false };
+  try {
+    let copy = JSON.parse(s);
+    if (copy && typeof copy === 'object') {
+      if (Array.isArray(copy)) copy = { items: copy };
+      copy._truncated = TRUNC_NOTE;
+      for (let i = 0; i < 60; i++) {
+        const t = JSON.stringify(copy);
+        if (t.length <= cap) return { text: t, truncated: true };
+        const arr = _longestArray(copy);
+        if (!arr) break;
+        arr.length = Math.max(1, Math.floor(arr.length / 2));
+      }
+    }
+  } catch (_) { /* fall through to the preview wrapper */ }
+  const room = Math.max(0, cap - 200);
+  return { text: JSON.stringify({ _truncated: TRUNC_NOTE, preview: s.slice(0, room) }), truncated: true };
 }
+const _cap = capResult;
 
 /**
  * Execute a tool. Never throws.

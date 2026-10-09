@@ -100,6 +100,13 @@ const SEVERITY = { warn: 'warning', info: 'info', good: 'good' };
  * Each field can be null (source unavailable) — then it simply contributes nothing; availability is
  * reported separately by the system cards, never papered over here.
  */
+/** Rs amount a finding puts at stake: explicit `impact`, else the largest "Rs N" figure in its title. 0 when none. */
+export function findingImpact(f) {
+  if (f && Number.isFinite(f.impact)) return f.impact;
+  const nums = (String((f && f.title) || '').match(/Rs\s*([\d,]+(?:\.\d+)?)/gi) || []).map(m => parseFloat(m.replace(/[^\d.]/g, '')) || 0);
+  return nums.length ? Math.max(...nums) : 0;
+}
+
 export function buildFindings(snap) {
   const now = snap.now || Date.now();
   const out = [];
@@ -201,9 +208,11 @@ export function buildFindings(snap) {
     f.if_act = g.ifAct;
     f.related_entities = relatedEntitiesOf(f);
     f.audit_reference = 'rule:' + f.source + '#' + f.id;
+    f.impact = findingImpact(f);
   });
+  // Same severity: the finding with more money at stake comes first (a Rs 163k credit rollover beats a Rs 50 duplicate).
   const rank = { warning: 0, error: 0, info: 1, good: 2 };
-  return out.sort((a, b2) => (rank[a.severity] ?? 3) - (rank[b2.severity] ?? 3));
+  return out.sort((a, b2) => (rank[a.severity] ?? 3) - (rank[b2.severity] ?? 3) || (b2.impact || 0) - (a.impact || 0));
 }
 
 export function isoDay(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }

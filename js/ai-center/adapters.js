@@ -64,7 +64,7 @@ export async function collectSnapshot(now = Date.now()) {
   const lastDate = briefing && briefing.last_sales_entry && briefing.last_sales_entry.date;
   // Planning reads (weekday forecast, reorder draft, STR fill rate, money). Optional: a failure here never marks a
   // system as errored, the matching card just says why it has no data.
-  const planP = Promise.all([settle(readTool('weekday_forecast')), settle(readTool('reorder_draft', { limit: 40 })), settle(readTool('str_fill_rate')), settle(readTool('money_overview'))]);
+  const planP = Promise.all([settle(readTool('weekday_forecast')), settle(readTool('reorder_draft', { limit: 15 })), settle(readTool('str_fill_rate')), settle(readTool('money_overview'))]);
   const [dayR, pendR] = await Promise.all([
     lastDate ? settle(readTool('get_daily_sales', { date: lastDate })) : Promise.resolve({ ok: false, e: 'No sales entry found.' }),
     strR.ok ? settle(readTool('list_pending_strs', { direction: 'in', min_age_days: 3, limit: 5 })) : Promise.resolve({ ok: false, e: strR.e }),

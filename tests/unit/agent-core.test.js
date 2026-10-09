@@ -254,3 +254,22 @@ describe('markdown-lite', () => {
     assert.match(t, /<th>M<\/th>/); assert.match(t, /<td>100<\/td>/);
   });
 });
+
+describe('capResult keeps oversized results parseable', () => {
+  test('long arrays are halved and the result is still valid JSON', async () => {
+    const { capResult } = await import('../../js/agent/core/tool-registry.js');
+    const rows = Array.from({ length: 80 }, (_, i) => ({ code: 'C' + i, name: 'Product number ' + i, note: 'y'.repeat(200) }));
+    const r = capResult({ total: 80, groups: [{ supplier: 'S', items: rows }] }, 6000);
+    assert.ok(r.truncated); assert.ok(r.text.length <= 6000);
+    const parsed = JSON.parse(r.text);
+    assert.match(parsed._truncated, /truncated/);
+    assert.ok(parsed.groups[0].items.length >= 1 && parsed.groups[0].items.length < 80);
+    assert.equal(parsed.total, 80);
+  });
+  test('small results are untouched; a huge string falls back to a JSON preview', async () => {
+    const { capResult } = await import('../../js/agent/core/tool-registry.js');
+    assert.deepEqual(capResult({ a: 1 }), { text: '{"a":1}', truncated: false });
+    const r = capResult('z'.repeat(20000), 6000);
+    assert.ok(r.text.length <= 6000); assert.ok(JSON.parse(r.text).preview);
+  });
+});
