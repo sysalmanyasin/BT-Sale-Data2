@@ -343,7 +343,7 @@ function _dbiComputeInsights() {
         const color = c.swingPct >= 0 ? '#16a34a' : '#dc2626';
         return {
           icon, title: 'Month-on-Month',
-          text: `${c.last.Month_Year} vs ${c.prev.Month_Year}: <b style="color:${color}">₨${ff(Math.abs(c.lastT-c.prevT))} ${dir} (${Math.abs(c.swingPct)}%)</b>. From ₨${ff(c.prevT)} → ₨${ff(c.lastT)}.`,
+          text: `${c.last.Month_Year} vs ${c.prev.Month_Year}${c.throughDay ? ` (days 1–${c.throughDay} of each)` : ''}: <b style="color:${color}">₨${ff(Math.abs(c.lastT-c.prevT))} ${dir} (${Math.abs(c.swingPct)}%)</b>. From ₨${ff(c.prevT)} → ₨${ff(c.lastT)}.`,
           cta: null
         };
       }

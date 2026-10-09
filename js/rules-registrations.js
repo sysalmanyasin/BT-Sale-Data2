@@ -118,9 +118,18 @@ function n(v) { return Number(v) || 0; }
   // hundreds for an old inventory, and naming each one would flood the
   // alert stack.
   window.aimRulesRegister('inventory', 'deadStockAggregate', function () {
-    const SL = window.StockLedgerApp;
-    if (!SL || typeof SL.hasData !== 'function' || !SL.hasData() || typeof SL.getRawRows !== 'function') return null;
-    const rows = SL.getRawRows();
+    // Prefer the inventory bridge (the SAME rows the daily briefing and AI Center use) so the three screens
+    // show one number; fall back to Stock Ledger's raw rows when the bridge has not loaded yet.
+    let rows = null;
+    try {
+      const d = typeof window.inventoryBridgeGetFullData === 'function' ? window.inventoryBridgeGetFullData() : null;
+      if (d && Array.isArray(d.products) && d.products.length) rows = d.products;
+    } catch (_) { /* fall through */ }
+    if (!rows) {
+      const SL = window.StockLedgerApp;
+      if (!SL || typeof SL.hasData !== 'function' || !SL.hasData() || typeof SL.getRawRows !== 'function') return null;
+      rows = SL.getRawRows();
+    }
     // Same definition as the daily briefing / AI Center (js/shared/inventory-metrics.js).
     const dead = notSoldStock(rows, 90);
     if (!dead.count) return null;

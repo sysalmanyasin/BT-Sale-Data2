@@ -4,7 +4,7 @@ import { registerTool } from '../core/tool-registry.js';
 import { DAILY } from '../../config.js';
 import { Repository } from '../../repository.js';
 import { num, rs, FULL, MON, sameMonth, parseAppDate, monthSortVal } from './_util.js';
-import { creditAlertMessages, findUnrolledCredit } from '../../shared/credit-alerts.js';
+import { creditAlertMessages, findUnrolledCredit, creditNet } from '../../shared/credit-alerts.js';
 import * as LedgerStore from '../../ledger-store.js';
 import { notSoldStock } from '../../shared/inventory-metrics.js';
 
@@ -110,7 +110,10 @@ export function buildBriefing(now = new Date()) {
     const months = Object.keys((mgr && mgr.credit) || {}).filter(m => Array.isArray(mgr.credit[m])).sort((a, b) => monthSortVal(b) - monthSortVal(a));
     if (months.length) {
       const ca = creditAlertMessages(mgr.credit[months[0]]);
-      out.credit = { month: months[0], carried_over_total: Math.round(ca.agedTotal), possible_duplicates: ca.duplicates.length };
+      const owedRows = mgr.credit[months[0]].map(creditNet);
+      out.credit = { month: months[0], carried_over_total: Math.round(ca.agedTotal), possible_duplicates: ca.duplicates.length,
+        month_net_owed: Math.round(owedRows.filter(v => v > 0).reduce((s, v) => s + v, 0)), staff_owing: owedRows.filter(v => v > 0).length,
+        prev_month: months[1] || null, prev_month_net_owed: months[1] ? Math.round(mgr.credit[months[1]].map(creditNet).filter(v => v > 0).reduce((s, v) => s + v, 0)) : null };
       ca.duplicates.forEach(m => add('warn', 'credit', m + '.'));
       // Rollover gap: the latest month carries nothing over although the month before it closed with money owed.
       const gap = months.length > 1 ? findUnrolledCredit(mgr.credit[months[1]], mgr.credit[months[0]]) : null;

@@ -20,6 +20,7 @@ import { fetchAudit, summarizeAudit } from '../agent/core/usage-stats.js';
 import { collectSnapshot, collectHealth, collectActions, getSb, readTool } from './adapters.js';
 import * as M from './model.js';
 import * as RI from './repo-intel.js';
+import { reorderDraftText } from '../shared/planning-metrics.js';
 
 const PAGE_ID = 'page-ai-center';
 const LS_VISIT = 'bt_aic_last_visit_v1', LS_DISMISS = 'bt_aic_dismissed_v1';
@@ -227,9 +228,15 @@ function findingCard(f) {
 // One-line answer to "do I need to do anything?" (replaces the big orb on the Monitor view).
 function secSummary(info) {
   if (!S.snap) return null;
-  const open = visibleFindings().filter(x => x.severity !== 'good');
+  // Same rule as the chat briefing ("N things need attention" counts warnings/errors only);
+  // info-level notes are counted separately so the two screens never disagree.
+  const all = visibleFindings().filter(x => x.severity !== 'good');
+  const open = all.filter(x => x.severity !== 'info');
+  const notes = all.length - open.length;
   const tn = open.some(x => x.severity === 'error') ? 'cr' : open.length ? 'wn' : 'ok';
-  const text = open.length ? (open.length === 1 ? '1 thing needs you today' : open.length + ' things need you today') : 'All clear. Nothing needs you right now.';
+  const noteTxt = notes ? ' (+' + notes + ' note' + (notes === 1 ? '' : 's') + ')' : '';
+  const text = open.length ? (open.length === 1 ? '1 thing needs you today' : open.length + ' things need you today') + noteTxt
+    : notes ? 'Nothing urgent. ' + notes + ' note' + (notes === 1 ? '' : 's') + ' to review.' : 'All clear. Nothing needs you right now.';
   return card('sum', 'monitor', h('div', { class: 'aic-sumrow' }, h('i', { class: 'aic-dot2 aic-d-' + tn, 'aria-hidden': 'true' }),
     h('div', {}, h('div', { class: 'aic-sumt', text }), h('div', { class: 'aic-sub', text: 'BT ' + info.core.state.replace(/_/g, ' ').toLowerCase() + '  data as of ' + clock(S.snap.at) }))));
 }
@@ -273,6 +280,20 @@ const SYSTEM_ASK = {
 };
 function secSystems() { return card('sys', 'monitor', sectionHeader('BUSINESS SYSTEMS'), h('div', { class: 'aic-grid6' }, M.SYSTEMS.map(systemCard))); }
 
+// Weekday-aware projection + today's expected sale (tool: weekday_forecast, maths in shared/planning-metrics.js).
+function weekdayBlock() {
+  const P = S.snap && S.snap.raw && S.snap.raw.planning, W = P && P.weekday;
+  if (!W) return P && P.errors && P.errors.weekday ? h('div', { class: 'aic-sub', text: 'Weekday forecast unavailable: ' + P.errors.weekday }) : null;
+  const rows = [['EXPECTED MONTH-END', 'Rs ' + M.fmtNum(W.projected_month_end) + '  (typical Rs ' + M.fmtNum(W.projected_low) + ' to ' + M.fmtNum(W.projected_high) + ')']];
+  if (W.vs_target) rows.push(['VS TARGET', (W.vs_target.on_track ? 'On track' : 'Short by about Rs ' + M.fmtNum(-W.vs_target.gap_at_projection)) + '  (' + W.vs_target.pct_of_target_projected + '%)'],
+    ['NEED / DAY vs WEEKDAY PATTERN', 'Rs ' + M.fmtNum(W.vs_target.needed_per_remaining_day) + ' vs Rs ' + M.fmtNum(W.vs_target.expected_per_remaining_day)]);
+  rows.push([W.today.weekday.toUpperCase() + (W.today.entered ? ' (ENTERED)' : ' EXPECTED'), W.today.samples ? 'Rs ' + M.fmtNum(W.today.expected) + '  (typical Rs ' + M.fmtNum(W.today.typical_low) + ' to ' + M.fmtNum(W.today.typical_high) + ')' : 'not enough history']);
+  return h('div', { class: 'aic-wf' },
+    h('div', { class: 'aic-interp' }, h('span', { class: 'aic-tag', text: 'PREDICTION' }), ' Weekday-aware: each remaining day is expected at that weekday\'s recent average.'),
+    h('dl', { class: 'aic-met' }, rows.map(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })])),
+    h('div', { class: 'aic-sub', text: 'By weekday: ' + W.weekday_baseline.map(b => b.weekday.slice(0, 3) + ' ' + M.fmtNum(b.avg)).join(' · ') }));
+}
+
 function secForecast() {
   const F = S.snap && S.snap.forecast;
   let body;
@@ -284,10 +305,79 @@ function secForecast() {
       h('dl', { class: 'aic-met aic-big' }, [['TARGET', 'Rs ' + M.fmtNum(p.target)], ['SOLD SO FAR', 'Rs ' + M.fmtNum(p.sold_so_far) + ' (' + p.pct_done + '%)'], ['NEEDED / DAY', 'Rs ' + M.fmtNum(p.needed_per_day)], ['ACTUAL / DAY', 'Rs ' + M.fmtNum(p.actual_per_day)]].map(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })])),
       h('div', { class: 'aic-interp' }, h('span', { class: 'aic-tag', text: 'CALCULATION' }), ' ', F.summary),
       F.projection != null ? h('div', { class: 'aic-sub' }, h('span', { class: 'aic-tag', text: 'PREDICTION' }), ' Briefing projection (average × days in month): Rs ' + M.fmtNum(F.projection)) : null,
+      weekdayBlock(),
       F.disagree ? h('div', { class: 'aic-note', text: 'Two existing calculations disagree on whether the target will be met (pace tracker vs briefing projection). Both are shown; the pace tracker is the one the Dashboard uses.' }) : null,
       h('div', { class: 'aic-row' }, h('button', { text: 'Ask BT to interpret', onclick: () => ask('Interpret my target pace for this month and say what would need to change to reach the target.') })));
   }
   return card('fc', 'monitor', sectionHeader('FORECAST', h('span', { class: 'aic-sub', text: 'Analytics.getTargetPaceForMonth' })), body);
+}
+
+// ── reorder draft ──
+function copyText(text, ok) {
+  const done = () => { if (typeof window.toast === 'function') window.toast(ok, 'success'); };
+  try { navigator.clipboard.writeText(text).then(done, () => window.prompt('Copy this list:', text)); } catch (_) { window.prompt('Copy this list:', text); }
+}
+function reorderLine(i) {
+  const tag = i.status === 'out_of_stock' ? '  [OUT]' : i.status === 'low' ? '  [LOW ' + i.cover_days + 'd]' : '';
+  return h('li', { text: i.name + ' — buy ' + i.suggested_qty + tag + (i.in_transit ? '  (in transit ' + i.in_transit + ')' : '') + (i.trend === 'rising' ? '  ↑' : '') });
+}
+function reorderGroup(g) {
+  const title = g.supplier + ' · ' + g.lines + ' lines' + (g.urgent_lines ? ' · ' + g.urgent_lines + ' urgent' : '') + ' · Rs ' + M.fmtNum(g.est_value_at_sale_price);
+  return h('details', { class: 'aic-det', open: g.urgent_lines > 0 ? '' : null }, h('summary', { text: title }), h('ul', {}, g.items.slice(0, 12).map(reorderLine)));
+}
+function secReorder() {
+  const P = S.snap && S.snap.raw && S.snap.raw.planning, D = P && P.reorder;
+  let body;
+  if (!S.snap) body = skeleton(2);
+  else if (!D) body = empty((P && P.errors && P.errors.reorder) || 'Reorder draft not available.');
+  else if (!D.total_lines) body = empty('Nothing to reorder right now: stock covers ' + D.cover_days_target + ' days of sales (net of stock in transit).');
+  else body = h('div', {},
+    h('dl', { class: 'aic-met aic-big' }, [['LINES TO BUY', String(D.total_lines)], ['OUT OF STOCK, SELLING', String(D.out_of_stock_selling)], ['RUNNING LOW (≤7d)', String(D.low_cover)], ['SALES AT RISK / DAY', 'Rs ' + M.fmtNum(D.lost_sales_per_day)], ['EST. VALUE (SALE PRICE)', 'Rs ' + M.fmtNum(D.est_value_at_sale_price)]].map(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })])),
+    h('div', { class: 'aic-list' }, D.groups.slice(0, 6).map(reorderGroup)),
+    h('div', { class: 'aic-sub', text: D.method }),
+    h('div', { class: 'aic-row' },
+      h('button', { class: 'aic-p', text: 'Copy full list', onclick: () => copyText(reorderDraftText(D), 'Reorder list copied') }),
+      h('button', { text: 'Open Reorder Report', onclick: () => openPage('#reorder') }),
+      h('button', { text: 'Ask BT about this', onclick: () => ask('Draft my reorder list. Which items are most urgent and from which suppliers?') })));
+  return card('reo', 'monitor', sectionHeader('REORDER DRAFT', h('span', { class: 'aic-sub', text: 'reorder_draft · recommendation only' })), body);
+}
+
+// ── STR fill rate ──
+function secFill() {
+  const P = S.snap && S.snap.raw && S.snap.raw.planning, F = P && P.fill;
+  let body;
+  if (!S.snap) body = skeleton(2);
+  else if (!F) body = empty((P && P.errors && P.errors.fill) || 'STR fill rate not available.');
+  else if (F.fill_rate_pct == null) body = empty('No dispatched incoming STR lines in the last ' + F.window_days + ' days to measure.' + (F.awaiting_dispatch.count ? ' ' + F.awaiting_dispatch.count + ' STR(s) still await dispatch.' : ''));
+  else body = h('div', {},
+    h('dl', { class: 'aic-met aic-big' }, [['FILL RATE', F.fill_rate_pct + '%'], ['LINES FILLED IN FULL', F.line_fill_pct + '%'], ['ZERO-DISPATCH LINES', String(F.zero_dispatch_lines)], ['SHORT LINES', String(F.short_lines)], ['RECEIPT ACCURACY', F.receipt_accuracy_pct == null ? 'n/a' : F.receipt_accuracy_pct + '%'], ['AWAITING DISPATCH', F.awaiting_dispatch.count + (F.awaiting_dispatch.oldest_age_days != null ? ' (oldest ' + F.awaiting_dispatch.oldest_age_days + 'd)' : '')]].map(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })])),
+    F.by_source.length ? h('div', { class: 'aic-sub', text: 'By source (worst first): ' + F.by_source.slice(0, 4).map(x => x.source + ' ' + x.fill_rate_pct + '% (' + x.strs + ' STRs)').join(' · ') }) : null,
+    F.worst_products.length ? h('div', { class: 'aic-sub', text: 'Most short: ' + F.worst_products.slice(0, 4).map(x => x.name + ' (-' + x.packs_short + ')').join(', ') }) : null,
+    h('div', { class: 'aic-sub', text: F.note }),
+    h('div', { class: 'aic-row' }, h('button', { text: 'Open zero-dispatch', onclick: () => openPage('#str-zero-dispatch') }), h('button', { text: 'Ask BT about this', onclick: () => ask('Which warehouses are short-dispatching our STRs and which products are affected?') })));
+  return card('fill', 'monitor', sectionHeader('STR FILL RATE', h('span', { class: 'aic-sub', text: 'str_fill_rate · incoming, last ' + ((F && F.window_days) || 7) + ' days' })), body);
+}
+
+// ── staff credit + ledgers ──
+function secMoney() {
+  const P = S.snap && S.snap.raw && S.snap.raw.planning, Mo = P && P.money;
+  let body;
+  if (!S.snap) body = skeleton(2);
+  else if (!Mo) body = empty((P && P.errors && P.errors.money) || 'Ledger overview not available.');
+  else {
+    const sc = Mo.staff_credit;
+    body = h('div', {},
+      sc ? h('div', {}, h('div', { class: 'aic-k', text: 'STAFF CREDIT OWED' }),
+        h('dl', { class: 'aic-met' }, [[sc.this_month.month, 'Rs ' + M.fmtNum(sc.this_month.total_owed) + ' · ' + sc.this_month.people + ' people'], [sc.last_month.month, 'Rs ' + M.fmtNum(sc.last_month.total_owed) + ' · ' + sc.last_month.people + ' people']].map(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })])),
+        (sc.this_month.top.length ? sc.this_month : sc.last_month).top.length ? h('div', { class: 'aic-sub', text: 'Largest balances (' + (sc.this_month.top.length ? sc.this_month.month : sc.last_month.month) + '): ' + (sc.this_month.top.length ? sc.this_month : sc.last_month).top.map(x => x.name + ' Rs ' + M.fmtNum(x.net)).join(' · ') }) : null) : null,
+      Mo.ledgers.map(L => h('div', { class: 'aic-led' },
+        h('div', { class: 'aic-k', text: L.ledger.toUpperCase() + ' · MONTH TO DATE Rs ' + M.fmtNum(L.month_to_date_total) }),
+        L.categories.length ? h('div', { class: 'aic-sub', text: L.categories.slice(0, 5).map(c => c.category + ' Rs ' + M.fmtNum(c.amount)).join(' · ') }) : h('div', { class: 'aic-sub', text: 'No entries this month.' }),
+        L.running_above_usual.length ? h('div', { class: 'aic-note', text: 'Running above usual for this point of the month: ' + L.running_above_usual.map(x => x.category + ' (Rs ' + M.fmtNum(x.month_to_date) + ' vs ~' + M.fmtNum(x.usual_same_period) + ')').join('; ') }) : null)),
+      h('div', { class: 'aic-sub', text: Mo.note }),
+      h('div', { class: 'aic-row' }, h('button', { text: 'Open Manager', onclick: () => openPage('#manager-dashboard') }), h('button', { text: 'Ask BT about this', onclick: () => ask('Why is petty cash and other expenses high this month? Break it down by category.') })));
+  }
+  return card('money', 'monitor', sectionHeader('MONEY & LEDGERS', h('span', { class: 'aic-sub', text: 'money_overview · ' + ((S.snap && S.snap.raw && S.snap.raw.planning && S.snap.raw.planning.money && S.snap.raw.planning.money.month) || 'this month') })), body);
 }
 
 // ── agent network ──
@@ -636,7 +726,7 @@ function openPalette() {
 function paint() {
   const r = root(); if (!r || !pageOn()) return;
   const info = coreInfo();
-  const cards = [secSummary(info), secCore(info), secAttention(), secCorrelation(), secSince(), secSystems(), secForecast(), secNetwork(info), secResponse(), secActions(info), secActivity(), secObs(), secHealth(), secTools(), secRepo()]
+  const cards = [secSummary(info), secCore(info), secAttention(), secCorrelation(), secSince(), secSystems(), secForecast(), secReorder(), secFill(), secMoney(), secNetwork(info), secResponse(), secActions(info), secActivity(), secObs(), secHealth(), secTools(), secRepo()]
     .filter(c => c && c.getAttribute('data-modes').split(' ').includes(S.mode));
   const main = h('main', { class: 'aic-main', 'data-mode': S.mode }, cards);
   const offline = navigator.onLine === false ? h('div', { class: 'aic-offline', role: 'alert' }, h('b', { text: 'BT OFFLINE · ' }), 'Showing last known data' + (S.snap ? ' from ' + clock(S.snap.at) : '') + '. Some intelligence may be unavailable.') : null;

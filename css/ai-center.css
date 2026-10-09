@@ -209,3 +209,8 @@ body.aic-open .ag-fab{display:none}
 .aic-tool .aic-seg:first-child{flex:1 1 100%}
 .aic-tag{border:0;padding:0;letter-spacing:.06em;color:var(--aic-mu);font-weight:600}
 .aic-sh h2,.aic-sh h3{letter-spacing:.14em}
+/* planning cards: reorder draft, weekday forecast, STR fill rate, money & ledgers */
+.aic-det{border:1px solid var(--border);border-radius:6px;padding:6px 10px;margin:0 0 6px}.aic-det summary{cursor:pointer;font-weight:600;font-size:13px;min-height:32px;display:flex;align-items:center}
+.aic-det ul{margin:6px 0 2px;padding-left:18px;font-size:13px;display:grid;gap:3px}
+.aic-wf{margin-top:10px;display:grid;gap:6px}.aic-led{margin-top:12px;display:grid;gap:4px}
+.aic-k{font-size:12px;font-weight:700;letter-spacing:.1em;color:var(--aic-mu)}

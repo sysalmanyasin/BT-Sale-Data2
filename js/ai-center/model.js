@@ -149,6 +149,51 @@ export function buildFindings(snap) {
     });
   }
 
+  // STR fill rate: what we ask the warehouse for vs what it actually dispatches (incoming STRs, rolling window).
+  const fr = snap.fill;
+  if (fr && fr.lines >= 5 && ((fr.fill_rate_pct != null && fr.fill_rate_pct < 80) || fr.zero_dispatch_lines > 0)) {
+    const worst = fr.by_source && fr.by_source[0];
+    push({
+      type: 'STR', severity: 'warning', system: 'STR', source: 'str_fill_rate',
+      title: 'STR fill rate ' + fr.fill_rate_pct + '% (' + fr.zero_dispatch_lines + ' lines got nothing, ' + fr.short_lines + ' short) in the last ' + fr.window_days + ' days',
+      description: worst ? 'Weakest source: ' + worst.source + ' at ' + worst.fill_rate_pct + '%.' : 'Open the STR report for the short lines.',
+      evidence: [{ kind: 'CALCULATION', label: 'Fill rate (dispatched ÷ requested packs)', value: fr.fill_rate_pct + '%' }, { kind: 'FACT', label: 'Zero-dispatch lines', value: String(fr.zero_dispatch_lines) }, { kind: 'FACT', label: 'STRs counted', value: String(fr.strs_counted) }]
+        .concat(fr.receipt_accuracy_pct != null ? [{ kind: 'CALCULATION', label: 'Receipt accuracy (received ÷ dispatched)', value: fr.receipt_accuracy_pct + '%' }] : []),
+      related_agents: SYSTEM_SOURCES.STR.agents, related_tools: ['str_fill_rate', 'get_str_detail'],
+      recommendation: null, action: { kind: 'open', href: SYSTEM_PAGE.STR },
+    });
+  }
+
+  // Ledgers / petty cash running well above the same point of earlier months.
+  const mo = snap.money;
+  if (mo && Array.isArray(mo.ledgers)) {
+    for (const L of mo.ledgers) {
+      const sp = (L.running_above_usual || [])[0];
+      if (!sp) continue;
+      push({
+        type: 'ANOMALY', severity: 'warning', system: 'STAFF', source: 'money_overview',
+        title: L.ledger + ': ' + sp.category + ' is Rs ' + fmtNum(sp.month_to_date) + ' this month, usually about Rs ' + fmtNum(sp.usual_same_period) + ' by now',
+        description: 'Month-to-date vs the same day-range of the previous 3 months.',
+        evidence: [{ kind: 'CALCULATION', label: 'Month to date', value: 'Rs ' + fmtNum(sp.month_to_date) }, { kind: 'CALCULATION', label: 'Usual for this point', value: 'Rs ' + fmtNum(sp.usual_same_period) }, { kind: 'CALCULATION', label: 'Extra', value: 'Rs ' + fmtNum(sp.extra) }],
+        related_agents: SYSTEM_SOURCES.STAFF.agents, related_tools: ['money_overview', 'get_ledger_month_totals'],
+        recommendation: null, action: { kind: 'open', href: SYSTEM_PAGE.STAFF },
+      });
+    }
+  }
+
+  // Reorder: sellers with no stock cost sales every day.
+  const ro = snap.reorder;
+  if (ro && ro.out_of_stock_selling > 0 && ro.lost_sales_per_day > 0) {
+    push({
+      type: 'INVENTORY', severity: 'info', system: 'INVENTORY', source: 'reorder_draft',
+      title: 'Reorder draft ready: ' + ro.total_lines + ' lines, ' + ro.out_of_stock_selling + ' out of stock but selling (about Rs ' + fmtNum(ro.lost_sales_per_day) + '/day of sales at risk)',
+      description: 'Net of stock already in transit on inbound STRs.',
+      evidence: [{ kind: 'CALCULATION', label: 'Lines to buy', value: String(ro.total_lines) }, { kind: 'CALCULATION', label: 'Sales at risk per day', value: 'Rs ' + fmtNum(ro.lost_sales_per_day) }, { kind: 'CALCULATION', label: 'Estimated value at sale price', value: 'Rs ' + fmtNum(ro.est_value_at_sale_price) }],
+      related_agents: SYSTEM_SOURCES.INVENTORY.agents, related_tools: ['reorder_draft', 'low_cover_items'],
+      recommendation: null, action: { kind: 'open', href: SYSTEM_PAGE.INVENTORY },
+    });
+  }
+
   // Fixed, rule-based guidance + entity/audit references for every finding (section 11). Not AI-written.
   out.forEach(f => {
     const g = guidanceFor(f.type, f.system);

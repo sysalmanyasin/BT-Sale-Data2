@@ -46,6 +46,25 @@ const COMMANDS = [
   { re: /^(closing status|closing today|is closing done|shift status)$/,
     tool: 'closing_status', args: {},
     say: r => r.error ? String(r.error) : 'Closing today: ' + r.shifts.map(s => s.shift + ' ' + s.status + (s.net_sale != null ? ' (' + rs(s.net_sale) + ')' : '')).join(', ') + '.' },
+  { re: /^(forecast|sales forecast|month forecast|monthly forecast|weekday forecast|today'?s? forecast|forecast today|will i hit (the )?target|will we hit (the )?target)$/,
+    tool: 'weekday_forecast', args: {},
+    say: r => r.error ? String(r.error)
+      : r.month + ': sold ' + rs(r.sold_so_far) + ' so far; expected month-end about ' + rs(r.projected_month_end) + ' (typical ' + rs(r.projected_low) + ' to ' + rs(r.projected_high) + ').'
+        + (r.vs_target ? ' Target ' + rs(r.target) + ': ' + (r.vs_target.on_track ? 'on track' : 'short by about ' + rs(-r.vs_target.gap_at_projection)) + ' (need ' + rs(r.vs_target.needed_per_remaining_day) + '/day, weekday pattern expects ' + rs(r.vs_target.expected_per_remaining_day) + '/day).' : '')
+        + ' ' + (r.today.entered ? 'Today is already entered.' : r.today.weekday + ' usually sells about ' + rs(r.today.expected) + ' (typical ' + rs(r.today.typical_low) + ' to ' + rs(r.today.typical_high) + ').') },
+  { re: /^(draft reorder|reorder draft|reorder list|draft reorder list|draft the reorder|what should i reorder|what to reorder)$/,
+    tool: 'reorder_draft', args: { limit: 8 },
+    say: r => r.error ? String(r.error)
+      : 'Reorder draft: ' + r.total_lines + ' lines (' + r.out_of_stock_selling + ' out of stock but selling, ' + r.low_cover + ' running low), about ' + rs(r.est_value_at_sale_price) + ' at sale price, net of stock in transit.'
+        + (r.groups.length ? ' Most urgent: ' + r.groups.flatMap(g => g.items).filter(i => i.status !== 'reorder').slice(0, 5).map(i => i.name + ' (buy ' + i.suggested_qty + ')').join(', ') + '.' : '')
+        + ' The full supplier-grouped list is in the AI Center.' },
+  { re: /^(str fill rate|fill rate|transfer fill rate|str fill)$/,
+    tool: 'str_fill_rate', args: {},
+    say: r => r.error ? String(r.error)
+      : r.fill_rate_pct == null ? 'No dispatched incoming STR lines in the last ' + r.window_days + ' days to measure.'
+        : 'STR fill rate (last ' + r.window_days + ' days, incoming): ' + r.fill_rate_pct + '% of requested packs dispatched across ' + r.strs_counted + ' STRs; ' + r.zero_dispatch_lines + ' lines got nothing, ' + r.short_lines + ' short.'
+          + (r.receipt_accuracy_pct != null ? ' Receipt accuracy ' + r.receipt_accuracy_pct + '%.' : '')
+          + (r.by_source.length ? ' Weakest source: ' + r.by_source[0].source + ' (' + r.by_source[0].fill_rate_pct + '%).' : '') },
   { re: /^(what needs my attention|what needs my attention today|attention|briefing|morning briefing)$/,
     tool: 'daily_briefing', args: {}, say: () => null }, // briefing is rich: AI explains it
 ];

@@ -205,7 +205,10 @@ function _targetPace() {
   // tile uses (see _kpiTiles below) — kept in one place logically so
   // this card and that tile can never disagree about whether a given
   // % of target counts as on-track, since they're both driven by pct.
-  const cls = pct >= 95 ? 'green' : pct >= 75 ? 'amber' : 'red';
+  // Colour by PACE (actual vs expected so far), not by raw % of the whole month:
+  // 29% of target on day 8 of 31 is ahead of pace and must not read red.
+  const paceRatio = expectedSoFar > 0 ? actual / expectedSoFar : 1;
+  const cls = paceRatio >= 0.95 ? 'green' : paceRatio >= 0.75 ? 'amber' : 'red';
   return { label: 'Target pace — ' + my, value: pct + '% of target', sub, cls };
 }
 
@@ -1333,7 +1336,7 @@ function _kpiTiles() {
     out.push({
       icon: '📊', label: 'Sales vs Target',
       value: pct == null ? '—' : pct + '%',
-      cls: pct == null ? 'neutral' : (pct >= 95 ? 'green' : pct >= 75 ? 'amber' : 'red'),
+      cls: pct == null ? 'neutral' : (pace.cls || 'neutral'),
       page: 'dashboard',
     });
   } catch (e) { out.push({ icon: '📊', label: 'Sales vs Target', value: '—', cls: 'neutral', page: 'dashboard' }); }

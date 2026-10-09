@@ -563,10 +563,23 @@ const Analytics = (function () {
     // C. Biggest MoM swing
     if (M.length >= 2) {
       const last = M[M.length - 1], prev = M[M.length - 2];
-      const lastT = n(last.TOTAL), prevT = n(prev.TOTAL);
+      let lastT = n(last.TOTAL), prevT = n(prev.TOTAL), throughDay = null;
+      // A month still in progress must not be compared with a full previous month
+      // (8 days vs 30 days always reads "-72%"). Compare the same day range instead.
+      if (last.Month_Year === curMY && now.getDate() < new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()) {
+        const dayOf = d => parseInt(String(d.Date || '').split('/')[0], 10);
+        const lastDays = D.filter(d => d.Month_Year === last.Month_Year && n(d.TOTAL) > 0);
+        const cut = lastDays.reduce((m, d) => Math.max(m, dayOf(d) || 0), 0);
+        const prevSame = D.filter(d => d.Month_Year === prev.Month_Year && n(d.TOTAL) > 0 && (dayOf(d) || 0) <= cut);
+        if (cut > 0 && prevSame.length) {
+          throughDay = cut;
+          lastT = lastDays.reduce((s, d) => s + n(d.TOTAL), 0);
+          prevT = prevSame.reduce((s, d) => s + n(d.TOTAL), 0);
+        }
+      }
       if (prevT > 0) {
         const swingPct = Math.round((lastT - prevT) / prevT * 100);
-        candidates.push({ type: 'momSwing', last, prev, lastT, prevT, swingPct });
+        candidates.push({ type: 'momSwing', last, prev, lastT, prevT, swingPct, throughDay });
       }
     }
 

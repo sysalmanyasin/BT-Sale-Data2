@@ -7,10 +7,10 @@
 // "medicine") appear in questions about every area and used to drag a second group in,
 // sending simple staff questions to the Analyst. A 4-digit year counts as a sales cue.
 const RULES = {
-  sales: /\b(sale|sales|sold|selling|revenue|target|targets|pace|daily|comp|customers?|best|worst|top|highest|lowest|total|totals|compare|comparison|diff|bikri)\b/i,
+  sales: /\b(sale|sales|sold|selling|revenue|target|targets|pace|daily|comp|customers?|best|worst|top|highest|lowest|total|totals|compare|comparison|diff|bikri|forecast|forecasts|projection|projected|weekday|weekdays)\b/i,
   manager: /\b(staff|employee|employees|salary|payslip|ledger|jazz|jazzcash|petty|expense|expenses|credit|owe|owes|owed|note|notes|payment|paid|pay|balance|salesman|cashier|incentive|attendance|advance|udhar|udhaar)\b/i,
   inventory: /\b(stock|inventory|product|products|reorder|expiry|supplier|item|items|cover|slow|dead|panadol)\b/i,
-  str: /\b(str|strs|transfer|transfers|awaited|dispatch|dispatched|dispatching|in transit|zero.?dispatch)\b/i,
+  str: /\b(str|strs|transfer|transfers|awaited|dispatch|dispatched|dispatching|in transit|zero.?dispatch|fill.?rate|short.?dispatch|shortfall)\b/i,
   closing: /\b(closing|closed|closings|shift|shifts|closing book)\b/i,
   billing: /\b(emergency|invoice|invoices|billing|bills?|refunds?|refunded|reconciled|unreconciled)\b/i,
   documents: /\b(sheets?|spreadsheets?|documents?|knowledge|policy|policies|sop|my notes|the notes|all notes|saved notes|notes?\s*(?:and|&)\s*sheets?)\b/i,

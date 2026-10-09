@@ -36,7 +36,24 @@ export async function readTool(name, args = {}) {
 const settle = p => p.then(v => ({ ok: true, v }), e => ({ ok: false, e: (e && e.message) || String(e) }));
 
 /** One consistent read of everything the Home screen needs. Cheap: a handful of in-memory tool calls, no network. */
+// Inventory / STR data is cached in the browser. Without this the AI Center judged stock from a cache that
+// could be days old until the Inventory page happened to be opened. The bridges' own refresh is cheap
+// (it compares the server sync time first and only re-downloads when it changed); throttled to 5 min.
+let _lastBridgeRefresh = 0;
+export async function refreshBridges(now = Date.now(), force = false) {
+  if (!force && now - _lastBridgeRefresh < 5 * 60 * 1000) return;
+  _lastBridgeRefresh = now;
+  const w = typeof window !== 'undefined' ? window : {};
+  const run = fn => {
+    if (typeof fn !== 'function') return Promise.resolve(null);
+    let t; const timeout = new Promise(r => { t = setTimeout(() => r(null), 8000); });
+    return Promise.race([Promise.resolve().then(() => fn(false)).catch(() => null), timeout]).finally(() => clearTimeout(t));
+  };
+  await Promise.all([run(w.inventoryBridgeRefresh), run(w.strBridgeRefresh)]);
+}
+
 export async function collectSnapshot(now = Date.now()) {
+  await refreshBridges(now);
   const [bR, paceR, clR, strR] = await Promise.all([
     settle(readTool('daily_briefing')),
     settle(readTool('get_target_pace')),
@@ -45,13 +62,19 @@ export async function collectSnapshot(now = Date.now()) {
   ]);
   const briefing = bR.ok ? bR.v : null;
   const lastDate = briefing && briefing.last_sales_entry && briefing.last_sales_entry.date;
+  // Planning reads (weekday forecast, reorder draft, STR fill rate, money). Optional: a failure here never marks a
+  // system as errored, the matching card just says why it has no data.
+  const planP = Promise.all([settle(readTool('weekday_forecast')), settle(readTool('reorder_draft', { limit: 40 })), settle(readTool('str_fill_rate')), settle(readTool('money_overview'))]);
   const [dayR, pendR] = await Promise.all([
     lastDate ? settle(readTool('get_daily_sales', { date: lastDate })) : Promise.resolve({ ok: false, e: 'No sales entry found.' }),
     strR.ok ? settle(readTool('list_pending_strs', { direction: 'in', min_age_days: 3, limit: 5 })) : Promise.resolve({ ok: false, e: strR.e }),
   ]);
   const errors = { briefing: bR.e, pace: paceR.e, closing: clR.e, str: strR.e, day: dayR.e, strPending: pendR.e };
-  const raw = { briefing, pace: paceR.ok ? paceR.v : null, closing: clR.ok ? clR.v : null, str: strR.ok ? strR.v : null, strPending: pendR.ok ? pendR.v : null, day: dayR.ok ? dayR.v : null };
-  const findings = buildFindings({ briefing, closing: raw.closing, strPending: raw.strPending, now });
+  const [wfR, roR, frR, moR] = await planP;
+  const planning = { weekday: wfR.ok ? wfR.v : null, reorder: roR.ok ? roR.v : null, fill: frR.ok ? frR.v : null, money: moR.ok ? moR.v : null,
+    errors: { weekday: wfR.e, reorder: roR.e, fill: frR.e, money: moR.e } };
+  const raw = { briefing, pace: paceR.ok ? paceR.v : null, closing: clR.ok ? clR.v : null, str: strR.ok ? strR.v : null, strPending: pendR.ok ? pendR.v : null, day: dayR.ok ? dayR.v : null, planning };
+  const findings = buildFindings({ briefing, closing: raw.closing, strPending: raw.strPending, fill: planning.fill, money: planning.money, reorder: planning.reorder, now });
 
   const avail = {
     SALES: bR.ok ? { state: 'ready' } : { state: 'error', reason: bR.e },
@@ -77,7 +100,12 @@ function metricsFor(s, r) {
     ].filter(Boolean);
     if (s === 'CASH' && r.day) return [M('DIFF (' + r.day.date + ')', 'Rs ' + fmtNum(r.day.diff), 'get_daily_sales'), M('Cash sale', 'Rs ' + fmtNum(r.day.cash_sale), 'get_daily_sales'), M('Bank total', 'Rs ' + fmtNum(r.day.bank_total), 'get_daily_sales'), M('Credit total', 'Rs ' + fmtNum(r.day.credit_total), 'get_daily_sales')];
     if (s === 'INVENTORY' && b && b.inventory) { const i = b.inventory; return [M('Out of stock, selling', i.out_of_stock_but_selling, 'daily_briefing'), M('Run out ≤ 7 days', i.running_out_within_7_days, 'daily_briefing'), M('Not sold 90d+', i.slow_moving_90d_items + ' items', 'daily_briefing'), M('Slow stock value', 'Rs ' + fmtNum(i.slow_moving_stock_value), 'daily_briefing')]; }
-    if (s === 'STAFF' && b && b.credit) return [M('Carried-over credit', 'Rs ' + fmtNum(b.credit.carried_over_total), 'daily_briefing'), M('Possible duplicates', b.credit.possible_duplicates, 'daily_briefing'), M('Month', b.credit.month, 'daily_briefing')];
+    if (s === 'STAFF' && b && b.credit) { const c = b.credit; return [
+      c.month_net_owed != null && M('Owed (' + c.month + ')', 'Rs ' + fmtNum(c.month_net_owed) + ' · ' + c.staff_owing + ' staff', 'daily_briefing'),
+      c.prev_month_net_owed != null && M('Owed (' + c.prev_month + ')', 'Rs ' + fmtNum(c.prev_month_net_owed), 'daily_briefing'),
+      M('Carried over into ' + c.month, 'Rs ' + fmtNum(c.carried_over_total), 'daily_briefing'),
+      M('Possible duplicates', c.possible_duplicates, 'daily_briefing'),
+    ].filter(Boolean); }
     if (s === 'STR' && r.str) return [M('Awaited', r.str.awaited.all, 'str_overview'), M('Dispatched, not received', r.str.dispatched_not_received.all, 'str_overview'), M('Received', r.str.received, 'str_overview'), r.str.oldest_open && M('Oldest open', r.str.oldest_open.str + ' · ' + r.str.oldest_open.age_days + 'd', 'str_overview')].filter(Boolean);
     if (s === 'CLOSING' && r.closing) {
       const today = r.closing.days && r.closing.days[0];
