@@ -87,21 +87,34 @@ function metricsFor(s, r) {
   return [];
 }
 
+// Freshness stamp for a bridge. Prefer the SOURCE's own sync time; when the source does not report one
+// (e.g. the sync-log table is empty) fall back to when this app last PULLED the data, and say so.
+// Returns { ts, basis: 'source' | 'pulled' } or null when nothing is known.
 function bridgeStamp(kind) {
   try {
-    if (kind === 'inventory') { const d = typeof window.inventoryBridgeGetFullData === 'function' ? window.inventoryBridgeGetFullData() : null; const s = d && d.lastSync && d.lastSync.syncedAt; return s ? Date.parse(s) : null; }
-    if (kind === 'str') { const d = typeof window.strBridgeGetFullData === 'function' ? window.strBridgeGetFullData() : null; const s = d && d.lastSyncedAt; return s ? Date.parse(s) : null; }
+    let src = null, pulled = null;
+    if (kind === 'inventory') { const d = typeof window.inventoryBridgeGetFullData === 'function' ? window.inventoryBridgeGetFullData() : null; if (d) { src = d.lastSync && d.lastSync.syncedAt; pulled = d.fetchedAt; } }
+    else if (kind === 'str') { const d = typeof window.strBridgeGetFullData === 'function' ? window.strBridgeGetFullData() : null; if (d) { src = d.lastSyncedAt; pulled = d.fetchedAt; } }
+    else if (kind === 'closing') { const d = typeof window.closingBridgeGetCachedSummary === 'function' ? window.closingBridgeGetCachedSummary() : null; if (d) pulled = d.fetchedAt; }
+    const st = src ? (typeof src === 'number' ? src : Date.parse(src)) : NaN;
+    if (Number.isFinite(st)) return { ts: st, basis: 'source' };
+    const pt = Number(pulled);
+    if (Number.isFinite(pt) && pt > 0) return { ts: pt, basis: 'pulled' };
   } catch (_) { /* ignore */ }
   return null;
+}
+function stampFreshness(kind, thresholds, now) {
+  const st = bridgeStamp(kind), f = freshness(st && st.ts, thresholds, now);
+  return st && st.basis === 'pulled' ? { ...f, label: f.label + ' (app pull time)' } : f;
 }
 const DAY = 86400000, H = 3600000;
 function freshnessFor(s, r, now) {
   const b = r.briefing;
   if ((s === 'SALES' || s === 'CASH') && b && b.last_sales_entry) { const d = b.last_sales_entry.days_ago; return { status: d >= 2 ? 'WARNING' : 'HEALTHY', label: d === 0 ? 'entry for today' : d + ' day(s) since last sales entry' }; }
-  if (s === 'INVENTORY') return freshness(bridgeStamp('inventory'), { warnMs: 26 * H, errMs: 3 * DAY }, now);
-  if (s === 'STR') return freshness(bridgeStamp('str'), { warnMs: 26 * H, errMs: 3 * DAY }, now);
+  if (s === 'INVENTORY') return stampFreshness('inventory', { warnMs: 26 * H, errMs: 3 * DAY }, now);
+  if (s === 'STR') return stampFreshness('str', { warnMs: 26 * H, errMs: 3 * DAY }, now);
   if (s === 'STAFF' && b && b.credit) return { status: 'HEALTHY', label: 'from local ledgers' };
-  if (s === 'CLOSING') return { status: 'NOT_MONITORED', label: 'No freshness signal is exposed for closing.' };
+  if (s === 'CLOSING') return stampFreshness('closing', { warnMs: 26 * H, errMs: 3 * DAY }, now);
   return { status: 'NOT_MONITORED', label: 'No freshness signal is exposed.' };
 }
 
@@ -136,12 +149,15 @@ export async function collectHealth(snapshot, now = Date.now()) {
   try { const ch = typeof window._sbGetChannel === 'function' ? window._sbGetChannel() : undefined; rtState = ch === undefined ? null : (ch ? (ch.state || '') : ''); } catch (_) { rtState = null; }
   const rt = realtimeHealth(rtState);
   add('realtime', 'Realtime', rt.status, rt.detail);
-  const fs = snapshot ? ['INVENTORY', 'STR', 'SALES'].map(s => snapshot.systems[s].fresh) : [];
-  const worst = fs.some(f => f.status === 'ERROR') ? 'ERROR' : fs.some(f => f.status === 'WARNING') ? 'WARNING' : fs.some(f => f.status === 'HEALTHY') ? 'HEALTHY' : 'UNKNOWN';
-  add('sync', 'Data sync', worst, snapshot ? ['Inventory ' + snapshot.systems.INVENTORY.fresh.label, 'STR ' + snapshot.systems.STR.fresh.label, 'Sales ' + snapshot.systems.SALES.fresh.label].join(' · ') : 'No snapshot');
+  // Data sync = the worst of the measured sources. A source with no freshness signal is never counted as healthy:
+  // if any is unmeasured (and none is already WARNING/ERROR) the roll-up says NOT_MEASURED, not HEALTHY.
+  const SYNC_SRC = ['INVENTORY', 'STR', 'CLOSING', 'SALES'];
+  const fs = snapshot ? SYNC_SRC.map(x => snapshot.systems[x].fresh) : [];
+  const worst = !snapshot ? 'NOT_MEASURED' : fs.some(f => f.status === 'ERROR') ? 'ERROR' : fs.some(f => f.status === 'WARNING') ? 'WARNING' : fs.some(f => f.status === 'NOT_MONITORED') ? 'NOT_MEASURED' : 'HEALTHY';
+  add('sync', 'Data sync', worst, snapshot ? SYNC_SRC.map(x => x.charAt(0) + x.slice(1).toLowerCase() + ' ' + snapshot.systems[x].fresh.label).join(' \u00b7 ') : 'No snapshot');
   add('forecast', 'Forecasting', snapshot && snapshot.forecast.available ? 'HEALTHY' : 'WARNING', snapshot && snapshot.forecast.available ? 'Analytics.getTargetPaceForMonth returned a result' : (snapshot ? snapshot.forecast.reason : 'No snapshot'));
-  add('str', 'STR data', snapshot ? (snapshot.systems.STR.availability.state === 'ready' ? 'HEALTHY' : 'WARNING') : 'UNKNOWN', snapshot && snapshot.systems.STR.availability.state === 'ready' ? 'Loaded' : (snapshot && snapshot.systems.STR.availability.reason) || 'No snapshot');
-  add('closing', 'Closing data', snapshot ? (snapshot.systems.CLOSING.availability.state === 'ready' ? 'HEALTHY' : 'WARNING') : 'UNKNOWN', snapshot && snapshot.systems.CLOSING.availability.state === 'ready' ? 'Loaded' : (snapshot && snapshot.systems.CLOSING.availability.reason) || 'No snapshot');
+  add('str', 'STR data', snapshot ? (snapshot.systems.STR.availability.state === 'ready' ? 'HEALTHY' : 'WARNING') : 'NOT_MEASURED', snapshot && snapshot.systems.STR.availability.state === 'ready' ? 'Loaded' : (snapshot && snapshot.systems.STR.availability.reason) || 'No snapshot');
+  add('closing', 'Closing data', snapshot ? (snapshot.systems.CLOSING.availability.state === 'ready' ? 'HEALTHY' : 'WARNING') : 'NOT_MEASURED', snapshot && snapshot.systems.CLOSING.availability.state === 'ready' ? 'Loaded' : (snapshot && snapshot.systems.CLOSING.availability.reason) || 'No snapshot');
   return rows;
 }
 

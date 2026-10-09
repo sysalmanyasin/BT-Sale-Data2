@@ -118,7 +118,7 @@ describe('history and restricted tools', () => {
     T.hydrate([{ event_id: 'e1', timestamp: Date.now() - 3 * 3600000, type: 'request_start', request_id: 'old', agent: 'Sales', metadata: { question: 'old question' } }]);
     await show('investigate');
     assert.equal(T.liveState().open, null, 'a restored half-finished request is not "running"');
-    assert.match(q('.aic-cs h2').textContent, /MONITORING|IDLE|DETECTING/);
+    assert.match(q('.aic-cs h2').textContent, /READY|IDLE|DETECTING/);
     assert.ok(q('.aic-earlier'), 'EARLIER label shown'); assert.match(q('.aic-earlier').textContent, /EARLIER/);
   });
   test('with changes locked, every write tool shows READ-ONLY and the table shows purpose + status columns', async () => {

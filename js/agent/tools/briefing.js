@@ -4,8 +4,9 @@ import { registerTool } from '../core/tool-registry.js';
 import { DAILY } from '../../config.js';
 import { Repository } from '../../repository.js';
 import { num, rs, FULL, MON, sameMonth, parseAppDate, monthSortVal } from './_util.js';
-import { creditAlertMessages } from '../../shared/credit-alerts.js';
+import { creditAlertMessages, findUnrolledCredit } from '../../shared/credit-alerts.js';
 import * as LedgerStore from '../../ledger-store.js';
+import { notSoldStock } from '../../shared/inventory-metrics.js';
 
 const dayStr = d => String(d.getDate()).padStart(2, '0') + '/' + MON[d.getMonth()] + '/' + d.getFullYear();
 const startOfDay = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -111,6 +112,9 @@ export function buildBriefing(now = new Date()) {
       const ca = creditAlertMessages(mgr.credit[months[0]]);
       out.credit = { month: months[0], carried_over_total: Math.round(ca.agedTotal), possible_duplicates: ca.duplicates.length };
       ca.duplicates.forEach(m => add('warn', 'credit', m + '.'));
+      // Rollover gap: the latest month carries nothing over although the month before it closed with money owed.
+      const gap = months.length > 1 ? findUnrolledCredit(mgr.credit[months[1]], mgr.credit[months[0]]) : null;
+      if (gap) { out.credit.unrolled_from = months[1]; out.credit.unrolled_owed = Math.round(gap.owed); add('warn', 'credit', months[1] + ' closed with Rs ' + Math.round(gap.owed).toLocaleString('en-PK') + ' still owed by ' + gap.staff + ' staff, but ' + months[0] + ' carries nothing over. Roll the credit month forward so balances are not lost.'); }
       if (ca.aged) add('warn', 'credit', ca.aged + '.');
     }
   } catch (_) { /* credit data unreadable: skip, never break the briefing */ }
@@ -143,9 +147,8 @@ export function buildBriefing(now = new Date()) {
     const sellingZero = list.filter(p => num(p.qty) <= 0 && num(p.netQty30Days) > 0);
     const cover = p => { const per = num(p.netQty30Days) / 30; return per > 0 ? num(p.qty) / per : null; };
     const lowCover = list.map(p => ({ p, c: cover(p) })).filter(x => x.p && num(x.p.qty) > 0 && x.c !== null && x.c <= 7).sort((a, b) => a.c - b.c);
-    const cutoff = now.getTime() - 90 * 86400000;
-    const slow = list.filter(p => num(p.qty) > 0 && (!p.lastSaleDate || new Date(p.lastSaleDate).getTime() < cutoff));
-    const slowValue = rs(slow.reduce((s, p) => s + num(p.qty) * num(p.price), 0));
+    const ns = notSoldStock(list, 90, now.getTime()); // shared definition: one number everywhere
+    const slow = ns.rows, slowValue = rs(ns.value);
     out.inventory = { out_of_stock_but_selling: sellingZero.length, running_out_within_7_days: lowCover.length, slow_moving_90d_items: slow.length, slow_moving_stock_value: slowValue,
       last_synced: (inv.lastSync && inv.lastSync.syncedAt) || null,
       most_urgent: lowCover.slice(0, 5).map(x => ({ name: x.p.name, qty: num(x.p.qty), cover_days: Math.round(x.c * 10) / 10 })) };

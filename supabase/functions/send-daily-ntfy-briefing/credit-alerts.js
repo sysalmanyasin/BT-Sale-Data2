@@ -9,6 +9,7 @@
 //
 // Rules
 //   duplicate : the same person has 2+ entries with the same date, amount (non-zero) and description
+//   unrolled  : last month closed with money owed but this month carries nothing over (rollover not done)
 //   aged      : the opening balance carried over from earlier months is at least AGED_CREDIT_MIN
 //               AND the person still owes money after this month's entries and deductions
 // ══════════════════════════════════════════════════════════════════════
@@ -46,6 +47,18 @@ export function findAgedCredit(rows, min = AGED_CREDIT_MIN) {
     .map(r => ({ name: clean(r && r.name), carried: n(r && r.prevBal), net: creditNet(r) }))
     .filter(x => x.name && x.carried >= min && x.net > 0)
     .sort((a, b) => b.net - a.net);
+}
+
+/**
+ * "Rollover gap": last month closed with money still owed, but this month shows NOTHING carried over.
+ * That means the month rollover (prevBal = last month's net) was never done, so carried-over alerts silently read Rs 0.
+ * @returns {{owed:number, staff:number}|null}
+ */
+export function findUnrolledCredit(prevRows, curRows, min = AGED_CREDIT_MIN) {
+  const owing = (Array.isArray(prevRows) ? prevRows : []).map(creditNet).filter(v => v > 0);
+  const owed = owing.reduce((s, v) => s + v, 0);
+  const carriedIn = (Array.isArray(curRows) ? curRows : []).reduce((s, r) => s + Math.abs(n(r && r.prevBal)), 0);
+  return owed >= min && carriedIn === 0 ? { owed, staff: owing.length } : null;
 }
 
 /** Ready-to-show messages, identical wording in the app and the push. @returns {{duplicates:string[], aged:string|null, agedTotal:number}} */

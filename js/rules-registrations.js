@@ -22,6 +22,7 @@
 // schema change (e.g. a saved-at timestamp) before this can be a real
 // rule rather than a guess.
 // ══════════════════════════════════════════════════════════════════════
+import { notSoldStock } from './shared/inventory-metrics.js';
 function n(v) { return Number(v) || 0; }
   function fmt(v) { return Math.round(n(v)).toLocaleString('en-PK'); }
 
@@ -120,12 +121,12 @@ function n(v) { return Number(v) || 0; }
     const SL = window.StockLedgerApp;
     if (!SL || typeof SL.hasData !== 'function' || !SL.hasData() || typeof SL.getRawRows !== 'function') return null;
     const rows = SL.getRawRows();
-    const dead = rows.filter(r => n(r.netQty90Days) === 0 && n(r.stock) > 0);
-    if (!dead.length) return null;
-    const value = dead.reduce((s, r) => s + n(r.stock) * n(r.unitPrice), 0);
+    // Same definition as the daily briefing / AI Center (js/shared/inventory-metrics.js).
+    const dead = notSoldStock(rows, 90);
+    if (!dead.count) return null;
     return {
       severity: 'amber',
-      msg: `🧊 <b>${dead.length} items</b> haven't sold in 90+ days but still carry stock — roughly ₨${fmt(value)} at current unit price.`,
+      msg: `🧊 <b>${dead.count} items</b> haven't sold in 90+ days but still carry stock — roughly ₨${fmt(dead.value)} at current unit price.`,
     };
   });
 

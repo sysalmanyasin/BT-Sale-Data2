@@ -107,13 +107,13 @@ describe('observability + health from real events', () => {
   test('specialist stats and health', () => {
     const st = M.specialistStats(ev);
     assert.deepEqual([st.Sales.runs, st.Sales.failed, st.Closing.runs], [2, 1, 1]);
-    assert.equal(M.specialistsHealth({}, 7).status, 'UNKNOWN');
+    assert.equal(M.specialistsHealth({}, 7).status, 'NOT_MEASURED');
     assert.equal(M.specialistsHealth(st, 7).status, 'DEGRADED');
     assert.equal(M.specialistsHealth({ A: { runs: 10, failed: 0 } }, 7).status, 'HEALTHY');
     assert.equal(M.specialistsHealth({ A: { runs: 2, failed: 2 } }, 7).status, 'ERROR');
   });
   test('realtime channel states', () => {
-    assert.equal(M.realtimeHealth(null).status, 'UNKNOWN'); assert.equal(M.realtimeHealth('').status, 'WARNING');
+    assert.equal(M.realtimeHealth(null).status, 'NOT_MEASURED'); assert.equal(M.realtimeHealth('').status, 'WARNING');
     assert.equal(M.realtimeHealth('joined').status, 'HEALTHY'); assert.equal(M.realtimeHealth('joining').status, 'WARNING');
     assert.equal(M.realtimeHealth('closed').status, 'ERROR');
   });

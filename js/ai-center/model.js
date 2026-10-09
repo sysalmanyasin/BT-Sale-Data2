@@ -79,6 +79,7 @@ export function evidenceFor(item, b) {
     ev.push({ kind: 'PREDICTION', label: 'Projected month-end (average × days)', value: 'Rs ' + fmtNum(t.projected_month_end) });
   }
   if (A === 'credit' && b.credit) ev.push({ kind: 'CALCULATION', label: 'Carried-over credit (' + b.credit.month + ')', value: 'Rs ' + fmtNum(b.credit.carried_over_total) }, { kind: 'DETECTION', label: 'Possible duplicate credit entries', value: String(b.credit.possible_duplicates) });
+  if (A === 'credit' && b.credit && b.credit.unrolled_from) ev.push({ kind: 'DETECTION', label: 'Not rolled over from ' + b.credit.unrolled_from, value: 'Rs ' + fmtNum(b.credit.unrolled_owed) + ' still owed' });
   if (A === 'ledger') ev.push({ kind: 'CALCULATION', label: 'Possible duplicate ledger entries (7 days)', value: String(b.possible_duplicate_ledger_entries || 0) });
   if (A === 'inventory' && b.inventory) {
     const i = b.inventory;
@@ -237,14 +238,14 @@ export function ageLabel(ts, now = Date.now()) {
   return Math.round(s / 86400) + ' d ago';
 }
 
-/** age → HEALTHY / WARNING / ERROR by thresholds. null/NaN age → UNKNOWN. */
+/** age → HEALTHY / WARNING / ERROR by thresholds. null/NaN age → NOT_MONITORED. */
 export function freshness(ts, { warnMs, errMs }, now = Date.now()) {
   if (!ts || !Number.isFinite(ts)) return { status: 'NOT_MONITORED', label: 'No freshness signal is exposed.' };
   const age = now - ts;
   return { status: age > errMs ? 'ERROR' : age > warnMs ? 'WARNING' : 'HEALTHY', label: ageLabel(ts, now), stale: age > warnMs };
 }
 
-/** summarizeUsage() rows → agent/provider health. UNKNOWN when there were no calls (we do not guess). */
+/** summarizeUsage() rows → agent/provider health. NOT_MEASURED when there were no calls (we do not guess). */
 export function providerHealth(rows) {
   const calls = rows.reduce((a, r) => a + r.calls, 0), failed = rows.reduce((a, r) => a + r.failed, 0);
   if (!calls) return { status: 'NOT_MEASURED', detail: 'No AI calls in the last 24 hours, so provider health is not measured.' };
@@ -468,13 +469,13 @@ export function specialistStats(events) {
 }
 export function specialistsHealth(stats, definedCount) {
   const rows = Object.values(stats || {}), runs = rows.reduce((a, r) => a + r.runs, 0), failed = rows.reduce((a, r) => a + r.failed, 0);
-  if (!runs) return { status: 'UNKNOWN', detail: definedCount + ' defined. No requests recorded in the last 7 days on this device.' };
+  if (!runs) return { status: 'NOT_MEASURED', detail: definedCount + ' defined. No requests recorded in the last 7 days on this device.' };
   const rate = failed / runs;
   return { status: rate >= 0.5 ? 'ERROR' : rate >= 0.15 ? 'DEGRADED' : 'HEALTHY', detail: Object.keys(stats).length + ' of ' + definedCount + ' used. ' + runs + ' request(s), ' + failed + ' failed (last 7 days, this device).' };
 }
 /** Realtime channel state string (the app's own bt-sync channel) -> health. */
 export function realtimeHealth(state) {
-  if (state == null) return { status: 'UNKNOWN', detail: 'Realtime channel is not available in this view.' };
+  if (state == null) return { status: 'NOT_MEASURED', detail: 'Realtime channel is not available in this view.' };
   if (state === '') return { status: 'WARNING', detail: 'Channel not started yet.' };
   if (state === 'joined') return { status: 'HEALTHY', detail: 'bt-sync channel joined.' };
   if (state === 'joining') return { status: 'WARNING', detail: 'bt-sync channel is connecting.' };

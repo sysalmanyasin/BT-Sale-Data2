@@ -3,6 +3,7 @@
 import { registerTool } from '../core/tool-registry.js';
 import { BTSearch } from '../../bt-search.js';
 import { num, rs, clampInt } from './_util.js';
+import { notSoldStock, qtyOf, priceOf } from '../../shared/inventory-metrics.js';
 
 async function products() {
   let d = typeof window.inventoryBridgeGetFullData === 'function' ? window.inventoryBridgeGetFullData() : null;
@@ -78,9 +79,7 @@ registerTool({
   run: async ({ days, limit }) => {
     const { list } = await products();
     const d = clampInt(days, 7, 1000, 90);
-    const cutoff = Date.now() - d * 86400000;
-    const rows = list.filter(p => num(p.qty) > 0 && (!p.lastSaleDate || new Date(p.lastSaleDate).getTime() < cutoff))
-      .map(p => ({ p, v: num(p.qty) * num(p.price) })).sort((a, b) => b.v - a.v);
+    const rows = notSoldStock(list, d).rows.map(p => ({ p, v: qtyOf(p) * priceOf(p) })); // already largest-value first
     return { not_sold_for_days: d, matching: rows.length, total_value: rs(rows.reduce((s, x) => s + x.v, 0)),
       items: rows.slice(0, clampInt(limit, 1, 25, 12)).map(x => ({ ...slim(x.p), stock_value: rs(x.v) })) };
   },

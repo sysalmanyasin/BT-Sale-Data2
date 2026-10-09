@@ -70,6 +70,11 @@ describe('delete_ledger_entry', () => {
     const r = await del('delete_ledger_entry', { entry_id: 'nope' }, async () => { asked = true; return typed(); });
     assert.equal(r.ok, false); assert.equal(asked, false);
   });
+  test('unknown id error tells the model to use a real id and lists existing ones (no guessing)', async () => {
+    const r = await del('delete_ledger_entry', { entry_id: 'ldg_guess_123' }, async () => typed());
+    const msg = JSON.stringify(r);
+    assert.match(msg, /Do not guess ids/); assert.ok(msg.includes(ledgerId), 'a real entry id is offered');
+  });
   test('tap-only approval does not delete', async () => {
     const n = LedgerStore.getEntries('jazzcash').length;
     const r = await del('delete_ledger_entry', { entry_id: ledgerId }, tapOnly);

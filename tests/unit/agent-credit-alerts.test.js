@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { installDomEnv } from '../helpers/dom-env.js';
-import { creditNet, findDuplicateCreditEntries, findAgedCredit, creditAlertMessages, AGED_CREDIT_MIN } from '../../js/shared/credit-alerts.js';
+import { creditNet, findDuplicateCreditEntries, findAgedCredit, creditAlertMessages, findUnrolledCredit, AGED_CREDIT_MIN } from '../../js/shared/credit-alerts.js';
 
 const root = path.resolve(import.meta.dirname, '..', '..');
 const e = (date, desc, amount) => ({ date, desc, amount });
@@ -89,5 +89,30 @@ describe('agent_schedules migration', () => {
     const g = /grant update \(([^)]+)\) on public\.agent_schedules/.exec(mig)[1];
     assert.ok(!/last_run_at|last_status|last_error/.test(g));
     assert.ok(!/grant select, insert, update/.test(mig));
+  });
+});
+
+describe('rollover gap: last month closed owing, this month carries nothing', () => {
+  const sep = [{ name: 'A', prevBal: 0, entries: [e('d', 'x', 9000)], salary: 0, lessGeneric: 0 }, { name: 'B', prevBal: 0, entries: [e('d', 'x', 500)], salary: 500, lessGeneric: 0 }];
+  test('detected when owed >= threshold and nothing carried in', () => {
+    const g = findUnrolledCredit(sep, [{ name: 'A', prevBal: 0, entries: [], salary: 0, lessGeneric: 0 }]);
+    assert.deepEqual(g, { owed: 9000, staff: 1 });
+  });
+  test('not raised once any balance is carried over, or when little is owed', () => {
+    assert.equal(findUnrolledCredit(sep, [{ name: 'A', prevBal: 9000, entries: [], salary: 0, lessGeneric: 0 }]), null);
+    assert.equal(findUnrolledCredit([{ name: 'A', prevBal: 0, entries: [e('d', 'x', AGED_CREDIT_MIN - 1)], salary: 0, lessGeneric: 0 }], []), null);
+    assert.equal(findUnrolledCredit(null, null), null);
+  });
+  test('the app briefing warns and exposes the figures', async () => {
+    installDomEnv();
+    globalThis.invalidateRenderCache = () => {};
+    const cfg = await import('../../js/config.js'); globalThis.recomputeMonthly = cfg.recomputeMonthly;
+    const { Repository } = await import('../../js/repository.js'); globalThis.Repository = Repository;
+    const { buildBriefing } = await import('../../js/agent/tools/briefing.js');
+    Repository.setItem('BT_ManagerWork_v1', JSON.stringify({ credit: { 'September 2026': sep, 'October 2026': [{ name: 'A', prevBal: 0, entries: [], salary: 0, lessGeneric: 0 }] } }));
+    const b = buildBriefing(new Date(2026, 9, 9));
+    const m = b.attention.filter(a => a.area === 'credit').map(a => a.message).join(' | ');
+    assert.match(m, /September 2026 closed with Rs 9,000 still owed by 1 staff, but October 2026 carries nothing over/);
+    assert.equal(b.credit.unrolled_from, 'September 2026'); assert.equal(b.credit.unrolled_owed, 9000);
   });
 });

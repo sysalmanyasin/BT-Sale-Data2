@@ -313,6 +313,8 @@ Deterministic business logic (Dashboard, Herald, calculators) stays AI-free. AI 
 
 **Proactive in-app briefing (Phase 5).** Without any AI call (zero tokens) the app computes the same checks as the push alerts: cash DIFF of Rs 10,000+ on the latest day, a sale 30%+ below the same weekday last week, month projection under 90% of target (only from day 10), missing entry days, plus stock checks. The ✨ button shows a red badge with the number of warnings (hidden once seen, re-shown if more appear or on a new day) and opening the panel shows a **Today** card. The in-app briefing uses `TOTAL` like the rest of the app.
 
+**One definition per metric.** "Not sold in N days" lives in `js/shared/inventory-metrics.js` and is used by the daily briefing, the `slow_moving_stock` tool, the Stock Ledger rule alert and the AI Center, so the Dashboard, the briefing and the AI Center show the same count and value. (Inventory Health's *Dead Stock* is a deliberately different metric: no sale in 60+ days and no net sales in 90 days.) The AI Center's per-source freshness uses the source's own sync time, falling back to the app's last pull time (labelled "app pull time"); a source with no signal is reported as not measured and is never counted as healthy.
+
 Names (`js/agent/tools/_names.js`): every tool that takes a person matches by **words** ("Mian Usman" finds "Mian Muhammad Usman"), ignores stray tabs/spaces, de-duplicates identical names, asks which person when ambiguous, and credit writes reuse the existing sheet row (this month, else last month's spelling) so one person is never split across two rows.
 
 Agent layout: `js/agent/core/` (tool registry, loop, audit, transport), `js/agent/tools/<domain>.js` (one file per domain), `js/agent/ui/` (panel). New tools are registered with a `risk` level (`read`/`ui`/`write`/`critical`). `write`/`critical` tools must supply `preview()` (validation + approval-card content) and should supply `makeUndo()`; they must write only through `Actions`/`LedgerActions`.
@@ -397,6 +399,7 @@ More detail in [`tests/README.md`](tests/README.md).
 - Break-glass only; needs separate reconciliation.
 - Cart, held bills and settings are device-local.
 - Availability depends on inventory-bridge freshness.
+- **Anon-role RLS tradeoff (same as Attendance):** `emergency_invoices`, `emergency_invoice_items` and `emergency_stock_deltas` have `anon_all` policies (`using (true)`), so anyone holding the public client key can read/write them. Sale and refund *logic* is protected by RPCs, but the tables themselves are not an authentication boundary. Fix before relying on them beyond a single trusted device: authenticated users or Edge-Function-controlled writes.
 - Thermal receipts need real-hardware testing.
 - Sits outside the Repository/Actions/EventBus pipeline by design.
 

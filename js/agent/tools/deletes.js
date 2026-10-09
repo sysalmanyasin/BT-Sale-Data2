@@ -30,7 +30,12 @@ function findLedgerEntry(id) {
     const e = LedgerStore.getEntries(t.id).find(x => x.id === id);
     if (e) return { t, e };
   }
-  throw new Error('No ledger entry with id "' + id + '". Read it first with get_ledger_entries (each entry has an id).');
+  // Never guess an id. Say what exists so the next call can use a real one (the user still sees the entry and must type DELETE).
+  const recent = [];
+  for (const t of LedgerStore.getAllLedgerTypes()) for (const e of LedgerStore.getEntries(t.id)) recent.push({ t, e });
+  recent.sort((a, b) => String(b.e.date).localeCompare(String(a.e.date)));
+  const hint = recent.slice(0, 5).map(x => x.e.id + ' (' + (x.t.label || x.t.id) + ', ' + x.e.date + ', Rs ' + num(x.e.amount) + (x.e.desc ? ', ' + String(x.e.desc).slice(0, 30) : '') + ')').join('; ');
+  throw new Error('No ledger entry with id "' + id + '". Do not guess ids: call get_ledger_entries and use an id it returns.' + (hint ? ' Most recent entries: ' + hint + '.' : ''));
 }
 
 registerTool({

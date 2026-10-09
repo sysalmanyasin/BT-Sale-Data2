@@ -42,17 +42,18 @@ describe('AI Center page', () => {
     assert.match(text(), /Rs 12,000/); // CASH metric from get_daily_sales
     assert.match(text(), /410,000/);
   });
-  test('unavailable data is UNKNOWN with its real reason, not "healthy"', () => {
+  test('unavailable data is DATA_UNAVAILABLE with its real reason, not "healthy"', () => {
     const inv = [...document.querySelectorAll('.aic-sys')].find(e => e.textContent.includes('INVENTORY'));
-    assert.match(inv.textContent, /UNKNOWN/); assert.match(inv.textContent, /Open the Inventory page/);
+    assert.match(inv.textContent, /DATA_UNAVAILABLE/); assert.match(inv.textContent, /Open the Inventory page/);
   });
   test('no invented activity: only the AI Center\'s own reads exist, and they are labelled as such', () => {
     const evs = T.recent(500);
     assert.ok(evs.length > 0);
     assert.ok(evs.every(e => e.source === 'ai-center'), 'no agent events may exist before BT is asked anything');
     assert.equal(T.liveState().open, null);
+    ui.__test.S.mode = 'investigate'; ui.__test.paint(); // the core card now lives on the Investigate tab
     assert.match(q('#aic-core').textContent, /No active mission/);
-    assert.match(q('.aic-cs h2').textContent, /MONITORING/);
+    assert.match(q('.aic-cs h2').textContent, /READY/);
   });
   test('voice is disabled, not faked', () => {
     const mic = q('.aic-mic'); assert.ok(mic.disabled); assert.match(mic.title, /not available/);
@@ -65,11 +66,11 @@ describe('AI Center page', () => {
     const v = [...document.querySelectorAll('.aic-life li')].find(li => li.textContent === 'Verify');
     assert.ok(!v.classList.contains('na')); assert.ok(!v.classList.contains('on'));
   });
-  test('health rows are measured; unmeasured subsystems stay UNKNOWN', () => {
-    ui.__test.S.mode = 'monitor'; ui.__test.paint();
+  test('health rows are measured; unmeasured subsystems stay NOT MEASURED', () => {
+    ui.__test.S.mode = 'investigate'; ui.__test.paint(); // system health lives on the Investigate tab
     const t = q('#aic-health').textContent;
     assert.match(t, /Realtime/); assert.match(t, /not available in this view|not started|channel/i);
-    assert.match(t, /cannot be measured|Not guessed/); // Edge Functions have no heartbeat: stated, not invented
+    assert.match(t, /not claimed|cannot be measured|Not guessed/); // Edge Functions have no heartbeat: stated, not invented
   });
   test('modes filter the cards', async () => {
     ui.__test.S.mode = 'act'; ui.__test.paint();
@@ -109,7 +110,7 @@ describe('AI Center page', () => {
     ui.__test.S.mode = 'monitor';
     world.str = false; await ui.__test.refresh({ force: true }); await wait(60);
     const strCard = [...document.querySelectorAll('.aic-sys')].find(e => e.textContent.includes('STR'));
-    assert.match(strCard.textContent, /UNKNOWN/); assert.match(strCard.textContent, /not loaded yet/);
+    assert.match(strCard.textContent, /DATA_UNAVAILABLE/); assert.match(strCard.textContent, /not loaded yet/);
     assert.match(text(), /SALES/);
   });
   test('total failure: friendly error, nothing fabricated', async () => {

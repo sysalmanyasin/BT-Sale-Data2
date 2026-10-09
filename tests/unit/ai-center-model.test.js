@@ -56,7 +56,7 @@ describe('system status', () => {
   });
   test('unavailable data is DATA_UNAVAILABLE, never CLEAR', () => {
     assert.equal(M.systemStatus('STR', [], { state: 'error', reason: 'STR data is not loaded yet.' }).status, 'DATA_UNAVAILABLE');
-    assert.equal(M.systemStatus('INVENTORY', [], { state: 'empty', reason: 'x' }).status, 'UNKNOWN');
+    assert.equal(M.systemStatus('INVENTORY', [], { state: 'empty', reason: 'x' }).status, 'DATA_UNAVAILABLE');
   });
 });
 
@@ -79,10 +79,10 @@ describe('core state comes only from real signals', () => {
     assert.equal(M.deriveCoreState({ ...base, live: { open, activeTool: { tool: 'str_overview', metadata: { risk: 'read' } }, routed: { metadata: { domains: ['sales', 'str'] } }, tools: [] } }).state, 'CORRELATING');
     assert.equal(M.deriveCoreState({ ...base, live: { open, activeTool: null, tools: [1] } }).state, 'ANALYZING');
   });
-  test('COMPLETE and ERROR are brief, then fall back to MONITORING', () => {
+  test('COMPLETE and ERROR are brief, then fall back to READY', () => {
     const now = 1e12;
     assert.equal(M.deriveCoreState({ ...base, now, live: { open: null, lastClosed: { type: 'answer', timestamp: now - 3000 } } }).state, 'COMPLETE');
-    assert.equal(M.deriveCoreState({ ...base, now, live: { open: null, lastClosed: { type: 'answer', timestamp: now - 60000 } } }).state, 'MONITORING');
+    assert.equal(M.deriveCoreState({ ...base, now, live: { open: null, lastClosed: { type: 'answer', timestamp: now - 60000 } } }).state, 'READY');
     assert.equal(M.deriveCoreState({ ...base, now, live: { open: null, lastClosed: { type: 'error', timestamp: now - 5000, metadata: { message: 'boom' } } } }).state, 'ERROR');
   });
   test('states BT cannot truthfully report are not in the vocabulary', () => {
@@ -132,10 +132,10 @@ describe('freshness and health rules', () => {
     assert.equal(M.freshness(now - H, { warnMs: 26 * H, errMs: 72 * H }, now).status, 'HEALTHY');
     assert.equal(M.freshness(now - 30 * H, { warnMs: 26 * H, errMs: 72 * H }, now).status, 'WARNING');
     assert.equal(M.freshness(now - 100 * H, { warnMs: 26 * H, errMs: 72 * H }, now).status, 'ERROR');
-    assert.equal(M.freshness(null, { warnMs: 1, errMs: 2 }, now).status, 'UNKNOWN');
+    assert.equal(M.freshness(null, { warnMs: 1, errMs: 2 }, now).status, 'NOT_MONITORED');
   });
-  test('provider health: no calls is UNKNOWN, not healthy', () => {
-    assert.equal(M.providerHealth([]).status, 'UNKNOWN');
+  test('provider health: no calls is NOT_MEASURED, not healthy', () => {
+    assert.equal(M.providerHealth([]).status, 'NOT_MEASURED');
     assert.equal(M.providerHealth([{ calls: 10, failed: 0 }]).status, 'HEALTHY');
     assert.equal(M.providerHealth([{ calls: 10, failed: 2 }]).status, 'DEGRADED');
     assert.equal(M.providerHealth([{ calls: 10, failed: 6 }]).status, 'ERROR');
