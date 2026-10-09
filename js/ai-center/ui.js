@@ -28,7 +28,7 @@ const STALE_MS = 5 * 60000, REFRESH_MS = 45000;
 
 const S = {
   snap: null, health: null, actions: null, history: [], loading: false, error: null,
-  mode: 'monitor', filter: 'all', baseline: null, started: false, tick: 0, toolsOpen: false,
+  mode: 'monitor', filter: 'all', baseline: null, started: false, tick: 0, toolsOpen: false, open: {},
   awaitingFor: null, assess: {}, lastRefreshAt: 0, mounted: false, rafId: 0, deep: {}, repo: { state: 'idle', idx: null }, repoQ: '',
 };
 
@@ -145,7 +145,31 @@ function visibleFindings() {
 
 // ───────────────────────── sections ─────────────────────────
 function sectionHeader(title, right) { return h('div', { class: 'aic-sh' }, h('h2', { text: title }), right || null); }
-function card(id, modes, ...kids) { return h('section', { class: 'aic-card', id: 'aic-' + id, 'data-modes': modes }, kids); }
+// Cards are collapsed by default (tap the title to open). Kept open: the one-line summary + status core, the Action Center
+// (pending approvals must never be hidden), the latest BT response, and Tool Intelligence (it already has its own toggle).
+// The open/closed choice lives in S.open so it survives the full repaint that runs on every refresh.
+const ALWAYS_OPEN = new Set(['sum', 'core', 'actc', 'resp', 'tools']);
+function card(id, modes, ...kids) {
+  const first = kids[0];
+  const foldable = !ALWAYS_OPEN.has(id) && kids.length > 1 && first && first.nodeType === 1 && first.classList.contains('aic-sh');
+  if (!foldable) return h('section', { class: 'aic-card', id: 'aic-' + id, 'data-modes': modes }, kids);
+  const open = !!S.open[id];
+  const bodyId = 'aic-b-' + id;
+  const body = h('div', { class: 'aic-cbody', id: bodyId, hidden: !open }, kids.slice(1));
+  const sec = h('section', { class: 'aic-card aic-fold' + (open ? '' : ' aic-folded'), id: 'aic-' + id, 'data-modes': modes }, first, body);
+  first.append(h('span', { class: 'aic-caret', 'aria-hidden': 'true', text: '\u25BE' }));
+  first.setAttribute('role', 'button'); first.setAttribute('tabindex', '0');
+  first.setAttribute('aria-controls', bodyId); first.setAttribute('aria-expanded', String(open));
+  const toggle = ev => {
+    if (ev.target && ev.target.closest && ev.target.closest('button,a,input,select,textarea')) return;
+    if (ev.type === 'keydown') { if (ev.key !== 'Enter' && ev.key !== ' ') return; ev.preventDefault(); }
+    const now = body.hidden; // hidden -> opening
+    S.open[id] = now; body.hidden = !now;
+    sec.classList.toggle('aic-folded', !now); first.setAttribute('aria-expanded', String(now));
+  };
+  first.addEventListener('click', toggle); first.addEventListener('keydown', toggle);
+  return sec;
+}
 function empty(text) { return h('div', { class: 'aic-empty', text }); }
 function skeleton(n = 3) { return h('div', { class: 'aic-skel', 'aria-label': 'Loading' }, Array.from({ length: n }, () => h('i'))); }
 
@@ -702,7 +726,7 @@ const COMMANDS = () => [
   ['Search repository', 'Investigate', () => { goMode('investigate', 'aic-repo'); setTimeout(() => { const i = $('#aic-rq'); if (i) i.focus(); }, 60); }], ['Explain architecture', 'Investigate', () => { goMode('investigate', 'aic-repo'); S.repoQ = RI.SAMPLE_QUESTIONS[4]; paint(); setTimeout(() => { const i = $('#aic-rq'); if (i) i.focus(); }, 60); }],
   ['Open Dashboard', 'Go to', () => openPage('#dashboard')], ['Open Closing Book', 'Go to', () => openPage('#closing-book')], ['Open STR Report', 'Go to', () => openPage('#str')], ['Open Inventory Health', 'Go to', () => openPage('#inv-health')], ['Open Cover', 'Go to', () => openPage('#cover')],
 ];
-function goMode(mode, id) { closeModal(); S.mode = mode; paint(); const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+function goMode(mode, id) { closeModal(); S.mode = mode; S.open[String(id).replace(/^aic-/, '')] = true; paint(); const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
 function openPalette() {
   const input = h('input', { class: 'aic-pin', type: 'text', placeholder: 'Type a command…', 'aria-label': 'Command', autocomplete: 'off' });
   const list = h('ul', { class: 'aic-plist', role: 'listbox' }); let idx = 0, shown = [];

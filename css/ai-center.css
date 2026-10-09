@@ -648,3 +648,19 @@ body.aic-open .ag-fab{display:none}
 
 @media(min-width:1000px){.aic-page .aic-main{gap:18px}.aic-page .aic-card{padding:20px}}
 @media(prefers-reduced-motion:reduce){.aic-page .aic-stage::after{animation:none}.aic-page .aic .aic-f:hover:not(:disabled),.aic-page .aic-sys:hover{transform:none}}
+
+/* Collapsible cards (collapsed by default; see card() in js/ai-center/ui.js) */
+.aic-page .aic-cbody[hidden]{display:none!important}
+.aic-page .aic-fold>.aic-sh{cursor:pointer;margin-bottom:12px;-webkit-user-select:none;user-select:none;min-height:30px;border-radius:10px}
+.aic-page .aic-fold>.aic-sh h2{margin-right:auto}
+.aic-page .aic-fold>.aic-sh:hover h2{color:var(--accent-dk)}
+.aic-page .aic-fold>.aic-sh:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+.aic-page .aic-fold.aic-folded>.aic-sh{margin-bottom:0}
+.aic-page .aic-fold.aic-folded{padding-block:13px}
+.aic-page .aic-caret{flex:none;display:inline-grid;place-items:center;width:26px;height:26px;border-radius:8px;font-size:15px;line-height:1;color:var(--accent);background:color-mix(in srgb,var(--accent) 9%,transparent);border:1px solid var(--ag-line,var(--border));transition:transform .2s,background .2s}
+.aic-page .aic-fold>.aic-sh:hover .aic-caret{background:color-mix(in srgb,var(--accent) 16%,transparent)}
+.aic-page .aic-fold.aic-folded .aic-caret{transform:rotate(-90deg)}
+.aic-page .aic-fold>.aic-sh .aic-sub{order:2}
+.aic-page .aic-fold>.aic-sh .aic-caret{order:3}
+@media(max-width:620px){.aic-page .aic-fold>.aic-sh .aic-sub{display:none}}
+@media(prefers-reduced-motion:reduce){.aic-page .aic-caret{transition:none}}
