@@ -160,7 +160,7 @@ function sectionHeader(title, right) { return h('div', { class: 'aic-sh' }, h('h
 // Cards are collapsed by default (tap the title to open). Kept open: the one-line summary + status core, the Action Center
 // (pending approvals must never be hidden), the latest BT response, and Tool Intelligence (it already has its own toggle).
 // The open/closed choice lives in S.open so it survives the full repaint that runs on every refresh.
-const ALWAYS_OPEN = new Set(['sum', 'core', 'fleet', 'att', 'sys', 'fc', 'actc', 'resp', 'tools']);
+const ALWAYS_OPEN = new Set(['sum', 'core', 'inst', 'fleet', 'att', 'sys', 'fc', 'actc', 'resp', 'tools']);
 
 // One-line, REAL summary shown in a collapsed card's header (hidden once the card is open). Returns [text, tone] or null.
 function foldSummary(id) {
@@ -565,6 +565,44 @@ function runsBlock() {
     runs.length > 3 ? h('details', { class: 'aic-log' }, h('summary', { text: 'Earlier runs · ' + (runs.length - 3) }), h('ul', { class: 'aic-runl' }, runs.slice(3, 15).map(runRow))) : null);
 }
 
+
+// ── instrument tiles (compact gauges around the core). Every value is read from existing state; "—" means not available, never 0. ──
+const RING_C = 2 * Math.PI * 20;
+function ringGauge(pct, tn) {
+  const p = Math.max(0, Math.min(100, pct)), svg = h2svg('svg', { viewBox: '0 0 48 48', class: 'aic-ring-g aic-g-' + tn, 'aria-hidden': 'true', focusable: 'false' });
+  svg.append(h2svg('circle', { class: 'rg-track', cx: 24, cy: 24, r: 20 }),
+    h2svg('circle', { class: 'rg-val', cx: 24, cy: 24, r: 20, 'stroke-dasharray': (p / 100 * RING_C).toFixed(1) + ' ' + RING_C.toFixed(1), transform: 'rotate(-90 24 24)' }));
+  return svg;
+}
+function instTile({ label, value, sub, tn = 'mu', pct = null, onclick = null }) {
+  const body = [pct != null ? ringGauge(pct, tn) : null,
+    h('span', { class: 'aic-it-b' }, h('span', { class: 'aic-it-l', text: label }), h('b', { class: 'aic-it-v aic-' + tn, text: value }), h('small', { text: sub }))];
+  const aria = label + ': ' + value + '. ' + sub;
+  return onclick ? h('button', { class: 'aic-it', 'aria-label': aria, onclick }, body) : h('div', { class: 'aic-it', role: 'group', 'aria-label': aria }, body);
+}
+function secInstruments(info) {
+  const jump = id => () => goMode('monitor', 'aic-' + id);
+  const snap = S.snap, A = window.BTAgent, tiles = [];
+  const F = snap && snap.forecast, P = snap && snap.raw && snap.raw.planning;
+  tiles.push(F && F.available && F.pace ? instTile({ label: 'TARGET', value: F.pace.pct_done + '%', sub: 'Rs ' + M.fmtNum(F.pace.sold_so_far) + ' of ' + M.fmtNum(F.pace.target), tn: F.pace.on_track === false ? 'wn' : 'ok', pct: F.pace.pct_done, onclick: jump('fc') })
+    : instTile({ label: 'TARGET', value: '\u2014', sub: snap ? 'not available' : 'loading', onclick: jump('fc') }));
+  const fr = P && P.fill && P.fill.fill_rate_pct;
+  tiles.push(fr != null ? instTile({ label: 'STR FILL', value: fr + '%', sub: 'incoming, last 7 days', tn: fr < 90 ? 'wn' : 'ok', pct: fr, onclick: jump('fill') }) : instTile({ label: 'STR FILL', value: '\u2014', sub: snap ? 'not measurable' : 'loading', onclick: jump('fill') }));
+  const vf = snap ? visibleFindings() : null, rev = vf ? vf.filter(f => f.severity === 'warning' || f.severity === 'error').length : null;
+  tiles.push(vf ? instTile({ label: 'NEED REVIEW', value: String(rev), sub: vf.length + ' findings total', tn: rev ? 'wn' : 'ok', onclick: jump('att') }) : instTile({ label: 'NEED REVIEW', value: '\u2014', sub: 'loading' }));
+  const ap = A && typeof A.approvals === 'function' ? A.approvals().length : null;
+  tiles.push(ap != null ? instTile({ label: 'APPROVALS', value: String(ap), sub: ap ? 'waiting for you' : 'nothing waiting', tn: ap ? 'wn' : 'ok', onclick: jump('actc') }) : instTile({ label: 'APPROVALS', value: '\u2014', sub: 'assistant not loaded' }));
+  const act = activeAgentIds(info.live).on.size, total = Object.keys(SPECIALISTS).filter(id => id !== 'general').length;
+  tiles.push(instTile({ label: 'AGENTS', value: act + ' / ' + total, sub: act ? 'running now' : 'none running', tn: act ? 'ok' : 'mu', onclick: jump('fleet') }));
+  tiles.push(!A ? instTile({ label: 'CHANGES', value: '\u2014', sub: 'assistant not loaded' }) : A.killed() ? instTile({ label: 'CHANGES', value: 'STOPPED', sub: 'kill switch is on', tn: 'cr', onclick: jump('actc') })
+    : A.writesAllowed() ? instTile({ label: 'CHANGES', value: 'ALLOWED', sub: 'you approve each one', tn: 'wn', onclick: jump('actc') }) : instTile({ label: 'CHANGES', value: 'READ-ONLY', sub: 'nothing can be changed', tn: 'ok', onclick: jump('actc') }));
+  const hl = S.health;
+  tiles.push(hl ? instTile({ label: 'HEALTH', value: hl.filter(x => x.status === 'HEALTHY').length + ' / ' + hl.length, sub: 'measured, not assumed', tn: hl.some(x => x.status !== 'HEALTHY') ? 'wn' : 'ok', onclick: () => goMode('monitor', 'aic-health') }) : instTile({ label: 'HEALTH', value: '\u2014', sub: 'not measured yet' }));
+  const age = snap ? Date.now() - snap.at : null;
+  tiles.push(snap ? instTile({ label: 'DATA AS OF', value: clock(snap.at), sub: M.ageLabel(snap.at), tn: age > 10 * 60 * 1000 ? 'wn' : 'ok' }) : instTile({ label: 'DATA AS OF', value: '\u2014', sub: 'loading' }));
+  return card('inst', 'monitor', sectionHeader('INSTRUMENTS', h('span', { class: 'aic-sub', text: 'live values · \u2014 means not available' })), h('div', { class: 'aic-insts' }, tiles));
+}
+
 function secFleet(info) {
   const act = activeAgentIds(info.live);
   const ids = Object.keys(SPECIALISTS).filter(id => id !== 'general');
@@ -934,7 +972,7 @@ function openPalette() {
 function paint() {
   const r = root(); if (!r || !pageOn()) return;
   const info = coreInfo();
-  const cards = [secSummary(info), secCore(info), secAttention(), secCorrelation(), secSince(), secSystems(), secForecast(), secReorder(), secFill(), secMoney(), secFleet(info), secNetwork(info), secResponse(), secActions(info), secActivity(), secObs(), secHealth(), secTools(), secRepo()]
+  const cards = [secSummary(info), secCore(info), secAttention(), secCorrelation(), secSince(), secSystems(), secInstruments(info), secForecast(), secReorder(), secFill(), secMoney(), secFleet(info), secNetwork(info), secResponse(), secActions(info), secActivity(), secObs(), secHealth(), secTools(), secRepo()]
     .filter(Boolean);
   // a genuinely pending approval outranks everything: the Action Center moves to the top (CSS keyed on data-pri)
   const main = h('main', { class: 'aic-main', 'data-mode': S.mode, 'data-pri': info.live.pendingApproval ? 'approvals' : 'normal' }, cards);

@@ -241,3 +241,26 @@ body.aic-open .ag-mic,body.aic-open .ag-spk{background:#111B2B;border-color:#243
 body.aic-open .ag-mic.on{background:#FF7A8A;border-color:#FF7A8A;color:#1a0509}
 body.aic-open .ag-spk.on{border-color:#20DDF5;color:#20DDF5}
 @media(prefers-reduced-motion:no-preference){body.aic-open .ag-mic.on,.ag-mic.on{animation:j-rec 1.2s ease-in-out infinite}}
+
+/* ── instrument tiles: horizontal snap strip on phones, wrapped grid on wider screens ── */
+.aic-jarvis .aic-insts{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x proximity;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+.aic-jarvis .aic-it{flex:0 0 150px;scroll-snap-align:start;display:flex;align-items:center;gap:8px;text-align:left;height:auto;min-height:64px;padding:8px 10px;border-radius:10px;background:linear-gradient(180deg,var(--j-s2),var(--j-s1));border:1px solid var(--border);color:var(--j-tx)}
+.aic-jarvis button.aic-it:hover{border-color:var(--j-cy)}
+.aic-jarvis .aic-it-b{display:grid;gap:1px;min-width:0}
+.aic-jarvis .aic-it-l{font-size:11px;letter-spacing:.14em;color:var(--j-mu);font-weight:700}
+.aic-jarvis .aic-it-v{font-size:19px;line-height:1.1;font-variant-numeric:tabular-nums;color:var(--j-tx)}
+.aic-jarvis .aic-it-v.aic-ok{color:var(--j-ok)}.aic-jarvis .aic-it-v.aic-wn{color:var(--j-wn)}.aic-jarvis .aic-it-v.aic-cr{color:var(--j-er)}
+.aic-jarvis .aic-it small{font-size:12px;color:var(--j-mu);line-height:1.25;overflow-wrap:anywhere}
+.aic-ring-g{flex:none;width:44px;height:44px}
+.rg-track{fill:none;stroke:#1d2d45;stroke-width:5}
+.rg-val{fill:none;stroke:var(--j-cy,#20DDF5);stroke-width:5;stroke-linecap:round}
+.aic-g-ok .rg-val{stroke:var(--j-ok,#42D6A4)}.aic-g-wn .rg-val{stroke:var(--j-wn,#FFB86B)}.aic-g-cr .rg-val{stroke:var(--j-er,#FF7A8A)}
+@media(min-width:700px){.aic-jarvis .aic-insts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));overflow:visible}.aic-jarvis .aic-it{flex:none}}
+/* order: business first, then the instrument strip */
+.aic-jarvis #aic-inst{order:4}.aic-jarvis #aic-att{order:5}.aic-jarvis #aic-fc{order:6}.aic-jarvis #aic-actc{order:7}.aic-jarvis #aic-fleet{order:8}.aic-jarvis #aic-resp{order:9}
+@media(min-width:1000px){
+  /* under the core: attention | core | forecast on row 3; Action Center col 1 and instruments col 2 on row 4 */
+  .aic-jarvis #aic-actc{grid-column:1;grid-row:4}
+  .aic-jarvis #aic-inst{grid-column:2;grid-row:4}
+  .aic-jarvis .aic-insts{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
