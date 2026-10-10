@@ -151,3 +151,14 @@ body.aic-open .aic-modal{
   --red:#FF7A8A;--amber:#FFB86B;--green:#42D6A4;--alt:#12283a;--alt2:#2a2110;color-scheme:dark;
   background:linear-gradient(180deg,#162338,#0f1b2d);border-color:rgba(32,221,245,.35)}
 body.aic-open .aic-modal :focus-visible{outline:2px solid #20DDF5;outline-offset:2px}
+
+/* ── weekday bar chart (real weekday_baseline) ── */
+.aic-jarvis .aic-bars{list-style:none;margin:8px 0 6px;padding:0;display:grid;grid-template-columns:repeat(7,1fr);gap:6px;align-items:end;height:140px}
+.aic-jarvis .aic-bar{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0;gap:3px}
+.aic-jarvis .aic-bf{display:block;width:100%;max-width:34px;border-radius:4px 4px 0 0;background:linear-gradient(180deg,#20DDF5,#12748a);min-height:4px}
+.aic-jarvis .aic-bar.today .aic-bf{background:linear-gradient(180deg,#A78BFA,#5b3fb5)}
+.aic-jarvis .aic-bv{font-size:12px;color:var(--j-tx);font-variant-numeric:tabular-nums}
+.aic-jarvis .aic-bl{font-size:12px;color:var(--j-mu)}
+.aic-jarvis .aic-bar.today .aic-bl{color:var(--j-vi);font-weight:700}
+@media(max-width:480px){.aic-jarvis .aic-bv{font-size:11px;letter-spacing:-.02em}}
+@media(prefers-reduced-motion:no-preference){.aic-jarvis .aic-bf{transition:height .3s ease}}

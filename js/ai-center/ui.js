@@ -64,6 +64,17 @@ function toast(msg) {
 
 // ───────────────────────── modal ─────────────────────────
 let modalEl = null, modalPrevFocus = null;
+
+// Keep keyboard focus inside the open dialog (WCAG 2.4.3): Tab wraps from the last control to the first and back.
+function trapTab(e) {
+  const box = modalEl && modalEl.querySelector('.aic-modal'); if (!box) return;
+  const f = [...box.querySelectorAll('button:not([disabled]),a[href],input:not([disabled]),select,textarea,summary,[tabindex]:not([tabindex="-1"])')].filter(x => !x.closest('[hidden]'));
+  if (!f.length) { e.preventDefault(); box.focus(); return; }
+  const first = f[0], last = f[f.length - 1], at = document.activeElement;
+  if (e.shiftKey && (at === first || at === box)) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && at === last) { e.preventDefault(); first.focus(); }
+  else if (!box.contains(at)) { e.preventDefault(); first.focus(); }
+}
 function closeModal() { if (modalEl) { modalEl.remove(); modalEl = null; if (modalPrevFocus && modalPrevFocus.focus) modalPrevFocus.focus(); } }
 function openModal(title, body, { sub = '', tonec = 'cy' } = {}) {
   closeModal(); modalPrevFocus = document.activeElement;
@@ -344,6 +355,21 @@ const SYSTEM_ASK = {
 function secSystems() { return card('sys', 'monitor', sectionHeader('BUSINESS SYSTEMS'), h('div', { class: 'aic-grid6' }, M.SYSTEMS.map(systemCard))); }
 
 // Weekday-aware projection + today's expected sale (tool: weekday_forecast, maths in shared/planning-metrics.js).
+
+// Average sale per weekday, drawn from the tool's own weekday_baseline (no new calculation). Today's weekday is marked.
+function weekdayBars(W) {
+  const rows = (W.weekday_baseline || []).filter(b => b && Number.isFinite(b.avg));
+  if (!rows.length) return null;
+  const max = Math.max(...rows.map(b => b.avg), 1), today = W.today && W.today.weekday;
+  return h('div', { class: 'aic-wbars' },
+    h('div', { class: 'aic-k', text: 'AVERAGE SALE BY WEEKDAY (RS, RECENT WEEKS)' }),
+    h('ul', { class: 'aic-bars', 'aria-label': 'Average sale by weekday: ' + rows.map(b => b.weekday + ' Rs ' + M.fmtNum(b.avg)).join(', ') },
+      rows.map(b => h('li', { class: 'aic-bar' + (b.weekday === today ? ' today' : '') },
+        h('span', { class: 'aic-bv', text: M.fmtNum(b.avg) }),
+        h('span', { class: 'aic-bf', style: 'height:' + Math.max(4, Math.round(b.avg / max * 100)) + '%', 'aria-hidden': 'true' }),
+        h('span', { class: 'aic-bl', text: b.weekday.slice(0, 3) + (b.weekday === today ? ' \u2022' : '') })))),
+    h('div', { class: 'aic-sub', text: 'Bars start at zero. The dot marks today. Values are the tool\u2019s recent weekday averages.' }));
+}
 function weekdayBlock() {
   const P = S.snap && S.snap.raw && S.snap.raw.planning, W = P && P.weekday;
   if (!W) return P && P.errors && P.errors.weekday ? h('div', { class: 'aic-sub', text: 'Weekday forecast unavailable: ' + P.errors.weekday }) : null;
@@ -354,7 +380,7 @@ function weekdayBlock() {
   return h('div', { class: 'aic-wf' },
     h('div', { class: 'aic-interp' }, h('span', { class: 'aic-tag', text: 'PREDICTION' }), ' Weekday-aware: each remaining day is expected at that weekday\'s recent average.'),
     h('dl', { class: 'aic-met' }, rows.map(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })])),
-    h('div', { class: 'aic-sub', text: 'By weekday: ' + W.weekday_baseline.map(b => b.weekday.slice(0, 3) + ' ' + M.fmtNum(b.avg)).join(' · ') }));
+    weekdayBars(W));
 }
 
 function secForecast() {
@@ -896,6 +922,7 @@ export function mount() {
     if (!pageOn()) return;
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); openPalette(); }
     else if (e.key === 'Escape' && modalEl) closeModal();
+    else if (e.key === 'Tab' && modalEl) trapTab(e);
   });
   const iv = setInterval(() => { if (!pageOn()) return; S.tick++; if (T.liveState().open || S.tick % 15 === 0) render(); }, 1000);
   if (iv && typeof iv.unref === 'function') iv.unref(); // Node (tests) only: never keep the process alive
@@ -908,4 +935,4 @@ export function onShow() {
   refresh();
 }
 
-export const __test = { S, refresh, paint, openFinding, openSystem, openPalette, investigate };
+export const __test = { S, refresh, paint, openFinding, openSystem, openPalette, investigate, weekdayBars, openModal };
