@@ -15,15 +15,11 @@ const wait = (ms = 30) => new Promise(r => setTimeout(r, ms));
 describe('BT Intelligence: no duplicated cards', () => {
   before(async () => { ui.onShow(); await wait(80); });
 
-  for (const mode of ['Monitor', 'Investigate', 'Act']) {
-    test(mode + ' mode renders each card id once', async () => {
-      const btn = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === mode);
-      assert.ok(btn, mode + ' tab missing');
-      btn.click(); await wait(60);
-      const ids = [...document.querySelectorAll('.aic-main > section')].map(s => s.id);
-      assert.ok(ids.length > 0);
-      assert.deepEqual(ids, [...new Set(ids)], 'duplicate card ids: ' + ids.join(','));
-      for (const id of ids) assert.equal(document.querySelectorAll('#' + id).length, 1, id);
-    });
-  }
+  test('the single front page renders each card id once', async () => {
+    assert.ok(![...document.querySelectorAll('button')].some(b => ['Monitor', 'Investigate', 'Act'].includes(b.textContent.trim()) && b.closest('.aic-seg')), 'mode tabs are gone');
+    const ids = [...document.querySelectorAll('.aic-main > section')].map(s => s.id);
+    assert.ok(ids.length > 0);
+    assert.deepEqual(ids, [...new Set(ids)], 'duplicate card ids: ' + ids.join(','));
+    for (const id of ids) assert.equal(document.querySelectorAll('#' + id).length, 1, id);
+  });
 });

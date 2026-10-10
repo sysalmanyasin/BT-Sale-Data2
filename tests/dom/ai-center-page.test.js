@@ -43,7 +43,6 @@ describe('AI Center page', () => {
     assert.match(text(), /410,000/);
   });
   test('JARVIS layer: page is themed, SVG avatar is decorative, state text stays real DOM text', async () => {
-    [...document.querySelectorAll('.aic-seg button')].find(b => b.textContent === 'Investigate').click(); await wait(50);
     assert.ok(q('#page-ai-center').classList.contains('aic-jarvis'));
     const av = q('#aic-core .aic-orb svg.aic-avatar');
     assert.ok(av, 'avatar svg missing');
@@ -51,7 +50,6 @@ describe('AI Center page', () => {
     assert.equal(document.querySelectorAll('#aic-core .aic-avatar').length, 1, 'no duplicate avatar after repaint');
     assert.ok(q('#aic-core .aic-orb small').textContent.trim().length > 0, 'lifecycle label must be real text');
     assert.equal(q('#aic-core .aic-stage').getAttribute('data-s'), q('#aic-core .aic-orb small').textContent.trim().toLowerCase().replace(/ /g, '_'));
-    [...document.querySelectorAll('.aic-seg button')].find(b => b.textContent === 'Monitor').click(); await wait(50); // restore shared page state
   });
   test('Agent Fleet: one tile per registered specialist, no invented activity', () => {
     const tiles = [...document.querySelectorAll('#aic-fleet .aic-ftile')];
@@ -90,12 +88,10 @@ describe('AI Center page', () => {
     assert.match(t, /Realtime/); assert.match(t, /not available in this view|not started|channel/i);
     assert.match(t, /not claimed|cannot be measured|Not guessed/); // Edge Functions have no heartbeat: stated, not invented
   });
-  test('modes filter the cards', async () => {
-    ui.__test.S.mode = 'act'; ui.__test.paint();
-    const vis = id => !!document.getElementById(id);
-    assert.ok(vis('aic-actc')); assert.ok(!vis('aic-sys'));
-    ui.__test.S.mode = 'monitor'; ui.__test.paint();
-    assert.ok(vis('aic-sys')); assert.ok(!vis('aic-actc'));
+  test('one front page: essentials always open, secondary cards fold', async () => {
+    const open = ['aic-sys', 'aic-core', 'aic-fleet', 'aic-actc'], folded = ['aic-health', 'aic-repo'];
+    open.forEach(id => { const el = document.getElementById(id); assert.ok(el, id); assert.ok(!el.classList.contains('aic-fold'), id + ' must not collapse'); });
+    folded.forEach(id => { const el = document.getElementById(id); assert.ok(el, id + ' must be on the same page'); assert.ok(el.classList.contains('aic-folded'), id + ' should be collapsed'); });
   });
   test('Ask BT goes to the existing assistant, and nothing happens if it is not loaded', async () => {
     const asked = [];

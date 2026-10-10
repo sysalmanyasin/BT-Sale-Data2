@@ -17,38 +17,38 @@ describe('AI Center collapsible cards', () => {
   before(async () => { ui.onShow(); await wait(80); });
 
   test('foldable cards start collapsed with a labelled toggle', () => {
-    const att = q('#aic-att');
-    assert.ok(att.classList.contains('aic-folded'), 'attention card should start collapsed');
-    assert.equal(q('#aic-b-att').hidden, true);
+    const att = q('#aic-health');
+    assert.ok(att.classList.contains('aic-folded'), 'secondary card should start collapsed');
+    assert.equal(q('#aic-b-health').hidden, true);
     const head = att.querySelector('.aic-sh');
     assert.equal(head.getAttribute('role'), 'button');
     assert.equal(head.getAttribute('aria-expanded'), 'false');
-    assert.equal(head.getAttribute('aria-controls'), 'aic-b-att');
+    assert.equal(head.getAttribute('aria-controls'), 'aic-b-health');
   });
 
   test('summary and status core are never collapsed', () => {
-    for (const id of ['#aic-sum', '#aic-core']) {
+    for (const id of ['#aic-sum', '#aic-core', '#aic-att', '#aic-sys', '#aic-fleet']) {
       const el = q(id); if (!el) continue;
       assert.ok(!el.classList.contains('aic-fold'), id + ' must stay open');
     }
   });
 
   test('clicking the title opens the card, and Enter closes it again', () => {
-    const head = q('#aic-att .aic-sh');
+    const head = q('#aic-health .aic-sh');
     head.click();
-    assert.equal(q('#aic-b-att').hidden, false);
+    assert.equal(q('#aic-b-health').hidden, false);
     assert.equal(head.getAttribute('aria-expanded'), 'true');
-    assert.ok(!q('#aic-att').classList.contains('aic-folded'));
+    assert.ok(!q('#aic-health').classList.contains('aic-folded'));
     head.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-    assert.equal(q('#aic-b-att').hidden, true);
+    assert.equal(q('#aic-b-health').hidden, true);
   });
 
   test('an opened card stays open after the page repaints', async () => {
-    q('#aic-att .aic-sh').click();
-    assert.equal(q('#aic-b-att').hidden, false);
+    q('#aic-health .aic-sh').click();
+    assert.equal(q('#aic-b-health').hidden, false);
     document.getElementById('aic-root').replaceChildren();
     ui.onShow(); await wait(80);
-    assert.equal(q('#aic-b-att').hidden, false, 'open state must persist across repaint');
+    assert.equal(q('#aic-b-health').hidden, false, 'open state must persist across repaint');
   });
 });
 

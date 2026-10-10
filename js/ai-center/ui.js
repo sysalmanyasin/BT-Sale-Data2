@@ -148,7 +148,7 @@ function sectionHeader(title, right) { return h('div', { class: 'aic-sh' }, h('h
 // Cards are collapsed by default (tap the title to open). Kept open: the one-line summary + status core, the Action Center
 // (pending approvals must never be hidden), the latest BT response, and Tool Intelligence (it already has its own toggle).
 // The open/closed choice lives in S.open so it survives the full repaint that runs on every refresh.
-const ALWAYS_OPEN = new Set(['sum', 'core', 'fleet', 'actc', 'resp', 'tools']);
+const ALWAYS_OPEN = new Set(['sum', 'core', 'fleet', 'att', 'sys', 'fc', 'actc', 'resp', 'tools']);
 function card(id, modes, ...kids) {
   const first = kids[0];
   const foldable = !ALWAYS_OPEN.has(id) && kids.length > 1 && first && first.nodeType === 1 && first.classList.contains('aic-sh');
@@ -198,9 +198,8 @@ function secHeaderBar(core) {
 }
 
 function secModes() {
-  const seg = [['monitor', 'Monitor'], ['investigate', 'Investigate'], ['act', 'Act']];
+  // One front page: no Monitor/Investigate/Act tabs. Essentials are always open; secondary cards fold.
   return h('div', { class: 'aic-tool' },
-    h('div', { class: 'aic-seg', role: 'group', 'aria-label': 'Mode' }, seg.map(([id, label]) => h('button', { 'aria-pressed': String(S.mode === id), class: S.mode === id ? 'on' : '', text: label, onclick: () => { S.mode = id; render(); } }))),
     h('div', { class: 'aic-seg' },
       h('button', { text: S.loading ? 'Reading…' : 'Refresh', disabled: S.loading, onclick: () => refresh({ force: true }) }),
       h('button', { text: 'Commands  ⌘K', onclick: openPalette })));
@@ -803,7 +802,7 @@ function paint() {
   const r = root(); if (!r || !pageOn()) return;
   const info = coreInfo();
   const cards = [secSummary(info), secCore(info), secAttention(), secCorrelation(), secSince(), secSystems(), secForecast(), secReorder(), secFill(), secMoney(), secFleet(info), secNetwork(info), secResponse(), secActions(info), secActivity(), secObs(), secHealth(), secTools(), secRepo()]
-    .filter(c => c && c.getAttribute('data-modes').split(' ').includes(S.mode));
+    .filter(Boolean);
   const main = h('main', { class: 'aic-main', 'data-mode': S.mode }, cards);
   const offline = navigator.onLine === false ? h('div', { class: 'aic-offline', role: 'alert' }, h('b', { text: 'BT OFFLINE · ' }), 'Showing last known data' + (S.snap ? ' from ' + clock(S.snap.at) : '') + '. Some intelligence may be unavailable.') : null;
   const keep = $('#aic-q'), val = keep ? keep.value : '', hadFocus = keep && document.activeElement === keep;
