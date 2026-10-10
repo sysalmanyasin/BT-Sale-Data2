@@ -60,7 +60,7 @@ export function mountAgentPanel() {
   const sheet = el('section', { id: 'ag-sheet', class: 'ag-sheet', hidden: '', role: 'dialog', 'aria-label': 'AI assistant' });
   sheet.innerHTML = `
     <header class="ag-head">
-      <div><strong>BT Assistant</strong><span class="ag-sub" id="ag-sub"></span></div>
+      <div><strong>Ask JARVIS</strong><span class="ag-sub" id="ag-sub"></span></div>
       <div class="ag-head-btns">
         <button class="ag-ico" id="ag-hist" title="Past conversations" aria-label="Past conversations">🕘</button>
         <button class="ag-ico" id="ag-mem" title="Memory and house rules" aria-label="Memory and house rules">🧠</button>

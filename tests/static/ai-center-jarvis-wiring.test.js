@@ -12,5 +12,5 @@ test('jarvis stylesheet is precached and scoped to the AI Center page', () => {
   assert.match(sw, /\.\/css\/ai-center-jarvis\.css/);
   const css = readFileSync(new URL('../../css/ai-center-jarvis.css', import.meta.url), 'utf8');
   assert.match(css, /\.aic-page\.aic-jarvis\{/);
-  assert.doesNotMatch(css, /^(body|html|:root)\b/m, 'must not restyle the rest of the app');
+  assert.doesNotMatch(css, /^(html|:root)\b|^body(?!\.aic-open\b)/m, 'must not restyle the rest of the app (only body.aic-open, the AI page, is allowed)');
 });

@@ -584,8 +584,8 @@ function secActions(info) {
   else if (A.state === 'error') body.push(h('div', { class: 'aic-err', text: 'Could not read the audit log: ' + A.error }));
   else {
     body.push(A.undos.length ? h('ul', { class: 'aic-list' }, A.undos.map(u => h('li', {}, h('b', { text: u.label }), h('div', { class: 'aic-sub', text: M.ageLabel(u.at) + ' · ' + u.tool }), h('button', { text: '↶ Undo', onclick: async ev => { ev.target.disabled = true; const it = pushUndo({ tool: u.tool, label: u.label, fn: u.fn, key: u.key }); const r = await runUndo(it.id); if (r.ok && r.key) await markUndone(getSb(), r.key); toast(r.ok ? 'Undone: ' + r.label : 'Undo failed: ' + r.error); refresh({ force: true }); } })))) : empty('No undoable changes.'));
-    body.push(h('div', { class: 'aic-k', text: 'RECENT CHANGES (audit log)' }));
-    body.push(A.recent.length ? h('ul', { class: 'aic-ev' }, A.recent.map(r => h('li', { class: 'aic-evi' }, h('time', { text: new Date(r.at).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) }), h('span', { class: 'aic-evt', text: r.tool + ' · ' + r.status + (r.error ? ' (' + r.error + ')' : '') }), h('span', { class: 'aic-sub', text: r.ref })))) : empty('No AI changes recorded.'));
+    const logList = A.recent.length ? h('ul', { class: 'aic-ev' }, A.recent.map(r => h('li', { class: 'aic-evi' }, h('time', { text: new Date(r.at).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) }), h('span', { class: 'aic-evt', text: r.tool + ' · ' + r.status + (r.error ? ' (' + r.error + ')' : '') }), h('span', { class: 'aic-sub', text: r.ref })))) : empty('No AI changes recorded.');
+    body.push(h('details', { class: 'aic-log' }, h('summary', { text: 'Recent changes (audit log) · ' + A.recent.length }), logList));
   }
   return card('actc', 'act', sectionHeader('ACTION CENTER', h('span', { class: 'aic-sub', text: 'BT proposes · you approve' })), body);
 }
@@ -752,7 +752,7 @@ function secResponse() {
 const CHIPS = ['What needs my attention?', 'What is blocking closing?', 'What inventory is at risk?'];
 function openChat() { if (window.BTAgent && typeof window.BTAgent.open === 'function') window.BTAgent.open(); else toast('The chat assistant is still loading. Try again in a moment.'); }
 function cmdBar() {
-  const input = h('input', { id: 'aic-q', type: 'text', placeholder: 'Ask BT anything about your business…', 'aria-label': 'Ask BT', autocomplete: 'off', enterkeyhint: 'send', maxlength: '2000' });
+  const input = h('input', { id: 'aic-q', type: 'text', placeholder: 'Ask JARVIS anything about your business…', 'aria-label': 'Ask BT', autocomplete: 'off', enterkeyhint: 'send', maxlength: '2000' });
   const go = () => { const v = input.value; if (v.trim()) { input.value = ''; ask(v); } };
   input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); go(); } });
   return h('div', { class: 'aic-cmd' },

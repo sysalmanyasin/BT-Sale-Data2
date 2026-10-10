@@ -98,3 +98,24 @@
   .aic-jarvis #aic-actc{grid-column:3;grid-row:3}
   .aic-jarvis #aic-fleet,.aic-jarvis #aic-sys,.aic-jarvis #aic-resp,.aic-jarvis #aic-tools{grid-column:1/4}
 }
+
+/* ── audit log folds inside Action Center ── */
+.aic-jarvis .aic-log{margin-top:10px;border-top:1px solid var(--border);padding-top:8px}
+.aic-jarvis .aic-log summary{cursor:pointer;min-height:40px;display:flex;align-items:center;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--j-mu)}
+.aic-jarvis .aic-log[open] summary{color:var(--j-cy)}
+
+/* ── Ask JARVIS chat sheet (the assistant lives on this page only: body.aic-open) ── */
+body.aic-open .ag-sheet{
+  --surface:#111B2B;--s2:#162338;--s3:#162338;--bg:#080D18;--border:#24344d;--border-strong:#34496a;--text:#EDF4FF;--t2:#c9d8ec;--muted:#91A5BD;
+  --accent:#20DDF5;--red:#FF7A8A;--rlt:#2a1420;--amber:#FFB86B;--amber-lt:#2a2110;--green:#42D6A4;--focus-ring:0 0 0 3px rgba(32,221,245,.35);
+  background:linear-gradient(180deg,#0f1b2d,#080D18);border-color:rgba(32,221,245,.35);color:var(--text);color-scheme:dark;
+  box-shadow:0 -10px 40px rgba(0,0,0,.6),0 0 0 1px rgba(32,221,245,.12)}
+body.aic-open .ag-head{background:rgba(32,221,245,.06);border-bottom-color:rgba(32,221,245,.25)}
+body.aic-open .ag-head strong{letter-spacing:.22em;text-transform:uppercase;font-size:13px;color:#20DDF5}
+body.aic-open .ag-user{background:#14b8d0;color:#041018;font-weight:600}
+body.aic-open .ag-assistant{background:#162338;border-color:rgba(32,221,245,.2)}
+body.aic-open .ag-send{background:#20DDF5;color:#041018}
+body.aic-open .ag-input textarea{background:#080D18}
+body.aic-open .ag-card{border-color:#20DDF5}
+body.aic-open .ag-card-b .ag-yes{color:#041018}
+@media(prefers-reduced-motion:reduce){body.aic-open .ag-status{animation:none}}
