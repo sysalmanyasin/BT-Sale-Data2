@@ -14,3 +14,8 @@ test('jarvis stylesheet is precached and scoped to the AI Center page', () => {
   assert.match(css, /\.aic-page\.aic-jarvis\{/);
   assert.doesNotMatch(css, /^(html|:root)\b|^body(?!\.aic-open\b)/m, 'must not restyle the rest of the app (only body.aic-open, the AI page, is allowed)');
 });
+test('regression: long forecast values stack instead of squeezing their label to one letter per line', () => {
+  const css = readFileSync(new URL('../../css/ai-center-jarvis.css', import.meta.url), 'utf8');
+  assert.match(css, /\.aic-jarvis \.aic-wf \.aic-met\{grid-template-columns:minmax\(0,1fr\)/);
+  assert.match(css, /\.aic-jarvis \.aic-wf \.aic-met dd\{white-space:normal/);
+});

@@ -365,7 +365,7 @@ function weekdayBars(W) {
     h('div', { class: 'aic-k', text: 'AVERAGE SALE BY WEEKDAY (RS, RECENT WEEKS)' }),
     h('ul', { class: 'aic-bars', 'aria-label': 'Average sale by weekday: ' + rows.map(b => b.weekday + ' Rs ' + M.fmtNum(b.avg)).join(', ') },
       rows.map(b => h('li', { class: 'aic-bar' + (b.weekday === today ? ' today' : '') },
-        h('span', { class: 'aic-bv', text: M.fmtNum(b.avg) }),
+        h('span', { class: 'aic-bv', title: 'Rs ' + M.fmtNum(b.avg), text: b.avg >= 10000 ? Math.round(b.avg / 1000) + 'k' : M.fmtNum(b.avg) }),
         h('span', { class: 'aic-bf', style: 'height:' + Math.max(4, Math.round(b.avg / max * 100)) + '%', 'aria-hidden': 'true' }),
         h('span', { class: 'aic-bl', text: b.weekday.slice(0, 3) + (b.weekday === today ? ' \u2022' : '') })))),
     h('div', { class: 'aic-sub', text: 'Bars start at zero. The dot marks today. Values are the tool\u2019s recent weekday averages.' }));
@@ -508,7 +508,7 @@ function fleetTile(id, act) {
   const state = on ? 'ACTIVE' : st.runs ? 'STANDBY' : 'NO RUNS';
   const detail = on ? (act.tool[id] ? 'Running ' + act.tool[id] : 'Working on the current request') : st.runs ? 'Last run ' + M.ageLabel(st.last) : 'Not run in the last 7 days on this device';
   return h('button', { class: 'aic-ftile' + (on ? ' on' : ''), 'data-agent': id, onclick: () => openAgent(id), 'aria-label': sp.label + ', ' + state.toLowerCase() + '. ' + detail },
-    h('span', { class: 'aic-fport', 'aria-hidden': 'true', text: sp.label.charAt(0) }),
+    h('span', { class: 'aic-fport', 'aria-hidden': 'true', text: id.slice(0, 2).toUpperCase() }),
     h('span', { class: 'aic-fbody' },
       h('b', { text: sp.label }),
       h('span', { class: 'aic-pill aic-' + (on ? 'ok' : 'mu'), text: state }),

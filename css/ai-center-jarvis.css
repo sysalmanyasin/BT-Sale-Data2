@@ -162,3 +162,24 @@ body.aic-open .aic-modal :focus-visible{outline:2px solid #20DDF5;outline-offset
 .aic-jarvis .aic-bar.today .aic-bl{color:var(--j-vi);font-weight:700}
 @media(max-width:480px){.aic-jarvis .aic-bv{font-size:11px;letter-spacing:-.02em}}
 @media(prefers-reduced-motion:no-preference){.aic-jarvis .aic-bf{transition:height .3s ease}}
+
+/* ── desktop fixes from real screenshots ── */
+/* long values (e.g. weekday forecast) were forced nowrap and squeezed their label to one letter per line: stack them */
+.aic-jarvis .aic-wf .aic-met{grid-template-columns:minmax(0,1fr);gap:1px}
+.aic-jarvis .aic-wf .aic-met dt{margin-top:8px}
+.aic-jarvis .aic-wf .aic-met dd{white-space:normal;text-align:left;overflow-wrap:anywhere}
+.aic-jarvis .aic-fport{font-size:12px;letter-spacing:.04em}
+.aic-jarvis .aic-bv{font-size:12px;letter-spacing:0}
+/* compact toolbar */
+.aic-jarvis .aic-tool .aic-seg{grid-template-columns:repeat(2,minmax(0,190px));justify-content:end}
+@media(max-width:700px){.aic-jarvis .aic-tool .aic-seg{grid-template-columns:1fr 1fr;justify-content:stretch}}
+@media(min-width:1000px){
+  /* attention | core | forecast on row 2; Action Center fills the space under attention+core; forecast spans both rows */
+  .aic-jarvis #aic-att{grid-column:1;grid-row:2}
+  .aic-jarvis #aic-core{grid-column:2;grid-row:2}
+  .aic-jarvis #aic-fc{grid-column:3;grid-row:2/4}
+  .aic-jarvis #aic-actc{grid-column:1/3;grid-row:3}
+  /* secondary cards: a clean 3-up grid when folded, full width when opened */
+  .aic-jarvis .aic-main>.aic-fold.aic-folded{grid-column:span 1!important;grid-row:auto}
+  .aic-jarvis .aic-main>.aic-fold:not(.aic-folded):not(#aic-fleet):not(#aic-sys){grid-column:1/-1}
+}
