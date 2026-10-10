@@ -58,13 +58,19 @@
 
 /* ── agent fleet tiles ── */
 .aic-jarvis .aic-fleet{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
-.aic-jarvis .aic-ftile{display:flex;align-items:flex-start;gap:10px;text-align:left;height:auto;padding:10px;border-radius:8px;background:var(--j-s1);border:1px solid var(--border)}
+.aic-jarvis .aic-ftile{display:grid;gap:6px;align-content:start;padding:8px;border-radius:8px;background:var(--j-s1);border:1px solid var(--border)}
+.aic-jarvis .aic-ftile .aic-fmain{display:flex;align-items:flex-start;justify-content:flex-start;gap:10px;text-align:left;width:100%;height:auto;padding:4px;background:none;border:0;border-radius:6px}
+.aic-jarvis .aic-ftile .aic-fask{justify-content:flex-start;text-align:left;width:100%;height:auto;min-height:40px;padding:7px 10px;font-size:12px;line-height:1.35;color:var(--j-cy);background:rgba(32,221,245,.06);border:1px solid color-mix(in srgb,var(--j-cy) 28%,transparent);border-radius:7px}
+.aic-jarvis .aic-ftile .aic-fjob{color:var(--j-tx);font-size:13px;line-height:1.35}
+.aic-jarvis .aic-ftile.idle{background:transparent;border-style:dashed}
+.aic-jarvis .aic-ftile.await{border-color:var(--j-wn);box-shadow:inset 3px 0 0 var(--j-wn)}
+.aic-jarvis #aic-runs .aic-runs{margin-top:0;border-top:0;padding-top:0}
 .aic-jarvis .aic-ftile.on{border-color:var(--j-cy);box-shadow:inset 3px 0 0 var(--j-cy)}
 .aic-jarvis .aic-fport{flex:none;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:var(--j-cy);background:radial-gradient(circle,#10304a,#0b1626);border:1px solid var(--j-ln)}
 .aic-jarvis .aic-ftile.on .aic-fport{border-color:var(--j-cy)}
 .aic-jarvis .aic-fbody{display:grid;gap:3px;min-width:0;justify-items:start}
 .aic-jarvis .aic-fbody small{color:var(--j-mu);font-size:12px;line-height:1.35}
-@media(min-width:1000px){.aic-jarvis #aic-fleet{grid-column:1/4}}
+@media(min-width:1000px){.aic-jarvis #aic-fleet{grid-column:1/4}.aic-jarvis #aic-runs{grid-column:1/4}}
 @media(max-width:480px){.aic-jarvis .aic-fleet{grid-template-columns:1fr}}
 
 /* ── landing hero + mobile priority (matches the reference: avatar first, then status, fleet, findings) ── */
@@ -74,7 +80,7 @@
 .aic-jarvis .aic-stage .aic-orb{inset:10%}
 .aic-jarvis .aic-cs h2{color:var(--c);font-size:15px;letter-spacing:.34em}
 .aic-jarvis .aic-main[data-mode=monitor] #aic-core{padding-bottom:12px}
-.aic-jarvis #aic-core{order:1}.aic-jarvis #aic-sum{order:2}.aic-jarvis #aic-fleet{order:3}.aic-jarvis #aic-att{order:4}
+.aic-jarvis #aic-core{order:1}.aic-jarvis #aic-sum{order:2}.aic-jarvis #aic-fleet{order:3}.aic-jarvis #aic-runs{order:3}.aic-jarvis #aic-att{order:4}
 .aic-jarvis #aic-sys{order:5}.aic-jarvis #aic-fc{order:6}.aic-jarvis #aic-corr{order:7}.aic-jarvis #aic-actc{order:8}
 .aic-jarvis #aic-resp{order:9}.aic-jarvis #aic-since{order:10}.aic-jarvis #aic-net{order:11}
 .aic-jarvis #aic-reo{order:12}.aic-jarvis #aic-fill{order:13}.aic-jarvis #aic-money{order:14}
@@ -87,7 +93,7 @@
 
 /* ── single front page: essentials first, folded cards after ── */
 .aic-jarvis #aic-core{order:1}.aic-jarvis #aic-sum{order:2}.aic-jarvis #aic-att{order:3}.aic-jarvis #aic-actc{order:4}
-.aic-jarvis #aic-fleet{order:5}.aic-jarvis #aic-sys{order:6}.aic-jarvis #aic-fc{order:7}.aic-jarvis #aic-resp{order:8}.aic-jarvis #aic-tools{order:9}
+.aic-jarvis #aic-fleet{order:5}.aic-jarvis #aic-runs{order:5}.aic-jarvis #aic-sys{order:6}.aic-jarvis #aic-fc{order:7}.aic-jarvis #aic-resp{order:8}.aic-jarvis #aic-tools{order:9}
 .aic-jarvis #aic-corr{order:10}.aic-jarvis #aic-since{order:11}.aic-jarvis #aic-net{order:12}.aic-jarvis #aic-reo{order:13}.aic-jarvis #aic-fill{order:14}
 .aic-jarvis #aic-money{order:15}.aic-jarvis #aic-act{order:16}.aic-jarvis #aic-obs{order:17}.aic-jarvis #aic-health{order:18}.aic-jarvis #aic-repo{order:19}
 @media(min-width:1000px){
@@ -96,7 +102,7 @@
   .aic-jarvis #aic-core{grid-column:2;grid-row:2/4}
   .aic-jarvis #aic-fc{grid-column:3;grid-row:2}
   .aic-jarvis #aic-actc{grid-column:3;grid-row:3}
-  .aic-jarvis #aic-fleet,.aic-jarvis #aic-sys,.aic-jarvis #aic-resp,.aic-jarvis #aic-tools{grid-column:1/4}
+  .aic-jarvis #aic-runs,.aic-jarvis #aic-fleet,.aic-jarvis #aic-sys,.aic-jarvis #aic-resp,.aic-jarvis #aic-tools{grid-column:1/4}
 }
 
 /* ── audit log folds inside Action Center ── */
@@ -186,7 +192,7 @@ body.aic-open .aic-modal :focus-visible{outline:2px solid #20DDF5;outline-offset
 
 /* ── priority: business first (summary → Business Systems → everything else) ── */
 .aic-jarvis #aic-sum{order:1}.aic-jarvis #aic-core{order:2}.aic-jarvis #aic-sys{order:3}.aic-jarvis #aic-att{order:4}
-.aic-jarvis #aic-fc{order:5}.aic-jarvis #aic-actc{order:6}.aic-jarvis #aic-fleet{order:7}.aic-jarvis #aic-resp{order:8}
+.aic-jarvis #aic-fc{order:5}.aic-jarvis #aic-actc{order:6}.aic-jarvis #aic-fleet{order:7}.aic-jarvis #aic-runs{order:7}.aic-jarvis #aic-resp{order:8}
 @media(min-width:1000px){
   .aic-jarvis #aic-sum{grid-column:1/4;grid-row:1}
   .aic-jarvis #aic-sys{grid-column:1/4;grid-row:2}
@@ -194,7 +200,7 @@ body.aic-open .aic-modal :focus-visible{outline:2px solid #20DDF5;outline-offset
   .aic-jarvis #aic-core{grid-column:2;grid-row:3}
   .aic-jarvis #aic-fc{grid-column:3;grid-row:3/5}
   .aic-jarvis #aic-actc{grid-column:1/3;grid-row:4}
-  .aic-jarvis #aic-fleet{grid-column:1/4;grid-row:auto}
+  .aic-jarvis #aic-fleet{grid-column:1/4;grid-row:auto}.aic-jarvis #aic-runs{grid-column:1/4;grid-row:auto}
 }
 
 /* ── urgency: a pending approval jumps above everything ── */
@@ -257,7 +263,7 @@ body.aic-open .ag-spk.on{border-color:#20DDF5;color:#20DDF5}
 .aic-g-ok .rg-val{stroke:var(--j-ok,#42D6A4)}.aic-g-wn .rg-val{stroke:var(--j-wn,#FFB86B)}.aic-g-cr .rg-val{stroke:var(--j-er,#FF7A8A)}
 @media(min-width:700px){.aic-jarvis .aic-insts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));overflow:visible}.aic-jarvis .aic-it{flex:none}}
 /* order: business first, then the instrument strip */
-.aic-jarvis #aic-inst{order:4}.aic-jarvis #aic-att{order:5}.aic-jarvis #aic-fc{order:6}.aic-jarvis #aic-actc{order:7}.aic-jarvis #aic-fleet{order:8}.aic-jarvis #aic-resp{order:9}
+.aic-jarvis #aic-inst{order:4}.aic-jarvis #aic-att{order:5}.aic-jarvis #aic-fc{order:6}.aic-jarvis #aic-actc{order:7}.aic-jarvis #aic-fleet{order:8}.aic-jarvis #aic-runs{order:8}.aic-jarvis #aic-resp{order:9}
 @media(min-width:1000px){
   /* under the core: attention | core | forecast on row 3; Action Center col 1 and instruments col 2 on row 4 */
   .aic-jarvis #aic-actc{grid-column:1;grid-row:4}

@@ -160,7 +160,7 @@ function sectionHeader(title, right) { return h('div', { class: 'aic-sh' }, h('h
 // Cards are collapsed by default (tap the title to open). Kept open: the one-line summary + status core, the Action Center
 // (pending approvals must never be hidden), the latest BT response, and Tool Intelligence (it already has its own toggle).
 // The open/closed choice lives in S.open so it survives the full repaint that runs on every refresh.
-const ALWAYS_OPEN = new Set(['sum', 'core', 'inst', 'fleet', 'att', 'sys', 'fc', 'actc', 'resp', 'tools']);
+const ALWAYS_OPEN = new Set(['sum', 'core', 'inst', 'runs', 'att', 'sys', 'fc', 'actc', 'resp', 'tools']);
 
 // One-line, REAL summary shown in a collapsed card's header (hidden once the card is open). Returns [text, tone] or null.
 function foldSummary(id) {
@@ -168,6 +168,7 @@ function foldSummary(id) {
   switch (id) {
     case 'corr': { if (!S.snap) return null; const n = M.correlate(visibleFindings()).length; return [n + (n === 1 ? ' signal' : ' signals'), n ? 'wn' : 'ok']; }
     case 'since': { const b = S.baseline; if (!S.snap) return null; if (!b) return ['first visit', 'mu']; const d = M.diffFindings(b.findings, S.snap.findings); return ['+' + d.added.length + ' new · ' + d.cleared.length + ' cleared', d.added.length ? 'wn' : 'ok']; }
+    case 'fleet': { const n = activeAgentIds(coreInfo().live).on.size, total = Object.keys(SPECIALISTS).filter(k => k !== 'general').length; return [n ? n + ' running now' : total + ' ready · none running', n ? 'ok' : 'mu']; }
     case 'net': { const n = activeAgentIds(coreInfo().live).on.size; return [n ? n + ' running now' : 'none running', n ? 'ok' : 'mu']; }
     case 'reo': { const D = P && P.reorder; if (!S.snap) return null; return D ? (D.total_lines ? [D.total_lines + ' lines to buy', 'wn'] : ['nothing to reorder', 'ok']) : ['not available', 'mu']; }
     case 'fill': { const F = P && P.fill; if (!S.snap) return null; return F && F.fill_rate_pct != null ? [F.fill_rate_pct + '% filled', F.fill_rate_pct < 90 ? 'wn' : 'ok'] : ['not measurable', 'mu']; }
@@ -517,20 +518,36 @@ function activeAgentIds(live) {
   if (live.activeTool && live.activeTool.domain) { on.add(live.activeTool.domain); tool[live.activeTool.domain] = live.activeTool.tool; }
   return { on, tool };
 }
+// What each specialist is for, and one question it can answer right now. Questions are plain asks to the existing assistant.
+const FLEET_INFO = {
+  sales: { job: 'Sales, target pace and cash', q: 'How are sales against target this month?' },
+  manager: { job: 'Staff credit, salary and ledgers', q: 'Who owes staff credit and how much?' },
+  inventory: { job: 'Stock levels, reorder and risk', q: 'What inventory is at risk?' },
+  str: { job: 'Stock transfers and fill rate', q: 'Which stock transfers are waiting to be dispatched or received?' },
+  closing: { job: 'Daily closing and shifts', q: 'What is blocking closing?' },
+  billing: { job: 'Emergency billing entries', q: 'Is anything stuck in emergency billing?' },
+  documents: { job: 'Notes, sheets and documents', q: 'Summarise my recent notes and sheets.' },
+  analyst: { job: 'Combines several areas into one answer', q: 'What needs my attention?' },
+};
 function fleetTile(id, act) {
   const sp = SPECIALISTS[id], st = agentStats(id), tools = listTools().filter(t => t.domain === id);
   const errs = T.recent(400, e => e.type === 'error' && e.agent === sp.label).length;
-  const gated = tools.filter(t => t.risk !== 'read' && t.risk !== 'ui').length;
   const on = act.on.has(id);
-  const state = on ? 'ACTIVE' : st.runs ? 'STANDBY' : 'NO RUNS';
-  const detail = on ? (act.tool[id] ? 'Running ' + act.tool[id] : 'Working on the current request') : st.runs ? 'Last run ' + M.ageLabel(st.last) : 'Not run in the last 7 days on this device';
-  return h('button', { class: 'aic-ftile' + (on ? ' on' : ''), 'data-agent': id, onclick: () => openAgent(id), 'aria-label': sp.label + ', ' + state.toLowerCase() + '. ' + detail },
-    h('span', { class: 'aic-fport', 'aria-hidden': 'true', text: id.slice(0, 2).toUpperCase() }),
-    h('span', { class: 'aic-fbody' },
-      h('b', { text: sp.label }),
-      h('span', { class: 'aic-pill aic-' + (on ? 'ok' : 'mu'), text: state }),
-      h('small', { text: detail }),
-      h('small', { class: 'aic-fstats', text: id === 'analyst' ? st.runs + ' runs' : st.runs + ' runs · ' + tools.length + ' tools' + (gated ? ' · ' + gated + ' need approval' : ' · read-only') + (errs ? ' · ' + errs + ' errors' : '') })));
+  const waiting = allRuns().some(r => r.status === 'awaiting_approval' && r.agents.includes(sp.label));
+  const state = on ? 'ACTIVE' : waiting ? 'NEEDS YOU' : st.runs ? 'STANDBY' : 'NO RUNS';
+  const detail = on ? (act.tool[id] ? 'Running ' + act.tool[id] : 'Working on the current request') : waiting ? 'Waiting for your approval' : st.runs ? 'Last run ' + M.ageLabel(st.last) : 'Not run in the last 7 days on this device';
+  const info = FLEET_INFO[id] || { job: '', q: '' };
+  const stats = id === 'analyst' ? st.runs + ' runs' : st.runs + ' runs' + (errs ? ' · ' + errs + ' errors' : '');
+  const cls = 'aic-ftile' + (on ? ' on' : '') + (waiting ? ' await' : '') + (!on && !waiting && !st.runs ? ' idle' : '');
+  return h('div', { class: cls, role: 'group', 'data-agent': id, 'aria-label': sp.label + ', ' + state.toLowerCase() + '. ' + detail },
+    h('button', { class: 'aic-fmain', onclick: () => openAgent(id), 'aria-label': 'Details for ' + sp.label + ': tools, latest run and events' },
+      h('span', { class: 'aic-fport', 'aria-hidden': 'true', text: id.slice(0, 2).toUpperCase() }),
+      h('span', { class: 'aic-fbody' },
+        h('b', { text: sp.label }),
+        h('span', { class: 'aic-pill aic-' + (on ? 'ok' : waiting ? 'wn' : 'mu'), text: state }),
+        info.job ? h('span', { class: 'aic-fjob', text: info.job }) : null,
+        h('small', { class: 'aic-fstats', text: detail + (on || waiting || !st.runs ? '' : ' · ' + stats) + ' · ' + (id === 'analyst' ? 'all tools' : tools.length + ' tools') }))),
+    info.q ? h('button', { class: 'aic-fask', onclick: () => ask(info.q), title: 'Ask JARVIS this question', text: 'Ask: ' + info.q }) : null);
 }
 
 // ── agent runs: timeline rebuilt from the real activity log ──
@@ -561,9 +578,9 @@ function runRow(run) {
       h('span', { class: 'aic-sub', text: when + (run.durationMs != null ? ' · ' + (run.durationMs / 1000).toFixed(1) + ' s' : '') + (run.agents.length ? ' · ' + run.agents.join(' + ') : '') + (run.tools.length ? ' · ' + run.tools.length + ' tool' + (run.tools.length === 1 ? '' : 's') : '') }),
       h('span', { class: 'aic-runst', 'aria-hidden': 'true' }, run.stages.map(st => h('i', { class: 'aic-tl-' + st.status, title: st.label })))));
 }
-function runsBlock() {
+function runsBlock(heading = true) {
   const runs = allRuns();
-  return h('div', { class: 'aic-runs' }, h('div', { class: 'aic-k', text: 'RECENT RUNS · FROM THE REAL ACTIVITY LOG' }),
+  return h('div', { class: 'aic-runs' }, heading ? h('div', { class: 'aic-k', text: 'RECENT RUNS · FROM THE REAL ACTIVITY LOG' }) : null,
     runs.length ? h('ul', { class: 'aic-runl' }, runs.slice(0, 3).map(runRow)) : empty('No agent runs recorded on this device yet. Ask JARVIS something and the run appears here.'),
     runs.length > 3 ? h('details', { class: 'aic-log' }, h('summary', { text: 'Earlier runs · ' + (runs.length - 3) }), h('ul', { class: 'aic-runl' }, runs.slice(3, 15).map(runRow))) : null);
 }
@@ -609,8 +626,11 @@ function secInstruments(info) {
 function secFleet(info) {
   const act = activeAgentIds(info.live);
   const ids = Object.keys(SPECIALISTS).filter(id => id !== 'general');
-  return card('fleet', 'monitor investigate', sectionHeader('AGENT FLEET', h('span', { class: 'aic-sub', text: ids.length + ' registered specialists · tap for tools and events' })),
-    h('div', { class: 'aic-fleet' }, ids.map(id => fleetTile(id, act))), runsBlock());
+  return card('fleet', 'monitor investigate', sectionHeader('AGENT FLEET', h('span', { class: 'aic-sub', text: ids.length + ' specialists · tap one for its tools and events' })),
+    h('div', { class: 'aic-fleet' }, ids.map(id => fleetTile(id, act))));
+}
+function secRuns() {
+  return card('runs', 'monitor investigate', sectionHeader('RECENT RUNS', h('span', { class: 'aic-sub', text: 'from the real activity log' })), runsBlock(false));
 }
 function h2svg(tag, attrs) { const e = document.createElementNS('http://www.w3.org/2000/svg', tag); Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v)); return e; }
 
@@ -975,7 +995,7 @@ function openPalette() {
 function paint() {
   const r = root(); if (!r || !pageOn()) return;
   const info = coreInfo();
-  const cards = [secSummary(info), secCore(info), secAttention(), secCorrelation(), secSince(), secSystems(), secInstruments(info), secForecast(), secReorder(), secFill(), secMoney(), secFleet(info), secNetwork(info), secResponse(), secActions(info), secActivity(), secObs(), secHealth(), secTools(), secRepo()]
+  const cards = [secSummary(info), secCore(info), secAttention(), secCorrelation(), secSince(), secSystems(), secInstruments(info), secForecast(), secReorder(), secFill(), secMoney(), secRuns(), secFleet(info), secNetwork(info), secResponse(), secActions(info), secActivity(), secObs(), secHealth(), secTools(), secRepo()]
     .filter(Boolean);
   // a genuinely pending approval outranks everything: the Action Center moves to the top (CSS keyed on data-pri)
   const main = h('main', { class: 'aic-main', 'data-mode': S.mode, 'data-pri': info.live.pendingApproval ? 'approvals' : 'normal' }, cards);

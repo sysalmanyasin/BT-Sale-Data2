@@ -36,7 +36,7 @@ describe('AI Center collapsible cards', () => {
   });
 
   test('summary and status core are never collapsed', () => {
-    for (const id of ['#aic-sum', '#aic-core', '#aic-att', '#aic-sys', '#aic-fleet']) {
+    for (const id of ['#aic-sum', '#aic-core', '#aic-att', '#aic-sys', '#aic-runs']) {
       const el = q(id); if (!el) continue;
       assert.ok(!el.classList.contains('aic-fold'), id + ' must stay open');
     }

@@ -64,6 +64,26 @@ describe('AI Center page', () => {
     assert.ok(tiles.every(t => !t.classList.contains('on')), 'nothing is ACTIVE while no request is running');
     assert.equal(document.querySelectorAll('[id="aic-fleet"]').length, 1, 'no duplicate ids');
   });
+  test('Agent Fleet: folded with a real summary; each tile says what it is for and offers a one-tap question', async () => {
+    const fleet = document.getElementById('aic-fleet');
+    assert.ok(fleet.classList.contains('aic-folded'), 'fleet is collapsed by default');
+    assert.match(fleet.querySelector('.aic-fsum').textContent, /ready · none running|running now/);
+    const tiles = [...document.querySelectorAll('#aic-fleet .aic-ftile')];
+    assert.ok(tiles.every(t => t.querySelector('.aic-fjob') && t.querySelector('.aic-fjob').textContent.trim().length > 3), 'plain-language job line');
+    assert.ok(tiles.every(t => t.querySelector('.aic-fask') && /^Ask: /.test(t.querySelector('.aic-fask').textContent)), 'quick question button');
+    assert.ok(tiles.some(t => t.classList.contains('idle')), 'tiles with no runs are visually quieter');
+    const asked = [];
+    window.BTAgent = { ask: s2 => { asked.push(s2); return Promise.resolve(); }, isBusy: () => false, open() {}, writesAllowed: () => false, killed: () => false };
+    document.querySelector('#aic-fleet .aic-ftile[data-agent="closing"] .aic-fask').click();
+    assert.deepEqual(asked, ['What is blocking closing?']);
+    delete window.BTAgent;
+  });
+  test('Recent Runs is its own always-open card, separate from the fleet', () => {
+    const runs = document.getElementById('aic-runs');
+    assert.ok(runs && !runs.classList.contains('aic-fold'));
+    assert.equal(runs.querySelector('.aic-sh h2').textContent, 'RECENT RUNS');
+    assert.equal(document.querySelectorAll('#aic-fleet .aic-runs').length, 0);
+  });
   test('unavailable data is DATA_UNAVAILABLE with its real reason, not "healthy"', () => {
     const inv = [...document.querySelectorAll('.aic-sys')].find(e => e.textContent.includes('INVENTORY'));
     assert.match(inv.textContent, /DATA_UNAVAILABLE/); assert.match(inv.textContent, /Open the Inventory page/);
@@ -95,7 +115,7 @@ describe('AI Center page', () => {
     assert.match(t, /not claimed|cannot be measured|Not guessed/); // Edge Functions have no heartbeat: stated, not invented
   });
   test('one front page: essentials always open, secondary cards fold', async () => {
-    const open = ['aic-sys', 'aic-core', 'aic-fleet', 'aic-actc'], folded = ['aic-health', 'aic-repo'];
+    const open = ['aic-sys', 'aic-core', 'aic-runs', 'aic-actc'], folded = ['aic-health', 'aic-repo', 'aic-fleet'];
     open.forEach(id => { const el = document.getElementById(id); assert.ok(el, id); assert.ok(!el.classList.contains('aic-fold'), id + ' must not collapse'); });
     folded.forEach(id => { const el = document.getElementById(id); assert.ok(el, id + ' must be on the same page'); assert.ok(el.classList.contains('aic-folded'), id + ' should be collapsed'); });
   });

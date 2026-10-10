@@ -53,8 +53,8 @@ describe('weekday chart and dialog focus', () => {
     T.emit({ type: 'tool_end', request_id: rid, agent: 'Closing', tool: 'closing_recent_days', status: 'ok', duration: 90 });
     T.emit({ type: 'answer', request_id: rid, metadata: { steps: 1 } });
     await wait(30);
-    const row = [...document.querySelectorAll('#aic-fleet .aic-run')].find(r => r.textContent.includes('What is blocking closing?'));
-    assert.ok(row, 'run row rendered inside the Agent Fleet card');
+    const row = [...document.querySelectorAll('#aic-runs .aic-run')].find(r => r.textContent.includes('What is blocking closing?'));
+    assert.ok(row, 'run row rendered inside the Recent Runs card');
     assert.match(row.textContent, /COMPLETE/); assert.match(row.textContent, /Closing/); assert.match(row.textContent, /1 tool/);
     row.querySelector('button').click(); await wait(20);
     const stages = [...document.querySelectorAll('.aic-modal .aic-tls b')].map(b => b.textContent);
