@@ -66,3 +66,22 @@
 .aic-jarvis .aic-fbody small{color:var(--j-mu);font-size:12px;line-height:1.35}
 @media(min-width:1000px){.aic-jarvis #aic-fleet{grid-column:1/4}}
 @media(max-width:480px){.aic-jarvis .aic-fleet{grid-template-columns:1fr}}
+
+/* ── landing hero + mobile priority (matches the reference: avatar first, then status, fleet, findings) ── */
+.aic-jarvis .aic-orb-t{display:none} /* lifecycle name is shown by the heading under the orb; no text over the avatar */
+.aic-jarvis .av-ring{fill:none;stroke:var(--c);stroke-width:1;opacity:.7}
+.aic-jarvis .aic-stage{width:min(260px,72%)}
+.aic-jarvis .aic-stage .aic-orb{inset:10%}
+.aic-jarvis .aic-cs h2{color:var(--c);font-size:15px;letter-spacing:.34em}
+.aic-jarvis .aic-main[data-mode=monitor] .aic-life{display:none}
+.aic-jarvis .aic-main[data-mode=monitor] #aic-core{padding-bottom:12px}
+.aic-jarvis #aic-core{order:1}.aic-jarvis #aic-sum{order:2}.aic-jarvis #aic-fleet{order:3}.aic-jarvis #aic-att{order:4}
+.aic-jarvis #aic-sys{order:5}.aic-jarvis #aic-fc{order:6}.aic-jarvis #aic-corr{order:7}.aic-jarvis #aic-actc{order:8}
+.aic-jarvis #aic-resp{order:9}.aic-jarvis #aic-since{order:10}.aic-jarvis #aic-net{order:11}
+.aic-jarvis #aic-reo{order:12}.aic-jarvis #aic-fill{order:13}.aic-jarvis #aic-money{order:14}
+.aic-jarvis #aic-act{order:15}.aic-jarvis #aic-obs{order:16}.aic-jarvis #aic-health{order:17}.aic-jarvis #aic-tools{order:18}.aic-jarvis #aic-repo{order:19}
+@media(min-width:1000px){
+  .aic-jarvis #aic-sum{grid-column:1/4;order:0}
+  .aic-jarvis #aic-core,.aic-jarvis #aic-att,.aic-jarvis #aic-fc,.aic-jarvis #aic-actc{order:0}
+  .aic-jarvis #aic-reo,.aic-jarvis #aic-fill,.aic-jarvis #aic-money{grid-column:auto}
+}

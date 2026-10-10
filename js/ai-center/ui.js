@@ -214,7 +214,9 @@ function jarvisAvatar() {
   svg.append(
     el('path', { class: 'av-body', d: 'M18 120c2-24 18-34 42-36 24 2 40 12 42 36z' }),
     el('path', { class: 'av-line', d: 'M60 84v14M44 92l16 8 16-8' }),
-    el('circle', { class: 'av-chest', cx: 60, cy: 100, r: 3.2 }),
+    el('circle', { class: 'av-ring', cx: 60, cy: 100, r: 7 }),
+    el('circle', { class: 'av-chest', cx: 60, cy: 100, r: 3.6 }),
+    el('path', { class: 'av-line', d: 'M93 56c2 8-2 14-12 16' }),
     el('path', { class: 'av-head', d: 'M60 18c-15 0-25 11-25 27 0 14 8 26 25 26s25-12 25-26c0-16-10-27-25-27z' }),
     el('path', { class: 'av-phone', d: 'M33 46c-4 0-6 3-6 8s2 8 6 8M87 46c4 0 6 3 6 8s-2 8-6 8M33 40c2-16 14-24 27-24s25 8 27 24' }),
     el('ellipse', { class: 'av-eye', cx: 49, cy: 49, rx: 4.2, ry: 3 }),
@@ -237,7 +239,7 @@ function secCore(info) {
       live.pendingApproval ? h('div', { class: 'aic-appr' }, h('b', { text: 'Waiting for you. ' }), (live.pendingApproval.metadata && live.pendingApproval.metadata.title) || live.pendingApproval.tool, ' ', h('button', { class: 'aic-p', text: 'Review', onclick: reviewApproval })) : null)
     : lastMissionNode();
   const life = M.deriveLifecycle(requestEvents(m || lastRequestStart()), !!S.snap);
-  return card('core', live.open ? 'monitor investigate' : 'investigate',
+  return card('core', 'monitor investigate', // the JARVIS core is the landing hero, so it shows in Monitor too
     h('div', { class: 'aic-stage', 'data-s': core.state.toLowerCase() },
       h('i', { class: 'aic-ring r1' }), h('i', { class: 'aic-ring r2' }), h('i', { class: 'aic-ring r3' }),
       h('div', { class: 'aic-orb' }, jarvisAvatar(), h('div', { class: 'aic-orb-t' }, h('b', { text: 'JARVIS' }), h('small', { text: core.state.replace(/_/g, ' ') })))),
