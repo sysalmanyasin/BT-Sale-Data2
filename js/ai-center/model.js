@@ -177,9 +177,13 @@ export function buildFindings(snap) {
     for (const L of mo.ledgers) {
       const sp = (L.running_above_usual || [])[0];
       if (!sp) continue;
+      const noHistory = !(sp.usual_same_period > 0) && !(sp.usual_full_month > 0);
+      const usualText = sp.usual_same_period > 0 ? 'usually about Rs ' + fmtNum(sp.usual_same_period) + ' by now'
+        : sp.usual_full_month > 0 ? 'a full month usually totals about Rs ' + fmtNum(sp.usual_full_month)
+        : 'with no entries in this category in the previous 3 months';
       push({
-        type: 'ANOMALY', severity: 'warning', system: 'STAFF', source: 'money_overview',
-        title: L.ledger + ': ' + sp.category + ' is Rs ' + fmtNum(sp.month_to_date) + ' this month, ' + (sp.usual_same_period > 0 ? 'usually about Rs ' + fmtNum(sp.usual_same_period) + ' by now' : 'with nothing at this point in earlier months'),
+        type: 'ANOMALY', severity: noHistory ? 'info' : 'warning', system: 'STAFF', source: 'money_overview',
+        title: L.ledger + ': ' + sp.category + ' is Rs ' + fmtNum(sp.month_to_date) + ' this month, ' + usualText,
         description: 'Month-to-date vs the same day-range of the previous 3 months.',
         evidence: [{ kind: 'CALCULATION', label: 'Month to date', value: 'Rs ' + fmtNum(sp.month_to_date) }, { kind: 'CALCULATION', label: 'Usual for this point', value: 'Rs ' + fmtNum(sp.usual_same_period) }, { kind: 'CALCULATION', label: 'Extra', value: 'Rs ' + fmtNum(sp.extra) }],
         related_agents: SYSTEM_SOURCES.STAFF.agents, related_tools: ['money_overview', 'get_ledger_month_totals'],

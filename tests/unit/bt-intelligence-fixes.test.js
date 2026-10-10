@@ -86,6 +86,19 @@ describe('above-usual alerts understand timing', () => {
   });
 });
 
+describe('above-usual alerts report the real baseline', () => {
+  test('spikes carry the typical full-month total so the wording can be honest', () => {
+    const s = categorySpikes({ Generic: 62300 }, [{ Generic: 0 }], { fullMonths: [{ Generic: 20000 }, { Generic: 22000 }] });
+    assert.equal(s.length, 1);
+    assert.equal(s[0].usual_same_period, 0);
+    assert.equal(s[0].usual_full_month, 21000);
+  });
+  test('a category with no history anywhere reports a zero full-month baseline', () => {
+    const s = categorySpikes({ Brand: 20000 }, [{}], { fullMonths: [{ Fuel: 5000 }] });
+    assert.equal(s[0].usual_full_month, 0);
+  });
+});
+
 describe('credit rollover alert waits for the 10th', () => {
   const sep = [{ name: 'A', prevBal: 0, entries: [{ date: '10-Sep-2026', desc: 'x', amount: 9000 }], salary: 0, lessGeneric: 0 }];
   const oct = [{ name: 'A', prevBal: 0, entries: [], salary: 0, lessGeneric: 0 }];

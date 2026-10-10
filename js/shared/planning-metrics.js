@@ -219,7 +219,7 @@ export function categorySpikes(cur, prev, { ratio = 1.5, minDelta = 5000, fullMo
     // same-day-range baseline. If this month's total is still within a normal FULL-month total, do not flag it.
     const usualFull = full.length ? mean(full.map(m => n(m[cat]))) : 0;
     if (usualFull > 0 && amt <= usualFull * 1.25) continue;
-    if (amt - base >= minDelta && (base === 0 || amt >= base * ratio)) out.push({ category: cat, month_to_date: r0(amt), usual_same_period: r0(base), extra: r0(amt - base), times_usual: base > 0 ? Math.round(amt / base * 10) / 10 : null });
+    if (amt - base >= minDelta && (base === 0 || amt >= base * ratio)) out.push({ category: cat, month_to_date: r0(amt), usual_same_period: r0(base), usual_full_month: r0(usualFull), extra: r0(amt - base), times_usual: base > 0 ? Math.round(amt / base * 10) / 10 : null });
   }
   return out.sort((a, b) => b.extra - a.extra);
 }

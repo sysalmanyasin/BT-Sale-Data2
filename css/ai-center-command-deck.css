@@ -175,6 +175,14 @@ body.aic-open .ag-input {
 body.aic-open #toast {
   bottom: calc(132px + env(safe-area-inset-bottom));
 }
+.aic-page.aic-jarvis .aic-hub {
+  width: 86px;
+  height: 86px;
+}
+.aic-page.aic-jarvis .aic-hub small {
+  font-size: 9px;
+  letter-spacing: .03em;
+}
 @media (max-width: 699px) {
   .aic-page.aic-jarvis .aic {
     padding: 8px 9px max(148px, env(safe-area-inset-bottom));
@@ -192,6 +200,12 @@ body.aic-open #toast {
   .aic-page.aic-jarvis .aic-card {
     border-radius: 12px;
     padding: 12px;
+  }
+  .aic-page.aic-jarvis .aic-fold > .aic-sh {
+    flex-wrap: nowrap;
+  }
+  .aic-page.aic-jarvis .aic-fold > .aic-sh h2 {
+    flex: 1 1 0;
   }
   .aic-page.aic-jarvis .aic-sh {
     padding-bottom: 9px;
