@@ -29,10 +29,22 @@ const LS_VISIT = 'bt_aic_last_visit_v1', LS_DISMISS = 'bt_aic_dismissed_v1';
 const STALE_MS = 5 * 60000, REFRESH_MS = 45000;
 
 const S = {
-  snap: null, health: null, actions: null, history: [], loading: false, error: null,
+  view: 'home', snap: null, health: null, actions: null, history: [], loading: false, error: null,
   voice: { listening: false, out: V.getVoiceOut() }, mode: 'monitor', filter: 'all', baseline: null, started: false, tick: 0, toolsOpen: false, open: {},
   awaitingFor: null, assess: {}, lastRefreshAt: 0, mounted: false, rafId: 0, deep: {}, repo: { state: 'idle', idx: null }, repoQ: '',
 };
+
+// ───────────────────────── mobile views ─────────────────────────
+// On phones (<= 860px) the one BT Intelligence page is split into three bottom-nav destinations driven by the hash:
+//   #ai-center (Home) · #ai-center/copilot (AI Copilot) · #ai-center/alerts (Alerts). Desktop/tablet keep the full dashboard.
+const MOBILE_Q = '(max-width: 860px)';
+const isMobile = () => { try { return !!(window.matchMedia && window.matchMedia(MOBILE_Q).matches); } catch (_) { return false; } };
+export function viewFromHash(hash) { const m = /^#ai-center\/(copilot|alerts)\b/.exec(hash == null ? (window.location && window.location.hash) || '' : hash); return m ? m[1] : 'home'; }
+const compactHome = () => isMobile() && S.view === 'home';
+const COMPACT_FOLD = new Set(['fc', 'invstr', 'money']); // full detail lives on the existing pages; Home shows a one-line summary
+const DETAIL_LINKS = { fc: ['#dashboard', 'Open Sales & Forecast details'], invstr: ['#inv-health', 'Open Inventory & STR details'], money: ['#closing-book', 'Open Closing, Cash & Money details'], actc: ['#ai-center/alerts', 'Open Actions & Approvals'] };
+function setView(v) { S.view = v; document.body.dataset.aicView = v; }
+function goCopilot(q) { window.location.hash = '#ai-center/copilot'; if (q) setTimeout(() => ask(q), 80); }
 
 // ───────────────────────── tiny DOM helpers ─────────────────────────
 function h(tag, attrs, ...kids) {
@@ -111,6 +123,16 @@ function investigate(f) {
   closeModal();
   ask('Investigate this finding and show the evidence for it. Check the relevant data with your tools and say what is known and what is uncertain: "' + f.title + '"');
 }
+function alertCount() {
+  if (!S.snap) return null; // unknown until a real read finished: the badge stays hidden rather than guessing
+  const A = window.BTAgent;
+  const approvals = A && typeof A.approvals === 'function' ? A.approvals() : [];
+  return C.criticalItems({ findings: visibleFindings(), approvals }).length;
+}
+function publishAlerts() {
+  const n = alertCount();
+  try { window.dispatchEvent(new CustomEvent('bt:alerts-count', { detail: { count: n, at: S.lastRefreshAt || null } })); } catch (_) { /* no CustomEvent: badge simply stays hidden */ }
+}
 const openPage = href => { closeModal(); window.location.hash = href; };
 
 // ───────────────────────── data refresh ─────────────────────────
@@ -161,7 +183,7 @@ function sectionHeader(title, right) { return h('div', { class: 'aic-sh' }, h('h
 // Cards are collapsed by default (tap the title to open). Kept open: the one-line summary + status core, the Action Center
 // (pending approvals must never be hidden), the latest BT response, and Tool Intelligence (it already has its own toggle).
 // The open/closed choice lives in S.open so it survives the full repaint that runs on every refresh.
-const ALWAYS_OPEN = new Set(['crit', 'copilot', 'core', 'runs', 'att', 'sys', 'fc', 'invstr', 'money', 'actc', 'tools']);
+const ALWAYS_OPEN = new Set(['crit', 'copilot', 'core', 'runs', 'att', 'sys', 'fc', 'invstr', 'money', 'actc', 'tools', 'copilot-entry', 'suggested']);
 
 // One-line, REAL summary shown in a collapsed card's header (hidden once the card is open). Returns [text, tone] or null.
 function foldSummary(id) {
@@ -172,6 +194,8 @@ function foldSummary(id) {
     case 'reo': { const D = P && P.reorder; if (!S.snap) return null; return D ? (D.total_lines ? [D.total_lines + ' lines to buy', 'wn'] : ['nothing to reorder', 'ok']) : ['not available', 'mu']; }
     case 'fill': { const F = P && P.fill; if (!S.snap) return null; return F && F.fill_rate_pct != null ? [F.fill_rate_pct + '% filled', F.fill_rate_pct < 90 ? 'wn' : 'ok'] : ['not measurable', 'mu']; }
     case 'money': { const sc = P && P.money && P.money.staff_credit; if (!S.snap) return null; return sc ? ['Rs ' + M.fmtNum(sc.this_month.total_owed) + ' owed', 'mu'] : ['not available', 'mu']; }
+    case 'fc': { const F = S.snap && S.snap.forecast; if (!S.snap) return null; return F && F.available ? [F.pace.pct_done + '% of month target sold', F.pace.pct_done < 50 ? 'wn' : 'ok'] : ['not available', 'mu']; }
+    case 'invstr': { const a = foldSummary('reo'), b = foldSummary('fill'); if (!a && !b) return null; return [[a && a[0], b && b[0]].filter(Boolean).join(' · '), (a && a[1] === 'wn') || (b && b[1] === 'wn') ? 'wn' : 'mu']; }
     case 'ops': { const live = coreInfo().live, run = activeAgentIds(live).on.size, r = S.health, ok = r ? r.filter(x => x.status === 'HEALTHY').length : null; return [(r ? ok + ' of ' + r.length + ' healthy' : 'health loading') + ' \u00B7 ' + (run ? run + ' agent(s) running' : 'no agent running'), r && ok < r.length ? 'wn' : 'mu']; }
     case 'act': { const n = T.recent(150).length; return [n + (n === 1 ? ' event' : ' events'), 'mu']; }
     case 'obs': { const o = M.observability(T.recent(400).reverse()); return [o.requests + ' requests · ' + o.errors + ' failed', o.errors ? 'wn' : 'mu']; }
@@ -181,7 +205,8 @@ function foldSummary(id) {
 }
 function card(id, modes, ...kids) {
   const first = kids[0];
-  const foldable = !ALWAYS_OPEN.has(id) && kids.length > 1 && first && first.nodeType === 1 && first.classList.contains('aic-sh');
+  const keepOpen = ALWAYS_OPEN.has(id) && !(compactHome() && COMPACT_FOLD.has(id));
+  const foldable = !keepOpen && kids.length > 1 && first && first.nodeType === 1 && first.classList.contains('aic-sh');
   if (!foldable) return h('section', { class: 'aic-card', id: 'aic-' + id, 'data-modes': modes }, kids);
   const open = !!S.open[id];
   const bodyId = 'aic-b-' + id;
@@ -343,14 +368,29 @@ function secAttention() {
   else if (!S.snap) body = skeleton();
   else {
     const f = visibleFindings(), good = f.filter(x => x.severity === 'good');
-    const P = C.prioritizeFindings(f, { limit: S.attAll ? 10 : 5 });
+    const showAll = S.attAll || (isMobile() && S.view === 'alerts');
+    const P = C.prioritizeFindings(f, { limit: showAll ? 10 : 5 });
     body = h('div', {}, summaryLine(),
       P.entries.length ? P.entries.map(attentionRow) : empty('Nothing needs attention right now. All monitored rules are clear.'),
-      P.total > 5 ? h('button', { class: 'aic-showall', 'aria-expanded': String(!!S.attAll), text: S.attAll ? 'Show fewer' : 'Show ' + Math.min(P.total - 5, 5) + ' more', onclick: () => { S.attAll = !S.attAll; render(); } }) : null,
+      P.total > 5 && !(isMobile() && S.view === 'alerts') ? h('button', { class: 'aic-showall', 'aria-expanded': String(!!S.attAll), text: S.attAll ? 'Show fewer' : 'Show ' + Math.min(P.total - 5, 5) + ' more', onclick: () => { S.attAll = !S.attAll; render(); } }) : null,
       S.attAll && P.hidden ? h('div', { class: 'aic-more', text: '+ ' + P.hidden + ' more. Ask BT "What needs my attention?"' }) : null,
       good.map(g => h('div', { class: 'aic-good' }, '✓ ', g.title)));
   }
-  return card('att', 'monitor', sectionHeader('NEEDS ATTENTION', S.snap ? h('span', { class: 'aic-sub', text: 'top 5 by severity and amount' }) : null), body);
+  return card('att', 'monitor', sectionHeader('NEEDS ATTENTION', S.snap ? (compactHome() ? h('a', { class: 'aic-viewall', href: '#ai-center/alerts', text: 'View all (' + (C.prioritizeFindings(visibleFindings(), { limit: 99 }).total) + ')' }) : h('span', { class: 'aic-sub', text: 'top 5 by severity and amount' })) : null), body);
+}
+
+// Compact Copilot entry for the phone Home screen: status + two suggestions, everything else lives on the Copilot screen.
+function secCopilotEntry(info) {
+  const ready = !!window.BTAgent, busy = !!(ready && window.BTAgent.isBusy && window.BTAgent.isBusy());
+  const tips = promptChips().slice(0, 2);
+  return card('copilot-entry', 'monitor',
+    sectionHeader('AI BUSINESS COPILOT', h('span', { class: 'aic-pill aic-' + (ready ? (busy ? 'wn' : 'ok') : 'mu'), text: ready ? (busy ? 'Working' : 'Connected') : 'Loading' })),
+    h('button', { class: 'aic-entry', onclick: () => goCopilot(), 'aria-label': 'Open AI Copilot' }, h('span', { text: 'Ask about your business\u2026' }), h('span', { 'aria-hidden': 'true', text: '\u203A' })),
+    h('div', { class: 'aic-chips aic-chips-wrap', 'aria-label': 'Suggested questions' }, tips.map(t => h('button', { text: t, onclick: () => goCopilot(t) }))));
+}
+function secSuggested() {
+  return card('suggested', 'monitor investigate', sectionHeader('SUGGESTED INVESTIGATIONS'),
+    h('div', { class: 'aic-sugg' }, promptChips().map(t => h('button', { text: t, onclick: () => ask(t) }))));
 }
 
 // Failure / empty-state wording: one place, honest about timeout, permission, offline and partial data.
@@ -1144,19 +1184,27 @@ function paint() {
   const r = root(); if (!r || !pageOn()) return;
   const info = coreInfo();
   // Business-first order: critical → snapshot → needs attention → copilot → sales → inventory/STR → closing/cash/money → approvals → operations
-  const cards = [secCritical(info), secSystems(), secAttention(), secCopilot(info), secForecast(), secInvStr(), secMoney(), secActions(info), secOps(info)]
-    .filter(Boolean);
+  const mobile = isMobile();
+  if (!mobile) document.body.removeAttribute('data-aic-view'); else document.body.dataset.aicView = S.view;
+  let cards;
+  if (mobile && S.view === 'copilot') cards = [secCopilot(info), secSuggested()];
+  else if (mobile && S.view === 'alerts') cards = [secCritical(info), secAttention(), secActions(info)];
+  else if (mobile) cards = [secCritical(info), secSystems(), secAttention(), secCopilotEntry(info), secForecast(), secInvStr(), secMoney(), secActions(info), secOps(info)];
+  else cards = [secCritical(info), secSystems(), secAttention(), secCopilot(info), secForecast(), secInvStr(), secMoney(), secActions(info), secOps(info)];
+  cards = cards.filter(Boolean);
+  if (mobile && S.view === 'home') cards.forEach(c => { const l = DETAIL_LINKS[String(c.id).replace(/^aic-/, '')]; if (l) c.append(h('a', { class: 'aic-detail', href: l[0], text: l[1] + ' \u203A' })); });
   // a genuinely pending approval outranks everything: the Action Center moves to the top (CSS keyed on data-pri)
   const main = h('main', { class: 'aic-main', 'data-mode': S.mode, 'data-pri': info.live.pendingApproval ? 'approvals' : 'normal' }, cards);
   const offline = navigator.onLine === false ? h('div', { class: 'aic-offline', role: 'alert' }, h('b', { text: 'BT OFFLINE · ' }), 'Showing last known data' + (S.snap ? ' from ' + clock(S.snap.at) : '') + '. Some intelligence may be unavailable.') : null;
   const keep = $('#aic-q'), val = keep ? keep.value : '', hadFocus = keep && document.activeElement === keep;
   const rqHad = !!(document.activeElement && document.activeElement.id === 'aic-rq');
   const scroll = window.scrollY;
-  r.replaceChildren(...[secHeaderBar(info.core), offline, S.error && S.snap ? failureNode(S.error, () => refresh({ force: true })) : null, main, cmdBar()].filter(Boolean)); // null args would render the text "null"
+  r.replaceChildren(...[secHeaderBar(info.core), offline, S.error && S.snap ? failureNode(S.error, () => refresh({ force: true })) : null, main, !mobile || S.view === 'copilot' ? cmdBar() : null].filter(Boolean)); // null args would render the text "null"
   const cmdEl = $('.aic-cmd'); if (cmdEl && cmdEl.offsetHeight) r.style.setProperty('--aic-cmd-h', cmdEl.offsetHeight + 'px'); // content clearance: the fixed composer never covers the last card
   const q = $('#aic-q'); if (q) { q.value = val; if (hadFocus) q.focus(); }
   if (rqHad) { const r2 = $('#aic-rq'); if (r2) { r2.focus(); const n = r2.value.length; try { r2.setSelectionRange(n, n); } catch (_) { /* not a text input */ } } }
   if (Math.abs(window.scrollY - scroll) > 1) window.scrollTo(0, scroll);
+  publishAlerts();
 }
 
 // ───────────────────────── lifecycle ─────────────────────────
@@ -1177,9 +1225,11 @@ export function mount() {
   S.mounted = true;
   T.subscribe(onTelemetry);
   window.addEventListener('online', render); window.addEventListener('offline', render);
+  try { const mq = window.matchMedia && window.matchMedia(MOBILE_Q); if (mq && mq.addEventListener) mq.addEventListener('change', () => { if (pageOn()) paint(); }); } catch (_) { /* no matchMedia: desktop layout only */ }
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') persistVisit(); else if (pageOn()) refresh(); });
   window.addEventListener('pagehide', persistVisit);
-  window.addEventListener('hashchange', () => { document.body.classList.toggle('aic-open', /^#ai-center/.test(window.location.hash)); if (!/^#ai-center/.test(window.location.hash)) persistVisit(); });
+  window.addEventListener('hashchange', () => { document.body.classList.toggle('aic-open', /^#ai-center/.test(window.location.hash));
+    if (/^#ai-center/.test(window.location.hash)) { const v = viewFromHash(); if (v !== S.view) { setView(v); if (pageOn()) { paint(); window.scrollTo(0, 0); } } } if (!/^#ai-center/.test(window.location.hash)) persistVisit(); });
   document.addEventListener('keydown', e => {
     if (!pageOn()) return;
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); openPalette(); }
@@ -1192,6 +1242,7 @@ export function mount() {
 
 export function onShow() {
   mount();
+  setView(viewFromHash());
   document.body.classList.add('aic-open');
   paint();
   refresh();
