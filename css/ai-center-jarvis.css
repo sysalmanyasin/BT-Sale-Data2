@@ -126,3 +126,12 @@ body.aic-open .ag-card-b .ag-yes{color:#041018}
 .aic-jarvis .aic-fsum-wn{color:var(--j-wn);border-color:color-mix(in srgb,var(--j-wn) 55%,transparent)}
 .aic-jarvis .aic-fold:not(.aic-folded) .aic-fsum{display:none}
 .aic-jarvis .aic-showall{width:100%;margin:2px 0 8px;border-style:dashed;color:var(--j-cy)}
+
+/* ── voice controls ── */
+.aic-jarvis .aic-mic.on{background:var(--j-er);border-color:var(--j-er);color:#1a0509}
+@media(prefers-reduced-motion:no-preference){.aic-jarvis .aic-mic.on{animation:j-rec 1.2s ease-in-out infinite}@keyframes j-rec{50%{box-shadow:0 0 0 6px rgba(255,122,138,.25)}}}
+.aic-jarvis .aic-spk.on{border-color:var(--j-cy);color:var(--j-cy)}
+
+/* ── speech bubble under the avatar (real count; mirrors the reference chat bubble) ── */
+.aic-jarvis .aic-bubble{position:relative;width:fit-content;max-width:90%;margin:6px auto 4px;padding:8px 14px;border-radius:14px;border:1px solid var(--j-ln);background:rgba(32,221,245,.08);color:var(--j-tx);font-size:14px;text-align:center}
+.aic-jarvis .aic-bubble::before{content:"";position:absolute;left:50%;top:-6px;width:10px;height:10px;transform:translateX(-50%) rotate(45deg);background:#10263a;border-left:1px solid var(--j-ln);border-top:1px solid var(--j-ln)}

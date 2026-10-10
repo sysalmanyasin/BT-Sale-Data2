@@ -10,6 +10,7 @@
 // All text is inserted with textContent (never innerHTML) except the
 // assistant's own markdown, which goes through its existing escaping renderer.
 // ══════════════════════════════════════════════════════════════════════
+import * as V from './voice.js';
 import { listTools } from '../agent/core/tool-registry.js';
 import * as T from '../agent/core/telemetry.js';
 import { SPECIALISTS } from '../agent/core/specialists.js';
@@ -28,7 +29,7 @@ const STALE_MS = 5 * 60000, REFRESH_MS = 45000;
 
 const S = {
   snap: null, health: null, actions: null, history: [], loading: false, error: null,
-  mode: 'monitor', filter: 'all', baseline: null, started: false, tick: 0, toolsOpen: false, open: {},
+  voice: { listening: false, out: false }, mode: 'monitor', filter: 'all', baseline: null, started: false, tick: 0, toolsOpen: false, open: {},
   awaitingFor: null, assess: {}, lastRefreshAt: 0, mounted: false, rafId: 0, deep: {}, repo: { state: 'idle', idx: null }, repoQ: '',
 };
 
@@ -261,6 +262,7 @@ function secCore(info) {
     h('div', { class: 'aic-stage', 'data-s': core.state.toLowerCase() },
       h('i', { class: 'aic-ring r1' }), h('i', { class: 'aic-ring r2' }), h('i', { class: 'aic-ring r3' }),
       h('div', { class: 'aic-orb' }, jarvisAvatar(), h('div', { class: 'aic-orb-t' }, h('b', { text: 'JARVIS' }), h('small', { text: core.state.replace(/_/g, ' ') })))),
+    h('div', { class: 'aic-bubble' }, (() => { if (!S.snap) return 'Reading your data\u2026'; const n = visibleFindings().filter(x => x.severity === 'warning' || x.severity === 'error').length; return n ? n + (n === 1 ? ' item needs' : ' items need') + ' your review.' : 'All clear. Nothing needs you right now.'; })()),
     h('div', { class: 'aic-cs' }, h('h2', { text: core.state.replace(/_/g, ' ') }), h('p', { text: core.detail })),
     h('ol', { class: 'aic-life', 'aria-label': 'Intelligence lifecycle' }, life.map(s => h('li', { class: (s.reached ? (s.failed ? 'on fail ' : 'on ') : '') + (s.available ? '' : 'na'), title: s.available ? (s.reached ? 'Happened in the latest request' : 'Not reached in the latest request') : 'BT has no automated verification step yet', text: s.label }))),
     mission);
@@ -771,6 +773,39 @@ function secResponse() {
 // ───────────────────────── command bar + palette ─────────────────────────
 const CHIPS = ['What needs my attention?', 'What is blocking closing?', 'What inventory is at risk?'];
 function openChat() { if (window.BTAgent && typeof window.BTAgent.open === 'function') window.BTAgent.open(); else toast('The chat assistant is still loading. Try again in a moment.'); }
+
+// ── voice (browser speech; see js/ai-center/voice.js) ──
+const LS_VOICE = 'bt_aic_voice_v1';
+const voiceLang = () => (navigator.language && /^[a-z]{2}(-[A-Z]{2})?$/.test(navigator.language) ? navigator.language : 'en-US');
+let recog = null;
+function voiceStop() { if (recog) recog.stop(); }
+function voiceToggle() {
+  if (S.voice.listening) { voiceStop(); return; }
+  V.stopSpeaking(window);
+  if (!window.BTAgent) { toast('The assistant is still loading. Try again in a moment.'); return; }
+  const pref = lsGet(LS_VOICE) || {};
+  if (!pref.noticed) { lsSet(LS_VOICE, { ...pref, noticed: true }); toast('Voice uses your browser\u2019s speech service. Audio may be processed by the browser vendor.'); }
+  recog = V.createRecognizer(window, {
+    lang: voiceLang(),
+    onInterim: t => { const q = $('#aic-q'); if (q) q.value = t; },
+    onFinal: t => { const q = $('#aic-q'); if (q) q.value = ''; toast('Heard: \u201C' + t.slice(0, 80) + '\u201D'); ask(t); },
+    onEnd: () => { S.voice.listening = false; render(); },
+    onError: code => toast(code === 'not-allowed' || code === 'service-not-allowed' ? 'Microphone permission was denied. Allow it in the browser site settings.' : code === 'no-speech' ? 'I did not hear anything. Try again.' : code === 'network' ? 'Voice needs an internet connection.' : 'Voice input failed (' + code + ').'),
+  });
+  if (!recog) return;
+  try { recog.start(); S.voice.listening = true; render(); } catch (err) { toast('Could not start the microphone: ' + (err && err.message ? err.message : 'unknown error')); }
+}
+function micButton() {
+  if (!V.voiceSupport(window).input) return h('button', { class: 'aic-mic', disabled: true, title: 'Voice input is not available in this browser', 'aria-label': 'Voice input unavailable', text: '🎙' });
+  const on = S.voice.listening;
+  return h('button', { class: 'aic-mic' + (on ? ' on' : ''), 'aria-pressed': String(on), title: on ? 'Listening. Tap to stop' : 'Speak to JARVIS', 'aria-label': on ? 'Stop listening' : 'Speak to JARVIS', text: on ? '⏹' : '🎙', onclick: voiceToggle });
+}
+function speakerButton() {
+  if (!V.voiceSupport(window).output) return null; // no fake control when the browser cannot speak
+  const on = S.voice.out;
+  return h('button', { class: 'aic-spk' + (on ? ' on' : ''), 'aria-pressed': String(on), title: on ? 'Spoken answers on' : 'Spoken answers off', 'aria-label': 'Read answers aloud', text: on ? '🔊' : '🔈',
+    onclick: () => { S.voice.out = !S.voice.out; if (!S.voice.out) V.stopSpeaking(window); render(); } });
+}
 function cmdBar() {
   const input = h('input', { id: 'aic-q', type: 'text', placeholder: 'Ask JARVIS anything about your business…', 'aria-label': 'Ask BT', autocomplete: 'off', enterkeyhint: 'send', maxlength: '2000' });
   const go = () => { const v = input.value; if (v.trim()) { input.value = ''; ask(v); } };
@@ -778,7 +813,8 @@ function cmdBar() {
   return h('div', { class: 'aic-cmd' },
     h('div', { class: 'aic-chips' }, CHIPS.map(c => h('button', { text: c, onclick: () => ask(c) }))),
     h('div', { class: 'aic-form' }, input,
-      h('button', { class: 'aic-mic', disabled: true, title: 'Voice is not available: BT has no voice pipeline yet', 'aria-label': 'Voice input unavailable', text: '🎙' }),
+      micButton(),
+      speakerButton(),
       h('button', { class: 'aic-chatbtn', title: 'Open chat assistant', 'aria-label': 'Open chat assistant', onclick: openChat }, h('span', { 'aria-hidden': 'true', text: '\u{1F4AC}' }), h('span', { class: 'aic-chatbtn-t', text: 'Chat' })),
       h('button', { class: 'aic-p', 'aria-label': 'Send', text: '➤', onclick: go }),
       h('button', { 'aria-label': 'Open command palette', text: '⌘K', onclick: openPalette })));
@@ -840,6 +876,7 @@ function onTelemetry(e) {
   if (e.type === 'approval_requested' && window.BTAgent && pageOn()) { toast('BT needs your approval.'); if (typeof window.BTAgent.approvals === 'function') S.mode = 'act'; else window.BTAgent.open(); }
   if (e.type === 'answer' && S.awaitingFor) { S.assess[S.awaitingFor] = { text: (e.metadata && e.metadata.text) || '', at: e.timestamp, investigation: window.BTAgent && typeof window.BTAgent.investigationFor === 'function' ? window.BTAgent.investigationFor(S.awaitingFor) : null }; S.awaitingFor = null; }
   if (e.type === 'error' || e.type === 'cancelled') S.awaitingFor = null;
+  if (e.type === 'answer' && S.voice.out && e.metadata && e.metadata.text) V.speak(window, e.metadata.text, voiceLang());
   if (e.type === 'tool_end' && e.status === 'ok' && e.metadata && (e.metadata.risk === 'write' || e.metadata.risk === 'critical') && e.source !== 'ai-center') setTimeout(() => refresh({ force: true }), 800);
   if (pageOn()) render();
 }
