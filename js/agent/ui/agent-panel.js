@@ -19,7 +19,8 @@ import { listFacts, addFact, deleteFact, getRules, saveRules, MAX_RULES, MAX_FAC
 import { tryInstant } from '../core/instant.js';
 import { getKillState, setKillState } from '../core/kill-switch.js';
 import { loadPendingUndos, markUndone } from '../core/undo-store.js';
-import { emit as emitTelemetry } from '../core/telemetry.js';
+import { emit as emitTelemetry, subscribe as subscribeTelemetry } from '../core/telemetry.js';
+import * as V from './voice.js';
 import { summarizeUsage, summarizeAudit, fetchUsage, fetchAudit } from '../core/usage-stats.js';
 
 const getSb = () => (typeof window.btGetSupabaseClient === 'function' ? window.btGetSupabaseClient() : null);
@@ -52,6 +53,7 @@ export function mountAgentPanel() {
   let convDbId = null;   // saved-conversation id (created on the first answer)
   let pruned = false;
   let busy = false;
+  let micBtn = null, spkBtn = null, recog = null, listening = false;
   let abort = null;
   let sensitive = false;
   let lastSpecialist = null;
@@ -310,7 +312,7 @@ export function mountAgentPanel() {
     log.append(b); log.scrollTop = log.scrollHeight;
     return b;
   }
-  function setBusy(v) { busy = v; send.disabled = v; text.disabled = v; sheet.classList.toggle('ag-busy', v); }
+  function setBusy(v) { busy = v; send.disabled = v; text.disabled = v; if (micBtn) micBtn.disabled = v; sheet.classList.toggle('ag-busy', v); }
 
   // Structured results of orchestrated investigations (in memory only, last 10): the AI Center reads them to show typed
   // evidence, confidence and the recommendation. Never persisted: they can contain business figures.
@@ -384,7 +386,7 @@ export function mountAgentPanel() {
     let tries = 0;
     const t = setInterval(() => { if (onCenter()) { clearInterval(t); openHere(); } else if (++tries > 40) clearInterval(t); }, 50);
   }
-  function close() { rejectAllPending(); sheet.hidden = true; fab.classList.remove('ag-hide'); if (abort) abort.abort(); }
+  function close() { voiceStop(); V.stopSpeaking(window); rejectAllPending(); sheet.hidden = true; fab.classList.remove('ag-hide'); if (abort) abort.abort(); }
   // Leaving BT Intelligence closes the chat (pending approvals are rejected, exactly like pressing close).
   window.addEventListener('hashchange', () => setTimeout(() => { if (!sheet.hidden && !onCenter()) close(); }, 150));
 
@@ -434,6 +436,37 @@ export function mountAgentPanel() {
   paintLock(); refreshKill();
   send.onclick = () => ask(text.value);
   text.addEventListener('input', autosize);
+
+  // ── JARVIS voice in the chat sheet: browser speech only; text goes through the SAME ask() as typing, so approvals,
+  //    hard blocks, the kill switch and audit are unchanged (and voice can never approve: approvals need a real tap). ──
+  function voiceStop() { if (recog) recog.stop(); }
+  function paintVoice() {
+    if (micBtn) { micBtn.classList.toggle('on', listening); micBtn.setAttribute('aria-pressed', String(listening)); micBtn.textContent = listening ? '\u23F9' : '\uD83C\uDF99'; micBtn.title = listening ? 'Listening. Tap to stop' : 'Speak to JARVIS'; micBtn.setAttribute('aria-label', listening ? 'Stop listening' : 'Speak to JARVIS'); }
+    if (spkBtn) { const on = V.getVoiceOut(); spkBtn.classList.toggle('on', on); spkBtn.setAttribute('aria-pressed', String(on)); spkBtn.textContent = on ? '\uD83D\uDD0A' : '\uD83D\uDD08'; spkBtn.title = on ? 'Spoken answers on' : 'Spoken answers off'; }
+  }
+  function voiceToggle() {
+    if (listening) { voiceStop(); return; }
+    if (busy) return;
+    V.stopSpeaking(window);
+    let noticed = false; try { noticed = localStorage.getItem('bt_voice_notice_v1') === '1'; localStorage.setItem('bt_voice_notice_v1', '1'); } catch (_) { /* ignore */ }
+    if (!noticed) addBubble('status', 'Voice uses your browser\u2019s speech service. Audio may be processed by the browser vendor.');
+    recog = V.createRecognizer(window, {
+      lang: V.voiceLang(window),
+      onInterim: t => { text.value = t; autosize(); },
+      onFinal: t => { addBubble('status', 'Heard: \u201C' + t.slice(0, 120) + '\u201D'); ask(t); },
+      onEnd: () => { listening = false; paintVoice(); },
+      onError: code => addBubble('status', code === 'not-allowed' || code === 'service-not-allowed' ? 'Microphone permission was denied. Allow it in the browser site settings.' : code === 'no-speech' ? 'I did not hear anything. Try again.' : code === 'network' ? 'Voice needs an internet connection.' : 'Voice input failed (' + code + ').'),
+    });
+    if (!recog) return;
+    try { recog.start(); listening = true; paintVoice(); } catch (err) { addBubble('status', 'Could not start the microphone: ' + (err && err.message ? err.message : 'unknown error')); }
+  }
+  const vs = V.voiceSupport(window);
+  if (vs.input) { micBtn = document.createElement('button'); micBtn.id = 'ag-mic'; micBtn.className = 'ag-mic'; micBtn.type = 'button'; micBtn.addEventListener('click', voiceToggle); send.before(micBtn); }
+  if (vs.output) { spkBtn = document.createElement('button'); spkBtn.id = 'ag-spk'; spkBtn.className = 'ag-spk'; spkBtn.type = 'button'; spkBtn.setAttribute('aria-label', 'Read answers aloud'); spkBtn.addEventListener('click', () => { const on = !V.getVoiceOut(); V.setVoiceOut(on); if (!on) V.stopSpeaking(window); paintVoice(); }); send.before(spkBtn); }
+  paintVoice();
+  // the ONE place answers are spoken (model answers and instant local answers), whichever page the question came from
+  subscribeTelemetry(e => { if ((e.type === 'answer' || e.type === 'instant') && V.getVoiceOut() && e.metadata && e.metadata.text) V.speak(window, e.metadata.text, V.voiceLang(window)); });
+
   text.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(text.value); } });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !sheet.hidden) close(); });
 }

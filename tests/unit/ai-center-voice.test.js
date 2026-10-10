@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { voiceSupport, speakable, createRecognizer, speak } from '../../js/ai-center/voice.js';
+import { voiceSupport, speakable, createRecognizer, speak } from '../../js/agent/ui/voice.js';
 
 test('support detection is honest: nothing available means nothing claimed', () => {
   assert.deepEqual(voiceSupport({}), { input: false, output: false });

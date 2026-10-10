@@ -1,4 +1,4 @@
-// BT JARVIS voice: browser-native speech only (Web Speech API). No audio is recorded, stored or sent by BT itself.
+// BT JARVIS voice (shared by the AI Center bar AND the chat sheet): browser-native speech only (Web Speech API). No audio is recorded, stored or sent by BT itself.
 // Input  : SpeechRecognition -> text -> the SAME ask() path as typing. Voice can never approve anything: approvals
 //          still need a real user tap (BTAgent.decide refuses untrusted gestures).
 // Output : speechSynthesis reads a short plain-text version of the latest answer. Off by default.
@@ -43,3 +43,9 @@ export function speak(win, text, lang = 'en-US') {
   win.speechSynthesis.speak(u); return true;
 }
 export function stopSpeaking(win) { if (voiceSupport(win).output) win.speechSynthesis.cancel(); }
+
+// Shared preference + language, so the AI Center toggle and the chat-sheet toggle always agree.
+const LS_OUT = 'bt_voice_out_v1';
+export function getVoiceOut() { try { return localStorage.getItem(LS_OUT) === '1'; } catch (_) { return false; } }
+export function setVoiceOut(on) { try { localStorage.setItem(LS_OUT, on ? '1' : '0'); } catch (_) { /* private mode: the toggle still works for this page */ } }
+export function voiceLang(win = window) { const l = win.navigator && win.navigator.language; return l && /^[a-z]{2}(-[A-Z]{2})?$/.test(l) ? l : 'en-US'; }

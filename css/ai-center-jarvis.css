@@ -235,3 +235,9 @@ body.aic-open .aic-modal :focus-visible{outline:2px solid #20DDF5;outline-offset
 .aic-tl-failed>.aic-tld{background:var(--j-er,#FF7A8A)}
 .aic-tls time{font-size:12px;color:var(--muted)}
 @media(prefers-reduced-motion:no-preference){.aic-tl-active>.aic-tld{animation:j-rec 1.4s ease-in-out infinite}}
+
+/* ── chat-sheet voice buttons ── */
+body.aic-open .ag-mic,body.aic-open .ag-spk{background:#111B2B;border-color:#24344d;color:#EDF4FF}
+body.aic-open .ag-mic.on{background:#FF7A8A;border-color:#FF7A8A;color:#1a0509}
+body.aic-open .ag-spk.on{border-color:#20DDF5;color:#20DDF5}
+@media(prefers-reduced-motion:no-preference){body.aic-open .ag-mic.on,.ag-mic.on{animation:j-rec 1.2s ease-in-out infinite}}

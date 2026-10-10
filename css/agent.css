@@ -62,3 +62,7 @@ body.bt-kiosk-mode .ag-fab{display:none}
 .ag-today-t{font-weight:700;margin-bottom:4px}
 .ag-today ul{margin:0 0 6px;padding-left:18px;line-height:1.45}
 .ag-today-b{border:1px solid var(--border-strong);background:var(--surface);color:var(--text);border-radius:var(--r-pill);padding:6px 12px;font-size:12px;cursor:pointer}
+.ag-mic,.ag-spk{width:42px;height:42px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;flex:none}
+.ag-mic:disabled{opacity:.5}
+.ag-mic.on{background:var(--red);border-color:var(--red);color:#fff}
+.ag-spk.on{border-color:var(--accent);color:var(--accent)}

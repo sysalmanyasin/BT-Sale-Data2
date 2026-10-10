@@ -10,7 +10,7 @@
 // All text is inserted with textContent (never innerHTML) except the
 // assistant's own markdown, which goes through its existing escaping renderer.
 // ══════════════════════════════════════════════════════════════════════
-import * as V from './voice.js';
+import * as V from '../agent/ui/voice.js';
 import { listTools } from '../agent/core/tool-registry.js';
 import * as T from '../agent/core/telemetry.js';
 import { SPECIALISTS } from '../agent/core/specialists.js';
@@ -29,7 +29,7 @@ const STALE_MS = 5 * 60000, REFRESH_MS = 45000;
 
 const S = {
   snap: null, health: null, actions: null, history: [], loading: false, error: null,
-  voice: { listening: false, out: false }, mode: 'monitor', filter: 'all', baseline: null, started: false, tick: 0, toolsOpen: false, open: {},
+  voice: { listening: false, out: V.getVoiceOut() }, mode: 'monitor', filter: 'all', baseline: null, started: false, tick: 0, toolsOpen: false, open: {},
   awaitingFor: null, assess: {}, lastRefreshAt: 0, mounted: false, rafId: 0, deep: {}, repo: { state: 'idle', idx: null }, repoQ: '',
 };
 
@@ -851,9 +851,9 @@ function secResponse() {
 const CHIPS = ['What needs my attention?', 'What is blocking closing?', 'What inventory is at risk?'];
 function openChat() { if (window.BTAgent && typeof window.BTAgent.open === 'function') window.BTAgent.open(); else toast('The chat assistant is still loading. Try again in a moment.'); }
 
-// ── voice (browser speech; see js/ai-center/voice.js) ──
+// ── voice (browser speech; shared module js/agent/ui/voice.js; spoken answers are handled by the chat panel) ──
 const LS_VOICE = 'bt_aic_voice_v1';
-const voiceLang = () => (navigator.language && /^[a-z]{2}(-[A-Z]{2})?$/.test(navigator.language) ? navigator.language : 'en-US');
+const voiceLang = () => V.voiceLang(window);
 let recog = null;
 function voiceStop() { if (recog) recog.stop(); }
 function voiceToggle() {
@@ -881,7 +881,7 @@ function speakerButton() {
   if (!V.voiceSupport(window).output) return null; // no fake control when the browser cannot speak
   const on = S.voice.out;
   return h('button', { class: 'aic-spk' + (on ? ' on' : ''), 'aria-pressed': String(on), title: on ? 'Spoken answers on' : 'Spoken answers off', 'aria-label': 'Read answers aloud', text: on ? '🔊' : '🔈',
-    onclick: () => { S.voice.out = !S.voice.out; if (!S.voice.out) V.stopSpeaking(window); render(); } });
+    onclick: () => { S.voice.out = !S.voice.out; V.setVoiceOut(S.voice.out); if (!S.voice.out) V.stopSpeaking(window); render(); } });
 }
 function cmdBar() {
   const input = h('input', { id: 'aic-q', type: 'text', placeholder: 'Ask JARVIS anything about your business…', 'aria-label': 'Ask BT', autocomplete: 'off', enterkeyhint: 'send', maxlength: '2000' });
@@ -954,7 +954,6 @@ function onTelemetry(e) {
   if (e.type === 'approval_requested' && window.BTAgent && pageOn()) { toast('BT needs your approval.'); if (typeof window.BTAgent.approvals === 'function') S.mode = 'act'; else window.BTAgent.open(); }
   if (e.type === 'answer' && S.awaitingFor) { S.assess[S.awaitingFor] = { text: (e.metadata && e.metadata.text) || '', at: e.timestamp, investigation: window.BTAgent && typeof window.BTAgent.investigationFor === 'function' ? window.BTAgent.investigationFor(S.awaitingFor) : null }; S.awaitingFor = null; }
   if (e.type === 'error' || e.type === 'cancelled') S.awaitingFor = null;
-  if (e.type === 'answer' && S.voice.out && e.metadata && e.metadata.text) V.speak(window, e.metadata.text, voiceLang());
   if (e.type === 'tool_end' && e.status === 'ok' && e.metadata && (e.metadata.risk === 'write' || e.metadata.risk === 'critical') && e.source !== 'ai-center') setTimeout(() => refresh({ force: true }), 800);
   if (pageOn()) render();
 }
