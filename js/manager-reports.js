@@ -9,10 +9,10 @@
 // ══════════════════════════════════════════════════════════════════════
 import { Print } from './print.js';
 import { STAFF } from './config.js';
-import { _ni, _fc2 } from './manager-shared.js';
+import { _ni, _fc2, _mgrEsc } from './manager-shared.js';
 import { _crdData, _crdData_cur, _crdNet, loadCreditMonth } from './manager-credit.js';
 import { _genRows_cur, _genFinal, _genIncentive } from './manager-generic.js';
-import { _salRows_cur, _salNet, loadSalaryMonth } from './manager-salary.js';
+import { _salRows_cur, _salNet, _salCols, loadSalaryMonth } from './manager-salary.js';
 
 // MANAGER PRINT FUNCTIONS
 // ══════════════════════════════
@@ -83,6 +83,7 @@ function printSalaryReport() {
   }
   const today = new Date().toLocaleDateString('en-PK',{day:'2-digit',month:'short',year:'numeric'});
   const norm = s => (s||'').trim().toLowerCase();
+  const xcols = _salCols(rows);
   const trows = rows.map((r,i) => {
     // Name/Designation: resolve live off the Staff Registry (STAFF), same
     // as the on-screen table (see manager-salary.js renderSalaryTable) —
@@ -103,11 +104,12 @@ function printSalaryReport() {
     <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${_fc2(r.hoSal)}</td>
     <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${_fc2(r.advance)}</td>
     <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">₨${_fc2(r.generic)}</td>
+    ${xcols.map(c => { const e = (r.extras || []).find(x => x.id === c.id); return `<td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace;color:${c.sign === '-' ? '#b91c1c' : '#15803d'}">${c.sign === '-' ? '−' : '+'}₨${_fc2(e ? e.amount : 0)}</td>`; }).join('')}
     <td style="padding:5px 8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace;font-weight:700;color:#1e40af">₨${_fc2(_salNet(r))}</td>
   </tr>`;
   }).join('');
   const totNet = rows.reduce((s,r) => s + _salNet(r), 0);
-  _mgrPrint(`<div style="max-width:700px;margin:0 auto;font-family:Arial,sans-serif">
+  _mgrPrint(`<div style="max-width:${700 + xcols.length * 80}px;margin:0 auto;font-family:Arial,sans-serif">
     <div style="background:#0f172a;color:#fff;padding:14px 20px;border-radius:8px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
       <div><h2 style="margin:0;font-size:16px">FDPP SALARY DETAIL — BAHRIA TOWN</h2><p style="margin:4px 0 0;font-size:11px;opacity:.7">${my}</p></div>
       <div style="font-size:11px;opacity:.7">Printed: ${today}</div>
@@ -121,11 +123,12 @@ function printSalaryReport() {
         <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">HO Salary</th>
         <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">Advance</th>
         <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">Generic</th>
+        ${xcols.map(c => `<th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">${_mgrEsc(c.name)} (${c.sign === '-' ? '−' : '+'})</th>`).join('')}
         <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">Net Salary</th>
       </tr></thead>
       <tbody>${trows}</tbody>
       <tfoot><tr style="background:#eff6ff">
-        <td colspan="7" style="padding:7px 8px;font-weight:700;font-size:11px">TOTAL</td>
+        <td colspan="${7 + xcols.length}" style="padding:7px 8px;font-weight:700;font-size:11px">TOTAL</td>
         <td style="padding:7px 8px;text-align:right;font-weight:700;font-family:monospace;color:#1e40af">₨${_fc2(totNet)}</td>
       </tr></tfoot>
     </table>

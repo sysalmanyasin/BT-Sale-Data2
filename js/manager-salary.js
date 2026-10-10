@@ -18,7 +18,7 @@
 // ══════════════════════════════════════════════════════════════════════
 import { Repository } from './repository.js';
 import { STAFF } from './config.js';
-import { _ni, _fc2, _mgrEsc, mgrLoad, mgrSave, mgrAutosave, reconcileStaffRows } from './manager-shared.js';
+import { _ni, _fc2, _mgrEsc, mgrLoad, mgrSave, mgrAutosave, reconcileStaffRows, _salExtrasNet } from './manager-shared.js';
 import { activeStaff } from './manager-staff.js';
 import { _crdData, _crdData_cur } from './manager-credit.js';
 import { _genRows, _genRows_cur, _genFinal } from './manager-generic.js';
@@ -33,11 +33,35 @@ function _salRows(my) {
     ({staffId: e.staffId, name: e.name, desig: e.designation, days: 31, hoSal: 0, advance: 0, generic: 0}));
 }
 
-function _salNet(r) { return _ni(r.hoSal) - _ni(r.advance) + _ni(r.generic); }
+// Net = HO Salary − Advance + Generic, then every custom column is added (+)
+// or subtracted (−) according to its own sign. Extras live on the row itself
+// (see _salExtrasNet in manager-shared.js), so this works for any row from any month.
+function _salNet(r) { return _ni(r.hoSal) - _ni(r.advance) + _ni(r.generic) + _salExtrasNet(r); }
+
+// ── Custom columns ───────────────────────────────────────────────────
+// Ordered, de-duplicated column definitions found across all rows.
+function _salCols(rows) {
+  const out = [], seen = new Set();
+  (rows || []).forEach(r => (r.extras || []).forEach(e => {
+    if (e && e.id && !seen.has(e.id)) { seen.add(e.id); out.push({ id: e.id, name: e.name, sign: e.sign === '-' ? '-' : '+' }); }
+  }));
+  return out;
+}
+// Make every row carry every column (same order, same name/sign), keeping amounts.
+function _salNormalizeExtras(rows) {
+  const cols = _salCols(rows);
+  (rows || []).forEach(r => {
+    const have = new Map((r.extras || []).map(e => [e.id, e]));
+    r.extras = cols.map(c => ({ ...c, amount: have.has(c.id) ? _ni(have.get(c.id).amount) : 0 }));
+  });
+  return cols;
+}
 
 function renderSalaryTable(rows) {
   const tbody = document.getElementById('sal-tbody');
   if (!tbody) return;
+  const _cols = _salNormalizeExtras(rows);
+  _salRenderHeader(_cols);
   // FIX 1+2: Load credit detail for advance tooltip; find staff card index
   const _salMon = document.getElementById('sal-month-sel')?.value || '';
   const _crdForAdv = _crdData(_salMon);
@@ -79,12 +103,33 @@ function renderSalaryTable(rows) {
       <td class="mgr-td"><input type="number" value="${r.hoSal||0}" class="mgr-inp sal-num" placeholder="0" oninput="salRowChange(${i},'hoSal',this.value);recalcSalNet(${i})"></td>
       <td class="mgr-td" ${_advTitle ? 'title="'+_advTitle+'" style="position:relative"' : ''}><input type="number" value="${r.advance||0}" class="mgr-inp sal-num${_advTitle?' sal-adv-linked':''}" placeholder="0" oninput="salRowChange(${i},'advance',this.value);recalcSalNet(${i})">${_advTitle ? '<span style="position:absolute;top:2px;right:3px;font-size:9px;color:var(--accent);pointer-events:none" title="'+_advTitle+'">💳</span>' : ''}</td>
       <td class="mgr-td"><input type="number" value="${r.generic||0}" class="mgr-inp sal-num" placeholder="0" oninput="salRowChange(${i},'generic',this.value);recalcSalNet(${i})"></td>
+      ${_cols.map(c => `<td class="mgr-td"><input type="number" value="${_ni(r.extras.find(e => e.id === c.id)?.amount) || 0}" class="mgr-inp sal-num" placeholder="0" oninput="salExtraChange(${i},'${c.id}',this.value);recalcSalNet(${i})"></td>`).join('')}
       <td class="mgr-td"><input type="number" id="sal-net-${i}" class="mgr-inp calc sal-num" value="${_salNet(r)}" readonly></td>
       <td class="mgr-td sal-c"><button class="crd-print-toggle${skipped ? ' is-off' : ''}" onclick="toggleSalPrintSkip(${i})" title="${skipped ? 'Excluded from print — click to include' : 'Included in print — click to exclude'}">${skipped ? '🖨🚫' : '🖨'}</button></td>
       <td class="mgr-td sal-c"><button class="mgr-del" onclick="deleteSalRow(${i})">🗑</button></td>
     </tr>`;
   }).join('');
   _salUpdateFooter(rows);
+}
+
+// Inserts one <th> per custom column just before the static "Net Salary" header.
+function _salRenderHeader(cols) {
+  const net = document.getElementById('sal-th-net');
+  if (!net) return;
+  const tr = net.parentNode;
+  tr.querySelectorAll('th.sal-extra-th').forEach(n => n.remove());
+  const base = net.getAttribute('style') || '';
+  cols.forEach(c => {
+    const th = document.createElement('th');
+    th.className = 'sal-extra-th';
+    th.setAttribute('style', base);
+    th.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;gap:4px">'
+      + '<span style="cursor:pointer" title="Rename column" onclick="salRenameColumn(\'' + c.id + '\')">' + _mgrEsc(c.name) + '</span>'
+      + '<button title="' + (c.sign === '-' ? 'Subtracts from Net — click to make it Add' : 'Adds to Net — click to make it Subtract') + '" onclick="salToggleColSign(\'' + c.id + '\')"'
+      + ' style="border:none;border-radius:4px;padding:0 6px;font-weight:800;font-size:12px;cursor:pointer;color:#fff;background:' + (c.sign === '-' ? '#dc2626' : '#16a34a') + '">' + (c.sign === '-' ? '−' : '+') + '</button>'
+      + '<button title="Remove column" onclick="salRemoveColumn(\'' + c.id + '\')" style="border:none;background:none;cursor:pointer;color:var(--muted);font-size:11px">✕</button></div>';
+    tr.insertBefore(th, net);
+  });
 }
 
 let _salRows_cur = [];
@@ -103,7 +148,7 @@ function loadSalaryMonth(my) {
   if (_prevSalRows) {
     _salRows_cur.forEach(r => {
       const p = _prevSalRows.find(pr => norm(pr.name) === norm(r.name));
-      if (p) { r.days = p.days; r.hoSal = p.hoSal; }
+      if (p) { r.days = p.days; r.hoSal = p.hoSal; if (p.extras) r.extras = JSON.parse(JSON.stringify(p.extras)); }
     });
   }
   _salLoadedMonth = my;
@@ -144,6 +189,47 @@ function salRowChange(i, field, val) {
   _salRows_cur[i][field] = field === 'name' || field === 'desig' ? val : _ni(val);
   mgrAutosave('salary', () => saveSalaryData(true));
 }
+function salExtraChange(i, id, val) {
+  const r = _salRows_cur[i];
+  if (!r) return;
+  const e = (r.extras || []).find(x => x.id === id);
+  if (e) e.amount = _ni(val);
+  mgrAutosave('salary', () => saveSalaryData(true));
+}
+function salAddColumn(name, sign) {
+  name = (name || '').trim();
+  if (!name) { toast('⚠ Enter a column name', 'w'); return false; }
+  if (_salCols(_salRows_cur).some(c => c.name.trim().toLowerCase() === name.toLowerCase())) { toast('⚠ A column named "' + name + '" already exists', 'w'); return false; }
+  const id = 'x' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  const sg = sign === '-' ? '-' : '+';
+  _salRows_cur.forEach(r => { (r.extras = r.extras || []).push({ id, name, sign: sg, amount: 0 }); });
+  renderSalaryTable(_salRows_cur);
+  mgrAutosave('salary', () => saveSalaryData(true));
+  return true;
+}
+function salAddColumnFromBar() {
+  const n = document.getElementById('sal-newcol-name'), s = document.getElementById('sal-newcol-sign');
+  if (salAddColumn(n && n.value, s && s.value)) { if (n) n.value = ''; }
+}
+function _salMapCol(id, fn) {
+  _salRows_cur.forEach(r => (r.extras || []).forEach(e => { if (e.id === id) fn(e); }));
+  renderSalaryTable(_salRows_cur);
+  mgrAutosave('salary', () => saveSalaryData(true));
+}
+function salToggleColSign(id) { _salMapCol(id, e => { e.sign = e.sign === '-' ? '+' : '-'; }); }
+function salRenameColumn(id) {
+  const cur = (_salCols(_salRows_cur).find(c => c.id === id) || {}).name || '';
+  const nn = (prompt('Rename column:', cur) || '').trim();
+  if (nn) _salMapCol(id, e => { e.name = nn; });
+}
+function salRemoveColumn(id) {
+  const c = _salCols(_salRows_cur).find(x => x.id === id);
+  if (!c) return;
+  if (!confirm('Remove column "' + c.name + '" and its amounts for this month?')) return;
+  _salRows_cur.forEach(r => { r.extras = (r.extras || []).filter(e => e.id !== id); });
+  renderSalaryTable(_salRows_cur);
+  mgrAutosave('salary', () => saveSalaryData(true));
+}
 function recalcSalNet(i) {
   const el = document.getElementById('sal-net-' + i);
   if (el) el.value = _salNet(_salRows_cur[i]);
@@ -154,18 +240,24 @@ function _salUpdateFooter(rows) {
   const totalAdv = rows.reduce((s,r) => s + _ni(r.advance), 0);
   const totalGen = rows.reduce((s,r) => s + _ni(r.generic), 0);
   const totalNet = rows.reduce((s,r) => s + _salNet(r), 0);
+  const _fcols = _salCols(rows);
+  const extraTds = _fcols.map(c => {
+    const t = rows.reduce((s,r) => s + _ni((r.extras || []).find(e => e.id === c.id)?.amount), 0);
+    return `<td class="mgr-td" style="text-align:center;font-weight:700;font-family:var(--mono);color:${c.sign === '-' ? '#dc2626' : '#16a34a'}">${c.sign === '-' ? '−' : '+'}₨${_fc2(t)}</td>`;
+  }).join('');
   document.getElementById('sal-tfoot').innerHTML = `<tr class="mgr-tfoot">
     <td colspan="4" style="text-align:right;padding:7px 10px;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">TOTALS</td>
     <td class="mgr-td" style="text-align:center;font-weight:700;font-family:var(--mono)">₨${_fc2(totalHO)}</td>
     <td class="mgr-td" style="text-align:center;font-weight:700;font-family:var(--mono)">₨${_fc2(totalAdv)}</td>
     <td class="mgr-td" style="text-align:center;font-weight:700;font-family:var(--mono)">₨${_fc2(totalGen)}</td>
+    ${extraTds}
     <td class="mgr-td" style="text-align:center;font-weight:700;font-family:var(--mono);color:var(--accent)">₨${_fc2(totalNet)}</td>
     <td></td>
     <td></td>
   </tr>`;
 }
 function addSalaryRow() {
-  _salRows_cur.push({name:'', desig:'Salesman', days:31, hoSal:0, advance:0, generic:0});
+  _salRows_cur.push({name:'', desig:'Salesman', days:31, hoSal:0, advance:0, generic:0, extras:[]});
   renderSalaryTable(_salRows_cur);
   mgrAutosave('salary', () => saveSalaryData(true));
 }
@@ -241,9 +333,11 @@ function autoFillSalaryFromSheets() {
 Object.assign(window, {
   _salRows, _salRows_cur, renderSalaryTable, loadSalaryMonth, salRowChange, addSalaryRow,
   deleteSalRow, saveSalaryData, autoFillSalaryFromSheets, _salNet, _salUpdateFooter, toggleSalPrintSkip,
+  _salCols, salExtraChange, salAddColumn, salAddColumnFromBar, salToggleColSign, salRenameColumn, salRemoveColumn,
 });
 
 export {
   _salRows, _salRows_cur, renderSalaryTable, loadSalaryMonth, salRowChange, addSalaryRow,
   deleteSalRow, saveSalaryData, autoFillSalaryFromSheets, _salNet, _salUpdateFooter, toggleSalPrintSkip,
+  _salCols, salExtraChange, salAddColumn, salAddColumnFromBar, salToggleColSign, salRenameColumn, salRemoveColumn,
 };

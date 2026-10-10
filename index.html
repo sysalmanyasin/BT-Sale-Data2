@@ -2398,8 +2398,17 @@ if ('serviceWorker' in navigator) {
       <button class="btn mgr-btn-secondary" style="margin-top:16px" onclick="autoFillSalaryFromSheets()" title="Pull Advance from Credit sheet & Generic from Generic Working for this month">⚡ Auto-Fill</button>
       <button id="mgr-save-salary" class="btn mgr-btn-primary" style="margin-top:16px" onclick="saveSalaryData()">💾 Save</button>
       <span style="font-size:11px;color:var(--muted);margin-left:8px">Auto-saves as you type.</span>
-      <button class="btn mgr-btn-secondary" style="margin-top:16px" onclick="salaryNextMonth()" title="Carry employee names & HO Salary to next month (Days, Advance, Generic reset to 0)">📋 Copy → Next Month</button>
+      <button class="btn mgr-btn-secondary" style="margin-top:16px" onclick="salaryNextMonth()" title="Carry employee names, HO Salary & extra columns to next month (Days, Advance, Generic, extra amounts reset to 0)">📋 Copy → Next Month</button>
       <button class="btn mgr-btn-secondary" style="margin-top:16px" onclick="printSalaryReport()">🖨 Print</button>
+    </div>
+    <div id="sal-col-bar" style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;font-size:12px">
+      <span style="color:var(--muted);font-weight:600">➕ Extra column:</span>
+      <input id="sal-newcol-name" type="text" placeholder="Name (e.g. Fine, Bonus)" maxlength="30" onkeydown="if(event.key==='Enter')salAddColumnFromBar()" style="font-size:12px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s2);color:var(--text);outline:none;min-width:170px">
+      <select id="sal-newcol-sign" style="font-size:12px;padding:7px 8px;border:1px solid var(--border);border-radius:7px;background:var(--s2);color:var(--text)">
+        <option value="+">+ Add to Net</option>
+        <option value="-">− Subtract from Net</option>
+      </select>
+      <button class="btn mgr-btn-secondary" onclick="salAddColumnFromBar()">Add Column</button>
     </div>
     <div class="mgr-table-scroll">
       <table id="sal-table" style="width:100%;border-collapse:collapse;font-size:12px;min-width:780px">
@@ -2412,7 +2421,7 @@ if ('serviceWorker' in navigator) {
             <th style="padding:8px 10px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">HO Salary</th>
             <th style="padding:8px 10px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Advance</th>
             <th style="padding:8px 10px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Generic</th>
-            <th style="padding:8px 10px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Net Salary</th>
+            <th id="sal-th-net" style="padding:8px 10px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Net Salary</th>
             <th style="padding:8px 10px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)" title="Include in Print">🖨</th>
             <th style="padding:8px 10px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:2px solid var(--border)">Del</th>
           </tr>
@@ -2815,7 +2824,7 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/reports-print.js?v=20260722a"></script>
 
 <!-- 11c. Manager Summary Export (Phase 5) -->
-<script type="module" src="js/manager-export.js?v=20260722a"></script>
+<script type="module" src="js/manager-export.js?v=20261010a"></script>
 
 <!-- 11e-pre. Real Google Sheets integration (replaces the old custom grid
      in notes-sheets.js's Sheets panel — see js/sheets-api.js / sheets-sync.js
@@ -2840,12 +2849,12 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/attendance-bridge.js"></script>
 <script type="module" src="js/manager-attendance.js"></script>
 <script type="module" src="js/manager-staff.js"></script>
-<script type="module" src="js/manager-salary.js?v=20260810a"></script>
+<script type="module" src="js/manager-salary.js?v=20261010a"></script>
 <script type="module" src="js/manager-generic.js?v=20260810a"></script>
 <script type="module" src="js/manager-credit.js?v=20260810a"></script>
 <script type="module" src="js/manager-payslip.js"></script>
 <script type="module" src="js/manager-unmatched.js"></script>
-<script type="module" src="js/manager-reports.js?v=20260810a"></script>
+<script type="module" src="js/manager-reports.js?v=20261010a"></script>
 <script type="module" src="js/manager-petty.js"></script>
 <script type="module" src="js/manager-incentive.js"></script>
 <!-- app-init.js: the actual whole-app bootstrap (was misplaced at the
@@ -2861,10 +2870,10 @@ if ('serviceWorker' in navigator) {
      renderNotesSheets() directly now; custom-sections.js never actually
      patched it either, per that same changelog's correction). See the
      file's own header comment for the historical detail. -->
-<script type="module" src="js/manager-page.js?v=20260806b"></script>
+<script type="module" src="js/manager-page.js?v=20261010a"></script>
 
 <!-- 13. Custom spreadsheet sections (manager add-on) -->
-<script type="module" src="js/custom-sections.js?v=20260810a"></script>
+<script type="module" src="js/custom-sections.js?v=20261010a"></script>
 
 <!-- 13b. Jazz Cash — Balance Tally (Daily Ledger now runs on the generalized Ledger, see ledger-page.js) -->
 <script type="module" src="js/jazz-cash.js?v=20260901a"></script>

@@ -170,7 +170,7 @@ function populateDashWorking(mon) {
   const mgr = JSON.parse(Repository.getItem('BT_ManagerWork_v1') || '{}');
   const salaryRows = (mgr.salary && mgr.salary[mon]) || [];
   const genericRows = (mgr.generic && mgr.generic[mon]) || [];
-  const salaryTotal = salaryRows.reduce((s, r) => s + (_ni(r.hoSal) - _ni(r.advance) + _ni(r.generic)), 0);
+  const salaryTotal = salaryRows.reduce((s, r) => s + (_ni(r.hoSal) - _ni(r.advance) + _ni(r.generic) + (r.extras || []).reduce((a, e) => a + (e.sign === '-' ? -1 : 1) * _ni(e.amount), 0)), 0);
   const genericTotal = genericRows.reduce((s, r) => s + (Math.round(_ni(r.genericSale) * 0.04) + _ni(r.extra)), 0);
   const pettyTotal = typeof _pettyTotalForMonth === 'function' ? _pettyTotalForMonth(mon) : 0;
   function fmt(v) { return (v != null && v !== '' && v !== 0) ? '₨' + _fc2(v) : '—'; }

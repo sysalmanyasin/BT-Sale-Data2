@@ -31,6 +31,10 @@ function _slipSalaryRow(my, name) {
   const rows = (data.salary && data.salary[my]) || [];
   return rows.find(r => _norm(r.name) === _norm(name)) || { desig: '', days: 31, hoSal: 0, advance: 0, generic: 0 };
 }
+// Custom salary-sheet columns that actually have an amount (zeros are left off the slip).
+function _slipExtras(salRow) {
+  return ((salRow && salRow.extras) || []).filter(e => _ni(e.amount)).map(e => ({ name: e.name, sign: e.sign, amount: e.amount }));
+}
 function _slipCreditRow(my, name) {
   const data = mgrLoad();
   const rows = (data.credit && data.credit[my]) || [];
@@ -107,6 +111,7 @@ function renderStaffPayslip(name) {
         ${row('HO Salary', salRow.hoSal)}
         ${row('Advance', salRow.advance, { color: _ni(salRow.advance) > 0 ? 'var(--red,#dc2626)' : 'var(--text)' })}
         ${row('Generic Add-on', salRow.generic)}
+        ${_slipExtras(salRow).map(e => row(_mgrEsc(e.name) + (e.sign === '-' ? ' (−)' : ' (+)'), e.amount, { color: e.sign === '-' ? 'var(--red,#dc2626)' : 'var(--text)' })).join('')}
         <div style="font-size:10px;color:var(--muted);padding:0 0 4px">↳ Incentive (4% of ₨${_fc2(genRow.genericSale)}): ₨${_fc2(_genIncentive(genRow))} + Extra: ₨${_fc2(genRow.extra)}</div>
         ${row('Net Salary', net, { bold: true, top: true, color: netCol })}
       </div>
@@ -174,6 +179,7 @@ function printStaffPayslip() {
         ${line('HO Salary', salRow.hoSal)}
         ${line('Advance', salRow.advance)}
         ${line('Generic Add-on', salRow.generic)}
+        ${_slipExtras(salRow).map(e => line(_mgrEsc(e.name) + (e.sign === '-' ? ' (−)' : ' (+)'), e.amount)).join('')}
         ${line('NET SALARY', net, { bold: true })}
       </tbody>
     </table>
@@ -212,6 +218,7 @@ function sendPayslipWhatsApp() {
     `HO Salary: Rs ${_fc2(salRow.hoSal)}`,
     `Advance: Rs ${_fc2(salRow.advance)}`,
     `Generic Add-on: Rs ${_fc2(salRow.generic)}`,
+    ..._slipExtras(salRow).map(e => `${e.name} (${e.sign === '-' ? '−' : '+'}): Rs ${_fc2(e.amount)}`),
     `*Net Salary: Rs ${_fc2(net)}*`,
     ``,
     `💳 *Credit Ledger — ${my}*`,

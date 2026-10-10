@@ -152,6 +152,15 @@ function _mgrEsc(s) {
 // fresh blank row for any active staff member missing one — always
 // returned in registry (Sr#) order, so Salary/Generic/Credit and the
 // Staff Registry itself always show the exact same people.
+// Salary-sheet custom columns ("extras"): each salary row carries its own
+// copy of the column definitions + amount — extras: [{id,name,sign:'+'|'-',amount}].
+// Keeping the definition on the row means it rides along with data.salary[month]
+// through sync / backup / Copy-Next-Month with no extra storage key, and any
+// consumer can compute a row's net from the row alone.
+function _salExtrasNet(r) {
+  return ((r && r.extras) || []).reduce((s, e) => s + (e.sign === '-' ? -1 : 1) * _ni(e.amount), 0);
+}
+
 function _rsrNorm(s) { return (s || '').trim().toLowerCase(); }
 function _mergeStaffRow(a, b) {
   const out = { ...a };
@@ -183,6 +192,6 @@ function reconcileStaffRows(activeList, storedRows, blankFactory) {
   });
 }
 
-Object.assign(window, { MGR_KEY, mgrLoad, mgrSave, mgrAutosave, mgrMonths, _mgrPopSel, _ni, _fc2, _inp, _mgrEsc, reconcileStaffRows });
+Object.assign(window, { MGR_KEY, mgrLoad, mgrSave, mgrAutosave, mgrMonths, _mgrPopSel, _ni, _fc2, _inp, _mgrEsc, reconcileStaffRows, _salExtrasNet });
 
-export { MGR_KEY, mgrLoad, mgrSave, mgrAutosave, mgrMonths, _mgrPopSel, _ni, _fc2, _inp, _mgrEsc, reconcileStaffRows };
+export { MGR_KEY, mgrLoad, mgrSave, mgrAutosave, mgrMonths, _mgrPopSel, _ni, _fc2, _inp, _mgrEsc, reconcileStaffRows, _salExtrasNet };

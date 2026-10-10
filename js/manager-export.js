@@ -140,7 +140,7 @@ function _msBuildManagerSummary(mon) {
   // Salary
   const salaryRows  = (mgr.salary  && mgr.salary[mon])  || [];
   const genericRows = (mgr.generic && mgr.generic[mon])  || [];
-  const salaryTotal  = salaryRows.reduce((s, r) => s + (_msN(r.hoSal) - _msN(r.advance) + _msN(r.generic)), 0);
+  const salaryTotal  = salaryRows.reduce((s, r) => s + (_msN(r.hoSal) - _msN(r.advance) + _msN(r.generic) + (r.extras || []).reduce((a, e) => a + (e.sign === '-' ? -1 : 1) * _msN(e.amount), 0)), 0);
   const genericTotal = genericRows.reduce((s, r) => s + (Math.round(_msN(r.genericSale) * 0.04) + _msN(r.extra)), 0);
 
   // Petty

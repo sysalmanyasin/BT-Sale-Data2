@@ -43,6 +43,8 @@ function salaryNextMonth() {
     hoSal:       r.hoSal       || 0,
     advance:     0,
     generic:     0,
+    // keep the custom columns (name + sign) but reset their amounts
+    extras:      (r.extras || []).map(e => ({ id: e.id, name: e.name, sign: e.sign, amount: 0 })),
   }));
 
   if (!data.salary) data.salary = {};

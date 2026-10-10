@@ -130,3 +130,63 @@ describe('printSalaryReport() — stale-snapshot fix', () => {
     assert.equal(confirmCalled, false, 'confirm() should not fire when figures are non-zero');
   });
 });
+
+describe('salary custom columns (+ / −)', () => {
+  // loadSalaryMonth() deliberately keeps in-memory edits when reloading the SAME month,
+  // so park the module on another month first to start each test clean.
+  beforeEach(() => { salaryMod.loadSalaryMonth('June 2026'); });
+
+  test('net adds "+" columns and subtracts "−" columns, per row', () => {
+    Actions.addEmployee({ name: 'Mian Waqas', designation: 'APM' });
+    salaryMod.loadSalaryMonth('August 2026');
+    salaryMod._salRows_cur[0].hoSal = 40000;
+    salaryMod._salRows_cur[0].advance = 1000;
+    assert.ok(salaryMod.salAddColumn('Bonus', '+'));
+    assert.ok(salaryMod.salAddColumn('Fine', '-'));
+    const r = salaryMod._salRows_cur[0];
+    r.extras.find(e => e.name === 'Bonus').amount = 2500;
+    r.extras.find(e => e.name === 'Fine').amount = 700;
+    assert.equal(salaryMod._salNet(r), 40000 - 1000 + 0 + 2500 - 700);
+  });
+
+  test('rejects blank and duplicate column names', () => {
+    Actions.addEmployee({ name: 'Mian Waqas', designation: 'APM' });
+    salaryMod.loadSalaryMonth('August 2026');
+    globalThis.toast = () => {}; window.toast = globalThis.toast;
+    assert.equal(salaryMod.salAddColumn('  ', '+'), false);
+    assert.ok(salaryMod.salAddColumn('Fine', '-'));
+    assert.equal(salaryMod.salAddColumn('fine', '+'), false);
+  });
+
+  test('columns and amounts persist, and appear in the printed report with the right net', () => {
+    Actions.addEmployee({ name: 'Mian Waqas', designation: 'APM' });
+    salaryMod.loadSalaryMonth('August 2026');
+    salaryMod._salRows_cur[0].hoSal = 43009;
+    salaryMod.salAddColumn('Fine', '-');
+    salaryMod._salRows_cur[0].extras[0].amount = 1009;
+    salaryMod.saveSalaryData(true);
+
+    salaryMod.loadSalaryMonth('July 2026'); // switch away, then back through print
+    selectMonth('August 2026');
+    const html = captureRenderedHtml(() => reportsMod.printSalaryReport());
+    assert.match(html, /Fine \(−\)/);
+    assert.match(html, /−₨1,009/);
+    assert.match(html, /₨42,000/, 'net = 43,009 − 1,009');
+  });
+
+  test('toggling a column sign flips its effect on net; removing it drops the amounts', () => {
+    Actions.addEmployee({ name: 'Mian Waqas', designation: 'APM' });
+    salaryMod.loadSalaryMonth('August 2026');
+    salaryMod._salRows_cur[0].hoSal = 1000;
+    salaryMod.salAddColumn('Adj', '+');
+    salaryMod._salRows_cur[0].extras[0].amount = 100;
+    assert.equal(salaryMod._salNet(salaryMod._salRows_cur[0]), 1100);
+    const id = salaryMod._salRows_cur[0].extras[0].id;
+    salaryMod.salToggleColSign(id);
+    assert.equal(salaryMod._salNet(salaryMod._salRows_cur[0]), 900);
+    globalThis.confirm = () => true;
+    salaryMod.salRemoveColumn(id);
+    assert.equal(salaryMod._salNet(salaryMod._salRows_cur[0]), 1000);
+    assert.equal(salaryMod._salCols(salaryMod._salRows_cur).length, 0);
+  });
+});
