@@ -149,6 +149,23 @@ function sectionHeader(title, right) { return h('div', { class: 'aic-sh' }, h('h
 // (pending approvals must never be hidden), the latest BT response, and Tool Intelligence (it already has its own toggle).
 // The open/closed choice lives in S.open so it survives the full repaint that runs on every refresh.
 const ALWAYS_OPEN = new Set(['sum', 'core', 'fleet', 'att', 'sys', 'fc', 'actc', 'resp', 'tools']);
+
+// One-line, REAL summary shown in a collapsed card's header (hidden once the card is open). Returns [text, tone] or null.
+function foldSummary(id) {
+  const P = S.snap && S.snap.raw && S.snap.raw.planning;
+  switch (id) {
+    case 'corr': { if (!S.snap) return null; const n = M.correlate(visibleFindings()).length; return [n + (n === 1 ? ' signal' : ' signals'), n ? 'wn' : 'ok']; }
+    case 'since': { const b = S.baseline; if (!S.snap) return null; if (!b) return ['first visit', 'mu']; const d = M.diffFindings(b.findings, S.snap.findings); return ['+' + d.added.length + ' new · ' + d.cleared.length + ' cleared', d.added.length ? 'wn' : 'ok']; }
+    case 'net': { const n = activeAgentIds(coreInfo().live).on.size; return [n ? n + ' running now' : 'none running', n ? 'ok' : 'mu']; }
+    case 'reo': { const D = P && P.reorder; if (!S.snap) return null; return D ? (D.total_lines ? [D.total_lines + ' lines to buy', 'wn'] : ['nothing to reorder', 'ok']) : ['not available', 'mu']; }
+    case 'fill': { const F = P && P.fill; if (!S.snap) return null; return F && F.fill_rate_pct != null ? [F.fill_rate_pct + '% filled', F.fill_rate_pct < 90 ? 'wn' : 'ok'] : ['not measurable', 'mu']; }
+    case 'money': { const sc = P && P.money && P.money.staff_credit; if (!S.snap) return null; return sc ? ['Rs ' + M.fmtNum(sc.this_month.total_owed) + ' owed', 'mu'] : ['not available', 'mu']; }
+    case 'act': { const n = T.recent(150).length; return [n + (n === 1 ? ' event' : ' events'), 'mu']; }
+    case 'obs': { const o = M.observability(T.recent(400).reverse()); return [o.requests + ' requests · ' + o.errors + ' failed', o.errors ? 'wn' : 'mu']; }
+    case 'health': { const r = S.health; if (!r) return null; const ok = r.filter(x => x.status === 'HEALTHY').length; return [ok + ' of ' + r.length + ' healthy', ok < r.length ? 'wn' : 'ok']; }
+    default: return null;
+  }
+}
 function card(id, modes, ...kids) {
   const first = kids[0];
   const foldable = !ALWAYS_OPEN.has(id) && kids.length > 1 && first && first.nodeType === 1 && first.classList.contains('aic-sh');
@@ -157,6 +174,8 @@ function card(id, modes, ...kids) {
   const bodyId = 'aic-b-' + id;
   const body = h('div', { class: 'aic-cbody', id: bodyId, hidden: !open }, kids.slice(1));
   const sec = h('section', { class: 'aic-card aic-fold' + (open ? '' : ' aic-folded'), id: 'aic-' + id, 'data-modes': modes }, first, body);
+  const fs = foldSummary(id);
+  if (fs) first.append(h('span', { class: 'aic-fsum aic-fsum-' + fs[1], text: fs[0] }));
   first.append(h('span', { class: 'aic-caret', 'aria-hidden': 'true', text: '\u25BE' }));
   first.setAttribute('role', 'button'); first.setAttribute('tabindex', '0');
   first.setAttribute('aria-controls', bodyId); first.setAttribute('aria-expanded', String(open));
@@ -288,8 +307,9 @@ function secAttention() {
   else {
     const f = visibleFindings(), top = f.filter(x => x.severity !== 'good');
     const good = f.filter(x => x.severity === 'good');
-    body = h('div', {}, top.length ? top.slice(0, 8).map(findingCard) : empty('Nothing needs attention right now. All monitored rules are clear.'),
-      top.length > 8 ? h('div', { class: 'aic-more', text: '+ ' + (top.length - 8) + ' more. Ask BT "What needs my attention?"' }) : null,
+    body = h('div', {}, top.length ? top.slice(0, S.attAll ? 8 : 4).map(findingCard) : empty('Nothing needs attention right now. All monitored rules are clear.'),
+      top.length > 4 ? h('button', { class: 'aic-showall', 'aria-expanded': String(!!S.attAll), text: S.attAll ? 'Show fewer' : 'Show ' + (Math.min(top.length, 8) - 4) + ' more', onclick: () => { S.attAll = !S.attAll; render(); } }) : null,
+      S.attAll && top.length > 8 ? h('div', { class: 'aic-more', text: '+ ' + (top.length - 8) + ' more. Ask BT "What needs my attention?"' }) : null,
       good.map(g => h('div', { class: 'aic-good' }, '✓ ', g.title)));
   }
   return card('att', 'monitor', sectionHeader('WHAT NEEDS MY ATTENTION'), body);

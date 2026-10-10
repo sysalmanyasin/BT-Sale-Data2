@@ -26,6 +26,15 @@ describe('AI Center collapsible cards', () => {
     assert.equal(head.getAttribute('aria-controls'), 'aic-b-health');
   });
 
+  test('collapsed cards keep a real one-line summary in the header', () => {
+    const sums = [...document.querySelectorAll('.aic-folded .aic-fsum')];
+    assert.ok(sums.length >= 3, 'folded cards should carry summaries, got ' + sums.length);
+    assert.ok(sums.every(x => x.textContent.trim().length > 0));
+    const health = q('#aic-health .aic-fsum');
+    if (health) assert.match(health.textContent, /^\d+ of \d+ healthy$/); // counted from the measured rows, never assumed
+    const act = q('#aic-act .aic-fsum'); assert.match(act.textContent, /^\d+ events?$/);
+  });
+
   test('summary and status core are never collapsed', () => {
     for (const id of ['#aic-sum', '#aic-core', '#aic-att', '#aic-sys', '#aic-fleet']) {
       const el = q(id); if (!el) continue;

@@ -119,3 +119,10 @@ body.aic-open .ag-input textarea{background:#080D18}
 body.aic-open .ag-card{border-color:#20DDF5}
 body.aic-open .ag-card-b .ag-yes{color:#041018}
 @media(prefers-reduced-motion:reduce){body.aic-open .ag-status{animation:none}}
+
+/* ── collapsed-card header summary (real values) ── */
+.aic-jarvis .aic-fsum{margin-left:auto;font-size:12px;font-weight:700;letter-spacing:.04em;padding:2px 8px;border-radius:999px;border:1px solid var(--border);color:var(--j-mu);white-space:nowrap}
+.aic-jarvis .aic-fsum-ok{color:var(--j-ok);border-color:color-mix(in srgb,var(--j-ok) 45%,transparent)}
+.aic-jarvis .aic-fsum-wn{color:var(--j-wn);border-color:color-mix(in srgb,var(--j-wn) 55%,transparent)}
+.aic-jarvis .aic-fold:not(.aic-folded) .aic-fsum{display:none}
+.aic-jarvis .aic-showall{width:100%;margin:2px 0 8px;border-style:dashed;color:var(--j-cy)}
