@@ -135,3 +135,19 @@ body.aic-open .ag-card-b .ag-yes{color:#041018}
 /* ── speech bubble under the avatar (real count; mirrors the reference chat bubble) ── */
 .aic-jarvis .aic-bubble{position:relative;width:fit-content;max-width:90%;margin:6px auto 4px;padding:8px 14px;border-radius:14px;border:1px solid var(--j-ln);background:rgba(32,221,245,.08);color:var(--j-tx);font-size:14px;text-align:center}
 .aic-jarvis .aic-bubble::before{content:"";position:absolute;left:50%;top:-6px;width:10px;height:10px;transform:translateX(-50%) rotate(45deg);background:#10263a;border-left:1px solid var(--j-ln);border-top:1px solid var(--j-ln)}
+
+/* ── accessibility: dark text on bright cyan fills (white on #20DDF5 is only 1.65:1; this is 11.6:1) ── */
+.aic-page.aic-jarvis .aic button.aic-p,.aic-page.aic-jarvis .aic button.aic-p:hover:not(:disabled),
+.aic-page.aic-jarvis .aic-seg button.on,.aic-page.aic-jarvis .aic-seg button.on:hover:not(:disabled),
+body.aic-open .aic-modal button.aic-p{color:#041018;font-weight:700}
+.aic-page.aic-jarvis .aic-hub{color:#041018}
+.aic-page.aic-jarvis .aic button.aic-p:disabled{opacity:.55}
+
+/* ── dialogs mount on <body>, outside the page scope: give them the same dark tokens while the AI page is open ── */
+body.aic-open .aic-backdrop{background:rgba(3,7,14,.78)}
+body.aic-open .aic-modal{
+  --surface:#111B2B;--s2:#162338;--s3:#1b2b45;--bg:#080D18;--border:#24344d;--border-strong:#34496a;--text:#EDF4FF;--t2:#c9d8ec;--muted:#91A5BD;
+  --accent:#20DDF5;--aic-ac:#20DDF5;--aic-mu:#91A5BD;--aic-tx:#EDF4FF;--aic-ln:#24344d;--aic-ok:#42D6A4;--aic-wn:#FFB86B;--aic-cr:#FF7A8A;--aic-cy:#20DDF5;--aic-bl:#20DDF5;
+  --red:#FF7A8A;--amber:#FFB86B;--green:#42D6A4;--alt:#12283a;--alt2:#2a2110;color-scheme:dark;
+  background:linear-gradient(180deg,#162338,#0f1b2d);border-color:rgba(32,221,245,.35)}
+body.aic-open .aic-modal :focus-visible{outline:2px solid #20DDF5;outline-offset:2px}
