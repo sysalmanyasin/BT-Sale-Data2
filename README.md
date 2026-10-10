@@ -170,10 +170,6 @@ The migration is incremental, so some `window.*` bridges remain. Do not remove o
 
 ---
 
-### Mobile shell (<= 860px)
-
-On phones the bottom bar has four destinations: **Home** (`#ai-center`), **AI Copilot** (`#ai-center/copilot`), **Alerts** (`#ai-center/alerts`) and **More** (the All Sections drawer). The bar is `js/mobile-nav.js` + `css/mobile-shell.css`; the three screens are views of the existing BT Intelligence page (`js/ai-center/ui.js`), so data, tools, approvals and audit are unchanged. The Alerts badge counts real critical findings plus pending approvals and stays hidden until a real read has finished. Desktop and tablet (>= 861px) keep the full dashboard.
-
 ## Features
 
 ### Cover & Herald

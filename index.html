@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover,interactive-widget=resizes-content" id="vp-meta">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover" id="vp-meta">
 <script>
 // Apply saved view mode BEFORE first paint to avoid flash
 (function(){
@@ -105,7 +105,6 @@
 <link rel="stylesheet" href="css/ai-center.css?v=20261010b">
 <link rel="stylesheet" href="css/ai-center-jarvis.css?v=20261010p">
 <link rel="stylesheet" href="css/mobile.css?v=20260824a">
-<link rel="stylesheet" href="css/mobile-shell.css?v=20261010a">
 <link rel="stylesheet" href="css/ai-center-command-deck.css?v=20261010a">
 <link rel="stylesheet" href="css/ai-center-copilot.css?v=20261010a">
 
@@ -328,11 +327,12 @@ if ('serviceWorker' in navigator) {
 </nav>
 
 <!-- ══ BOTTOM TAB BAR (mobile) ══ -->
-<div class="bnav no-print" id="bnav" role="navigation" aria-label="Primary">
-  <a class="bnav-item" href="#ai-center" data-nav="home"><span class="bicon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg></span><span class="blabel">Home</span></a>
-  <a class="bnav-item" href="#ai-center/copilot" data-nav="copilot"><span class="bicon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="9"/></svg></span><span class="blabel">AI Copilot</span></a>
-  <a class="bnav-item" href="#ai-center/alerts" data-nav="alerts" aria-label="Alerts"><span class="bicon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg><span class="bbadge" hidden></span></span><span class="blabel">Alerts</span></a>
-  <button type="button" class="bnav-item side-menu-btn" data-nav="more" onclick="openSectionsDrawer()" title="All sections" aria-label="More: open all sections"><span class="bicon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg></span><span class="blabel">More</span></button>
+<div class="bnav no-print" id="bnav" role="navigation" aria-label="Page navigation">
+  <button type="button" class="bnav-item side-menu-btn" onclick="openSectionsDrawer()" title="Search &amp; All Sections" aria-label="Open Search and All Sections menu"><span class="bicon">☰</span><span class="blabel">Menu</span></button>
+  <a class="bnav-item" href="#cover" data-page="cover" data-group="cover"><span class="bicon">🏠</span><span class="blabel">Cover</span></a>
+  <a class="bnav-item" href="#index" data-page="index" data-group="saledata" data-domain-group="sales"><span class="bicon">🗂️</span><span class="blabel">Sales</span></a>
+  <a class="bnav-item" href="#manager" data-page="manager" data-group="manager" data-domain-group="manager"><span class="bicon">👔</span><span class="blabel">Manager</span></a>
+  <a class="bnav-item" href="#inventory" data-page="inventory" data-group="inventory" data-domain-group="inventory"><span class="bicon">📦</span><span class="blabel">Inventory</span></a>
 </div>
 
 <!-- ══ NAV INDEX (hidden) ══ — the trimmed bnav (5 items) dropped several
@@ -341,10 +341,6 @@ if ('serviceWorker' in navigator) {
      together — see that file's _flatFromBnav). Never shown directly;
      not a nav shell of its own. -->
 <div class="bnav-index no-print" id="bnav-index" style="display:none" aria-hidden="true">
-  <a class="bnav-item" href="#cover" data-page="cover" data-group="cover"><span class="bicon">🏠</span><span class="blabel">Cover</span></a>
-  <a class="bnav-item" href="#index" data-page="index" data-group="saledata" data-domain-group="sales"><span class="bicon">🗂️</span><span class="blabel">Sales</span></a>
-  <a class="bnav-item" href="#manager" data-page="manager" data-group="manager" data-domain-group="manager"><span class="bicon">👔</span><span class="blabel">Manager</span></a>
-  <a class="bnav-item" href="#inventory" data-page="inventory" data-group="inventory" data-domain-group="inventory"><span class="bicon">📦</span><span class="blabel">Inventory</span></a>
   <a class="bnav-item" href="#dashboard" data-page="dashboard" data-group="dashboard" data-domain-group="sales"><span class="bicon">📊</span><span class="blabel">Dashboard</span></a>
   <a class="bnav-item" href="#manager-dashboard" data-page="manager-dashboard" data-group="managerdash" data-domain-group="manager"><span class="bicon">📈</span><span class="blabel">Manager Dashboard</span></a>
   <a class="bnav-item" href="#notesheets" data-page="notesheets" data-group="notesheets" data-domain-group="notesheets"><span class="bicon">📑</span><span class="blabel">Notes &amp; Sheets</span></a>
@@ -2891,8 +2887,7 @@ if ('serviceWorker' in navigator) {
 <!-- AI assistant (Phase 2: read + approval-gated changes). Needs Supabase session + bt-agent Edge Function. -->
 <script type="module" src="js/agent/index.js?v=20261009b"></script>
 <!-- BT AI Center: the control room over the assistant above. Adapters + UI only; no second agent. -->
-<script type="module" src="js/ai-center/index.js?v=20261010c"></script>
-<script src="js/mobile-nav.js?v=20261010a" defer></script>
+<script type="module" src="js/ai-center/index.js?v=20261010b"></script>
 
 <!-- 14. Field manager modal -->
 <script defer src="js/fields.js?v=20260722a"></script>
