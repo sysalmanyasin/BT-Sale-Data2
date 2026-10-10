@@ -19,3 +19,11 @@ test('regression: long forecast values stack instead of squeezing their label to
   assert.match(css, /\.aic-jarvis \.aic-wf \.aic-met\{grid-template-columns:minmax\(0,1fr\)/);
   assert.match(css, /\.aic-jarvis \.aic-wf \.aic-met dd\{white-space:normal/);
 });
+test('priority: Business Systems sits directly under the summary on phone and desktop', () => {
+  const css = readFileSync(new URL('../../css/ai-center-jarvis.css', import.meta.url), 'utf8');
+  const tail = css.slice(css.lastIndexOf('priority: business first'));
+  const order = id => Number((tail.match(new RegExp('#aic-' + id + '\\{order:(\\d+)\\}')) || [])[1]);
+  assert.ok(order('sum') < order('sys') && order('sys') < order('att') && order('sys') < order('fleet') && order('sys') < order('actc'));
+  assert.match(tail, /#aic-sys\{grid-column:1\/4;grid-row:2\}/);
+  assert.match(tail, /#aic-att\{grid-column:1;grid-row:3\}/);
+});
