@@ -1,0 +1,220 @@
+/* BT JARVIS COMMAND DECK — additive presentation layer
+   Scoped to the Intelligence Centre. No business logic, data, approvals or audit behavior changes.
+   Deliberately does NOT touch grid placement (.aic-main columns, grid-column/row, #aic-* ordering),
+   the instrument-strip column counts, or the section-header accent bar — ai-center.css and
+   ai-center-jarvis.css already own those. */
+.aic-page.aic-jarvis {
+  --jd-line: rgba(119, 160, 197, .18);
+  --jd-muted: #a4b5ca;
+  --jd-shadow: 0 12px 28px rgba(0, 0, 0, .16);
+}
+.aic-page.aic-jarvis .aic {
+  width: min(100%, 1560px);
+  margin-inline: auto;
+  padding: 12px clamp(10px, 2vw, 24px) max(150px, env(safe-area-inset-bottom));
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+.aic-page.aic-jarvis .aic-hdr {
+  padding: 12px 0 14px;
+  border-bottom: 1px solid var(--jd-line);
+}
+.aic-page.aic-jarvis .aic-hr1 h1 {
+  font-size: clamp(13px, 1.15vw, 16px);
+  letter-spacing: .24em;
+}
+.aic-page.aic-jarvis .aic-live,
+.aic-page.aic-jarvis .aic-chip {
+  font-variant-numeric: tabular-nums;
+}
+.aic-page.aic-jarvis .aic-tele {
+  gap: 8px;
+  padding: 3px 0 5px;
+}
+.aic-page.aic-jarvis .aic-chip {
+  border-color: var(--jd-line);
+  background: rgba(16, 28, 45, .82);
+  padding: 6px 11px;
+  border-radius: 999px;
+}
+.aic-page.aic-jarvis .aic-card {
+  min-width: 0;
+  border: 1px solid var(--jd-line);
+  border-radius: 14px;
+  background: linear-gradient(155deg, rgba(21, 36, 58, .98), rgba(13, 24, 40, .98));
+  box-shadow: var(--jd-shadow);
+  padding: clamp(13px, 1.35vw, 20px);
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+.aic-page.aic-jarvis .aic-card:hover {
+  border-color: rgba(32, 221, 245, .3);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, .2), 0 0 0 1px rgba(32, 221, 245, .035);
+}
+.aic-page.aic-jarvis .aic-sh {
+  min-width: 0;
+  padding: 0 0 10px;
+  border-bottom: 1px solid var(--jd-line);
+}
+.aic-page.aic-jarvis .aic-sh h2 {
+  min-width: 0;
+  line-height: 1.4;
+  font-weight: 800;
+}
+.aic-page.aic-jarvis .aic-sub {
+  color: var(--jd-muted);
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.aic-page.aic-jarvis .aic-fsum {
+  max-width: 52%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: rgba(7, 15, 27, .45);
+  padding: 4px 9px;
+  font-size: 12px;
+  letter-spacing: .015em;
+}
+.aic-page.aic-jarvis .aic-met {
+  gap: 8px 14px;
+}
+.aic-page.aic-jarvis .aic-met dt {
+  color: var(--jd-muted);
+  font-size: 12px;
+  letter-spacing: .045em;
+}
+.aic-page.aic-jarvis .aic-met dd {
+  color: var(--j-tx);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.aic-page.aic-jarvis .aic-met.aic-big dd {
+  font-size: clamp(18px, 2vw, 25px);
+  line-height: 1.2;
+  letter-spacing: -.025em;
+}
+.aic-page.aic-jarvis .aic-note {
+  border: 1px solid rgba(255, 184, 107, .2);
+  border-left: 3px solid var(--j-wn);
+  border-radius: 9px;
+  background: rgba(255, 184, 107, .07);
+  padding: 10px 12px;
+  line-height: 1.55;
+}
+.aic-page.aic-jarvis .aic-led {
+  margin: 0;
+  padding: 12px 0;
+}
+.aic-page.aic-jarvis .aic-led:not(:last-child) {
+  border-bottom: 1px solid var(--jd-line);
+}
+.aic-page.aic-jarvis .aic-k {
+  color: #b7c8dc;
+  font-size: 12px;
+  line-height: 1.5;
+  letter-spacing: .085em;
+  font-weight: 800;
+}
+.aic-page.aic-jarvis .aic-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.aic-page.aic-jarvis .aic-row > button,
+.aic-page.aic-jarvis .aic-showall {
+  min-height: 44px;
+  border-radius: 10px;
+  touch-action: manipulation;
+}
+.aic-page.aic-jarvis .aic button:focus-visible,
+.aic-page.aic-jarvis .aic-fold > .aic-sh:focus-visible,
+.aic-page.aic-jarvis .aic-ftile:focus-visible,
+.aic-page.aic-jarvis .aic-it:focus-visible,
+.aic-page.aic-jarvis .aic-runb:focus-visible {
+  outline: 2px solid var(--j-cy);
+  outline-offset: 3px;
+}
+.aic-page.aic-jarvis .aic-it {
+  min-height: 76px;
+  padding: 11px;
+  border-radius: 12px;
+}
+.aic-page.aic-jarvis .aic-it-v {
+  font-size: clamp(18px, 1.5vw, 23px);
+  font-weight: 750;
+  letter-spacing: -.025em;
+}
+.aic-page.aic-jarvis .aic-ftile {
+  min-height: 100px;
+  border-radius: 12px;
+  background: linear-gradient(145deg, rgba(21, 36, 58, .95), rgba(12, 23, 39, .95));
+}
+.aic-page.aic-jarvis .aic-pill,
+.aic-page.aic-jarvis .aic-tag {
+  letter-spacing: .035em;
+}
+.aic-page.aic-jarvis .aic-bubble {
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .12);
+}
+body.aic-open .ag-sheet {
+  border-radius: 18px 18px 0 0;
+}
+body.aic-open .ag-head {
+  padding-top: max(12px, env(safe-area-inset-top));
+}
+body.aic-open .ag-input {
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
+}
+.aic-page.aic-jarvis .aic-runb {
+  /* ai-center.css sets justify-content:center on every .aic button; on this full-width grid button that
+     centred the whole row. Start-align it. */
+  justify-content: flex-start;
+  text-align: left;
+}
+/* Toasts ("Synced from another device") must sit above the JARVIS chat bar, not on top of the input. */
+body.aic-open #toast {
+  bottom: calc(132px + env(safe-area-inset-bottom));
+}
+@media (max-width: 699px) {
+  .aic-page.aic-jarvis .aic {
+    padding: 8px 9px max(148px, env(safe-area-inset-bottom));
+    font-size: 14px;
+  }
+  .aic-page.aic-jarvis .aic-hdr {
+    padding: 9px 0 10px;
+  }
+  .aic-page.aic-jarvis .aic-hr1 {
+    align-items: flex-start;
+  }
+  .aic-page.aic-jarvis .aic-hr1 h1 {
+    letter-spacing: .16em;
+  }
+  .aic-page.aic-jarvis .aic-card {
+    border-radius: 12px;
+    padding: 12px;
+  }
+  .aic-page.aic-jarvis .aic-sh {
+    padding-bottom: 9px;
+  }
+  .aic-page.aic-jarvis .aic-fsum {
+    max-width: 48%;
+    padding: 4px 7px;
+  }
+  .aic-page.aic-jarvis .aic-it {
+    flex-basis: min(72vw, 230px);
+  }
+  .aic-page.aic-jarvis .aic-row > button {
+    flex: 1 1 auto;
+  }
+  .aic-page.aic-jarvis .aic-met.aic-big dd {
+    font-size: 21px;
+  }
+  body.aic-open .ag-sheet {
+    max-height: min(82dvh, 760px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aic-page.aic-jarvis .aic-card {
+    transition: none !important;
+  }
+}

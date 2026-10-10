@@ -462,6 +462,8 @@ function secFill() {
 }
 
 // ── staff credit + ledgers ──
+// A ledger is worth a block of its own only when it has money, categories or a flagged category this month.
+const ledgerHasActivity = L => !!L && (Number(L.month_to_date_total) > 0 || (L.categories || []).length > 0 || (L.running_above_usual || []).length > 0);
 function secMoney() {
   const P = S.snap && S.snap.raw && S.snap.raw.planning, Mo = P && P.money;
   let body;
@@ -473,10 +475,11 @@ function secMoney() {
       sc ? h('div', {}, h('div', { class: 'aic-k', text: 'STAFF CREDIT OWED' }),
         h('dl', { class: 'aic-met' }, [[sc.this_month.month, 'Rs ' + M.fmtNum(sc.this_month.total_owed) + ' · ' + sc.this_month.people + ' people'], [sc.last_month.month, 'Rs ' + M.fmtNum(sc.last_month.total_owed) + ' · ' + sc.last_month.people + ' people']].map(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })])),
         (sc.this_month.top.length ? sc.this_month : sc.last_month).top.length ? h('div', { class: 'aic-sub', text: 'Largest balances (' + (sc.this_month.top.length ? sc.this_month.month : sc.last_month.month) + '): ' + (sc.this_month.top.length ? sc.this_month : sc.last_month).top.map(x => x.name + ' Rs ' + M.fmtNum(x.net)).join(' · ') }) : null) : null,
-      Mo.ledgers.map(L => h('div', { class: 'aic-led' },
+      Mo.ledgers.filter(ledgerHasActivity).map(L => h('div', { class: 'aic-led' },
         h('div', { class: 'aic-k', text: L.ledger.toUpperCase() + ' · MONTH TO DATE Rs ' + M.fmtNum(L.month_to_date_total) }),
         L.categories.length ? h('div', { class: 'aic-sub', text: L.categories.slice(0, 5).map(c => c.category + ' Rs ' + M.fmtNum(c.amount)).join(' · ') }) : h('div', { class: 'aic-sub', text: 'No entries this month.' }),
-        L.running_above_usual.length ? h('div', { class: 'aic-note', text: 'Running above usual for this point of the month: ' + L.running_above_usual.map(x => x.category + ' (Rs ' + M.fmtNum(x.month_to_date) + ' vs ~' + M.fmtNum(x.usual_same_period) + ')').join('; ') }) : null)),
+        L.running_above_usual.length ? h('div', { class: 'aic-note', text: 'Running above usual for this point of the month: ' + L.running_above_usual.map(x => x.category + ' (Rs ' + M.fmtNum(x.month_to_date) + (x.usual_same_period > 0 ? ' vs ~' + M.fmtNum(x.usual_same_period) : ', new this month') + ')').join('; ') }) : null)),
+      Mo.ledgers.some(L => !ledgerHasActivity(L)) ? h('div', { class: 'aic-sub', text: 'No entries this month: ' + Mo.ledgers.filter(L => !ledgerHasActivity(L)).map(L => L.ledger).join(' · ') + '.' }) : null,
       h('div', { class: 'aic-sub', text: Mo.note }),
       h('div', { class: 'aic-row' }, h('button', { text: 'Open Manager', onclick: () => openPage('#manager-dashboard') }), h('button', { text: 'Ask BT about this', onclick: () => ask('Why is petty cash and other expenses high this month? Break it down by category.') })));
   }

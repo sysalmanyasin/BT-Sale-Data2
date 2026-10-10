@@ -179,7 +179,7 @@ export function buildFindings(snap) {
       if (!sp) continue;
       push({
         type: 'ANOMALY', severity: 'warning', system: 'STAFF', source: 'money_overview',
-        title: L.ledger + ': ' + sp.category + ' is Rs ' + fmtNum(sp.month_to_date) + ' this month, usually about Rs ' + fmtNum(sp.usual_same_period) + ' by now',
+        title: L.ledger + ': ' + sp.category + ' is Rs ' + fmtNum(sp.month_to_date) + ' this month, ' + (sp.usual_same_period > 0 ? 'usually about Rs ' + fmtNum(sp.usual_same_period) + ' by now' : 'with nothing at this point in earlier months'),
         description: 'Month-to-date vs the same day-range of the previous 3 months.',
         evidence: [{ kind: 'CALCULATION', label: 'Month to date', value: 'Rs ' + fmtNum(sp.month_to_date) }, { kind: 'CALCULATION', label: 'Usual for this point', value: 'Rs ' + fmtNum(sp.usual_same_period) }, { kind: 'CALCULATION', label: 'Extra', value: 'Rs ' + fmtNum(sp.extra) }],
         related_agents: SYSTEM_SOURCES.STAFF.agents, related_tools: ['money_overview', 'get_ledger_month_totals'],

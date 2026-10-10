@@ -98,7 +98,10 @@ registerTool({
         const cur = monthTotals(t.id, y, m, 31);
         const history = [1, 2, 3].map(k => { const [yy, mm] = prev(k); return monthTotals(t.id, yy, mm, day); });
         const fullMonths = [1, 2, 3].map(k => { const [yy, mm] = prev(k); return monthTotals(t.id, yy, mm, 31); });
-        const spikes = categorySpikes(cur, history, { fullMonths });
+        // A ledger with no money in any of the previous 3 full months has no baseline: every category would read
+        // "vs ~0" and fire at once (first month of use, or data kept elsewhere). That is not a spike, so skip it.
+        const hasHistory = fullMonths.some(mt => Object.values(mt || {}).some(v => Number(v) > 0));
+        const spikes = hasHistory ? categorySpikes(cur, history, { fullMonths }) : [];
         const lab = id => { const c = LedgerStore.getCategory(t.id, id); return (c && c.label) || id; };
         out.ledgers.push({
           ledger: t.label || t.id, month_to_date_total: rs(Object.values(cur).reduce((s, v) => s + v, 0)),
