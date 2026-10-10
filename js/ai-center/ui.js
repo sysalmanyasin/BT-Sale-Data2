@@ -239,18 +239,29 @@ function secModes() {
 
 // Decorative holographic avatar. Pure SVG, no data: every operational fact stays in real DOM text beside it.
 function jarvisAvatar() {
-  const el = (tag, a) => h2svg(tag, a);
-  const svg = el('svg', { viewBox: '0 0 120 120', class: 'aic-avatar', 'aria-hidden': 'true', focusable: 'false' });
-  svg.append(
-    el('path', { class: 'av-body', d: 'M18 120c2-24 18-34 42-36 24 2 40 12 42 36z' }),
-    el('path', { class: 'av-line', d: 'M60 84v14M44 92l16 8 16-8' }),
-    el('circle', { class: 'av-ring', cx: 60, cy: 100, r: 7 }),
-    el('circle', { class: 'av-chest', cx: 60, cy: 100, r: 3.6 }),
-    el('path', { class: 'av-line', d: 'M93 56c2 8-2 14-12 16' }),
-    el('path', { class: 'av-head', d: 'M60 18c-15 0-25 11-25 27 0 14 8 26 25 26s25-12 25-26c0-16-10-27-25-27z' }),
-    el('path', { class: 'av-phone', d: 'M33 46c-4 0-6 3-6 8s2 8 6 8M87 46c4 0 6 3 6 8s-2 8-6 8M33 40c2-16 14-24 27-24s25 8 27 24' }),
-    el('ellipse', { class: 'av-eye', cx: 49, cy: 49, rx: 4.2, ry: 3 }),
-    el('ellipse', { class: 'av-eye', cx: 71, cy: 49, rx: 4.2, ry: 3 }));
+  // Static, decorative humanoid (visor, glowing eyes, headset with mic, shoulder armour, chest core). Built with DOM nodes, no innerHTML.
+  const n = (tag, a, ...kids) => { const e = h2svg(tag, a); kids.forEach(k => e.append(k)); return e; };
+  const stop = (o, c) => n('stop', { offset: o, 'stop-color': c });
+  const svg = n('svg', { viewBox: '0 0 160 160', class: 'aic-avatar', 'aria-hidden': 'true', focusable: 'false' },
+    n('defs', {},
+      n('linearGradient', { id: 'jv-armor', x1: 0, y1: 0, x2: 0, y2: 1 }, stop('0', '#3a4f6d'), stop('1', '#0d1626')),
+      n('linearGradient', { id: 'jv-head', x1: 0, y1: 0, x2: 1, y2: 1 }, stop('0', '#46607f'), stop('.55', '#1a2a41'), stop('1', '#0c1626')),
+      n('filter', { id: 'jv-glow', x: '-60%', y: '-60%', width: '220%', height: '220%' }, n('feGaussianBlur', { stdDeviation: 2.2, result: 'b' }), n('feMerge', {}, n('feMergeNode', { in: 'b' }), n('feMergeNode', { in: 'SourceGraphic' })))),
+    n('path', { class: 'av-body', fill: 'url(#jv-armor)', d: 'M6 160c4-34 30-48 74-52 44 4 70 18 74 52z' }),
+    n('path', { class: 'av-line', d: 'M46 160l8-30M114 160l-8-30M60 112l20 24 20-24M24 150c10-14 24-22 40-26M136 150c-10-14-24-22-40-26' }),
+    n('rect', { class: 'av-neck', x: 70, y: 92, width: 20, height: 20, rx: 4 }),
+    n('path', { class: 'av-head', fill: 'url(#jv-head)', d: 'M80 24c-23 0-35 16-35 38 0 24 12 38 35 38s35-14 35-38c0-22-12-38-35-38z' }),
+    n('path', { class: 'av-visor', d: 'M55 55c0-9 11-13 25-13s25 4 25 13v13c0 11-11 17-25 17S55 79 55 68z' }),
+    n('path', { class: 'av-line', d: 'M64 78c6 4 26 4 32 0' }),
+    n('ellipse', { class: 'av-eye', cx: 67, cy: 62, rx: 6.5, ry: 3.6, filter: 'url(#jv-glow)' }),
+    n('ellipse', { class: 'av-eye', cx: 93, cy: 62, rx: 6.5, ry: 3.6, filter: 'url(#jv-glow)' }),
+    n('path', { class: 'av-phone', d: 'M43 62C40 30 60 12 80 12s40 18 37 50' }),
+    n('rect', { class: 'av-cup', x: 33, y: 54, width: 15, height: 28, rx: 7 }),
+    n('rect', { class: 'av-cup', x: 112, y: 54, width: 15, height: 28, rx: 7 }),
+    n('path', { class: 'av-line', d: 'M40 82c-2 12 8 18 22 14' }),
+    n('circle', { class: 'av-chest', cx: 64, cy: 96, r: 2.6 }),
+    n('circle', { class: 'av-ring', cx: 80, cy: 128, r: 11 }),
+    n('circle', { class: 'av-chest', cx: 80, cy: 128, r: 5.2, filter: 'url(#jv-glow)' }));
   return svg;
 }
 
@@ -352,7 +363,10 @@ const SYSTEM_ASK = {
   INVENTORY: 'What inventory is at risk? Which products are out of stock or about to run out?', STAFF: 'How are staff credits looking, including carried-over balances and possible duplicates?',
   STR: 'Which STRs are delayed or still pending?', CLOSING: 'What is blocking closing? Which days or shifts are not closed?',
 };
-function secSystems() { return card('sys', 'monitor', sectionHeader('BUSINESS SYSTEMS'), h('div', { class: 'aic-grid6' }, M.SYSTEMS.map(systemCard))); }
+function secSystems() {
+  const order = S.snap ? M.sortSystemsByUrgency(M.SYSTEMS, S.snap.systems) : M.SYSTEMS;
+  return card('sys', 'monitor', sectionHeader('BUSINESS SYSTEMS', h('span', { class: 'aic-sub', text: S.snap ? 'most urgent first' : 'loading' })), h('div', { class: 'aic-grid6' }, order.map(systemCard)));
+}
 
 // Weekday-aware projection + today's expected sale (tool: weekday_forecast, maths in shared/planning-metrics.js).
 
@@ -885,7 +899,8 @@ function paint() {
   const info = coreInfo();
   const cards = [secSummary(info), secCore(info), secAttention(), secCorrelation(), secSince(), secSystems(), secForecast(), secReorder(), secFill(), secMoney(), secFleet(info), secNetwork(info), secResponse(), secActions(info), secActivity(), secObs(), secHealth(), secTools(), secRepo()]
     .filter(Boolean);
-  const main = h('main', { class: 'aic-main', 'data-mode': S.mode }, cards);
+  // a genuinely pending approval outranks everything: the Action Center moves to the top (CSS keyed on data-pri)
+  const main = h('main', { class: 'aic-main', 'data-mode': S.mode, 'data-pri': info.live.pendingApproval ? 'approvals' : 'normal' }, cards);
   const offline = navigator.onLine === false ? h('div', { class: 'aic-offline', role: 'alert' }, h('b', { text: 'BT OFFLINE · ' }), 'Showing last known data' + (S.snap ? ' from ' + clock(S.snap.at) : '') + '. Some intelligence may be unavailable.') : null;
   const keep = $('#aic-q'), val = keep ? keep.value : '', hadFocus = keep && document.activeElement === keep;
   const rqHad = !!(document.activeElement && document.activeElement.id === 'aic-rq');

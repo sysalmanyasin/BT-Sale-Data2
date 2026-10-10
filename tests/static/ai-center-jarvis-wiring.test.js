@@ -27,3 +27,8 @@ test('priority: Business Systems sits directly under the summary on phone and de
   assert.match(tail, /#aic-sys\{grid-column:1\/4;grid-row:2\}/);
   assert.match(tail, /#aic-att\{grid-column:1;grid-row:3\}/);
 });
+test('urgency: a pending approval moves the Action Center to the top on phone and desktop', () => {
+  const css = readFileSync(new URL('../../css/ai-center-jarvis.css', import.meta.url), 'utf8');
+  assert.match(css, /\[data-pri=approvals\] #aic-actc\{order:0/);
+  assert.match(css, /\[data-pri=approvals\] #aic-actc\{grid-column:1\/4;grid-row:1\}/);
+});

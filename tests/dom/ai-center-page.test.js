@@ -47,6 +47,12 @@ describe('AI Center page', () => {
     const av = q('#aic-core .aic-orb svg.aic-avatar');
     assert.ok(av, 'avatar svg missing');
     assert.equal(av.getAttribute('aria-hidden'), 'true');
+    assert.equal(av.querySelectorAll('.av-eye').length, 2, 'two eyes');
+    assert.equal(av.querySelectorAll('.av-cup').length, 2, 'headset cups');
+    assert.ok(av.querySelector('.av-visor') && av.querySelector('.av-chest'), 'visor and chest core');
+    const ids = [...av.querySelectorAll('[id]')].map(e => e.id);
+    assert.equal(new Set(ids).size, ids.length, 'avatar defs have unique ids');
+    assert.ok(ids.every(id => document.querySelectorAll('[id="' + id + '"]').length === 1), 'ids unique in the whole document');
     assert.equal(document.querySelectorAll('#aic-core .aic-avatar').length, 1, 'no duplicate avatar after repaint');
     assert.ok(q('#aic-core .aic-orb small').textContent.trim().length > 0, 'lifecycle label must be real text');
     assert.equal(q('#aic-core .aic-stage').getAttribute('data-s'), q('#aic-core .aic-orb small').textContent.trim().toLowerCase().replace(/ /g, '_'));

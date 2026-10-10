@@ -581,3 +581,15 @@ export function repoIndexInfo(idx, now = Date.now()) {
   const at = Date.parse(idx.generated_at), age = Number.isFinite(at) ? now - at : null;
   return { files: idx.files, symbols: idx.symbols, commit: idx.commit || 'unknown', builtAt: at, age: ageLabel(at, now), stale: age != null && age > 14 * 86400000 };
 }
+
+/** Order system names by REAL urgency: failing/unauthorised, then data unavailable, then needs-attention (more findings first), then clear.
+ *  Ties keep the original order. Statuses come from systemStatus(); nothing is scored or invented. */
+export function sortSystemsByUrgency(names, systems) {
+  const rank = st => (st === 'ERROR' || st === 'UNAUTHORIZED') ? 0 : st === 'DATA_UNAVAILABLE' ? 1 : st === 'ATTENTION' ? 2 : 3;
+  const at = n => names.indexOf(n);
+  return [...names].sort((a, b) => {
+    const A = systems && systems[a], B = systems && systems[b];
+    if (!A || !B) return at(a) - at(b);
+    return rank(A.status) - rank(B.status) || (B.warnings || 0) - (A.warnings || 0) || at(a) - at(b);
+  });
+}

@@ -196,3 +196,23 @@ body.aic-open .aic-modal :focus-visible{outline:2px solid #20DDF5;outline-offset
   .aic-jarvis #aic-actc{grid-column:1/3;grid-row:4}
   .aic-jarvis #aic-fleet{grid-column:1/4;grid-row:auto}
 }
+
+/* ── urgency: a pending approval jumps above everything ── */
+.aic-jarvis .aic-main[data-pri=approvals] #aic-actc{order:0;border-color:var(--j-wn);box-shadow:0 0 0 1px color-mix(in srgb,var(--j-wn) 45%,transparent)}
+@media(min-width:1000px){
+  .aic-jarvis .aic-main[data-pri=approvals] #aic-actc{grid-column:1/4;grid-row:1}
+  .aic-jarvis .aic-main[data-pri=approvals] #aic-sum{grid-row:2}
+  .aic-jarvis .aic-main[data-pri=approvals] #aic-sys{grid-row:3}
+  .aic-jarvis .aic-main[data-pri=approvals] #aic-att,.aic-jarvis .aic-main[data-pri=approvals] #aic-core{grid-row:4}
+  .aic-jarvis .aic-main[data-pri=approvals] #aic-fc{grid-row:4/6}
+}
+
+/* ── detailed humanoid avatar (matches the reference: visor, headset, shoulder armour, chest core) ── */
+.aic-jarvis .av-visor{fill:#04080f;stroke:color-mix(in srgb,var(--c) 45%,transparent);stroke-width:1}
+.aic-jarvis .av-neck{fill:#101c30;stroke:color-mix(in srgb,var(--c) 40%,transparent);stroke-width:1}
+.aic-jarvis .av-cup{fill:#0c1626;stroke:var(--c);stroke-width:1.6}
+.aic-jarvis .av-phone{stroke-width:3.2}
+.aic-jarvis .av-body,.aic-jarvis .av-head{stroke-width:1.2}
+.aic-jarvis .aic-stage{width:min(300px,76%)}
+.aic-jarvis .aic-stage .aic-orb{inset:8%}
+@media(min-width:1000px){.aic-jarvis .aic-stage{width:min(360px,86%)}}
