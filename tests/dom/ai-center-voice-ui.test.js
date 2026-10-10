@@ -38,7 +38,8 @@ describe('AI Center voice', () => {
     assert.equal(asked.length, 1);
     assert.match([...document.querySelectorAll('.aic-toast')].pop().textContent, /permission/i);
   });
-  test('the speech bubble states a real count, not decoration', () => {
-    assert.match(q('#aic-core .aic-bubble').textContent, /Reading your data|need|All clear/);
+  test('the one-line summary lives in Needs attention (no decorative speech bubble)', () => {
+    assert.equal(q('#aic-core .aic-bubble'), null);
+    assert.match(q('#aic-att').textContent, /NEEDS ATTENTION/);
   });
 });

@@ -20,6 +20,7 @@ import { markUndone } from '../agent/core/undo-store.js';
 import { fetchAudit, summarizeAudit } from '../agent/core/usage-stats.js';
 import { collectSnapshot, collectHealth, collectActions, getSb, readTool } from './adapters.js';
 import * as M from './model.js';
+import * as C from './copilot.js';
 import * as RI from './repo-intel.js';
 import { reorderDraftText } from '../shared/planning-metrics.js';
 
@@ -160,19 +161,18 @@ function sectionHeader(title, right) { return h('div', { class: 'aic-sh' }, h('h
 // Cards are collapsed by default (tap the title to open). Kept open: the one-line summary + status core, the Action Center
 // (pending approvals must never be hidden), the latest BT response, and Tool Intelligence (it already has its own toggle).
 // The open/closed choice lives in S.open so it survives the full repaint that runs on every refresh.
-const ALWAYS_OPEN = new Set(['sum', 'core', 'inst', 'runs', 'att', 'sys', 'fc', 'actc', 'resp', 'tools']);
+const ALWAYS_OPEN = new Set(['crit', 'copilot', 'core', 'runs', 'att', 'sys', 'fc', 'invstr', 'money', 'actc', 'tools']);
 
 // One-line, REAL summary shown in a collapsed card's header (hidden once the card is open). Returns [text, tone] or null.
 function foldSummary(id) {
   const P = S.snap && S.snap.raw && S.snap.raw.planning;
   switch (id) {
-    case 'corr': { if (!S.snap) return null; const n = M.correlate(visibleFindings()).length; return [n + (n === 1 ? ' signal' : ' signals'), n ? 'wn' : 'ok']; }
-    case 'since': { const b = S.baseline; if (!S.snap) return null; if (!b) return ['first visit', 'mu']; const d = M.diffFindings(b.findings, S.snap.findings); return ['+' + d.added.length + ' new · ' + d.cleared.length + ' cleared', d.added.length ? 'wn' : 'ok']; }
     case 'fleet': { const n = activeAgentIds(coreInfo().live).on.size, total = Object.keys(SPECIALISTS).filter(k => k !== 'general').length; return [n ? n + ' running now' : total + ' ready · none running', n ? 'ok' : 'mu']; }
     case 'net': { const n = activeAgentIds(coreInfo().live).on.size; return [n ? n + ' running now' : 'none running', n ? 'ok' : 'mu']; }
     case 'reo': { const D = P && P.reorder; if (!S.snap) return null; return D ? (D.total_lines ? [D.total_lines + ' lines to buy', 'wn'] : ['nothing to reorder', 'ok']) : ['not available', 'mu']; }
     case 'fill': { const F = P && P.fill; if (!S.snap) return null; return F && F.fill_rate_pct != null ? [F.fill_rate_pct + '% filled', F.fill_rate_pct < 90 ? 'wn' : 'ok'] : ['not measurable', 'mu']; }
     case 'money': { const sc = P && P.money && P.money.staff_credit; if (!S.snap) return null; return sc ? ['Rs ' + M.fmtNum(sc.this_month.total_owed) + ' owed', 'mu'] : ['not available', 'mu']; }
+    case 'ops': { const live = coreInfo().live, run = activeAgentIds(live).on.size, r = S.health, ok = r ? r.filter(x => x.status === 'HEALTHY').length : null; return [(r ? ok + ' of ' + r.length + ' healthy' : 'health loading') + ' \u00B7 ' + (run ? run + ' agent(s) running' : 'no agent running'), r && ok < r.length ? 'wn' : 'mu']; }
     case 'act': { const n = T.recent(150).length; return [n + (n === 1 ? ' event' : ' events'), 'mu']; }
     case 'obs': { const o = M.observability(T.recent(400).reverse()); return [o.requests + ' requests · ' + o.errors + ' failed', o.errors ? 'wn' : 'mu']; }
     case 'health': { const r = S.health; if (!r) return null; const ok = r.filter(x => x.status === 'HEALTHY').length; return [ok + ' of ' + r.length + ' healthy', ok < r.length ? 'wn' : 'ok']; }
@@ -213,29 +213,22 @@ function coreInfo() {
 }
 
 function secHeaderBar(core) {
-  const f = visibleFindings(), warns = f.filter(x => x.severity === 'warning' || x.severity === 'error').length;
   const stale = S.snap && Date.now() - S.snap.at > STALE_MS;
-  const chip = (k, v, cls) => h('span', { class: 'aic-chip ' + (cls || '') }, k + ' ', h('b', { text: v }));
+  const cls = core.state === 'OFFLINE' || core.state === 'ERROR' ? 'cr' : core.state === 'READY' || core.state === 'IDLE' ? 'ok' : 'cy';
+  const fresh = S.snap ? 'Data as of ' + clock(S.snap.at) + ' (' + M.ageLabel(S.snap.at) + ')' + (stale ? ' · stale, refresh to update' : '') : (S.loading ? 'Reading business data…' : 'Waiting for data');
+  // One authoritative status (the pill) and one freshness line. Counts live in the snapshot and in Needs attention, not here.
   return h('header', { class: 'aic-hdr' },
     h('div', { class: 'aic-hr1' },
       h('h1', { text: 'BT INTELLIGENCE' }),
-      h('span', { class: 'aic-live aic-' + (core.state === 'OFFLINE' || core.state === 'ERROR' ? 'cr' : core.state === 'READY' || core.state === 'IDLE' ? 'ok' : 'cy'), 'aria-live': 'polite' }, h('i', { class: 'aic-dot' }), core.state === 'READY' ? 'READY' : core.state.replace(/_/g, ' '))),
-    h('div', { class: 'aic-tele', 'aria-label': 'Telemetry' },
-      chip('SYSTEMS', M.SYSTEMS.length + ' monitored'),
-      chip('FINDINGS', S.snap && !M.isPartialSnapshot(S.snap) ? String(f.length) : '…'), // '…' while sales data is still loading: the count is not final yet
-      chip('NEED REVIEW', S.snap && !M.isPartialSnapshot(S.snap) ? String(warns) : '…', warns && !M.isPartialSnapshot(S.snap) ? 'wn' : ''),
-      chip('DATA AS OF', S.snap ? clock(S.snap.at) + ' (' + M.ageLabel(S.snap.at) + ')' : '—', stale ? 'wn' : ''),
-      stale ? chip('STALE', 'refresh to update', 'wn') : null,
-      chip('DATA VIEW', S.snap ? 'current snapshot loaded' : 'waiting for data')));
+      h('span', { class: 'aic-live aic-' + cls, 'aria-live': 'polite' }, h('i', { class: 'aic-dot' }), core.state.replace(/_/g, ' '))),
+    h('div', { class: 'aic-hr2' },
+      h('span', { class: 'aic-fresh2' + (stale ? ' aic-wn' : ''), text: fresh }),
+      h('div', { class: 'aic-seg' },
+        h('button', { text: S.loading ? 'Reading…' : 'Refresh', disabled: S.loading, onclick: () => refresh({ force: true }) }),
+        h('button', { text: '⌘K', 'aria-label': 'Open command palette', onclick: openPalette }))));
 }
 
-function secModes() {
-  // One front page: no Monitor/Investigate/Act tabs. Essentials are always open; secondary cards fold.
-  return h('div', { class: 'aic-tool' },
-    h('div', { class: 'aic-seg' },
-      h('button', { text: S.loading ? 'Reading…' : 'Refresh', disabled: S.loading, onclick: () => refresh({ force: true }) }),
-      h('button', { text: 'Commands  ⌘K', onclick: openPalette })));
-}
+
 
 
 // Decorative holographic avatar. Pure SVG, no data: every operational fact stays in real DOM text beside it.
@@ -281,14 +274,14 @@ function secCore(info) {
       live.pendingApproval ? h('div', { class: 'aic-appr' }, h('b', { text: 'Waiting for you. ' }), (live.pendingApproval.metadata && live.pendingApproval.metadata.title) || live.pendingApproval.tool, ' ', h('button', { class: 'aic-p', text: 'Review', onclick: reviewApproval })) : null)
     : lastMissionNode();
   const life = M.deriveLifecycle(requestEvents(m || lastRequestStart()), !!S.snap);
-  return card('core', 'monitor investigate', // the JARVIS core is the landing hero, so it shows in Monitor too
+  // Compact status row inside the Copilot card (small avatar, one line of detail). The lifecycle is kept, folded.
+  return h('div', { class: 'aic-corerow', id: 'aic-core' },
     h('div', { class: 'aic-stage', 'data-s': core.state.toLowerCase() },
       h('i', { class: 'aic-ring r1' }), h('i', { class: 'aic-ring r2' }), h('i', { class: 'aic-ring r3' }),
       h('div', { class: 'aic-orb' }, jarvisAvatar(), h('div', { class: 'aic-orb-t' }, h('b', { text: 'JARVIS' }), h('small', { text: core.state.replace(/_/g, ' ') })))),
-    h('div', { class: 'aic-bubble' }, (() => { if (!S.snap) return 'Reading your data\u2026'; const n = visibleFindings().filter(x => x.severity === 'warning' || x.severity === 'error').length; return n ? n + (n === 1 ? ' item needs' : ' items need') + ' your review.' : 'All clear. Nothing needs you right now.'; })()),
     h('div', { class: 'aic-cs' }, h('h2', { text: core.state.replace(/_/g, ' ') }), h('p', { text: core.detail })),
-    h('ol', { class: 'aic-life', 'aria-label': 'Intelligence lifecycle' }, life.map(s => h('li', { class: (s.reached ? (s.failed ? 'on fail ' : 'on ') : '') + (s.available ? '' : 'na'), title: s.available ? (s.reached ? 'Happened in the latest request' : 'Not reached in the latest request') : 'BT has no automated verification step yet', text: s.label }))),
-    mission);
+    mission,
+    h('details', { class: 'aic-lifed' }, h('summary', { text: 'Lifecycle of the last request' }), h('ol', { class: 'aic-life', 'aria-label': 'Intelligence lifecycle' }, life.map(s => h('li', { class: (s.reached ? (s.failed ? 'on fail ' : 'on ') : '') + (s.available ? '' : 'na'), title: s.available ? (s.reached ? 'Happened in the latest request' : 'Not reached in the latest request') : 'BT has no automated verification step yet', text: s.label })))));
 }
 function reviewApproval() { if (window.BTAgent && typeof window.BTAgent.approvals === 'function') goMode('act', 'aic-actc'); else if (window.BTAgent) window.BTAgent.open(); }
 const lastRequestStart = () => T.recent(400).find(e => e.type === 'request_start') || null;
@@ -311,7 +304,7 @@ function findingCard(f) {
     h('span', { class: 'aic-chev', 'aria-hidden': 'true', text: '\u203a' }));
 }
 // One-line answer to "do I need to do anything?" (replaces the big orb on the Monitor view).
-function secSummary(info) {
+function summaryLine() {
   if (!S.snap) return null;
   // Same rule as the chat briefing ("N things need attention" counts warnings/errors only);
   // info-level notes are counted separately so the two screens never disagree.
@@ -320,53 +313,87 @@ function secSummary(info) {
   const notes = all.length - open.length;
   const tn = open.some(x => x.severity === 'error') ? 'cr' : open.length ? 'wn' : 'ok';
   const noteTxt = notes ? ' (+' + notes + ' note' + (notes === 1 ? '' : 's') + ')' : '';
-  const text = open.length ? (open.length === 1 ? '1 thing needs you today' : open.length + ' things need you today') + noteTxt
-    : notes ? 'Nothing urgent. ' + notes + ' note' + (notes === 1 ? '' : 's') + ' to review.' : 'All clear. Nothing needs you right now.';
-  return card('sum', 'monitor', h('div', { class: 'aic-sumrow' }, h('i', { class: 'aic-dot2 aic-d-' + tn, 'aria-hidden': 'true' }),
-    h('div', {}, h('div', { class: 'aic-sumt', text }), h('div', { class: 'aic-sub', text: 'BT ' + info.core.state.replace(/_/g, ' ').toLowerCase() + '  data as of ' + clock(S.snap.at) }))));
+  const partial = M.isPartialSnapshot(S.snap);
+  const text = partial ? 'Sales data is still loading. Counts may change.'
+    : open.length ? (open.length === 1 ? '1 thing needs you today' : open.length + ' things need you today') + noteTxt
+      : notes ? 'Nothing urgent. ' + notes + ' note' + (notes === 1 ? '' : 's') + ' to review.' : 'All clear. Nothing needs you right now.';
+  return h('div', { class: 'aic-sumrow', id: 'aic-sum' }, h('i', { class: 'aic-dot2 aic-d-' + tn, 'aria-hidden': 'true' }),
+    h('div', {}, h('div', { class: 'aic-sumt', text }), h('div', { class: 'aic-sub', text: 'Ranked by severity, then by the Rs amount involved. Data as of ' + clock(S.snap.at) + '.' })));
+}
+// One actionable row: severity, area, Rs involved, the first evidence line, the next action, and one-tap Investigate.
+function attentionRow(e) {
+  const f = e.primary;
+  const ev = e.evidence[0];
+  return h('div', { class: 'aic-att-row' },
+    h('button', { class: 'aic-f aic-sev-' + f.severity, onclick: () => openFinding(f, e), 'aria-label': e.area + ': ' + f.title + '. ' + e.impactText },
+      h('i', { class: 'aic-dot2', 'aria-hidden': 'true' }),
+      h('span', { class: 'aic-fb' },
+        h('span', { class: 'aic-ft', text: f.title }),
+        h('span', { class: 'aic-fs' }, h('b', { text: e.area }), ' · ', e.impactText, ' · ', M.ageLabel(f.detected_at)),
+        ev ? h('span', { class: 'aic-fe', text: ev.label + ': ' + ev.value }) : null,
+        e.next ? h('span', { class: 'aic-fn' }, h('b', { text: 'Next: ' }), e.next) : null,
+        e.related.length ? h('span', { class: 'aic-fr', text: '+' + e.related.length + ' related ' + (e.related.length === 1 ? 'issue' : 'issues') + ' in ' + e.area.toLowerCase() }) : null,
+        ...e.linked.map(l => h('span', { class: 'aic-fl', text: 'Seen together with: ' + l.systems.filter(x => C.areaLabel(x) !== e.area).map(C.areaLabel).join(', ') + ' (co-occurrence, not proven)' }))),
+      h('span', { class: 'aic-chev', 'aria-hidden': 'true', text: '›' })),
+    h('button', { class: 'aic-inv', text: 'Investigate', 'aria-label': 'Investigate: ' + f.title, onclick: () => investigate(f) }));
 }
 function secAttention() {
   let body;
-  if (S.error && !S.snap) body = h('div', { class: 'aic-err' }, 'Could not read business data. ', h('button', { text: 'Retry', onclick: () => refresh({ force: true }) }));
+  if (S.error && !S.snap) body = failureNode(S.error, () => refresh({ force: true }));
   else if (!S.snap) body = skeleton();
   else {
-    const f = visibleFindings(), top = f.filter(x => x.severity !== 'good');
-    const good = f.filter(x => x.severity === 'good');
-    body = h('div', {}, top.length ? top.slice(0, S.attAll ? 8 : 4).map(findingCard) : empty('Nothing needs attention right now. All monitored rules are clear.'),
-      top.length > 4 ? h('button', { class: 'aic-showall', 'aria-expanded': String(!!S.attAll), text: S.attAll ? 'Show fewer' : 'Show ' + (Math.min(top.length, 8) - 4) + ' more', onclick: () => { S.attAll = !S.attAll; render(); } }) : null,
-      S.attAll && top.length > 8 ? h('div', { class: 'aic-more', text: '+ ' + (top.length - 8) + ' more. Ask BT "What needs my attention?"' }) : null,
+    const f = visibleFindings(), good = f.filter(x => x.severity === 'good');
+    const P = C.prioritizeFindings(f, { limit: S.attAll ? 10 : 5 });
+    body = h('div', {}, summaryLine(),
+      P.entries.length ? P.entries.map(attentionRow) : empty('Nothing needs attention right now. All monitored rules are clear.'),
+      P.total > 5 ? h('button', { class: 'aic-showall', 'aria-expanded': String(!!S.attAll), text: S.attAll ? 'Show fewer' : 'Show ' + Math.min(P.total - 5, 5) + ' more', onclick: () => { S.attAll = !S.attAll; render(); } }) : null,
+      S.attAll && P.hidden ? h('div', { class: 'aic-more', text: '+ ' + P.hidden + ' more. Ask BT "What needs my attention?"' }) : null,
       good.map(g => h('div', { class: 'aic-good' }, '✓ ', g.title)));
   }
-  return card('att', 'monitor', sectionHeader('WHAT NEEDS MY ATTENTION'), body);
+  return card('att', 'monitor', sectionHeader('NEEDS ATTENTION', S.snap ? h('span', { class: 'aic-sub', text: 'top 5 by severity and amount' }) : null), body);
 }
 
-function secSince() {
+// Failure / empty-state wording: one place, honest about timeout, permission, offline and partial data.
+function failureNode(err, retry) {
+  const d = C.describeFailure(err);
+  return h('div', { class: 'aic-err aic-fail-' + d.kind, role: 'alert' }, h('b', { text: d.title + '. ' }), d.text, d.detail && d.detail !== d.text ? h('div', { class: 'aic-sub', text: d.detail }) : null,
+    d.retry && retry ? h('div', { class: 'aic-row' }, h('button', { text: 'Retry', onclick: retry })) : null);
+}
+
+function sinceNode() {
   if (!S.snap) return null;
   const b = S.baseline;
-  const body = !b ? empty('This is your first visit. The next visit will show what changed.')
-    : (() => { const d = M.diffFindings(b.findings, S.snap.findings); return h('div', { class: 'aic-since' }, h('div', {}, h('b', { text: '+' + d.added.length }), ' new'), h('div', {}, h('b', { text: String(d.cleared.length) }), ' no longer present'), h('div', { class: 'aic-sub', text: 'Since ' + new Date(b.at).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) })); })();
-  return card('since', 'investigate', sectionHeader('SINCE YOUR LAST VISIT'), body);
+  if (!b) return null; // first visit: nothing to compare, no card
+  const d = M.diffFindings(b.findings, S.snap.findings);
+  if (!d.added.length && !d.cleared.length) return null; // nothing changed: no empty panel
+  return h('div', { class: 'aic-since' }, h('div', { class: 'aic-k', text: 'SINCE YOUR LAST VISIT' }), h('div', {}, h('b', { text: '+' + d.added.length }), ' new'), h('div', {}, h('b', { text: String(d.cleared.length) }), ' no longer present'),
+    d.added.length ? h('ul', { class: 'aic-list' }, d.added.slice(0, 4).map(f => h('li', { text: f.title }))) : null);
 }
 
-function systemCard(name) {
-  const s = S.snap && S.snap.systems[name];
-  if (!s) return h('div', { class: 'aic-sys' }, h('div', { class: 'aic-sysh' }, h('b', { text: name })), skeleton(2));
-  return h('div', { class: 'aic-sys aic-edge-' + tone(s.status) },
-    h('div', { class: 'aic-sysh' }, h('b', { text: name }), pill(s.status)),
-    h('div', { class: 'aic-sub', text: s.reason }),
-    s.metrics.length ? h('div', { class: 'aic-hero', title: 'Source: ' + s.metrics[0].src }, h('b', { text: s.metrics[0].value }), h('span', { text: s.metrics[0].label })) : null,
-    s.metrics.length > 1 ? h('dl', { class: 'aic-met' }, s.metrics.slice(1, 3).map(m => [h('dt', { text: m.label, title: 'Source: ' + m.src }), h('dd', { text: m.value })])) : (s.metrics.length ? null : h('div', { class: 'aic-sub', text: s.availability.reason || 'No data' })),
-    h('div', { class: 'aic-fresh aic-' + tone(s.fresh.status), text: 'Data: ' + s.fresh.label }),
-    h('div', { class: 'aic-row' }, h('button', { text: 'Open', onclick: () => openSystem(name) }), h('button', { text: 'Investigate', onclick: () => ask(SYSTEM_ASK[name]) })));
-}
+
 const SYSTEM_ASK = {
   SALES: 'How are sales going this month compared with last month and the target?', CASH: 'Is there any cash difference in the latest sales entry?',
   INVENTORY: 'What inventory is at risk? Which products are out of stock or about to run out?', STAFF: 'How are staff credits looking, including carried-over balances and possible duplicates?',
   STR: 'Which STRs are delayed or still pending?', CLOSING: 'What is blocking closing? Which days or shifts are not closed?',
 };
+const STATUS_RANK = { ERROR: 0, UNAUTHORIZED: 0, DATA_UNAVAILABLE: 1, ATTENTION: 2, STALE: 2 };
+const worstStatus = names => names.map(n => S.snap.systems[n] && S.snap.systems[n].status).filter(Boolean).sort((a, b) => (STATUS_RANK[a] ?? 3) - (STATUS_RANK[b] ?? 3))[0] || 'CLEAR';
+function snapTile(t) {
+  const status = worstStatus(t.systems), tn2 = [tone(status), t.tone].sort((a, b) => ({ cr: 0, wn: 1, mu: 2, ok: 3 }[a] - { cr: 0, wn: 1, mu: 2, ok: 3 }[b]))[0];
+  const aria = t.label + ': ' + t.value + '. ' + t.sub + (t.compare ? '. ' + t.compare : '') + (status !== 'CLEAR' ? '. Status ' + status : '');
+  return h('button', { class: 'aic-it aic-snap-tile aic-edge-' + tn2, 'data-tile': t.id, 'aria-label': aria + '. Tap for details.', onclick: () => openSystem(t.system) },
+    t.pct != null ? ringGauge(t.pct, tn2) : null,
+    h('span', { class: 'aic-it-b' },
+      h('span', { class: 'aic-it-l', text: t.label }),
+      h('b', { class: 'aic-it-v aic-' + tn2, text: t.value }),
+      h('small', { text: t.sub }),
+      t.compare ? h('small', { class: 'aic-it-c', text: t.compare }) : null,
+      h('span', { class: 'aic-it-f' }, status !== 'CLEAR' ? pill(status) : null, t.fresh ? h('small', { class: 'aic-fresh aic-' + tone(S.snap.systems[t.system] && S.snap.systems[t.system].fresh.status), text: t.fresh }) : null)));
+}
 function secSystems() {
-  const order = S.snap ? M.sortSystemsByUrgency(M.SYSTEMS, S.snap.systems) : M.SYSTEMS;
-  return card('sys', 'monitor', sectionHeader('BUSINESS SYSTEMS', h('span', { class: 'aic-sub', text: S.snap ? 'most urgent first' : 'loading' })), h('div', { class: 'aic-grid6' }, order.map(systemCard)));
+  const tiles = S.snap ? C.snapshotTiles(S.snap) : [];
+  return card('sys', 'monitor', sectionHeader('BUSINESS SNAPSHOT', h('span', { class: 'aic-sub', text: S.snap ? 'tap a tile for detail' : 'loading' })),
+    S.snap ? h('div', { class: 'aic-snap' }, tiles.map(snapTile)) : skeleton(3));
 }
 
 // Weekday-aware projection + today's expected sale (tool: weekday_forecast, maths in shared/planning-metrics.js).
@@ -408,12 +435,20 @@ function secForecast() {
     body = h('div', {},
       h('dl', { class: 'aic-met aic-big' }, [['TARGET', 'Rs ' + M.fmtNum(p.target)], ['SOLD SO FAR', 'Rs ' + M.fmtNum(p.sold_so_far) + ' (' + p.pct_done + '%)'], ['NEEDED / DAY', 'Rs ' + M.fmtNum(p.needed_per_day)], ['ACTUAL / DAY', 'Rs ' + M.fmtNum(p.actual_per_day)]].map(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })])),
       h('div', { class: 'aic-interp' }, h('span', { class: 'aic-tag', text: 'CALCULATION' }), ' ', F.summary),
-      F.projection != null ? h('div', { class: 'aic-sub' }, h('span', { class: 'aic-tag', text: 'PREDICTION' }), ' Briefing projection (average × days in month): Rs ' + M.fmtNum(F.projection)) : null,
+      (() => {
+        const raw = S.snap.raw, V = C.forecastVariance(F.pace, raw.planning && raw.planning.weekday, raw.briefing);
+        if (!V) return null;
+        return h('div', { class: 'aic-drivers' }, h('div', { class: 'aic-k', text: 'VARIANCE AND WHAT DRIVES THE FORECAST' }),
+          h('div', { class: 'aic-var aic-' + (V.behind ? 'wn' : 'ok') }, V.behind ? 'Behind by Rs ' + M.fmtNum(-V.perDay) + ' per day' : 'Ahead by Rs ' + M.fmtNum(V.perDay) + ' per day',
+            V.monthEndGap != null ? ' \u00B7 at this run rate the month ends about Rs ' + M.fmtNum(Math.abs(V.monthEndGap)) + (V.monthEndGap >= 0 ? ' above' : ' below') + ' target' : ''),
+          h('ul', { class: 'aic-list' }, V.drivers.map(d => h('li', {}, tagEl(d.kind), ' ', d.text))));
+      })(),
+      F.projection != null && F.disagree ? h('div', { class: 'aic-sub' }, h('span', { class: 'aic-tag', text: 'PREDICTION' }), ' Briefing projection (average × days in month): Rs ' + M.fmtNum(F.projection)) : null,
       weekdayBlock(),
       F.disagree ? h('div', { class: 'aic-note', text: 'Two existing calculations disagree on whether the target will be met (pace tracker vs briefing projection). Both are shown; the pace tracker is the one the Dashboard uses.' }) : null,
       h('div', { class: 'aic-row' }, h('button', { text: 'Ask BT to interpret', onclick: () => ask('Interpret my target pace for this month and say what would need to change to reach the target.') })));
   }
-  return card('fc', 'monitor', sectionHeader('FORECAST', h('span', { class: 'aic-sub', text: 'Analytics.getTargetPaceForMonth' })), body);
+  return card('fc', 'monitor', sectionHeader('SALES & FORECAST', h('span', { class: 'aic-sub', text: 'actual vs target \u00B7 get_target_pace' })), body);
 }
 
 // ── reorder draft ──
@@ -429,7 +464,7 @@ function reorderGroup(g) {
   const title = g.supplier + ' · ' + g.lines + ' lines' + (g.urgent_lines ? ' · ' + g.urgent_lines + ' urgent' : '') + ' · Rs ' + M.fmtNum(g.est_value_at_sale_price);
   return h('details', { class: 'aic-det', open: g.urgent_lines > 0 ? '' : null }, h('summary', { text: title }), h('ul', {}, g.items.slice(0, 12).map(reorderLine)));
 }
-function secReorder() {
+function reorderBody() {
   const P = S.snap && S.snap.raw && S.snap.raw.planning, D = P && P.reorder;
   let body;
   if (!S.snap) body = skeleton(2);
@@ -443,11 +478,11 @@ function secReorder() {
       h('button', { class: 'aic-p', text: 'Copy full list', onclick: () => copyText(reorderDraftText(D), 'Reorder list copied') }),
       h('button', { text: 'Open Reorder Report', onclick: () => openPage('#reorder') }),
       h('button', { text: 'Ask BT about this', onclick: () => ask('Draft my reorder list. Which items are most urgent and from which suppliers?') })));
-  return card('reo', 'monitor', sectionHeader('REORDER DRAFT', h('span', { class: 'aic-sub', text: 'reorder_draft · recommendation only' })), body);
+  return body;
 }
 
 // ── STR fill rate ──
-function secFill() {
+function fillBody() {
   const P = S.snap && S.snap.raw && S.snap.raw.planning, F = P && P.fill;
   let body;
   if (!S.snap) body = skeleton(2);
@@ -459,13 +494,13 @@ function secFill() {
     F.worst_products.length ? h('div', { class: 'aic-sub', text: 'Most short: ' + F.worst_products.slice(0, 4).map(x => x.name + ' (-' + x.packs_short + ')').join(', ') }) : null,
     h('div', { class: 'aic-sub', text: F.note }),
     h('div', { class: 'aic-row' }, h('button', { text: 'Open zero-dispatch', onclick: () => openPage('#str-zero-dispatch') }), h('button', { text: 'Ask BT about this', onclick: () => ask('Which warehouses are short-dispatching our STRs and which products are affected?') })));
-  return card('fill', 'monitor', sectionHeader('STR FILL RATE', h('span', { class: 'aic-sub', text: 'str_fill_rate · incoming, last ' + ((F && F.window_days) || 7) + ' days' })), body);
+  return body;
 }
 
 // ── staff credit + ledgers ──
 // A ledger is worth a block of its own only when it has money, categories or a flagged category this month.
 const ledgerHasActivity = L => !!L && (Number(L.month_to_date_total) > 0 || (L.categories || []).length > 0 || (L.running_above_usual || []).length > 0);
-function secMoney() {
+function ledgerBody() {
   const P = S.snap && S.snap.raw && S.snap.raw.planning, Mo = P && P.money;
   let body;
   if (!S.snap) body = skeleton(2);
@@ -484,7 +519,55 @@ function secMoney() {
       h('div', { class: 'aic-sub', text: Mo.note }),
       h('div', { class: 'aic-row' }, h('button', { text: 'Open Manager', onclick: () => openPage('#manager-dashboard') }), h('button', { text: 'Ask BT about this', onclick: () => ask('Why is petty cash and other expenses high this month? Break it down by category.') })));
   }
-  return card('money', 'monitor', sectionHeader('MONEY & LEDGERS', h('span', { class: 'aic-sub', text: 'money_overview · ' + ((S.snap && S.snap.raw && S.snap.raw.planning && S.snap.raw.planning.money && S.snap.raw.planning.money.month) || 'this month') })), body);
+  return body;
+}
+
+
+// ── Inventory & STR: one compact summary, detail on demand ──
+function secInvStr() {
+  const raw = S.snap && S.snap.raw, P = raw && raw.planning, R = P && P.reorder, F = P && P.fill, str = raw && raw.str, sp = raw && raw.strPending, inv = raw && raw.briefing && raw.briefing.inventory;
+  let body;
+  if (!S.snap) body = skeleton(2);
+  else {
+    const rows = [];
+    if (inv) rows.push(['STOCK-OUTS, STILL SELLING', String(inv.out_of_stock_but_selling)], ['RUN OUT WITHIN 7 DAYS', String(inv.running_out_within_7_days)]);
+    else if (R) rows.push(['STOCK-OUTS, STILL SELLING', String(R.out_of_stock_selling)], ['RUNNING LOW (≤7d)', String(R.low_cover)]);
+    if (R && R.lost_sales_per_day > 0) rows.push(['SALES AT RISK / DAY', 'Rs ' + M.fmtNum(R.lost_sales_per_day)]);
+    if (R && R.total_lines) rows.push(['REORDER LINES', R.total_lines + ' (est. Rs ' + M.fmtNum(R.est_value_at_sale_price) + ' at sale price)']);
+    if (sp) rows.push(['DELAYED TRANSFERS (3+ DAYS)', sp.matching + (sp.items && sp.items[0] ? ' · oldest ' + sp.items[0].age_days + ' days' : '')]);
+    else if (str) rows.push(['DISPATCHED, NOT RECEIVED', String(str.dispatched_not_received.all)]);
+    if (F && F.fill_rate_pct != null) rows.push(['STR FILL RATE', F.fill_rate_pct + '%'], ['SHORT / ZERO-DISPATCH LINES', F.short_lines + ' / ' + F.zero_dispatch_lines], ['SHORT RECEIPTS', F.receipt_accuracy_pct != null ? 'receipt accuracy ' + F.receipt_accuracy_pct + '%' : 'not measurable']);
+    const link = M.correlate(visibleFindings()).find(c => c.id === 'c_str_inv');
+    body = h('div', {},
+      rows.length ? h('dl', { class: 'aic-met aic-big' }, rows.map(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })])) : empty((P && P.errors && (P.errors.reorder || P.errors.fill)) || 'Inventory and transfer data not available.'),
+      link ? h('div', { class: 'aic-note' }, tagEl('CORRELATION'), ' ', link.title + '. ', link.why, ' ', h('button', { class: 'aic-g', text: 'Ask BT to check', onclick: () => ask('Check whether these are connected, using your tools, and say what is known and what is uncertain: ' + link.parts.map(p => p.title).join(' / ')) })) : null,
+      R ? h('details', { class: 'aic-det2', id: 'aic-d-reorder' }, h('summary', { text: 'Reorder recommendations' + (R.total_lines ? ' · ' + R.total_lines + ' lines' : '') }), reorderBody()) : null,
+      F ? h('details', { class: 'aic-det2', id: 'aic-d-fill' }, h('summary', { text: 'STR fill rate detail' + (F.fill_rate_pct != null ? ' · ' + F.fill_rate_pct + '%' : '') }), fillBody()) : null,
+      h('div', { class: 'aic-row' }, h('button', { text: 'Why are transfers delayed?', onclick: () => ask('Why are transfers delayed?') }), h('button', { text: 'Which reorders need review?', onclick: () => ask('Which reorder recommendations need review?') })));
+  }
+  return card('invstr', 'monitor', sectionHeader('INVENTORY & STR', h('span', { class: 'aic-sub', text: 'recommendations only · nothing is ordered' })), body);
+}
+
+// ── Closing, Cash & Money: compact totals, ledger detail on demand ──
+function secMoney() {
+  const raw = S.snap && S.snap.raw, P = raw && raw.planning, Mo = P && P.money;
+  let body;
+  if (!S.snap) body = skeleton(2);
+  else {
+    const rows = [], cl = raw.closing, today = cl && cl.days && cl.days[0], inc = cl && cl.incomplete_days, day = raw.day, cr = raw.briefing && raw.briefing.credit;
+    if (today) rows.push(['CLOSING TODAY', today.closed + ' of 3 shifts closed']);
+    if (inc) rows.push(['DAYS WITH OPEN SHIFTS (7D)', inc.length ? inc.length + ' · ' + inc.slice(0, 2).map(d => d.date + ': ' + d.missing.join(', ')).join(' | ') : '0']);
+    if (day) rows.push(['CASH DIFF (' + day.date + ')', 'Rs ' + M.fmtNum(day.diff)]);
+    if (cr && cr.month_net_owed != null) rows.push(['STAFF CREDIT OWED (' + cr.month + ')', 'Rs ' + M.fmtNum(cr.month_net_owed) + ' · ' + (cr.staff_owing || 0) + ' staff']);
+    if (Mo) Mo.ledgers.filter(ledgerHasActivity).forEach(L => rows.push([String(L.ledger).toUpperCase() + ' · MONTH TO DATE', 'Rs ' + M.fmtNum(L.month_to_date_total)]));
+    const exc = Mo ? Mo.ledgers.reduce((n, L) => n + (L.running_above_usual || []).length, 0) : 0, dup = cr ? cr.possible_duplicates : 0;
+    if (Mo || cr) rows.push(['LEDGER EXCEPTIONS', exc + ' running above usual · ' + (dup || 0) + ' possible duplicate' + (dup === 1 ? '' : 's')]);
+    body = h('div', {},
+      rows.length ? h('dl', { class: 'aic-met aic-big' }, rows.map(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })])) : empty((P && P.errors && P.errors.money) || 'Closing, cash and ledger data not available.'),
+      Mo || (P && P.errors && P.errors.money) ? h('details', { class: 'aic-det2', id: 'aic-d-ledger' }, h('summary', { text: 'Ledger detail · ' + ((Mo && Mo.month) || 'this month') }), ledgerBody()) : null,
+      h('div', { class: 'aic-row' }, h('button', { text: 'Open Closing Book', onclick: () => openPage('#closing') }), h('button', { text: 'Explain closing position', onclick: () => ask('Explain today’s closing position.') })));
+  }
+  return card('money', 'monitor', sectionHeader('CLOSING, CASH & MONEY', h('span', { class: 'aic-sub', text: 'closing_recent_days · money_overview' })), body);
 }
 
 // ── agent network ──
@@ -594,34 +677,13 @@ function ringGauge(pct, tn) {
     h2svg('circle', { class: 'rg-val', cx: 24, cy: 24, r: 20, 'stroke-dasharray': (p / 100 * RING_C).toFixed(1) + ' ' + RING_C.toFixed(1), transform: 'rotate(-90 24 24)' }));
   return svg;
 }
-function instTile({ label, value, sub, tn = 'mu', pct = null, onclick = null }) {
+function instTile({ label, value, sub, tn = 'mu', pct = null, onclick = null }) { // kept for diagnostics tiles
   const body = [pct != null ? ringGauge(pct, tn) : null,
     h('span', { class: 'aic-it-b' }, h('span', { class: 'aic-it-l', text: label }), h('b', { class: 'aic-it-v aic-' + tn, text: value }), h('small', { text: sub }))];
   const aria = label + ': ' + value + '. ' + sub;
   return onclick ? h('button', { class: 'aic-it', 'aria-label': aria, onclick }, body) : h('div', { class: 'aic-it', role: 'group', 'aria-label': aria }, body);
 }
-function secInstruments(info) {
-  const jump = id => () => goMode('monitor', 'aic-' + id);
-  const snap = S.snap, A = window.BTAgent, tiles = [];
-  const F = snap && snap.forecast, P = snap && snap.raw && snap.raw.planning;
-  tiles.push(F && F.available && F.pace ? instTile({ label: 'TARGET', value: F.pace.pct_done + '%', sub: 'Rs ' + M.fmtNum(F.pace.sold_so_far) + ' of ' + M.fmtNum(F.pace.target), tn: F.pace.on_track === false ? 'wn' : 'ok', pct: F.pace.pct_done, onclick: jump('fc') })
-    : instTile({ label: 'TARGET', value: '\u2014', sub: snap ? 'not available' : 'loading', onclick: jump('fc') }));
-  const fr = P && P.fill && P.fill.fill_rate_pct;
-  tiles.push(fr != null ? instTile({ label: 'STR FILL', value: fr + '%', sub: 'incoming, last 7 days', tn: fr < 90 ? 'wn' : 'ok', pct: fr, onclick: jump('fill') }) : instTile({ label: 'STR FILL', value: '\u2014', sub: snap ? 'not measurable' : 'loading', onclick: jump('fill') }));
-  const vf = snap ? visibleFindings() : null, rev = vf ? vf.filter(f => f.severity === 'warning' || f.severity === 'error').length : null;
-  tiles.push(vf ? instTile({ label: 'NEED REVIEW', value: String(rev), sub: vf.length + ' findings total', tn: rev ? 'wn' : 'ok', onclick: jump('att') }) : instTile({ label: 'NEED REVIEW', value: '\u2014', sub: 'loading' }));
-  const ap = A && typeof A.approvals === 'function' ? A.approvals().length : null;
-  tiles.push(ap != null ? instTile({ label: 'APPROVALS', value: String(ap), sub: ap ? 'waiting for you' : 'nothing waiting', tn: ap ? 'wn' : 'ok', onclick: jump('actc') }) : instTile({ label: 'APPROVALS', value: '\u2014', sub: 'assistant not loaded' }));
-  const act = activeAgentIds(info.live).on.size, total = Object.keys(SPECIALISTS).filter(id => id !== 'general').length;
-  tiles.push(instTile({ label: 'AGENTS', value: act + ' / ' + total, sub: act ? 'running now' : 'none running', tn: act ? 'ok' : 'mu', onclick: jump('fleet') }));
-  tiles.push(!A ? instTile({ label: 'CHANGES', value: '\u2014', sub: 'assistant not loaded' }) : A.killed() ? instTile({ label: 'CHANGES', value: 'STOPPED', sub: 'kill switch is on', tn: 'cr', onclick: jump('actc') })
-    : A.writesAllowed() ? instTile({ label: 'CHANGES', value: 'ALLOWED', sub: 'you approve each one', tn: 'wn', onclick: jump('actc') }) : instTile({ label: 'CHANGES', value: 'READ-ONLY', sub: 'nothing can be changed', tn: 'ok', onclick: jump('actc') }));
-  const hl = S.health;
-  tiles.push(hl ? instTile({ label: 'HEALTH', value: hl.filter(x => x.status === 'HEALTHY').length + ' / ' + hl.length, sub: 'measured, not assumed', tn: hl.some(x => x.status !== 'HEALTHY') ? 'wn' : 'ok', onclick: () => goMode('monitor', 'aic-health') }) : instTile({ label: 'HEALTH', value: '\u2014', sub: 'not measured yet' }));
-  const age = snap ? Date.now() - snap.at : null;
-  tiles.push(snap ? instTile({ label: 'DATA AS OF', value: clock(snap.at), sub: M.ageLabel(snap.at), tn: age > 10 * 60 * 1000 ? 'wn' : 'ok' }) : instTile({ label: 'DATA AS OF', value: '\u2014', sub: 'loading' }));
-  return card('inst', 'monitor', sectionHeader('INSTRUMENTS', h('span', { class: 'aic-sub', text: 'live values · \u2014 means not available' })), h('div', { class: 'aic-insts' }, tiles));
-}
+
 
 function secFleet(info) {
   const act = activeAgentIds(info.live);
@@ -668,26 +730,31 @@ function assessmentNode(A) {
       : [h('div', { class: 'aic-k', text: 'AI RECOMMENDATION' }), h('p', { class: 'aic-sub', text: syn.dropped_recommendation ? 'Withheld: the Analyst suggested something that was not tied to data a specialist retrieved.' : 'The Analyst did not recommend an action.' })],
     h('div', { class: 'aic-sub', text: 'Investigation ' + inv.id + ' took ' + M.fmtDur(inv.ms) + '. Agreement/conflict and correlation are the Analyst\'s reading of the evidence; the tool outputs are the facts.' }));
 }
-function openFinding(f) {
+function openFinding(f, entry) {
   const A = S.assess[f.id];
-  const ev = f.evidence.map(e => h('li', {}, h('span', { class: 'aic-tag aic-k-' + e.kind.split(' ')[0].toLowerCase(), text: e.kind }), ' ', h('b', { text: e.label + ': ' }), e.value));
+  const R = C.structureInvestigation(f, A, S.snap ? C.buildActionDrafts(S.snap.raw) : []);
+  const sec = (label, ...kids) => [h('div', { class: 'aic-k', text: label }), ...kids];
+  const evRow = e => h('li', {}, h('span', { class: 'aic-tag aic-k-' + String(e.kind).split(' ')[0].toLowerCase(), text: e.kind }), ' ', h('span', { class: 'aic-cls aic-cls-' + e.cls, text: C.CLASS_LABEL[e.cls] }), ' ', h('b', { text: e.label + ': ' }), e.value, e.source ? h('span', { class: 'aic-sub', text: '  (' + e.source + ')' }) : null);
+  const act = a => a.kind === 'open' ? h('button', { text: a.label, onclick: () => openPage(a.href) })
+    : a.kind === 'draft' ? h('button', { text: a.label + ' (preview)', onclick: () => { closeModal(); openDraft(a.draft); } })
+      : h('button', { class: 'aic-p', text: a.label, onclick: () => investigate(f) });
   openModal(f.title.length > 60 ? f.type + ' · ' + f.system : f.title, h('div', { class: 'aic-find' },
-    h('div', { class: 'aic-row' }, pill(f.severity === 'warning' ? 'WARNING' : f.severity === 'good' ? 'HEALTHY' : 'INFO', f.severity.toUpperCase()), h('span', { class: 'aic-tag', text: f.system }), h('span', { class: 'aic-tag', text: f.type }), h('span', { class: 'aic-sub', text: 'Observed ' + M.ageLabel(f.detected_at) + ' · ' + clock(f.detected_at) })),
-    h('div', { class: 'aic-k', text: 'WHAT HAPPENED' }), h('p', { text: f.description }),
-    h('div', { class: 'aic-k', text: 'EVIDENCE' }), h('ul', { class: 'aic-list' }, ev),
-    h('div', { class: 'aic-k', text: 'INVESTIGATION PATH' }), h('div', { class: 'aic-path' }, f.related_agents.map((a, i) => [i ? h('span', { class: 'aic-arrow', text: '→' }) : null, h('span', { class: 'aic-tag', text: a })]), h('div', { class: 'aic-sub', text: 'Tools: ' + f.related_tools.join(', ') })),
-    h('div', { class: 'aic-k', text: "BT'S ASSESSMENT" }),
-    A ? assessmentNode(A)
-      : h('p', { class: 'aic-sub', text: 'BT has not been asked about this yet. The detection above is rule-based, with no AI involved.' }),
-    h('div', { class: 'aic-k', text: 'WHY AM I SEEING THIS' }), h('p', { class: 'aic-sub', text: 'Rule-based check "' + f.source + '" ran on your current data. Known: the FACT and CALCULATION rows. Not known: the cause. That needs investigation.' }),
-    h('div', { class: 'aic-k', text: 'RECOMMENDATION' }), h('p', {}, tagEl('RECOMMENDATION'), ' ', h('span', { class: 'aic-sub', text: '(fixed rule, not AI) ' }), f.recommendation, ' BT will never change data without your approval.'),
-    h('div', { class: 'aic-k', text: 'WHAT HAPPENS IF I ACT' }), h('p', { class: 'aic-sub', text: f.if_act }),
-    h('div', { class: 'aic-k', text: 'RELATED RECORDS' }), h('div', { class: 'aic-path' }, (f.related_entities || []).map(r => h('span', { class: 'aic-tag', text: r.kind + ': ' + r.value }))),
-    h('div', { class: 'aic-k', text: 'AUDIT REFERENCE' }), h('p', { class: 'aic-sub', text: f.audit_reference + '. Read-only detection: nothing was changed. Changes made later through BT appear in the audit log with their own reference.' }),
-    h('div', { class: 'aic-row' },
-      h('button', { class: 'aic-p', text: 'Investigate with BT', onclick: () => investigate(f) }),
-      h('button', { text: 'Open source page', onclick: () => openPage(f.action.href) }),
-      h('button', { class: 'aic-g', text: 'Dismiss for today', onclick: () => { const d = lsGet(LS_DISMISS) || {}; d[f.id] = M.isoDay(new Date()); lsSet(LS_DISMISS, d); closeModal(); render(); } }))),
+    h('div', { class: 'aic-row' }, pill(f.severity === 'warning' ? 'WARNING' : f.severity === 'good' ? 'HEALTHY' : 'INFO', f.severity.toUpperCase()), h('span', { class: 'aic-tag', text: R.area }), h('span', { class: 'aic-tag', text: f.type }), h('span', { class: 'aic-sub', text: 'Observed ' + M.ageLabel(f.detected_at) })),
+    sec('FINDING', h('p', { text: f.title }), f.description && f.description !== f.title ? h('p', { class: 'aic-sub', text: f.description }) : null,
+      entry && entry.related && entry.related.length ? h('ul', { class: 'aic-list' }, entry.related.map(r => h('li', {}, h('b', { text: 'Related: ' }), r.title))) : null,
+      entry && entry.linked && entry.linked.length ? entry.linked.map(l => h('div', { class: 'aic-note' }, tagEl('CORRELATION'), ' ', l.title + '. ', l.why)) : null),
+    sec('IMPACT', h('p', { text: R.impact }), h('p', { class: 'aic-sub', text: f.if_act })),
+    sec('EVIDENCE', R.evidence.length ? h('ul', { class: 'aic-list' }, R.evidence.map(evRow)) : empty('No evidence rows.'),
+      h('div', { class: 'aic-sub', text: 'Checked with: ' + f.related_tools.join(', ') + '. Agents: ' + f.related_agents.join(', ') + '.' }),
+      h('div', { class: 'aic-path' }, (f.related_entities || []).map(r => h('span', { class: 'aic-tag', text: r.kind + ': ' + r.value })))),
+    sec('CONFIDENCE & LIMITATIONS', h('p', {}, h('b', { text: 'Confidence: ' + R.confidence.level }), R.confidence.reason ? ' — ' + R.confidence.reason : ''),
+      R.limitations.length ? h('ul', { class: 'aic-list' }, R.limitations.map(l => h('li', { text: l }))) : null,
+      h('p', { class: 'aic-sub', text: 'Rule-based check "' + f.source + '" ran on your current data. Verified: FACT, DETECTION and CALCULATION rows. Not known: the cause. That needs investigation.' })),
+    sec('RECOMMENDATION', h('p', {}, tagEl('RECOMMENDATION'), ' ', R.recommendation.text),
+      h('dl', { class: 'aic-met' }, [['Source', R.recommendation.source === 'ai' ? 'AI Analyst (check against the evidence)' : 'Rule-based: a fixed rule, not AI'], ['Why', R.recommendation.why || 'not stated'], ['Expected result', R.recommendation.expected], ['Risk', R.recommendation.risk], ['Approval', R.recommendation.approval_required ? 'Required for any change' : 'Not needed: advice only. BT never changes data without your approval.']].map(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })]))),
+    sec('AVAILABLE ACTIONS', h('div', { class: 'aic-row' }, R.actions.map(act), h('button', { class: 'aic-g', text: 'Dismiss for today', onclick: () => { const d = lsGet(LS_DISMISS) || {}; d[f.id] = M.isoDay(new Date()); lsSet(LS_DISMISS, d); closeModal(); render(); } }))),
+    sec("BT'S ASSESSMENT", A ? assessmentNode(A) : h('p', { class: 'aic-sub', text: 'BT has not been asked about this yet. The detection above is rule-based, with no AI involved.' })),
+    sec('AUDIT REFERENCE', h('p', { class: 'aic-sub', text: f.audit_reference + '. Read-only detection: nothing was changed. Changes made later through BT appear in the audit log with their own reference.' }))),
   { sub: f.source, tonec: tone(f.severity === 'warning' ? 'WARNING' : 'HEALTHY') });
 }
 function mdNode(text) { const d = document.createElement('div'); d.innerHTML = renderMarkdown(text); return d; } // renderMarkdown escapes everything first
@@ -739,15 +806,54 @@ function secActions(info) {
   body.push(h('div', { class: 'aic-gate aic-' + (killed ? 'cr' : A_ok ? 'ok' : 'wn') }, killed ? '⛔ AI changes are stopped on all devices (kill switch).' : A_ok ? '🔓 Changes allowed on this device. You approve every one.' : '🔒 Read-only on this device. BT can recommend but not change anything. Unlock from the assistant header.'));
   body.push(h('div', { class: 'aic-k', text: 'PENDING APPROVAL' }));
   body.push(...approvalNodes(info));
+  const dn = draftsNode(); if (dn) body.push(dn);
+  const sn = sinceNode(); if (sn) body.push(sn);
   body.push(h('div', { class: 'aic-k', text: 'UNDOABLE (last 48 hours)' }));
   if (!A) body.push(skeleton(2));
   else if (A.state === 'error') body.push(h('div', { class: 'aic-err', text: 'Could not read the audit log: ' + A.error }));
   else {
     body.push(A.undos.length ? h('ul', { class: 'aic-list' }, A.undos.map(u => h('li', {}, h('b', { text: u.label }), h('div', { class: 'aic-sub', text: M.ageLabel(u.at) + ' · ' + u.tool }), h('button', { text: '↶ Undo', onclick: async ev => { ev.target.disabled = true; const it = pushUndo({ tool: u.tool, label: u.label, fn: u.fn, key: u.key }); const r = await runUndo(it.id); if (r.ok && r.key) await markUndone(getSb(), r.key); toast(r.ok ? 'Undone: ' + r.label : 'Undo failed: ' + r.error); refresh({ force: true }); } })))) : empty('No undoable changes.'));
-    const logList = A.recent.length ? h('ul', { class: 'aic-ev' }, A.recent.map(r => h('li', { class: 'aic-evi' }, h('time', { text: new Date(r.at).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) }), h('span', { class: 'aic-evt', text: r.tool + ' · ' + r.status + (r.error ? ' (' + r.error + ')' : '') }), h('span', { class: 'aic-sub', text: r.ref })))) : empty('No AI changes recorded.');
+    const logList = A.recent.length ? h('ul', { class: 'aic-ev' }, A.recent.map(r => h('li', { class: 'aic-evi' }, h('time', { text: new Date(r.at).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) }), h('span', { class: 'aic-evt', text: r.tool + (r.error ? ' (' + r.error + ')' : '') }), outcomeChip(r), h('span', { class: 'aic-sub', text: r.ref })))) : empty('No AI changes recorded.');
     body.push(h('details', { class: 'aic-log' }, h('summary', { text: 'Recent changes (audit log) · ' + A.recent.length }), logList));
   }
-  return card('actc', 'act', sectionHeader('ACTION CENTER', h('span', { class: 'aic-sub', text: 'BT proposes · you approve' })), body);
+  return card('actc', 'act', sectionHeader('APPROVALS & RECENT ACTIVITY', h('span', { class: 'aic-sub', text: 'BT proposes \u00B7 you approve' })), body);
+}
+
+
+// Outcome chip for an audit row. "Executed" only when the audit log recorded success; a failure is shown as failed.
+function outcomeChip(r) {
+  const key = C.auditActionState({ change: true, status: r.status === 'applied' ? 'approved' : r.status });
+  const st = C.ACTION_STATES[key];
+  return h('span', { class: 'aic-pill aic-' + st.tone, title: st.note, text: st.label });
+}
+// Prepared drafts: text only. Creating or viewing one never changes, sends or approves anything.
+function draftsNode() {
+  if (!S.snap) return null;
+  const drafts = C.buildActionDrafts(S.snap.raw);
+  if (!drafts.length) return null;
+  return h('div', { class: 'aic-drafts' }, h('div', { class: 'aic-k', text: 'PREPARED DRAFTS (nothing is changed or sent)' }),
+    h('ul', { class: 'aic-list' }, drafts.map(d => h('li', {},
+      h('div', { class: 'aic-row' }, h('b', { text: d.title }), h('span', { class: 'aic-pill aic-' + C.ACTION_STATES[d.state].tone, title: C.ACTION_STATES[d.state].note, text: C.ACTION_STATES[d.state].label })),
+      h('div', { class: 'aic-sub', text: d.affected + ' · ' + d.amounts }),
+      h('button', { text: 'Preview', 'aria-label': 'Preview ' + d.title, onclick: () => openDraft(d.id) })))));
+}
+function openDraft(id) {
+  const d = S.snap && C.buildActionDrafts(S.snap.raw).find(x => x.id === id);
+  if (!d) { toast('That draft is no longer available. Refresh and try again.'); return; }
+  const st = C.ACTION_STATES[d.state];
+  openModal(d.title, h('div', {},
+    h('div', { class: 'aic-row' }, h('span', { class: 'aic-pill aic-' + st.tone, text: st.label }), h('span', { class: 'aic-sub', text: 'Built from ' + d.source + ' · data as of ' + clock(S.snap.at) })),
+    h('div', { class: 'aic-k', text: 'PURPOSE' }), h('p', { text: d.purpose }),
+    h('div', { class: 'aic-k', text: 'AFFECTED RECORDS' }), h('p', { text: d.affected }),
+    h('div', { class: 'aic-k', text: 'QUANTITIES / AMOUNTS' }), h('p', { text: d.amounts }),
+    h('div', { class: 'aic-k', text: 'EXPECTED IMPACT' }), h('p', { class: 'aic-sub', text: d.impact }),
+    h('div', { class: 'aic-k', text: 'PREVIEW (exactly what will be copied)' }), h('pre', { class: 'aic-pre', text: d.text }),
+    h('div', { class: 'aic-gate aic-ok', text: d.note + ' Any real change still needs your approval in the Action Center.' }),
+    h('div', { class: 'aic-row' },
+      h('button', { class: 'aic-p', text: 'Copy', onclick: () => copyText(d.text, d.title + ' copied') }),
+      h('button', { text: 'Open source page', onclick: () => openPage(d.href) }),
+      h('button', { class: 'aic-g', text: 'Ask BT to review', onclick: () => { closeModal(); ask('Review this ' + d.title.toLowerCase() + ' and tell me what is known and what is uncertain.'); } }))),
+  { sub: 'Prepared draft · read-only', tonec: 'cy' });
 }
 
 //  approval view (section 25): the real proposal, decided through the ONE shared controller
@@ -785,15 +891,6 @@ function approvalCard(p) {
 }
 
 //  correlation (rule-based co-occurrence of findings; never a claim of cause)
-function secCorrelation() {
-  if (!S.snap) return null;
-  const c = M.correlate(visibleFindings());
-  if (!c.length) return null; // no empty card
-  return card('corr', 'monitor', sectionHeader('CROSS-AREA SIGNALS', h('span', { class: 'aic-sub', text: 'rule-based, not proof' })),
-    c.length ? c.map(x => h('div', { class: 'aic-f aic-sev-warning aic-corr' }, h('div', { class: 'aic-fh' }, x.systems.map(sy => h('span', { class: 'aic-tag', text: sy })), tagEl('CORRELATION')),
-      h('div', { class: 'aic-ft', text: x.title }), h('div', { class: 'aic-sub', text: x.why }), h('div', { class: 'aic-row' }, h('button', { text: 'Ask BT to check', onclick: () => ask('Check whether these are connected, using your tools, and say what is known and what is uncertain: ' + x.parts.map(p => p.title).join(' / ')) }))))
-      : empty('No findings in two areas at once right now.'));
-}
 
 //  observability (section 42): measured from real recorded events (last 7 days on this device + this session)
 function secObs() {
@@ -898,18 +995,62 @@ function secRepo() {
 }
 
 // ── latest answer ──
-function secResponse() {
+
+
+// ── AI Business Copilot: status, latest answer (merged here), structured result, investigation history ──
+function responseNode() {
   const e = T.recent(400, x => x.type === 'answer' || x.type === 'instant')[0];
   const err = T.recent(400, x => x.type === 'error')[0];
-  const showErr = err && (!e || err.timestamp > e.timestamp);
-  return card('resp', 'investigate', sectionHeader('LATEST BT RESPONSE', e ? h('span', { class: 'aic-sub', text: M.ageLabel(e.timestamp) + (e.type === 'instant' ? ' · instant, no AI used' : '') }) : null),
-    showErr ? h('div', { class: 'aic-err', text: 'The last request failed: ' + ((err.metadata && err.metadata.message) || 'unknown error') })
-      : e && e.metadata && e.metadata.text ? [mdNode(e.metadata.text), h('div', { class: 'aic-row' }, h('button', { text: 'Open full conversation', onclick: () => window.BTAgent && window.BTAgent.open() }))]
-        : empty('Ask BT below. Answers appear here and in the assistant panel.'));
+  if (err && (!e || err.timestamp > e.timestamp)) return failureNode((err.metadata && err.metadata.message) || 'unknown error', null);
+  if (e && e.metadata && e.metadata.text) {
+    const last = Object.entries(S.assess).sort((a, b) => b[1].at - a[1].at)[0];
+    const f = last && S.snap && S.snap.findings.find(x => x.id === last[0]);
+    return h('div', { class: 'aic-resp' },
+      h('div', { class: 'aic-k', text: 'LATEST ANSWER · ' + M.ageLabel(e.timestamp) + (e.type === 'instant' ? ' · instant, no AI used' : '') }),
+      mdNode(e.metadata.text),
+      h('div', { class: 'aic-row' },
+        f ? h('button', { class: 'aic-p', text: 'Open structured result', onclick: () => openFinding(f) }) : null,
+        h('button', { text: 'Open full conversation', onclick: () => window.BTAgent && window.BTAgent.open() })));
+  }
+  return empty('Ask BT below, or tap Investigate on an issue. Answers appear here with their evidence.');
+}
+function histNode() {
+  const runs = allRuns(), hist = C.buildInvestigationHistory(runs, 5);
+  if (!hist.length) return empty('No investigations yet. Ask a question or tap Investigate on an issue.');
+  return h('ul', { class: 'aic-ihist' }, hist.map(x => h('li', {},
+    h('button', { class: 'aic-ih', 'aria-label': 'Open investigation: ' + x.question, onclick: () => { const r = runs.find(y => y.id === x.id); if (r) openRun(r); } },
+      h('span', { class: 'aic-iq', text: x.question.length > 90 ? x.question.slice(0, 89).trimEnd() + '…' : x.question }),
+      h('span', { class: 'aic-im' }, h('span', { class: 'aic-pill aic-' + RUN_TONE[x.status], text: RUN_LABEL[x.status] }), ' ', (x.specialists.join(' + ') || 'BT') + ' · ' + x.toolCount + (x.toolCount === 1 ? ' tool' : ' tools') + (x.failedTools ? ' (' + x.failedTools + ' failed)' : '') + ' · ' + M.ageLabel(x.at)),
+      h('span', { class: 'aic-im2', text: 'Evidence: ' + x.evidence + (x.confidence ? ' · confidence ' + x.confidence : '') + (x.approval ? ' · approval ' + x.approval.status : '') }),
+      x.outcomeState ? h('span', { class: 'aic-pill aic-' + C.ACTION_STATES[x.outcomeState].tone, title: C.ACTION_STATES[x.outcomeState].note, text: C.ACTION_STATES[x.outcomeState].label }) : null))));
+}
+function secCopilot(info) {
+  return card('copilot', 'monitor investigate', sectionHeader('AI BUSINESS COPILOT', h('span', { class: 'aic-sub', text: 'read-only · evidence shown · you approve changes' })),
+    secCore(info), responseNode(),
+    h('div', { class: 'aic-k', text: 'INVESTIGATION HISTORY' }), histNode());
+}
+
+// ── Needs-you-now banner: critical findings and pending approvals are lifted above every normal section ──
+function secCritical(info) {
+  const A = window.BTAgent;
+  const list = A && typeof A.approvals === 'function' ? A.approvals()
+    : info.live.pendingApproval ? [{ id: 'live', tool: info.live.pendingApproval.tool, preview: { title: (info.live.pendingApproval.metadata && info.live.pendingApproval.metadata.title) || info.live.pendingApproval.tool } }] : [];
+  const items = C.criticalItems({ findings: S.snap ? visibleFindings() : [], approvals: list });
+  if (!items.length) return null;
+  return card('crit', 'monitor investigate act', sectionHeader('NEEDS YOU NOW'),
+    items.map(it => h('button', { class: 'aic-f aic-sev-error aic-crit-item', onclick: () => it.kind === 'approval' ? reviewApproval() : openFinding(it.finding) },
+      h('i', { class: 'aic-dot2', 'aria-hidden': 'true' }),
+      h('span', { class: 'aic-fb' }, h('span', { class: 'aic-ft', text: it.title }), h('span', { class: 'aic-fs', text: it.area + ' · ' + (it.kind === 'approval' ? 'waiting for your decision' : 'critical') })),
+      h('span', { class: 'aic-chev', 'aria-hidden': 'true', text: '›' }))));
+}
+
+// ── Operations & Diagnostics: every technical panel, one collapsed group ──
+function secOps(info) {
+  return card('ops', 'investigate', sectionHeader('OPERATIONS & DIAGNOSTICS', h('span', { class: 'aic-sub', text: 'agents · tools · health · repository' })),
+    h('div', { class: 'aic-ops' }, secRuns(), secFleet(info), secNetwork(info), secActivity(), secObs(), secHealth(), secTools(), secRepo()));
 }
 
 // ───────────────────────── command bar + palette ─────────────────────────
-const CHIPS = ['What needs my attention?', 'What is blocking closing?', 'What inventory is at risk?'];
 function openChat() { if (window.BTAgent && typeof window.BTAgent.open === 'function') window.BTAgent.open(); else toast('The chat assistant is still loading. Try again in a moment.'); }
 
 // ── voice (browser speech; shared module js/agent/ui/voice.js; spoken answers are handled by the chat panel) ──
@@ -944,12 +1085,19 @@ function speakerButton() {
   return h('button', { class: 'aic-spk' + (on ? ' on' : ''), 'aria-pressed': String(on), title: on ? 'Spoken answers on' : 'Spoken answers off', 'aria-label': 'Read answers aloud', text: on ? '🔊' : '🔈',
     onclick: () => { S.voice.out = !S.voice.out; V.setVoiceOut(S.voice.out); if (!S.voice.out) V.stopSpeaking(window); render(); } });
 }
+function promptChips() {
+  const raw = S.snap && S.snap.raw, P = raw && raw.planning, A = window.BTAgent;
+  return C.suggestPrompts({
+    findings: S.snap ? visibleFindings() : [], reorderLines: (P && P.reorder && P.reorder.total_lines) || 0, fillPct: P && P.fill ? P.fill.fill_rate_pct : null,
+    closingIncomplete: raw && raw.closing && raw.closing.incomplete_days ? raw.closing.incomplete_days.length : 0, approvals: A && typeof A.approvals === 'function' ? A.approvals().length : 0,
+  }, 4);
+}
 function cmdBar() {
   const input = h('input', { id: 'aic-q', type: 'text', placeholder: 'Ask JARVIS anything about your business…', 'aria-label': 'Ask BT', autocomplete: 'off', enterkeyhint: 'send', maxlength: '2000' });
   const go = () => { const v = input.value; if (v.trim()) { input.value = ''; ask(v); } };
   input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); go(); } });
   return h('div', { class: 'aic-cmd' },
-    h('div', { class: 'aic-chips' }, CHIPS.map(c => h('button', { text: c, onclick: () => ask(c) }))),
+    h('div', { class: 'aic-chips', 'aria-label': 'Suggested questions' }, promptChips().map(c => h('button', { text: c, onclick: () => ask(c) }))),
     h('div', { class: 'aic-form' }, input,
       micButton(),
       speakerButton(),
@@ -995,7 +1143,8 @@ function openPalette() {
 function paint() {
   const r = root(); if (!r || !pageOn()) return;
   const info = coreInfo();
-  const cards = [secSummary(info), secCore(info), secAttention(), secCorrelation(), secSince(), secSystems(), secInstruments(info), secForecast(), secReorder(), secFill(), secMoney(), secRuns(), secFleet(info), secNetwork(info), secResponse(), secActions(info), secActivity(), secObs(), secHealth(), secTools(), secRepo()]
+  // Business-first order: critical → snapshot → needs attention → copilot → sales → inventory/STR → closing/cash/money → approvals → operations
+  const cards = [secCritical(info), secSystems(), secAttention(), secCopilot(info), secForecast(), secInvStr(), secMoney(), secActions(info), secOps(info)]
     .filter(Boolean);
   // a genuinely pending approval outranks everything: the Action Center moves to the top (CSS keyed on data-pri)
   const main = h('main', { class: 'aic-main', 'data-mode': S.mode, 'data-pri': info.live.pendingApproval ? 'approvals' : 'normal' }, cards);
@@ -1003,7 +1152,8 @@ function paint() {
   const keep = $('#aic-q'), val = keep ? keep.value : '', hadFocus = keep && document.activeElement === keep;
   const rqHad = !!(document.activeElement && document.activeElement.id === 'aic-rq');
   const scroll = window.scrollY;
-  r.replaceChildren(...[secHeaderBar(info.core), secModes(), offline, S.error && S.snap ? h('div', { class: 'aic-err', text: 'Last refresh failed: ' + S.error }) : null, main, cmdBar()].filter(Boolean)); // null args would render the text "null"
+  r.replaceChildren(...[secHeaderBar(info.core), offline, S.error && S.snap ? failureNode(S.error, () => refresh({ force: true })) : null, main, cmdBar()].filter(Boolean)); // null args would render the text "null"
+  const cmdEl = $('.aic-cmd'); if (cmdEl && cmdEl.offsetHeight) r.style.setProperty('--aic-cmd-h', cmdEl.offsetHeight + 'px'); // content clearance: the fixed composer never covers the last card
   const q = $('#aic-q'); if (q) { q.value = val; if (hadFocus) q.focus(); }
   if (rqHad) { const r2 = $('#aic-rq'); if (r2) { r2.focus(); const n = r2.value.length; try { r2.setSelectionRange(n, n); } catch (_) { /* not a text input */ } } }
   if (Math.abs(window.scrollY - scroll) > 1) window.scrollTo(0, scroll);
@@ -1047,4 +1197,4 @@ export function onShow() {
   refresh();
 }
 
-export const __test = { S, refresh, paint, openFinding, openSystem, openPalette, investigate, weekdayBars, openModal, allRuns, runsBlock };
+export const __test = { S, refresh, paint, openFinding, openSystem, openPalette, investigate, weekdayBars, openModal, allRuns, runsBlock, openDraft, promptChips };

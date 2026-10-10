@@ -33,17 +33,17 @@ describe('weekday chart and dialog focus', () => {
     assert.match(node.querySelector('ul').getAttribute('aria-label'), /Monday Rs 100, Tuesday Rs 200, Wednesday Rs 50/);
     assert.equal(ui.__test.weekdayBars({ weekday_baseline: [] }), null, 'no data, no chart');
   });
-  test('instrument tiles: only real values, "—" when unavailable, rings carry the real percentage', async () => {
-    const tiles = [...document.querySelectorAll('#aic-inst .aic-it')];
-    assert.equal(tiles.length, 8);
+  test('business snapshot: six tiles, only real values, "\u2014" when unavailable, rings carry the real percentage', async () => {
+    const tiles = [...document.querySelectorAll('#aic-sys .aic-snap-tile')];
+    assert.equal(tiles.length, 6);
     assert.ok(tiles.every(t => t.getAttribute('aria-label')), 'every tile has an accessible name');
-    const target = tiles.find(t => t.textContent.includes('TARGET'));
+    const target = tiles.find(t => t.textContent.includes('SALES TARGET'));
     assert.match(target.textContent, /30%/);                       // pct_done from get_target_pace, not recomputed
     const ring = target.querySelector('.rg-val');
     assert.equal(ring.getAttribute('stroke-dasharray').split(' ')[0], (0.30 * 2 * Math.PI * 20).toFixed(1));
-    assert.match(tiles.find(t => t.textContent.includes('APPROVALS')).textContent, /—|0/);
-    assert.match(tiles.find(t => t.textContent.includes('STR FILL')).textContent, /—|%/);
-    assert.equal(document.querySelectorAll('[id="aic-inst"]').length, 1);
+    assert.match(tiles.find(t => t.textContent.includes('STR FILL RATE')).textContent, /\u2014|%/);
+    assert.equal(document.querySelectorAll('[id="aic-sys"]').length, 1);
+    assert.equal(document.querySelectorAll('[id="aic-inst"]').length, 0, 'the separate instruments strip is merged into the snapshot');
   });
   test('Agent Fleet shows a run timeline built only from real telemetry events', async () => {
     assert.match(ui.__test.runsBlock().textContent, /No agent runs recorded|RECENT RUNS/);

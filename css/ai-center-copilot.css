@@ -1,0 +1,99 @@
+/* BT Intelligence — business-first layout (loaded LAST, after ai-center*.css and mobile.css).
+   Scope: the Intelligence Centre page only. It owns the order and spacing of the redesigned hierarchy:
+   critical → snapshot → needs attention → copilot → sales → inventory/STR → closing/cash/money → approvals → operations.
+   Mobile first: one column, 44px touch targets, no sticky header, and the fixed composer never covers the last card. */
+
+/* ── one column, explicit order (older #aic-* order/grid rules are overridden here) ── */
+.aic-page.aic-jarvis .aic-main{display:flex;flex-direction:column;gap:12px;max-width:980px;margin:0 auto;grid-template-columns:none}
+.aic-page.aic-jarvis .aic-main>#aic-crit{order:0}
+.aic-page.aic-jarvis .aic-main>#aic-sys{order:1}
+.aic-page.aic-jarvis .aic-main>#aic-att{order:2}
+.aic-page.aic-jarvis .aic-main>#aic-copilot{order:3}
+.aic-page.aic-jarvis .aic-main>#aic-fc{order:4}
+.aic-page.aic-jarvis .aic-main>#aic-invstr{order:5}
+.aic-page.aic-jarvis .aic-main>#aic-money{order:6}
+.aic-page.aic-jarvis .aic-main>#aic-actc{order:7}
+.aic-page.aic-jarvis .aic-main>#aic-ops{order:8}
+/* a pending approval is lifted right under the critical banner, whatever its normal position */
+.aic-page.aic-jarvis .aic-main[data-pri=approvals]>#aic-actc{order:0}
+.aic-page.aic-jarvis .aic-main>.aic-card{grid-column:auto;grid-row:auto;min-width:0;scroll-margin-top:96px}
+
+/* ── composer clearance: content always scrolls clear of the fixed command bar and the bottom nav ── */
+.aic-page.aic-jarvis .aic{padding-bottom:calc(var(--aic-cmd-h,132px) + 84px + env(safe-area-inset-bottom,0px))}
+@media(min-width:861px){.aic-page.aic-jarvis .aic{padding-bottom:calc(var(--aic-cmd-h,132px) + 24px)}}
+
+/* ── compact header: not sticky (the app already has a sticky bar), one status, one freshness line ── */
+.aic-page.aic-jarvis .aic-hdr{position:static;background:none;padding:6px 0 4px}
+.aic-page.aic-jarvis .aic-hr2{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:2px}
+.aic-page.aic-jarvis .aic-fresh2{font-size:13px;color:var(--j-mu)}
+.aic-page.aic-jarvis .aic-fresh2.aic-wn{color:var(--j-wn)}
+.aic-page.aic-jarvis .aic-hr2 .aic-seg button{min-height:44px;min-width:44px}
+
+/* ── needs you now ── */
+.aic-page.aic-jarvis #aic-crit{border-color:var(--j-er);box-shadow:0 0 0 1px color-mix(in srgb,var(--j-er) 45%,transparent)}
+.aic-page.aic-jarvis .aic-crit-item{margin-top:8px}
+
+/* ── business snapshot: 2-up on phones, 3-up on wider screens ── */
+.aic-page.aic-jarvis .aic-snap{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+@media(min-width:700px){.aic-page.aic-jarvis .aic-snap{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}}
+.aic-page.aic-jarvis .aic-snap-tile{flex:none;width:100%;min-height:104px;align-items:flex-start;padding:12px;border-left:3px solid var(--border-strong,#34496a)}
+.aic-page.aic-jarvis .aic-snap-tile.aic-edge-ok{border-left-color:var(--j-ok)}
+.aic-page.aic-jarvis .aic-snap-tile.aic-edge-wn{border-left-color:var(--j-wn)}
+.aic-page.aic-jarvis .aic-snap-tile.aic-edge-cr{border-left-color:var(--j-er)}
+.aic-page.aic-jarvis .aic-snap-tile .aic-it-b{width:100%;gap:3px}
+.aic-page.aic-jarvis .aic-snap-tile .aic-it-v{font-size:clamp(17px,4.6vw,21px);overflow-wrap:anywhere}
+.aic-page.aic-jarvis .aic-snap-tile small{font-size:12.5px}
+.aic-page.aic-jarvis .aic-snap-tile .aic-it-c{color:var(--j-tx)}
+.aic-page.aic-jarvis .aic-it-f{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;margin-top:2px}
+.aic-page.aic-jarvis .aic-snap-tile .aic-ring-g{width:36px;height:36px}
+
+/* ── needs attention rows ── */
+.aic-page.aic-jarvis .aic-att-row{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.aic-page.aic-jarvis .aic-att-row .aic-f{margin-bottom:0}
+.aic-page.aic-jarvis .aic-att-row .aic-fb{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.aic-page.aic-jarvis .aic-fs,.aic-page.aic-jarvis .aic-fe,.aic-page.aic-jarvis .aic-fn,.aic-page.aic-jarvis .aic-fr,.aic-page.aic-jarvis .aic-fl{display:block;font-size:12.5px;line-height:1.35;color:var(--j-mu);overflow-wrap:anywhere}
+.aic-page.aic-jarvis .aic-fn{color:var(--j-tx)}
+.aic-page.aic-jarvis .aic-fn b{color:var(--j-cy)}
+.aic-page.aic-jarvis .aic-fr,.aic-page.aic-jarvis .aic-fl{color:var(--j-wn)}
+.aic-page.aic-jarvis .aic-inv{align-self:flex-start;min-height:44px;padding:0 16px}
+.aic-page.aic-jarvis .aic-sumrow{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px}
+.aic-page.aic-jarvis .aic-sumt{font-weight:700;font-size:15px}
+
+/* ── copilot: compact status row (small avatar), answer, history ── */
+.aic-page.aic-jarvis .aic-corerow{display:grid;grid-template-columns:56px minmax(0,1fr);gap:6px 12px;align-items:center;margin-bottom:8px}
+.aic-page.aic-jarvis .aic-corerow .aic-stage{width:56px;height:56px;margin:0}
+.aic-page.aic-jarvis .aic-corerow .aic-orb-t{display:none}
+.aic-page.aic-jarvis .aic-corerow .aic-cs h2{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.aic-page.aic-jarvis .aic-corerow .aic-cs p{margin:0;font-size:13px;color:var(--j-mu)}
+.aic-page.aic-jarvis .aic-corerow>.aic-mission,.aic-page.aic-jarvis .aic-corerow>.aic-lifed{grid-column:1/-1}
+.aic-page.aic-jarvis .aic-lifed summary{min-height:44px;display:flex;align-items:center;font-size:12.5px;color:var(--j-mu);cursor:pointer}
+.aic-page.aic-jarvis .aic-lifed .aic-life{display:flex;flex-wrap:wrap;gap:6px;padding:0;margin:0 0 6px;list-style:none}
+.aic-page.aic-jarvis .aic-resp{margin:8px 0 12px;overflow-wrap:anywhere}
+.aic-page.aic-jarvis .aic-ihist{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:8px}
+.aic-page.aic-jarvis .aic-ih{display:grid;gap:4px;width:100%;height:auto;text-align:left;justify-items:start;padding:10px 12px;border-radius:8px;background:var(--j-s1);border:1px solid var(--border)}
+.aic-page.aic-jarvis .aic-iq{font-weight:700;overflow-wrap:anywhere}
+.aic-page.aic-jarvis .aic-im,.aic-page.aic-jarvis .aic-im2{font-size:12.5px;color:var(--j-mu);overflow-wrap:anywhere}
+
+/* ── details on demand ── */
+.aic-page.aic-jarvis .aic-det2{margin-top:10px;border-top:1px solid var(--border);padding-top:2px}
+.aic-page.aic-jarvis .aic-det2>summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:700;color:var(--j-cy)}
+.aic-page.aic-jarvis .aic-pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:260px;overflow:auto;font-size:12.5px;background:var(--j-s1);border:1px solid var(--border);border-radius:8px;padding:10px;margin:6px 0}
+.aic-page.aic-jarvis .aic-var{font-weight:700;margin:4px 0 6px}
+.aic-page.aic-jarvis .aic-var.aic-wn{color:var(--j-wn)}.aic-page.aic-jarvis .aic-var.aic-ok{color:var(--j-ok)}
+.aic-page.aic-jarvis .aic-cls{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;border-radius:99px;border:1px solid var(--border-strong,#34496a);color:var(--j-mu)}
+.aic-page.aic-jarvis .aic-cls-verified{color:var(--j-ok);border-color:color-mix(in srgb,var(--j-ok) 50%,transparent)}
+.aic-page.aic-jarvis .aic-cls-hypothesis,.aic-page.aic-jarvis .aic-cls-estimate{color:var(--j-wn);border-color:color-mix(in srgb,var(--j-wn) 50%,transparent)}
+.aic-page.aic-jarvis .aic-drafts .aic-row{align-items:center;justify-content:space-between}
+
+/* ── operations & diagnostics: one collapsed group, nested panels keep their own fold ── */
+.aic-page.aic-jarvis .aic-ops{display:grid;gap:12px}
+.aic-page.aic-jarvis .aic-ops>.aic-card{padding:12px;background:var(--j-s1)}
+
+/* ── phones ── */
+@media(max-width:480px){
+  .aic-page.aic-jarvis .aic-main{gap:10px}
+  .aic-page.aic-jarvis .aic-card{padding:12px}
+  .aic-page.aic-jarvis .aic-cmd .aic-chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  .aic-page.aic-jarvis .aic-cmd .aic-chips button{flex:none;min-height:44px}
+}
+@media(prefers-reduced-motion:reduce){.aic-page.aic-jarvis .aic-ops *{animation:none!important}}

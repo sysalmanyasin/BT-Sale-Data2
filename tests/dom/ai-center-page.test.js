@@ -85,7 +85,7 @@ describe('AI Center page', () => {
     assert.equal(document.querySelectorAll('#aic-fleet .aic-runs').length, 0);
   });
   test('unavailable data is DATA_UNAVAILABLE with its real reason, not "healthy"', () => {
-    const inv = [...document.querySelectorAll('.aic-sys')].find(e => e.textContent.includes('INVENTORY'));
+    const inv = [...document.querySelectorAll('.aic-snap-tile')].find(e => e.textContent.includes('INVENTORY'));
     assert.match(inv.textContent, /DATA_UNAVAILABLE/); assert.match(inv.textContent, /Open the Inventory page/);
   });
   test('no invented activity: only the AI Center\'s own reads exist, and they are labelled as such', () => {
@@ -130,7 +130,7 @@ describe('AI Center page', () => {
   test('finding detail: evidence is labelled by kind, no AI assessment is invented', () => {
     ui.__test.openFinding(ui.__test.S.snap.findings.find(f => f.system === 'CASH'));
     const m = q('.aic-modal').textContent;
-    assert.match(m, /WHAT HAPPENED/); assert.match(m, /EVIDENCE/); assert.match(m, /DETECTION/);
+    ['FINDING', 'IMPACT', 'EVIDENCE', 'CONFIDENCE & LIMITATIONS', 'RECOMMENDATION', 'AVAILABLE ACTIONS'].forEach(h => assert.ok(m.includes(h), h + ' section missing')); assert.match(m, /DETECTION/); assert.match(m, /Verified/);
     assert.match(m, /BT has not been asked about this yet/);
     assert.match(m, /Investigate with BT/);
     q('.aic-x').click(); assert.equal(q('.aic-modal'), null);
@@ -149,7 +149,7 @@ describe('AI Center page', () => {
   test('tool failure: the page keeps working and says what is unavailable', async () => {
     ui.__test.S.mode = 'monitor';
     world.str = false; await ui.__test.refresh({ force: true }); await wait(60);
-    const strCard = [...document.querySelectorAll('.aic-sys')].find(e => e.textContent.includes('STR'));
+    const strCard = [...document.querySelectorAll('.aic-snap-tile')].find(e => e.textContent.includes('STR'));
     assert.match(strCard.textContent, /DATA_UNAVAILABLE/); assert.match(strCard.textContent, /not loaded yet/);
     assert.match(text(), /SALES/);
   });
