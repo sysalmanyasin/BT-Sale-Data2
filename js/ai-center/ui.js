@@ -529,11 +529,47 @@ function fleetTile(id, act) {
       h('small', { text: detail }),
       h('small', { class: 'aic-fstats', text: id === 'analyst' ? st.runs + ' runs' : st.runs + ' runs · ' + tools.length + ' tools' + (gated ? ' · ' + gated + ' need approval' : ' · read-only') + (errs ? ' · ' + errs + ' errors' : '') })));
 }
+
+// ── agent runs: timeline rebuilt from the real activity log ──
+const RUN_TONE = { complete: 'ok', running: 'ok', awaiting_approval: 'wn', failed: 'cr', cancelled: 'wn', unfinished: 'mu' };
+const RUN_LABEL = { complete: 'COMPLETE', running: 'RUNNING', awaiting_approval: 'AWAITING APPROVAL', failed: 'FAILED', cancelled: 'CANCELLED', unfinished: 'NOT FINISHED' };
+const allRuns = () => M.buildRuns(T.recent(400).slice().reverse(), (T.liveState().open || {}).request_id || null);
+function stageList(run) {
+  if (!run.stages.length) return empty('No stages recorded.');
+  return h('ol', { class: 'aic-tl' }, run.stages.map(st => h('li', { class: 'aic-tls aic-tl-' + st.status },
+    h('span', { class: 'aic-tld', 'aria-hidden': 'true' }),
+    h('b', { text: st.label }), ' ', h('time', { text: clock(st.at) }),
+    st.status === 'waiting' ? h('span', { class: 'aic-tag', text: 'WAITING FOR YOU' }) : st.status === 'failed' ? h('span', { class: 'aic-tag aic-tl-bad', text: 'FAILED' }) : null,
+    st.detail ? h('div', { class: 'aic-sub', text: st.detail }) : null)));
+}
+function openRun(run) {
+  openModal('Run · ' + (run.question ? run.question.slice(0, 60) : 'request'), h('div', {},
+    h('div', { class: 'aic-row' }, h('span', { class: 'aic-pill aic-' + RUN_TONE[run.status], text: RUN_LABEL[run.status] }), run.durationMs != null ? h('span', { class: 'aic-sub', text: 'took ' + (run.durationMs < 1000 ? run.durationMs + ' ms' : (run.durationMs / 1000).toFixed(1) + ' s') }) : h('span', { class: 'aic-sub', text: 'no end event recorded' }), run.historical ? h('span', { class: 'aic-tag aic-earlier', text: 'EARLIER SESSION' }) : null),
+    h('div', { class: 'aic-k', text: 'STAGES THAT ACTUALLY HAPPENED' }), stageList(run),
+    run.tools.length ? [h('div', { class: 'aic-k', text: 'TOOLS (' + run.tools.length + ')' }), h('ul', { class: 'aic-list' }, run.tools.map(t => h('li', {}, h('b', { text: t.tool }), ' ', h('span', { class: 'aic-pill aic-' + (t.status === 'ok' ? 'ok' : 'cr'), text: t.status || '?' }), t.duration != null ? h('span', { class: 'aic-sub', text: ' ' + t.duration + ' ms' }) : null)))] : null,
+    h('div', { class: 'aic-k', text: 'ALL EVENTS' }), eventList(run.events.slice().reverse())));
+}
+function runRow(run) {
+  const when = run.historical ? clockFull(run.startedAt) : clock(run.startedAt);
+  return h('li', { class: 'aic-run aic-run-' + run.status },
+    h('button', { class: 'aic-runb', onclick: () => openRun(run), 'aria-label': 'Open run: ' + (run.question || 'request') + ', ' + RUN_LABEL[run.status].toLowerCase() },
+      h('span', { class: 'aic-runq', text: run.question ? run.question.slice(0, 90) : 'Request' }),
+      h('span', { class: 'aic-pill aic-' + RUN_TONE[run.status], text: RUN_LABEL[run.status] }),
+      h('span', { class: 'aic-sub', text: when + (run.durationMs != null ? ' · ' + (run.durationMs / 1000).toFixed(1) + ' s' : '') + (run.agents.length ? ' · ' + run.agents.join(' + ') : '') + (run.tools.length ? ' · ' + run.tools.length + ' tool' + (run.tools.length === 1 ? '' : 's') : '') }),
+      h('span', { class: 'aic-runst', 'aria-hidden': 'true' }, run.stages.map(st => h('i', { class: 'aic-tl-' + st.status, title: st.label })))));
+}
+function runsBlock() {
+  const runs = allRuns();
+  return h('div', { class: 'aic-runs' }, h('div', { class: 'aic-k', text: 'RECENT RUNS · FROM THE REAL ACTIVITY LOG' }),
+    runs.length ? h('ul', { class: 'aic-runl' }, runs.slice(0, 3).map(runRow)) : empty('No agent runs recorded on this device yet. Ask JARVIS something and the run appears here.'),
+    runs.length > 3 ? h('details', { class: 'aic-log' }, h('summary', { text: 'Earlier runs · ' + (runs.length - 3) }), h('ul', { class: 'aic-runl' }, runs.slice(3, 15).map(runRow))) : null);
+}
+
 function secFleet(info) {
   const act = activeAgentIds(info.live);
   const ids = Object.keys(SPECIALISTS).filter(id => id !== 'general');
   return card('fleet', 'monitor investigate', sectionHeader('AGENT FLEET', h('span', { class: 'aic-sub', text: ids.length + ' registered specialists · tap for tools and events' })),
-    h('div', { class: 'aic-fleet' }, ids.map(id => fleetTile(id, act))));
+    h('div', { class: 'aic-fleet' }, ids.map(id => fleetTile(id, act))), runsBlock());
 }
 function h2svg(tag, attrs) { const e = document.createElementNS('http://www.w3.org/2000/svg', tag); Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v)); return e; }
 
@@ -543,6 +579,7 @@ function openAgent(id) {
   openModal(sp.label + ' specialist', h('div', {},
     h('dl', { class: 'aic-met' }, [['Runs (7 days, this device)', String(st.runs)], ['Last run', st.last ? M.ageLabel(st.last) : 'not run yet'], ['Tools', String(id === 'analyst' ? 'all domains it is routed to' : tools.length)]].map(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })])),
     tools.length ? h('ul', { class: 'aic-list' }, tools.map(t => h('li', {}, h('b', { text: t.name }), ' ', h('span', { class: 'aic-pill aic-' + (t.risk === 'read' || t.risk === 'ui' ? 'ok' : 'wn'), text: t.risk }), h('div', { class: 'aic-sub', text: t.description.slice(0, 140) })))) : null,
+    (() => { const mine = allRuns().filter(r => r.agents.includes(sp.label)).slice(0, 1)[0]; return mine ? [h('div', { class: 'aic-k', text: 'LATEST RUN · ' + RUN_LABEL[mine.status] }), stageList(mine)] : null; })(),
     ev.length ? [h('div', { class: 'aic-k', text: 'RECENT EVENTS' }), eventList(ev)] : empty('No events from this specialist yet in this session.')));
 }
 
@@ -950,4 +987,4 @@ export function onShow() {
   refresh();
 }
 
-export const __test = { S, refresh, paint, openFinding, openSystem, openPalette, investigate, weekdayBars, openModal };
+export const __test = { S, refresh, paint, openFinding, openSystem, openPalette, investigate, weekdayBars, openModal, allRuns, runsBlock };

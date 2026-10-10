@@ -216,3 +216,22 @@ body.aic-open .aic-modal :focus-visible{outline:2px solid #20DDF5;outline-offset
 .aic-jarvis .aic-stage{width:min(300px,76%)}
 .aic-jarvis .aic-stage .aic-orb{inset:8%}
 @media(min-width:1000px){.aic-jarvis .aic-stage{width:min(360px,86%)}}
+
+/* ── agent run timeline (real events only) ── */
+.aic-jarvis .aic-runs{margin-top:14px;border-top:1px solid var(--border);padding-top:10px}
+.aic-jarvis .aic-runl{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:8px}
+.aic-jarvis .aic-runb{display:grid;gap:4px;width:100%;height:auto;text-align:left;padding:10px 12px;border-radius:8px;background:var(--j-s1);border:1px solid var(--border);justify-items:start}
+.aic-jarvis .aic-run-running .aic-runb,.aic-jarvis .aic-run-awaiting_approval .aic-runb{border-color:var(--j-cy)}
+.aic-jarvis .aic-run-failed .aic-runb{border-color:color-mix(in srgb,var(--j-er) 60%,transparent)}
+.aic-jarvis .aic-runq{font-weight:700;color:var(--j-tx);overflow-wrap:anywhere}
+.aic-jarvis .aic-runst{display:flex;gap:4px;margin-top:2px}
+.aic-jarvis .aic-runst i{display:block;width:26px;height:6px;border-radius:3px;background:var(--j-ok)}
+.aic-jarvis .aic-runst i.aic-tl-active,.aic-jarvis .aic-runst i.aic-tl-waiting{background:var(--j-wn)}
+.aic-jarvis .aic-runst i.aic-tl-failed{background:var(--j-er)}
+.aic-tl{list-style:none;margin:6px 0 10px;padding:0 0 0 14px;border-left:2px solid var(--border)}
+.aic-tls{position:relative;padding:0 0 10px 12px}
+.aic-tld{position:absolute;left:-22px;top:3px;width:12px;height:12px;border-radius:50%;background:var(--j-ok,#42D6A4);border:2px solid var(--surface,#111B2B)}
+.aic-tl-active>.aic-tld,.aic-tl-waiting>.aic-tld{background:var(--j-wn,#FFB86B)}
+.aic-tl-failed>.aic-tld{background:var(--j-er,#FF7A8A)}
+.aic-tls time{font-size:12px;color:var(--muted)}
+@media(prefers-reduced-motion:no-preference){.aic-tl-active>.aic-tld{animation:j-rec 1.4s ease-in-out infinite}}

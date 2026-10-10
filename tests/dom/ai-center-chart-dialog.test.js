@@ -15,6 +15,7 @@ rd('closing_recent_days', 'closing', () => ({ days: [], incomplete_days: [] }));
 rd('str_overview', 'str', () => ({ total: 0, awaited: { all: 0 } }));
 rd('list_pending_strs', 'str', () => ({ matching: 0, showing: 0, items: [] }));
 rd('get_daily_sales', 'sales', () => ({ date: '06/Oct/2026', total_sale: 410000 }));
+const T = await import('../../js/agent/core/telemetry.js');
 const ui = await import('../../js/ai-center/ui.js');
 const wait = (ms = 30) => new Promise(r => setTimeout(r, ms));
 const q = s => document.querySelector(s);
@@ -31,6 +32,22 @@ describe('weekday chart and dialog focus', () => {
     assert.ok(bars[1].classList.contains('today') && !bars[0].classList.contains('today'));
     assert.match(node.querySelector('ul').getAttribute('aria-label'), /Monday Rs 100, Tuesday Rs 200, Wednesday Rs 50/);
     assert.equal(ui.__test.weekdayBars({ weekday_baseline: [] }), null, 'no data, no chart');
+  });
+  test('Agent Fleet shows a run timeline built only from real telemetry events', async () => {
+    assert.match(ui.__test.runsBlock().textContent, /No agent runs recorded|RECENT RUNS/);
+    const rid = 'req_test_1';
+    T.emit({ type: 'request_start', request_id: rid, metadata: { question: 'What is blocking closing?' } });
+    T.emit({ type: 'routed', request_id: rid, agent: 'Closing', metadata: { domains: ['closing'] } });
+    T.emit({ type: 'tool_end', request_id: rid, agent: 'Closing', tool: 'closing_recent_days', status: 'ok', duration: 90 });
+    T.emit({ type: 'answer', request_id: rid, metadata: { steps: 1 } });
+    await wait(30);
+    const row = [...document.querySelectorAll('#aic-fleet .aic-run')].find(r => r.textContent.includes('What is blocking closing?'));
+    assert.ok(row, 'run row rendered inside the Agent Fleet card');
+    assert.match(row.textContent, /COMPLETE/); assert.match(row.textContent, /Closing/); assert.match(row.textContent, /1 tool/);
+    row.querySelector('button').click(); await wait(20);
+    const stages = [...document.querySelectorAll('.aic-modal .aic-tls b')].map(b => b.textContent);
+    assert.deepEqual(stages, ['Received', 'Routed', 'Answer'], 'only stages that happened');
+    document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   });
   test('Tab wraps inside an open dialog and Escape closes it', async () => {
     ui.__test.openModal('Test dialog', (() => { const d = document.createElement('div'); d.innerHTML = '<button id="m1">one</button><button id="m2">two</button>'; return d; })());

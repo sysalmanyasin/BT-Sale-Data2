@@ -593,3 +593,48 @@ export function sortSystemsByUrgency(names, systems) {
     return rank(A.status) - rank(B.status) || (B.warnings || 0) - (A.warnings || 0) || at(a) - at(b);
   });
 }
+
+// ───────────────────────── agent runs (rebuilt from REAL telemetry; nothing is invented) ─────────────────────────
+/**
+ * Group telemetry events by request_id into runs, newest first. A run only lists stages that ACTUALLY happened.
+ * status: running | awaiting_approval | complete | failed | cancelled | unfinished (opened earlier, never closed: not "running").
+ */
+export function buildRuns(events, openRequestId = null) {
+  const by = new Map();
+  for (const e of [...(events || [])].sort((a, b) => a.timestamp - b.timestamp)) {
+    if (!e || !e.request_id) continue;
+    if (!by.has(e.request_id)) by.set(e.request_id, []);
+    by.get(e.request_id).push(e);
+  }
+  const runs = [];
+  for (const [id, evs] of by) {
+    const stages = [], tools = [], agents = [];
+    let question = '', closed = null, approval = null, specialistSeen = false;
+    const add = (key, label, e, status = 'done', detail = '') => stages.push({ key, label, at: e.timestamp, status, detail });
+    for (const e of evs) {
+      const m = e.metadata || {};
+      if (e.agent && !agents.includes(e.agent)) agents.push(e.agent);
+      switch (e.type) {
+        case 'request_start': question = m.question || ''; add('received', 'Received', e); break;
+        case 'routed': add('routed', 'Routed', e, 'done', (e.agent || '') + (m.domains && m.domains.length > 1 ? ' (cross-domain: ' + m.domains.join(' + ') + ')' : '')); break;
+        case 'specialist_start': if (!specialistSeen) { specialistSeen = true; add('working', 'Specialist working', e, 'done', e.agent || m.specialist || ''); } break;
+        case 'tool_end': tools.push({ tool: e.tool, status: e.status, duration: e.duration, agent: e.agent, domain: e.domain }); break;
+        case 'evidence_bundle': add('evidence', 'Evidence gathered', e, 'done', m.grounded != null ? m.grounded + ' of ' + m.members + ' specialists returned data' : ''); break;
+        case 'synthesis': add('analysis', 'Analysis', e, e.status === 'failed' ? 'failed' : 'done', m.confidence ? 'confidence ' + m.confidence : ''); break;
+        case 'approval_requested': add('approval', 'Approval', e, 'waiting', m.title || e.tool || ''); approval = stages[stages.length - 1]; break;
+        case 'approval_resolved': if (approval) { approval.status = e.status === 'approved' || e.status === 'ok' ? 'done' : 'failed'; approval.detail = (approval.detail ? approval.detail + ' · ' : '') + e.status; } break;
+        case 'verify_start': add('verify', 'Verify', e, 'active', e.tool || ''); break;
+        case 'verify_end': { const v = stages.filter(s => s.key === 'verify').pop(); if (v) v.status = e.status === 'ok' ? 'done' : 'failed'; else add('verify', 'Verify', e, e.status === 'ok' ? 'done' : 'failed'); break; }
+        case 'answer': case 'instant': add('answer', 'Answer', e, 'done', e.type === 'instant' ? 'no model call' : ''); closed = { at: e.timestamp, status: 'complete' }; break;
+        case 'error': add('failed', 'Failed', e, 'failed', m.message || ''); closed = { at: e.timestamp, status: 'failed' }; break;
+        case 'cancelled': add('cancelled', 'Cancelled', e, 'failed'); closed = { at: e.timestamp, status: 'cancelled' }; break;
+        default: break;
+      }
+    }
+    const startedAt = evs[0].timestamp, historical = evs.every(e => e.historical);
+    let status = closed ? closed.status : id === openRequestId ? (approval && approval.status === 'waiting' ? 'awaiting_approval' : 'running') : 'unfinished';
+    if (!closed && status === 'running' && stages.length) { const last = stages[stages.length - 1]; if (last.status === 'done') last.status = 'active'; }
+    runs.push({ id, question, startedAt, endedAt: closed ? closed.at : null, durationMs: closed ? closed.at - startedAt : null, status, agents, tools, stages, historical, events: evs });
+  }
+  return runs.sort((a, b) => b.startedAt - a.startedAt);
+}
