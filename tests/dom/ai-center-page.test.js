@@ -53,6 +53,13 @@ describe('AI Center page', () => {
     assert.equal(q('#aic-core .aic-stage').getAttribute('data-s'), q('#aic-core .aic-orb small').textContent.trim().toLowerCase().replace(/ /g, '_'));
     [...document.querySelectorAll('.aic-seg button')].find(b => b.textContent === 'Monitor').click(); await wait(50); // restore shared page state
   });
+  test('Agent Fleet: one tile per registered specialist, no invented activity', () => {
+    const tiles = [...document.querySelectorAll('#aic-fleet .aic-ftile')];
+    assert.equal(tiles.length, 8); // sales, manager, inventory, str, closing, billing, documents, analyst
+    assert.ok(tiles.every(t => t.getAttribute('aria-label') && t.dataset.agent));
+    assert.ok(tiles.every(t => !t.classList.contains('on')), 'nothing is ACTIVE while no request is running');
+    assert.equal(document.querySelectorAll('[id="aic-fleet"]').length, 1, 'no duplicate ids');
+  });
   test('unavailable data is DATA_UNAVAILABLE with its real reason, not "healthy"', () => {
     const inv = [...document.querySelectorAll('.aic-sys')].find(e => e.textContent.includes('INVENTORY'));
     assert.match(inv.textContent, /DATA_UNAVAILABLE/); assert.match(inv.textContent, /Open the Inventory page/);

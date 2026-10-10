@@ -55,3 +55,14 @@
   .aic-jarvis #aic-sys,.aic-jarvis #aic-resp{grid-column:1/4}
 }
 @media(max-width:480px){.aic-jarvis .aic-stage{width:min(220px,70%)}}
+
+/* ── agent fleet tiles ── */
+.aic-jarvis .aic-fleet{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
+.aic-jarvis .aic-ftile{display:flex;align-items:flex-start;gap:10px;text-align:left;height:auto;padding:10px;border-radius:8px;background:var(--j-s1);border:1px solid var(--border)}
+.aic-jarvis .aic-ftile.on{border-color:var(--j-cy);box-shadow:inset 3px 0 0 var(--j-cy)}
+.aic-jarvis .aic-fport{flex:none;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:var(--j-cy);background:radial-gradient(circle,#10304a,#0b1626);border:1px solid var(--j-ln)}
+.aic-jarvis .aic-ftile.on .aic-fport{border-color:var(--j-cy)}
+.aic-jarvis .aic-fbody{display:grid;gap:3px;min-width:0;justify-items:start}
+.aic-jarvis .aic-fbody small{color:var(--j-mu);font-size:12px;line-height:1.35}
+@media(min-width:1000px){.aic-jarvis #aic-fleet{grid-column:1/4}}
+@media(max-width:480px){.aic-jarvis .aic-fleet{grid-template-columns:1fr}}

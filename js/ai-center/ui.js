@@ -148,7 +148,7 @@ function sectionHeader(title, right) { return h('div', { class: 'aic-sh' }, h('h
 // Cards are collapsed by default (tap the title to open). Kept open: the one-line summary + status core, the Action Center
 // (pending approvals must never be hidden), the latest BT response, and Tool Intelligence (it already has its own toggle).
 // The open/closed choice lives in S.open so it survives the full repaint that runs on every refresh.
-const ALWAYS_OPEN = new Set(['sum', 'core', 'actc', 'resp', 'tools']);
+const ALWAYS_OPEN = new Set(['sum', 'core', 'fleet', 'actc', 'resp', 'tools']);
 function card(id, modes, ...kids) {
   const first = kids[0];
   const foldable = !ALWAYS_OPEN.has(id) && kids.length > 1 && first && first.nodeType === 1 && first.classList.contains('aic-sh');
@@ -440,6 +440,37 @@ function secNetwork(info) {
   return card('net', 'investigate', sectionHeader('AGENT NETWORK', h('span', { class: 'aic-sub', text: 'real specialists · lit only while running' })),
     h('div', { class: 'aic-net' }, svg, h('div', { class: 'aic-hub' }, h('b', { text: 'BT' }), h('small', { text: 'Orchestrator' })), nodes),
     h('div', { class: 'aic-sub', text: 'Specialists are chosen per question by rule-based routing (with a model fallback). The Analyst is used when 2+ areas match.' }));
+}
+
+// ── agent fleet ── one tile per REGISTERED specialist. Every value is read from the registry or real telemetry:
+// ACTIVE only while routed/running now; otherwise runs / last run / errors from this device's history (never invented).
+function activeAgentIds(live) {
+  const on = new Set(), tool = {};
+  const rm = live.open && live.routed && live.routed.metadata;
+  if (rm) { (rm.domains || []).forEach(d => on.add(d)); if (rm.specialist) on.add(rm.specialist); if ((rm.domains || []).length > 1) on.add('analyst'); }
+  if (live.activeTool && live.activeTool.domain) { on.add(live.activeTool.domain); tool[live.activeTool.domain] = live.activeTool.tool; }
+  return { on, tool };
+}
+function fleetTile(id, act) {
+  const sp = SPECIALISTS[id], st = agentStats(id), tools = listTools().filter(t => t.domain === id);
+  const errs = T.recent(400, e => e.type === 'error' && e.agent === sp.label).length;
+  const gated = tools.filter(t => t.risk !== 'read' && t.risk !== 'ui').length;
+  const on = act.on.has(id);
+  const state = on ? 'ACTIVE' : st.runs ? 'STANDBY' : 'NO RUNS';
+  const detail = on ? (act.tool[id] ? 'Running ' + act.tool[id] : 'Working on the current request') : st.runs ? 'Last run ' + M.ageLabel(st.last) : 'Not run in the last 7 days on this device';
+  return h('button', { class: 'aic-ftile' + (on ? ' on' : ''), 'data-agent': id, onclick: () => openAgent(id), 'aria-label': sp.label + ', ' + state.toLowerCase() + '. ' + detail },
+    h('span', { class: 'aic-fport', 'aria-hidden': 'true', text: sp.label.charAt(0) }),
+    h('span', { class: 'aic-fbody' },
+      h('b', { text: sp.label }),
+      h('span', { class: 'aic-pill aic-' + (on ? 'ok' : 'mu'), text: state }),
+      h('small', { text: detail }),
+      h('small', { class: 'aic-fstats', text: id === 'analyst' ? st.runs + ' runs' : st.runs + ' runs · ' + tools.length + ' tools' + (gated ? ' · ' + gated + ' need approval' : ' · read-only') + (errs ? ' · ' + errs + ' errors' : '') })));
+}
+function secFleet(info) {
+  const act = activeAgentIds(info.live);
+  const ids = Object.keys(SPECIALISTS).filter(id => id !== 'general');
+  return card('fleet', 'monitor investigate', sectionHeader('AGENT FLEET', h('span', { class: 'aic-sub', text: ids.length + ' registered specialists · tap for tools and events' })),
+    h('div', { class: 'aic-fleet' }, ids.map(id => fleetTile(id, act))));
 }
 function h2svg(tag, attrs) { const e = document.createElementNS('http://www.w3.org/2000/svg', tag); Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v)); return e; }
 
@@ -769,7 +800,7 @@ function openPalette() {
 function paint() {
   const r = root(); if (!r || !pageOn()) return;
   const info = coreInfo();
-  const cards = [secSummary(info), secCore(info), secAttention(), secCorrelation(), secSince(), secSystems(), secForecast(), secReorder(), secFill(), secMoney(), secNetwork(info), secResponse(), secActions(info), secActivity(), secObs(), secHealth(), secTools(), secRepo()]
+  const cards = [secSummary(info), secCore(info), secAttention(), secCorrelation(), secSince(), secSystems(), secForecast(), secReorder(), secFill(), secMoney(), secFleet(info), secNetwork(info), secResponse(), secActions(info), secActivity(), secObs(), secHealth(), secTools(), secRepo()]
     .filter(c => c && c.getAttribute('data-modes').split(' ').includes(S.mode));
   const main = h('main', { class: 'aic-main', 'data-mode': S.mode }, cards);
   const offline = navigator.onLine === false ? h('div', { class: 'aic-offline', role: 'alert' }, h('b', { text: 'BT OFFLINE · ' }), 'Showing last known data' + (S.snap ? ' from ' + clock(S.snap.at) : '') + '. Some intelligence may be unavailable.') : null;

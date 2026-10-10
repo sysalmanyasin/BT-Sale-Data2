@@ -31,7 +31,7 @@ body.aic-open .ag-fab{display:none}
 .aic-card{border:1px solid var(--aic-ln);background:var(--aic-cd);border-radius:12px;padding:16px;min-width:0;box-shadow:var(--sh)}
 .aic-card:hover{border-color:color-mix(in srgb,var(--aic-ac) 45%,var(--border))}
 /* mobile priority: status → findings → mission is inside status → approvals → activity */
-#aic-core{order:1}#aic-att{order:2}#aic-sys{order:3}#aic-fc{order:4}#aic-corr{order:5}#aic-actc{order:6}#aic-resp{order:7}#aic-act{order:8}#aic-since{order:9}#aic-net{order:9}#aic-health{order:10}#aic-tools{order:11}
+#aic-core{order:1}#aic-fleet{order:2}#aic-att{order:2}#aic-sys{order:3}#aic-fc{order:4}#aic-corr{order:5}#aic-actc{order:6}#aic-resp{order:7}#aic-act{order:8}#aic-since{order:9}#aic-net{order:9}#aic-health{order:10}#aic-tools{order:11}
 @media(min-width:1000px){
   .aic-main{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 400px;align-items:start}
   #aic-core{grid-column:1/3;order:1}#aic-att{grid-column:3;grid-row:1/3;order:2}#aic-sys{grid-column:1/3;order:3}#aic-fc{grid-column:3;order:4}
