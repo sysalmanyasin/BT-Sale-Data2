@@ -206,6 +206,22 @@ function secModes() {
       h('button', { text: 'Commands  ⌘K', onclick: openPalette })));
 }
 
+
+// Decorative holographic avatar. Pure SVG, no data: every operational fact stays in real DOM text beside it.
+function jarvisAvatar() {
+  const el = (tag, a) => h2svg(tag, a);
+  const svg = el('svg', { viewBox: '0 0 120 120', class: 'aic-avatar', 'aria-hidden': 'true', focusable: 'false' });
+  svg.append(
+    el('path', { class: 'av-body', d: 'M18 120c2-24 18-34 42-36 24 2 40 12 42 36z' }),
+    el('path', { class: 'av-line', d: 'M60 84v14M44 92l16 8 16-8' }),
+    el('circle', { class: 'av-chest', cx: 60, cy: 100, r: 3.2 }),
+    el('path', { class: 'av-head', d: 'M60 18c-15 0-25 11-25 27 0 14 8 26 25 26s25-12 25-26c0-16-10-27-25-27z' }),
+    el('path', { class: 'av-phone', d: 'M33 46c-4 0-6 3-6 8s2 8 6 8M87 46c4 0 6 3 6 8s-2 8-6 8M33 40c2-16 14-24 27-24s25 8 27 24' }),
+    el('ellipse', { class: 'av-eye', cx: 49, cy: 49, rx: 4.2, ry: 3 }),
+    el('ellipse', { class: 'av-eye', cx: 71, cy: 49, rx: 4.2, ry: 3 }));
+  return svg;
+}
+
 function secCore(info) {
   const { core, live } = info, m = live.open;
   const mission = m
@@ -224,7 +240,7 @@ function secCore(info) {
   return card('core', live.open ? 'monitor investigate' : 'investigate',
     h('div', { class: 'aic-stage', 'data-s': core.state.toLowerCase() },
       h('i', { class: 'aic-ring r1' }), h('i', { class: 'aic-ring r2' }), h('i', { class: 'aic-ring r3' }),
-      h('div', { class: 'aic-orb' }, h('div', {}, h('b', { text: 'BT' }), h('small', { text: core.state.replace(/_/g, ' ') })))),
+      h('div', { class: 'aic-orb' }, jarvisAvatar(), h('div', { class: 'aic-orb-t' }, h('b', { text: 'JARVIS' }), h('small', { text: core.state.replace(/_/g, ' ') })))),
     h('div', { class: 'aic-cs' }, h('h2', { text: core.state.replace(/_/g, ' ') }), h('p', { text: core.detail })),
     h('ol', { class: 'aic-life', 'aria-label': 'Intelligence lifecycle' }, life.map(s => h('li', { class: (s.reached ? (s.failed ? 'on fail ' : 'on ') : '') + (s.available ? '' : 'na'), title: s.available ? (s.reached ? 'Happened in the latest request' : 'Not reached in the latest request') : 'BT has no automated verification step yet', text: s.label }))),
     mission);
@@ -779,6 +795,7 @@ function onTelemetry(e) {
 export function mount() {
   if (S.mounted) return;
   const p = document.getElementById(PAGE_ID); if (!p) return;
+  p.classList.add('aic-jarvis');
   p.replaceChildren(h('div', { id: 'aic-root', class: 'aic' }));
   S.mounted = true;
   T.subscribe(onTelemetry);

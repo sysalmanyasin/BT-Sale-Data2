@@ -42,6 +42,17 @@ describe('AI Center page', () => {
     assert.match(text(), /Rs 12,000/); // CASH metric from get_daily_sales
     assert.match(text(), /410,000/);
   });
+  test('JARVIS layer: page is themed, SVG avatar is decorative, state text stays real DOM text', async () => {
+    [...document.querySelectorAll('.aic-seg button')].find(b => b.textContent === 'Investigate').click(); await wait(50);
+    assert.ok(q('#page-ai-center').classList.contains('aic-jarvis'));
+    const av = q('#aic-core .aic-orb svg.aic-avatar');
+    assert.ok(av, 'avatar svg missing');
+    assert.equal(av.getAttribute('aria-hidden'), 'true');
+    assert.equal(document.querySelectorAll('#aic-core .aic-avatar').length, 1, 'no duplicate avatar after repaint');
+    assert.ok(q('#aic-core .aic-orb small').textContent.trim().length > 0, 'lifecycle label must be real text');
+    assert.equal(q('#aic-core .aic-stage').getAttribute('data-s'), q('#aic-core .aic-orb small').textContent.trim().toLowerCase().replace(/ /g, '_'));
+    [...document.querySelectorAll('.aic-seg button')].find(b => b.textContent === 'Monitor').click(); await wait(50); // restore shared page state
+  });
   test('unavailable data is DATA_UNAVAILABLE with its real reason, not "healthy"', () => {
     const inv = [...document.querySelectorAll('.aic-sys')].find(e => e.textContent.includes('INVENTORY'));
     assert.match(inv.textContent, /DATA_UNAVAILABLE/); assert.match(inv.textContent, /Open the Inventory page/);
