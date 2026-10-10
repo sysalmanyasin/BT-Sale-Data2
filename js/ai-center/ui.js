@@ -39,29 +39,11 @@ const S = {
 //   #ai-center (Home) · #ai-center/copilot (AI Copilot) · #ai-center/alerts (Alerts). Desktop/tablet keep the full dashboard.
 const MOBILE_Q = '(max-width: 860px)';
 const isMobile = () => { try { return !!(window.matchMedia && window.matchMedia(MOBILE_Q).matches); } catch (_) { return false; } };
-export function viewFromHash(hash) { const m = /^#ai-center\/(copilot|alerts|sales|inventory|money|actions|ops)\b/.exec(hash == null ? (window.location && window.location.hash) || '' : hash); return m ? m[1] : 'home'; }
+export function viewFromHash(hash) { const m = /^#ai-center\/(copilot|alerts)\b/.exec(hash == null ? (window.location && window.location.hash) || '' : hash); return m ? m[1] : 'home'; }
 const compactHome = () => isMobile() && S.view === 'home';
 const COMPACT_FOLD = new Set(['fc', 'invstr', 'money']); // full detail lives on the existing pages; Home shows a one-line summary
-const DETAIL_LINKS = { fc: ['#ai-center/sales', 'Sales & Forecast details'], invstr: ['#ai-center/inventory', 'Inventory & STR details'], money: ['#ai-center/money', 'Closing, Cash & Money details'], actc: ['#ai-center/actions', 'Actions & Approvals'], ops: ['#ai-center/ops', 'Operations & Diagnostics'] };
-// Dedicated phone pages: each one reuses the SAME section builders as the desktop dashboard (same tools, data, approvals, audit).
-const DETAIL_VIEWS = {
-  sales: { title: 'Sales & Forecast', full: ['#dashboard', 'Open full Sales dashboard'], build: info => [secForecast()] },
-  inventory: { title: 'Inventory & STR', full: ['#inv-health', 'Open Inventory Health'], full2: ['#str', 'Open STR Report'], build: info => [secInvStr()] },
-  money: { title: 'Closing, Cash & Money', full: ['#closing-book', 'Open Closing Book'], full2: ['#credit-ledger', 'Open Credit Ledger'], build: info => [secMoney()] },
-  actions: { title: 'Actions & Approvals', full: null, build: info => [secCritical(info), secActions(info)] },
-  ops: { title: 'Operations & Diagnostics', full: null, build: info => [secOps(info)] },
-};
-function detailHeader(v) {
-  const d = DETAIL_VIEWS[v], at = S.snap && S.snap.at, stale = at && Date.now() - at > STALE_MS;
-  const links = [d.full, d.full2].filter(Boolean).map(l => h('a', { class: 'aic-detail', href: l[0], text: l[1] + ' \u203A' }));
-  return h('header', { class: 'aic-dh' },
-    h('a', { class: 'aic-back', href: '#ai-center', 'aria-label': 'Back to Home', text: '\u2039 Home' }),
-    h('h1', { text: d.title }),
-    h('span', { class: 'aic-sub' + (stale ? ' aic-stale' : ''), role: 'status', text: !S.snap ? (S.error ? 'Could not load data' : 'Loading\u2026') : (stale ? 'STALE \u00B7 last read ' : 'Updated ') + M.ageLabel(at) }),
-    stale || S.error ? h('button', { class: 'aic-p', text: 'Refresh now', onclick: () => refresh({ force: true }) }) : null,
-    ...links);
-}
-function setView(v) { S.view = v; if (v === 'ops') S.open.ops = true; document.body.dataset.aicView = v; }
+const DETAIL_LINKS = { fc: ['#dashboard', 'Open Sales & Forecast details'], invstr: ['#inv-health', 'Open Inventory & STR details'], money: ['#closing-book', 'Open Closing, Cash & Money details'], actc: ['#ai-center/alerts', 'Open Actions & Approvals'] };
+function setView(v) { S.view = v; document.body.dataset.aicView = v; }
 function goCopilot(q) { window.location.hash = '#ai-center/copilot'; if (q) setTimeout(() => ask(q), 80); }
 
 // ───────────────────────── tiny DOM helpers ─────────────────────────
@@ -1207,7 +1189,6 @@ function paint() {
   let cards;
   if (mobile && S.view === 'copilot') cards = [secCopilot(info), secSuggested()];
   else if (mobile && S.view === 'alerts') cards = [secCritical(info), secAttention(), secActions(info)];
-  else if (mobile && DETAIL_VIEWS[S.view]) cards = [detailHeader(S.view), ...DETAIL_VIEWS[S.view].build(info)];
   else if (mobile) cards = [secCritical(info), secSystems(), secAttention(), secCopilotEntry(info), secForecast(), secInvStr(), secMoney(), secActions(info), secOps(info)];
   else cards = [secCritical(info), secSystems(), secAttention(), secCopilot(info), secForecast(), secInvStr(), secMoney(), secActions(info), secOps(info)];
   cards = cards.filter(Boolean);

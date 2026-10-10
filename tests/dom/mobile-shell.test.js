@@ -86,9 +86,9 @@ describe('BT Intelligence phone views', () => {
     const fc = q('#aic-fc');
     assert.ok(fc.classList.contains('aic-folded'), 'forecast folded on phone Home');
     assert.match(fc.querySelector('.aic-fsum').textContent, /30% of month target sold/);
-    assert.equal(fc.querySelector('a.aic-detail').getAttribute('href'), '#ai-center/sales');
-    assert.equal(q('#aic-invstr a.aic-detail').getAttribute('href'), '#ai-center/inventory');
-    assert.equal(q('#aic-money a.aic-detail').getAttribute('href'), '#ai-center/money');
+    assert.equal(fc.querySelector('a.aic-detail').getAttribute('href'), '#dashboard');
+    assert.equal(q('#aic-invstr a.aic-detail').getAttribute('href'), '#inv-health');
+    assert.equal(q('#aic-money a.aic-detail').getAttribute('href'), '#closing-book');
     assert.ok(q('#aic-ops').classList.contains('aic-folded'), 'operations collapsed');
     assert.equal(q('#aic-att a.aic-viewall').getAttribute('href'), '#ai-center/alerts');
   });
@@ -113,21 +113,6 @@ describe('BT Intelligence phone views', () => {
     assert.equal(q('.aic-cmd'), null);
     assert.equal(q('#aic-att a.aic-viewall'), null, 'no "view all" link on the Alerts screen itself');
   });
-
-  for (const [v, title, sec] of [['sales', 'Sales & Forecast', 'aic-fc'], ['inventory', 'Inventory & STR', 'aic-invstr'], ['money', 'Closing, Cash & Money', 'aic-money'], ['actions', 'Actions & Approvals', 'aic-actc'], ['ops', 'Operations & Diagnostics', 'aic-ops']]) {
-    test('phone detail page #ai-center/' + v + ': header, freshness, back link, section open', async () => {
-      assert.equal(ui.viewFromHash('#ai-center/' + v), v);
-      window.location.hash = '#ai-center/' + v;
-      window.dispatchEvent(new window.HashChangeEvent('hashchange')); await wait(60);
-      assert.equal(q('.aic-dh h1').textContent, title);
-      assert.equal(q('.aic-back').getAttribute('href'), '#ai-center');
-      assert.match(q('.aic-dh [role=status]').textContent, /Updated|Loading|STALE/);
-      const el = q('#' + sec); assert.ok(el, sec + ' present');
-      assert.ok(!el.classList.contains('aic-folded'), 'section is open on its own page');
-      assert.equal(q('.aic-cmd'), null);
-      assert.equal(q('#aic-att'), null, 'no unrelated Home cards');
-    });
-  }
 
   test('alert badge is published only from real data (null/number), never invented', async () => {
     assert.ok(events.length > 0, 'badge event published');
