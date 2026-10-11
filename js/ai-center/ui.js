@@ -234,7 +234,8 @@ function secHeaderBar(core) {
 // Decorative holographic avatar (v2): a glass-helmet AI bust inside a rotating HUD portal. Pure SVG, no data, no innerHTML.
 // Colour follows the stage state through --c; every operational fact stays in real DOM text beside it.
 // Personal avatar: the person's own photo is kept ON THIS DEVICE only (localStorage) and never committed to the repo.
-const AV_KEY = 'bt_jarvis_photo';
+const AV_KEY = 'bt_jarvis_photo', AV_MODE = 'bt_jarvis_photo_mode';
+function avatarMode() { try { return localStorage.getItem(AV_MODE) || 'photo'; } catch (e) { return 'photo'; } }
 function avatarPhoto() { try { return localStorage.getItem(AV_KEY) || ''; } catch (e) { return ''; } }
 function setAvatarPhoto(file) {
   if (!file || !/^image\//.test(file.type)) return;
@@ -242,18 +243,20 @@ function setAvatarPhoto(file) {
   rd.onload = () => {
     const img = new Image();
     img.onload = () => {
-      // auto-frame a selfie: square ~60% of the width, centred on the upper-middle of the frame, saved at 320px
-      const side = Math.min(img.width * 0.6, img.height), cx = img.width / 2, cy = Math.min(img.height - side / 2, Math.max(side / 2, img.height * 0.46));
-      const cv = document.createElement('canvas'); cv.width = cv.height = 320;
-      cv.getContext('2d').drawImage(img, cx - side / 2, cy - side / 2, side, side, 0, 0, 320, 320);
-      try { localStorage.setItem(AV_KEY, cv.toDataURL('image/jpeg', 0.85)); } catch (e) { toast('Could not save the photo on this device'); return; }
+      // A square image is treated as finished art (e.g. a stylised avatar) and used whole; anything else is a photo and gets auto-framed.
+      const art = Math.abs(img.width / img.height - 1) < 0.1, px = art ? 480 : 320;
+      const side = art ? Math.min(img.width, img.height) : Math.min(img.width * 0.6, img.height);
+      const cx = img.width / 2, cy = art ? img.height / 2 : Math.min(img.height - side / 2, Math.max(side / 2, img.height * 0.46));
+      const cv = document.createElement('canvas'); cv.width = cv.height = px;
+      cv.getContext('2d').drawImage(img, cx - side / 2, cy - side / 2, side, side, 0, 0, px, px);
+      try { localStorage.setItem(AV_KEY, cv.toDataURL('image/jpeg', 0.88)); localStorage.setItem(AV_MODE, art ? 'art' : 'photo'); } catch (e) { toast('Could not save the photo on this device'); return; }
       render();
     };
     img.src = String(rd.result);
   };
   rd.readAsDataURL(file);
 }
-function clearAvatarPhoto() { try { localStorage.removeItem(AV_KEY); } catch (e) { /* ignore */ } render(); }
+function clearAvatarPhoto() { try { localStorage.removeItem(AV_KEY); localStorage.removeItem(AV_MODE); } catch (e) { /* ignore */ } render(); }
 
 function jarvisAvatar() {
   const photo = avatarPhoto();
@@ -283,10 +286,11 @@ function jarvisAvatar() {
       n('circle', { class: 'jv-core', cx: 80, cy: 138, r: 4.5, filter: 'url(#jv-glow)' }),
       n('circle', { class: 'jv-hair', cx: 80, cy: 138, r: 9 }),
       ...(photo ? [
-        n('image', { class: 'jv-photo', href: photo, x: 25, y: 25, width: 110, height: 110, preserveAspectRatio: 'xMidYMid slice' }),
-        n('rect', { class: 'jv-tint', x: 25, y: 25, width: 110, height: 110 }),
-        n('rect', { class: 'jv-lines', x: 25, y: 25, width: 110, height: 110 }),
-        n('rect', { class: 'jv-sweep', x: 25, y: 25, width: 110, height: 10 })] : [])));
+        n('image', { class: 'jv-photo' + (avatarMode() === 'art' ? ' jv-art' : ''), href: photo, x: 25, y: 25, width: 110, height: 110, preserveAspectRatio: 'xMidYMid slice' }),
+        ...(avatarMode() === 'art' ? [] : [
+          n('rect', { class: 'jv-tint', x: 25, y: 25, width: 110, height: 110 }),
+          n('rect', { class: 'jv-lines', x: 25, y: 25, width: 110, height: 110 }),
+          n('rect', { class: 'jv-sweep', x: 25, y: 25, width: 110, height: 10 })])] : [])));
 }
 
 function secCore(info) {
@@ -311,7 +315,7 @@ function secCore(info) {
       h('div', { class: 'aic-orb' }, jarvisAvatar(), h('div', { class: 'aic-orb-t' }, h('b', { text: 'JARVIS' }), h('small', { text: core.state.replace(/_/g, ' ') })))),
     h('div', { class: 'aic-cs' }, h('h2', { text: core.state.replace(/_/g, ' ') }), h('p', { text: core.detail })),
     h('div', { class: 'aic-avset' },
-      h('label', { class: 'aic-avbtn' }, avatarPhoto() ? 'Change my photo' : 'Use my photo', h('input', { type: 'file', accept: 'image/*', hidden: true, onchange: ev => setAvatarPhoto(ev.target.files && ev.target.files[0]) })),
+      h('label', { class: 'aic-avbtn' }, avatarPhoto() ? 'Change avatar' : 'Use my avatar or photo', h('input', { type: 'file', accept: 'image/*', hidden: true, onchange: ev => setAvatarPhoto(ev.target.files && ev.target.files[0]) })),
       avatarPhoto() ? h('button', { class: 'aic-g', text: 'Remove', onclick: clearAvatarPhoto }) : null),
     mission,
     h('details', { class: 'aic-lifed' }, h('summary', { text: 'Lifecycle of the last request' }), h('ol', { class: 'aic-life', 'aria-label': 'Intelligence lifecycle' }, life.map(s => h('li', { class: (s.reached ? (s.failed ? 'on fail ' : 'on ') : '') + (s.available ? '' : 'na'), title: s.available ? (s.reached ? 'Happened in the latest request' : 'Not reached in the latest request') : 'BT has no automated verification step yet', text: s.label })))));

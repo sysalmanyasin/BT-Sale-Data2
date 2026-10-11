@@ -153,3 +153,4 @@ body.aic-open .ag-send,body.aic-open .ag-user{background:linear-gradient(135deg,
 .aic-page.aic-jarvis .aic-avset{display:flex;justify-content:center;gap:8px;margin:6px 0 2px}
 .aic-page.aic-jarvis .aic-avbtn{font-size:12px;color:var(--j-cy);padding:6px 14px;border:1px solid var(--j-ln);border-radius:999px;cursor:pointer;min-height:32px;display:inline-flex;align-items:center}
 .aic-page.aic-jarvis .aic-avset button{min-height:32px;font-size:12px}
+.aic-page.aic-jarvis .jv-art{filter:none}
