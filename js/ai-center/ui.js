@@ -233,7 +233,30 @@ function secHeaderBar(core) {
 
 // Decorative holographic avatar (v2): a glass-helmet AI bust inside a rotating HUD portal. Pure SVG, no data, no innerHTML.
 // Colour follows the stage state through --c; every operational fact stays in real DOM text beside it.
+// Personal avatar: the person's own photo is kept ON THIS DEVICE only (localStorage) and never committed to the repo.
+const AV_KEY = 'bt_jarvis_photo';
+function avatarPhoto() { try { return localStorage.getItem(AV_KEY) || ''; } catch (e) { return ''; } }
+function setAvatarPhoto(file) {
+  if (!file || !/^image\//.test(file.type)) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      // auto-frame a selfie: square ~60% of the width, centred on the upper-middle of the frame, saved at 320px
+      const side = Math.min(img.width * 0.6, img.height), cx = img.width / 2, cy = Math.min(img.height - side / 2, Math.max(side / 2, img.height * 0.46));
+      const cv = document.createElement('canvas'); cv.width = cv.height = 320;
+      cv.getContext('2d').drawImage(img, cx - side / 2, cy - side / 2, side, side, 0, 0, 320, 320);
+      try { localStorage.setItem(AV_KEY, cv.toDataURL('image/jpeg', 0.85)); } catch (e) { toast('Could not save the photo on this device'); return; }
+      render();
+    };
+    img.src = String(rd.result);
+  };
+  rd.readAsDataURL(file);
+}
+function clearAvatarPhoto() { try { localStorage.removeItem(AV_KEY); } catch (e) { /* ignore */ } render(); }
+
 function jarvisAvatar() {
+  const photo = avatarPhoto();
   const n = (tag, a, ...kids) => { const e = h2svg(tag, a); kids.forEach(k => e.append(k)); return e; };
   const stop = (o, c, op) => n('stop', { offset: o, 'stop-color': c, 'stop-opacity': op == null ? 1 : op });
   return n('svg', { viewBox: '0 0 160 160', class: 'aic-avatar', 'aria-hidden': 'true', focusable: 'false' },
@@ -242,6 +265,7 @@ function jarvisAvatar() {
       n('linearGradient', { id: 'jv-glass', x1: 0, y1: 0, x2: 0.8, y2: 1 }, stop('0', '#ffffff', .30), stop('.45', '#9aa6ff', .08), stop('1', '#000000', .35)),
       n('linearGradient', { id: 'jv-rim', x1: 0, y1: 0, x2: 1, y2: 0 }, stop('0', 'currentColor', 0), stop('.5', 'currentColor', 1), stop('1', 'currentColor', 0)),
       n('filter', { id: 'jv-glow', x: '-80%', y: '-80%', width: '260%', height: '260%' }, n('feGaussianBlur', { stdDeviation: 2.6, result: 'b' }), n('feMerge', {}, n('feMergeNode', { in: 'b' }), n('feMergeNode', { in: 'SourceGraphic' }))),
+      n('pattern', { id: 'jv-scanlines', width: 4, height: 4, patternUnits: 'userSpaceOnUse' }, n('rect', { x: 0, y: 0, width: 4, height: 1.2, fill: '#000' })),
       n('clipPath', { id: 'jv-clip' }, n('circle', { cx: 80, cy: 80, r: 55 }))),
     n('circle', { cx: 80, cy: 80, r: 78, fill: 'url(#jv-halo)' }),
     n('g', { class: 'jv-r jv-r1' }, n('circle', { cx: 80, cy: 80, r: 74, class: 'jv-tick' })),
@@ -257,7 +281,12 @@ function jarvisAvatar() {
       n('path', { class: 'jv-visor', d: 'M58 62h44c5 0 8 3 8 7s-3 7-8 7H58c-5 0-8-3-8-7s3-7 8-7z', filter: 'url(#jv-glow)' }),
       n('rect', { class: 'jv-scan', x: 54, y: 63, width: 10, height: 12, rx: 5 }),
       n('circle', { class: 'jv-core', cx: 80, cy: 138, r: 4.5, filter: 'url(#jv-glow)' }),
-      n('circle', { class: 'jv-hair', cx: 80, cy: 138, r: 9 })));
+      n('circle', { class: 'jv-hair', cx: 80, cy: 138, r: 9 }),
+      ...(photo ? [
+        n('image', { class: 'jv-photo', href: photo, x: 25, y: 25, width: 110, height: 110, preserveAspectRatio: 'xMidYMid slice' }),
+        n('rect', { class: 'jv-tint', x: 25, y: 25, width: 110, height: 110 }),
+        n('rect', { class: 'jv-lines', x: 25, y: 25, width: 110, height: 110 }),
+        n('rect', { class: 'jv-sweep', x: 25, y: 25, width: 110, height: 10 })] : [])));
 }
 
 function secCore(info) {
@@ -281,6 +310,9 @@ function secCore(info) {
       h('i', { class: 'aic-ring r1' }), h('i', { class: 'aic-ring r2' }), h('i', { class: 'aic-ring r3' }),
       h('div', { class: 'aic-orb' }, jarvisAvatar(), h('div', { class: 'aic-orb-t' }, h('b', { text: 'JARVIS' }), h('small', { text: core.state.replace(/_/g, ' ') })))),
     h('div', { class: 'aic-cs' }, h('h2', { text: core.state.replace(/_/g, ' ') }), h('p', { text: core.detail })),
+    h('div', { class: 'aic-avset' },
+      h('label', { class: 'aic-avbtn' }, avatarPhoto() ? 'Change my photo' : 'Use my photo', h('input', { type: 'file', accept: 'image/*', hidden: true, onchange: ev => setAvatarPhoto(ev.target.files && ev.target.files[0]) })),
+      avatarPhoto() ? h('button', { class: 'aic-g', text: 'Remove', onclick: clearAvatarPhoto }) : null),
     mission,
     h('details', { class: 'aic-lifed' }, h('summary', { text: 'Lifecycle of the last request' }), h('ol', { class: 'aic-life', 'aria-label': 'Intelligence lifecycle' }, life.map(s => h('li', { class: (s.reached ? (s.failed ? 'on fail ' : 'on ') : '') + (s.available ? '' : 'na'), title: s.available ? (s.reached ? 'Happened in the latest request' : 'Not reached in the latest request') : 'BT has no automated verification step yet', text: s.label })))));
 }

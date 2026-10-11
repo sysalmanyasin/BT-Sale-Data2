@@ -50,6 +50,7 @@ describe('AI Center page', () => {
     assert.equal(av.querySelectorAll('.jv-r').length, 3, 'three rotating HUD rings');
     assert.ok(av.querySelector('.jv-head') && av.querySelector('.jv-body'), 'helmet bust');
     assert.ok(av.querySelector('.jv-visor') && av.querySelector('.jv-core'), 'visor and chest core');
+    assert.equal(av.querySelectorAll('.jv-photo').length, 0, 'no photo unless the person set one on this device');
     const ids = [...av.querySelectorAll('[id]')].map(e => e.id);
     assert.equal(new Set(ids).size, ids.length, 'avatar defs have unique ids');
     assert.ok(ids.every(id => document.querySelectorAll('[id="' + id + '"]').length === 1), 'ids unique in the whole document');
