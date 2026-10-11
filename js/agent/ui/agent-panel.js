@@ -1,6 +1,7 @@
 // ══════════════════════════════════════════════════════════════════════
-// AGENT PANEL — floating button + chat sheet (mobile-first).
-// Pure presentation: delegates everything to runAgent().
+// AGENT PANEL — the ONE chat assistant. It lives inside the BT Intelligence page (the AI Center docks it under Jarvis
+// with BTAgent.dock(slot)); everywhere else a small ✨ button just takes you to that page. Pure presentation:
+// delegates everything to runAgent().
 // ══════════════════════════════════════════════════════════════════════
 import { runAgent, AgentError } from '../core/agent-client.js';
 import { planInvestigation, runInvestigation } from '../core/orchestrator.js';
@@ -70,7 +71,6 @@ export function mountAgentPanel() {
         <button class="ag-ico" id="ag-kill" aria-label="Stop all AI changes on every device"></button>
         <button class="ag-ico" id="ag-lock" aria-label="Allow changes"></button>
         <button class="ag-ico" id="ag-clear" title="New chat" aria-label="New chat">↺</button>
-        <button class="ag-ico" id="ag-close" title="Close" aria-label="Close">✕</button>
       </div>
     </header>
     <div class="ag-log" id="ag-log" aria-live="polite"></div>
@@ -323,9 +323,11 @@ export function mountAgentPanel() {
   async function ask(q, opts = {}) {
     q = String(q || '').trim();
     if (!q || busy) return;
+    const hadFocus = document.activeElement === text; // give the keyboard back afterwards only if the person was typing here
     text.value = ''; autosize();
     chips.innerHTML = '';
     addBubble('user', q);
+    reveal(); // a question tapped higher up the page (hero buttons, findings) must show its answer
     // Instant path: common one-liners are answered locally, with no AI call at all.
     try {
       const quick = opts.investigate ? null : await tryInstant(q);
@@ -367,7 +369,7 @@ export function mountAgentPanel() {
       if (!(e instanceof AgentError) || e.code !== 'aborted') addBubble('error', msg);
       if (!(e instanceof AgentError)) console.error('[agent]', e);
     } finally {
-      abort = null; setBusy(false); text.focus();
+      abort = null; setBusy(false); if (hadFocus) text.focus({ preventScroll: true });
     }
   }
 
@@ -377,21 +379,39 @@ export function mountAgentPanel() {
     syncKnowledge({ sb: getSb(), callAction, includeStaffNotes: kp.staffNotes }).catch(() => {});
   }
   function autosize() { text.style.height = 'auto'; text.style.height = Math.min(text.scrollHeight, 120) + 'px'; }
-  // The assistant lives on the BT Intelligence page ONLY. Everywhere else the button just takes you there and opens the chat on arrival.
+  // The assistant lives on the BT Intelligence page ONLY, docked in the page itself (no floating sheet, no second chat).
+  // While it is parked (any other page) the sheet is hidden and the ✨ button just takes you to BT Intelligence.
   const onCenter = () => document.body.classList.contains('aic-open');
-  function openHere() { sheet.hidden = false; refreshKill(); autoIndex(); fab.classList.add('ag-hide'); if (!log.children.length) welcome(); setTimeout(() => text.focus(), 50); }
+  const docked = () => !sheet.hidden;
+  function reveal() { if (docked() && typeof sheet.scrollIntoView === 'function') sheet.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+  function focusChat() {
+    let tries = 0;
+    const t = setInterval(() => {
+      if (docked()) { clearInterval(t); if (typeof sheet.scrollIntoView === 'function') sheet.scrollIntoView({ behavior: 'smooth', block: 'start' }); text.focus({ preventScroll: true }); }
+      else if (++tries > 40) clearInterval(t);
+    }, 50);
+  }
+  /** Put the chat into `slot` (idempotent: the AI Center calls it on every repaint). The first dock after being parked wakes it up. */
+  function dock(slot) {
+    if (!slot || typeof slot.appendChild !== 'function') return false;
+    const wasParked = sheet.hidden;
+    if (sheet.parentNode !== slot) slot.replaceChildren(sheet);
+    sheet.hidden = false; sheet.classList.add('ag-docked'); fab.classList.add('ag-hide');
+    if (wasParked) { refreshKill(); autoIndex(); paintVoice(); if (!log.children.length) welcome(); }
+    return true;
+  }
+  /** Leave the page: stop talking/listening, reject any open approval, cancel a running request, put the chat away (its history stays). */
+  function park() { voiceStop(); V.stopSpeaking(window); rejectAllPending(); if (abort) abort.abort(); sheet.hidden = true; sheet.classList.remove('ag-docked'); document.body.append(sheet); fab.classList.remove('ag-hide'); }
   function open() {
-    if (onCenter()) { openHere(); return; }
+    if (onCenter()) { focusChat(); return; }
     window.location.hash = '#ai-center';
     let tries = 0;
-    const t = setInterval(() => { if (onCenter()) { clearInterval(t); openHere(); } else if (++tries > 40) clearInterval(t); }, 50);
+    const t = setInterval(() => { if (onCenter()) { clearInterval(t); focusChat(); } else if (++tries > 40) clearInterval(t); }, 50);
   }
-  function close() { voiceStop(); V.stopSpeaking(window); rejectAllPending(); sheet.hidden = true; fab.classList.remove('ag-hide'); if (abort) abort.abort(); }
-  // Leaving BT Intelligence closes the chat (pending approvals are rejected, exactly like pressing close).
-  window.addEventListener('hashchange', () => setTimeout(() => { if (!sheet.hidden && !onCenter()) close(); }, 150));
+  // Leaving BT Intelligence parks the chat (pending approvals are rejected).
+  window.addEventListener('hashchange', () => setTimeout(() => { if (docked() && !onCenter()) park(); }, 150));
 
   fab.onclick = open;
-  sheet.querySelector('#ag-close').onclick = close;
   sheet.querySelector('#ag-clear').onclick = () => { rejectAllPending(); if (abort) abort.abort(); history = []; convDbId = null; sensitive = false; lastSpecialist = null; clearUndo(); clearSession(); welcome(); };
   lockBtn.onclick = () => {
     if (getWritesEnabled()) { setWritesEnabled(false); }
@@ -408,7 +428,7 @@ export function mountAgentPanel() {
   };
   // Public hook for the AI Center command bar: the SAME agent, panel and approval cards. No second chatbot.
   window.BTAgent = Object.freeze({
-    ask: q => ask(q), open,
+    ask: q => ask(q), open, dock, park,
     // Start a REAL investigation (independent specialists + Analyst synthesis) from a finding. Falls back to a single run, honestly
     // labelled in telemetry, when fewer than two areas are relevant.
     investigate: ({ question, domains, finding } = {}) => ask(question, { investigate: { domains: Array.isArray(domains) ? domains : [], finding: finding || null } }),
@@ -468,7 +488,6 @@ export function mountAgentPanel() {
   subscribeTelemetry(e => { if ((e.type === 'answer' || e.type === 'instant') && V.getVoiceOut() && e.metadata && e.metadata.text) V.speak(window, e.metadata.text, V.voiceLang(window)); });
 
   text.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(text.value); } });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !sheet.hidden) close(); });
 }
 
 function escHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }

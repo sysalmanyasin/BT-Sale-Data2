@@ -32,7 +32,7 @@ const STALE_MS = 5 * 60000, REFRESH_MS = 45000;
 try { if (V.voiceSupport(window).output && !localStorage.getItem('bt_jarvis_voice_init')) { localStorage.setItem('bt_jarvis_voice_init', '1'); V.setVoiceOut(true); } } catch (_) { /* private mode */ }
 const S = {
   snap: null, health: null, actions: null, history: [], loading: false, error: null,
-  voice: { listening: false, out: V.getVoiceOut(), talking: false }, mode: 'monitor', filter: 'all', baseline: null, started: false, tick: 0, toolsOpen: false, open: {},
+  voice: { talking: false }, mode: 'monitor', filter: 'all', baseline: null, started: false, tick: 0, toolsOpen: false, open: {},
   awaitingFor: null, assess: {}, lastRefreshAt: 0, mounted: false, rafId: 0, deep: {}, repo: { state: 'idle', idx: null }, repoQ: '',
 };
 
@@ -149,8 +149,11 @@ function persistVisit() {
 // ───────────────────────── render scheduling ─────────────────────────
 export function render() {
   if (!S.mounted || S.rafId) return;
-  S.rafId = requestAnimationFrame(() => { S.rafId = 0; paint(); });
+  // Never repaint (which moves the chat) under a thumb that is typing a question: the keyboard would close. It repaints on blur.
+  if (typingInChat()) { S.paintAfterTyping = true; return; }
+  S.rafId = requestAnimationFrame(() => { S.rafId = 0; if (typingInChat()) { S.paintAfterTyping = true; return; } paint(); }); // re-checked here: typing may have started after this was queued
 }
+const typingInChat = () => { const a = typeof document !== 'undefined' && document.activeElement; return !!(a && a.id === 'ag-text'); };
 const dismissedToday = () => { const d = lsGet(LS_DISMISS) || {}; const today = M.isoDay(new Date()); return Object.keys(d).filter(k => d[k] === today); };
 
 function visibleFindings() {
@@ -1096,38 +1099,19 @@ function secHero(info) {
     h('div', { class: 'aic-hbub', role: 'status' }, h('span', { class: 'aic-hpill ' + (up ? 'on' : 'off') + (S.voice.talking ? ' talk' : ''), text: S.voice.talking ? 'Jarvis speaking' : up ? 'Jarvis online' : 'Jarvis offline' }), h('p', { text: heroGreeting() })),
     h('div', { class: 'aic-hact' }, HERO_ACTIONS.map(([ic, lb, q]) => h('button', { class: 'aic-hbtn', onclick: () => ask(q) }, h('span', { 'aria-hidden': 'true', text: ic }), h('b', { text: lb })))));
 }
-// Chat lives directly under Jarvis: your question, his answer (spoken if the speaker is on), and the input right below.
-function chatThread() {
-  const evs = T.recent(400), openId = (T.liveState().open || {}).request_id || null;
-  const starts = evs.filter(e => e.type === 'request_start').slice(0, 3).reverse();
-  const items = [];
-  starts.forEach((st, i) => {
-    const q = (st.metadata && st.metadata.question) || '';
-    if (q) items.push(h('div', { class: 'aic-msg me' }, h('p', { text: q })));
-    const ans = evs.find(e => e.request_id === st.request_id && (e.type === 'answer' || e.type === 'instant') && e.metadata && e.metadata.text);
-    const err = evs.find(e => e.request_id === st.request_id && e.type === 'error');
-    if (ans) {
-      const last = i === starts.length - 1 ? Object.entries(S.assess).sort((x, y) => y[1].at - x[1].at)[0] : null;
-      const f = last && S.snap && S.snap.findings.find(x => x.id === last[0]);
-      items.push(h('div', { class: 'aic-msg jv' }, mdNode(ans.metadata.text),
-        h('div', { class: 'aic-row' },
-          V.voiceSupport(window).output ? h('button', { class: 'aic-g', text: '\uD83D\uDD0A Listen', onclick: () => V.speak(window, ans.metadata.text, V.voiceLang(window)) }) : null,
-          f ? h('button', { class: 'aic-p', text: 'Open structured result', onclick: () => openFinding(f) }) : null,
-          h('span', { class: 'aic-sub', text: M.ageLabel(ans.timestamp) + (ans.type === 'instant' ? ' \u00B7 instant, no AI used' : '') }))));
-    } else if (err) items.push(h('div', { class: 'aic-msg jv err' }, h('p', { text: 'I could not finish that. ' + ((err.metadata && err.metadata.message) || '') })));
-    else if (openId === st.request_id) { const lv = T.liveState(); items.push(h('div', { class: 'aic-msg jv work' }, h('p', { text: 'Working on it' + (lv.activeTool ? ' \u00B7 ' + lv.activeTool.tool : '') + '\u2026' }), h('span', { class: 'aic-dots', 'aria-hidden': 'true' }, h('i'), h('i'), h('i')))); }
-  });
-  if (!items.length) items.push(h('div', { class: 'aic-msg jv' }, h('p', { text: 'Ask me anything about your business. Tap a button above, type below, or press the mic and talk.' })));
-  return h('div', { class: 'aic-thread', 'aria-live': 'polite' }, items);
-}
-function composer() {
-  const input = h('input', { id: 'aic-q', type: 'text', placeholder: 'Ask Jarvis\u2026', 'aria-label': 'Ask Jarvis', autocomplete: 'off', enterkeyhint: 'send', maxlength: '2000' });
-  const go = () => { const v = input.value; if (v.trim()) { input.value = ''; ask(v); } };
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); go(); } });
-  return h('div', { class: 'aic-form' }, input, micButton(), speakerButton(), h('button', { class: 'aic-p', 'aria-label': 'Send', text: '\u27A4', onclick: go }));
-}
+// ONE chat: the assistant's own chat (js/agent/ui/agent-panel.js) is docked here, directly under Jarvis. It brings everything
+// with it: the full conversation, streaming, approval cards, undo, briefing, history, memory + house rules, usage, lock, kill
+// switch, new chat, mic and spoken answers. This page owns no second thread and no second input.
+let chatSlot = null, chatRetry = 0;
 function secChat() {
-  return card('chat', 'monitor investigate act', chatThread(), composer(),
+  const A = window.BTAgent;
+  if (!chatSlot) chatSlot = h('div', { class: 'aic-chatslot' });
+  if (A && typeof A.dock === 'function') A.dock(chatSlot);
+  else if (!chatSlot.firstChild) {
+    chatSlot.replaceChildren(h('p', { class: 'aic-sub', text: 'The assistant is still loading\u2026' }));
+    if (chatRetry++ < 20) setTimeout(render, 700); // the assistant module can finish loading after the page first paints
+  }
+  return card('chat', 'monitor investigate act', chatSlot,
     h('details', { class: 'aic-lifed aic-histd' }, h('summary', { text: 'Earlier investigations' }), histNode()));
 }
 
@@ -1153,38 +1137,7 @@ function secOps(info) {
 
 // ───────────────────────── command bar + palette ─────────────────────────
 
-// ── voice (browser speech; shared module js/agent/ui/voice.js; spoken answers are handled by the chat panel) ──
-const LS_VOICE = 'bt_aic_voice_v1';
-const voiceLang = () => V.voiceLang(window);
-let recog = null;
-function voiceStop() { if (recog) recog.stop(); }
-function voiceToggle() {
-  if (S.voice.listening) { voiceStop(); return; }
-  V.stopSpeaking(window);
-  if (!window.BTAgent) { toast('The assistant is still loading. Try again in a moment.'); return; }
-  const pref = lsGet(LS_VOICE) || {};
-  if (!pref.noticed) { lsSet(LS_VOICE, { ...pref, noticed: true }); toast('Voice uses your browser\u2019s speech service. Audio may be processed by the browser vendor.'); }
-  recog = V.createRecognizer(window, {
-    lang: voiceLang(),
-    onInterim: t => { const q = $('#aic-q'); if (q) q.value = t; },
-    onFinal: t => { const q = $('#aic-q'); if (q) q.value = ''; toast('Heard: \u201C' + t.slice(0, 80) + '\u201D'); ask(t); },
-    onEnd: () => { S.voice.listening = false; render(); },
-    onError: code => toast(code === 'not-allowed' || code === 'service-not-allowed' ? 'Microphone permission was denied. Allow it in the browser site settings.' : code === 'no-speech' ? 'I did not hear anything. Try again.' : code === 'network' ? 'Voice needs an internet connection.' : 'Voice input failed (' + code + ').'),
-  });
-  if (!recog) return;
-  try { recog.start(); S.voice.listening = true; render(); } catch (err) { toast('Could not start the microphone: ' + (err && err.message ? err.message : 'unknown error')); }
-}
-function micButton() {
-  if (!V.voiceSupport(window).input) return h('button', { class: 'aic-mic', disabled: true, title: 'Voice input is not available in this browser', 'aria-label': 'Voice input unavailable', text: '🎙' });
-  const on = S.voice.listening;
-  return h('button', { class: 'aic-mic' + (on ? ' on' : ''), 'aria-pressed': String(on), title: on ? 'Listening. Tap to stop' : 'Speak to JARVIS', 'aria-label': on ? 'Stop listening' : 'Speak to JARVIS', text: on ? '⏹' : '🎙', onclick: voiceToggle });
-}
-function speakerButton() {
-  if (!V.voiceSupport(window).output) return null; // no fake control when the browser cannot speak
-  const on = S.voice.out;
-  return h('button', { class: 'aic-spk' + (on ? ' on' : ''), 'aria-pressed': String(on), title: on ? 'Spoken answers on' : 'Spoken answers off', 'aria-label': 'Read answers aloud', text: on ? '🔊' : '🔈',
-    onclick: () => { S.voice.out = !S.voice.out; V.setVoiceOut(S.voice.out); if (!S.voice.out) V.stopSpeaking(window); render(); } });
-}
+// ── voice: the mic, the speaker and spoken answers live in the docked chat (js/agent/ui/agent-panel.js + voice.js) ──
 function promptChips() {
   const raw = S.snap && S.snap.raw, P = raw && raw.planning, A = window.BTAgent;
   return C.suggestPrompts({
@@ -1194,7 +1147,7 @@ function promptChips() {
 }
 
 const COMMANDS = () => [
-  ['Ask BT…', 'Focus the command bar', () => { closeModal(); const i = $('#aic-q'); if (i) i.focus(); }],
+  ['Ask BT…', 'Go to the chat', () => { closeModal(); if (window.BTAgent) window.BTAgent.open(); }],
   ['What needs my attention?', 'Ask BT', () => ask('What needs my attention today?')],
   ['Investigate the biggest issue', 'Ask BT', () => { const f = visibleFindings().find(x => x.severity === 'warning'); f ? investigate(f) : toast('No warning-level findings to investigate.'); }],
   ['Prepare me for closing', 'Ask BT', () => ask('Prepare me for closing: what is not closed, and what should I check first?')],
@@ -1236,12 +1189,11 @@ function paint() {
   // a genuinely pending approval outranks everything: the Action Center moves to the top (CSS keyed on data-pri)
   const main = h('main', { class: 'aic-main', 'data-mode': S.mode, 'data-pri': info.live.pendingApproval ? 'approvals' : 'normal' }, cards);
   const offline = navigator.onLine === false ? h('div', { class: 'aic-offline', role: 'alert' }, h('b', { text: 'BT OFFLINE · ' }), 'Showing last known data' + (S.snap ? ' from ' + clock(S.snap.at) : '') + '. Some intelligence may be unavailable.') : null;
-  const keep = $('#aic-q'), val = keep ? keep.value : '', hadFocus = keep && document.activeElement === keep;
+  const logEl = $('#ag-log'), logTop = logEl ? logEl.scrollTop : 0; // the chat is moved into the new tree: restore its scroll
   const rqHad = !!(document.activeElement && document.activeElement.id === 'aic-rq');
   const scroll = window.scrollY;
   r.replaceChildren(...[secHeaderBar(info.core), offline, S.error && S.snap ? failureNode(S.error, () => refresh({ force: true })) : null, main].filter(Boolean)); // null args would render the text "null"
-  const cmdEl = $('.aic-cmd'); if (cmdEl && cmdEl.offsetHeight) r.style.setProperty('--aic-cmd-h', cmdEl.offsetHeight + 'px'); // content clearance: the fixed composer never covers the last card
-  const q = $('#aic-q'); if (q) { q.value = val; if (hadFocus) q.focus(); }
+  { const lg = $('#ag-log'); if (lg && logTop) lg.scrollTop = logTop; }
   if (rqHad) { const r2 = $('#aic-rq'); if (r2) { r2.focus(); const n = r2.value.length; try { r2.setSelectionRange(n, n); } catch (_) { /* not a text input */ } } }
   if (Math.abs(window.scrollY - scroll) > 1) window.scrollTo(0, scroll);
 }
@@ -1262,6 +1214,7 @@ export function mount() {
   p.classList.add('aic-jarvis');
   p.replaceChildren(h('div', { id: 'aic-root', class: 'aic' }));
   S.mounted = true;
+  document.addEventListener('focusout', e => { if (e.target && e.target.id === 'ag-text' && S.paintAfterTyping) { S.paintAfterTyping = false; render(); } });
   T.subscribe(onTelemetry);
   window.addEventListener('online', render); window.addEventListener('offline', render);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') persistVisit(); else if (pageOn()) refresh(); });

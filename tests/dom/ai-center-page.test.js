@@ -59,7 +59,7 @@ describe('AI Center page', () => {
     window.dispatchEvent(new window.CustomEvent('bt-voice-state', { detail: { speaking: false } }));
     assert.equal(q('#aic-hero .aic-stage').getAttribute('data-talk'), '0');
     assert.match(q('.aic-hpill').textContent, /^Jarvis (online|offline)$/);
-    assert.ok(q('#aic-chat .aic-msg.jv'), 'Jarvis always has a first message in the thread');
+    assert.ok(q('#aic-chat'), 'the chat card is under Jarvis');
   });
 
   test('JARVIS layer: page is themed, SVG avatar is decorative, state text stays real DOM text', async () => {
@@ -118,9 +118,6 @@ describe('AI Center page', () => {
     assert.match(q('#aic-core').textContent, /No active mission/);
     assert.match(q('.aic-cs h2').textContent, /READY/);
   });
-  test('voice is disabled, not faked', () => {
-    const mic = q('.aic-mic'); assert.ok(mic.disabled); assert.match(mic.title, /not available/);
-  });
   test('repository intelligence says it is not connected', () => {
     ui.__test.S.mode = 'investigate'; ui.__test.paint();
     assert.match(q('#aic-repo').textContent, /NOT CONNECTED/);
@@ -143,9 +140,11 @@ describe('AI Center page', () => {
   test('Ask BT goes to the existing assistant, and nothing happens if it is not loaded', async () => {
     const asked = [];
     window.BTAgent = { ask: s => { asked.push(s); return Promise.resolve(); }, isBusy: () => false, open() {}, writesAllowed: () => false, killed: () => false };
-    const inp = q('#aic-q'); inp.value = 'What is blocking closing?';
-    q('.aic-form .aic-p').click();
-    assert.deepEqual(asked, ['What is blocking closing?']);
+    ui.__test.S.mode = 'monitor'; ui.__test.paint();
+    const btn = q('#aic-hero .aic-hbtn'); assert.ok(btn, 'hero quick question');
+    btn.click();
+    assert.equal(asked.length, 1);
+    assert.equal(asked[0], 'What needs my attention?', 'a quick question goes to the one assistant');
     delete window.BTAgent;
   });
   test('finding detail: evidence is labelled by kind, no AI assessment is invented', () => {

@@ -25,24 +25,37 @@ describe('assistant chat is scoped to BT Intelligence', () => {
     assert.equal(q('#ag-center'), null);
   });
 
-  test('away from the page: tapping the button navigates there and the chat is NOT opened in place', async () => {
+  test('away from the page: tapping the button navigates there and the chat stays parked (hidden), not opened in place', async () => {
     document.body.classList.remove('aic-open');
     q('#ag-fab').click();
     await wait(10);
     assert.equal(window.location.hash, '#ai-center');
     assert.equal(q('#ag-sheet').hidden, true, 'chat must not open on other pages');
+    assert.equal(q('#ag-sheet').parentNode, document.body);
   });
 
-  test('once BT Intelligence is showing, the chat opens', async () => {
+  test('once BT Intelligence docks the chat into its page, it is visible there, and the button hides', async () => {
     document.body.classList.add('aic-open');
-    await wait(120);
+    const slot = document.createElement('div'); slot.id = 'slot'; document.body.append(slot);
+    assert.equal(window.BTAgent.dock(slot), true);
+    await wait(30);
     assert.equal(q('#ag-sheet').hidden, false);
+    assert.equal(q('#ag-sheet').parentNode, slot, 'chat lives inside the page slot, not floating on the body');
+    assert.ok(q('#ag-sheet').classList.contains('ag-docked'));
+    assert.ok(q('#ag-fab').classList.contains('ag-hide'));
+    assert.equal(q('#ag-close'), null, 'no close button: the chat is part of the page');
+    // docking again (every page repaint) is harmless and does not wipe the conversation
+    const before = q('#ag-log').innerHTML;
+    window.BTAgent.dock(slot);
+    assert.equal(q('#ag-log').innerHTML, before);
   });
 
-  test('leaving BT Intelligence closes the chat', async () => {
+  test('leaving BT Intelligence parks the chat (hidden, back on the body)', async () => {
     document.body.classList.remove('aic-open');
     window.dispatchEvent(new window.Event('hashchange'));
     await wait(250);
     assert.equal(q('#ag-sheet').hidden, true);
+    assert.equal(q('#ag-sheet').parentNode, document.body);
+    assert.ok(!q('#ag-fab').classList.contains('ag-hide'));
   });
 });

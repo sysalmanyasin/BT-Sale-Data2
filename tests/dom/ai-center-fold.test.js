@@ -65,7 +65,9 @@ describe('AI Center chat lives under Jarvis', () => {
   test('there is no separate chat-assistant button; the thread and the input are inline under the avatar', async () => {
     assert.equal(q('.aic-chatbtn'), null, 'separate chat button must be gone');
     assert.equal(q('.aic-cmd'), null, 'no fixed bottom bar');
-    assert.ok(q('#aic-chat .aic-thread') && q('#aic-chat #aic-q'), 'inline thread and input');
+    assert.ok(q('#aic-chat .aic-chatslot'), 'the one assistant chat is docked here (BTAgent.dock)');
+    assert.equal(q('#aic-chat .aic-thread'), null, 'the page keeps no second thread');
+    assert.equal(q('#aic-q'), null, 'the page keeps no second input');
     assert.ok(q('#aic-hero').compareDocumentPosition(q('#aic-chat')) & 4, 'chat follows the hero');
   });
 });
