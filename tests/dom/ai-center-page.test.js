@@ -42,14 +42,40 @@ describe('AI Center page', () => {
     assert.match(text(), /Rs 12,000/); // CASH metric from get_daily_sales
     assert.match(text(), /410,000/);
   });
-  test('Command Orb hero: avatar core, live status, one real sentence and four quick questions', async () => {
+  test('hero: just the avatar and one live status pill (nothing else under the avatar)', async () => {
     const hero = q('#aic-hero');
     assert.ok(hero, 'hero card missing');
     assert.ok(hero.querySelector('#aic-core svg.aic-avatar'), 'avatar lives in the hero');
     assert.equal(document.querySelectorAll('svg.aic-avatar').length, 1, 'exactly one avatar on the page');
     assert.match(hero.querySelector('.aic-hpill').textContent, /^Jarvis (online|offline)$/);
-    assert.ok(hero.querySelector('.aic-hbub p').textContent.trim().length > 5, 'greeting sentence');
-    assert.equal(hero.querySelectorAll('.aic-hbtn').length, 4, 'four quick questions');
+    assert.equal(hero.querySelectorAll('.aic-hbtn, .aic-hbub p, .aic-avset, .aic-mission, .aic-lifed').length, 0, 'greeting, quick buttons, avatar buttons, mission and lifecycle are gone from under the avatar');
+    assert.ok(hero.querySelector('.aic-cs.aic-sr h2'), 'the state is still available to screen readers');
+  });
+  test('tapping the avatar opens its settings: photo, face and voice controls', async () => {
+    const orb = q('#aic-hero .aic-orb');
+    assert.equal(orb.getAttribute('role'), 'button');
+    orb.click();
+    const m = q('.aic-modal');
+    assert.ok(m, 'settings sheet opens');
+    assert.match(m.getAttribute('aria-label'), /avatar/i);
+    assert.ok(m.querySelector('input[type=file]'), 'photo upload');
+    assert.ok(m.querySelector('.jv-set-prev svg.aic-avatar'), 'live preview');
+    assert.ok([...m.querySelectorAll('.jv-set-l')].some(e => /Move while talking/.test(e.textContent)), 'animation toggle');
+    q('.aic-x').click();
+    assert.equal(q('.aic-modal'), null);
+  });
+  test('Ask Jarvis is a collapsed card that opens when a question is asked', async () => {
+    const chat = q('#aic-chat');
+    assert.ok(chat.classList.contains('aic-fold') && chat.classList.contains('aic-folded'), 'collapsed by default');
+    assert.equal(chat.querySelector('.aic-sh h2').textContent, 'ASK JARVIS');
+    assert.equal(chat.querySelector('.aic-sh').getAttribute('aria-expanded'), 'false');
+    window.BTAgent = { ask: () => Promise.resolve(), isBusy: () => false, open() {}, writesAllowed: () => false, killed: () => false };
+    ui.__test.ask('What needs my attention?');
+    assert.equal(ui.__test.S.open.chat, true, 'asking opens the chat');
+    ui.__test.paint();
+    assert.equal(q('#aic-chat .aic-sh').getAttribute('aria-expanded'), 'true');
+    delete window.BTAgent;
+    ui.__test.S.open.chat = false; ui.__test.paint();
   });
 
   test('Jarvis speaking: the voice-state event animates the avatar and the status pill, and clears again', async () => {
@@ -67,16 +93,15 @@ describe('AI Center page', () => {
     const av = q('#aic-core .aic-orb svg.aic-avatar');
     assert.ok(av, 'avatar svg missing');
     assert.equal(av.getAttribute('aria-hidden'), 'true');
-    assert.equal(av.querySelectorAll('.jv-r').length, 3, 'three rotating HUD rings');
-    assert.ok(av.querySelector('.jv-head') && av.querySelector('.jv-body'), 'helmet bust');
-    assert.ok(av.querySelector('.jv-visor') && av.querySelector('.jv-core'), 'visor and chest core');
-    assert.equal(av.querySelectorAll('.jv-photo').length, 0, 'no photo unless the person set one on this device');
+    assert.ok(av.querySelector('.jv-head .jv-skin') && av.querySelector('.jv-eye') && av.querySelector('.jv-mouth'), 'drawn face with eyes and a mouth');
+    assert.equal(av.querySelectorAll('image').length, 0, 'no photo unless the person set one on this device');
+    assert.equal(av.querySelectorAll('.jv-r').length, 0, 'no sci-fi HUD rings');
     const ids = [...av.querySelectorAll('[id]')].map(e => e.id);
     assert.equal(new Set(ids).size, ids.length, 'avatar defs have unique ids');
     assert.ok(ids.every(id => document.querySelectorAll('[id="' + id + '"]').length === 1), 'ids unique in the whole document');
     assert.equal(document.querySelectorAll('#aic-core .aic-avatar').length, 1, 'no duplicate avatar after repaint');
-    assert.ok(q('#aic-core .aic-orb small').textContent.trim().length > 0, 'lifecycle label must be real text');
-    assert.equal(q('#aic-core .aic-stage').getAttribute('data-s'), q('#aic-core .aic-orb small').textContent.trim().toLowerCase().replace(/ /g, '_'));
+    assert.ok(q('#aic-core .aic-cs h2').textContent.trim().length > 0, 'lifecycle label must be real text');
+    assert.equal(q('#aic-core .aic-stage').getAttribute('data-s'), q('#aic-core .aic-cs h2').textContent.trim().toLowerCase().replace(/ /g, '_'));
   });
   test('Agent Fleet: one tile per registered specialist, no invented activity', () => {
     const tiles = [...document.querySelectorAll('#aic-fleet .aic-ftile')];
@@ -114,8 +139,8 @@ describe('AI Center page', () => {
     assert.ok(evs.length > 0);
     assert.ok(evs.every(e => e.source === 'ai-center'), 'no agent events may exist before BT is asked anything');
     assert.equal(T.liveState().open, null);
-    ui.__test.S.mode = 'investigate'; ui.__test.paint(); // the core card now lives on the Investigate tab
-    assert.match(q('#aic-core').textContent, /No active mission/);
+    ui.__test.S.mode = 'investigate'; ui.__test.paint(); // mission + lifecycle now live under Operations & Diagnostics
+    assert.match(q('#aic-ops').textContent, /No active mission/);
     assert.match(q('.aic-cs h2').textContent, /READY/);
   });
   test('repository intelligence says it is not connected', () => {
@@ -141,10 +166,9 @@ describe('AI Center page', () => {
     const asked = [];
     window.BTAgent = { ask: s => { asked.push(s); return Promise.resolve(); }, isBusy: () => false, open() {}, writesAllowed: () => false, killed: () => false };
     ui.__test.S.mode = 'monitor'; ui.__test.paint();
-    const btn = q('#aic-hero .aic-hbtn'); assert.ok(btn, 'hero quick question');
-    btn.click();
+    ui.__test.ask('What needs my attention?');
     assert.equal(asked.length, 1);
-    assert.equal(asked[0], 'What needs my attention?', 'a quick question goes to the one assistant');
+    assert.equal(asked[0], 'What needs my attention?', 'a question goes to the one assistant');
     delete window.BTAgent;
   });
   test('finding detail: evidence is labelled by kind, no AI assessment is invented', () => {

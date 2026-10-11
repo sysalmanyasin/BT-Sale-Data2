@@ -4,9 +4,9 @@
    the instrument-strip column counts, or the section-header accent bar — ai-center.css and
    ai-center-jarvis.css already own those. */
 .aic-page.aic-jarvis {
-  --jd-line: rgba(119, 160, 197, .18);
-  --jd-muted: #a4b5ca;
-  --jd-shadow: 0 12px 28px rgba(0, 0, 0, .16);
+  --jd-line: color-mix(in srgb,var(--border-strong) 18%,transparent);
+  --jd-muted: var(--muted);
+  --jd-shadow: var(--sh-md);
 }
 .aic-page.aic-jarvis .aic {
   width: min(100%, 1560px);
@@ -33,7 +33,7 @@
 }
 .aic-page.aic-jarvis .aic-chip {
   border-color: var(--jd-line);
-  background: rgba(16, 28, 45, .82);
+  background: color-mix(in srgb,var(--surface) 92%,transparent);
   padding: 6px 11px;
   border-radius: 999px;
 }
@@ -41,14 +41,14 @@
   min-width: 0;
   border: 1px solid var(--jd-line);
   border-radius: 14px;
-  background: linear-gradient(155deg, rgba(21, 36, 58, .98), rgba(13, 24, 40, .98));
+  background: linear-gradient(155deg, color-mix(in srgb,var(--surface) 100%,transparent), color-mix(in srgb,var(--surface) 100%,transparent));
   box-shadow: var(--jd-shadow);
   padding: clamp(13px, 1.35vw, 20px);
   transition: border-color .18s ease, box-shadow .18s ease;
 }
 .aic-page.aic-jarvis .aic-card:hover {
-  border-color: rgba(32, 221, 245, .3);
-  box-shadow: 0 14px 32px rgba(0, 0, 0, .2), 0 0 0 1px rgba(32, 221, 245, .035);
+  border-color: color-mix(in srgb,var(--accent) 30%,transparent);
+  box-shadow: var(--sh-md);
 }
 .aic-page.aic-jarvis .aic-sh {
   min-width: 0;
@@ -69,7 +69,7 @@
   max-width: 52%;
   overflow: hidden;
   text-overflow: ellipsis;
-  background: rgba(7, 15, 27, .45);
+  background: color-mix(in srgb,var(--surface) 55%,transparent);
   padding: 4px 9px;
   font-size: 12px;
   letter-spacing: .015em;
@@ -93,10 +93,10 @@
   letter-spacing: -.025em;
 }
 .aic-page.aic-jarvis .aic-note {
-  border: 1px solid rgba(255, 184, 107, .2);
+  border: 1px solid color-mix(in srgb,var(--amber) 20%,transparent);
   border-left: 3px solid var(--j-wn);
   border-radius: 9px;
-  background: rgba(255, 184, 107, .07);
+  background: color-mix(in srgb,var(--amber) 7%,transparent);
   padding: 10px 12px;
   line-height: 1.55;
 }
@@ -108,7 +108,7 @@
   border-bottom: 1px solid var(--jd-line);
 }
 .aic-page.aic-jarvis .aic-k {
-  color: #b7c8dc;
+  color: var(--t2);
   font-size: 12px;
   line-height: 1.5;
   letter-spacing: .085em;
@@ -147,14 +147,14 @@
 .aic-page.aic-jarvis .aic-ftile {
   min-height: 100px;
   border-radius: 12px;
-  background: linear-gradient(145deg, rgba(21, 36, 58, .95), rgba(12, 23, 39, .95));
+  background: linear-gradient(145deg, color-mix(in srgb,var(--surface) 100%,transparent), color-mix(in srgb,var(--surface) 100%,transparent));
 }
 .aic-page.aic-jarvis .aic-pill,
 .aic-page.aic-jarvis .aic-tag {
   letter-spacing: .035em;
 }
 .aic-page.aic-jarvis .aic-bubble {
-  box-shadow: 0 8px 22px rgba(0, 0, 0, .12);
+  box-shadow: var(--sh);
 }
 body.aic-open .ag-sheet {
   border-radius: 18px 18px 0 0;

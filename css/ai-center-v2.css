@@ -1,19 +1,7 @@
 /* BT Intelligence v2 — one modern design layer. Loaded LAST (after ai-center*.css).
    Scope: .aic-page only. No JS/DOM/logic changes. Remove this file to roll back. */
 .aic-page.aic-jarvis{
-  --j-bg:#06070d;--j-s1:rgba(255,255,255,.04);--j-s2:rgba(255,255,255,.07);
-  --j-cy:#8b9bff;--j-vi:#c084fc;--j-ok:#4ade80;--j-wn:#fbbf24;--j-er:#fb7185;
-  --j-tx:#f4f5fb;--j-mu:#8b90a8;--j-ln:rgba(255,255,255,.08);
-  --bg:var(--j-bg);--surface:#0e1018;--s2:#141725;--s3:#1a1e30;--border:rgba(255,255,255,.09);--border-strong:rgba(255,255,255,.16);
-  --text:var(--j-tx);--t2:#c9cde0;--muted:var(--j-mu);--accent:#8b9bff;--accent-dk:#b4bfff;--purple:#c084fc;
-  --green:var(--j-ok);--amber:var(--j-wn);--red:var(--j-er);--alt:rgba(139,155,255,.1);
-  --ag-line:var(--j-ln);--ag-line2:rgba(139,155,255,.4);--ag-glow:rgba(139,155,255,.35);
-  --grad:linear-gradient(135deg,#7c8cff,#c084fc 55%,#f0abfc);
-  --sans:'Inter',system-ui,sans-serif;
-  background:
-    radial-gradient(60% 40% at 15% -5%,rgba(124,140,255,.22),transparent 70%),
-    radial-gradient(50% 35% at 90% 0,rgba(192,132,252,.16),transparent 70%),
-    var(--j-bg);
+  background:radial-gradient(60% 40% at 15% -5%,color-mix(in srgb,var(--accent) 9%,transparent),transparent 70%),var(--bg);
   font-family:var(--sans);
 }
 /* kill the old HUD grid, rings, robot avatar, accent bars */
@@ -40,19 +28,18 @@
 }
 
 /* glass cards */
-.aic-page.aic-jarvis .aic-card{background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.02));border:1px solid var(--j-ln);border-radius:22px;padding:20px;box-shadow:0 1px 0 rgba(255,255,255,.05) inset,0 24px 48px -28px rgba(0,0,0,.8);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
-.aic-page.aic-jarvis .aic-card:hover{border-color:rgba(139,155,255,.35)}
+.aic-page.aic-jarvis .aic-card{background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:20px;box-shadow:var(--sh-md)}
+.aic-page.aic-jarvis .aic-card:hover{border-color:color-mix(in srgb,var(--accent) 35%,transparent)}
 .aic-page.aic-jarvis .aic-sh{border:0;padding:0 0 12px}
 .aic-page.aic-jarvis .aic-sh h2{font-size:15px;font-weight:600;color:var(--j-tx)}
 .aic-page.aic-jarvis .aic-sub,.aic-page.aic-jarvis .aic-fs{color:var(--j-mu)}
 
 /* hero avatar: glass-helmet AI bust in a rotating HUD portal (SVG from jarvisAvatar(); colour = state via --c) */
-.aic-page.aic-jarvis #aic-core{background:radial-gradient(80% 70% at 50% 0,rgba(139,155,255,.18),transparent 70%),linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015))}
-.aic-page.aic-jarvis .aic-stage{width:min(230px,66%)}
+.aic-page.aic-jarvis #aic-core{background:radial-gradient(80% 70% at 50% 0,color-mix(in srgb,var(--accent) 10%,transparent),transparent 70%),var(--surface)}
 .aic-page.aic-jarvis .aic-stage .aic-orb{inset:0;border-radius:50%;overflow:visible;background:none;box-shadow:0 0 80px -20px var(--c)}
 .aic-page.aic-jarvis .aic-orb-t{display:none}
 .aic-page.aic-jarvis .aic-avatar{color:var(--c);overflow:visible}
-.aic-page.aic-jarvis .jv-bg{fill:#070914}
+.aic-page.aic-jarvis .jv-bg{fill:var(--surface)}
 .aic-page.aic-jarvis .jv-body,.aic-page.aic-jarvis .jv-head{fill:url(#jv-glass);stroke:color-mix(in srgb,var(--c) 55%,transparent);stroke-width:1}
 .aic-page.aic-jarvis .jv-edge{fill:none;stroke:url(#jv-rim);stroke-width:1.6;stroke-linecap:round}
 .aic-page.aic-jarvis .jv-line{fill:none;stroke:color-mix(in srgb,var(--c) 45%,transparent);stroke-width:1;stroke-linecap:round}
@@ -92,23 +79,22 @@
 
 /* buttons */
 .aic-page.aic-jarvis .aic button{border-radius:999px;background:var(--j-s1);border:1px solid var(--j-ln);box-shadow:none;color:var(--j-tx)}
-.aic-page.aic-jarvis .aic button:hover:not(:disabled){background:var(--j-s2);border-color:rgba(139,155,255,.45);color:var(--j-tx)}
-.aic-page.aic-jarvis .aic button.aic-p,.aic-page.aic-jarvis .aic-seg button.on,.aic-page.aic-jarvis .aic-modal button.aic-p{background:var(--grad);border:0;color:#0a0618;font-weight:700}
+.aic-page.aic-jarvis .aic button:hover:not(:disabled){background:var(--j-s2);border-color:color-mix(in srgb,var(--accent) 45%,transparent);color:var(--j-tx)}
+.aic-page.aic-jarvis .aic button.aic-p,.aic-page.aic-jarvis .aic-seg button.on,.aic-page.aic-jarvis .aic-modal button.aic-p{background:var(--grad);border:0;color:#fff;font-weight:700}
 .aic-page.aic-jarvis .aic-seg{gap:4px;padding:4px;border-radius:999px;background:var(--j-s1);border:1px solid var(--j-ln)}
 .aic-page.aic-jarvis .aic-seg button{border:0;background:none;border-radius:999px}
 
 /* floating AI composer */
 .aic-page.aic-jarvis .aic-cmd{background:none;padding:0 12px 10px;max-width:760px}
-.aic-page.aic-jarvis .aic-form{padding:6px;border-radius:999px;background:rgba(20,23,37,.78);border:1px solid rgba(255,255,255,.14);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);box-shadow:0 20px 50px -12px rgba(0,0,0,.7),0 0 0 1px rgba(139,155,255,.12)}
+.aic-page.aic-jarvis .aic-form{padding:6px;border-radius:999px;background:var(--surface);border:1px solid var(--border-strong);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);box-shadow:var(--sh-lg),0 0 0 1px color-mix(in srgb,var(--accent) 12%,transparent)}
 .aic-page.aic-jarvis .aic-form input{background:none;border:0;border-radius:999px;padding:0 16px;color:var(--j-tx)}
 .aic-page.aic-jarvis .aic-form input:focus{outline:0}
-.aic-page.aic-jarvis .aic-chips button{background:rgba(20,23,37,.7);border-radius:999px;color:var(--j-mu)}
+.aic-page.aic-jarvis .aic-chips button{background:color-mix(in srgb,var(--surface) 80%,transparent);border-radius:999px;color:var(--j-mu)}
 
 /* dialogs / chat sheet inherit the same look */
-body.aic-open .aic-modal,body.aic-open .ag-sheet{background:#0e1018;border:1px solid rgba(255,255,255,.12);border-radius:24px;box-shadow:0 40px 80px -20px rgba(0,0,0,.8)}
-body.aic-open .aic-modal{--accent:#8b9bff;--aic-ac:#8b9bff;--aic-cy:#8b9bff;--aic-bl:#8b9bff}
-body.aic-open .ag-head strong{letter-spacing:0;text-transform:none;color:var(--j-tx,#f4f5fb)}
-body.aic-open .ag-send,body.aic-open .ag-user{background:linear-gradient(135deg,#7c8cff,#c084fc);color:#0a0618}
+body.aic-open .aic-modal,body.aic-open .ag-sheet{background:var(--surface);border:1px solid var(--border);border-radius:24px;box-shadow:var(--sh-lg)}
+body.aic-open .ag-head strong{letter-spacing:0;text-transform:none;color:var(--j-tx,var(--text))}
+body.aic-open .ag-send,body.aic-open .ag-user{background:linear-gradient(135deg,var(--accent),var(--purple));color:#fff}
 
 /* ── phone fix: metric rows were nowrap + 2-col grid, so long values (closing days, STR lists) blew the page
    several screens wide (browser then zoomed everything out) and squeezed labels to one letter per line. ── */
@@ -141,7 +127,7 @@ body.aic-open .ag-send,body.aic-open .ag-user{background:linear-gradient(135deg,
 .aic-page.aic-jarvis .aic-fr{color:var(--j-wn);font-size:12px}
 .aic-page.aic-jarvis .aic .aic-f .aic-ft{font-size:15px;line-height:1.4}
 .aic-page.aic-jarvis .aic-att-row{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
-.aic-page.aic-jarvis .aic .aic-inv{align-self:flex-start;min-height:36px;padding:0 16px;font-size:13px;color:var(--j-cy);border-color:rgba(139,155,255,.3)}
+.aic-page.aic-jarvis .aic .aic-inv{align-self:flex-start;min-height:36px;padding:0 16px;font-size:13px;color:var(--j-cy);border-color:color-mix(in srgb,var(--accent) 30%,transparent)}
 .aic-page.aic-jarvis .aic-sh h2{display:flex;align-items:center;gap:8px}
 
 /* ── personal photo avatar (stored on this device only) ── */
@@ -156,7 +142,7 @@ body.aic-open .ag-send,body.aic-open .ag-user{background:linear-gradient(135deg,
 .aic-page.aic-jarvis .jv-art{filter:none}
 
 /* ── Command Orb hero (avatar, status, one sentence, four quick questions) ── */
-.aic-page.aic-jarvis .aic-main>#aic-hero{order:-1;grid-column:1/-1;display:flex;flex-direction:column;gap:12px;padding:18px 16px;background:radial-gradient(90% 60% at 50% 0,rgba(139,155,255,.2),transparent 70%),linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015))}
+.aic-page.aic-jarvis .aic-main>#aic-hero{order:-1;grid-column:1/-1;display:flex;flex-direction:column;gap:12px;padding:18px 16px;background:radial-gradient(90% 60% at 50% 0,color-mix(in srgb,var(--accent) 12%,transparent),transparent 70%),var(--surface)}
 .aic-page.aic-jarvis #aic-hero .aic-corerow{display:flex;flex-direction:column;align-items:center;gap:6px;margin:0}
 .aic-page.aic-jarvis #aic-hero .aic-corerow .aic-stage{width:min(240px,64vw);height:auto;aspect-ratio:1;margin:0 auto}
 .aic-page.aic-jarvis #aic-hero .aic-cs{text-align:center}
@@ -164,9 +150,9 @@ body.aic-open .ag-send,body.aic-open .ag-user{background:linear-gradient(135deg,
 .aic-page.aic-jarvis .aic-hbub{text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px}
 .aic-page.aic-jarvis .aic-hpill{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;padding:5px 14px;border-radius:999px;border:1px solid var(--j-ln)}
 .aic-page.aic-jarvis .aic-hpill::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
-.aic-page.aic-jarvis .aic-hpill.on{color:var(--j-ok);background:rgba(74,222,128,.08)}
-.aic-page.aic-jarvis .aic-hpill.off{color:var(--j-er);background:rgba(251,113,133,.08)}
-.aic-page.aic-jarvis .aic-hbub p{margin:0;max-width:520px;padding:12px 16px;border-radius:18px;background:rgba(139,155,255,.1);border:1px solid rgba(139,155,255,.28);font-size:15px;line-height:1.5;color:var(--j-tx)}
+.aic-page.aic-jarvis .aic-hpill.on{color:var(--j-ok);background:color-mix(in srgb,var(--green) 8%,transparent)}
+.aic-page.aic-jarvis .aic-hpill.off{color:var(--j-er);background:color-mix(in srgb,var(--red) 8%,transparent)}
+.aic-page.aic-jarvis .aic-hbub p{margin:0;max-width:520px;padding:12px 16px;border-radius:18px;background:color-mix(in srgb,var(--accent) 10%,transparent);border:1px solid color-mix(in srgb,var(--accent) 28%,transparent);font-size:15px;line-height:1.5;color:var(--j-tx)}
 .aic-page.aic-jarvis .aic-hact{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .aic-page.aic-jarvis .aic .aic-hbtn{flex-direction:column;gap:4px;min-height:68px;padding:10px;border-radius:18px;font-size:13px}
 .aic-page.aic-jarvis .aic-hbtn span{font-size:20px;line-height:1}
@@ -195,9 +181,9 @@ body.aic-open .ag-send,body.aic-open .ag-user{background:linear-gradient(135deg,
 .aic-page.aic-jarvis .aic .aic-thread{display:flex;flex-direction:column;gap:10px;max-height:min(52vh,460px);overflow-y:auto}
 .aic-page.aic-jarvis .aic-msg{max-width:92%;padding:10px 14px;border-radius:18px;font-size:14px;line-height:1.55;overflow-wrap:anywhere}
 .aic-page.aic-jarvis .aic-msg p{margin:0}
-.aic-page.aic-jarvis .aic-msg.me{align-self:flex-end;background:var(--grad);color:#0a0618;border-bottom-right-radius:6px}
+.aic-page.aic-jarvis .aic-msg.me{align-self:flex-end;background:var(--grad);color:#fff;border-bottom-right-radius:6px}
 .aic-page.aic-jarvis .aic-msg.jv{align-self:flex-start;background:var(--j-s1);border:1px solid var(--j-ln);border-bottom-left-radius:6px}
-.aic-page.aic-jarvis .aic-msg.err{border-color:rgba(251,113,133,.5)}
+.aic-page.aic-jarvis .aic-msg.err{border-color:color-mix(in srgb,var(--red) 50%,transparent)}
 .aic-page.aic-jarvis .aic-msg.work{display:flex;align-items:center;gap:10px;color:var(--j-mu)}
 .aic-page.aic-jarvis .aic-dots{display:inline-flex;gap:4px}
 .aic-page.aic-jarvis .aic-dots i{width:6px;height:6px;border-radius:50%;background:var(--j-cy);opacity:.4}
@@ -209,10 +195,10 @@ body.aic-open .ag-send,body.aic-open .ag-user{background:linear-gradient(135deg,
 .aic-page.aic-jarvis .aic,.aic-page.aic-jarvis .aic{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 @media(min-width:861px){.aic-page.aic-jarvis .aic{padding-bottom:40px}}
 /* speaking: equaliser under the avatar, halo + faster rings, visor pulses */
-.aic-page.aic-jarvis .aic-wave{position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);display:none;align-items:flex-end;gap:4px;height:26px;padding:4px 10px;border-radius:999px;background:rgba(7,9,20,.85);border:1px solid var(--j-ln)}
+.aic-page.aic-jarvis .aic-wave{position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);display:none;align-items:flex-end;gap:4px;height:26px;padding:4px 10px;border-radius:999px;background:color-mix(in srgb,var(--surface) 95%,transparent);border:1px solid var(--j-ln)}
 .aic-page.aic-jarvis .aic-wave i{width:4px;height:6px;border-radius:2px;background:var(--c,var(--j-cy))}
 .aic-page.aic-jarvis .aic-stage[data-talk="1"] .aic-wave{display:flex}
-.aic-page.aic-jarvis .aic-hpill.talk{color:var(--j-cy);background:rgba(139,155,255,.12)}
+.aic-page.aic-jarvis .aic-hpill.talk{color:var(--j-cy);background:color-mix(in srgb,var(--accent) 12%,transparent)}
 @media(prefers-reduced-motion:no-preference){
   .aic-page.aic-jarvis .aic-dots i{animation:aic-dot 1s ease-in-out infinite}.aic-page.aic-jarvis .aic-dots i:nth-child(2){animation-delay:.15s}.aic-page.aic-jarvis .aic-dots i:nth-child(3){animation-delay:.3s}
   @keyframes aic-dot{50%{opacity:1;transform:translateY(-3px)}}

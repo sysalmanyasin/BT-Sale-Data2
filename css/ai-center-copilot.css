@@ -36,7 +36,7 @@
 /* ── business snapshot: 2-up on phones, 3-up on wider screens ── */
 .aic-page.aic-jarvis .aic-snap{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 @media(min-width:700px){.aic-page.aic-jarvis .aic-snap{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}}
-.aic-page.aic-jarvis .aic-snap-tile{flex:none;width:100%;min-height:104px;align-items:flex-start;padding:12px;border-left:3px solid var(--border-strong,#34496a)}
+.aic-page.aic-jarvis .aic-snap-tile{flex:none;width:100%;min-height:104px;align-items:flex-start;padding:12px;border-left:3px solid var(--border-strong,var(--border-strong))}
 .aic-page.aic-jarvis .aic-snap-tile.aic-edge-ok{border-left-color:var(--j-ok)}
 .aic-page.aic-jarvis .aic-snap-tile.aic-edge-wn{border-left-color:var(--j-wn)}
 .aic-page.aic-jarvis .aic-snap-tile.aic-edge-cr{border-left-color:var(--j-er)}
@@ -80,7 +80,7 @@
 .aic-page.aic-jarvis .aic-pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:260px;overflow:auto;font-size:12.5px;background:var(--j-s1);border:1px solid var(--border);border-radius:8px;padding:10px;margin:6px 0}
 .aic-page.aic-jarvis .aic-var{font-weight:700;margin:4px 0 6px}
 .aic-page.aic-jarvis .aic-var.aic-wn{color:var(--j-wn)}.aic-page.aic-jarvis .aic-var.aic-ok{color:var(--j-ok)}
-.aic-page.aic-jarvis .aic-cls{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;border-radius:99px;border:1px solid var(--border-strong,#34496a);color:var(--j-mu)}
+.aic-page.aic-jarvis .aic-cls{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;border-radius:99px;border:1px solid var(--border-strong,var(--border-strong));color:var(--j-mu)}
 .aic-page.aic-jarvis .aic-cls-verified{color:var(--j-ok);border-color:color-mix(in srgb,var(--j-ok) 50%,transparent)}
 .aic-page.aic-jarvis .aic-cls-hypothesis,.aic-page.aic-jarvis .aic-cls-estimate{color:var(--j-wn);border-color:color-mix(in srgb,var(--j-wn) 50%,transparent)}
 .aic-page.aic-jarvis .aic-drafts .aic-row{align-items:center;justify-content:space-between}

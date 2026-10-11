@@ -52,13 +52,13 @@ describe('BT Intelligence has exactly one chat, with every assistant feature', (
     assert.match(q('#aic-chat #ag-log').textContent, /Remembered facts/);
     assert.ok(q('#aic-chat .ag-rules') && q('#aic-chat .ag-save-rules'));
   });
-  test('a typed question is answered in the same chat; asking from a hero button lands in the same thread', async () => {
+  test('a typed question is answered in the same chat; asking from elsewhere on the page lands in the same thread', async () => {
     script = [{ message: { role: 'assistant', content: 'Closing is complete.' } }];
     q('#ag-text').value = 'is closing done'; q('#ag-send').click();
     assert.ok(await until(() => /Closing is complete/.test(q('#aic-chat #ag-log').textContent)));
     script = [{ message: { role: 'assistant', content: 'Three items look risky.' } }];
     await until(() => !window.BTAgent.isBusy());
-    q('#aic-hero .aic-hbtn').click();
+    ui.__test.ask('Which inventory risks are most urgent?');
     assert.ok(await until(() => /Three items look risky/.test(q('#aic-chat #ag-log').textContent)));
     const users = [...document.querySelectorAll('#aic-chat .ag-user')].map(n => n.textContent);
     assert.equal(users.length, 2, 'both questions are in one conversation');

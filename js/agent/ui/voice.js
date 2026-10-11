@@ -39,7 +39,9 @@ export function speak(win, text, lang = 'en-US') {
   if (!voiceSupport(win).output) return false;
   const t = speakable(text); if (!t) return false;
   win.speechSynthesis.cancel();
-  const u = new win.SpeechSynthesisUtterance(t); u.lang = lang; u.rate = 1;
+  const u = new win.SpeechSynthesisUtterance(t); u.lang = lang; u.rate = getVoiceRate();
+  const vname = getVoiceName();
+  if (vname) { try { const v = (win.speechSynthesis.getVoices() || []).find(x => x.name === vname); if (v) { u.voice = v; u.lang = v.lang || lang; } } catch (_) { /* no voice list: device default */ } }
   u.onstart = () => emitVoiceState(win, true); u.onend = () => emitVoiceState(win, false); u.onerror = () => emitVoiceState(win, false);
   win.speechSynthesis.speak(u); return true;
 }
@@ -52,3 +54,10 @@ const LS_OUT = 'bt_voice_out_v1';
 export function getVoiceOut() { try { return localStorage.getItem(LS_OUT) === '1'; } catch (_) { return false; } }
 export function setVoiceOut(on) { try { localStorage.setItem(LS_OUT, on ? '1' : '0'); } catch (_) { /* private mode: the toggle still works for this page */ } }
 export function voiceLang(win = window) { const l = win.navigator && win.navigator.language; return l && /^[a-z]{2}(-[A-Z]{2})?$/.test(l) ? l : 'en-US'; }
+
+// Spoken-answer speed and voice (chosen in the Jarvis avatar settings). Both fall back to the device default.
+const LS_RATE = 'bt_voice_rate_v1', LS_NAME = 'bt_voice_name_v1';
+export function getVoiceRate() { try { const r = Number(localStorage.getItem(LS_RATE)); return r >= 0.6 && r <= 1.6 ? r : 1; } catch (_) { return 1; } }
+export function setVoiceRate(r) { try { localStorage.setItem(LS_RATE, String(Math.min(1.6, Math.max(0.6, Number(r) || 1)))); } catch (_) { /* private mode */ } }
+export function getVoiceName() { try { return localStorage.getItem(LS_NAME) || ''; } catch (_) { return ''; } }
+export function setVoiceName(n) { try { if (n) localStorage.setItem(LS_NAME, String(n)); else localStorage.removeItem(LS_NAME); } catch (_) { /* private mode */ } }

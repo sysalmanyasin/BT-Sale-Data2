@@ -11,6 +11,7 @@
 // assistant's own markdown, which goes through its existing escaping renderer.
 // ══════════════════════════════════════════════════════════════════════
 import * as V from '../agent/ui/voice.js';
+import * as AV from './avatar.js';
 import { listTools } from '../agent/core/tool-registry.js';
 import * as T from '../agent/core/telemetry.js';
 import { SPECIALISTS } from '../agent/core/specialists.js';
@@ -94,14 +95,14 @@ function ask(q) {
   const A = window.BTAgent;
   if (!A) { toast('The assistant is still loading. Try again in a moment.'); return; }
   if (A.isBusy()) { toast('BT is already working on a request.'); return; }
-  S.mode = 'investigate'; render();
+  S.mode = 'investigate'; S.open.chat = true; render();
   Promise.resolve(A.ask(q)).catch(() => {});
 }
 function investigate(f) {
   const A = window.BTAgent;
   if (A && typeof A.investigate === 'function') {
     if (A.isBusy()) { toast('BT is already working on a request.'); return; }
-    S.awaitingFor = f.id; closeModal(); S.mode = 'investigate'; render();
+    S.awaitingFor = f.id; closeModal(); S.mode = 'investigate'; S.open.chat = true; render();
     // A real investigation: the finding (with the rule evidence) goes to the orchestrator, which runs the relevant specialists.
     Promise.resolve(A.investigate({
       question: 'Investigate this finding: "' + f.title + '"', domains: M.domainsForFinding(f),
@@ -166,13 +167,14 @@ function sectionHeader(title, right) { return h('div', { class: 'aic-sh' }, h('h
 // Cards are collapsed by default (tap the title to open). Kept open: the one-line summary + status core, the Action Center
 // (pending approvals must never be hidden), the latest BT response, and Tool Intelligence (it already has its own toggle).
 // The open/closed choice lives in S.open so it survives the full repaint that runs on every refresh.
-const ALWAYS_OPEN = new Set(['crit', 'copilot', 'chat', 'core', 'runs', 'att', 'sys', 'fc', 'invstr', 'money', 'actc', 'tools']);
+const ALWAYS_OPEN = new Set(['crit', 'copilot', 'core', 'runs', 'att', 'sys', 'fc', 'invstr', 'money', 'actc', 'tools']);
 
 // One-line, REAL summary shown in a collapsed card's header (hidden once the card is open). Returns [text, tone] or null.
 function foldSummary(id) {
   const P = S.snap && S.snap.raw && S.snap.raw.planning;
   switch (id) {
     case 'fleet': { const n = activeAgentIds(coreInfo().live).on.size, total = Object.keys(SPECIALISTS).filter(k => k !== 'general').length; return [n ? n + ' running now' : total + ' ready · none running', n ? 'ok' : 'mu']; }
+    case 'chat': return [S.voice.talking ? 'Jarvis is speaking' : 'Tap to ask', S.voice.talking ? 'ok' : 'mu'];
     case 'net': { const n = activeAgentIds(coreInfo().live).on.size; return [n ? n + ' running now' : 'none running', n ? 'ok' : 'mu']; }
     case 'reo': { const D = P && P.reorder; if (!S.snap) return null; return D ? (D.total_lines ? [D.total_lines + ' lines to buy', 'wn'] : ['nothing to reorder', 'ok']) : ['not available', 'mu']; }
     case 'fill': { const F = P && P.fill; if (!S.snap) return null; return F && F.fill_rate_pct != null ? [F.fill_rate_pct + '% filled', F.fill_rate_pct < 90 ? 'wn' : 'ok'] : ['not measurable', 'mu']; }
@@ -236,12 +238,9 @@ function secHeaderBar(core) {
 
 
 
-// Decorative holographic avatar (v2): a glass-helmet AI bust inside a rotating HUD portal. Pure SVG, no data, no innerHTML.
-// Colour follows the stage state through --c; every operational fact stays in real DOM text beside it.
 // Personal avatar: the person's own photo is kept ON THIS DEVICE only (localStorage) and never committed to the repo.
-const AV_KEY = 'bt_jarvis_photo', AV_MODE = 'bt_jarvis_photo_mode';
-function avatarMode() { try { return localStorage.getItem(AV_MODE) || 'photo'; } catch (e) { return 'photo'; } }
-function avatarPhoto() { try { return localStorage.getItem(AV_KEY) || ''; } catch (e) { return ''; } }
+// Storage + preferences live in avatar.js; the avatar settings sheet (openAvatarSettings) is opened by tapping the avatar.
+const avatarPhoto = () => AV.getPrefs().photo;
 function setAvatarPhoto(file) {
   if (!file || !/^image\//.test(file.type)) return;
   const rd = new FileReader();
@@ -254,20 +253,20 @@ function setAvatarPhoto(file) {
       const cx = img.width / 2, cy = art ? img.height / 2 : Math.min(img.height - side / 2, Math.max(side / 2, img.height * 0.46));
       const cv = document.createElement('canvas'); cv.width = cv.height = px;
       cv.getContext('2d').drawImage(img, cx - side / 2, cy - side / 2, side, side, 0, 0, px, px);
-      try { localStorage.setItem(AV_KEY, cv.toDataURL('image/jpeg', 0.88)); localStorage.setItem(AV_MODE, art ? 'art' : 'photo'); } catch (e) { toast('Could not save the photo on this device'); return; }
-      render();
+      try { localStorage.setItem(AV.KEYS.photo, cv.toDataURL('image/jpeg', 0.88)); localStorage.setItem(AV.KEYS.mode, art ? 'art' : 'photo'); } catch (e) { toast('Could not save the photo on this device'); return; }
+      render(); if (modalEl) openAvatarSettings();
     };
     img.src = String(rd.result);
   };
   rd.readAsDataURL(file);
 }
-function clearAvatarPhoto() { try { localStorage.removeItem(AV_KEY); localStorage.removeItem(AV_MODE); } catch (e) { /* ignore */ } render(); }
+function clearAvatarPhoto() { AV.clearPhoto(); render(); if (modalEl) openAvatarSettings(); }
 
 if (typeof window !== 'undefined' && !window.__btJarvisTalk) {
   window.__btJarvisTalk = true;
   let poll = null;
   const apply = on => {
-    S.voice.talking = !!on;
+    S.voice.talking = !!on; AV.setTalking(on);
     document.querySelectorAll('.aic-stage').forEach(el => el.setAttribute('data-talk', on ? '1' : '0'));
     const pill = document.querySelector('.aic-hpill');
     if (pill) { pill.classList.toggle('talk', !!on); pill.textContent = on ? 'Jarvis speaking' : (pill.classList.contains('off') ? 'Jarvis offline' : 'Jarvis online'); }
@@ -277,43 +276,52 @@ if (typeof window !== 'undefined' && !window.__btJarvisTalk) {
   window.addEventListener('bt-voice-state', e => apply(e.detail && e.detail.speaking));
 }
 
-function jarvisAvatar() {
-  const photo = avatarPhoto();
-  const n = (tag, a, ...kids) => { const e = h2svg(tag, a); kids.forEach(k => e.append(k)); return e; };
-  const stop = (o, c, op) => n('stop', { offset: o, 'stop-color': c, 'stop-opacity': op == null ? 1 : op });
-  return n('svg', { viewBox: '0 0 160 160', class: 'aic-avatar', 'aria-hidden': 'true', focusable: 'false' },
-    n('defs', {},
-      n('radialGradient', { id: 'jv-halo', cx: '50%', cy: '42%', r: '60%' }, stop('0', 'currentColor', .35), stop('1', 'currentColor', 0)),
-      n('linearGradient', { id: 'jv-glass', x1: 0, y1: 0, x2: 0.8, y2: 1 }, stop('0', '#ffffff', .30), stop('.45', '#9aa6ff', .08), stop('1', '#000000', .35)),
-      n('linearGradient', { id: 'jv-rim', x1: 0, y1: 0, x2: 1, y2: 0 }, stop('0', 'currentColor', 0), stop('.5', 'currentColor', 1), stop('1', 'currentColor', 0)),
-      n('filter', { id: 'jv-glow', x: '-80%', y: '-80%', width: '260%', height: '260%' }, n('feGaussianBlur', { stdDeviation: 2.6, result: 'b' }), n('feMerge', {}, n('feMergeNode', { in: 'b' }), n('feMergeNode', { in: 'SourceGraphic' }))),
-      n('pattern', { id: 'jv-scanlines', width: 4, height: 4, patternUnits: 'userSpaceOnUse' }, n('rect', { x: 0, y: 0, width: 4, height: 1.2, fill: '#000' })),
-      n('clipPath', { id: 'jv-clip' }, n('circle', { cx: 80, cy: 80, r: 55 }))),
-    n('circle', { cx: 80, cy: 80, r: 78, fill: 'url(#jv-halo)' }),
-    n('g', { class: 'jv-r jv-r1' }, n('circle', { cx: 80, cy: 80, r: 74, class: 'jv-tick' })),
-    n('g', { class: 'jv-r jv-r2' }, n('circle', { cx: 80, cy: 80, r: 66, class: 'jv-arc' })),
-    n('circle', { cx: 80, cy: 80, r: 58, class: 'jv-hair' }),
-    n('g', { class: 'jv-r jv-r3' }, n('circle', { cx: 80, cy: 14, r: 2.4, class: 'jv-dot', filter: 'url(#jv-glow)' }), n('circle', { cx: 80, cy: 146, r: 1.6, class: 'jv-dot' })),
-    n('g', { 'clip-path': 'url(#jv-clip)' },
-      n('circle', { cx: 80, cy: 80, r: 55, class: 'jv-bg' }),
-      n('path', { class: 'jv-body', d: 'M18 160c4-26 24-36 50-41l4-9h16l4 9c26 5 46 15 50 41z' }),
-      n('path', { class: 'jv-head', d: 'M80 28c-21 0-33 15-33 36v9c0 16 8 27 18 33h30c10-6 18-17 18-33v-9c0-21-12-36-33-36z' }),
-      n('path', { class: 'jv-edge', d: 'M47 66c0-20 12-36 33-36s33 16 33 36' }),
-      n('path', { class: 'jv-line', d: 'M66 106c9 5 19 5 28 0M58 124l22 12 22-12M80 112v26' }),
-      n('path', { class: 'jv-visor', d: 'M58 62h44c5 0 8 3 8 7s-3 7-8 7H58c-5 0-8-3-8-7s3-7 8-7z', filter: 'url(#jv-glow)' }),
-      n('rect', { class: 'jv-scan', x: 54, y: 63, width: 10, height: 12, rx: 5 }),
-      n('circle', { class: 'jv-core', cx: 80, cy: 138, r: 4.5, filter: 'url(#jv-glow)' }),
-      n('circle', { class: 'jv-hair', cx: 80, cy: 138, r: 9 }),
-      ...(photo ? [
-        n('image', { class: 'jv-photo' + (avatarMode() === 'art' ? ' jv-art' : ''), href: photo, x: 25, y: 25, width: 110, height: 110, preserveAspectRatio: 'xMidYMid slice' }),
-        ...(avatarMode() === 'art' ? [] : [
-          n('rect', { class: 'jv-tint', x: 25, y: 25, width: 110, height: 110 }),
-          n('rect', { class: 'jv-lines', x: 25, y: 25, width: 110, height: 110 }),
-          n('rect', { class: 'jv-sweep', x: 25, y: 25, width: 110, height: 10 })])] : [])));
+function jarvisAvatar() { return AV.buildFace(); }
+
+// The avatar is the whole top of the page: tap it for its settings. The state stays available to screen readers only; the visible
+// status is the one pill in secHero. Mission / lifecycle detail lives in Operations & Diagnostics and in the chat itself.
+function secCore(info) {
+  const { core } = info;
+  const open = () => openAvatarSettings();
+  return h('div', { class: 'aic-corerow', id: 'aic-core' },
+    h('div', { class: 'aic-stage', 'data-s': core.state.toLowerCase(), 'data-talk': S.voice.talking ? '1' : '0' },
+      h('div', { class: 'aic-orb', role: 'button', tabindex: '0', 'aria-label': 'Jarvis avatar and voice settings', title: 'Tap to change the avatar and voice', onclick: open, onkeydown: ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); open(); } } },
+        jarvisAvatar(), h('span', { class: 'aic-avgear', 'aria-hidden': 'true', text: '\u2699' }))),
+    h('div', { class: 'aic-cs aic-sr' }, h('h2', { text: core.state.replace(/_/g, ' ') }), h('p', { text: core.detail })));
 }
 
-function secCore(info) {
-  const { core, live } = info, m = live.open;
+// ── avatar settings (opened by tapping the avatar) ──
+function openAvatarSettings() {
+  const P = AV.getPrefs(), sup = V.voiceSupport(window);
+  const row = (label, ...ctl) => h('div', { class: 'jv-set-row' }, h('span', { class: 'jv-set-l', text: label }), h('span', { class: 'jv-set-c' }, ...ctl));
+  const check = (checked, on) => h('input', { type: 'checkbox', checked: checked ? true : null, onchange: ev => on(ev.target.checked) });
+  const speed = V.getVoiceRate();
+  const voices = (() => { try { return (window.speechSynthesis.getVoices() || []).filter(v => v.lang && v.lang.slice(0, 2) === V.voiceLang(window).slice(0, 2)); } catch (_) { return []; } })();
+  const pick = V.getVoiceName();
+  const body = h('div', { class: 'jv-set' },
+    h('div', { class: 'jv-set-prev' }, jarvisAvatar()),
+    h('div', { class: 'jv-set-g' },
+      h('h4', { text: 'Face' }),
+      h('div', { class: 'jv-set-btns' },
+        h('label', { class: 'aic-avbtn' }, P.photo ? 'Change photo' : 'Use my photo', h('input', { type: 'file', accept: 'image/*', hidden: true, onchange: ev => setAvatarPhoto(ev.target.files && ev.target.files[0]) })),
+        P.photo ? h('button', { class: 'aic-g', text: 'Remove photo', onclick: clearAvatarPhoto }) : null),
+      P.photo && P.mode !== 'art' ? row('Mouth height', h('input', { type: 'range', min: AV.MOUTH_MIN, max: AV.MOUTH_MAX, value: P.mouthY, 'aria-label': 'Mouth height', oninput: ev => { AV.setMouthY(ev.target.value); render(); const pv = document.querySelector('.jv-set-prev'); if (pv) pv.replaceChildren(jarvisAvatar()); } })) : null,
+      P.photo && P.mode !== 'art' ? h('p', { class: 'aic-sub', text: 'Slide until the moving jaw starts just under your lips. Your photo stays on this device only.' }) : h('p', { class: 'aic-sub', text: P.photo ? 'This picture is shown as it is.' : 'Add a clear, front-facing photo and Jarvis will talk with your face. It stays on this device only.' }),
+      row('Move while talking', check(P.live, on => { AV.setLive(on); render(); }))),
+    h('div', { class: 'jv-set-g' },
+      h('h4', { text: 'Voice' }),
+      sup.output ? [
+        row('Jarvis speaks answers', check(V.getVoiceOut(), on => { V.setVoiceOut(on); if (!on) V.stopSpeaking(window); })),
+        row('Speed', h('select', { 'aria-label': 'Speech speed', onchange: ev => V.setVoiceRate(ev.target.value) }, [['0.85', 'Slower'], ['1', 'Normal'], ['1.15', 'Faster']].map(([v, l]) => h('option', { value: v, selected: Math.abs(speed - Number(v)) < 0.05 ? true : null, text: l })))),
+        voices.length ? row('Voice', h('select', { 'aria-label': 'Voice', onchange: ev => V.setVoiceName(ev.target.value) }, [h('option', { value: '', text: 'Device default' }), ...voices.map(v => h('option', { value: v.name, selected: v.name === pick ? true : null, text: v.name }))])) : null,
+        h('div', { class: 'jv-set-btns' }, h('button', { class: 'aic-p', text: 'Test voice', onclick: () => V.speak(window, 'Hello. I am Jarvis. Here is how I sound.', V.voiceLang(window)) })),
+      ] : h('p', { class: 'aic-sub', text: 'This browser cannot speak answers aloud.' }),
+      h('p', { class: 'aic-sub', text: 'The mouth moves with a speech rhythm while the browser speaks. It is not exact lip-sync, and the voice is a device voice, not a copy of yours.' })));
+  openModal('Jarvis avatar', body, { sub: 'Face and voice' });
+}
+// Mission + lifecycle of the latest request: kept (it is the verify/read-back evidence) but moved out from under the avatar into Diagnostics.
+function secMission(info) {
+  const { live } = info, m = live.open;
   const mission = m
     ? h('div', { class: 'aic-mission' },
       h('div', { class: 'aic-k', text: 'CURRENT MISSION' }),
@@ -327,20 +335,12 @@ function secCore(info) {
       live.pendingApproval ? h('div', { class: 'aic-appr' }, h('b', { text: 'Waiting for you. ' }), (live.pendingApproval.metadata && live.pendingApproval.metadata.title) || live.pendingApproval.tool, ' ', h('button', { class: 'aic-p', text: 'Review', onclick: reviewApproval })) : null)
     : lastMissionNode();
   const life = M.deriveLifecycle(requestEvents(m || lastRequestStart()), !!S.snap);
-  // Compact status row inside the Copilot card (small avatar, one line of detail). The lifecycle is kept, folded.
-  return h('div', { class: 'aic-corerow', id: 'aic-core' },
-    h('div', { class: 'aic-stage', 'data-s': core.state.toLowerCase(), 'data-talk': S.voice.talking ? '1' : '0' },
-      h('i', { class: 'aic-ring r1' }), h('i', { class: 'aic-ring r2' }), h('i', { class: 'aic-ring r3' }),
-      h('div', { class: 'aic-orb' }, jarvisAvatar(), h('div', { class: 'aic-orb-t' }, h('b', { text: 'JARVIS' }), h('small', { text: core.state.replace(/_/g, ' ') }))),
-      h('div', { class: 'aic-wave', 'aria-hidden': 'true' }, [0, 1, 2, 3, 4, 5, 6].map(() => h('i')))),
-    h('div', { class: 'aic-cs' }, h('h2', { text: core.state.replace(/_/g, ' ') }), h('p', { text: core.detail })),
-    h('div', { class: 'aic-avset' },
-      h('label', { class: 'aic-avbtn' }, avatarPhoto() ? 'Change avatar' : 'Use my avatar or photo', h('input', { type: 'file', accept: 'image/*', hidden: true, onchange: ev => setAvatarPhoto(ev.target.files && ev.target.files[0]) })),
-      avatarPhoto() ? h('button', { class: 'aic-g', text: 'Remove', onclick: clearAvatarPhoto }) : null),
+  return h('div', { class: 'aic-missionbox' },
     mission,
     h('details', { class: 'aic-lifed' }, h('summary', { text: 'Lifecycle of the last request' }), h('ol', { class: 'aic-life', 'aria-label': 'Intelligence lifecycle' }, life.map(s => h('li', { class: (s.reached ? (s.failed ? 'on fail ' : 'on ') : '') + (s.available ? '' : 'na'), title: s.available ? (s.reached ? 'Happened in the latest request' : 'Not reached in the latest request') : 'BT has no automated verification step yet', text: s.label })))));
 }
 function reviewApproval() { if (window.BTAgent && typeof window.BTAgent.approvals === 'function') goMode('act', 'aic-actc'); else if (window.BTAgent) window.BTAgent.open(); }
+
 const lastRequestStart = () => T.recent(400).find(e => e.type === 'request_start') || null;
 const requestEvents = start => start ? T.recent(400, e => e.request_id === start.request_id) : [];
 function lastMissionNode() {
@@ -1081,23 +1081,12 @@ function histNode() {
       h('span', { class: 'aic-im2', text: 'Evidence: ' + x.evidence + (x.confidence ? ' · confidence ' + x.confidence : '') + (x.approval ? ' · approval ' + x.approval.status : '') }),
       x.outcomeState ? h('span', { class: 'aic-pill aic-' + C.ACTION_STATES[x.outcomeState].tone, title: C.ACTION_STATES[x.outcomeState].note, text: C.ACTION_STATES[x.outcomeState].label }) : null))));
 }
-// Command Orb hero: avatar + live status + one real sentence + four one-tap questions. Every fact comes from the snapshot.
-const HERO_ACTIONS = [['\uD83C\uDFAF', 'Attention', 'What needs my attention?'], ['\uD83D\uDCD6', 'Closing', 'What is blocking closing?'], ['\uD83D\uDCE6', 'Stock risks', 'Which inventory risks are most urgent?'], ['\uD83D\uDD01', 'Reorders', 'Which reorders need review?']];
-function heroGreeting() {
-  if (!S.snap) return 'Reading your business data\u2026';
-  const hr = new Date().getHours(), hi = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
-  const all = visibleFindings(), open = all.filter(x => x.severity !== 'good' && x.severity !== 'info');
-  if (!open.length) return hi + '. Nothing needs you right now.';
-  const top = C.prioritizeFindings(all, { limit: 1 }).entries[0];
-  const t = top && top.primary && top.primary.title ? top.primary.title : '';
-  return hi + '. ' + open.length + (open.length === 1 ? ' thing needs' : ' things need') + ' you today.' + (t ? ' Biggest: ' + (t.length > 90 ? t.slice(0, 88) + '\u2026' : t) : '');
-}
+// Hero: just the avatar and one live status pill. Everything else (needs-you-now, snapshot, findings) has its own card below.
 function secHero(info) {
   const up = !/^(OFFLINE|ERROR)$/i.test(info.core.state);
   return card('hero', 'monitor investigate act',
     secCore(info),
-    h('div', { class: 'aic-hbub', role: 'status' }, h('span', { class: 'aic-hpill ' + (up ? 'on' : 'off') + (S.voice.talking ? ' talk' : ''), text: S.voice.talking ? 'Jarvis speaking' : up ? 'Jarvis online' : 'Jarvis offline' }), h('p', { text: heroGreeting() })),
-    h('div', { class: 'aic-hact' }, HERO_ACTIONS.map(([ic, lb, q]) => h('button', { class: 'aic-hbtn', onclick: () => ask(q) }, h('span', { 'aria-hidden': 'true', text: ic }), h('b', { text: lb })))));
+    h('div', { class: 'aic-hbub', role: 'status' }, h('span', { class: 'aic-hpill ' + (up ? 'on' : 'off') + (S.voice.talking ? ' talk' : ''), text: S.voice.talking ? 'Jarvis speaking' : up ? 'Jarvis online' : 'Jarvis offline' })));
 }
 // ONE chat: the assistant's own chat (js/agent/ui/agent-panel.js) is docked here, directly under Jarvis. It brings everything
 // with it: the full conversation, streaming, approval cards, undo, briefing, history, memory + house rules, usage, lock, kill
@@ -1111,7 +1100,7 @@ function secChat() {
     chatSlot.replaceChildren(h('p', { class: 'aic-sub', text: 'The assistant is still loading\u2026' }));
     if (chatRetry++ < 20) setTimeout(render, 700); // the assistant module can finish loading after the page first paints
   }
-  return card('chat', 'monitor investigate act', chatSlot,
+  return card('chat', 'monitor investigate act', sectionHeader('ASK JARVIS'), chatSlot,
     h('details', { class: 'aic-lifed aic-histd' }, h('summary', { text: 'Earlier investigations' }), histNode()));
 }
 
@@ -1132,7 +1121,7 @@ function secCritical(info) {
 // ── Operations & Diagnostics: every technical panel, one collapsed group ──
 function secOps(info) {
   return card('ops', 'investigate', sectionHeader('OPERATIONS & DIAGNOSTICS', h('span', { class: 'aic-sub', text: 'agents · tools · health · repository' })),
-    h('div', { class: 'aic-ops' }, secRuns(), secFleet(info), secNetwork(info), secActivity(), secObs(), secHealth(), secTools(), secRepo()));
+    h('div', { class: 'aic-ops' }, secMission(coreInfo()), secRuns(), secFleet(info), secNetwork(info), secActivity(), secObs(), secHealth(), secTools(), secRepo()));
 }
 
 // ───────────────────────── command bar + palette ─────────────────────────
@@ -1201,7 +1190,7 @@ function paint() {
 // ───────────────────────── lifecycle ─────────────────────────
 function onTelemetry(e) {
   if (!S.mounted) return;
-  if (e.type === 'approval_requested' && window.BTAgent && pageOn()) { toast('BT needs your approval.'); if (typeof window.BTAgent.approvals === 'function') S.mode = 'act'; else window.BTAgent.open(); }
+  if (e.type === 'approval_requested' && window.BTAgent && pageOn()) { toast('BT needs your approval.'); S.open.chat = true; if (typeof window.BTAgent.approvals === 'function') S.mode = 'act'; else window.BTAgent.open(); }
   if (e.type === 'answer' && S.awaitingFor) { S.assess[S.awaitingFor] = { text: (e.metadata && e.metadata.text) || '', at: e.timestamp, investigation: window.BTAgent && typeof window.BTAgent.investigationFor === 'function' ? window.BTAgent.investigationFor(S.awaitingFor) : null }; S.awaitingFor = null; }
   if (e.type === 'error' || e.type === 'cancelled') S.awaitingFor = null;
   if (e.type === 'tool_end' && e.status === 'ok' && e.metadata && (e.metadata.risk === 'write' || e.metadata.risk === 'critical') && e.source !== 'ai-center') setTimeout(() => refresh({ force: true }), 800);
@@ -1237,4 +1226,4 @@ export function onShow() {
   refresh();
 }
 
-export const __test = { S, refresh, paint, openFinding, openSystem, openPalette, investigate, weekdayBars, openModal, allRuns, runsBlock, openDraft, promptChips };
+export const __test = { S, ask, openAvatarSettings, refresh, paint, openFinding, openSystem, openPalette, investigate, weekdayBars, openModal, allRuns, runsBlock, openDraft, promptChips };
