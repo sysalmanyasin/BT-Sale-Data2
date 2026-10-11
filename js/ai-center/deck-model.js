@@ -38,6 +38,8 @@ export function overviewTiles(snap) {
   const r = raw(snap); if (!r) return [];
   const b = r.briefing, last = b && b.last_sales_entry, pace = r.pace, day = r.day, inv = b && b.inventory, cr = b && b.credit, fill = r.planning && r.planning.fill;
   const vs = b && b.yesterday && b.yesterday.vs_recent_avg_pct;
+  // the briefing says when sales data is still loading: show that instead of a misleading "No sales entry" / 0%
+  if (b && b.sales_data_ready === false) return overviewTilesLoading(r);
   return [
     { id: 'sales', icon: 'bars', tone: 'cy', label: 'Latest Sales', value: last ? rs(last.total_sale) : '\u2014', sub: last ? last.date : 'No sales entry yet',
       delta: Number.isFinite(Number(vs)) && vs !== null ? { pct: Math.abs(Math.round(num(vs))), up: num(vs) >= 0, text: 'yesterday vs recent avg' } : null },
@@ -47,6 +49,18 @@ export function overviewTiles(snap) {
     { id: 'risk', icon: 'box', tone: inv && inv.out_of_stock_but_selling > 0 ? 'cr' : 'ok', label: 'Inventory Risk', value: inv ? String(inv.out_of_stock_but_selling) : '\u2014', sub: inv ? 'out of stock, still selling' : 'Open Inventory once' },
     { id: 'credit', icon: 'users', tone: 'ok', label: 'Staff Credit', value: cr && cr.month_net_owed != null ? rs(cr.month_net_owed) : '\u2014', sub: cr && cr.staff_owing != null ? cr.staff_owing + ' staff owing' : '' },
     { id: 'fill', icon: 'shield', tone: fill && fill.fill_rate_pct != null && fill.fill_rate_pct < 90 ? 'wn' : 'cy', label: 'STR Fill Rate', value: fill && fill.fill_rate_pct != null ? fill.fill_rate_pct + '%' : '\u2014', sub: fill ? 'transfer lines filled' : '' },
+  ];
+}
+
+function overviewTilesLoading(r) {
+  const inv = r.briefing && r.briefing.inventory, cr = r.briefing && r.briefing.credit, fill = r.planning && r.planning.fill, L = 'Loading sales data\u2026';
+  return [
+    { id: 'sales', icon: 'bars', tone: 'cy', label: 'Latest Sales', value: '\u2026', sub: L, loading: true },
+    { id: 'target', icon: 'target', tone: 'cy', label: 'Sales Target', value: '\u2026', sub: L, loading: true },
+    { id: 'diff', icon: 'wallet', tone: 'cy', label: 'Cash & Closing DIFF', value: '\u2026', sub: L, loading: true },
+    { id: 'risk', icon: 'box', tone: inv && inv.out_of_stock_but_selling > 0 ? 'cr' : 'ok', label: 'Inventory Risk', value: inv ? String(inv.out_of_stock_but_selling) : '\u2014', sub: inv ? 'out of stock, still selling' : 'Open Inventory once' },
+    { id: 'credit', icon: 'users', tone: 'ok', label: 'Staff Credit', value: cr && cr.month_net_owed != null ? rs(cr.month_net_owed) : '\u2014', sub: cr && cr.staff_owing != null ? cr.staff_owing + ' staff owing' : '' },
+    { id: 'fill', icon: 'shield', tone: 'cy', label: 'STR Fill Rate', value: fill && fill.fill_rate_pct != null ? fill.fill_rate_pct + '%' : '\u2014', sub: fill ? 'transfer lines filled' : '' },
   ];
 }
 

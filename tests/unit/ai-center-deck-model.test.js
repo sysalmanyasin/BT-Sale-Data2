@@ -26,6 +26,10 @@ describe('deck-model', () => {
     assert.equal(t.diff.value, '-Rs 13,823'); assert.equal(t.diff.tone, 'cr');
     assert.equal(t.risk.value, '423'); assert.equal(t.fill.value, '90.1%');
   });
+  test('while sales data is still loading the tiles say so instead of showing No entry / 0%', () => {
+    const t = D.overviewTiles({ raw: { briefing: { sales_data_ready: false, inventory: { out_of_stock_but_selling: 5 } }, pace: { pct_done: 0 } } });
+    assert.deepEqual(t.slice(0, 3).map(x => x.value), ['\u2026', '\u2026', '\u2026']); assert.ok(t[0].loading); assert.equal(t[3].value, '5');
+  });
   test('no snapshot or missing sources never produce invented numbers', () => {
     assert.deepEqual(D.overviewTiles(null), []);
     const t = D.overviewTiles({ raw: {} }); assert.equal(t.length, 6); assert.ok(t.every(x => x.value === '\u2014'));

@@ -1132,7 +1132,7 @@ function secDkSales() {
   const C0 = S.snap ? DK.salesChart(S.snap) : null;
   const P = S.snap && S.snap.raw && S.snap.raw.planning;
   return dkCard('dksales', 'bars', 'Sales & Forecast', ['View Details', () => setTab('sales')],
-    !S.snap ? dkWait() : !C0 ? empty((P && P.errors && P.errors.weekday) || 'Weekday sales pattern is not available yet.') : h('div', { class: 'dk-chart' },
+    !S.snap ? dkWait() : !C0 ? empty(M.isPartialSnapshot(S.snap) ? 'Loading sales data\u2026' : (P && P.errors && P.errors.weekday) || 'Weekday sales pattern is not available yet.') : h('div', { class: 'dk-chart' },
       h('ul', { class: 'dk-yax', 'aria-hidden': 'true' }, [...C0.ticks].reverse().map(k => h('li', { text: k.label }))),
       h('ul', { class: 'dk-bars', 'aria-label': 'Average sale by weekday: ' + C0.bars.map(b => b.day + ' Rs ' + M.fmtNum(b.value)).join(', ') },
         C0.bars.map(b => h('li', { class: b.today ? 'today' : '' }, h('span', { class: 'dk-bar', style: 'height:' + b.pct + '%', title: 'Rs ' + M.fmtNum(b.value) }), h('small', { text: b.day }))))),

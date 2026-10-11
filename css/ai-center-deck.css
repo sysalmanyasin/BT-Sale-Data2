@@ -176,3 +176,27 @@ body.aic-open .aic-backdrop{background:rgba(2,6,16,.7)}
 .aic-page.aic-jarvis .aic-hr2{margin:0 12px 8px}
 .aic-page.aic-jarvis .aic-hr2 .aic-seg{display:inline-flex;width:auto;max-width:100%;margin-left:auto}
 .aic-page.aic-jarvis .aic-hr2 .aic-seg button{min-height:38px;min-width:0;padding:0 16px}
+
+/* ───── layout pass (verified in a real browser at 390px, 768px and 1280px) ───── */
+.aic-page.aic-jarvis .aic-main{display:flex;flex-direction:column;align-items:stretch}
+.aic-page.aic-jarvis .aic-main>*{align-self:stretch;width:auto;min-width:0;order:0!important;margin-bottom:0}
+.aic-page.aic-jarvis .aic-main>#aic-hero{margin-bottom:0;border-radius:22px}
+/* tab labels never break inside a word */
+.aic-page.aic-jarvis .aic button.dk-tab span{overflow-wrap:normal;word-break:normal;hyphens:none}
+@media(max-width:400px){.aic-page.aic-jarvis .aic button.dk-tab{font-size:9.5px}.aic-page.aic-jarvis .aic button.dk-tab .dk-ic{width:20px;height:20px}}
+/* tablets and desktop: wide centred page, Overview cards in two columns */
+@media(min-width:760px){
+  .aic-page.aic-jarvis .aic-main{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;max-width:1180px;padding:0 20px 32px}
+  .aic-page.aic-jarvis .aic-main>*{grid-column:1/-1}
+  .aic-page.aic-jarvis .aic-main[data-tab=overview]>#aic-dkatt,.aic-page.aic-jarvis .aic-main[data-tab=overview]>#aic-dksales,
+  .aic-page.aic-jarvis .aic-main[data-tab=overview]>#aic-dkinv,.aic-page.aic-jarvis .aic-main[data-tab=overview]>#aic-dkmoney,
+  .aic-page.aic-jarvis .aic-main[data-tab=overview]>#aic-dkappr,.aic-page.aic-jarvis .aic-main[data-tab=overview]>#aic-dkops{grid-column:auto}
+  .aic-page.aic-jarvis .aic-main[data-tab=overview]>#aic-dkatt,.aic-page.aic-jarvis .aic-main[data-tab=overview]>#aic-dksales{align-self:stretch}
+  .aic-page.aic-jarvis .dk-tiles{grid-template-columns:repeat(6,minmax(0,1fr))}
+  .aic-page.aic-jarvis .dk-chart{height:230px}
+  .aic-page.aic-jarvis #aic-hero .aic-corerow .aic-stage{width:190px}
+  .dk-hp-l b{font-size:22px}.dk-hp-r b{font-size:16px}
+}
+@media(min-width:760px) and (max-width:1000px){.aic-page.aic-jarvis .dk-tiles{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.dk-tabs{max-width:100%}
+.aic-page.aic-jarvis .aic-main>#aic-chat{grid-column:1/-1}
