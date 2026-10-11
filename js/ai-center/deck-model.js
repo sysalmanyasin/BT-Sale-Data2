@@ -90,17 +90,18 @@ export function inventoryPanel(snap) {
   return left.length || right.length ? { left, right } : null;
 }
 
+const ledgerName = s => { const n = String(s || ''); return /^jazzcash$/i.test(n) ? 'JazzCash' : n.charAt(0).toUpperCase() + n.slice(1); };
 const MONEY_ORDER = [/jazz/i, /expense/i, /petty/i, /less/i];
 export function moneyPanel(snap) {
   const r = raw(snap); if (!r) return null;
   const cl = r.closing, today = cl && cl.days && cl.days[0], Mo = r.planning && r.planning.money, cr = r.briefing && r.briefing.credit;
   const left = [], right = [];
-  if (today) left.push({ label: 'Closing Today', value: today.closed + ' of 3 shifts closed', note: today.missing && today.missing.length ? 'Pending: ' + today.missing.join(', ') : 'All shifts closed' });
+  if (today) left.push({ label: 'Closing Today', value: today.closed + ' of 3 shifts closed', note: num(today.closed) >= 3 ? 'All shifts closed' : today.missing && today.missing.length ? 'Pending: ' + today.missing.join(', ') : (3 - num(today.closed)) + (3 - num(today.closed) === 1 ? ' shift' : ' shifts') + ' still to close' });
   if (r.day) left.push({ label: 'Cash DIFF (' + r.day.date + ')', value: rsSigned(r.day.diff) });
   if (cl && Array.isArray(cl.incomplete_days)) left.push({ label: 'Days with open shifts (7d)', value: String(cl.incomplete_days.length) });
   const led = (Mo && Array.isArray(Mo.ledgers) ? Mo.ledgers : []).filter(L => num(L.month_to_date_total) > 0 || num(L.entries_this_month) > 0);
   led.sort((a, b) => { const ia = MONEY_ORDER.findIndex(re => re.test(a.ledger)), ib = MONEY_ORDER.findIndex(re => re.test(b.ledger)); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || num(b.month_to_date_total) - num(a.month_to_date_total); });
-  led.slice(0, 4).forEach(L => right.push({ label: String(L.ledger) + ' (MTD)', value: rs(L.month_to_date_total) }));
+  led.slice(0, 4).forEach(L => right.push({ label: ledgerName(L.ledger) + ' (MTD)', value: rs(L.month_to_date_total) }));
   if (cr && cr.month_net_owed != null) right.push({ label: 'Staff credit owed', value: rs(cr.month_net_owed), note: (cr.staff_owing || 0) + ' staff' });
   const exc = Mo && Array.isArray(Mo.ledgers) ? Mo.ledgers.reduce((n, L) => n + (L.running_above_usual || []).length, 0) : null, dup = cr ? num(cr.possible_duplicates) : null;
   const foot = exc == null && dup == null ? '' : 'Ledger exceptions: ' + (exc || 0) + ' running above usual \u00B7 ' + (dup || 0) + ' possible duplicate' + (dup === 1 ? '' : 's');
@@ -112,7 +113,7 @@ export function approvalRows(approvals) {
   return list.map(a => ({ id: a.id, title: (a.preview && a.preview.title) || String(a.tool || 'Change').replace(/_/g, ' '), sub: a.risk === 'critical' ? 'Critical change' : 'Waiting for your decision' }));
 }
 
-const OK = new Set(['HEALTHY', 'NOT_MONITORED']);
+const OK = new Set(['HEALTHY', 'CLEAR', 'NOT_MONITORED']);
 export function opsStrip(snap, health) {
   const sys = (snap && snap.systems) || {}, items = [];
   const label = { SALES: 'Sales', INVENTORY: 'Inventory', STR: 'Transfers', CLOSING: 'Closing', STAFF: 'Staff', CASH: 'Cash' };

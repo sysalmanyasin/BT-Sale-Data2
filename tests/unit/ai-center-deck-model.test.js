@@ -47,6 +47,10 @@ describe('deck-model', () => {
   test('money panel: closing, ledgers (JazzCash first), exceptions footer', () => {
     const m = D.moneyPanel(snap); assert.equal(m.left[0].value, '1 of 3 shifts closed'); assert.equal(m.right[0].label, 'JazzCash (MTD)');
     assert.match(m.foot, /1 running above usual/);
+    assert.equal(m.left[0].note, 'Pending: Evening');
+    assert.equal(D.moneyPanel({ raw: { closing: { days: [{ closed: 2, missing: [] }] } } }).left[0].note, '1 shift still to close');
+    assert.equal(D.moneyPanel({ raw: { closing: { days: [{ closed: 3 }] } } }).left[0].note, 'All shifts closed'); assert.equal(m.right[1].label, 'Expense (MTD)');
+    assert.equal(D.opsStrip({ systems: { CLOSING: { status: 'CLEAR' } } }, []).healthy, true);
   });
   test('inventoryStats / auditStats from the bridge caches', () => {
     const s = D.inventoryStats([{ qty: 10, price: 5, netQty30Days: 30 }, { qty: 0, price: 9 }], NOW);

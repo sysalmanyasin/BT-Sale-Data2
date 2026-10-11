@@ -129,3 +129,50 @@ body.aic-open .aic-backdrop{background:rgba(2,6,16,.7)}
 /* ── settings sheet + chat card keep working on the dark tokens ── */
 .aic-page.aic-jarvis .dk-card input,.aic-page.aic-jarvis .dk-card select{color:var(--text)}
 @media(min-width:1000px){.aic-page.aic-jarvis .aic-main{max-width:980px}.dk-tiles{grid-template-columns:repeat(6,1fr)}}
+
+/* ───── fixes after first phone test ───── */
+/* the global ".aic-page .aic button" pill style outranks plain .dk-* classes, so every deck button repeats the .aic button prefix */
+.aic-page.aic-jarvis .aic button.dk-tile,.aic-page.aic-jarvis .aic button.dk-row,.aic-page.aic-jarvis .aic button.dk-tab,.aic-page.aic-jarvis .aic button.dk-link,.aic-page.aic-jarvis .aic button.dk-pill,.aic-page.aic-jarvis .aic button.dk-state{box-shadow:none;transition:background .15s,border-color .15s}
+.aic-page.aic-jarvis .aic button.dk-tile{border-radius:14px;padding:10px;min-height:0;display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;background:linear-gradient(180deg,rgba(18,42,90,.55),rgba(10,26,56,.92));border:1px solid var(--border-strong);color:var(--text)}
+.aic-page.aic-jarvis .aic button.dk-tile:hover:not(:disabled){background:linear-gradient(180deg,rgba(27,60,125,.65),rgba(12,32,70,.95));border-color:var(--accent);color:var(--text)}
+.aic-page.aic-jarvis .aic button.dk-row{border-radius:0;border:0;border-bottom:1px solid var(--border);background:none;padding:10px;min-height:56px;justify-content:flex-start;width:100%;color:var(--text)}
+.aic-page.aic-jarvis .aic button.dk-row:last-child{border-bottom:0}
+.aic-page.aic-jarvis .aic button.dk-row:hover:not(:disabled){background:rgba(47,180,255,.08);color:var(--text)}
+.aic-page.aic-jarvis .aic button.dk-link{border:0;background:none;border-radius:8px;padding:0 4px;min-height:36px;color:var(--accent)}
+.aic-page.aic-jarvis .aic button.dk-link:hover:not(:disabled){background:rgba(47,180,255,.1);color:var(--accent)}
+.aic-page.aic-jarvis .aic button.dk-pill{border-radius:9px;border:1px solid var(--accent);background:rgba(47,180,255,.1);color:var(--accent);padding:0 14px;min-height:34px}
+.aic-page.aic-jarvis .aic button.dk-state{border-radius:99px;padding:0 12px;min-height:32px;background:rgba(5,13,31,.5)}
+.aic-page.aic-jarvis .aic button.dk-state.ok{color:var(--green);border-color:rgba(52,232,170,.5)}
+.aic-page.aic-jarvis .aic button.dk-state.wn{color:var(--amber);border-color:rgba(255,180,84,.5)}
+
+/* tabs: five equal columns that never scroll sideways */
+.aic-page.aic-jarvis .dk-tabs{grid-template-columns:repeat(5,minmax(0,1fr));overflow:hidden}
+.aic-page.aic-jarvis .aic button.dk-tab{min-width:0;border-radius:10px;padding:7px 1px;font-size:10.5px;min-height:50px;background:none;border:1px solid transparent;color:var(--t2);flex-direction:column;justify-content:center;gap:3px;text-align:center}
+.aic-page.aic-jarvis .aic button.dk-tab span{display:block;max-width:100%;overflow-wrap:anywhere}
+.aic-page.aic-jarvis .aic button.dk-tab.on{background:linear-gradient(180deg,#1b7be0,#1565d8);color:#fff;border-color:rgba(120,200,255,.5);box-shadow:0 0 16px rgba(47,180,255,.45)}
+.aic-page.aic-jarvis .aic button.dk-tab:hover:not(.on):not(:disabled){background:rgba(47,180,255,.1);color:var(--text)}
+
+/* hero: avatar on top and the two panels side by side on phones; one row of three on wide screens */
+.dk-hero{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"av av" "l r";gap:10px}
+.dk-hero>#aic-core{grid-area:av;justify-self:center;min-width:0;overflow:visible!important;background:none!important}
+.dk-hero>.dk-hp-l{grid-area:l}.dk-hero>.dk-hp-r{grid-area:r}
+.dk-hp{min-height:0;min-width:0}
+.aic-page.aic-jarvis #aic-hero .aic-corerow .aic-stage{width:min(190px,52vw)}
+@media(min-width:560px){
+  .dk-hero{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);grid-template-areas:"l av r"}
+  .aic-page.aic-jarvis #aic-hero .aic-corerow .aic-stage{width:170px}
+  .dk-hp{min-height:96px}
+}
+.aic-page.aic-jarvis #aic-core{overflow:visible}
+
+/* tiles: values stay on one line */
+.dk-tile{min-width:0}
+.dk-tb b{font-size:clamp(14px,4.4vw,19px);white-space:nowrap;overflow-wrap:normal;letter-spacing:-.2px}
+.dk-t-cr .dk-tb b{white-space:nowrap}
+.dk-h h2{font-size:16px}
+.dk-big{white-space:nowrap}
+
+/* the Refresh / search row under the page header: compact instead of two stretched pills */
+.aic-page.aic-jarvis .aic-hr2{margin:0 12px 8px}
+.aic-page.aic-jarvis .aic-hr2 .aic-seg{display:inline-flex;width:auto;max-width:100%;margin-left:auto}
+.aic-page.aic-jarvis .aic-hr2 .aic-seg button{min-height:38px;min-width:0;padding:0 16px}
