@@ -1061,9 +1061,27 @@ function histNode() {
       h('span', { class: 'aic-im2', text: 'Evidence: ' + x.evidence + (x.confidence ? ' · confidence ' + x.confidence : '') + (x.approval ? ' · approval ' + x.approval.status : '') }),
       x.outcomeState ? h('span', { class: 'aic-pill aic-' + C.ACTION_STATES[x.outcomeState].tone, title: C.ACTION_STATES[x.outcomeState].note, text: C.ACTION_STATES[x.outcomeState].label }) : null))));
 }
+// Command Orb hero: avatar + live status + one real sentence + four one-tap questions. Every fact comes from the snapshot.
+const HERO_ACTIONS = [['\uD83C\uDFAF', 'Attention', 'What needs my attention?'], ['\uD83D\uDCD6', 'Closing', 'What is blocking closing?'], ['\uD83D\uDCE6', 'Stock risks', 'Which inventory risks are most urgent?'], ['\uD83D\uDD01', 'Reorders', 'Which reorders need review?']];
+function heroGreeting() {
+  if (!S.snap) return 'Reading your business data\u2026';
+  const hr = new Date().getHours(), hi = hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening';
+  const all = visibleFindings(), open = all.filter(x => x.severity !== 'good' && x.severity !== 'info');
+  if (!open.length) return hi + '. Nothing needs you right now.';
+  const top = C.prioritizeFindings(all, { limit: 1 }).entries[0];
+  const t = top && top.primary && top.primary.title ? top.primary.title : '';
+  return hi + '. ' + open.length + (open.length === 1 ? ' thing needs' : ' things need') + ' you today.' + (t ? ' Biggest: ' + (t.length > 90 ? t.slice(0, 88) + '\u2026' : t) : '');
+}
+function secHero(info) {
+  const up = !/^(OFFLINE|ERROR)$/i.test(info.core.state);
+  return card('hero', 'monitor investigate act',
+    secCore(info),
+    h('div', { class: 'aic-hbub', role: 'status' }, h('span', { class: 'aic-hpill ' + (up ? 'on' : 'off'), text: up ? 'Jarvis online' : 'Jarvis offline' }), h('p', { text: heroGreeting() })),
+    h('div', { class: 'aic-hact' }, HERO_ACTIONS.map(([ic, lb, q]) => h('button', { class: 'aic-hbtn', onclick: () => ask(q) }, h('span', { 'aria-hidden': 'true', text: ic }), h('b', { text: lb })))));
+}
 function secCopilot(info) {
   return card('copilot', 'monitor investigate', sectionHeader('AI BUSINESS COPILOT', h('span', { class: 'aic-sub', text: 'read-only · evidence shown · you approve changes' })),
-    secCore(info), responseNode(),
+    responseNode(),
     h('div', { class: 'aic-k', text: 'INVESTIGATION HISTORY' }), histNode());
 }
 
@@ -1181,7 +1199,7 @@ function paint() {
   const r = root(); if (!r || !pageOn()) return;
   const info = coreInfo();
   // Business-first order: critical → snapshot → needs attention → copilot → sales → inventory/STR → closing/cash/money → approvals → operations
-  const cards = [secCritical(info), secSystems(), secAttention(), secCopilot(info), secForecast(), secInvStr(), secMoney(), secActions(info), secOps(info)]
+  const cards = [secHero(info), secCritical(info), secSystems(), secAttention(), secCopilot(info), secForecast(), secInvStr(), secMoney(), secActions(info), secOps(info)]
     .filter(Boolean);
   // a genuinely pending approval outranks everything: the Action Center moves to the top (CSS keyed on data-pri)
   const main = h('main', { class: 'aic-main', 'data-mode': S.mode, 'data-pri': info.live.pendingApproval ? 'approvals' : 'normal' }, cards);

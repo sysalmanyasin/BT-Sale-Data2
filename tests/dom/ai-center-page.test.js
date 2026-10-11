@@ -42,6 +42,16 @@ describe('AI Center page', () => {
     assert.match(text(), /Rs 12,000/); // CASH metric from get_daily_sales
     assert.match(text(), /410,000/);
   });
+  test('Command Orb hero: avatar core, live status, one real sentence and four quick questions', async () => {
+    const hero = q('#aic-hero');
+    assert.ok(hero, 'hero card missing');
+    assert.ok(hero.querySelector('#aic-core svg.aic-avatar'), 'avatar lives in the hero');
+    assert.equal(document.querySelectorAll('svg.aic-avatar').length, 1, 'exactly one avatar on the page');
+    assert.match(hero.querySelector('.aic-hpill').textContent, /^Jarvis (online|offline)$/);
+    assert.ok(hero.querySelector('.aic-hbub p').textContent.trim().length > 5, 'greeting sentence');
+    assert.equal(hero.querySelectorAll('.aic-hbtn').length, 4, 'four quick questions');
+  });
+
   test('JARVIS layer: page is themed, SVG avatar is decorative, state text stays real DOM text', async () => {
     assert.ok(q('#page-ai-center').classList.contains('aic-jarvis'));
     const av = q('#aic-core .aic-orb svg.aic-avatar');
