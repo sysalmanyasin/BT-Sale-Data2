@@ -122,3 +122,24 @@ body.aic-open .ag-send,body.aic-open .ag-user{background:linear-gradient(135deg,
   .aic-page.aic-jarvis .aic-met{grid-template-columns:minmax(120px,.8fr) minmax(0,1.6fr);gap:6px 14px}
   .aic-page.aic-jarvis .aic-met dt{margin-top:0}
 }
+
+/* ── polish pass 2: calmer snapshot tiles + lighter finding rows ── */
+.aic-page.aic-jarvis .aic-snap-tile[class]{border-left:1px solid var(--j-ln);border-radius:18px;padding:14px;min-height:0;gap:10px;position:relative;overflow:hidden}
+.aic-page.aic-jarvis .aic-snap-tile[class]::after{content:"";position:absolute;left:14px;top:0;width:28px;height:3px;border-radius:0 0 3px 3px;background:var(--j-mu)}
+.aic-page.aic-jarvis .aic-snap-tile.aic-edge-ok::after{background:var(--j-ok)}
+.aic-page.aic-jarvis .aic-snap-tile.aic-edge-wn::after{background:var(--j-wn)}
+.aic-page.aic-jarvis .aic-snap-tile.aic-edge-cr::after{background:var(--j-er)}
+.aic-page.aic-jarvis .aic-it-l{font-size:12px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--j-mu)}
+.aic-page.aic-jarvis .aic-snap-tile .aic-it-v{font-size:clamp(20px,6vw,26px);font-weight:700;letter-spacing:-.02em;line-height:1.15;color:var(--j-tx)}
+.aic-page.aic-jarvis .aic-snap-tile .aic-it-v.aic-cr{color:var(--j-er)}
+.aic-page.aic-jarvis .aic-snap-tile small{font-size:12px;line-height:1.4;color:var(--j-mu)}
+.aic-page.aic-jarvis .aic-it-f{margin-top:2px}
+/* findings: title + impact + next step; the duplicate "Rule:" line and co-occurrence note live in the detail sheet */
+.aic-page.aic-jarvis .aic-fe,.aic-page.aic-jarvis .aic-fl{display:none}
+.aic-page.aic-jarvis .aic-fn,.aic-page.aic-jarvis .aic-fr{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:13px;line-height:1.45;color:var(--t2)}
+.aic-page.aic-jarvis .aic-fn b{color:var(--j-cy)}
+.aic-page.aic-jarvis .aic-fr{color:var(--j-wn);font-size:12px}
+.aic-page.aic-jarvis .aic .aic-f .aic-ft{font-size:15px;line-height:1.4}
+.aic-page.aic-jarvis .aic-att-row{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.aic-page.aic-jarvis .aic .aic-inv{align-self:flex-start;min-height:36px;padding:0 16px;font-size:13px;color:var(--j-cy);border-color:rgba(139,155,255,.3)}
+.aic-page.aic-jarvis .aic-sh h2{display:flex;align-items:center;gap:8px}
