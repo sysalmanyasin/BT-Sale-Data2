@@ -231,32 +231,33 @@ function secHeaderBar(core) {
 
 
 
-// Decorative holographic avatar. Pure SVG, no data: every operational fact stays in real DOM text beside it.
+// Decorative holographic avatar (v2): a glass-helmet AI bust inside a rotating HUD portal. Pure SVG, no data, no innerHTML.
+// Colour follows the stage state through --c; every operational fact stays in real DOM text beside it.
 function jarvisAvatar() {
-  // Static, decorative humanoid (visor, glowing eyes, headset with mic, shoulder armour, chest core). Built with DOM nodes, no innerHTML.
   const n = (tag, a, ...kids) => { const e = h2svg(tag, a); kids.forEach(k => e.append(k)); return e; };
-  const stop = (o, c) => n('stop', { offset: o, 'stop-color': c });
-  const svg = n('svg', { viewBox: '0 0 160 160', class: 'aic-avatar', 'aria-hidden': 'true', focusable: 'false' },
+  const stop = (o, c, op) => n('stop', { offset: o, 'stop-color': c, 'stop-opacity': op == null ? 1 : op });
+  return n('svg', { viewBox: '0 0 160 160', class: 'aic-avatar', 'aria-hidden': 'true', focusable: 'false' },
     n('defs', {},
-      n('linearGradient', { id: 'jv-armor', x1: 0, y1: 0, x2: 0, y2: 1 }, stop('0', '#3a4f6d'), stop('1', '#0d1626')),
-      n('linearGradient', { id: 'jv-head', x1: 0, y1: 0, x2: 1, y2: 1 }, stop('0', '#46607f'), stop('.55', '#1a2a41'), stop('1', '#0c1626')),
-      n('filter', { id: 'jv-glow', x: '-60%', y: '-60%', width: '220%', height: '220%' }, n('feGaussianBlur', { stdDeviation: 2.2, result: 'b' }), n('feMerge', {}, n('feMergeNode', { in: 'b' }), n('feMergeNode', { in: 'SourceGraphic' })))),
-    n('path', { class: 'av-body', fill: 'url(#jv-armor)', d: 'M6 160c4-34 30-48 74-52 44 4 70 18 74 52z' }),
-    n('path', { class: 'av-line', d: 'M46 160l8-30M114 160l-8-30M60 112l20 24 20-24M24 150c10-14 24-22 40-26M136 150c-10-14-24-22-40-26' }),
-    n('rect', { class: 'av-neck', x: 70, y: 92, width: 20, height: 20, rx: 4 }),
-    n('path', { class: 'av-head', fill: 'url(#jv-head)', d: 'M80 24c-23 0-35 16-35 38 0 24 12 38 35 38s35-14 35-38c0-22-12-38-35-38z' }),
-    n('path', { class: 'av-visor', d: 'M55 55c0-9 11-13 25-13s25 4 25 13v13c0 11-11 17-25 17S55 79 55 68z' }),
-    n('path', { class: 'av-line', d: 'M64 78c6 4 26 4 32 0' }),
-    n('ellipse', { class: 'av-eye', cx: 67, cy: 62, rx: 6.5, ry: 3.6, filter: 'url(#jv-glow)' }),
-    n('ellipse', { class: 'av-eye', cx: 93, cy: 62, rx: 6.5, ry: 3.6, filter: 'url(#jv-glow)' }),
-    n('path', { class: 'av-phone', d: 'M43 62C40 30 60 12 80 12s40 18 37 50' }),
-    n('rect', { class: 'av-cup', x: 33, y: 54, width: 15, height: 28, rx: 7 }),
-    n('rect', { class: 'av-cup', x: 112, y: 54, width: 15, height: 28, rx: 7 }),
-    n('path', { class: 'av-line', d: 'M40 82c-2 12 8 18 22 14' }),
-    n('circle', { class: 'av-chest', cx: 64, cy: 96, r: 2.6 }),
-    n('circle', { class: 'av-ring', cx: 80, cy: 128, r: 11 }),
-    n('circle', { class: 'av-chest', cx: 80, cy: 128, r: 5.2, filter: 'url(#jv-glow)' }));
-  return svg;
+      n('radialGradient', { id: 'jv-halo', cx: '50%', cy: '42%', r: '60%' }, stop('0', 'currentColor', .35), stop('1', 'currentColor', 0)),
+      n('linearGradient', { id: 'jv-glass', x1: 0, y1: 0, x2: 0.8, y2: 1 }, stop('0', '#ffffff', .30), stop('.45', '#9aa6ff', .08), stop('1', '#000000', .35)),
+      n('linearGradient', { id: 'jv-rim', x1: 0, y1: 0, x2: 1, y2: 0 }, stop('0', 'currentColor', 0), stop('.5', 'currentColor', 1), stop('1', 'currentColor', 0)),
+      n('filter', { id: 'jv-glow', x: '-80%', y: '-80%', width: '260%', height: '260%' }, n('feGaussianBlur', { stdDeviation: 2.6, result: 'b' }), n('feMerge', {}, n('feMergeNode', { in: 'b' }), n('feMergeNode', { in: 'SourceGraphic' }))),
+      n('clipPath', { id: 'jv-clip' }, n('circle', { cx: 80, cy: 80, r: 55 }))),
+    n('circle', { cx: 80, cy: 80, r: 78, fill: 'url(#jv-halo)' }),
+    n('g', { class: 'jv-r jv-r1' }, n('circle', { cx: 80, cy: 80, r: 74, class: 'jv-tick' })),
+    n('g', { class: 'jv-r jv-r2' }, n('circle', { cx: 80, cy: 80, r: 66, class: 'jv-arc' })),
+    n('circle', { cx: 80, cy: 80, r: 58, class: 'jv-hair' }),
+    n('g', { class: 'jv-r jv-r3' }, n('circle', { cx: 80, cy: 14, r: 2.4, class: 'jv-dot', filter: 'url(#jv-glow)' }), n('circle', { cx: 80, cy: 146, r: 1.6, class: 'jv-dot' })),
+    n('g', { 'clip-path': 'url(#jv-clip)' },
+      n('circle', { cx: 80, cy: 80, r: 55, class: 'jv-bg' }),
+      n('path', { class: 'jv-body', d: 'M18 160c4-26 24-36 50-41l4-9h16l4 9c26 5 46 15 50 41z' }),
+      n('path', { class: 'jv-head', d: 'M80 28c-21 0-33 15-33 36v9c0 16 8 27 18 33h30c10-6 18-17 18-33v-9c0-21-12-36-33-36z' }),
+      n('path', { class: 'jv-edge', d: 'M47 66c0-20 12-36 33-36s33 16 33 36' }),
+      n('path', { class: 'jv-line', d: 'M66 106c9 5 19 5 28 0M58 124l22 12 22-12M80 112v26' }),
+      n('path', { class: 'jv-visor', d: 'M58 62h44c5 0 8 3 8 7s-3 7-8 7H58c-5 0-8-3-8-7s3-7 8-7z', filter: 'url(#jv-glow)' }),
+      n('rect', { class: 'jv-scan', x: 54, y: 63, width: 10, height: 12, rx: 5 }),
+      n('circle', { class: 'jv-core', cx: 80, cy: 138, r: 4.5, filter: 'url(#jv-glow)' }),
+      n('circle', { class: 'jv-hair', cx: 80, cy: 138, r: 9 })));
 }
 
 function secCore(info) {

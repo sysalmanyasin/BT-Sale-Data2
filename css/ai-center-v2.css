@@ -1,0 +1,111 @@
+/* BT Intelligence v2 — one modern design layer. Loaded LAST (after ai-center*.css).
+   Scope: .aic-page only. No JS/DOM/logic changes. Remove this file to roll back. */
+.aic-page.aic-jarvis{
+  --j-bg:#06070d;--j-s1:rgba(255,255,255,.04);--j-s2:rgba(255,255,255,.07);
+  --j-cy:#8b9bff;--j-vi:#c084fc;--j-ok:#4ade80;--j-wn:#fbbf24;--j-er:#fb7185;
+  --j-tx:#f4f5fb;--j-mu:#8b90a8;--j-ln:rgba(255,255,255,.08);
+  --bg:var(--j-bg);--surface:#0e1018;--s2:#141725;--s3:#1a1e30;--border:rgba(255,255,255,.09);--border-strong:rgba(255,255,255,.16);
+  --text:var(--j-tx);--t2:#c9cde0;--muted:var(--j-mu);--accent:#8b9bff;--accent-dk:#b4bfff;--purple:#c084fc;
+  --green:var(--j-ok);--amber:var(--j-wn);--red:var(--j-er);--alt:rgba(139,155,255,.1);
+  --ag-line:var(--j-ln);--ag-line2:rgba(139,155,255,.4);--ag-glow:rgba(139,155,255,.35);
+  --grad:linear-gradient(135deg,#7c8cff,#c084fc 55%,#f0abfc);
+  --sans:'Inter',system-ui,sans-serif;
+  background:
+    radial-gradient(60% 40% at 15% -5%,rgba(124,140,255,.22),transparent 70%),
+    radial-gradient(50% 35% at 90% 0,rgba(192,132,252,.16),transparent 70%),
+    var(--j-bg);
+  font-family:var(--sans);
+}
+/* kill the old HUD grid, rings, robot avatar, accent bars */
+.aic-page.aic-jarvis .aic-ring,.aic-page.aic-jarvis .aic-card::before,.aic-page.aic-jarvis .aic-stage::after{display:none!important}
+.aic-page.aic-jarvis .aic{font-family:var(--sans);letter-spacing:0}
+.aic-page.aic-jarvis .aic h1,.aic-page.aic-jarvis .aic h2,.aic-page.aic-jarvis .aic h3,
+.aic-page.aic-jarvis .aic-k,.aic-page.aic-jarvis .aic-pill,.aic-page.aic-jarvis .aic-tag,.aic-page.aic-jarvis .aic-life li{letter-spacing:0;text-transform:none}
+
+/* header */
+.aic-page.aic-jarvis .aic-hr1 h1{font-size:20px;font-weight:700;letter-spacing:-.01em;background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
+.aic-page.aic-jarvis .aic-chip{background:var(--j-s1);border:1px solid var(--j-ln);color:var(--j-mu);letter-spacing:0}
+.aic-page.aic-jarvis .aic-live{letter-spacing:0;font-weight:600}
+
+/* layout: 12-col bento on desktop, single column on phone */
+.aic-page.aic-jarvis .aic-main{display:grid;grid-template-columns:1fr;gap:14px;max-width:1280px;margin:0 auto}
+@media(min-width:1000px){
+  .aic-page.aic-jarvis .aic-main{grid-template-columns:repeat(12,minmax(0,1fr));gap:16px}
+  .aic-page.aic-jarvis .aic-main>.aic-card,.aic-page.aic-jarvis .aic-main>#aic-sum{grid-column:span 6;grid-row:auto}
+  .aic-page.aic-jarvis .aic-main>#aic-crit,.aic-page.aic-jarvis .aic-main>#aic-sum,.aic-page.aic-jarvis .aic-main>#aic-sys,
+  .aic-page.aic-jarvis .aic-main>#aic-copilot,.aic-page.aic-jarvis .aic-main>#aic-ops,.aic-page.aic-jarvis .aic-main>#aic-tools,
+  .aic-page.aic-jarvis .aic-main>.aic-fold:not(.aic-folded){grid-column:1/-1}
+  .aic-page.aic-jarvis .aic-main>#aic-core{grid-column:span 5}
+  .aic-page.aic-jarvis .aic-main>#aic-att{grid-column:span 7}
+}
+
+/* glass cards */
+.aic-page.aic-jarvis .aic-card{background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.02));border:1px solid var(--j-ln);border-radius:22px;padding:20px;box-shadow:0 1px 0 rgba(255,255,255,.05) inset,0 24px 48px -28px rgba(0,0,0,.8);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}
+.aic-page.aic-jarvis .aic-card:hover{border-color:rgba(139,155,255,.35)}
+.aic-page.aic-jarvis .aic-sh{border:0;padding:0 0 12px}
+.aic-page.aic-jarvis .aic-sh h2{font-size:15px;font-weight:600;color:var(--j-tx)}
+.aic-page.aic-jarvis .aic-sub,.aic-page.aic-jarvis .aic-fs{color:var(--j-mu)}
+
+/* hero avatar: glass-helmet AI bust in a rotating HUD portal (SVG from jarvisAvatar(); colour = state via --c) */
+.aic-page.aic-jarvis #aic-core{background:radial-gradient(80% 70% at 50% 0,rgba(139,155,255,.18),transparent 70%),linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015))}
+.aic-page.aic-jarvis .aic-stage{width:min(230px,66%)}
+.aic-page.aic-jarvis .aic-stage .aic-orb{inset:0;border-radius:50%;overflow:visible;background:none;box-shadow:0 0 80px -20px var(--c)}
+.aic-page.aic-jarvis .aic-orb-t{display:none}
+.aic-page.aic-jarvis .aic-avatar{color:var(--c);overflow:visible}
+.aic-page.aic-jarvis .jv-bg{fill:#070914}
+.aic-page.aic-jarvis .jv-body,.aic-page.aic-jarvis .jv-head{fill:url(#jv-glass);stroke:color-mix(in srgb,var(--c) 55%,transparent);stroke-width:1}
+.aic-page.aic-jarvis .jv-edge{fill:none;stroke:url(#jv-rim);stroke-width:1.6;stroke-linecap:round}
+.aic-page.aic-jarvis .jv-line{fill:none;stroke:color-mix(in srgb,var(--c) 45%,transparent);stroke-width:1;stroke-linecap:round}
+.aic-page.aic-jarvis .jv-visor{fill:var(--c)}
+.aic-page.aic-jarvis .jv-scan{fill:#fff;opacity:.85}
+.aic-page.aic-jarvis .jv-core,.aic-page.aic-jarvis .jv-dot{fill:var(--c)}
+.aic-page.aic-jarvis .jv-hair{fill:none;stroke:color-mix(in srgb,var(--c) 40%,transparent);stroke-width:.8}
+.aic-page.aic-jarvis .jv-tick{fill:none;stroke:color-mix(in srgb,var(--c) 70%,transparent);stroke-width:2;stroke-dasharray:1.5 6}
+.aic-page.aic-jarvis .jv-arc{fill:none;stroke:var(--c);stroke-width:1.6;stroke-linecap:round;stroke-dasharray:70 30 18 30 40 60;opacity:.85}
+.aic-page.aic-jarvis .jv-r{transform-origin:80px 80px}
+.aic-page.aic-jarvis .jv-scan{transform-box:fill-box}
+@media(prefers-reduced-motion:no-preference){
+  .aic-page.aic-jarvis .jv-r1{animation:jv-spin 90s linear infinite}
+  .aic-page.aic-jarvis .jv-r2{animation:jv-spin 30s linear infinite reverse}
+  .aic-page.aic-jarvis .jv-r3{animation:jv-spin 14s linear infinite}
+  .aic-page.aic-jarvis .jv-scan{animation:jv-scan 4.5s ease-in-out infinite}
+  .aic-page.aic-jarvis .jv-core{animation:jv-pulse 2.8s ease-in-out infinite}
+  .aic-page.aic-jarvis .aic-stage[data-s=investigating] .jv-r2,.aic-page.aic-jarvis .aic-stage[data-s=analyzing] .jv-r2,.aic-page.aic-jarvis .aic-stage[data-s=correlating] .jv-r2,.aic-page.aic-jarvis .aic-stage[data-s=executing] .jv-r2{animation-duration:5s}
+  .aic-page.aic-jarvis .aic-stage[data-s=investigating] .jv-scan,.aic-page.aic-jarvis .aic-stage[data-s=analyzing] .jv-scan,.aic-page.aic-jarvis .aic-stage[data-s=executing] .jv-scan{animation-duration:1.4s}
+  @keyframes jv-spin{to{transform:rotate(360deg)}}
+  @keyframes jv-scan{0%,100%{transform:translateX(0);opacity:0}15%,85%{opacity:.85}50%{transform:translateX(44px)}}
+  @keyframes jv-pulse{50%{opacity:.35}}
+}
+.aic-page.aic-jarvis .aic-cs h2{font-size:18px;font-weight:600;letter-spacing:0;text-transform:capitalize;color:var(--j-tx)}
+
+/* summary + findings */
+.aic-page.aic-jarvis .aic-sumt{font-size:22px;font-weight:700;letter-spacing:-.015em}
+.aic-page.aic-jarvis .aic .aic-f{background:var(--j-s1);border:1px solid var(--j-ln);border-radius:16px;transition:background .15s,transform .15s}
+.aic-page.aic-jarvis .aic .aic-f:hover:not(:disabled){background:var(--j-s2);transform:translateY(-1px)}
+.aic-page.aic-jarvis .aic-sys,.aic-page.aic-jarvis .aic-snap-tile,.aic-page.aic-jarvis .aic-ftile{background:var(--j-s1);border:1px solid var(--j-ln);border-left:1px solid var(--j-ln);border-radius:16px}
+.aic-page.aic-jarvis .aic-snap-tile{box-shadow:none}
+.aic-page.aic-jarvis .aic-met dd,.aic-page.aic-jarvis .aic-big{font-variant-numeric:tabular-nums}
+
+/* status pills: quiet rounded chips */
+.aic-page.aic-jarvis .aic-pill,.aic-page.aic-jarvis .aic-tag,.aic-page.aic-jarvis .aic-fsum{border:0;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;background:color-mix(in srgb,currentColor 14%,transparent)}
+.aic-page.aic-jarvis .aic-life li{border-radius:999px}
+
+/* buttons */
+.aic-page.aic-jarvis .aic button{border-radius:999px;background:var(--j-s1);border:1px solid var(--j-ln);box-shadow:none;color:var(--j-tx)}
+.aic-page.aic-jarvis .aic button:hover:not(:disabled){background:var(--j-s2);border-color:rgba(139,155,255,.45);color:var(--j-tx)}
+.aic-page.aic-jarvis .aic button.aic-p,.aic-page.aic-jarvis .aic-seg button.on,.aic-page.aic-jarvis .aic-modal button.aic-p{background:var(--grad);border:0;color:#0a0618;font-weight:700}
+.aic-page.aic-jarvis .aic-seg{gap:4px;padding:4px;border-radius:999px;background:var(--j-s1);border:1px solid var(--j-ln)}
+.aic-page.aic-jarvis .aic-seg button{border:0;background:none;border-radius:999px}
+
+/* floating AI composer */
+.aic-page.aic-jarvis .aic-cmd{background:none;padding:0 12px 10px;max-width:760px}
+.aic-page.aic-jarvis .aic-form{padding:6px;border-radius:999px;background:rgba(20,23,37,.78);border:1px solid rgba(255,255,255,.14);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);box-shadow:0 20px 50px -12px rgba(0,0,0,.7),0 0 0 1px rgba(139,155,255,.12)}
+.aic-page.aic-jarvis .aic-form input{background:none;border:0;border-radius:999px;padding:0 16px;color:var(--j-tx)}
+.aic-page.aic-jarvis .aic-form input:focus{outline:0}
+.aic-page.aic-jarvis .aic-chips button{background:rgba(20,23,37,.7);border-radius:999px;color:var(--j-mu)}
+
+/* dialogs / chat sheet inherit the same look */
+body.aic-open .aic-modal,body.aic-open .ag-sheet{background:#0e1018;border:1px solid rgba(255,255,255,.12);border-radius:24px;box-shadow:0 40px 80px -20px rgba(0,0,0,.8)}
+body.aic-open .aic-modal{--accent:#8b9bff;--aic-ac:#8b9bff;--aic-cy:#8b9bff;--aic-bl:#8b9bff}
+body.aic-open .ag-head strong{letter-spacing:0;text-transform:none;color:var(--j-tx,#f4f5fb)}
+body.aic-open .ag-send,body.aic-open .ag-user{background:linear-gradient(135deg,#7c8cff,#c084fc);color:#0a0618}
