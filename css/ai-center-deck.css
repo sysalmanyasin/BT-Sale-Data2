@@ -200,3 +200,14 @@ body.aic-open .aic-backdrop{background:rgba(2,6,16,.7)}
 @media(min-width:760px) and (max-width:1000px){.aic-page.aic-jarvis .dk-tiles{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .dk-tabs{max-width:100%}
 .aic-page.aic-jarvis .aic-main>#aic-chat{grid-column:1/-1}
+
+/* ───── v11.68: non-Overview tabs ─────
+   ai-center-v2.css gives every .aic-card "grid-column:span 6" at >=1000px (specificity 0,4,0), which beat the deck's
+   full-width rule (0,3,0). On Sales / Inventory / Operations / More the cards ended up half width, stretched to the
+   tallest neighbour (big empty boxes) and the More tiles were squeezed until numbers broke mid-digit.
+   Only the Overview tab is meant to be a two-column bento; every other tab is one full-width column. */
+@media(min-width:760px){
+  .aic-page.aic-jarvis .aic-main:not([data-tab=overview])>*{grid-column:1/-1!important;grid-row:auto!important;align-self:start}
+}
+/* numbers and amounts never split inside a digit run ("Rs 509,66 / 9") */
+.aic-page.aic-jarvis .aic-it-v,.aic-page.aic-jarvis .aic-ftile b,.aic-page.aic-jarvis .aic-ftile .aic-it-v{overflow-wrap:normal;word-break:normal;hyphens:none}
