@@ -50,7 +50,7 @@ export async function refreshBridges(now = Date.now(), force = false) {
     let t; const timeout = new Promise(r => { t = setTimeout(() => r(null), 8000); });
     return Promise.race([Promise.resolve().then(() => fn(false)).catch(() => null), timeout]).finally(() => clearTimeout(t));
   };
-  await Promise.all([run(w.inventoryBridgeRefresh), run(w.strBridgeRefresh)]);
+  await Promise.all([run(w.inventoryBridgeRefresh), run(w.strBridgeRefresh), run(w.auditBridgeRefreshAiOverview), run(w.salePaymentsBridgeRefresh)]);
 }
 
 export async function collectSnapshot(now = Date.now()) {
@@ -93,10 +93,12 @@ export async function collectSnapshot(now = Date.now()) {
 
 // Extra Command-Deck numbers read locally from the two bridge caches (no network, no writes).
 function collectDeck(now) {
-  let inv = null, audit = null;
+  let inv = null, audit = null, ai = null, pay = null;
   try { const d = typeof window.inventoryBridgeGetFullData === 'function' ? window.inventoryBridgeGetFullData() : null; inv = d && Array.isArray(d.products) ? inventoryStats(d.products, now) : null; } catch (_) { /* bridge not loaded */ }
   try { audit = auditStats(typeof window.auditBridgeGetCachedSummary === 'function' ? window.auditBridgeGetCachedSummary() : null); } catch (_) { /* bridge not loaded */ }
-  return { inv, audit };
+  try { ai = typeof window.auditBridgeGetAiOverview === 'function' ? window.auditBridgeGetAiOverview() : null; } catch (_) { /* bridge not loaded */ }
+  try { pay = typeof window.salePaymentsBridgeGetFullData === 'function' ? window.salePaymentsBridgeGetFullData() : null; } catch (_) { /* bridge not loaded */ }
+  return { inv, audit, ai, pay };
 }
 
 function metricsFor(s, r) {

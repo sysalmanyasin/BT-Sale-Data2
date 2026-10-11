@@ -137,3 +137,52 @@ export function opsStrip(snap, health) {
   const bad = items.filter(i => i.tone !== 'ok').length;
   return { items, healthy: items.length > 0 && bad === 0, summary: !items.length ? 'Checking\u2026' : bad ? bad + ' need attention' : 'System Healthy' };
 }
+
+
+// ───────────── Audit tab (audit bridge ai_audit_overview + payments bridge). Missing source => null, never invented. ─────────────
+const ageText = iso => { const t = Date.parse(iso || ''); if (!Number.isFinite(t)) return null; const d = Math.max(0, Math.floor((Date.now() - t) / 86400000)); return d === 0 ? 'today' : d === 1 ? '1 day ago' : d + ' days ago'; };
+
+export function auditPanel(o) {
+  if (!o || !Array.isArray(o.engagements)) return null;
+  const left = [], right = [], e = o.engagements[0];
+  if (e) {
+    left.push({ label: 'Counting progress', value: fmt(e.submitted) + ' / ' + fmt(e.assigned), note: e.name + (e.latest_round ? ' \u00B7 round ' + e.latest_round.number + ' ' + e.latest_round.state : '') + (o.engagements.length > 1 ? ' (+' + (o.engagements.length - 1) + ' more)' : ''), tone: e.assigned && e.submitted < e.assigned ? 'wn' : 'ok' });
+    left.push({ label: 'Unresolved variance items', value: fmt(e.variance_items) });
+    left.push({ label: 'Shortage', value: rs(e.shortage_value), tone: num(e.shortage_value) > num(e.excess_value) ? 'wn' : null });
+    left.push({ label: 'Excess', value: rs(e.excess_value) });
+    right.push({ label: 'Net variance', value: rsSigned(num(e.excess_value) - num(e.shortage_value)), note: 'excess minus shortage' });
+  } else left.push({ label: 'Open audits', value: '0', note: 'nothing is being counted' });
+  const sg = o.suggestions && o.suggestions.pending;
+  right.push({ label: 'Variance edits waiting', value: fmt(sg || 0), tone: sg ? 'wn' : 'ok', note: sg ? 'need Main Auditor review' : 'none pending' });
+  const bc = o.barcodes || {}, conflicts = num(bc.conflict);
+  right.push({ label: 'Barcode conflicts', value: fmt(conflicts), tone: conflicts ? 'wn' : 'ok', note: fmt(num(bc.verified)) + ' verified' });
+  if (o.last_final) right.push({ label: 'Last finished audit', value: ageText(o.last_final.generated_at) || '\u2014', note: o.last_final.engagement });
+  const st = o.staff || {}, ex = num(st.access_expiring_7d) + num(st.access_expired);
+  if (ex) right.push({ label: 'Auditor access', value: fmt(ex), tone: 'wn', note: 'expiring or expired' });
+  const top = ((e && e.top_items) || []).map(t => ({ name: t.item, sub: (t.company || '') + ' \u00B7 system ' + fmt(t.system_qty) + ' \u2192 counted ' + fmt(t.counted_qty), value: rsSigned(t.value), tone: num(t.value) < 0 ? 'cr' : 'wn' }));
+  return { left, right, top };
+}
+
+export function expiryPanel(o) {
+  const x = o && o.expiry; if (!x) return null;
+  const left = [{ label: 'Near-expiry entries', value: fmt(x.near_entries), note: fmt(x.near_qty) + ' units logged' }];
+  if (x.earliest_month) left.push({ label: 'Earliest expiry', value: x.earliest_month });
+  const right = [{ label: 'Within 90 days', value: fmt(x.within_90_days_entries), tone: num(x.within_90_days_entries) ? 'wn' : 'ok', note: 'entries to act on' }];
+  const months = (x.by_month || []).map(m => ({ name: m.month, sub: fmt(m.entries) + (num(m.entries) === 1 ? ' entry' : ' entries'), value: fmt(m.qty) + ' units', tone: 'wn' }));
+  return { left, right, months };
+}
+
+export function paymentPanel(d) {
+  const rows = d && Array.isArray(d.paymentSummary) ? [...d.paymentSummary].sort((a, b) => String(b.saleDay).localeCompare(String(a.saleDay))) : null;
+  if (!rows || !rows.length) return null;
+  const t = rows[0], tot = num(t.totalSale), pct = v => (tot ? Math.round((num(v) / tot) * 100) + '%' : '\u2014');
+  const credit = (d.creditByCustomer || []).filter(c => c.saleDay === t.saleDay);
+  const week = rows.slice(0, 4), wt = week.reduce((s, r) => s + num(r.totalSale), 0);
+  return {
+    day: t.saleDay,
+    left: [{ label: 'Total sale', value: rs(t.totalSale), note: t.saleDay }, { label: 'Cash', value: rs(t.cashSale), note: pct(t.cashSale) + ' of total' }],
+    right: [{ label: 'Card', value: rs(t.cardSale), note: pct(t.cardSale) + ' of total' }, { label: 'Credit', value: rs(t.creditSale), tone: num(t.creditSale) ? 'wn' : null, note: credit.length ? credit.length + (credit.length === 1 ? ' customer' : ' customers') : 'no credit sales' }],
+    days: week.map(r => ({ name: r.saleDay, sub: 'cash ' + fmt(r.cashSale) + ' \u00B7 card ' + fmt(r.cardSale) + ' \u00B7 credit ' + fmt(r.creditSale), value: rs(r.totalSale), tone: 'cy' })),
+    foot: week.length > 1 ? 'Last ' + week.length + ' days: Rs ' + fmt(wt) + ' \u00B7 card ' + (wt ? Math.round(week.reduce((s, r) => s + num(r.cardSale), 0) / wt * 100) : 0) + '%' : null,
+  };
+}

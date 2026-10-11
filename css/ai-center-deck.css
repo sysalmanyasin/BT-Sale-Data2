@@ -41,7 +41,7 @@ body.aic-open .aic-backdrop{background:rgba(2,6,16,.7)}
 @media(prefers-reduced-motion:no-preference){.aic-page.aic-jarvis .jv-ring2{transform-origin:80px 80px;animation:dk-spin 40s linear infinite}@keyframes dk-spin{to{transform:rotate(360deg)}}}
 
 /* ── tabs ── */
-.dk-tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:2px;padding:4px;border:1px solid var(--border-strong);border-radius:14px;background:linear-gradient(180deg,rgba(18,42,90,.55),rgba(10,26,56,.9));position:sticky;top:0;z-index:5;box-shadow:var(--sh)}
+.dk-tabs{display:grid;grid-template-columns:repeat(6,1fr);gap:2px;padding:4px;border:1px solid var(--border-strong);border-radius:14px;background:linear-gradient(180deg,rgba(18,42,90,.55),rgba(10,26,56,.9));position:sticky;top:0;z-index:5;box-shadow:var(--sh)}
 .dk-tab{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px;border:1px solid transparent;border-radius:10px;background:none;color:var(--t2);font:600 11px/1.15 var(--sans);cursor:pointer;min-height:48px}
 .dk-tab .dk-ic{width:22px;height:22px}
 .dk-tab.on{background:linear-gradient(180deg,#1b7be0,#1565d8);color:#fff;border-color:rgba(120,200,255,.5);box-shadow:0 0 16px rgba(47,180,255,.45)}
@@ -146,7 +146,7 @@ body.aic-open .aic-backdrop{background:rgba(2,6,16,.7)}
 .aic-page.aic-jarvis .aic button.dk-state.wn{color:var(--amber);border-color:rgba(255,180,84,.5)}
 
 /* tabs: five equal columns that never scroll sideways */
-.aic-page.aic-jarvis .dk-tabs{grid-template-columns:repeat(5,minmax(0,1fr));overflow:hidden}
+.aic-page.aic-jarvis .dk-tabs{grid-template-columns:repeat(6,minmax(0,1fr));overflow:hidden}
 .aic-page.aic-jarvis .aic button.dk-tab{min-width:0;border-radius:10px;padding:7px 1px;font-size:10.5px;min-height:50px;background:none;border:1px solid transparent;color:var(--t2);flex-direction:column;justify-content:center;gap:3px;text-align:center}
 .aic-page.aic-jarvis .aic button.dk-tab span{display:block;max-width:100%;overflow-wrap:anywhere}
 .aic-page.aic-jarvis .aic button.dk-tab.on{background:linear-gradient(180deg,#1b7be0,#1565d8);color:#fff;border-color:rgba(120,200,255,.5);box-shadow:0 0 16px rgba(47,180,255,.45)}

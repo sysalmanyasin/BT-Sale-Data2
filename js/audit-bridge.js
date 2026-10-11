@@ -191,7 +191,45 @@ export async function refreshFullData(force) {
   return _fullInFlight;
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// AI OVERVIEW — one read-only Postgres function (ai_audit_overview, see supabase/audit-project/ai_audit_overview.sql)
+// that returns ONLY aggregates: open-audit progress, shortage/excess value, top variance items, pending variance
+// suggestions, near-expiry stock, barcode conflicts, staff access. No customer/auditor names, no raw count rows.
+// Read by the BT Intelligence Audit tab and the assistant's audit_overview / audit_expiry tools.
+// ═══════════════════════════════════════════════════════════════════
+const AI_CACHE_KEY = 'bt_audit_ai_v1';
+const AI_MIN_REFRESH_MS = 2 * 60 * 1000;
+let _ai = null, _aiInFlight = null;
+
+export function getAiOverview() {
+  if (_ai) return _ai;
+  try { const raw = _getLocal(AI_CACHE_KEY); if (raw) return (_ai = JSON.parse(raw)); } catch (e) { /* fall through */ }
+  return null;
+}
+
+export async function refreshAiOverview(force) {
+  const cached = getAiOverview();
+  if (!force && cached && (Date.now() - cached.fetchedAt) < AI_MIN_REFRESH_MS) return cached;
+  if (_aiInFlight) return _aiInFlight;
+  _aiInFlight = (async () => {
+    try {
+      const client = _getClient();
+      if (!client) return cached;
+      const { data, error } = await client.rpc('ai_audit_overview');
+      if (error) throw error;
+      const out = Object.assign({}, data || {}, { fetchedAt: Date.now() });
+      _ai = out; _setLocal(AI_CACHE_KEY, JSON.stringify(out));
+      return out;
+    } catch (e) {
+      return cached; // keep showing the last good copy; the page marks it stale by fetchedAt
+    } finally { _aiInFlight = null; }
+  })();
+  return _aiInFlight;
+}
+
 // Bridged — see header note.
+window.auditBridgeGetAiOverview = getAiOverview;
+window.auditBridgeRefreshAiOverview = refreshAiOverview;
 window.auditBridgeRefresh = refreshOnPageShow;
 window.auditBridgeIsConnected = isConnected;
 window.auditBridgeGetCachedSummary = getCachedSummary;

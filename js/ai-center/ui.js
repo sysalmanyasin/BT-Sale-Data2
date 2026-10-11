@@ -1095,10 +1095,10 @@ function secHero(info) {
 }
 
 // ───────────────────────── Command Deck: tabs + overview cards ─────────────────────────
-const TABS = [['overview', 'Overview', 'home'], ['sales', 'Sales & Forecast', 'bars'], ['inventory', 'Inventory', 'box'], ['operations', 'Operations', 'gear'], ['more', 'More', 'more']];
+const TABS = [['overview', 'Overview', 'home'], ['sales', 'Sales & Forecast', 'bars'], ['inventory', 'Inventory', 'box'], ['operations', 'Operations', 'gear'], ['audit', 'Audit', 'shield'], ['more', 'More', 'more']];
 // which tab(s) each card belongs to ('*' = every tab). A card can live in several tabs; there is still exactly one node per card.
 const TAB_OF = { hero: '*', tabs: '*', chat: '*', crit: '*', dktiles: 'overview', dkatt: 'overview inventory', dksales: 'overview sales', fc: 'sales', dkinv: 'overview inventory', invstr: 'inventory',
-  dkmoney: 'overview', money: 'sales', dkappr: 'overview operations', actc: 'operations', dkops: 'overview', ops: 'operations', sys: 'more', att: 'more' };
+  dkmoney: 'overview', money: 'sales', dkappr: 'overview operations', actc: 'operations', dkops: 'overview', ops: 'operations', dkaudit: 'audit', dkexp: 'audit', dkpay: 'audit', sys: 'more', att: 'more' };
 function setTab(id) { S.tab = TABS.some(t => t[0] === id) ? id : 'overview'; paint(); const el = document.getElementById('aic-tabs'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'start' }); }
 const ic = (name, cls = 'dk-ic') => { const s = h2svg('svg', { viewBox: '0 0 24 24', class: cls, 'aria-hidden': 'true', focusable: 'false', fill: 'none', stroke: 'currentColor', 'stroke-width': 1.8, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }); s.append(h2svg('path', { d: ICONS[name] || ICONS.bars })); return s; };
 function secTabs() {
@@ -1151,6 +1151,26 @@ function secDkMoney() {
   return dkCard('dkmoney', 'cash', 'Closing Cash & Money', ['View Details', () => setTab('sales')],
     !S.snap ? dkWait() : !P ? empty('Closing, cash and ledger data are not available.') : h('div', {}, h('div', { class: 'dk-two' }, kvList(P.left, 'dk-l'), kvList(P.right, 'dk-r')),
       P.foot ? h('div', { class: 'dk-foot', text: P.foot + (P.month ? ' \u00B7 ' + P.month : '') }) : null));
+}
+function dkList(rows) {
+  return h('div', { class: 'dk-rows dk-flat' }, rows.map(r => h('div', { class: 'dk-line' }, h('span', { class: 'dk-lt' }, h('b', { text: r.name }), h('small', { text: r.sub })), h('b', { class: 'dk-big dk-r-' + (r.tone || 'cy'), text: r.value }))));
+}
+function auditSrc() { const d = S.snap && S.snap.raw && S.snap.raw.deck; return d || {}; }
+function secDkAudit() {
+  const P = S.snap ? DK.auditPanel(auditSrc().ai) : null;
+  return dkCard('dkaudit', 'shield', 'Audit & Variance', null,
+    !S.snap ? dkWait() : !P ? empty('Audit data is not loaded yet. Open the Audit page once.') : h('div', {}, h('div', { class: 'dk-two' }, kvList(P.left, 'dk-l'), kvList(P.right, 'dk-r')),
+      P.top.length ? h('div', {}, h('div', { class: 'dk-foot', text: 'Biggest unresolved variances' }), dkList(P.top)) : null));
+}
+function secDkExpiry() {
+  const P = S.snap ? DK.expiryPanel(auditSrc().ai) : null;
+  return dkCard('dkexp', 'calendar', 'Near Expiry', null,
+    !S.snap ? dkWait() : !P ? empty('No expiry data yet.') : h('div', {}, h('div', { class: 'dk-two' }, kvList(P.left, 'dk-l'), kvList(P.right, 'dk-r')), P.months.length ? dkList(P.months) : null));
+}
+function secDkPay() {
+  const P = S.snap ? DK.paymentPanel(auditSrc().pay) : null;
+  return dkCard('dkpay', 'cash', 'Payments (Cash / Card / Credit)', null,
+    !S.snap ? dkWait() : !P ? empty('Payment data is not loaded yet. Open the Payments page once.') : h('div', {}, h('div', { class: 'dk-two' }, kvList(P.left, 'dk-l'), kvList(P.right, 'dk-r')), dkList(P.days), P.foot ? h('div', { class: 'dk-foot', text: P.foot }) : null));
 }
 function secDkApprovals() {
   const A = window.BTAgent, list = DK.approvalRows(A && typeof A.approvals === 'function' ? A.approvals() : []);
@@ -1255,7 +1275,7 @@ function paint() {
   const info = coreInfo();
   // Business-first order: critical → snapshot → needs attention → copilot → sales → inventory/STR → closing/cash/money → approvals → operations
   const keyed = [['hero', secHero(info)], ['tabs', secTabs()], ['chat', secChat()], ['crit', secCritical(info)], ['dktiles', secDkTiles()], ['dkatt', secDkAttention()], ['dksales', secDkSales()], ['fc', secForecast()],
-    ['dkinv', secDkInv()], ['invstr', secInvStr()], ['dkmoney', secDkMoney()], ['money', secMoney()], ['dkappr', secDkApprovals()], ['actc', secActions(info)], ['dkops', secDkOps()], ['ops', secOps(info)], ['sys', secSystems()], ['att', secAttention()]]
+    ['dkinv', secDkInv()], ['invstr', secInvStr()], ['dkmoney', secDkMoney()], ['money', secMoney()], ['dkappr', secDkApprovals()], ['actc', secActions(info)], ['dkops', secDkOps()], ['dkaudit', secDkAudit()], ['dkexp', secDkExpiry()], ['dkpay', secDkPay()], ['ops', secOps(info)], ['sys', secSystems()], ['att', secAttention()]]
     .filter(([, n]) => n);
   const cards = keyed.map(([id, n]) => { const tabs = TAB_OF[id] || 'more'; n.setAttribute('data-tabs', tabs); if (tabs !== '*' && !tabs.split(' ').includes(S.tab)) n.setAttribute('data-off', ''); return n; });
   // a genuinely pending approval outranks everything: the Action Center moves to the top (CSS keyed on data-pri)

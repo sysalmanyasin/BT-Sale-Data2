@@ -51,9 +51,9 @@ describe('AI Center page', () => {
     assert.equal(hero.querySelectorAll('.aic-hbtn, .aic-hbub p, .aic-avset, .aic-mission, .aic-lifed').length, 0, 'greeting, quick buttons, avatar buttons, mission and lifecycle are gone from under the avatar');
     assert.ok(hero.querySelector('.aic-cs.aic-sr h2'), 'the state is still available to screen readers');
   });
-  test('Command Deck: five tabs, Overview shows the key cards and other tabs hide them', async () => {
+  test('Command Deck: six tabs, Overview shows the key cards and other tabs hide them', async () => {
     const tabs = [...document.querySelectorAll('#aic-tabs [role=tab]')];
-    assert.deepEqual(tabs.map(b => b.getAttribute('data-tab')), ['overview', 'sales', 'inventory', 'operations', 'more']);
+    assert.deepEqual(tabs.map(b => b.getAttribute('data-tab')), ['overview', 'sales', 'inventory', 'operations', 'audit', 'more']);
     assert.equal(tabs.filter(b => b.getAttribute('aria-selected') === 'true').length, 1);
     const visible = () => [...document.querySelectorAll('.aic-main > [data-tabs]:not([data-off])')].map(n => n.id);
     ui.__test.setTab('overview');
@@ -61,6 +61,8 @@ describe('AI Center page', () => {
     assert.ok(!visible().includes('aic-fc'));
     ui.__test.setTab('inventory'); assert.ok(visible().includes('aic-invstr') && !visible().includes('aic-dktiles'));
     ui.__test.setTab('operations'); assert.ok(visible().includes('aic-ops') && visible().includes('aic-actc'));
+    ui.__test.setTab('audit'); for (const id of ['aic-dkaudit', 'aic-dkexp', 'aic-dkpay']) assert.ok(visible().includes(id), id + ' on Audit');
+    assert.ok(!visible().includes('aic-dktiles'));
     ui.__test.setTab('nonsense'); assert.equal(ui.__test.S.tab, 'overview');
   });
   test('Command Deck cards render real snapshot numbers', async () => {
