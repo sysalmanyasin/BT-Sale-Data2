@@ -61,14 +61,11 @@ describe('AI Center collapsible cards', () => {
   });
 });
 
-describe('AI Center chat assistant button', () => {
-  test('the command bar has an Open chat assistant button that calls BTAgent.open', async () => {
-    let opened = 0;
-    window.BTAgent = { open: () => { opened++; } };
-    const b = q('.aic-chatbtn');
-    assert.ok(b, 'chat button missing');
-    assert.equal(b.getAttribute('aria-label'), 'Open chat assistant');
-    b.click();
-    assert.equal(opened, 1);
+describe('AI Center chat lives under Jarvis', () => {
+  test('there is no separate chat-assistant button; the thread and the input are inline under the avatar', async () => {
+    assert.equal(q('.aic-chatbtn'), null, 'separate chat button must be gone');
+    assert.equal(q('.aic-cmd'), null, 'no fixed bottom bar');
+    assert.ok(q('#aic-chat .aic-thread') && q('#aic-chat #aic-q'), 'inline thread and input');
+    assert.ok(q('#aic-hero').compareDocumentPosition(q('#aic-chat')) & 4, 'chat follows the hero');
   });
 });

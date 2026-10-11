@@ -28,9 +28,11 @@ const PAGE_ID = 'page-ai-center';
 const LS_VISIT = 'bt_aic_last_visit_v1', LS_DISMISS = 'bt_aic_dismissed_v1';
 const STALE_MS = 5 * 60000, REFRESH_MS = 45000;
 
+// Jarvis speaks by default (first visit only; the speaker button turns it off and the choice is remembered).
+try { if (V.voiceSupport(window).output && !localStorage.getItem('bt_jarvis_voice_init')) { localStorage.setItem('bt_jarvis_voice_init', '1'); V.setVoiceOut(true); } } catch (_) { /* private mode */ }
 const S = {
   snap: null, health: null, actions: null, history: [], loading: false, error: null,
-  voice: { listening: false, out: V.getVoiceOut() }, mode: 'monitor', filter: 'all', baseline: null, started: false, tick: 0, toolsOpen: false, open: {},
+  voice: { listening: false, out: V.getVoiceOut(), talking: false }, mode: 'monitor', filter: 'all', baseline: null, started: false, tick: 0, toolsOpen: false, open: {},
   awaitingFor: null, assess: {}, lastRefreshAt: 0, mounted: false, rafId: 0, deep: {}, repo: { state: 'idle', idx: null }, repoQ: '',
 };
 
@@ -161,7 +163,7 @@ function sectionHeader(title, right) { return h('div', { class: 'aic-sh' }, h('h
 // Cards are collapsed by default (tap the title to open). Kept open: the one-line summary + status core, the Action Center
 // (pending approvals must never be hidden), the latest BT response, and Tool Intelligence (it already has its own toggle).
 // The open/closed choice lives in S.open so it survives the full repaint that runs on every refresh.
-const ALWAYS_OPEN = new Set(['crit', 'copilot', 'core', 'runs', 'att', 'sys', 'fc', 'invstr', 'money', 'actc', 'tools']);
+const ALWAYS_OPEN = new Set(['crit', 'copilot', 'chat', 'core', 'runs', 'att', 'sys', 'fc', 'invstr', 'money', 'actc', 'tools']);
 
 // One-line, REAL summary shown in a collapsed card's header (hidden once the card is open). Returns [text, tone] or null.
 function foldSummary(id) {
@@ -258,6 +260,20 @@ function setAvatarPhoto(file) {
 }
 function clearAvatarPhoto() { try { localStorage.removeItem(AV_KEY); localStorage.removeItem(AV_MODE); } catch (e) { /* ignore */ } render(); }
 
+if (typeof window !== 'undefined' && !window.__btJarvisTalk) {
+  window.__btJarvisTalk = true;
+  let poll = null;
+  const apply = on => {
+    S.voice.talking = !!on;
+    document.querySelectorAll('.aic-stage').forEach(el => el.setAttribute('data-talk', on ? '1' : '0'));
+    const pill = document.querySelector('.aic-hpill');
+    if (pill) { pill.classList.toggle('talk', !!on); pill.textContent = on ? 'Jarvis speaking' : (pill.classList.contains('off') ? 'Jarvis offline' : 'Jarvis online'); }
+    clearInterval(poll); poll = null;
+    if (on) poll = setInterval(() => { try { if (!window.speechSynthesis.speaking) apply(false); } catch (_) { apply(false); } }, 700); // some mobile browsers never fire "end"
+  };
+  window.addEventListener('bt-voice-state', e => apply(e.detail && e.detail.speaking));
+}
+
 function jarvisAvatar() {
   const photo = avatarPhoto();
   const n = (tag, a, ...kids) => { const e = h2svg(tag, a); kids.forEach(k => e.append(k)); return e; };
@@ -310,9 +326,10 @@ function secCore(info) {
   const life = M.deriveLifecycle(requestEvents(m || lastRequestStart()), !!S.snap);
   // Compact status row inside the Copilot card (small avatar, one line of detail). The lifecycle is kept, folded.
   return h('div', { class: 'aic-corerow', id: 'aic-core' },
-    h('div', { class: 'aic-stage', 'data-s': core.state.toLowerCase() },
+    h('div', { class: 'aic-stage', 'data-s': core.state.toLowerCase(), 'data-talk': S.voice.talking ? '1' : '0' },
       h('i', { class: 'aic-ring r1' }), h('i', { class: 'aic-ring r2' }), h('i', { class: 'aic-ring r3' }),
-      h('div', { class: 'aic-orb' }, jarvisAvatar(), h('div', { class: 'aic-orb-t' }, h('b', { text: 'JARVIS' }), h('small', { text: core.state.replace(/_/g, ' ') })))),
+      h('div', { class: 'aic-orb' }, jarvisAvatar(), h('div', { class: 'aic-orb-t' }, h('b', { text: 'JARVIS' }), h('small', { text: core.state.replace(/_/g, ' ') }))),
+      h('div', { class: 'aic-wave', 'aria-hidden': 'true' }, [0, 1, 2, 3, 4, 5, 6].map(() => h('i')))),
     h('div', { class: 'aic-cs' }, h('h2', { text: core.state.replace(/_/g, ' ') }), h('p', { text: core.detail })),
     h('div', { class: 'aic-avset' },
       h('label', { class: 'aic-avbtn' }, avatarPhoto() ? 'Change avatar' : 'Use my avatar or photo', h('input', { type: 'file', accept: 'image/*', hidden: true, onchange: ev => setAvatarPhoto(ev.target.files && ev.target.files[0]) })),
@@ -1076,13 +1093,42 @@ function secHero(info) {
   const up = !/^(OFFLINE|ERROR)$/i.test(info.core.state);
   return card('hero', 'monitor investigate act',
     secCore(info),
-    h('div', { class: 'aic-hbub', role: 'status' }, h('span', { class: 'aic-hpill ' + (up ? 'on' : 'off'), text: up ? 'Jarvis online' : 'Jarvis offline' }), h('p', { text: heroGreeting() })),
+    h('div', { class: 'aic-hbub', role: 'status' }, h('span', { class: 'aic-hpill ' + (up ? 'on' : 'off') + (S.voice.talking ? ' talk' : ''), text: S.voice.talking ? 'Jarvis speaking' : up ? 'Jarvis online' : 'Jarvis offline' }), h('p', { text: heroGreeting() })),
     h('div', { class: 'aic-hact' }, HERO_ACTIONS.map(([ic, lb, q]) => h('button', { class: 'aic-hbtn', onclick: () => ask(q) }, h('span', { 'aria-hidden': 'true', text: ic }), h('b', { text: lb })))));
 }
-function secCopilot(info) {
-  return card('copilot', 'monitor investigate', sectionHeader('AI BUSINESS COPILOT', h('span', { class: 'aic-sub', text: 'read-only · evidence shown · you approve changes' })),
-    responseNode(),
-    h('div', { class: 'aic-k', text: 'INVESTIGATION HISTORY' }), histNode());
+// Chat lives directly under Jarvis: your question, his answer (spoken if the speaker is on), and the input right below.
+function chatThread() {
+  const evs = T.recent(400), openId = (T.liveState().open || {}).request_id || null;
+  const starts = evs.filter(e => e.type === 'request_start').slice(0, 3).reverse();
+  const items = [];
+  starts.forEach((st, i) => {
+    const q = (st.metadata && st.metadata.question) || '';
+    if (q) items.push(h('div', { class: 'aic-msg me' }, h('p', { text: q })));
+    const ans = evs.find(e => e.request_id === st.request_id && (e.type === 'answer' || e.type === 'instant') && e.metadata && e.metadata.text);
+    const err = evs.find(e => e.request_id === st.request_id && e.type === 'error');
+    if (ans) {
+      const last = i === starts.length - 1 ? Object.entries(S.assess).sort((x, y) => y[1].at - x[1].at)[0] : null;
+      const f = last && S.snap && S.snap.findings.find(x => x.id === last[0]);
+      items.push(h('div', { class: 'aic-msg jv' }, mdNode(ans.metadata.text),
+        h('div', { class: 'aic-row' },
+          V.voiceSupport(window).output ? h('button', { class: 'aic-g', text: '\uD83D\uDD0A Listen', onclick: () => V.speak(window, ans.metadata.text, V.voiceLang(window)) }) : null,
+          f ? h('button', { class: 'aic-p', text: 'Open structured result', onclick: () => openFinding(f) }) : null,
+          h('span', { class: 'aic-sub', text: M.ageLabel(ans.timestamp) + (ans.type === 'instant' ? ' \u00B7 instant, no AI used' : '') }))));
+    } else if (err) items.push(h('div', { class: 'aic-msg jv err' }, h('p', { text: 'I could not finish that. ' + ((err.metadata && err.metadata.message) || '') })));
+    else if (openId === st.request_id) { const lv = T.liveState(); items.push(h('div', { class: 'aic-msg jv work' }, h('p', { text: 'Working on it' + (lv.activeTool ? ' \u00B7 ' + lv.activeTool.tool : '') + '\u2026' }), h('span', { class: 'aic-dots', 'aria-hidden': 'true' }, h('i'), h('i'), h('i')))); }
+  });
+  if (!items.length) items.push(h('div', { class: 'aic-msg jv' }, h('p', { text: 'Ask me anything about your business. Tap a button above, type below, or press the mic and talk.' })));
+  return h('div', { class: 'aic-thread', 'aria-live': 'polite' }, items);
+}
+function composer() {
+  const input = h('input', { id: 'aic-q', type: 'text', placeholder: 'Ask Jarvis\u2026', 'aria-label': 'Ask Jarvis', autocomplete: 'off', enterkeyhint: 'send', maxlength: '2000' });
+  const go = () => { const v = input.value; if (v.trim()) { input.value = ''; ask(v); } };
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); go(); } });
+  return h('div', { class: 'aic-form' }, input, micButton(), speakerButton(), h('button', { class: 'aic-p', 'aria-label': 'Send', text: '\u27A4', onclick: go }));
+}
+function secChat() {
+  return card('chat', 'monitor investigate act', chatThread(), composer(),
+    h('details', { class: 'aic-lifed aic-histd' }, h('summary', { text: 'Earlier investigations' }), histNode()));
 }
 
 // ── Needs-you-now banner: critical findings and pending approvals are lifted above every normal section ──
@@ -1106,7 +1152,6 @@ function secOps(info) {
 }
 
 // ───────────────────────── command bar + palette ─────────────────────────
-function openChat() { if (window.BTAgent && typeof window.BTAgent.open === 'function') window.BTAgent.open(); else toast('The chat assistant is still loading. Try again in a moment.'); }
 
 // ── voice (browser speech; shared module js/agent/ui/voice.js; spoken answers are handled by the chat panel) ──
 const LS_VOICE = 'bt_aic_voice_v1';
@@ -1147,19 +1192,6 @@ function promptChips() {
     closingIncomplete: raw && raw.closing && raw.closing.incomplete_days ? raw.closing.incomplete_days.length : 0, approvals: A && typeof A.approvals === 'function' ? A.approvals().length : 0,
   }, 4);
 }
-function cmdBar() {
-  const input = h('input', { id: 'aic-q', type: 'text', placeholder: 'Ask JARVIS anything about your business…', 'aria-label': 'Ask BT', autocomplete: 'off', enterkeyhint: 'send', maxlength: '2000' });
-  const go = () => { const v = input.value; if (v.trim()) { input.value = ''; ask(v); } };
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); go(); } });
-  return h('div', { class: 'aic-cmd' },
-    h('div', { class: 'aic-chips', 'aria-label': 'Suggested questions' }, promptChips().map(c => h('button', { text: c, onclick: () => ask(c) }))),
-    h('div', { class: 'aic-form' }, input,
-      micButton(),
-      speakerButton(),
-      h('button', { class: 'aic-chatbtn', title: 'Open chat assistant', 'aria-label': 'Open chat assistant', onclick: openChat }, h('span', { 'aria-hidden': 'true', text: '\u{1F4AC}' }), h('span', { class: 'aic-chatbtn-t', text: 'Chat' })),
-      h('button', { class: 'aic-p', 'aria-label': 'Send', text: '➤', onclick: go }),
-      h('button', { 'aria-label': 'Open command palette', text: '⌘K', onclick: openPalette })));
-}
 
 const COMMANDS = () => [
   ['Ask BT…', 'Focus the command bar', () => { closeModal(); const i = $('#aic-q'); if (i) i.focus(); }],
@@ -1199,7 +1231,7 @@ function paint() {
   const r = root(); if (!r || !pageOn()) return;
   const info = coreInfo();
   // Business-first order: critical → snapshot → needs attention → copilot → sales → inventory/STR → closing/cash/money → approvals → operations
-  const cards = [secHero(info), secCritical(info), secSystems(), secAttention(), secCopilot(info), secForecast(), secInvStr(), secMoney(), secActions(info), secOps(info)]
+  const cards = [secHero(info), secChat(), secCritical(info), secSystems(), secAttention(), secForecast(), secInvStr(), secMoney(), secActions(info), secOps(info)]
     .filter(Boolean);
   // a genuinely pending approval outranks everything: the Action Center moves to the top (CSS keyed on data-pri)
   const main = h('main', { class: 'aic-main', 'data-mode': S.mode, 'data-pri': info.live.pendingApproval ? 'approvals' : 'normal' }, cards);
@@ -1207,7 +1239,7 @@ function paint() {
   const keep = $('#aic-q'), val = keep ? keep.value : '', hadFocus = keep && document.activeElement === keep;
   const rqHad = !!(document.activeElement && document.activeElement.id === 'aic-rq');
   const scroll = window.scrollY;
-  r.replaceChildren(...[secHeaderBar(info.core), offline, S.error && S.snap ? failureNode(S.error, () => refresh({ force: true })) : null, main, cmdBar()].filter(Boolean)); // null args would render the text "null"
+  r.replaceChildren(...[secHeaderBar(info.core), offline, S.error && S.snap ? failureNode(S.error, () => refresh({ force: true })) : null, main].filter(Boolean)); // null args would render the text "null"
   const cmdEl = $('.aic-cmd'); if (cmdEl && cmdEl.offsetHeight) r.style.setProperty('--aic-cmd-h', cmdEl.offsetHeight + 'px'); // content clearance: the fixed composer never covers the last card
   const q = $('#aic-q'); if (q) { q.value = val; if (hadFocus) q.focus(); }
   if (rqHad) { const r2 = $('#aic-rq'); if (r2) { r2.focus(); const n = r2.value.length; try { r2.setSelectionRange(n, n); } catch (_) { /* not a text input */ } } }

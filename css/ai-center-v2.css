@@ -188,3 +188,40 @@ body.aic-open .ag-send,body.aic-open .ag-user{background:linear-gradient(135deg,
   .aic-page.aic-jarvis .aic-snap-tile[class]{flex:0 0 150px;scroll-snap-align:start}
 }
 .aic-page.aic-jarvis .aic-snap-tile .aic-it-f .aic-pill.aic-wn{display:none}
+
+/* ── Jarvis speaking + chat directly under him ── */
+.aic-page.aic-jarvis .aic-main>#aic-hero{order:-2;margin-bottom:-6px;border-bottom-left-radius:8px;border-bottom-right-radius:8px}
+.aic-page.aic-jarvis .aic-main>#aic-chat{order:-1;grid-column:1/-1;display:flex;flex-direction:column;gap:12px;max-width:760px;width:100%;justify-self:center;border-top-left-radius:8px;border-top-right-radius:8px}
+.aic-page.aic-jarvis .aic .aic-thread{display:flex;flex-direction:column;gap:10px;max-height:min(52vh,460px);overflow-y:auto}
+.aic-page.aic-jarvis .aic-msg{max-width:92%;padding:10px 14px;border-radius:18px;font-size:14px;line-height:1.55;overflow-wrap:anywhere}
+.aic-page.aic-jarvis .aic-msg p{margin:0}
+.aic-page.aic-jarvis .aic-msg.me{align-self:flex-end;background:var(--grad);color:#0a0618;border-bottom-right-radius:6px}
+.aic-page.aic-jarvis .aic-msg.jv{align-self:flex-start;background:var(--j-s1);border:1px solid var(--j-ln);border-bottom-left-radius:6px}
+.aic-page.aic-jarvis .aic-msg.err{border-color:rgba(251,113,133,.5)}
+.aic-page.aic-jarvis .aic-msg.work{display:flex;align-items:center;gap:10px;color:var(--j-mu)}
+.aic-page.aic-jarvis .aic-dots{display:inline-flex;gap:4px}
+.aic-page.aic-jarvis .aic-dots i{width:6px;height:6px;border-radius:50%;background:var(--j-cy);opacity:.4}
+.aic-page.aic-jarvis .aic-msg .aic-row{margin-top:8px;gap:8px}
+.aic-page.aic-jarvis .aic-msg .aic-row button{min-height:34px;font-size:12px}
+.aic-page.aic-jarvis #aic-chat .aic-form{position:static}
+.aic-page.aic-jarvis .aic-histd summary{font-size:12px;color:var(--j-mu)}
+/* no fixed bar any more: only the bottom nav needs clearing */
+.aic-page.aic-jarvis .aic,.aic-page.aic-jarvis .aic{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+@media(min-width:861px){.aic-page.aic-jarvis .aic{padding-bottom:40px}}
+/* speaking: equaliser under the avatar, halo + faster rings, visor pulses */
+.aic-page.aic-jarvis .aic-wave{position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);display:none;align-items:flex-end;gap:4px;height:26px;padding:4px 10px;border-radius:999px;background:rgba(7,9,20,.85);border:1px solid var(--j-ln)}
+.aic-page.aic-jarvis .aic-wave i{width:4px;height:6px;border-radius:2px;background:var(--c,var(--j-cy))}
+.aic-page.aic-jarvis .aic-stage[data-talk="1"] .aic-wave{display:flex}
+.aic-page.aic-jarvis .aic-hpill.talk{color:var(--j-cy);background:rgba(139,155,255,.12)}
+@media(prefers-reduced-motion:no-preference){
+  .aic-page.aic-jarvis .aic-dots i{animation:aic-dot 1s ease-in-out infinite}.aic-page.aic-jarvis .aic-dots i:nth-child(2){animation-delay:.15s}.aic-page.aic-jarvis .aic-dots i:nth-child(3){animation-delay:.3s}
+  @keyframes aic-dot{50%{opacity:1;transform:translateY(-3px)}}
+  .aic-page.aic-jarvis .aic-stage[data-talk="1"] .aic-wave i{animation:aic-eq .5s ease-in-out infinite alternate}
+  .aic-page.aic-jarvis .aic-wave i:nth-child(2n){animation-duration:.38s}.aic-page.aic-jarvis .aic-wave i:nth-child(3n){animation-duration:.62s}.aic-page.aic-jarvis .aic-wave i:nth-child(4){animation-delay:.1s}
+  @keyframes aic-eq{from{height:5px}to{height:18px}}
+  .aic-page.aic-jarvis .aic-stage[data-talk="1"] .aic-orb{animation:aic-halo .8s ease-in-out infinite alternate}
+  @keyframes aic-halo{from{box-shadow:0 0 50px -14px var(--c)}to{box-shadow:0 0 110px -4px var(--c)}}
+  .aic-page.aic-jarvis .aic-stage[data-talk="1"] .jv-r2{animation-duration:4s}.aic-page.aic-jarvis .aic-stage[data-talk="1"] .jv-r3{animation-duration:5s}
+  .aic-page.aic-jarvis .aic-stage[data-talk="1"] .jv-visor{animation:aic-visor .25s ease-in-out infinite alternate;transform-box:fill-box;transform-origin:center}
+  @keyframes aic-visor{from{transform:scaleY(.6)}to{transform:scaleY(1.25)}}
+}

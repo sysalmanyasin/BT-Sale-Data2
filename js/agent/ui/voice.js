@@ -40,9 +40,12 @@ export function speak(win, text, lang = 'en-US') {
   const t = speakable(text); if (!t) return false;
   win.speechSynthesis.cancel();
   const u = new win.SpeechSynthesisUtterance(t); u.lang = lang; u.rate = 1;
+  u.onstart = () => emitVoiceState(win, true); u.onend = () => emitVoiceState(win, false); u.onerror = () => emitVoiceState(win, false);
   win.speechSynthesis.speak(u); return true;
 }
-export function stopSpeaking(win) { if (voiceSupport(win).output) win.speechSynthesis.cancel(); }
+export function stopSpeaking(win) { if (voiceSupport(win).output) { win.speechSynthesis.cancel(); emitVoiceState(win, false); } }
+// The AI Center avatar listens for this to animate while Jarvis is talking. No audio data is involved.
+function emitVoiceState(win, speaking) { try { win.dispatchEvent(new win.CustomEvent('bt-voice-state', { detail: { speaking } })); } catch (_) { /* fake window in tests */ } }
 
 // Shared preference + language, so the AI Center toggle and the chat-sheet toggle always agree.
 const LS_OUT = 'bt_voice_out_v1';

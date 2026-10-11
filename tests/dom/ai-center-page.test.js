@@ -52,6 +52,16 @@ describe('AI Center page', () => {
     assert.equal(hero.querySelectorAll('.aic-hbtn').length, 4, 'four quick questions');
   });
 
+  test('Jarvis speaking: the voice-state event animates the avatar and the status pill, and clears again', async () => {
+    window.dispatchEvent(new window.CustomEvent('bt-voice-state', { detail: { speaking: true } }));
+    assert.equal(q('#aic-hero .aic-stage').getAttribute('data-talk'), '1');
+    assert.equal(q('.aic-hpill').textContent, 'Jarvis speaking');
+    window.dispatchEvent(new window.CustomEvent('bt-voice-state', { detail: { speaking: false } }));
+    assert.equal(q('#aic-hero .aic-stage').getAttribute('data-talk'), '0');
+    assert.match(q('.aic-hpill').textContent, /^Jarvis (online|offline)$/);
+    assert.ok(q('#aic-chat .aic-msg.jv'), 'Jarvis always has a first message in the thread');
+  });
+
   test('JARVIS layer: page is themed, SVG avatar is decorative, state text stays real DOM text', async () => {
     assert.ok(q('#page-ai-center').classList.contains('aic-jarvis'));
     const av = q('#aic-core .aic-orb svg.aic-avatar');
