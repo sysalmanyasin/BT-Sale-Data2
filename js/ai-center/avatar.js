@@ -24,17 +24,14 @@ export function clearPhoto() { ls.del(KEYS.photo); ls.del(KEYS.mode); }
 const n = (tag, a = {}, ...kids) => { const e = document.createElementNS(NS, tag); for (const k in a) e.setAttribute(k, a[k]); kids.forEach(c => c && e.append(c)); return e; };
 
 // ── the face ────────────────────────────────────────────────────────────────────────────────────
-function photoFace({ photo, mode, mouthY }) {
+function photoFace({ photo, mouthY }) {
   const S = 4, W = 152;                                    // the square photo sits inside the 160 viewBox with a small margin
   const y = S + (W * mouthY) / 100;                        // mouth line
-  const art = mode === 'art';                              // a finished square illustration is shown whole, without a moving jaw
   const img = (extra = {}) => n('image', { href: photo, x: S, y: S, width: W, height: W, preserveAspectRatio: 'xMidYMid slice', ...extra });
   return n('g', { class: 'jv-head' },
     img(),
-    ...(art ? [] : [
-      n('ellipse', { class: 'jv-cavity', cx: 80, cy: y + 0.5, rx: 13, ry: 4 }),
-      n('g', { class: 'jv-jaw', 'clip-path': 'url(#jv-jawclip)' }, img()),
-    ]));
+    n('ellipse', { class: 'jv-cavity', cx: 80, cy: y + 0.5, rx: 13, ry: 4 }),
+    n('g', { class: 'jv-jaw', 'clip-path': 'url(#jv-jawclip)' }, img()));    // finished portraits (square art) talk too
 }
 function drawnFace() {
   return n('g', { class: 'jv-head' },
@@ -53,10 +50,11 @@ export function buildFace(prefs = getPrefs()) {
   const hasPhoto = !!prefs.photo, y = 4 + (152 * prefs.mouthY) / 100;
   const svg = n('svg', { viewBox: '0 0 160 160', class: 'aic-avatar jv-face' + (hasPhoto ? ' jv-has-photo' : ' jv-drawn'), 'aria-hidden': 'true', focusable: 'false', 'data-live': prefs.live ? '1' : '0' },
     n('defs', {},
-      n('clipPath', { id: 'jv-round' }, n('circle', { cx: 80, cy: 80, r: 76 })),
+      n('clipPath', { id: 'jv-round' }, n('circle', { cx: 80, cy: 80, r: 70 })),
       // the moving jaw: a soft box around the chin, starting at the mouth line
       n('clipPath', { id: 'jv-jawclip' }, n('rect', { x: 52, y, width: 56, height: 34, rx: 16 }))),
-    n('circle', { class: 'jv-ring', cx: 80, cy: 80, r: 78 }),
+    n('circle', { class: 'jv-ring2', cx: 80, cy: 80, r: 78.5 }),
+    n('circle', { class: 'jv-ring', cx: 80, cy: 80, r: 74 }),
     n('g', { 'clip-path': 'url(#jv-round)' }, n('rect', { class: 'jv-bg', x: 0, y: 0, width: 160, height: 160 }),
       hasPhoto ? photoFace(prefs) : drawnFace()));
   svg.style.setProperty('--mouth', String(env.toFixed(3)));

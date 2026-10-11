@@ -51,6 +51,32 @@ describe('AI Center page', () => {
     assert.equal(hero.querySelectorAll('.aic-hbtn, .aic-hbub p, .aic-avset, .aic-mission, .aic-lifed').length, 0, 'greeting, quick buttons, avatar buttons, mission and lifecycle are gone from under the avatar');
     assert.ok(hero.querySelector('.aic-cs.aic-sr h2'), 'the state is still available to screen readers');
   });
+  test('Command Deck: five tabs, Overview shows the key cards and other tabs hide them', async () => {
+    const tabs = [...document.querySelectorAll('#aic-tabs [role=tab]')];
+    assert.deepEqual(tabs.map(b => b.getAttribute('data-tab')), ['overview', 'sales', 'inventory', 'operations', 'more']);
+    assert.equal(tabs.filter(b => b.getAttribute('aria-selected') === 'true').length, 1);
+    const visible = () => [...document.querySelectorAll('.aic-main > [data-tabs]:not([data-off])')].map(n => n.id);
+    ui.__test.setTab('overview');
+    for (const id of ['aic-dktiles', 'aic-dkatt', 'aic-dksales', 'aic-dkinv', 'aic-dkmoney', 'aic-dkappr', 'aic-dkops']) assert.ok(visible().includes(id), id + ' on Overview');
+    assert.ok(!visible().includes('aic-fc'));
+    ui.__test.setTab('inventory'); assert.ok(visible().includes('aic-invstr') && !visible().includes('aic-dktiles'));
+    ui.__test.setTab('operations'); assert.ok(visible().includes('aic-ops') && visible().includes('aic-actc'));
+    ui.__test.setTab('nonsense'); assert.equal(ui.__test.S.tab, 'overview');
+  });
+  test('Command Deck cards render real snapshot numbers', async () => {
+    const S0 = ui.__test.S, keep = S0.snap;
+    S0.snap = { at: Date.now(), findings: [], systems: {}, forecast: { available: false, reason: 'x' }, errors: {}, raw: {
+      briefing: { last_sales_entry: { total_sale: 509669, date: '2026-10-11' }, inventory: { out_of_stock_but_selling: 7, running_out_within_7_days: 3 } }, pace: { pct_done: 32 },
+      planning: { weekday: { weekday_baseline: [{ weekday: 'Monday', avg: 200000 }], today: { weekday: 'Monday' } }, fill: { fill_rate_pct: 90.1, line_fill_pct: 80, zero_dispatch_lines: 1, short_lines: 2, receipt_accuracy_pct: null, awaiting_dispatch: { count: 0, oldest_age_days: null }, by_source: [], worst_products: [], note: 'n' } }, deck: { inv: { totalSkus: 10, inStock: 6, outOfStock: 4, stockValue: 1, avgCoverDays: 5, notSold90: { count: 0, value: 0 } } } } };
+    ui.__test.paint();
+    assert.equal(document.querySelectorAll('#aic-dktiles .dk-tile').length, 6);
+    assert.match(document.querySelector('#aic-dktiles [data-tile=sales]').textContent, /Rs 509,669/);
+    assert.equal(document.querySelectorAll('#aic-dksales .dk-bars li').length, 1);
+    assert.match(document.querySelector('#aic-dkinv').textContent, /Stock-Out Items/);
+    document.querySelector('#aic-dktiles [data-tile=risk]').click();
+    assert.equal(ui.__test.S.tab, 'inventory');
+    ui.__test.setTab('overview'); S0.snap = keep; ui.__test.paint();
+  });
   test('tapping the avatar opens its settings: photo, face and voice controls', async () => {
     const orb = q('#aic-hero .aic-orb');
     assert.equal(orb.getAttribute('role'), 'button');

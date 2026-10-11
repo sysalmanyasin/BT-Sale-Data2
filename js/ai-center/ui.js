@@ -12,6 +12,8 @@
 // ══════════════════════════════════════════════════════════════════════
 import * as V from '../agent/ui/voice.js';
 import * as AV from './avatar.js';
+import * as DK from './deck-model.js';
+import { ICONS } from './deck-icons.js';
 import { listTools } from '../agent/core/tool-registry.js';
 import * as T from '../agent/core/telemetry.js';
 import { SPECIALISTS } from '../agent/core/specialists.js';
@@ -32,7 +34,7 @@ const STALE_MS = 5 * 60000, REFRESH_MS = 45000;
 // Jarvis speaks by default (first visit only; the speaker button turns it off and the choice is remembered).
 try { if (V.voiceSupport(window).output && !localStorage.getItem('bt_jarvis_voice_init')) { localStorage.setItem('bt_jarvis_voice_init', '1'); V.setVoiceOut(true); } } catch (_) { /* private mode */ }
 const S = {
-  snap: null, health: null, actions: null, history: [], loading: false, error: null,
+  tab: 'overview', snap: null, health: null, actions: null, history: [], loading: false, error: null,
   voice: { talking: false }, mode: 'monitor', filter: 'all', baseline: null, started: false, tick: 0, toolsOpen: false, open: {},
   awaitingFor: null, assess: {}, lastRefreshAt: 0, mounted: false, rafId: 0, deep: {}, repo: { state: 'idle', idx: null }, repoQ: '',
 };
@@ -167,7 +169,7 @@ function sectionHeader(title, right) { return h('div', { class: 'aic-sh' }, h('h
 // Cards are collapsed by default (tap the title to open). Kept open: the one-line summary + status core, the Action Center
 // (pending approvals must never be hidden), the latest BT response, and Tool Intelligence (it already has its own toggle).
 // The open/closed choice lives in S.open so it survives the full repaint that runs on every refresh.
-const ALWAYS_OPEN = new Set(['crit', 'copilot', 'core', 'runs', 'att', 'sys', 'fc', 'invstr', 'money', 'actc', 'tools']);
+const ALWAYS_OPEN = new Set(['dktiles', 'dkatt', 'dksales', 'dkinv', 'dkmoney', 'dkappr', 'dkops', 'ops', 'crit', 'copilot', 'core', 'runs', 'att', 'sys', 'fc', 'invstr', 'money', 'actc', 'tools']);
 
 // One-line, REAL summary shown in a collapsed card's header (hidden once the card is open). Returns [text, tone] or null.
 function foldSummary(id) {
@@ -305,8 +307,8 @@ function openAvatarSettings() {
       h('div', { class: 'jv-set-btns' },
         h('label', { class: 'aic-avbtn' }, P.photo ? 'Change photo' : 'Use my photo', h('input', { type: 'file', accept: 'image/*', hidden: true, onchange: ev => setAvatarPhoto(ev.target.files && ev.target.files[0]) })),
         P.photo ? h('button', { class: 'aic-g', text: 'Remove photo', onclick: clearAvatarPhoto }) : null),
-      P.photo && P.mode !== 'art' ? row('Mouth height', h('input', { type: 'range', min: AV.MOUTH_MIN, max: AV.MOUTH_MAX, value: P.mouthY, 'aria-label': 'Mouth height', oninput: ev => { AV.setMouthY(ev.target.value); render(); const pv = document.querySelector('.jv-set-prev'); if (pv) pv.replaceChildren(jarvisAvatar()); } })) : null,
-      P.photo && P.mode !== 'art' ? h('p', { class: 'aic-sub', text: 'Slide until the moving jaw starts just under your lips. Your photo stays on this device only.' }) : h('p', { class: 'aic-sub', text: P.photo ? 'This picture is shown as it is.' : 'Add a clear, front-facing photo and Jarvis will talk with your face. It stays on this device only.' }),
+      P.photo ? row('Mouth height', h('input', { type: 'range', min: AV.MOUTH_MIN, max: AV.MOUTH_MAX, value: P.mouthY, 'aria-label': 'Mouth height', oninput: ev => { AV.setMouthY(ev.target.value); render(); const pv = document.querySelector('.jv-set-prev'); if (pv) pv.replaceChildren(jarvisAvatar()); } })) : null,
+      P.photo ? h('p', { class: 'aic-sub', text: 'Slide until the moving jaw starts just under your lips. Your picture stays on this device only.' }) : h('p', { class: 'aic-sub', text: 'Add a clear, front-facing photo and Jarvis will talk with your face. It stays on this device only.' }),
       row('Move while talking', check(P.live, on => { AV.setLive(on); render(); }))),
     h('div', { class: 'jv-set-g' },
       h('h4', { text: 'Voice' }),
@@ -1081,13 +1083,92 @@ function histNode() {
       h('span', { class: 'aic-im2', text: 'Evidence: ' + x.evidence + (x.confidence ? ' · confidence ' + x.confidence : '') + (x.approval ? ' · approval ' + x.approval.status : '') }),
       x.outcomeState ? h('span', { class: 'aic-pill aic-' + C.ACTION_STATES[x.outcomeState].tone, title: C.ACTION_STATES[x.outcomeState].note, text: C.ACTION_STATES[x.outcomeState].label }) : null))));
 }
-// Hero: just the avatar and one live status pill. Everything else (needs-you-now, snapshot, findings) has its own card below.
+// Hero (Command Deck): greeting panel | avatar | product panel. The avatar is the only picture; tapping it opens its settings.
 function secHero(info) {
   const up = !/^(OFFLINE|ERROR)$/i.test(info.core.state);
   return card('hero', 'monitor investigate act',
-    secCore(info),
-    h('div', { class: 'aic-hbub', role: 'status' }, h('span', { class: 'aic-hpill ' + (up ? 'on' : 'off') + (S.voice.talking ? ' talk' : ''), text: S.voice.talking ? 'Jarvis speaking' : up ? 'Jarvis online' : 'Jarvis offline' })));
+    h('div', { class: 'dk-hero' },
+      h('div', { class: 'dk-hp dk-hp-l' }, h('small', { text: 'Hi, I\u2019m your' }), h('b', { text: 'AI Assistant' }), h('span', { text: 'Here to help you make smarter decisions.' })),
+      secCore(info),
+      h('div', { class: 'dk-hp dk-hp-r' }, h('b', { text: 'BT INTELLIGENCE' }), h('small', { text: 'PHARMACY BUSINESS INSIGHTS & ANALYTICS' }),
+        h('div', { class: 'aic-hbub', role: 'status' }, h('span', { class: 'aic-hpill ' + (up ? 'on' : 'off') + (S.voice.talking ? ' talk' : ''), text: S.voice.talking ? 'Jarvis speaking' : up ? 'Jarvis online' : 'Jarvis offline' })))));
 }
+
+// ───────────────────────── Command Deck: tabs + overview cards ─────────────────────────
+const TABS = [['overview', 'Overview', 'home'], ['sales', 'Sales & Forecast', 'bars'], ['inventory', 'Inventory', 'box'], ['operations', 'Operations', 'gear'], ['more', 'More', 'more']];
+// which tab(s) each card belongs to ('*' = every tab). A card can live in several tabs; there is still exactly one node per card.
+const TAB_OF = { hero: '*', tabs: '*', chat: '*', crit: '*', dktiles: 'overview', dkatt: 'overview inventory', dksales: 'overview sales', fc: 'sales', dkinv: 'overview inventory', invstr: 'inventory',
+  dkmoney: 'overview', money: 'sales', dkappr: 'overview operations', actc: 'operations', dkops: 'overview', ops: 'operations', sys: 'more', att: 'more' };
+function setTab(id) { S.tab = TABS.some(t => t[0] === id) ? id : 'overview'; paint(); const el = document.getElementById('aic-tabs'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'start' }); }
+const ic = (name, cls = 'dk-ic') => { const s = h2svg('svg', { viewBox: '0 0 24 24', class: cls, 'aria-hidden': 'true', focusable: 'false', fill: 'none', stroke: 'currentColor', 'stroke-width': 1.8, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }); s.append(h2svg('path', { d: ICONS[name] || ICONS.bars })); return s; };
+function secTabs() {
+  return h('nav', { class: 'dk-tabs', id: 'aic-tabs', role: 'tablist', 'aria-label': 'BT Intelligence sections', 'data-tabs': '*' },
+    TABS.map(([id, label, icon]) => h('button', { class: 'dk-tab' + (S.tab === id ? ' on' : ''), role: 'tab', 'aria-selected': String(S.tab === id), 'data-tab': id, onclick: () => setTab(id) }, ic(icon), h('span', { text: label }))));
+}
+function dkCard(id, icon, title, link, kids) {
+  return h('section', { class: 'aic-card dk-card', id: 'aic-' + id },
+    h('div', { class: 'dk-h' }, h('span', { class: 'dk-hic' }, ic(icon)), h('h2', { text: title }),
+      link ? h('button', { class: 'dk-link', onclick: link[1], 'aria-label': link[0] + ': ' + title }, link[0], ic('chevron', 'dk-chev')) : null), kids);
+}
+function dkWait() { return skeleton(3); }
+function secDkTiles() {
+  if (!S.snap) return h('section', { class: 'dk-tiles', id: 'aic-dktiles' }, dkWait());
+  const go = id => (id === 'risk' || id === 'fill' ? 'inventory' : 'sales');
+  return h('section', { class: 'dk-tiles', id: 'aic-dktiles', 'aria-label': 'Key numbers' }, DK.overviewTiles(S.snap).map(t =>
+    h('button', { class: 'dk-tile dk-t-' + t.tone, onclick: () => setTab(go(t.id)), 'data-tile': t.id },
+      h('span', { class: 'dk-tic' }, ic(t.icon)),
+      h('span', { class: 'dk-tb' }, h('small', { text: t.label }), h('b', { text: t.value }),
+        t.progress != null ? h('i', { class: 'dk-prog', role: 'progressbar', 'aria-valuenow': String(t.progress), 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-label': t.label }, h('s', { style: 'width:' + t.progress + '%' })) : null,
+        t.delta ? h('em', { class: t.delta.up ? 'up' : 'down' }, (t.delta.up ? '\u2191 ' : '\u2193 ') + t.delta.pct + '% ', h('span', { text: t.delta.text })) : (t.sub ? h('span', { class: 'dk-sub', text: t.sub }) : null)))));
+}
+function secDkAttention() {
+  const rows = S.snap ? DK.attentionRows(S.snap) : null;
+  return dkCard('dkatt', 'alert', 'Needs Attention', ['View All', () => setTab('more')],
+    !rows ? dkWait() : rows.length ? h('div', { class: 'dk-rows' }, rows.map(r => h('button', { class: 'dk-row dk-r-' + r.tone, onclick: () => setTab(r.go) },
+      h('span', { class: 'dk-ric' }, ic(r.icon)), h('b', { class: 'dk-big', text: r.big }), h('span', { class: 'dk-rt' }, h('b', { text: r.label }), h('small', { text: r.sub })), ic('chevron', 'dk-chev'))))
+      : empty('Nothing needs your attention right now.'));
+}
+function secDkSales() {
+  const C0 = S.snap ? DK.salesChart(S.snap) : null;
+  const P = S.snap && S.snap.raw && S.snap.raw.planning;
+  return dkCard('dksales', 'bars', 'Sales & Forecast', ['View Details', () => setTab('sales')],
+    !S.snap ? dkWait() : !C0 ? empty((P && P.errors && P.errors.weekday) || 'Weekday sales pattern is not available yet.') : h('div', { class: 'dk-chart' },
+      h('ul', { class: 'dk-yax', 'aria-hidden': 'true' }, [...C0.ticks].reverse().map(k => h('li', { text: k.label }))),
+      h('ul', { class: 'dk-bars', 'aria-label': 'Average sale by weekday: ' + C0.bars.map(b => b.day + ' Rs ' + M.fmtNum(b.value)).join(', ') },
+        C0.bars.map(b => h('li', { class: b.today ? 'today' : '' }, h('span', { class: 'dk-bar', style: 'height:' + b.pct + '%', title: 'Rs ' + M.fmtNum(b.value) }), h('small', { text: b.day }))))),
+    S.snap && C0 && C0.projected != null ? h('div', { class: 'dk-foot', text: 'Expected month-end: ' + DK.rs(C0.projected) }) : null);
+}
+function kvList(items, cls) {
+  return h('dl', { class: cls }, items.map(i => h('div', { class: 'dk-kv' + (i.tone ? ' dk-' + i.tone : '') }, h('dt', { text: i.label }), h('dd', { text: i.value }), i.note ? h('small', { text: i.note }) : null)));
+}
+function secDkInv() {
+  const P = S.snap ? DK.inventoryPanel(S.snap) : null;
+  return dkCard('dkinv', 'box', 'Inventory & STR', ['View Details', () => setTab('inventory')],
+    !S.snap ? dkWait() : !P ? empty('Inventory data is not loaded. Open the Inventory page once.') : h('div', { class: 'dk-two' }, kvList(P.left, 'dk-l'), kvList(P.right, 'dk-r')));
+}
+function secDkMoney() {
+  const P = S.snap ? DK.moneyPanel(S.snap) : null;
+  return dkCard('dkmoney', 'cash', 'Closing Cash & Money', ['View Details', () => setTab('sales')],
+    !S.snap ? dkWait() : !P ? empty('Closing, cash and ledger data are not available.') : h('div', {}, h('div', { class: 'dk-two' }, kvList(P.left, 'dk-l'), kvList(P.right, 'dk-r')),
+      P.foot ? h('div', { class: 'dk-foot', text: P.foot + (P.month ? ' \u00B7 ' + P.month : '') }) : null));
+}
+function secDkApprovals() {
+  const A = window.BTAgent, list = DK.approvalRows(A && typeof A.approvals === 'function' ? A.approvals() : []);
+  const recent = T.recent(300).filter(e => e.type === 'request_start' && e.metadata && e.metadata.question).slice(0, 3);
+  return dkCard('dkappr', 'clipboard', 'Approvals & Recent Activity', ['View All', () => setTab('operations')],
+    h('div', { class: 'dk-ban ' + (list.length ? 'wn' : 'ok') }, ic(list.length ? 'alert' : 'shield', 'dk-ic'), list.length ? h('span', {}, h('b', { text: 'Action required: ' }), list.length + (list.length === 1 ? ' change needs' : ' changes need') + ' your approval') : h('span', { text: 'Nothing is waiting for your approval.' })),
+    h('div', { class: 'dk-rows dk-flat' }, list.map(a => h('div', { class: 'dk-line' }, h('span', { class: 'dk-lt' }, h('b', { text: a.title }), h('small', { text: a.sub })), h('button', { class: 'dk-pill', text: 'Review', onclick: reviewApproval }))),
+      recent.map(e => h('div', { class: 'dk-line' }, h('span', { class: 'dk-lt' }, h('b', { text: String(e.metadata.question).slice(0, 80) }), h('small', { text: 'Asked ' + clock(e.timestamp) })), h('button', { class: 'dk-pill', text: 'Open', onclick: () => { S.open.chat = true; paint(); } }))),
+      !list.length && !recent.length ? empty('No requests yet. Ask Jarvis something.') : null));
+}
+function secDkOps() {
+  const o = DK.opsStrip(S.snap, S.health);
+  return h('section', { class: 'aic-card dk-card', id: 'aic-dkops' },
+    h('div', { class: 'dk-h' }, h('span', { class: 'dk-hic' }, ic('pulse')), h('h2', { text: 'Operations & Diagnostics' }),
+      h('button', { class: 'dk-state ' + (o.healthy ? 'ok' : 'wn'), onclick: () => setTab('operations'), 'aria-label': 'Operations: ' + o.summary }, h('i', { 'aria-hidden': 'true' }), o.summary)),
+    h('div', { class: 'dk-ops' }, o.items.map(i => h('div', { class: 'dk-chip dk-' + i.tone }, h('small', { text: i.label }), h('b', { text: i.text })))));
+}
+
 // ONE chat: the assistant's own chat (js/agent/ui/agent-panel.js) is docked here, directly under Jarvis. It brings everything
 // with it: the full conversation, streaming, approval cards, undo, briefing, history, memory + house rules, usage, lock, kill
 // switch, new chat, mic and spoken answers. This page owns no second thread and no second input.
@@ -1173,10 +1254,12 @@ function paint() {
   const r = root(); if (!r || !pageOn()) return;
   const info = coreInfo();
   // Business-first order: critical → snapshot → needs attention → copilot → sales → inventory/STR → closing/cash/money → approvals → operations
-  const cards = [secHero(info), secChat(), secCritical(info), secSystems(), secAttention(), secForecast(), secInvStr(), secMoney(), secActions(info), secOps(info)]
-    .filter(Boolean);
+  const keyed = [['hero', secHero(info)], ['tabs', secTabs()], ['chat', secChat()], ['crit', secCritical(info)], ['dktiles', secDkTiles()], ['dkatt', secDkAttention()], ['dksales', secDkSales()], ['fc', secForecast()],
+    ['dkinv', secDkInv()], ['invstr', secInvStr()], ['dkmoney', secDkMoney()], ['money', secMoney()], ['dkappr', secDkApprovals()], ['actc', secActions(info)], ['dkops', secDkOps()], ['ops', secOps(info)], ['sys', secSystems()], ['att', secAttention()]]
+    .filter(([, n]) => n);
+  const cards = keyed.map(([id, n]) => { const tabs = TAB_OF[id] || 'more'; n.setAttribute('data-tabs', tabs); if (tabs !== '*' && !tabs.split(' ').includes(S.tab)) n.setAttribute('data-off', ''); return n; });
   // a genuinely pending approval outranks everything: the Action Center moves to the top (CSS keyed on data-pri)
-  const main = h('main', { class: 'aic-main', 'data-mode': S.mode, 'data-pri': info.live.pendingApproval ? 'approvals' : 'normal' }, cards);
+  const main = h('main', { class: 'aic-main', 'data-tab': S.tab, 'data-mode': S.mode, 'data-pri': info.live.pendingApproval ? 'approvals' : 'normal' }, cards);
   const offline = navigator.onLine === false ? h('div', { class: 'aic-offline', role: 'alert' }, h('b', { text: 'BT OFFLINE · ' }), 'Showing last known data' + (S.snap ? ' from ' + clock(S.snap.at) : '') + '. Some intelligence may be unavailable.') : null;
   const logEl = $('#ag-log'), logTop = logEl ? logEl.scrollTop : 0; // the chat is moved into the new tree: restore its scroll
   const rqHad = !!(document.activeElement && document.activeElement.id === 'aic-rq');
@@ -1226,4 +1309,4 @@ export function onShow() {
   refresh();
 }
 
-export const __test = { S, ask, openAvatarSettings, refresh, paint, openFinding, openSystem, openPalette, investigate, weekdayBars, openModal, allRuns, runsBlock, openDraft, promptChips };
+export const __test = { S, setTab, ask, openAvatarSettings, refresh, paint, openFinding, openSystem, openPalette, investigate, weekdayBars, openModal, allRuns, runsBlock, openDraft, promptChips };

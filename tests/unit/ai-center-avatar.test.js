@@ -34,9 +34,9 @@ describe('ai-center avatar', () => {
     AV.setMouthY(60);
     assert.ok(Number(AV.buildFace().querySelector('#jv-jawclip rect').getAttribute('y')) < Number(clip.getAttribute('y')), 'moving the slider moves the jaw');
   });
-  test('a finished square illustration is shown whole, without a moving jaw', () => {
+  test('a finished square portrait talks too (moving jaw)', () => {
     localStorage.setItem(AV.KEYS.photo, 'data:image/jpeg;base64,AAAA'); localStorage.setItem(AV.KEYS.mode, 'art');
-    const f = AV.buildFace(); assert.equal(f.querySelectorAll('image').length, 1); assert.equal(f.querySelector('.jv-jaw'), null);
+    const f = AV.buildFace(); assert.equal(f.querySelectorAll('image').length, 2); assert.ok(f.querySelector('.jv-jaw'));
   });
   test('removing the photo returns to the drawn face', () => {
     localStorage.setItem(AV.KEYS.photo, 'data:image/jpeg;base64,AAAA'); AV.clearPhoto();

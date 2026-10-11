@@ -16,6 +16,7 @@ import { getKillState } from '../agent/core/kill-switch.js';
 import { loadPendingUndos } from '../agent/core/undo-store.js';
 import { SPECIALISTS } from '../agent/core/specialists.js';
 import { buildFindings, failureStatus, applyStale, systemStatus, buildForecast, freshness, providerHealth, specialistStats, specialistsHealth, realtimeHealth, SYSTEMS, fmtNum } from './model.js';
+import { inventoryStats, auditStats } from './deck-model.js';
 
 export const getSb = () => (typeof window.btGetSupabaseClient === 'function' ? window.btGetSupabaseClient() : null);
 
@@ -73,7 +74,8 @@ export async function collectSnapshot(now = Date.now()) {
   const [wfR, roR, frR, moR] = await planP;
   const planning = { weekday: wfR.ok ? wfR.v : null, reorder: roR.ok ? roR.v : null, fill: frR.ok ? frR.v : null, money: moR.ok ? moR.v : null,
     errors: { weekday: wfR.e, reorder: roR.e, fill: frR.e, money: moR.e } };
-  const raw = { briefing, pace: paceR.ok ? paceR.v : null, closing: clR.ok ? clR.v : null, str: strR.ok ? strR.v : null, strPending: pendR.ok ? pendR.v : null, day: dayR.ok ? dayR.v : null, planning };
+  const deck = collectDeck(now);
+  const raw = { deck, briefing, pace: paceR.ok ? paceR.v : null, closing: clR.ok ? clR.v : null, str: strR.ok ? strR.v : null, strPending: pendR.ok ? pendR.v : null, day: dayR.ok ? dayR.v : null, planning };
   const findings = buildFindings({ briefing, closing: raw.closing, strPending: raw.strPending, fill: planning.fill, money: planning.money, reorder: planning.reorder, now });
 
   const avail = {
@@ -87,6 +89,14 @@ export async function collectSnapshot(now = Date.now()) {
   const systems = {};
   for (const s of SYSTEMS) { const fresh = freshnessFor(s, raw, now); systems[s] = { ...applyStale(systemStatus(s, findings, avail[s]), fresh), availability: avail[s], metrics: metricsFor(s, raw), fresh }; }
   return { at: now, raw, findings, systems, errors, forecast: (briefing && briefing.sales_data_ready === false) ? { available: false, reason: 'Sales data is still loading.' } : buildForecast(raw.pace, briefing && briefing.target), tableReadyErrors: Object.values(errors).filter(Boolean).length };
+}
+
+// Extra Command-Deck numbers read locally from the two bridge caches (no network, no writes).
+function collectDeck(now) {
+  let inv = null, audit = null;
+  try { const d = typeof window.inventoryBridgeGetFullData === 'function' ? window.inventoryBridgeGetFullData() : null; inv = d && Array.isArray(d.products) ? inventoryStats(d.products, now) : null; } catch (_) { /* bridge not loaded */ }
+  try { audit = auditStats(typeof window.auditBridgeGetCachedSummary === 'function' ? window.auditBridgeGetCachedSummary() : null); } catch (_) { /* bridge not loaded */ }
+  return { inv, audit };
 }
 
 function metricsFor(s, r) {
