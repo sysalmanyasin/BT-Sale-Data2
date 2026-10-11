@@ -61,6 +61,7 @@ describe('AI Center page', () => {
     assert.ok(!visible().includes('aic-fc'));
     ui.__test.setTab('inventory'); assert.ok(visible().includes('aic-invstr') && !visible().includes('aic-dktiles'));
     ui.__test.setTab('operations'); assert.ok(visible().includes('aic-ops') && visible().includes('aic-actc'));
+    ui.__test.setTab('sales'); assert.ok(visible().includes('aic-dkgame'), 'Forecast Game card on Sales'); assert.match(document.querySelector('#aic-dkgame').textContent, /AI Forecast Game/);
     ui.__test.setTab('audit'); for (const id of ['aic-dkaudit', 'aic-dkexp', 'aic-dkpay']) assert.ok(visible().includes(id), id + ' on Audit');
     assert.ok(!visible().includes('aic-dktiles'));
     ui.__test.setTab('nonsense'); assert.equal(ui.__test.S.tab, 'overview');

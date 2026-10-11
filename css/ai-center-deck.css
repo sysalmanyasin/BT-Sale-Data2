@@ -211,3 +211,15 @@ body.aic-open .aic-backdrop{background:rgba(2,6,16,.7)}
 }
 /* numbers and amounts never split inside a digit run ("Rs 509,66 / 9") */
 .aic-page.aic-jarvis .aic-it-v,.aic-page.aic-jarvis .aic-ftile b,.aic-page.aic-jarvis .aic-ftile .aic-it-v{overflow-wrap:normal;word-break:normal;hyphens:none}
+
+/* ───── v11.70: AI Forecast Game ───── */
+.fg-bar{position:relative;height:12px;margin:12px 2px 4px;border-radius:99px;background:var(--s3);overflow:visible}
+.fg-bar s{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent-dk),var(--green));box-shadow:0 0 10px rgba(52,232,170,.5)}
+.fg-bar em{position:absolute;top:-4px;width:3px;height:20px;margin-left:-2px;border-radius:2px;background:var(--amber);box-shadow:0 0 8px var(--amber)}
+.fg-score{margin-top:10px}
+.fg-confetti{position:fixed;inset:0;z-index:99999;pointer-events:none;overflow:hidden}
+.fg-confetti i{position:absolute;top:-16px;width:9px;height:14px;border-radius:2px;opacity:.95;animation:fg-fall linear forwards}
+@keyframes fg-fall{to{top:105%;transform:translateX(40px) rotate(720deg);opacity:.9}}
+.fg-banner{position:fixed;left:50%;top:max(14px,env(safe-area-inset-top));transform:translateX(-50%);z-index:100000;max-width:min(92vw,520px);padding:12px 18px;border-radius:14px;border:1px solid var(--accent);background:linear-gradient(180deg,#123a7a,#0a1a38);color:#eaf2ff;font:700 14px/1.35 var(--sans,system-ui);text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.6),0 0 24px rgba(47,180,255,.5);animation:fg-pop .35s ease-out}
+@keyframes fg-pop{from{transform:translate(-50%,-20px) scale(.9);opacity:0}}
+@media(prefers-reduced-motion:reduce){.fg-banner{animation:none}}

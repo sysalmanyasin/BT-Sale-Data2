@@ -13,6 +13,7 @@
 import * as V from '../agent/ui/voice.js';
 import * as AV from './avatar.js';
 import * as DK from './deck-model.js';
+import * as FG from './forecast-game.js';
 import { ICONS } from './deck-icons.js';
 import { listTools } from '../agent/core/tool-registry.js';
 import * as T from '../agent/core/telemetry.js';
@@ -1098,7 +1099,7 @@ function secHero(info) {
 const TABS = [['overview', 'Overview', 'home'], ['sales', 'Sales & Forecast', 'bars'], ['inventory', 'Inventory', 'box'], ['operations', 'Operations', 'gear'], ['audit', 'Audit', 'shield'], ['more', 'More', 'more']];
 // which tab(s) each card belongs to ('*' = every tab). A card can live in several tabs; there is still exactly one node per card.
 const TAB_OF = { hero: '*', tabs: '*', chat: '*', crit: '*', dktiles: 'overview', dkatt: 'overview inventory', dksales: 'overview sales', fc: 'sales', dkinv: 'overview inventory', invstr: 'inventory',
-  dkmoney: 'overview', money: 'sales', dkappr: 'overview operations', actc: 'operations', dkops: 'overview', ops: 'operations', dkaudit: 'audit', dkexp: 'audit', dkpay: 'audit', sys: 'more', att: 'more' };
+  dkmoney: 'overview', money: 'sales', dkappr: 'overview operations', actc: 'operations', dkops: 'overview', ops: 'operations', dkgame: 'sales', dkaudit: 'audit', dkexp: 'audit', dkpay: 'audit', sys: 'more', att: 'more' };
 function setTab(id) { S.tab = TABS.some(t => t[0] === id) ? id : 'overview'; paint(); const el = document.getElementById('aic-tabs'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'start' }); }
 const ic = (name, cls = 'dk-ic') => { const s = h2svg('svg', { viewBox: '0 0 24 24', class: cls, 'aria-hidden': 'true', focusable: 'false', fill: 'none', stroke: 'currentColor', 'stroke-width': 1.8, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }); s.append(h2svg('path', { d: ICONS[name] || ICONS.bars })); return s; };
 function secTabs() {
@@ -1172,6 +1173,21 @@ function secDkPay() {
   return dkCard('dkpay', 'cash', 'Payments (Cash / Card / Credit)', null,
     !S.snap ? dkWait() : !P ? empty('Payment data is not loaded yet. Open the Payments page once.') : h('div', {}, h('div', { class: 'dk-two' }, kvList(P.left, 'dk-l'), kvList(P.right, 'dk-r')), dkList(P.days), P.foot ? h('div', { class: 'dk-foot', text: P.foot }) : null));
 }
+const GRADE_ICON = { bullseye: '\uD83C\uDFAF', hit: '\u2705', close: '\uD83D\uDFE1', miss: '\u274C' };
+function secDkGame() {
+  const v = FG.view();
+  return dkCard('dkgame', 'target', 'AI Forecast Game', null,
+    !v ? empty('The AI needs at least 2 earlier same-weekday sales entries to make today\u2019s call.') : h('div', {},
+      h('div', { class: 'dk-two' }, kvList([{ label: 'AI\u2019s call for today', value: v.locked ? DK.rs(v.locked.expected) : '\u2014', note: v.locked ? 'range ' + DK.rs(v.locked.low) + ' \u2013 ' + DK.rs(v.locked.high) : 'needs 2+ earlier same-weekday entries' }, { label: 'Projected close', value: DK.rs(v.projected), note: v.basis }], 'dk-l'),
+        kvList([{ label: 'Sold so far (POS)', value: DK.rs(v.live), tone: v.status === 'reached' ? 'ok' : null, note: v.progressPct + '% of the call' }, { label: 'Status', value: ({ reached: 'Reached!', ahead: 'Ahead', on_track: 'On track', behind: 'Behind' })[v.status] || 'Waiting', tone: v.status === 'behind' ? 'wn' : v.status === 'waiting' ? null : 'ok' }], 'dk-r')),
+      h('div', { class: 'fg-bar', role: 'progressbar', 'aria-valuenow': String(v.progressPct), 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-label': 'Sold so far vs the AI call' }, h('s', { style: 'width:' + v.progressPct + '%' }), h('em', { style: 'left:100%' })),
+      h('div', { class: 'dk-foot', text: v.message }),
+      h('div', { class: 'dk-two fg-score' }, kvList([{ label: 'Streak', value: (v.score.streak ? '\uD83D\uDD25 ' : '') + v.score.streak, note: 'hits in a row' }, { label: 'Hit rate', value: v.score.played ? v.score.hits + ' / ' + v.score.played : '\u2014', note: v.score.bullseyes + ' bullseyes' }], 'dk-l'),
+        kvList([{ label: 'Points', value: String(v.score.points) }, { label: 'Recent', value: v.score.recent.length ? v.score.recent.map(r => GRADE_ICON[r.grade]).join(' ') : 'none yet', note: v.score.recent[0] ? 'last: ' + (v.score.recent[0].errPct > 0 ? '+' : '') + v.score.recent[0].errPct + '%' : null }], 'dk-r')),
+      h('div', { class: 'dk-foot', text: 'Bullseye (within 2%) = 3 pts \u00B7 Hit (5%) = 2 \u00B7 Close (10%) = 1. The AI locks one call per day and is graded on the final POS total; it celebrates when the sale reaches the call or it called a day within 5%.' }),
+      h('div', { class: 'aic-row' }, h('button', { class: 'dk-pill', text: 'Preview celebration', onclick: () => FG.celebrate('This is how I celebrate when we reach the forecast!') }))));
+}
+if (typeof window !== 'undefined' && !window.__btFgListen) { window.__btFgListen = true; window.addEventListener('bt-forecast-game', () => { try { if (pageOn()) paint(); } catch (_) { /* page not mounted */ } }); }
 function secDkApprovals() {
   const A = window.BTAgent, list = DK.approvalRows(A && typeof A.approvals === 'function' ? A.approvals() : []);
   const recent = T.recent(300).filter(e => e.type === 'request_start' && e.metadata && e.metadata.question).slice(0, 3);
@@ -1275,7 +1291,7 @@ function paint() {
   const info = coreInfo();
   // Business-first order: critical → snapshot → needs attention → copilot → sales → inventory/STR → closing/cash/money → approvals → operations
   const keyed = [['hero', secHero(info)], ['tabs', secTabs()], ['chat', secChat()], ['crit', secCritical(info)], ['dktiles', secDkTiles()], ['dkatt', secDkAttention()], ['dksales', secDkSales()], ['fc', secForecast()],
-    ['dkinv', secDkInv()], ['invstr', secInvStr()], ['dkmoney', secDkMoney()], ['money', secMoney()], ['dkappr', secDkApprovals()], ['actc', secActions(info)], ['dkops', secDkOps()], ['dkaudit', secDkAudit()], ['dkexp', secDkExpiry()], ['dkpay', secDkPay()], ['ops', secOps(info)], ['sys', secSystems()], ['att', secAttention()]]
+    ['dkinv', secDkInv()], ['invstr', secInvStr()], ['dkmoney', secDkMoney()], ['money', secMoney()], ['dkappr', secDkApprovals()], ['actc', secActions(info)], ['dkops', secDkOps()], ['dkgame', secDkGame()], ['dkaudit', secDkAudit()], ['dkexp', secDkExpiry()], ['dkpay', secDkPay()], ['ops', secOps(info)], ['sys', secSystems()], ['att', secAttention()]]
     .filter(([, n]) => n);
   const cards = keyed.map(([id, n]) => { const tabs = TAB_OF[id] || 'more'; n.setAttribute('data-tabs', tabs); if (tabs !== '*' && !tabs.split(' ').includes(S.tab)) n.setAttribute('data-off', ''); return n; });
   // a genuinely pending approval outranks everything: the Action Center moves to the top (CSS keyed on data-pri)
@@ -1323,6 +1339,7 @@ export function mount() {
 }
 
 export function onShow() {
+  FG.tick().catch(() => {});
   mount();
   document.body.classList.add('aic-open');
   paint();
