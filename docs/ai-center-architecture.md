@@ -6,7 +6,11 @@ The AI Center is a **control room over the existing assistant**. It owns no busi
 
 | Layer | Files | Role |
 |---|---|---|
-| Presentation | `js/ai-center/ui.js`, `css/ai-center.css` | Draws everything with `textContent` (never `innerHTML`, except the assistant's escaped markdown). |
+| Presentation | `js/ai-center/ui.js`, `css/ai-center*.css` (jarvis, command-deck, deck, copilot, v2, chat, avatar) | Command Deck: tabs Overview / Sales & Forecast / Inventory / Operations / Audit / More. Draws everything with `textContent` (never `innerHTML`, except the assistant's escaped markdown). |
+| Deck view-model | `js/ai-center/deck-model.js`, `deck-icons.js` | Pure. Overview numbers from the real snapshot; a missing source gives null, never an invented value. |
+| Copilot logic | `js/ai-center/copilot.js` | Pure. Prioritised attention, suggestions, structured investigation results, text-only drafts. No write path. |
+| Avatar + voice | `js/ai-center/avatar.js`, `js/agent/ui/voice.js` | Talking Jarvis (optional owner photo, `localStorage` only); browser Web Speech API; voice cannot approve. |
+| Forecast Game | `js/ai-center/forecast-game.js`, `js/shared/today-forecast.js` | Locks one call per day, tracks live POS, grades itself. Device-local; writes no business data. |
 | Pure model | `js/ai-center/model.js` | Maps existing tool results to findings, system cards, lifecycle, approval view, correlations, health rules. No DOM, no Supabase. |
 | Adapters | `js/ai-center/adapters.js` | Read-only: runs existing READ tools through `runTool(..., {allow:['read']})`, reads bridge sync stamps and the agent tables. |
 | Telemetry | `js/agent/core/telemetry.js`, `telemetry-store.js` | Real events only. Ring buffer (400) + redacted 7-day device history. |
@@ -30,6 +34,9 @@ The AI Center is a **control room over the existing assistant**. It owns no busi
 | Observability | `observability`, `specialistStats` | telemetry (session + 7-day history) | n/a | n/a | n/a | n/a |
 | Tool intelligence | `listTools`, `toolStatus`, `toolStats` | tool registry + telemetry | n/a | all | shown per tool | n/a |
 | Repository intelligence | `searchRepoIndex` | `repo-index.json` | none | none | none | none |
+| Audit tab (Audit & Variance, Near Expiry, Payments) | `js/audit-bridge.js` | Audit Hub `ai_audit_overview()` (`supabase/audit-project/`) | Assistant | `audit_overview`, `audit_expiry`, `payment_breakdown` | none (read) | telemetry |
+| Forecast Game | `forecast-game.js` | live POS total + weekday history | Sales | `todays_forecast` | none (device-local state) | none |
+| One chat (docked under Jarvis) | `agent-panel.js` via `BTAgent.dock` | existing assistant | router-chosen | per question | per change | `agent_audit` |
 
 ## Findings from the audit (what was wrong or duplicated, and what was done)
 
@@ -39,6 +46,10 @@ The AI Center is a **control room over the existing assistant**. It owns no busi
 4. **Activity history was memory-only**: now a redacted 7-day device store. Restored events are marked `historical` and never make BT look busy.
 5. **Health rows Realtime/Specialists were UNKNOWN**: now measured (bt-sync channel state; request/error events).
 6. **Still not measurable**: the push briefing, closing push and Drive backup Edge Functions have no heartbeat. Shown as UNKNOWN with the reason.
+
+## Not wired at runtime
+
+`js/ai-center/finding-actions.js` (finding lifecycle: reviewed / snoozed / resolved, table `agent_finding_actions`), `manager-intelligence.js` and `manager-intelligence-v2.js` are tested but not imported by the app. See `README-manager-intelligence.md`.
 
 ## Event system
 

@@ -1,29 +1,14 @@
-# BT Sale Data — second 10 manager-intelligence improvements
+# Manager Intelligence, part 2 (items 11–20): status
 
-This patch is designed to be applied **after** `bt-sale-data-first10.patch` and its installer.
-It extends the same Agent, finding lifecycle, telemetry, Supabase data, approval/verification path and ntfy function.
+> **Status (checked 2026-10-12 against the code).** This file used to be an install guide for `bt-sale-data-second10.patch` and `scripts/apply-manager-intelligence-v2.mjs`. **Neither is in the repository.** This page records what exists. The code wins on any conflict.
 
-## Improvements 11–20
+No new scheduler, AI provider, notification service, write path, approval system or business-data table was introduced.
 
-11. Money-ranked opportunities
-12. Evidence-first answer bundles
-13. Deterministic sales anomaly signals
-14. Staff/credit action signals
-15. 7/30-day demand forecast
-16. Read-only smart reorder recommendations
-17. Richer daily manager briefing blocks
-18. Verification summary from existing telemetry
-19. Finding-review learning summary from existing lifecycle actions
-20. Manager-facing opportunity/evidence/learning/verification model
+| Item | Where it lives | Wired into the running app? |
+|---|---|---|
+| 11–14, 19–20 Opportunities, evidence bundles, anomaly signals, staff/credit signals, learning and verification summaries | `js/ai-center/manager-intelligence-v2.js` (`rankOpportunities`, `evidenceBundle`, `anomalySignals`, `learningSummary`, `verificationSummary`) | **No.** Unit-tested only (`tests/unit/manager-intelligence-v2.test.js`). |
+| 15–16 7/30-day demand forecast, smart reorder recommendation | Same module; the live equivalents are the read tools `weekday_forecast` and `reorder_draft` (`js/agent/tools/planning.js`) | Live tools **Yes**; this module **No**. |
+| Read-only action plan | `manager_action_plan` in `js/agent/tools/manager-intelligence-v2.js` (30-day velocity and stock; recommendation only, changes nothing) | **Yes**, imported by `js/agent/index.js`. |
+| 17 Richer daily briefing blocks | `supabase/functions/send-daily-ntfy-briefing/manager-intelligence-v2.ts` | **No**; not imported by the function's `index.ts`. |
 
-## Apply
-
-```bash
-git apply bt-sale-data-second10.patch
-node scripts/apply-manager-intelligence-v2.mjs
-npm test
-```
-
-Then run the normal Supabase migration workflow and deploy the **existing** `send-daily-ntfy-briefing` function.
-
-No new scheduler, AI provider, notification service, write path, approval system, or business-data table is introduced.
+Tests: `npm test`. See [`README-manager-intelligence.md`](README-manager-intelligence.md).

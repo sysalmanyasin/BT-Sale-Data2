@@ -15,6 +15,11 @@ Do this on a **real, loaded app** (open Dashboard, Inventory, STR and Closing on
 | STAFF: carried-over credit, duplicates | `daily_briefing.credit` | Manager dashboard, staff credit for the month |
 | STR: awaited, dispatched not received, received, oldest open | `str_overview` | STR Report summary |
 | CLOSING: shifts closed today, incomplete days | `closing_recent_days` | Closing Book |
+| AUDIT: open audits, counting progress, variance, shortage/excess value | `audit_overview` (Audit Hub `ai_audit_overview()`) | Pharmacy Audit Hub assignments / variance view |
+| AUDIT: Near Expiry entries, units, expiring within 90 days | `audit_expiry` | Audit Hub near-expiry list |
+| AUDIT: Payments (cash / card / credit split, credit customers) | `payment_breakdown` | Sale Payments page, same days |
+| Forecast Game: AI's call, live sale, projected close | `todays_forecast` | Sale Payments bridge live POS total for today |
+| Weekday forecast / money overview | `weekday_forecast`, `money_overview` | Dashboard weekday and cash/credit figures |
 | Freshness labels | bridge sync stamps | Inventory/STR "last synced" |
 
 Pass condition: every pair equal (rounding to the nearest Rs). Record: date, Center value, page value, screenshot of both for any mismatch.

@@ -18,7 +18,9 @@ npm run test:verbose   # same, with the spec reporter (readable test names)
 npm run test:watch     # re-runs on file changes
 ```
 
-Expected result on a clean checkout: **all tests pass, 0 failures.**
+Expected result on a clean checkout: **all tests pass, 0 failures** (2026-10-12: 207 suites, 1092 tests).
+
+Beyond the table below, the suite also contains: `tests/unit/agent-*.test.js` (assistant core, tools, writes, deletes, undo, kill switch, streaming, routing, memory), `tests/unit/ai-center-*.test.js` and `tests/dom/ai-center-*.test.js` (BT Intelligence model, deck, voice, avatar, approval UI, repo index), `tests/unit/today-forecast.test.js` and `tests/dom/forecast-game.test.js` (Forecast Game), `tests/unit/audit-tab.test.js`, `tests/static/ntfy-functions.test.js` and `supabase-deploy.test.js` (Edge Function and secret-leak checks), and `tests/eval/` (60+ assistant routing/tool cases; `npm run eval`). The table below lists the original smoke layers only.
 
 ## What's covered, and why
 
@@ -26,7 +28,7 @@ Expected result on a clean checkout: **all tests pass, 0 failures.**
 |---|---|---|
 | **Static integrity** | `tests/static/file-references.test.js` | Every `<script>`/`<link>` in `index.html` points at a real file; every entry in `sw.js`'s `APP_SHELL` exists; every script/stylesheet `index.html` loads is actually precached (the exact "silently fails offline" drift the app's own README calls out as a real, previously-seen failure mode) |
 | | `tests/static/manifest.test.js` | `manifest.json` is valid JSON, has the required PWA fields, and every icon/shortcut file it points at exists |
-| | `tests/static/syntax-check.test.js` | Every one of the 89 JS files under `js/` and `sw.js` parses cleanly (`node --check`) — the cheapest possible net against a stray bracket or leftover merge marker |
+| | `tests/static/syntax-check.test.js` | Every JS file under `js/` (162 at last count) and `sw.js` parses cleanly (`node --check`) — the cheapest possible net against a stray bracket or leftover merge marker |
 | **Unit (pure modules)** | `tests/unit/config-formatters.test.js` | `js/config.js`'s number/currency formatters (`n`, `ff`, `fc`, `fv`, `pct`) that every report and dashboard tile depends on |
 | | `tests/unit/event-bus.test.js` | `js/event-bus.js`: the single pub/sub channel every Repository write announces itself on and every Page listens to — subscribe, notify, unsubscribe, and "one bad listener can't break the others" |
 | | `tests/unit/print-engine.test.js` | `js/print.js` loads and still exposes the exact API (`render`/`renderNewTab`/`renderThermal`/`renderThermalTable`) every report page calls into. Actually invoking a render is out of scope (needs a real canvas for jsPDF/html2canvas) |

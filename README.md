@@ -5,9 +5,10 @@
 ![Frontend](https://img.shields.io/badge/frontend-vanilla%20JS%20%7C%20no%20build-f7df1e)
 ![Backend](https://img.shields.io/badge/backend-Supabase-3ecf8e)
 ![Android](https://img.shields.io/badge/android-Kotlin-7f52ff)
-![Tests](https://img.shields.io/badge/tests-167%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-1092%20passing-brightgreen)
+![AI](https://img.shields.io/badge/AI-BT%20Intelligence%20%7C%20approval--gated-0b5fff)
 
-**BT Sales IC** is a personal, single-user pharmacy operations PWA for Bahria Town. One codebase covers daily sales capture, reporting, management tools, inventory intelligence, read-only closing/audit bridges, attendance, a break-glass emergency billing counter, spreadsheets, PDF archiving, cross-device sync, and native Android companions.
+**BT Sales IC** is a personal, single-user pharmacy operations PWA for Bahria Town. One codebase covers daily sales capture, reporting, management tools, inventory intelligence, read-only closing/audit bridges, attendance, a break-glass emergency billing counter, spreadsheets, PDF archiving, cross-device sync, **BT Intelligence** (the AI Center: a control room and talking assistant over the app's own data), and native Android companions.
 
 > **Scope:** built around a single pharmacy and a single primary operator. It is **not** a multi-tenant SaaS.
 >
@@ -30,6 +31,7 @@
 - [Architecture](#architecture)
 - [Features](#features)
 - [Android apps](#android-apps)
+- [BT Intelligence (AI Center)](#bt-intelligence-ai-center)
 - [AI systems](#ai-systems)
 - [Authentication & security](#authentication--security)
 - [Testing](#testing)
@@ -54,6 +56,7 @@
 | 📑 **Notes & Sheets** | Multi-file workbooks with live-data materialisation |
 | 🛠️ **Utilities** | Sync Center, PDF Library, Activity Log, global search, settings |
 | 📰 **Herald** | Deterministic daily operational headlines (no generative AI) |
+| 🛰 **BT Intelligence** | The AI Center: Command Deck (Overview / Sales & Forecast / Inventory / Operations / Audit / More), talking Jarvis assistant with the one docked chat, approval-gated changes, AI Forecast Game, Audit & Variance, Near Expiry, Payments, agent health and activity |
 | 🔎 **Inventory Search** | Standalone companion PWA with medicine reference + AI chat |
 | 📱 **Android** | 22 home-screen widgets + native attendance/geofence app |
 | 🔄 **Backup & Sync** | Supabase multi-device sync + independent Google Drive backup |
@@ -90,12 +93,13 @@ npx serve .
 | Layer | Technology |
 |---|---|
 | **Frontend** | Vanilla JavaScript (ES modules, plus legacy `<script>` modules mid-migration), HTML/CSS, no build step |
+| **AI** | `bt-agent` Edge Function over a free-provider pool (Groq, Cerebras, Gemini, OpenRouter) with fail-over; browser-driven tool loop; pgvector knowledge index; Web Speech API for voice (browser-native, nothing recorded by BT) |
 | **Backend** | Supabase: PostgreSQL, Auth, Storage, Edge Functions, REST, RPCs for transaction-sensitive work (e.g. refunds) |
 | **PWA** | `manifest.json`, root `sw.js`, offline app shell, update detection, safe reload |
 | **Libraries** | Chart.js, jsPDF, jsPDF-AutoTable, html2canvas, XLSX, qrcode-generator |
 | **Android** | Kotlin, Gradle, native widgets, geofencing |
 | **Testing** | Node built-in test runner, jsdom |
-| **CI** | GitHub Actions (APK builds) |
+| **CI** | GitHub Actions: tests (`test.yml`), Supabase deploy (`supabase-deploy.yml`), advisory live agent eval (`agent-live-eval.yml`), APK builds (widget + attendance) |
 
 ---
 
@@ -109,27 +113,33 @@ npx serve .
 ├── package.json                # Test scripts (only dev dependency: jsdom)
 │
 ├── js/                         # ~93 top-level application modules
-│   ├── shared/                 # Shared calculation modules
+│   ├── shared/                 # Shared calculation modules (summary-calc, inventory-metrics, planning-metrics,
+│   │                           #   today-forecast, credit-alerts, agent-shared)
 │   ├── herald/                 # herald-engine.js, herald-page.js
 │   ├── nav-sections.js         # Single source for all navigation
-│   ├── agent/                  # AI assistant: core/, tools/, ui/
+│   ├── agent/                  # AI assistant: core/ (registry, router, specialists, undo, telemetry…), tools/ (57 tools), ui/ (panel, voice)
+│   ├── ai-center/              # BT Intelligence: ui.js, model.js, deck-model.js, copilot.js, adapters.js,
+│   │                           #   avatar.js, forecast-game.js, repo-intel.js, repo-index.json
 │   ├── emergency-billing-native.js
 │   └── emergency-billing-bridge.js
-├── css/                        # Per-domain stylesheets
+├── css/                        # Per-domain stylesheets (ai-center*.css for BT Intelligence)
 ├── icons/
+├── docs/                       # AI Center architecture, KPI verification, final report
+├── scripts/                    # build-repo-index.mjs, agent-live-eval.mjs, apply-redesign.mjs
 │
 ├── inventory-search/           # Standalone Inventory Search PWA
 ├── android-widget/             # 22 home-screen widgets (Kotlin)
 ├── android-attendance/         # Native attendance / geofencing app (Kotlin)
 │
 ├── supabase/
+│   ├── audit-project/          # ai_audit_overview.sql (runs on the Audit Hub project, NOT in migrations/)
 │   ├── functions/              # bt-agent, send-daily-ntfy-briefing, closing-ntfy-notify, set-staff-login, google-drive, inventory-chat, medicine-ai-info (+ legacy send-daily-whatsapp-briefing, not deployed)
 │   ├── migrations/             # Dated SQL migrations
 │   ├── pdf_library/            # Schema + deploy notes
 │   └── activity_log/           # Schema
 │
-├── tests/                      # static/, unit/, dom/, helpers/
-└── .github/workflows/          # APK build workflows
+├── tests/                      # static/, unit/, dom/, eval/, helpers/
+└── .github/workflows/          # test, supabase-deploy, agent-live-eval, build-widget-apk, build-attendance-apk
 ```
 
 ---
@@ -295,13 +305,39 @@ See [`android-attendance/README.md`](android-attendance/README.md).
 
 ---
 
+## BT Intelligence (AI Center)
+
+Route `#ai-center` (nav label **BT Intelligence** 🛰). A control room over the existing assistant: it owns **no business logic, no second data layer and no write path of its own**. Every number is copied from an existing read tool, bridge or the agent's own telemetry; a missing source shows as unknown, never as an invented value. Architecture map: [`docs/ai-center-architecture.md`](docs/ai-center-architecture.md); KPI cross-check: [`docs/ai-center-kpi-verification.md`](docs/ai-center-kpi-verification.md); status: [`docs/ai-center-final-report.md`](docs/ai-center-final-report.md).
+
+**Command Deck** (`js/ai-center/ui.js`, `deck-model.js`, `css/ai-center-*.css`) has six tabs: **Overview**, **Sales & Forecast**, **Inventory**, **Operations**, **Audit**, **More**. Same layout on phone, tablet and desktop (two-column Overview).
+
+| Area | What it shows |
+|---|---|
+| **Jarvis (hero)** | Animated avatar (`avatar.js`; optional owner photo kept only in this browser's `localStorage`, never uploaded) and **the one chat** docked directly beneath it: history, memory + house rules, usage, kill switch, writes lock, new chat, briefing, approvals, undo, voice. The ✨ button on other pages only jumps here. |
+| **Voice** | Browser-native Web Speech API (`js/agent/ui/voice.js`). Jarvis speaks replies (on by default on first visit; the speaker button turns it off and the choice is remembered) and the mic feeds the same path as typing. **Voice can never approve anything**: approvals need a real user tap. |
+| **Overview / Needs attention** | Prioritised findings with evidence, impact, recommendation and what-happens-if-I-act, from `daily_briefing`, `closing_recent_days`, `str_overview`, `get_target_pace` and the inventory bridge. Rule text is labelled as rules, not AI. |
+| **Sales & Forecast** | Target pace and month projection (same function as the Dashboard), weekday forecast, money overview, and the **AI Forecast Game**. |
+| **Inventory** | Stockout / low-cover / not-sold views, reorder drafts, STR fill rate. |
+| **Operations** | Action Center (pending approvals, session undo), investigations, agent fleet and recent runs. |
+| **Audit** | **Audit & Variance**, **Near Expiry** and **Payments**, read through `js/audit-bridge.js` from the Audit Hub function `ai_audit_overview()` (`supabase/audit-project/ai_audit_overview.sql`; aggregates only, no customer or auditor names) and the read-only tools `audit_overview`, `audit_expiry`, `payment_breakdown`. |
+| **More** | Six business-system cards, correlations (rule-based, labelled not-proof), health (measured, else UNKNOWN), activity timeline, tool intelligence, repository index search. |
+
+**AI Forecast Game** (`js/ai-center/forecast-game.js`, maths in `js/shared/today-forecast.js`). While the app is open, on any page, about every 90 s it reads the live POS total, records an intraday sample, **locks the AI's call for today once** (from weekday history plus a learned time-of-day pace), projects the close, and grades earlier days against their final POS total. It tracks streak, hit rate and points, and celebrates (confetti, banner, Jarvis speaks) when the live sale reaches the call or a finished day was called within 5%. Device-local (`bt_sales_curve_v1`, `bt_forecast_game_v1`); it writes nothing to business data. The assistant exposes it through the `todays_forecast` tool.
+
+**Safety model.** The Center reads through `runTool(..., {allow:['read']})`; the kill switch and hard blocks still apply. `BTAgent.decide()` refuses any approval that is not a trusted user gesture, so scripts and voice cannot approve. Arguments are redacted before storage; the device history keeps an allow-list of metadata only. **Repository index** (`js/ai-center/repo-index.json`, built by `npm run index:repo`) holds names, line numbers and one-line summaries only, skips secret-bearing files, and is a snapshot that must be rebuilt after code changes.
+
+> `js/ai-center/finding-actions.js`, `manager-intelligence.js` and `manager-intelligence-v2.js` are covered by unit tests but are **not loaded by the app at runtime** (see [`README-manager-intelligence.md`](README-manager-intelligence.md)).
+
+---
+
 ## AI systems
 
 Deterministic business logic (Dashboard, Herald, calculators) stays AI-free. AI is **additive** and never computes figures itself: it calls read-only tools that use the app's own calculators. The old Assistant/CommandHub (removed in `196bf8d`) kept provider keys in the browser; the current design does not.
 
 | System | Where | Behaviour |
 |---|---|---|
-| **BT Assistant (Phase 2)** | `js/agent/**`, `css/agent.css`, `bt-agent` Edge Function | Floating ✨ chat on every page. Ask **"What needs my attention today?"** for a deterministic morning briefing (missing sales days, yesterday vs average, target pace, out-of-stock sellers, items running out, dead stock). **Reads** Sales, Staff (no CNIC/phone/address), Ledgers, Staff credit balances, Inventory via registered tools and can open pages. **Changes are locked by default** (🔒 in the header, device-local). Once unlocked it can propose six changes: add staff credit/payment (Credit Ledger, bucketed by the entry date's month, same shape as Quick Add; warns when a new month row won't carry last month's balance), add ledger entry, add staff note, set monthly target, add a new daily-sales entry (mirrors the Entry page: returns stored negative, TOTAL/DIFF computed, month recomputed, refuses existing dates), correct one field of an existing daily-sales entry. After a change it refreshes dashboards and honours `bt_auto_save` (same as the app's own pages). **Deletes** (one ledger entry, staff note, credit entry or sales day per call; never staff, months or sections) are `critical`: the person must **type DELETE** on the card (enforced in `runTool`, a bare tap is rejected), the model must name the exact record it read first (id / entry number + amount / date + total, mismatches are refused), and each is undoable for the session. Every change shows an **approval card** (large amounts, duplicates, >50% edits and all daily-sales edits need a second confirming tap), is written through `Actions`/`LedgerActions`, is audited (`agent_audit`, incl. approved/rejected) and has a session **Undo**. The gate is enforced in `tool-registry.runTool` (not the prompt): locked, no-approver or rejected ⇒ `run()` never executes; max 5 proposals per request. Browser drives the tool loop; the Edge Function does one model step per call over a free-provider pool (Groq, Cerebras, Gemini, OpenRouter) with fail-over; needs a session **and** an active `bt_authorized_users` row; ledger/staff conversations never go to providers that may train on free-tier prompts. **Gaps A–E (Oct 2026):** server-side **kill switch** (⛔, all devices), **hard blocks** in code for salary finalisation, refunds and bulk deletes (`core/hard-blocks.js`), **reload-proof undo** (recipes stored in `agent_audit`, rebuilt via each tool's `makeUndo`), 📊 **usage + activity** screen, 🧠 **Memory + "how I run this pharmacy"** (owner-written only), **STR** and **Closing** read tools + specialists, an **instant path** for common one-liners with no model call (`core/instant.js`), and **duplicate / carried-over credit** alerts shared by the app and the ntfy push (`js/shared/credit-alerts.js`). `agent_schedules` exists but nothing executes it yet. **Phase 4 (Oct 2026):** **streaming** replies, saved **conversation history** (🕘, 90 days), **Emergency Billing** (read-only) and **Documents** (notes, sheets) specialists, **model-assisted routing** for clue-less questions and an **advisory model reviewer** on large changes (both fall back to the rules), a **knowledge index** with `search_knowledge` (pgvector; owner-triggered, redacted, staff notes only with a non-training embedder) and an approval-gated **remember_fact**. See `supabase/functions/bt-agent/DEPLOY.md`. |
+| **BT Assistant (Phase 2)** | `js/agent/**`, `css/agent.css`, `bt-agent` Edge Function | One chat, docked inside the **BT Intelligence** page (the ✨ button on other pages jumps there); 57 registered tools. Ask **"What needs my attention today?"** for a deterministic morning briefing (missing sales days, yesterday vs average, target pace, out-of-stock sellers, items running out, dead stock). **Reads** Sales, Staff (no CNIC/phone/address), Ledgers, Staff credit balances, Inventory via registered tools and can open pages. **Changes are locked by default** (🔒 in the header, device-local). Once unlocked it can propose these changes (all approval-gated): add staff credit/payment (Credit Ledger, bucketed by the entry date's month, same shape as Quick Add; warns when a new month row won't carry last month's balance), add ledger entry, add staff note, set monthly target, add a new daily-sales entry (mirrors the Entry page: returns stored negative, TOTAL/DIFF computed, month recomputed, refuses existing dates), correct one field of an existing daily-sales entry, **roll the staff Credit Ledger forward** to the next month (never overwrites a different non-zero opening balance), and save a fact to memory (`remember_fact`). After a change it refreshes dashboards and honours `bt_auto_save` (same as the app's own pages). **Deletes** (one ledger entry, staff note, credit entry or sales day per call; never staff, months or sections) are `critical`: the person must **type DELETE** on the card (enforced in `runTool`, a bare tap is rejected), the model must name the exact record it read first (id / entry number + amount / date + total, mismatches are refused), and each is undoable for the session. Every change shows an **approval card** (large amounts, duplicates, >50% edits and all daily-sales edits need a second confirming tap), is written through `Actions`/`LedgerActions`, is audited (`agent_audit`, incl. approved/rejected) and has a session **Undo**. The gate is enforced in `tool-registry.runTool` (not the prompt): locked, no-approver or rejected ⇒ `run()` never executes; max 5 proposals per request. Browser drives the tool loop; the Edge Function does one model step per call over a free-provider pool (Groq, Cerebras, Gemini, OpenRouter) with fail-over; needs a session **and** an active `bt_authorized_users` row; ledger/staff conversations never go to providers that may train on free-tier prompts. **Gaps A–E (Oct 2026):** server-side **kill switch** (⛔, all devices), **hard blocks** in code for salary finalisation, refunds and bulk deletes (`core/hard-blocks.js`), **reload-proof undo** (recipes stored in `agent_audit`, rebuilt via each tool's `makeUndo`), 📊 **usage + activity** screen, 🧠 **Memory + "how I run this pharmacy"** (owner-written only), **STR** and **Closing** read tools + specialists, an **instant path** for common one-liners with no model call (`core/instant.js`), and **duplicate / carried-over credit** alerts shared by the app and the ntfy push (`js/shared/credit-alerts.js`). `agent_schedules` exists but nothing executes it yet. **Phase 4 (Oct 2026):** **streaming** replies, saved **conversation history** (🕘, 90 days), **Emergency Billing** (read-only) and **Documents** (notes, sheets) specialists, **model-assisted routing** for clue-less questions and an **advisory model reviewer** on large changes (both fall back to the rules), a **knowledge index** with `search_knowledge` (pgvector; owner-triggered, redacted, staff notes only with a non-training embedder) and an approval-gated **remember_fact**. See `supabase/functions/bt-agent/DEPLOY.md`. |
+| **BT Intelligence (AI Center)** | `js/ai-center/**`, `css/ai-center*.css`, `docs/ai-center-*.md` | The control room and talking Jarvis described [above](#bt-intelligence-ai-center). Read-only over the assistant; includes the Forecast Game and the Audit tab. |
 | **Medicine reference** | `inventory-search/` → `medicine-ai-info` Edge Function | Groq first, Gemini fallback; results cached ~30 days; no login required. Reference-only, not clinical decision support. |
 | **Inventory chat** | `inventory-search/` → `inventory-chat` Edge Function | Limited to product context supplied by the client; keeps no server-side inventory copy. |
 | **Daily briefing (push)** | `supabase/functions/send-daily-ntfy-briefing/` (production **v20**) | pg_cron fires it at **11:00 and 23:00 PKT** (`briefing-ntfy-11am-pkt`, `briefing-ntfy-11pm-pkt`) with an `x-cron-secret` header and it pushes Sales / Candela POS / Manager / STR / Inventory (+ optional Groq insight) to ntfy in byte-safe chunks plus an alert message. **The sale is the day's `TOTAL`** (the official figure, same as the app and the AI assistant; before v20 it used `COMP SALE`). `?dry=1` returns the messages without sending. Alert rules (also used by the in-app briefing): cash DIFF ≥ Rs 10,000, sale ≥ 30% below the same weekday last week, projection < 90% of target (from day 10), incoming STR unreceived for 3+ days. See its `DEPLOY.md`. |
@@ -361,9 +397,9 @@ npm run test:verbose     # spec reporter
 npm run test:watch       # re-run on change
 ```
 
-**Last verified (2026-10-08, `npm test`, Node 22.22.2):** 170 suites, 909 tests, 909 pass, 0 failures, 0 skipped.
+**Last verified (2026-10-12, `npm test`, Node 22.22.2, HEAD `c789064`):** 207 suites, 1092 tests, 1092 pass, 0 failures, 0 skipped (about 2 minutes).
 
-**Coverage:** static file integrity, script references, manifest validation, service-worker shell consistency, JS syntax, pure modules, EventBus, print API surface, Staff Registry (Repository + Actions), DOM and navigation behaviour.
+**Coverage:** AI agent (core, tools, writes/deletes/approvals, undo, kill switch, streaming, routing, 60+ case eval suite), AI Center (model, deck, voice, avatar, forecast game, audit tab, repo index, DOM behaviour), Edge Function and secret-leak checks, static file integrity, script references, manifest validation, service-worker shell consistency, JS syntax, pure modules, EventBus, print API surface, Staff Registry (Repository + Actions), DOM and navigation behaviour.
 
 **Not covered** (needs real-device testing): live Supabase, real Google auth, printer hardware and thermal receipts, browser rendering, Android geofencing and background execution, OEM battery management, physical GPS. Test Attendance and Emergency Billing on real devices before release.
 
@@ -376,7 +412,8 @@ More detail in [`tests/README.md`](tests/README.md).
 - The web app deploys as static files via GitHub Pages (`.nojekyll`, `CNAME`).
 - `sw.js` defines a versioned `CACHE_NAME` with an inline changelog comment above it. Check the live value in `sw.js` rather than trusting any number in documentation.
 - When shipped files change, bump `CACHE_NAME` **and** its comment together. Also bump `?v=` query strings in `index.html` for changed assets.
-- Database changes ship as dated files in `supabase/migrations/`.
+- A module that another module **imports** (not only ones `index.html` loads with a tag) must also be in `APP_SHELL`, or it may be missing on a first offline start. `tests/static/file-references.test.js` checks the tag-loaded files.
+- Database changes ship as dated files in `supabase/migrations/`. Pushes to `main` that touch `supabase/**` run `supabase-deploy.yml` (tests first, then changed functions and new migrations; needs repo secrets `SUPABASE_ACCESS_TOKEN` and `SUPABASE_DB_URL`). The Audit Hub SQL in `supabase/audit-project/` is applied by hand to that other project.
 
 ---
 
@@ -402,6 +439,15 @@ More detail in [`tests/README.md`](tests/README.md).
 - **Anon-role RLS tradeoff (same as Attendance):** `emergency_invoices`, `emergency_invoice_items` and `emergency_stock_deltas` have `anon_all` policies (`using (true)`), so anyone holding the public client key can read/write them. Sale and refund *logic* is protected by RPCs, but the tables themselves are not an authentication boundary. Fix before relying on them beyond a single trusted device: authenticated users or Edge-Function-controlled writes.
 - Thermal receipts need real-hardware testing.
 - Sits outside the Repository/Actions/EventBus pipeline by design.
+
+**BT Intelligence (AI Center)**
+- Reads only; every change goes through the assistant's approval card, lock and kill switch.
+- Voice and the avatar depend on the browser's Web Speech API; lip-sync is a speech-like rhythm, not frame-accurate.
+- Forecast Game, intraday curve, history and avatar photo are per device; a forecast needs the app open to track the day.
+- Free-provider pool: quality and availability vary; sensitive (salary/credit/staff) prompts never go to providers that may train on free-tier data.
+- Push briefing, closing push and Drive backup have no heartbeat, so health shows them as UNKNOWN.
+- Repository index is a snapshot; rebuild with `npm run index:repo`.
+- `agent_schedules` exists but nothing executes it yet.
 
 **Inventory Search AI**
 - Reference-oriented, not clinical; not a substitute for a pharmacist, doctor or official source.
