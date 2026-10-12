@@ -155,7 +155,16 @@ export function render() {
   if (!S.mounted || S.rafId) return;
   // Never repaint (which moves the chat) under a thumb that is typing a question: the keyboard would close. It repaints on blur.
   if (typingInChat()) { S.paintAfterTyping = true; return; }
-  S.rafId = requestAnimationFrame(() => { S.rafId = 0; if (typingInChat()) { S.paintAfterTyping = true; return; } paint(); }); // re-checked here: typing may have started after this was queued
+  // Never repaint under a moving finger either: replaceChildren() cancels touch/momentum scrolling and resets the chat's scroll.
+  if (scrollingNow()) { clearTimeout(S.scrollT); S.scrollT = setTimeout(render, SCROLL_QUIET_MS + 50); return; }
+  S.rafId = requestAnimationFrame(() => { S.rafId = 0; if (typingInChat()) { S.paintAfterTyping = true; return; } if (scrollingNow()) { clearTimeout(S.scrollT); S.scrollT = setTimeout(render, SCROLL_QUIET_MS + 50); return; } paint(); }); // re-checked here: typing may have started after this was queued
+}
+const SCROLL_QUIET_MS = 800;
+const scrollingNow = () => Date.now() - (S.lastScrollAt || 0) < SCROLL_QUIET_MS;
+function watchScrolling() {
+  if (typeof document === 'undefined' || window.__btAicScrollWatch) return; window.__btAicScrollWatch = true;
+  const mark = () => { S.lastScrollAt = Date.now(); };
+  ['touchstart', 'touchmove', 'wheel', 'scroll'].forEach(t => document.addEventListener(t, mark, { capture: true, passive: true })); // capture: element scrolls (the chat log) do not bubble
 }
 const typingInChat = () => { const a = typeof document !== 'undefined' && document.activeElement; return !!(a && a.id === 'ag-text'); };
 const dismissedToday = () => { const d = lsGet(LS_DISMISS) || {}; const today = M.isoDay(new Date()); return Object.keys(d).filter(k => d[k] === today); };
@@ -332,7 +341,7 @@ function secMission(info) {
       h('div', { class: 'aic-mg' },
         h('span', {}, 'Agent ', h('b', { text: m.agent || 'BT' })),
         h('span', {}, 'Step ', h('b', { text: live.steps ? live.steps + ' of max ' + (T.recent(60).find(e => e.type === 'step' && e.request_id === m.request_id) || { metadata: {} }).metadata.max : 'starting' })),
-        h('span', {}, 'Elapsed ', h('b', { text: Math.round(live.elapsedMs / 1000) + 's' }))),
+        h('span', {}, 'Elapsed ', h('b', { 'data-aic-elapsed': '', text: Math.round(live.elapsedMs / 1000) + 's' }))),
       live.activeTool ? h('div', { class: 'aic-mcur' }, 'Now: ', h('b', { text: live.activeTool.tool })) : h('div', { class: 'aic-mcur', text: 'Now: model is reasoning over the results so far' }),
       live.tools.length ? h('ul', { class: 'aic-mtools' }, live.tools.map(t => h('li', {}, h('span', { class: 'aic-pill aic-' + (t.status === 'ok' ? 'ok' : t.status === 'rejected' ? 'wn' : 'cr'), text: t.status }), ' ', t.tool, t.duration != null ? ' · ' + t.duration + ' ms' : ''))) : null,
       live.pendingApproval ? h('div', { class: 'aic-appr' }, h('b', { text: 'Waiting for you. ' }), (live.pendingApproval.metadata && live.pendingApproval.metadata.title) || live.pendingApproval.tool, ' ', h('button', { class: 'aic-p', text: 'Review', onclick: reviewApproval })) : null)
@@ -1288,6 +1297,8 @@ function openPalette() {
 // ───────────────────────── page paint ─────────────────────────
 function paint() {
   const r = root(); if (!r || !pageOn()) return;
+  const logEl0 = $('#ag-log'); // read the chat's scroll state first, before anything is rebuilt or moved
+  const logTop = logEl0 ? logEl0.scrollTop : 0, logAtBottom = !!logEl0 && logEl0.scrollHeight - logEl0.scrollTop - logEl0.clientHeight < 8;
   const info = coreInfo();
   // Business-first order: critical → snapshot → needs attention → copilot → sales → inventory/STR → closing/cash/money → approvals → operations
   const keyed = [['hero', secHero(info)], ['tabs', secTabs()], ['chat', secChat()], ['crit', secCritical(info)], ['dktiles', secDkTiles()], ['dkatt', secDkAttention()], ['dksales', secDkSales()], ['fc', secForecast()],
@@ -1297,11 +1308,12 @@ function paint() {
   // a genuinely pending approval outranks everything: the Action Center moves to the top (CSS keyed on data-pri)
   const main = h('main', { class: 'aic-main', 'data-tab': S.tab, 'data-mode': S.mode, 'data-pri': info.live.pendingApproval ? 'approvals' : 'normal' }, cards);
   const offline = navigator.onLine === false ? h('div', { class: 'aic-offline', role: 'alert' }, h('b', { text: 'BT OFFLINE · ' }), 'Showing last known data' + (S.snap ? ' from ' + clock(S.snap.at) : '') + '. Some intelligence may be unavailable.') : null;
-  const logEl = $('#ag-log'), logTop = logEl ? logEl.scrollTop : 0; // the chat is moved into the new tree: restore its scroll
   const rqHad = !!(document.activeElement && document.activeElement.id === 'aic-rq');
   const scroll = window.scrollY;
+  const keepH = r.offsetHeight; if (keepH) r.style.minHeight = keepH + 'px'; // the page must not shrink mid-swap, or the browser clamps (jumps) the scroll position
   r.replaceChildren(...[secHeaderBar(info.core), offline, S.error && S.snap ? failureNode(S.error, () => refresh({ force: true })) : null, main].filter(Boolean)); // null args would render the text "null"
-  { const lg = $('#ag-log'); if (lg && logTop) lg.scrollTop = logTop; }
+  r.style.minHeight = '';
+  { const lg = $('#ag-log'); if (lg) lg.scrollTop = logAtBottom ? lg.scrollHeight : logTop; }
   if (rqHad) { const r2 = $('#aic-rq'); if (r2) { r2.focus(); const n = r2.value.length; try { r2.setSelectionRange(n, n); } catch (_) { /* not a text input */ } } }
   if (Math.abs(window.scrollY - scroll) > 1) window.scrollTo(0, scroll);
 }
@@ -1334,7 +1346,14 @@ export function mount() {
     else if (e.key === 'Escape' && modalEl) closeModal();
     else if (e.key === 'Tab' && modalEl) trapTab(e);
   });
-  const iv = setInterval(() => { if (!pageOn()) return; S.tick++; if (T.liveState().open || S.tick % 15 === 0) render(); }, 1000);
+  watchScrolling();
+  // Once a second only the elapsed counter is updated in place (no repaint); the full repaint is the 15 s refresh. Real changes repaint through telemetry events.
+  const iv = setInterval(() => {
+    if (!pageOn()) return; S.tick++;
+    const live = T.liveState();
+    if (live.open) { const t = Math.round(live.elapsedMs / 1000) + 's'; document.querySelectorAll('[data-aic-elapsed]').forEach(n => { if (n.textContent !== t) n.textContent = t; }); }
+    if (S.tick % 15 === 0) render();
+  }, 1000);
   if (iv && typeof iv.unref === 'function') iv.unref(); // Node (tests) only: never keep the process alive
 }
 
