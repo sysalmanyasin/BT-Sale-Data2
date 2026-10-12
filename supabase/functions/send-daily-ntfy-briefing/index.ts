@@ -29,6 +29,7 @@
 
 import { computeInventoryBuckets, normalizeInventoryRow, computeInventoryHealth } from "./summary-calc.js";
 import { creditAlertMessages } from "./credit-alerts.js"; // byte-identical copy of js/shared/credit-alerts.js (same rules as the in-app briefing)
+import { managerIntelligence } from "./manager-intelligence.ts"; // money-at-risk stockouts, STR mismatches, cash reconciliation, 7/30-day trends
 
 const PKT_MS = 5 * 3600 * 1000;
 const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -475,6 +476,16 @@ Deno.serve(async (req: Request) => {
     } catch (e) {
       parts.push(`## ⚠️ ${name.toUpperCase()}\n> Unavailable (${(e as Error).message})`);
     }
+  }
+
+  // Manager intelligence: extra read-only blocks + alerts. Never allowed to break the briefing.
+  try {
+    const mi = await managerIntelligence(rest, auditRest);
+    if (mi.blocks.length) parts.push(...mi.blocks);
+    for (const a of mi.alerts) if (!alerts.includes(a)) alerts.push(a);
+    facts.manager_intel = mi.facts;
+  } catch (e) {
+    parts.push(`## ⚠️ MANAGER INTELLIGENCE\n> Unavailable (${(e as Error).message})`);
   }
 
   const insight = await aiInsight(facts);

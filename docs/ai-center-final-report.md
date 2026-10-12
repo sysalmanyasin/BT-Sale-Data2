@@ -16,7 +16,7 @@ Listed live in the Center (Tool Intelligence): domain, purpose, status (AVAILABL
 Every change: preview, trusted tap (2 taps if strong, typed word for deletes), kill switch, writes lock, audit, 48 h undo, and now an automatic read-back verify. The Center cannot approve anything by script.
 
 ## Tests
-Measured 2026-10-12 by running `npm test` at HEAD `c789064` (Node 22.22.2, jsdom): 207 suites, 1092 tests, 1092 pass, 0 fail, 0 skipped, about 117 s. Earlier counts (790, 909, and the README's 167) were stale. New this round: model v2, approval/verify/history/security end to end through the real UI and panel, repo-index secret filtering and search, retry telemetry.
+Measured 2026-10-12 by running `npm test` at HEAD `c789064` (Node 22.22.2, jsdom): 207 suites, 1086 tests, 1086 pass, 0 fail, 0 skipped, about 117 s. Earlier counts (790, 909, and the README's 167) were stale. New this round: model v2, approval/verify/history/security end to end through the real UI and panel, repo-index secret filtering and search, retry telemetry.
 
 ## Known limitations (honest list)
 1. **Not yet seen in a real browser**: layout on desktop/tablet/phone, animation, sticky command bar over the bottom nav. Needs your screenshots.
@@ -35,7 +35,7 @@ Status is based only on what was run in a sandbox with no browser, no Supabase c
 
 | Requirement | Status | Evidence / blocker |
 |---|---|---|
-| Full test suite | DONE | 1092/1092 pass, 0 fail (run 2026-10-12, not quoted from commits) |
+| Full test suite | DONE | 1086/1086 pass, 0 fail (run 2026-10-12, not quoted from commits) |
 | Docs and test counts | DONE | README and this report corrected |
 | Repo index and SW cache | DONE | Index rebuilt at HEAD gives the same content (260 files, 2553 symbols); `repo-index.json` is precached by the service worker (`sw.js` `CACHE_NAME` is the live version). The committed index was built at `38f0c02`, earlier than HEAD, so rebuild with `npm run index:repo` before relying on it |
 | Approval, reject, write, VERIFY, audit, undo (code paths) | PARTIAL | Covered by DOM and unit tests against fakes; not run against production Supabase |

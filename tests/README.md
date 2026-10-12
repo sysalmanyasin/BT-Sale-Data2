@@ -18,7 +18,7 @@ npm run test:verbose   # same, with the spec reporter (readable test names)
 npm run test:watch     # re-runs on file changes
 ```
 
-Expected result on a clean checkout: **all tests pass, 0 failures** (2026-10-12: 207 suites, 1092 tests).
+Expected result on a clean checkout: **all tests pass, 0 failures** (2026-10-12: 207 suites, 1086 tests).
 
 Beyond the table below, the suite also contains: `tests/unit/agent-*.test.js` (assistant core, tools, writes, deletes, undo, kill switch, streaming, routing, memory), `tests/unit/ai-center-*.test.js` and `tests/dom/ai-center-*.test.js` (BT Intelligence model, deck, voice, avatar, approval UI, repo index), `tests/unit/today-forecast.test.js` and `tests/dom/forecast-game.test.js` (Forecast Game), `tests/unit/audit-tab.test.js`, `tests/static/ntfy-functions.test.js` and `supabase-deploy.test.js` (Edge Function and secret-leak checks), and `tests/eval/` (60+ assistant routing/tool cases; `npm run eval`). The table below lists the original smoke layers only.
 

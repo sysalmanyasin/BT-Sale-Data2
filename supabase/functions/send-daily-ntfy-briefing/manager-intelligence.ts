@@ -35,7 +35,7 @@ export async function managerIntelligence(rest: Rest, auditRest: Rest) {
     const aged=(led||[]).map((r:any)=>r.data||{}).filter((e:any)=>/cheque|check/i.test(`${e.desc||''} ${e.categoryId||''}`)).map((e:any)=>({...e,age_days:e.date?Math.floor((Date.now()-new Date(String(e.date)+'T00:00:00Z').getTime())/86400000):null})).filter((e:any)=>e.age_days!=null&&e.age_days>=30).sort((a:any,b:any)=>b.age_days-a.age_days).slice(0,8);
     facts.cash={date:d?.date||null,updated_at:d?.updated_at||null,sale,cash,diff,deposit,deposit_gap:depositGap,jazzcash_ledger:ledger,jazzcash_app:app,jazzcash_gap:jcGap,aged_cheques:aged};
     blocks.push(`## 💵 Cash reconciliation\n- Sale Rs ${Math.round(sale).toLocaleString('en-PK')} · Cash Rs ${Math.round(cash).toLocaleString('en-PK')} · DIFF Rs ${Math.round(diff).toLocaleString('en-PK')}\n- Cash-to-deposit gap Rs ${Math.round(depositGap).toLocaleString('en-PK')}${jcGap==null?'':`\n- JazzCash app vs ledger gap Rs ${Math.round(jcGap).toLocaleString('en-PK')}`}\n- Cheques 30+ days: ${aged.length}`);
-    if(Math.abs(diff)>=10000) alerts.push(`Cash DIFF Rs ${Math.round(diff).toLocaleString('en-PK')}`);
+    // (cash DIFF >= Rs 10,000 is already alerted by the Sales section, so it is not repeated here)
     if(Math.abs(depositGap)>=1000) alerts.push(`Cash-to-deposit gap Rs ${Math.round(depositGap).toLocaleString('en-PK')}`);
     if(jcGap!=null&&Math.abs(jcGap)>=1000) alerts.push(`JazzCash app vs ledger gap Rs ${Math.round(jcGap).toLocaleString('en-PK')}`);
     if(aged.length) alerts.push(`${aged.length} cheque-related ledger entries are 30+ days old`);

@@ -47,9 +47,6 @@ The AI Center is a **control room over the existing assistant**. It owns no busi
 5. **Health rows Realtime/Specialists were UNKNOWN**: now measured (bt-sync channel state; request/error events).
 6. **Still not measurable**: the push briefing, closing push and Drive backup Edge Functions have no heartbeat. Shown as UNKNOWN with the reason.
 
-## Not wired at runtime
-
-`js/ai-center/finding-actions.js` (finding lifecycle: reviewed / snoozed / resolved, table `agent_finding_actions`), `manager-intelligence.js` and `manager-intelligence-v2.js` are tested but not imported by the app. See `README-manager-intelligence.md`.
 
 ## Event system
 

@@ -31,7 +31,7 @@ detail) are never sent to those providers.
 ## Later migrations (apply in filename order; all idempotent)
 
 - `20261006110000_agent_tighten_grants.sql`: revokes unneeded table privileges from `authenticated` (defence in depth).
-- `20261008120000_ai_center_finding_actions.sql`: `agent_finding_actions` (finding lifecycle only; the app does not read it yet).
+- `20261008120000_ai_center_finding_actions.sql`: `agent_finding_actions` (created for a finding snooze/resolve feature that was never wired in; the table is unused and harmless).
 - `20261009040000_audit_safe_hardening.sql`: indexes and fixed `search_path` for emergency-billing functions.
 
 The BT Intelligence **Audit** tab also needs `supabase/audit-project/ai_audit_overview.sql` applied **by hand to the Audit Hub project** (`vtcrdkqhuvxatclobsby`). It is deliberately not in `supabase/migrations/`, which deploys to the main project. The app has 57 read/change tools; the deployed function does not need redeploying for tool changes (the browser drives the tool loop).

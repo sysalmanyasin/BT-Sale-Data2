@@ -38,4 +38,14 @@ app disagreed on individual days (e.g. 1 Oct: 664,301 vs 648,239).
 ```bash
 supabase functions deploy send-daily-ntfy-briefing --project-ref wetbugzzchkghpzmowod --no-verify-jwt
 ```
-Deploy both files (`index.ts` and `summary-calc.js`).
+Deploy all files in the folder (`index.ts`, `summary-calc.js`, `credit-alerts.js`, `manager-intelligence.ts`).
+
+## Manager intelligence (added after v20)
+`manager-intelligence.ts` adds read-only blocks to the detail messages and alerts to the alert message. It runs after the five main sections and can never break the briefing (any failure just omits its blocks):
+
+- **Money at risk · stockouts**: selling items with zero stock, ranked by estimated 7-day lost sales (alert when the total is Rs 10,000 or more).
+- **STR mismatches**: dispatched vs received quantity differences.
+- **Cash reconciliation**: DIFF, cash-to-deposit gap (alert at Rs 1,000+), JazzCash app vs ledger gap (alert at Rs 1,000+), cheque-related ledger entries 30+ days old. The cash DIFF >= Rs 10,000 alert is raised by the Sales section, not repeated here.
+- **Trends**: 7-day and 30-day sales/day and average absolute DIFF (from the 30 most recently updated `bt_daily` rows).
+
+It uses the function's existing service-role `rest()` and the Audit Hub `auditRest()` helpers; no new secrets, tables or schedules. Check it with `?dry=1` after deploying.

@@ -5,7 +5,7 @@
 ![Frontend](https://img.shields.io/badge/frontend-vanilla%20JS%20%7C%20no%20build-f7df1e)
 ![Backend](https://img.shields.io/badge/backend-Supabase-3ecf8e)
 ![Android](https://img.shields.io/badge/android-Kotlin-7f52ff)
-![Tests](https://img.shields.io/badge/tests-1092%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-1086%20passing-brightgreen)
 ![AI](https://img.shields.io/badge/AI-BT%20Intelligence%20%7C%20approval--gated-0b5fff)
 
 **BT Sales IC** is a personal, single-user pharmacy operations PWA for Bahria Town. One codebase covers daily sales capture, reporting, management tools, inventory intelligence, read-only closing/audit bridges, attendance, a break-glass emergency billing counter, spreadsheets, PDF archiving, cross-device sync, **BT Intelligence** (the AI Center: a control room and talking assistant over the app's own data), and native Android companions.
@@ -326,7 +326,6 @@ Route `#ai-center` (nav label **BT Intelligence** 🛰). A control room over the
 
 **Safety model.** The Center reads through `runTool(..., {allow:['read']})`; the kill switch and hard blocks still apply. `BTAgent.decide()` refuses any approval that is not a trusted user gesture, so scripts and voice cannot approve. Arguments are redacted before storage; the device history keeps an allow-list of metadata only. **Repository index** (`js/ai-center/repo-index.json`, built by `npm run index:repo`) holds names, line numbers and one-line summaries only, skips secret-bearing files, and is a snapshot that must be rebuilt after code changes.
 
-> `js/ai-center/finding-actions.js`, `manager-intelligence.js` and `manager-intelligence-v2.js` are covered by unit tests but are **not loaded by the app at runtime** (see [`README-manager-intelligence.md`](README-manager-intelligence.md)).
 
 ---
 
@@ -340,7 +339,7 @@ Deterministic business logic (Dashboard, Herald, calculators) stays AI-free. AI 
 | **BT Intelligence (AI Center)** | `js/ai-center/**`, `css/ai-center*.css`, `docs/ai-center-*.md` | The control room and talking Jarvis described [above](#bt-intelligence-ai-center). Read-only over the assistant; includes the Forecast Game and the Audit tab. |
 | **Medicine reference** | `inventory-search/` → `medicine-ai-info` Edge Function | Groq first, Gemini fallback; results cached ~30 days; no login required. Reference-only, not clinical decision support. |
 | **Inventory chat** | `inventory-search/` → `inventory-chat` Edge Function | Limited to product context supplied by the client; keeps no server-side inventory copy. |
-| **Daily briefing (push)** | `supabase/functions/send-daily-ntfy-briefing/` (production **v20**) | pg_cron fires it at **11:00 and 23:00 PKT** (`briefing-ntfy-11am-pkt`, `briefing-ntfy-11pm-pkt`) with an `x-cron-secret` header and it pushes Sales / Candela POS / Manager / STR / Inventory (+ optional Groq insight) to ntfy in byte-safe chunks plus an alert message. **The sale is the day's `TOTAL`** (the official figure, same as the app and the AI assistant; before v20 it used `COMP SALE`). `?dry=1` returns the messages without sending. Alert rules (also used by the in-app briefing): cash DIFF ≥ Rs 10,000, sale ≥ 30% below the same weekday last week, projection < 90% of target (from day 10), incoming STR unreceived for 3+ days. See its `DEPLOY.md`. |
+| **Daily briefing (push)** | `supabase/functions/send-daily-ntfy-briefing/` (production **v20**) | pg_cron fires it at **11:00 and 23:00 PKT** (`briefing-ntfy-11am-pkt`, `briefing-ntfy-11pm-pkt`) with an `x-cron-secret` header and it pushes Sales / Candela POS / Manager / STR / Inventory / **Manager intelligence** (money-at-risk stockouts, STR dispatched-vs-received mismatches, cash reconciliation, 7/30-day trends; `manager-intelligence.ts`) (+ optional Groq insight) to ntfy in byte-safe chunks plus an alert message. **The sale is the day's `TOTAL`** (the official figure, same as the app and the AI assistant; before v20 it used `COMP SALE`). `?dry=1` returns the messages without sending. Alert rules (also used by the in-app briefing): cash DIFF ≥ Rs 10,000, sale ≥ 30% below the same weekday last week, projection < 90% of target (from day 10), incoming STR unreceived for 3+ days. See its `DEPLOY.md`. |
 | **Closing alerts (push)** | `supabase/functions/closing-ntfy-notify/` | Called by the `trg_notify_admin_shift_saved_*` DB triggers when a closing shift is saved; sends the shift summary to ntfy. The repo copy has **no built-in topic** (this repository is public): it requires the `NTFY_CLOSING_TOPIC` secret and fails closed. Read its `DEPLOY.md` before deploying from git. |
 | **Staff logins (Closing App)** | `supabase/functions/set-staff-login/` | "Set/Reset PIN" in the Staff Registry. **Requires a signed-in active `bt_authorized_users` session** (v21; before that it had no authentication). |
 | **Drive backup** | `supabase/functions/google-drive/` | Versioned Google Drive backup/restore for Closing App data; every action needs the Admin PIN (or the auto-backup key for `backup`). Google credentials are Supabase secrets. |
@@ -397,7 +396,7 @@ npm run test:verbose     # spec reporter
 npm run test:watch       # re-run on change
 ```
 
-**Last verified (2026-10-12, `npm test`, Node 22.22.2, HEAD `c789064`):** 207 suites, 1092 tests, 1092 pass, 0 failures, 0 skipped (about 2 minutes).
+**Last verified (2026-10-12, `npm test`, Node 22.22.2, HEAD `c789064`):** 207 suites, 1086 tests, 1086 pass, 0 failures, 0 skipped (about 2 minutes).
 
 **Coverage:** AI agent (core, tools, writes/deletes/approvals, undo, kill switch, streaming, routing, 60+ case eval suite), AI Center (model, deck, voice, avatar, forecast game, audit tab, repo index, DOM behaviour), Edge Function and secret-leak checks, static file integrity, script references, manifest validation, service-worker shell consistency, JS syntax, pure modules, EventBus, print API surface, Staff Registry (Repository + Actions), DOM and navigation behaviour.
 

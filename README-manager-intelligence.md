@@ -1,18 +1,14 @@
-# Manager Intelligence, part 1 (items 1–10): status
+# Manager Intelligence: status
 
-> **Status (checked 2026-10-12 against the code).** This file used to be an install guide for `bt-sale-data-first10.patch` and `scripts/apply-manager-intelligence.mjs`. **Neither file is in the repository**, so there is nothing to apply. This page now records what actually exists. Where it conflicts with the code, the code wins.
+This started as two patch sets ("first 10" and "second 10" improvements). The patch files and installer scripts they described are not in the repository, so there is nothing to apply. This page records what is actually live.
 
-The work reuses the existing BT Agent, tool registry, telemetry, AI Center, Supabase tables and the twice-daily ntfy function. No financial/inventory write path was added; approval, audit, VERIFY, undo, write-lock and kill switch remain authoritative.
+| What | Where | Status |
+|---|---|---|
+| Money-at-risk stockouts, STR mismatches, cash reconciliation, 7/30-day trends in the daily push | `supabase/functions/send-daily-ntfy-briefing/manager-intelligence.ts`, called from its `index.ts` | **Live in the repo** (needs a redeploy of the function to reach production; see its `DEPLOY.md`) |
+| Read-only action plan (reorder suggestions from 30-day velocity and stock) | `manager_action_plan` in `js/agent/tools/manager-intelligence-v2.js` | Live (assistant tool, changes nothing) |
+| Weekday forecast, reorder draft, money overview | `weekday_forecast`, `reorder_draft`, `money_overview` in `js/agent/tools/planning.js` | Live |
+| Findings with evidence, impact and recommendation | AI Center Command Deck (`js/ai-center/ui.js`, `copilot.js`) | Live |
 
-| # | Item | Where it lives | Wired into the running app? |
-|---|---|---|---|
-| 1 | Money-ranked inventory (top 10 estimated 7-day lost sales) | `js/ai-center/manager-intelligence.js` (`topMoneyFindings`), `supabase/functions/send-daily-ntfy-briefing/manager-intelligence.ts` | **No.** Unit-tested only; the ntfy `index.ts` does not import the `.ts` file; `daily_briefing` has no `money_ranked_top10` field. |
-| 2 | Background alerts via ntfy | `manager-intelligence.ts` | **No** (same reason). |
-| 5 | Finding actions (reviewed / snooze 7 days / resolve) | `js/ai-center/finding-actions.js`, migration `20261008120000_ai_center_finding_actions.sql` (`agent_finding_actions`) | **Table only.** The JS module is not imported by the UI. |
-| 10 | Rule-based fallback | `deterministicFallback` in `manager-intelligence.js`; the assistant's own instant path (`core/instant.js`) is what runs | Fallback helper **No**; instant path **Yes**. |
-| 3, 4, 7, 8, 9 | STR mismatch, cash reconciliation, trends, freshness, agent reliability | Partly covered by existing tools, Command Deck and health rules | Not as a separate feature set; check the Command Deck and `js/agent/tools/*` instead. |
-| 6 | Mission/finding presentation | AI Center Command Deck (`js/ai-center/ui.js`) | **Yes** (as the Command Deck). |
+Removed as unused (2026-10-12; recoverable from git history): the AI Center helper modules `finding-actions.js`, `manager-intelligence.js`, `manager-intelligence-v2.js` and their tests, and the second ntfy module `manager-intelligence-v2.ts` (it overlapped the live one). The `agent_finding_actions` table from migration `20261008120000` remains but nothing uses it.
 
-Run `npm test` for the unit coverage (`tests/unit/manager-intelligence.test.js`). To finish wiring items 1, 2 and 5, the missing steps are: import `finding-actions.js` from `ui.js`, add the three files to `sw.js` `APP_SHELL`, and import `manager-intelligence.ts` from the ntfy function and redeploy it.
-
-See also: [`README-manager-intelligence-v2.md`](README-manager-intelligence-v2.md), [`docs/ai-center-architecture.md`](docs/ai-center-architecture.md).
+No financial or inventory write path was added by any of this. Approval, audit, VERIFY, undo, write lock and kill switch stay authoritative.
