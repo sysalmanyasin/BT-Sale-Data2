@@ -6,10 +6,10 @@ The AI Center is a **control room over the existing assistant**. It has no chat 
 
 | Layer | Files | Role |
 |---|---|---|
-| Presentation | `js/ai-center/ui.js`, `css/ai-center*.css` (jarvis, command-deck, deck, copilot, v2) | Command Deck: tabs Overview / Sales & Forecast / Inventory / Operations / Audit / More. Draws everything with `textContent` (never `innerHTML`, except the assistant's escaped markdown). |
+| Presentation | `js/ai-center/ui.js`, `css/ai-center*.css` (jarvis, command-deck, deck, copilot, v2, avatar) | Command Deck: tabs Overview / Sales & Forecast / Inventory / Operations / Audit / More. Draws everything with `textContent` (never `innerHTML`, except the assistant's escaped markdown). |
 | Deck view-model | `js/ai-center/deck-model.js`, `deck-icons.js` | Pure. Overview numbers from the real snapshot; a missing source gives null, never an invented value. |
 | Copilot logic | `js/ai-center/copilot.js` | Pure. Prioritised attention, suggestions, structured investigation results, text-only drafts. No write path. |
-| Voice | `js/agent/ui/voice.js` (used by the global Jarvis panel) | Browser Web Speech API; spoken replies are optional and off by default; voice cannot approve. The talking-face avatar was removed. |
+| Avatar + voice | `js/ai-center/avatar.js` (BT Intelligence only), `js/agent/ui/voice.js` (shared with the global Jarvis panel) | Talking Jarvis in the AI Center hero (optional owner photo, `localStorage` only); the global chat panel has no avatar. Browser Web Speech API; spoken replies are optional and off by default; voice cannot approve. |
 | Forecast Game | `js/ai-center/forecast-game.js`, `js/shared/today-forecast.js` | Locks one call per day, tracks live POS, grades itself. Device-local; writes no business data. |
 | Pure model | `js/ai-center/model.js` | Maps existing tool results to findings, system cards, lifecycle, approval view, correlations, health rules. No DOM, no Supabase. |
 | Adapters | `js/ai-center/adapters.js` | Read-only: runs existing READ tools through `runTool(..., {allow:['read']})`, reads bridge sync stamps and the agent tables. |

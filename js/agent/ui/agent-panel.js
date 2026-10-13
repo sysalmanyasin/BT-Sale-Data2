@@ -103,7 +103,6 @@ export function mountAgentPanel() {
       <button id="ag-send" class="ag-send" type="button" aria-label="Send">${ICON.send}</button>
     </div>`;
   document.body.append(fab, sheet);
-  try { ['bt_jarvis_photo', 'bt_jarvis_photo_mode', 'bt_jarvis_mouth_y', 'bt_jarvis_live', 'bt_jarvis_voice_init'].forEach(k => localStorage.removeItem(k)); } catch (_) { /* private mode */ } // the talking-face avatar was removed: drop its on-device photo
 
   const log = sheet.querySelector('#ag-log');
   const text = sheet.querySelector('#ag-text');

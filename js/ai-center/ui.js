@@ -10,6 +10,8 @@
 // All text is inserted with textContent (never innerHTML) except the
 // assistant's own markdown, which goes through its existing escaping renderer.
 // ══════════════════════════════════════════════════════════════════════
+import * as V from '../agent/ui/voice.js';
+import * as AV from './avatar.js';
 import * as DK from './deck-model.js';
 import * as FG from './forecast-game.js';
 import { ICONS } from './deck-icons.js';
@@ -32,7 +34,7 @@ const STALE_MS = 5 * 60000, REFRESH_MS = 45000;
 
 const S = {
   tab: 'overview', snap: null, health: null, actions: null, history: [], loading: false, error: null,
-  mode: 'monitor', filter: 'all', baseline: null, started: false, tick: 0, toolsOpen: false, open: {},
+  voice: { talking: false }, mode: 'monitor', filter: 'all', baseline: null, started: false, tick: 0, toolsOpen: false, open: {},
   awaitingFor: null, assess: {}, lastRefreshAt: 0, mounted: false, rafId: 0, deep: {}, repo: { state: 'idle', idx: null }, repoQ: '',
 };
 
@@ -241,6 +243,87 @@ function secHeaderBar(core) {
 
 
 
+// Personal avatar: the person's own photo is kept ON THIS DEVICE only (localStorage) and never committed to the repo.
+// Storage + preferences live in avatar.js; the avatar settings sheet (openAvatarSettings) is opened by tapping the avatar.
+const avatarPhoto = () => AV.getPrefs().photo;
+function setAvatarPhoto(file) {
+  if (!file || !/^image\//.test(file.type)) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      // A square image is treated as finished art (e.g. a stylised avatar) and used whole; anything else is a photo and gets auto-framed.
+      const art = Math.abs(img.width / img.height - 1) < 0.1, px = art ? 480 : 320;
+      const side = art ? Math.min(img.width, img.height) : Math.min(img.width * 0.6, img.height);
+      const cx = img.width / 2, cy = art ? img.height / 2 : Math.min(img.height - side / 2, Math.max(side / 2, img.height * 0.46));
+      const cv = document.createElement('canvas'); cv.width = cv.height = px;
+      cv.getContext('2d').drawImage(img, cx - side / 2, cy - side / 2, side, side, 0, 0, px, px);
+      try { localStorage.setItem(AV.KEYS.photo, cv.toDataURL('image/jpeg', 0.88)); localStorage.setItem(AV.KEYS.mode, art ? 'art' : 'photo'); } catch (e) { toast('Could not save the photo on this device'); return; }
+      render(); if (modalEl) openAvatarSettings();
+    };
+    img.src = String(rd.result);
+  };
+  rd.readAsDataURL(file);
+}
+function clearAvatarPhoto() { AV.clearPhoto(); render(); if (modalEl) openAvatarSettings(); }
+
+if (typeof window !== 'undefined' && !window.__btJarvisTalk) {
+  window.__btJarvisTalk = true;
+  let poll = null;
+  const apply = on => {
+    S.voice.talking = !!on; AV.setTalking(on);
+    document.querySelectorAll('.aic-stage').forEach(el => el.setAttribute('data-talk', on ? '1' : '0'));
+    const pill = document.querySelector('.aic-hpill');
+    if (pill) { pill.classList.toggle('talk', !!on); pill.textContent = on ? 'Jarvis speaking' : (pill.classList.contains('off') ? 'Jarvis offline' : 'Jarvis online'); }
+    clearInterval(poll); poll = null;
+    if (on) poll = setInterval(() => { try { if (!window.speechSynthesis.speaking) apply(false); } catch (_) { apply(false); } }, 700); // some mobile browsers never fire "end"
+  };
+  window.addEventListener('bt-voice-state', e => apply(e.detail && e.detail.speaking));
+}
+
+function jarvisAvatar() { return AV.buildFace(); }
+
+// The avatar is the whole top of the page: tap it for its settings. The state stays available to screen readers only; the visible
+// status is the one pill in secHero. Mission / lifecycle detail lives in Operations & Diagnostics and in the chat itself.
+function secCore(info) {
+  const { core } = info;
+  const open = () => openAvatarSettings();
+  return h('div', { class: 'aic-corerow', id: 'aic-core' },
+    h('div', { class: 'aic-stage', 'data-s': core.state.toLowerCase(), 'data-talk': S.voice.talking ? '1' : '0' },
+      h('div', { class: 'aic-orb', role: 'button', tabindex: '0', 'aria-label': 'Jarvis avatar and voice settings', title: 'Tap to change the avatar and voice', onclick: open, onkeydown: ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); open(); } } },
+        jarvisAvatar(), h('span', { class: 'aic-avgear', 'aria-hidden': 'true', text: '\u2699' }))),
+    h('div', { class: 'aic-cs aic-sr' }, h('h2', { text: core.state.replace(/_/g, ' ') }), h('p', { text: core.detail })));
+}
+
+// ── avatar settings (opened by tapping the avatar) ──
+function openAvatarSettings() {
+  const P = AV.getPrefs(), sup = V.voiceSupport(window);
+  const row = (label, ...ctl) => h('div', { class: 'jv-set-row' }, h('span', { class: 'jv-set-l', text: label }), h('span', { class: 'jv-set-c' }, ...ctl));
+  const check = (checked, on) => h('input', { type: 'checkbox', checked: checked ? true : null, onchange: ev => on(ev.target.checked) });
+  const speed = V.getVoiceRate();
+  const voices = (() => { try { return (window.speechSynthesis.getVoices() || []).filter(v => v.lang && v.lang.slice(0, 2) === V.voiceLang(window).slice(0, 2)); } catch (_) { return []; } })();
+  const pick = V.getVoiceName();
+  const body = h('div', { class: 'jv-set' },
+    h('div', { class: 'jv-set-prev' }, jarvisAvatar()),
+    h('div', { class: 'jv-set-g' },
+      h('h4', { text: 'Face' }),
+      h('div', { class: 'jv-set-btns' },
+        h('label', { class: 'aic-avbtn' }, P.photo ? 'Change photo' : 'Use my photo', h('input', { type: 'file', accept: 'image/*', hidden: true, onchange: ev => setAvatarPhoto(ev.target.files && ev.target.files[0]) })),
+        P.photo ? h('button', { class: 'aic-g', text: 'Remove photo', onclick: clearAvatarPhoto }) : null),
+      P.photo ? row('Mouth height', h('input', { type: 'range', min: AV.MOUTH_MIN, max: AV.MOUTH_MAX, value: P.mouthY, 'aria-label': 'Mouth height', oninput: ev => { AV.setMouthY(ev.target.value); render(); const pv = document.querySelector('.jv-set-prev'); if (pv) pv.replaceChildren(jarvisAvatar()); } })) : null,
+      P.photo ? h('p', { class: 'aic-sub', text: 'Slide until the moving jaw starts just under your lips. Your picture stays on this device only.' }) : h('p', { class: 'aic-sub', text: 'Add a clear, front-facing photo and Jarvis will talk with your face. It stays on this device only.' }),
+      row('Move while talking', check(P.live, on => { AV.setLive(on); render(); }))),
+    h('div', { class: 'jv-set-g' },
+      h('h4', { text: 'Voice' }),
+      sup.output ? [
+        row('Jarvis speaks answers', check(V.getVoiceOut(), on => { V.setVoiceOut(on); if (!on) V.stopSpeaking(window); })),
+        row('Speed', h('select', { 'aria-label': 'Speech speed', onchange: ev => V.setVoiceRate(ev.target.value) }, [['0.85', 'Slower'], ['1', 'Normal'], ['1.15', 'Faster']].map(([v, l]) => h('option', { value: v, selected: Math.abs(speed - Number(v)) < 0.05 ? true : null, text: l })))),
+        voices.length ? row('Voice', h('select', { 'aria-label': 'Voice', onchange: ev => V.setVoiceName(ev.target.value) }, [h('option', { value: '', text: 'Device default' }), ...voices.map(v => h('option', { value: v.name, selected: v.name === pick ? true : null, text: v.name }))])) : null,
+        h('div', { class: 'jv-set-btns' }, h('button', { class: 'aic-p', text: 'Test voice', onclick: () => V.speak(window, 'Hello. I am Jarvis. Here is how I sound.', V.voiceLang(window)) })),
+      ] : h('p', { class: 'aic-sub', text: 'This browser cannot speak answers aloud.' }),
+      h('p', { class: 'aic-sub', text: 'The mouth moves with a speech rhythm while the browser speaks. It is not exact lip-sync, and the voice is a device voice, not a copy of yours.' })));
+  openModal('Jarvis avatar', body, { sub: 'Face and voice' });
+}
 // Mission + lifecycle of the latest request: kept (it is the verify/read-back evidence) but moved out from under the avatar into Diagnostics.
 function secMission(info) {
   const { live } = info, m = live.open;
@@ -1003,14 +1086,16 @@ function histNode() {
       h('span', { class: 'aic-im2', text: 'Evidence: ' + x.evidence + (x.confidence ? ' · confidence ' + x.confidence : '') + (x.approval ? ' · approval ' + x.approval.status : '') }),
       x.outcomeState ? h('span', { class: 'aic-pill aic-' + C.ACTION_STATES[x.outcomeState].tone, title: C.ACTION_STATES[x.outcomeState].note, text: C.ACTION_STATES[x.outcomeState].label }) : null))));
 }
-// Hero: what this page is, whether the data is live, and one way into the assistant. No avatar, no chat.
+// Hero (Command Deck): greeting panel | avatar | product panel. The avatar is the only picture on this page; tapping it opens its settings.
+// It lives here only: the Jarvis chat panel (a separate, global assistant) has no avatar.
 function secHero(info) {
   const up = !/^(OFFLINE|ERROR)$/i.test(info.core.state);
   return card('hero', 'monitor investigate act',
     h('div', { class: 'dk-hero' },
-      h('div', { class: 'dk-hp dk-hp-l' }, h('small', { text: 'Business intelligence' }), h('b', { text: 'BT Intelligence' }), h('span', { text: 'Findings, forecasts and checks from your live data.' })),
-      h('div', { class: 'dk-hp dk-hp-r' },
-        h('span', { class: 'aic-hpill ' + (up ? 'on' : 'off'), role: 'status', text: up ? 'Live data' : 'Offline' }),
+      h('div', { class: 'dk-hp dk-hp-l' }, h('small', { text: 'Hi, I\u2019m your' }), h('b', { text: 'AI Assistant' }), h('span', { text: 'Here to help you make smarter decisions.' })),
+      secCore(info),
+      h('div', { class: 'dk-hp dk-hp-r' }, h('b', { text: 'BT INTELLIGENCE' }), h('small', { text: 'PHARMACY BUSINESS INSIGHTS & ANALYTICS' }),
+        h('div', { class: 'aic-hbub', role: 'status' }, h('span', { class: 'aic-hpill ' + (up ? 'on' : 'off') + (S.voice.talking ? ' talk' : ''), text: S.voice.talking ? 'Jarvis speaking' : up ? 'Jarvis online' : 'Jarvis offline' })),
         h('button', { class: 'aic-p dk-askj', text: 'Ask Jarvis', 'aria-label': 'Ask Jarvis', onclick: () => { if (window.BTAgent) window.BTAgent.open(); else toast('The assistant is still loading. Try again in a moment.'); } }))));
 }
 
@@ -1260,4 +1345,4 @@ export function onShow() {
   refresh();
 }
 
-export const __test = { S, setTab, ask, refresh, paint, openFinding, openSystem, openPalette, investigate, weekdayBars, openModal, allRuns, runsBlock, openDraft, promptChips };
+export const __test = { S, setTab, ask, openAvatarSettings, refresh, paint, openFinding, openSystem, openPalette, investigate, weekdayBars, openModal, allRuns, runsBlock, openDraft, promptChips };

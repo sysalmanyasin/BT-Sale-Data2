@@ -6,6 +6,7 @@ import { DAILY } from '../config.js';
 import { weekdayForecast } from '../shared/planning-metrics.js';
 import * as F from '../shared/today-forecast.js';
 import * as V from '../agent/ui/voice.js';
+import * as AV from './avatar.js';
 
 const LS_LOG = 'bt_sales_curve_v1', LS_GAME = 'bt_forecast_game_v1';
 const ls = {
@@ -31,6 +32,7 @@ export function celebrate(text, { confetti = true } = {}) {
     const b = document.createElement('div'); b.className = 'fg-banner'; b.setAttribute('role', 'status'); b.textContent = '\uD83C\uDF89 ' + text;
     document.body.appendChild(b); setTimeout(() => b.remove(), 7000);
     if (V.getVoiceOut()) V.speak(window, text, V.voiceLang());
+    else { AV.setTalking(true); document.querySelectorAll('.aic-stage').forEach(el => el.setAttribute('data-talk', '1')); setTimeout(() => { AV.setTalking(false); document.querySelectorAll('.aic-stage').forEach(el => el.setAttribute('data-talk', '0')); }, 3500); }
   } catch (_) { /* a celebration must never break the page */ }
 }
 

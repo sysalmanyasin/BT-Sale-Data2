@@ -19,18 +19,26 @@ body.aic-open .aic-backdrop{background:rgba(2,6,16,.7)}
 
 /* ── hero: greeting | avatar | product ── */
 .aic-page.aic-jarvis #aic-hero{background:none;border:0;box-shadow:none;padding:6px 0 0}
-.dk-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:stretch;gap:10px}
+.dk-hero{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px}
 .dk-hp{display:flex;flex-direction:column;gap:3px;padding:12px;border:1px solid var(--border-strong);background:linear-gradient(180deg,rgba(18,42,90,.5),rgba(10,26,56,.85));box-shadow:inset 0 0 18px rgba(47,180,255,.07);min-height:96px;justify-content:center}
 .dk-hp-l{clip-path:polygon(0 0,100% 0,100% 82%,88% 100%,0 100%);text-align:left}
-.dk-hp-r .dk-askj{margin-top:6px}
 .dk-hp-r{clip-path:polygon(0 0,100% 0,100% 100%,12% 100%,0 82%);text-align:center;align-items:center}
 .dk-hp small{font-size:11px;color:var(--t2);letter-spacing:.04em}
 .dk-hp-l b{font-size:19px;line-height:1.1;color:var(--text)}
 .dk-hp-l span{font-size:12px;color:var(--t2);line-height:1.3}
 .dk-hp-r b{font-size:14px;letter-spacing:.1em;color:var(--accent)}
 .dk-hp-r small{font-size:9.5px;letter-spacing:.12em;color:var(--accent);opacity:.9}
+.aic-page.aic-jarvis #aic-hero .aic-corerow .aic-stage{width:min(150px,36vw);aspect-ratio:1;position:relative}
 .aic-page.aic-jarvis .aic-hbub{margin-top:4px}
 .aic-page.aic-jarvis .aic-hpill{font-size:11px;padding:3px 10px}
+
+/* ── the avatar ring glow ── */
+.aic-page.aic-jarvis .jv-ring{stroke:var(--accent);stroke-width:2.4;filter:drop-shadow(0 0 5px var(--accent))}
+.aic-page.aic-jarvis .jv-ring2{fill:none;stroke:var(--accent);stroke-width:.9;stroke-dasharray:3 4;opacity:.7}
+.aic-page.aic-jarvis .jv-bg{fill:#0a1a38}
+.aic-page.aic-jarvis .aic-stage .aic-orb{box-shadow:0 0 38px -4px rgba(47,180,255,.7),0 0 0 1px rgba(47,180,255,.25)}
+.aic-page.aic-jarvis .aic-avgear{background:var(--surface);border-color:var(--border-strong);color:var(--accent)}
+@media(prefers-reduced-motion:no-preference){.aic-page.aic-jarvis .jv-ring2{transform-origin:80px 80px;animation:dk-spin 40s linear infinite}@keyframes dk-spin{to{transform:rotate(360deg)}}}
 
 /* ── tabs ── */
 .dk-tabs{display:grid;grid-template-columns:repeat(6,1fr);gap:2px;padding:4px;border:1px solid var(--border-strong);border-radius:14px;background:linear-gradient(180deg,rgba(18,42,90,.55),rgba(10,26,56,.9));position:sticky;top:0;z-index:5;box-shadow:var(--sh)}
@@ -144,10 +152,18 @@ body.aic-open .aic-backdrop{background:rgba(2,6,16,.7)}
 .aic-page.aic-jarvis .aic button.dk-tab.on{background:linear-gradient(180deg,#1b7be0,#1565d8);color:#fff;border-color:rgba(120,200,255,.5);box-shadow:0 0 16px rgba(47,180,255,.45)}
 .aic-page.aic-jarvis .aic button.dk-tab:hover:not(.on):not(:disabled){background:rgba(47,180,255,.1);color:var(--text)}
 
-/* hero: two panels side by side */
-.dk-hero{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+/* hero: avatar on top and the two panels side by side on phones; one row of three on wide screens */
+.dk-hero{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"av av" "l r";gap:10px}
+.dk-hero>#aic-core{grid-area:av;justify-self:center;min-width:0;overflow:visible!important;background:none!important}
+.dk-hero>.dk-hp-l{grid-area:l}.dk-hero>.dk-hp-r{grid-area:r}
 .dk-hp{min-height:0;min-width:0}
-@media(min-width:560px){.dk-hp{min-height:96px}}
+.aic-page.aic-jarvis #aic-hero .aic-corerow .aic-stage{width:min(190px,52vw)}
+@media(min-width:560px){
+  .dk-hero{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);grid-template-areas:"l av r"}
+  .aic-page.aic-jarvis #aic-hero .aic-corerow .aic-stage{width:170px}
+  .dk-hp{min-height:96px}
+}
+.aic-page.aic-jarvis #aic-core{overflow:visible}
 
 /* tiles: values stay on one line */
 .dk-tile{min-width:0}
@@ -178,7 +194,8 @@ body.aic-open .aic-backdrop{background:rgba(2,6,16,.7)}
   .aic-page.aic-jarvis .aic-main[data-tab=overview]>#aic-dkatt,.aic-page.aic-jarvis .aic-main[data-tab=overview]>#aic-dksales{align-self:stretch}
   .aic-page.aic-jarvis .dk-tiles{grid-template-columns:repeat(6,minmax(0,1fr))}
   .aic-page.aic-jarvis .dk-chart{height:230px}
-    .dk-hp-l b{font-size:22px}.dk-hp-r b{font-size:16px}
+  .aic-page.aic-jarvis #aic-hero .aic-corerow .aic-stage{width:190px}
+  .dk-hp-l b{font-size:22px}.dk-hp-r b{font-size:16px}
 }
 @media(min-width:760px) and (max-width:1000px){.aic-page.aic-jarvis .dk-tiles{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .dk-tabs{max-width:100%}
@@ -206,3 +223,5 @@ body.aic-open .aic-backdrop{background:rgba(2,6,16,.7)}
 .fg-banner{position:fixed;left:50%;top:max(14px,env(safe-area-inset-top));transform:translateX(-50%);z-index:100000;max-width:min(92vw,520px);padding:12px 18px;border-radius:14px;border:1px solid var(--accent);background:linear-gradient(180deg,#123a7a,#0a1a38);color:#eaf2ff;font:700 14px/1.35 var(--sans,system-ui);text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.6),0 0 24px rgba(47,180,255,.5);animation:fg-pop .35s ease-out}
 @keyframes fg-pop{from{transform:translate(-50%,-20px) scale(.9);opacity:0}}
 @media(prefers-reduced-motion:reduce){.fg-banner{animation:none}}
+
+.dk-hp-r .dk-askj{margin-top:6px}

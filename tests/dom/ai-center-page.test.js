@@ -42,13 +42,14 @@ describe('AI Center page', () => {
     assert.match(text(), /Rs 12,000/); // CASH metric from get_daily_sales
     assert.match(text(), /410,000/);
   });
-  test('hero: what the page is, one live status pill and one Ask Jarvis button (no avatar, no chat)', async () => {
+  test('hero: just the avatar and one live status pill (nothing else under the avatar)', async () => {
     const hero = q('#aic-hero');
     assert.ok(hero, 'hero card missing');
-    assert.match(hero.textContent, /BT Intelligence/);
-    assert.match(hero.querySelector('.aic-hpill').textContent, /^(Live data|Offline)$/);
-    assert.ok(hero.querySelector('.dk-askj'), 'Ask Jarvis button');
-    assert.equal(document.querySelectorAll('svg.aic-avatar, #aic-core, .aic-orb, .aic-stage, #aic-chat, .aic-chatslot, #ag-text').length, 0, 'no avatar and no chat on this page');
+    assert.ok(hero.querySelector('#aic-core svg.aic-avatar'), 'avatar lives in the hero');
+    assert.equal(document.querySelectorAll('svg.aic-avatar').length, 1, 'exactly one avatar on the page');
+    assert.match(hero.querySelector('.aic-hpill').textContent, /^Jarvis (online|offline)$/);
+    assert.equal(hero.querySelectorAll('.aic-hbtn, .aic-hbub p, .aic-avset, .aic-mission, .aic-lifed').length, 0, 'greeting, quick buttons, avatar buttons, mission and lifecycle are gone from under the avatar');
+    assert.ok(hero.querySelector('.aic-cs.aic-sr h2'), 'the state is still available to screen readers');
   });
   test('Command Deck: six tabs, Overview shows the key cards and other tabs hide them', async () => {
     const tabs = [...document.querySelectorAll('#aic-tabs [role=tab]')];
@@ -79,6 +80,19 @@ describe('AI Center page', () => {
     assert.equal(ui.__test.S.tab, 'inventory');
     ui.__test.setTab('overview'); S0.snap = keep; ui.__test.paint();
   });
+  test('tapping the avatar opens its settings: photo, face and voice controls', async () => {
+    const orb = q('#aic-hero .aic-orb');
+    assert.equal(orb.getAttribute('role'), 'button');
+    orb.click();
+    const m = q('.aic-modal');
+    assert.ok(m, 'settings sheet opens');
+    assert.match(m.getAttribute('aria-label'), /avatar/i);
+    assert.ok(m.querySelector('input[type=file]'), 'photo upload');
+    assert.ok(m.querySelector('.jv-set-prev svg.aic-avatar'), 'live preview');
+    assert.ok([...m.querySelectorAll('.jv-set-l')].some(e => /Move while talking/.test(e.textContent)), 'animation toggle');
+    q('.aic-x').click();
+    assert.equal(q('.aic-modal'), null);
+  });
   test('Ask Jarvis buttons open the global Jarvis panel; the page keeps no chat of its own', async () => {
     const calls = [];
     window.BTAgent = { ask: q2 => { calls.push(['ask', q2]); return Promise.resolve(); }, isBusy: () => false, open() { calls.push(['open']); }, writesAllowed: () => false, killed: () => false };
@@ -91,13 +105,30 @@ describe('AI Center page', () => {
     delete window.BTAgent;
   });
 
-  test('the page is themed, has no avatar or talking state, and the status text stays real DOM text', async () => {
-    assert.ok(q('#page-ai-center').classList.contains('aic-jarvis'));
+  test('Jarvis speaking: the voice-state event animates the avatar and the status pill, and clears again', async () => {
     window.dispatchEvent(new window.CustomEvent('bt-voice-state', { detail: { speaking: true } }));
-    assert.match(q('.aic-hpill').textContent, /^(Live data|Offline)$/, 'a speaking event no longer changes this page');
+    assert.equal(q('#aic-hero .aic-stage').getAttribute('data-talk'), '1');
+    assert.equal(q('.aic-hpill').textContent, 'Jarvis speaking');
     window.dispatchEvent(new window.CustomEvent('bt-voice-state', { detail: { speaking: false } }));
-    assert.ok(q('.aic-hpill').textContent.trim().length > 0);
-    assert.equal(document.querySelectorAll('svg').length > 0 ? document.querySelectorAll('svg.aic-avatar').length : 0, 0);
+    assert.equal(q('#aic-hero .aic-stage').getAttribute('data-talk'), '0');
+    assert.match(q('.aic-hpill').textContent, /^Jarvis (online|offline)$/);
+    assert.equal(q('#aic-chat'), null, 'no chat card on this page');
+  });
+
+  test('JARVIS layer: page is themed, SVG avatar is decorative, state text stays real DOM text', async () => {
+    assert.ok(q('#page-ai-center').classList.contains('aic-jarvis'));
+    const av = q('#aic-core .aic-orb svg.aic-avatar');
+    assert.ok(av, 'avatar svg missing');
+    assert.equal(av.getAttribute('aria-hidden'), 'true');
+    assert.ok(av.querySelector('.jv-head .jv-skin') && av.querySelector('.jv-eye') && av.querySelector('.jv-mouth'), 'drawn face with eyes and a mouth');
+    assert.equal(av.querySelectorAll('image').length, 0, 'no photo unless the person set one on this device');
+    assert.equal(av.querySelectorAll('.jv-r').length, 0, 'no sci-fi HUD rings');
+    const ids = [...av.querySelectorAll('[id]')].map(e => e.id);
+    assert.equal(new Set(ids).size, ids.length, 'avatar defs have unique ids');
+    assert.ok(ids.every(id => document.querySelectorAll('[id="' + id + '"]').length === 1), 'ids unique in the whole document');
+    assert.equal(document.querySelectorAll('#aic-core .aic-avatar').length, 1, 'no duplicate avatar after repaint');
+    assert.ok(q('#aic-core .aic-cs h2').textContent.trim().length > 0, 'lifecycle label must be real text');
+    assert.equal(q('#aic-core .aic-stage').getAttribute('data-s'), q('#aic-core .aic-cs h2').textContent.trim().toLowerCase().replace(/ /g, '_'));
   });
   test('Agent Fleet: one tile per registered specialist, no invented activity', () => {
     const tiles = [...document.querySelectorAll('#aic-fleet .aic-ftile')];
@@ -137,7 +168,7 @@ describe('AI Center page', () => {
     assert.equal(T.liveState().open, null);
     ui.__test.S.mode = 'investigate'; ui.__test.paint(); // mission + lifecycle now live under Operations & Diagnostics
     assert.match(q('#aic-ops').textContent, /No active mission/);
-    assert.match(q('.aic-live').textContent, /READY/);
+    assert.match(q('.aic-cs h2').textContent, /READY/);
   });
   test('repository intelligence says it is not connected', () => {
     ui.__test.S.mode = 'investigate'; ui.__test.paint();
@@ -154,7 +185,7 @@ describe('AI Center page', () => {
     assert.match(t, /not claimed|cannot be measured|Not guessed/); // Edge Functions have no heartbeat: stated, not invented
   });
   test('one front page: essentials always open, secondary cards fold', async () => {
-    const open = ['aic-sys', 'aic-runs', 'aic-actc'], folded = ['aic-health', 'aic-repo', 'aic-fleet'];
+    const open = ['aic-sys', 'aic-core', 'aic-runs', 'aic-actc'], folded = ['aic-health', 'aic-repo', 'aic-fleet'];
     open.forEach(id => { const el = document.getElementById(id); assert.ok(el, id); assert.ok(!el.classList.contains('aic-fold'), id + ' must not collapse'); });
     folded.forEach(id => { const el = document.getElementById(id); assert.ok(el, id + ' must be on the same page'); assert.ok(el.classList.contains('aic-folded'), id + ' should be collapsed'); });
   });
