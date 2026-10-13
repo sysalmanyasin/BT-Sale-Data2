@@ -119,7 +119,7 @@ npx serve .
 │   ├── nav-sections.js         # Single source for all navigation
 │   ├── agent/                  # AI assistant: core/ (registry, router, specialists, undo, telemetry…), tools/ (57 tools), ui/ (panel, voice)
 │   ├── ai-center/              # BT Intelligence: ui.js, model.js, deck-model.js, copilot.js, adapters.js,
-│   │                           #   avatar.js, forecast-game.js, repo-intel.js, repo-index.json
+│   │                           #   forecast-game.js, repo-intel.js, repo-index.json
 │   ├── emergency-billing-native.js
 │   └── emergency-billing-bridge.js
 ├── css/                        # Per-domain stylesheets (ai-center*.css for BT Intelligence)
@@ -313,7 +313,7 @@ Route `#ai-center` (nav label **BT Intelligence** 🛰). A control room over the
 
 | Area | What it shows |
 |---|---|
-| **Jarvis (hero)** | Animated avatar (`avatar.js`; optional owner photo kept only in this browser's `localStorage`, never uploaded) and **the one chat** docked directly beneath it: history, memory + house rules, usage, kill switch, writes lock, new chat, briefing, approvals, undo, voice. The ✨ button on other pages only jumps here. |
+| **Jarvis (global assistant)** | **The one chat**, available on every page from a floating *Ask Jarvis* button (hidden on Emergency Billing). It opens as a compact panel over the page you are on (card on desktop, bottom sheet on phone) and knows which page that is, with starter questions for Sales, Inventory, Cash and Audit (`js/agent/core/page-suggestions.js`). The ⋯ menu holds history, memory + house rules, usage, voice settings, the writes lock, the kill switch and new chat. Approvals, undo and voice work as before; an approval left waiting stays waiting (amber count on the button). BT Intelligence has no chat of its own: its *Ask Jarvis* buttons open this panel. |
 | **Voice** | Browser-native Web Speech API (`js/agent/ui/voice.js`). Jarvis speaks replies (on by default on first visit; the speaker button turns it off and the choice is remembered) and the mic feeds the same path as typing. **Voice can never approve anything**: approvals need a real user tap. |
 | **Overview / Needs attention** | Prioritised findings with evidence, impact, recommendation and what-happens-if-I-act, from `daily_briefing`, `closing_recent_days`, `str_overview`, `get_target_pace` and the inventory bridge. Rule text is labelled as rules, not AI. |
 | **Sales & Forecast** | Target pace and month projection (same function as the Dashboard), weekday forecast, money overview, and the **AI Forecast Game**. |
@@ -441,8 +441,8 @@ More detail in [`tests/README.md`](tests/README.md).
 
 **BT Intelligence (AI Center)**
 - Reads only; every change goes through the assistant's approval card, lock and kill switch.
-- Voice and the avatar depend on the browser's Web Speech API; lip-sync is a speech-like rhythm, not frame-accurate.
-- Forecast Game, intraday curve, history and avatar photo are per device; a forecast needs the app open to track the day.
+- Voice depends on the browser's Web Speech API; spoken replies are optional and off by default.
+- Forecast Game, intraday curve and history are per device; a forecast needs the app open to track the day.
 - Free-provider pool: quality and availability vary; sensitive (salary/credit/staff) prompts never go to providers that may train on free-tier data.
 - Push briefing, closing push and Drive backup have no heartbeat, so health shows them as UNKNOWN.
 - Repository index is a snapshot; rebuild with `npm run index:repo`.

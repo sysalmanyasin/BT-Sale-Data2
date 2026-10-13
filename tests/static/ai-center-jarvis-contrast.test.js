@@ -20,7 +20,7 @@ test('white text on the brand button fill and the active tab is readable', () =>
 test('text on a red (destructive) fill uses --surface and stays readable', () => { assert.ok(ratio(T.surface, T.red) >= 4.5); });
 test('the palette lives in ONE file: the other ai-center sheets only use tokens (no hard-coded brand hex)', () => {
   const files = readdirSync(new URL('../../css/', import.meta.url)).filter(f => /^ai-center.*\.css$/.test(f) && f !== 'ai-center-deck.css');
-  assert.ok(files.length >= 6);
+  assert.ok(files.length >= 5);
   for (const f of files) {
     const css = read('css/' + f).replace(/\/\*[\s\S]*?\*\//g, '');
     assert.doesNotMatch(css, /#20DDF5|#8b9bff|#7c8cff|#c084fc|#A78BFA|#080D18|#06070d|#111B2B|#0e1018/i, f + ' still carries the old palette');

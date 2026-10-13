@@ -1,15 +1,15 @@
 # BT AI Center: architecture audit and map (prompt section 52)
 
-The AI Center is a **control room over the existing assistant**. It owns no business logic, no second data layer and no write path of its own.
+The AI Center is a **control room over the existing assistant**. It has no chat of its own: its "Ask Jarvis" actions open the global Jarvis panel (`js/agent/ui/agent-panel.js`). It owns no business logic, no second data layer and no write path of its own.
 
 ## Layers
 
 | Layer | Files | Role |
 |---|---|---|
-| Presentation | `js/ai-center/ui.js`, `css/ai-center*.css` (jarvis, command-deck, deck, copilot, v2, chat, avatar) | Command Deck: tabs Overview / Sales & Forecast / Inventory / Operations / Audit / More. Draws everything with `textContent` (never `innerHTML`, except the assistant's escaped markdown). |
+| Presentation | `js/ai-center/ui.js`, `css/ai-center*.css` (jarvis, command-deck, deck, copilot, v2) | Command Deck: tabs Overview / Sales & Forecast / Inventory / Operations / Audit / More. Draws everything with `textContent` (never `innerHTML`, except the assistant's escaped markdown). |
 | Deck view-model | `js/ai-center/deck-model.js`, `deck-icons.js` | Pure. Overview numbers from the real snapshot; a missing source gives null, never an invented value. |
 | Copilot logic | `js/ai-center/copilot.js` | Pure. Prioritised attention, suggestions, structured investigation results, text-only drafts. No write path. |
-| Avatar + voice | `js/ai-center/avatar.js`, `js/agent/ui/voice.js` | Talking Jarvis (optional owner photo, `localStorage` only); browser Web Speech API; voice cannot approve. |
+| Voice | `js/agent/ui/voice.js` (used by the global Jarvis panel) | Browser Web Speech API; spoken replies are optional and off by default; voice cannot approve. The talking-face avatar was removed. |
 | Forecast Game | `js/ai-center/forecast-game.js`, `js/shared/today-forecast.js` | Locks one call per day, tracks live POS, grades itself. Device-local; writes no business data. |
 | Pure model | `js/ai-center/model.js` | Maps existing tool results to findings, system cards, lifecycle, approval view, correlations, health rules. No DOM, no Supabase. |
 | Adapters | `js/ai-center/adapters.js` | Read-only: runs existing READ tools through `runTool(..., {allow:['read']})`, reads bridge sync stamps and the agent tables. |
@@ -26,7 +26,7 @@ The AI Center is a **control room over the existing assistant**. It owns no busi
 | Deeper system views | `deepViews` (ui) + `readTool` | `low_cover_items`, `low_stock_items`, `slow_moving_stock`, `top_sales_days`, `list_pending_strs`, `closing_recent_days` | none | read tools, on tap | none | telemetry |
 | Forecast | `buildForecast` | `get_target_pace` (= `Analytics.getTargetPaceForMonth`) + briefing projection (now delegating to the same function) | Sales | `get_target_pace` | none | telemetry |
 | Cross-area signals | `correlate` | current findings | none (rules) | none | none | none: derived view |
-| Ask BT / Investigate | `window.BTAgent.ask` | existing assistant | router-chosen specialist | per question | per change | `agent_audit` |
+| Ask Jarvis / Investigate | `window.BTAgent.ask` (opens the global panel) | existing assistant | router-chosen specialist | per question | per change | `agent_audit` |
 | Approval view | `approvalView` + `BTAgent.approvals/decide` | the live proposal + `approval_requested` event | whichever proposed | change tools | **yes: trusted tap; strong = 2 taps; delete = typed word** | `agent_audit`, telemetry `approval_*` |
 | Verify | `runTool` -> verifier (`js/agent/tools/verify.js`) | re-read of the store written | n/a | each change tool | n/a | telemetry `verify_start/end`; verified flag in the tool result |
 | Undo | existing `undo.js`, `undo-store.js` | `agent_audit` (48 h) | n/a | n/a | by tap | `agent_audit.undone_at` |
@@ -36,7 +36,7 @@ The AI Center is a **control room over the existing assistant**. It owns no busi
 | Repository intelligence | `searchRepoIndex` | `repo-index.json` | none | none | none | none |
 | Audit tab (Audit & Variance, Near Expiry, Payments) | `js/audit-bridge.js` | Audit Hub `ai_audit_overview()` (`supabase/audit-project/`) | Assistant | `audit_overview`, `audit_expiry`, `payment_breakdown` | none (read) | telemetry |
 | Forecast Game | `forecast-game.js` | live POS total + weekday history | Sales | `todays_forecast` | none (device-local state) | none |
-| One chat (docked under Jarvis) | `agent-panel.js` via `BTAgent.dock` | existing assistant | router-chosen | per question | per change | `agent_audit` |
+| Global Jarvis panel | `agent-panel.js` (floating button on every page, hidden on Emergency Billing), `core/page-suggestions.js` | existing assistant | router-chosen | per question | per change (a waiting approval stays waiting when the panel is closed) | `agent_audit` |
 
 ## Findings from the audit (what was wrong or duplicated, and what was done)
 

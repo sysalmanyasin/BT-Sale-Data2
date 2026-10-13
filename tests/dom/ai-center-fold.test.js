@@ -36,7 +36,7 @@ describe('AI Center collapsible cards', () => {
   });
 
   test('summary and status core are never collapsed', () => {
-    for (const id of ['#aic-sum', '#aic-core', '#aic-att', '#aic-sys', '#aic-runs']) {
+    for (const id of ['#aic-sum', '#aic-att', '#aic-sys', '#aic-runs']) {
       const el = q(id); if (!el) continue;
       assert.ok(!el.classList.contains('aic-fold'), id + ' must stay open');
     }
@@ -61,13 +61,14 @@ describe('AI Center collapsible cards', () => {
   });
 });
 
-describe('AI Center chat lives under Jarvis', () => {
-  test('there is no separate chat-assistant button; the thread and the input are inline under the avatar', async () => {
+describe('AI Center has no chat of its own', () => {
+  test('no chat card, no docked chat, no second input, no avatar; the hero offers one Ask Jarvis button', async () => {
     assert.equal(q('.aic-chatbtn'), null, 'separate chat button must be gone');
     assert.equal(q('.aic-cmd'), null, 'no fixed bottom bar');
-    assert.ok(q('#aic-chat .aic-chatslot'), 'the one assistant chat is docked here (BTAgent.dock)');
-    assert.equal(q('#aic-chat .aic-thread'), null, 'the page keeps no second thread');
-    assert.equal(q('#aic-q'), null, 'the page keeps no second input');
-    assert.ok(q('#aic-hero').compareDocumentPosition(q('#aic-chat')) & 4, 'chat follows the hero');
+    assert.equal(q('#aic-chat'), null, 'the chat card is gone');
+    assert.equal(q('.aic-chatslot'), null, 'nothing is docked here');
+    assert.equal(q('#aic-q'), null, 'the page keeps no input');
+    assert.equal(q('.aic-orb'), null, 'no avatar');
+    assert.ok(q('#aic-hero .dk-askj'), 'one way into the global Jarvis panel');
   });
 });

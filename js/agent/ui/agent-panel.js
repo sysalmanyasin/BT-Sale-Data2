@@ -1,7 +1,9 @@
 // ══════════════════════════════════════════════════════════════════════
-// AGENT PANEL — the ONE chat assistant. It lives inside the BT Intelligence page (the AI Center docks it under Jarvis
-// with BTAgent.dock(slot)); everywhere else a small ✨ button just takes you to that page. Pure presentation:
-// delegates everything to runAgent().
+// AGENT PANEL: the ONE chat assistant, "Jarvis". A floating button on every page opens a compact panel over the current page
+// (a floating card on desktop, a bottom sheet on a phone), so nobody has to leave what they are doing. The BT Intelligence page
+// has no chat of its own: its "Ask Jarvis" buttons call window.BTAgent, which opens this panel.
+// Pure presentation: everything is delegated to runAgent(), so tools, permissions, approvals, undo, audit and the kill switch
+// are unchanged. Page awareness (which page, which starter questions) lives in core/page-suggestions.js.
 // ══════════════════════════════════════════════════════════════════════
 import { runAgent, AgentError } from '../core/agent-client.js';
 import { planInvestigation, runInvestigation } from '../core/orchestrator.js';
@@ -22,16 +24,24 @@ import { getKillState, setKillState } from '../core/kill-switch.js';
 import { loadPendingUndos, markUndone } from '../core/undo-store.js';
 import { emit as emitTelemetry, subscribe as subscribeTelemetry } from '../core/telemetry.js';
 import * as V from './voice.js';
+import { areaOf, viewingLabel, suggestionsFor, hidesButton } from '../core/page-suggestions.js';
 import { summarizeUsage, summarizeAudit, fetchUsage, fetchAudit } from '../core/usage-stats.js';
 
 const getSb = () => (typeof window.btGetSupabaseClient === 'function' ? window.btGetSupabaseClient() : null);
 
-const SUGGESTIONS = [
-  'What needs my attention today?',
-  "How are today's sales?",
-  'Target pace this month',
-  'What is low on stock?',
-];
+const svg = d => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + '</svg>';
+const ICON = {
+  chat: svg('<path d="M5 6h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-6l-4 3v-3H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"/><path d="M8.5 11h7"/>'),
+  mic: svg('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>'),
+  stop: svg('<rect x="7" y="7" width="10" height="10" rx="2"/>'),
+  send: svg('<path d="M4 20l17-8L4 4v6l10 2-10 2z"/>'),
+  spk: svg('<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 9a4 4 0 0 1 0 6"/>'),
+  spkoff: svg('<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 9l5 6M22 9l-5 6"/>'),
+  exp: svg('<path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/>'),
+  col: svg('<path d="M20 10h-6V4M4 14h6v6M14 10l7-7M10 14l-7 7"/>'),
+  more: svg('<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>'),
+  x: svg('<path d="M6 6l12 12M18 6L6 18"/>'),
+};
 const TOOL_LABELS = {
   get_sales_summary: 'Checking monthly sales', get_daily_sales: 'Reading daily sales', top_sales_days: 'Ranking sale days',
   compare_sales_months: 'Comparing months', get_target_pace: 'Checking target pace', get_year_overview: 'Reading year overview',
@@ -59,27 +69,41 @@ export function mountAgentPanel() {
   let sensitive = false;
   let lastSpecialist = null;
 
-  const fab = el('button', { id: 'ag-fab', class: 'ag-fab', 'aria-label': 'Open BT Intelligence', title: 'BT Intelligence' }, '✨');
-  const sheet = el('section', { id: 'ag-sheet', class: 'ag-sheet', hidden: '', role: 'dialog', 'aria-label': 'AI assistant' });
+  const fab = el('button', { id: 'ag-fab', class: 'ag-fab', type: 'button', 'aria-label': 'Ask Jarvis', title: 'Ask Jarvis' });
+  fab.innerHTML = ICON.chat + '<span class="ag-fab-l">Ask Jarvis</span>';
+  const sheet = el('section', { id: 'ag-sheet', class: 'ag-sheet', hidden: '', role: 'dialog', 'aria-label': 'Jarvis assistant' });
   sheet.innerHTML = `
+    <button class="ag-grip" id="ag-grip" type="button" aria-label="Resize chat"><i></i></button>
     <header class="ag-head">
-      <div><strong>Ask JARVIS</strong><span class="ag-sub" id="ag-sub"></span></div>
+      <div class="ag-title"><strong>Jarvis</strong><span class="ag-sub" id="ag-sub"></span></div>
       <div class="ag-head-btns">
-        <button class="ag-ico" id="ag-hist" title="Past conversations" aria-label="Past conversations">🕘</button>
-        <button class="ag-ico" id="ag-mem" title="Memory and house rules" aria-label="Memory and house rules">🧠</button>
-        <button class="ag-ico" id="ag-stats" title="Usage and activity" aria-label="Usage and activity">📊</button>
-        <button class="ag-ico" id="ag-kill" aria-label="Stop all AI changes on every device"></button>
-        <button class="ag-ico" id="ag-lock" aria-label="Allow changes"></button>
-        <button class="ag-ico" id="ag-clear" title="New chat" aria-label="New chat">↺</button>
+        <button class="ag-ico" id="ag-exp" type="button"></button>
+        <button class="ag-ico" id="ag-more" type="button" aria-label="More options" aria-haspopup="menu" aria-expanded="false" title="More">${ICON.more}</button>
+        <button class="ag-ico" id="ag-close" type="button" aria-label="Close Jarvis" title="Close">${ICON.x}</button>
       </div>
     </header>
+    <div class="ag-menu" id="ag-menu" role="menu" hidden>
+      <button class="ag-mi" id="ag-hist" type="button" role="menuitem">Past conversations</button>
+      <button class="ag-mi" id="ag-mem" type="button" role="menuitem">Memory and house rules</button>
+      <button class="ag-mi" id="ag-stats" type="button" role="menuitem">Usage and activity</button>
+      <button class="ag-mi" id="ag-vox" type="button" role="menuitem">Voice settings</button>
+      <hr>
+      <button class="ag-mi" id="ag-lock" type="button" role="menuitem"></button>
+      <button class="ag-mi ag-dng" id="ag-kill" type="button" role="menuitem"></button>
+      <hr>
+      <button class="ag-mi" id="ag-clear" type="button" role="menuitem">New chat</button>
+    </div>
+    <div class="ag-ctx" id="ag-ctx"></div>
     <div class="ag-log" id="ag-log" aria-live="polite"></div>
     <div class="ag-chips" id="ag-chips"></div>
+    <div class="ag-speaking" id="ag-speaking" hidden><span>Speaking\u2026</span><button type="button" id="ag-spkstop">Stop</button></div>
     <div class="ag-input">
-      <textarea id="ag-text" rows="1" maxlength="2000" placeholder="Ask about sales, staff, stock…" enterkeyhint="send"></textarea>
-      <button id="ag-send" class="ag-send" aria-label="Send">➤</button>
+      <textarea id="ag-text" rows="1" maxlength="2000" placeholder="Ask about this page\u2026" enterkeyhint="send"></textarea>
+      <div class="ag-listen" id="ag-listen" aria-live="polite"><span class="ag-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><span id="ag-interim">Listening\u2026</span></div>
+      <button id="ag-send" class="ag-send" type="button" aria-label="Send">${ICON.send}</button>
     </div>`;
   document.body.append(fab, sheet);
+  try { ['bt_jarvis_photo', 'bt_jarvis_photo_mode', 'bt_jarvis_mouth_y', 'bt_jarvis_live', 'bt_jarvis_voice_init'].forEach(k => localStorage.removeItem(k)); } catch (_) { /* private mode */ } // the talking-face avatar was removed: drop its on-device photo
 
   const log = sheet.querySelector('#ag-log');
   const text = sheet.querySelector('#ag-text');
@@ -87,6 +111,12 @@ export function mountAgentPanel() {
   const chips = sheet.querySelector('#ag-chips');
   const lockBtn = sheet.querySelector('#ag-lock');
   const sub = sheet.querySelector('#ag-sub');
+  const ctx = sheet.querySelector('#ag-ctx');
+  const menu = sheet.querySelector('#ag-menu');
+  const moreBtn = sheet.querySelector('#ag-more');
+  const expBtn = sheet.querySelector('#ag-exp');
+  const speakingBar = sheet.querySelector('#ag-speaking');
+  const interim = sheet.querySelector('#ag-interim');
   const pending = new Set(); // resolvers of open approval cards
 
   let killed = true; // fail safe until the server state is known
@@ -97,29 +127,37 @@ export function mountAgentPanel() {
     return k;
   }
   function paintLock() {
-    killBtn.textContent = killed ? '⛔' : '🛡';
+    killBtn.innerHTML = '<span>' + (killed ? 'Resume AI changes' : 'Stop all AI changes') + '</span>' + (killed ? '<small>Stopped</small>' : '');
     killBtn.title = killed ? 'AI changes are STOPPED on all devices. Tap to resume.' : 'Tap to stop all AI changes on every device.';
     killBtn.classList.toggle('ag-on', killed);
     const on = getWritesEnabled() && !killed;
-    lockBtn.textContent = on ? '🔓' : '🔒';
+    lockBtn.innerHTML = '<span>Allow changes</span><small>' + (on ? 'On' : 'Off') + '</small>';
     lockBtn.title = on ? 'Changes allowed (you approve each one). Tap to lock.' : 'Read-only. Tap to allow changes.';
     lockBtn.classList.toggle('ag-on', on);
-    sub.textContent = killed ? 'Changes stopped on all devices' : on ? 'Can propose changes · you approve each' : 'Read-only · asks your live data';
+    moreBtn.classList.toggle('ag-flag', killed);
+    sub.textContent = killed ? 'Changes stopped on all devices' : on ? 'Can propose changes · you approve each' : 'Read-only · reads your live data';
   }
   // ── proactive briefing: badge on the ✨ button + a "Today" card (no AI call, no tokens) ──
   let briefing = null;
   const todayStr = () => new Date().toISOString().slice(0, 10);
   const badge = el('span', { class: 'ag-badge', hidden: '' });
   fab.append(badge);
-  function refreshBriefing() {
-    try { briefing = buildBriefing(new Date()); } catch (e) { console.error('[agent] briefing', e); briefing = null; }
+  // The badge shows what needs a decision first (approvals still waiting), otherwise today's briefing count.
+  function paintBadge() {
+    const n = approvals.size;
+    if (n) { badge.textContent = String(n); badge.hidden = false; badge.classList.add('ag-appr'); badge.title = n + (n === 1 ? ' change is' : ' changes are') + ' waiting for your approval'; return; }
+    badge.classList.remove('ag-appr'); badge.title = '';
     const b = badgeState(briefing, getBriefingSeen(), todayStr());
     badge.textContent = b.label; badge.hidden = !b.show;
+  }
+  function refreshBriefing() {
+    try { briefing = buildBriefing(new Date()); } catch (e) { console.error('[agent] briefing', e); briefing = null; }
+    paintBadge();
   }
   function markSeen() {
     if (!briefing) return;
     setBriefingSeen(todayStr(), badgeState(briefing, null, todayStr()).count);
-    badge.hidden = true;
+    paintBadge();
   }
   function addBriefingCard() {
     if (!briefing) return;
@@ -154,7 +192,7 @@ export function mountAgentPanel() {
       let armed = !preview.strong || !!preview.confirmWord;
       const typeIn = card.querySelector('.ag-type-in');
       const id = approval_id || ('ap_local_' + Date.now().toString(36));
-      const done = (ok, label, value) => { pending.delete(finish); approvals.delete(id); card.classList.add('ag-done'); card.querySelector('.ag-card-b').innerHTML = '<span class="ag-card-r">' + label + '</span>'; const t = card.querySelector('.ag-type'); if (t) t.remove(); resolve(ok ? (preview.confirmWord ? { approved: true, typed: value } : true) : false); };
+      const done = (ok, label, value) => { pending.delete(finish); approvals.delete(id); paintBadge(); card.classList.add('ag-done'); card.querySelector('.ag-card-b').innerHTML = '<span class="ag-card-r">' + label + '</span>'; const t = card.querySelector('.ag-type'); if (t) t.remove(); resolve(ok ? (preview.confirmWord ? { approved: true, typed: value } : true) : false); };
       const finish = ok => done(ok, ok ? '✓ Approved' : '✕ Rejected', typeIn ? typeIn.value : undefined);
       pending.add(finish);
       if (typeIn) {
@@ -173,6 +211,7 @@ export function mountAgentPanel() {
         finish(true); return { ok: true };
       };
       approvals.set(id, { id, tool, risk, preview, armed: () => armed, grant, reject: () => { finish(false); return { ok: true }; } });
+      paintBadge();
       no.onclick = () => finish(false);
       yes.onclick = () => { if (yes.disabled) return; grant(); };
     });
@@ -296,13 +335,13 @@ export function mountAgentPanel() {
   function renderChips() {
     chips.innerHTML = '';
     if (history.length) return;
-    SUGGESTIONS.forEach(s => { const b = el('button', { class: 'ag-chip' }, s); b.onclick = () => ask(s); chips.append(b); });
+    suggestionsFor(curPage()).forEach(s => { const b = el('button', { class: 'ag-chip', type: 'button' }, s); b.onclick = () => ask(s); chips.append(b); });
   }
   function welcome() {
     log.innerHTML = '';
     addBubble('assistant', getWritesEnabled()
       ? "Hi! I can read your data and, with your approval on each one, add ledger entries, staff notes and staff credit, set targets and add or correct a day's sales, and delete records (you type DELETE to confirm). What do you need?"
-      : "Hi! I can read your sales, staff, ledgers and inventory, and open pages for you. Tap 🔒 above if you want me to be able to propose changes (you'd still approve each one). What would you like to know?");
+      : "Hi! I can read your sales, staff, ledgers and inventory, and open pages for you. Open the ⋯ menu and choose Allow changes if you want me to be able to propose changes (you'd still approve each one). What would you like to know?");
     refreshBriefing(); addBriefingCard(); markSeen(); showPendingUndos();
     renderChips();
   }
@@ -323,11 +362,11 @@ export function mountAgentPanel() {
   async function ask(q, opts = {}) {
     q = String(q || '').trim();
     if (!q || busy) return;
+    if (!isOpen()) openPanel({ focus: false }); // a question from anywhere (a chip, the voice, an AI Center button) shows its answer here
     const hadFocus = document.activeElement === text; // give the keyboard back afterwards only if the person was typing here
     text.value = ''; autosize();
     chips.innerHTML = '';
     addBubble('user', q);
-    reveal(); // a question tapped higher up the page (hero buttons, findings) must show its answer
     // Instant path: common one-liners are answered locally, with no AI call at all.
     try {
       const quick = opts.investigate ? null : await tryInstant(q);
@@ -379,37 +418,50 @@ export function mountAgentPanel() {
     syncKnowledge({ sb: getSb(), callAction, includeStaffNotes: kp.staffNotes }).catch(() => {});
   }
   function autosize() { text.style.height = 'auto'; text.style.height = Math.min(text.scrollHeight, 120) + 'px'; }
-  // The assistant lives on the BT Intelligence page ONLY, docked in the page itself (no floating sheet, no second chat).
-  // While it is parked (any other page) the sheet is hidden and the ✨ button just takes you to BT Intelligence.
-  const onCenter = () => document.body.classList.contains('aic-open');
-  const docked = () => !sheet.hidden;
-  function reveal() { if (docked() && typeof sheet.scrollIntoView === 'function') sheet.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
-  function focusChat() {
-    let tries = 0;
-    const t = setInterval(() => {
-      if (docked()) { clearInterval(t); if (typeof sheet.scrollIntoView === 'function') sheet.scrollIntoView({ behavior: 'smooth', block: 'start' }); text.focus({ preventScroll: true }); }
-      else if (++tries > 40) clearInterval(t);
-    }, 50);
+  // ── open / close / page awareness ──
+  const isOpen = () => !sheet.hidden;
+  const curPage = () => { try { return getPageContext().current_page; } catch (_) { return null; } };
+  let expanded = false, lastPage = curPage();
+  function paintCtx() { ctx.innerHTML = '<i></i><span>Viewing <b>' + escHtml(viewingLabel(curPage())) + '</b></span>'; }
+  function paintFab() { const hide = isOpen() || hidesButton(curPage()); fab.classList.toggle('ag-hide', hide); fab.setAttribute('aria-hidden', hide ? 'true' : 'false'); }
+  function paintExpand() {
+    sheet.classList.toggle('ag-exp', expanded && isOpen());
+    expBtn.innerHTML = expanded ? ICON.col : ICON.exp;
+    const l = expanded ? 'Make smaller' : 'Expand'; expBtn.setAttribute('aria-label', l); expBtn.title = l;
   }
-  /** Put the chat into `slot` (idempotent: the AI Center calls it on every repaint). The first dock after being parked wakes it up. */
-  function dock(slot) {
-    if (!slot || typeof slot.appendChild !== 'function') return false;
-    const wasParked = sheet.hidden;
-    if (sheet.parentNode !== slot) slot.replaceChildren(sheet);
-    sheet.hidden = false; sheet.classList.add('ag-docked'); fab.classList.add('ag-hide');
-    if (wasParked) { refreshKill(); autoIndex(); paintVoice(); if (!log.children.length) welcome(); }
-    return true;
+  function closeMenu() { menu.hidden = true; moreBtn.setAttribute('aria-expanded', 'false'); }
+  function toggleMenu() { menu.hidden = !menu.hidden; moreBtn.setAttribute('aria-expanded', String(!menu.hidden)); }
+  function openPanel({ focus = true } = {}) {
+    if (isOpen()) { if (focus) text.focus({ preventScroll: true }); return; }
+    const first = !log.children.length;
+    sheet.hidden = false; paintFab(); paintCtx(); paintExpand(); paintVoice(); refreshKill(); autoIndex();
+    if (first) welcome(); else { renderChips(); markSeen(); }
+    if (focus) setTimeout(() => { if (isOpen()) text.focus({ preventScroll: true }); }, 40);
   }
-  /** Leave the page: stop talking/listening, reject any open approval, cancel a running request, put the chat away (its history stays). */
-  function park() { voiceStop(); V.stopSpeaking(window); rejectAllPending(); if (abort) abort.abort(); sheet.hidden = true; sheet.classList.remove('ag-docked'); document.body.append(sheet); fab.classList.remove('ag-hide'); }
-  function open() {
-    if (onCenter()) { focusChat(); return; }
-    window.location.hash = '#ai-center';
-    let tries = 0;
-    const t = setInterval(() => { if (onCenter()) { clearInterval(t); focusChat(); } else if (++tries > 40) clearInterval(t); }, 50);
+  /** Close the panel. A running request keeps going and an approval that is waiting stays waiting (the button shows an amber badge). */
+  function closePanel() { voiceStop(); V.stopSpeaking(window); closeMenu(); sheet.hidden = true; expanded = false; paintExpand(); paintFab(); paintBadge(); }
+  function open() { openPanel(); }
+  /** The person moved to another page: update the context line, the starter questions and the button, and mark the switch in the chat. */
+  function onPage() {
+    const p = curPage(); if (p === lastPage) return;
+    lastPage = p; paintFab(); paintCtx();
+    if (!history.length) renderChips();
+    if (isOpen() && log.children.length) { const d = el('div', { class: 'ag-divl' }, 'Now viewing ' + viewingLabel(p)); log.append(d); log.scrollTop = log.scrollHeight; }
   }
-  // Leaving BT Intelligence parks the chat (pending approvals are rejected).
-  window.addEventListener('hashchange', () => setTimeout(() => { if (docked() && !onCenter()) park(); }, 150));
+  window.addEventListener('hashchange', () => setTimeout(onPage, 150));
+  try { if (window.MutationObserver) new window.MutationObserver(ms => { if (ms.some(m => m.target && m.target.classList && m.target.classList.contains('page'))) onPage(); }).observe(document.body, { attributes: true, attributeFilter: ['class'], subtree: true }); } catch (_) { /* pages still update on hashchange */ }
+  document.addEventListener('click', e => { if (!menu.hidden && !menu.contains(e.target) && !moreBtn.contains(e.target)) closeMenu(); });
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape' || !isOpen() || document.querySelector('.aic-backdrop, .modal-overlay.open')) return;
+    if (!menu.hidden) { closeMenu(); moreBtn.focus(); } else closePanel();
+  });
+  sheet.querySelector('#ag-close').onclick = closePanel;
+  moreBtn.onclick = e => { e.stopPropagation(); toggleMenu(); };
+  menu.addEventListener('click', e => { if (e.target.closest('.ag-mi')) closeMenu(); });
+  expBtn.onclick = () => { expanded = !expanded; paintExpand(); };
+  sheet.querySelector('#ag-grip').onclick = () => { expanded = !expanded; paintExpand(); };
+  paintExpand(); paintFab();
+  { const t0 = setTimeout(refreshBriefing, 2500); if (t0 && typeof t0.unref === 'function') t0.unref(); } // so the button can show today's count before the panel is first opened
 
   fab.onclick = open;
   sheet.querySelector('#ag-clear').onclick = () => { rejectAllPending(); if (abort) abort.abort(); history = []; convDbId = null; sensitive = false; lastSpecialist = null; clearUndo(); clearSession(); welcome(); };
@@ -428,7 +480,7 @@ export function mountAgentPanel() {
   };
   // Public hook for the AI Center command bar: the SAME agent, panel and approval cards. No second chatbot.
   window.BTAgent = Object.freeze({
-    ask: q => ask(q), open, dock, park,
+    ask: q => ask(q), open, close: closePanel, isOpen,
     // Start a REAL investigation (independent specialists + Analyst synthesis) from a finding. Falls back to a single run, honestly
     // labelled in telemetry, when fewer than two areas are relevant.
     investigate: ({ question, domains, finding } = {}) => ask(question, { investigate: { domains: Array.isArray(domains) ? domains : [], finding: finding || null } }),
@@ -461,8 +513,9 @@ export function mountAgentPanel() {
   //    hard blocks, the kill switch and audit are unchanged (and voice can never approve: approvals need a real tap). ──
   function voiceStop() { if (recog) recog.stop(); }
   function paintVoice() {
-    if (micBtn) { micBtn.classList.toggle('on', listening); micBtn.setAttribute('aria-pressed', String(listening)); micBtn.textContent = listening ? '\u23F9' : '\uD83C\uDF99'; micBtn.title = listening ? 'Listening. Tap to stop' : 'Speak to JARVIS'; micBtn.setAttribute('aria-label', listening ? 'Stop listening' : 'Speak to JARVIS'); }
-    if (spkBtn) { const on = V.getVoiceOut(); spkBtn.classList.toggle('on', on); spkBtn.setAttribute('aria-pressed', String(on)); spkBtn.textContent = on ? '\uD83D\uDD0A' : '\uD83D\uDD08'; spkBtn.title = on ? 'Spoken answers on' : 'Spoken answers off'; }
+    sheet.classList.toggle('ag-lis', listening);
+    if (micBtn) { micBtn.classList.toggle('on', listening); micBtn.setAttribute('aria-pressed', String(listening)); micBtn.innerHTML = listening ? ICON.stop : ICON.mic; micBtn.title = listening ? 'Listening. Tap to stop' : 'Speak to Jarvis'; micBtn.setAttribute('aria-label', listening ? 'Stop listening' : 'Speak to Jarvis'); }
+    if (spkBtn) { const on = V.getVoiceOut(); spkBtn.classList.toggle('on', on); spkBtn.setAttribute('aria-pressed', String(on)); spkBtn.innerHTML = on ? ICON.spk : ICON.spkoff; spkBtn.title = on ? 'Spoken answers on' : 'Spoken answers off'; }
   }
   function voiceToggle() {
     if (listening) { voiceStop(); return; }
@@ -472,20 +525,50 @@ export function mountAgentPanel() {
     if (!noticed) addBubble('status', 'Voice uses your browser\u2019s speech service. Audio may be processed by the browser vendor.');
     recog = V.createRecognizer(window, {
       lang: V.voiceLang(window),
-      onInterim: t => { text.value = t; autosize(); },
+      onInterim: t => { text.value = t; interim.textContent = t; autosize(); },
       onFinal: t => { addBubble('status', 'Heard: \u201C' + t.slice(0, 120) + '\u201D'); ask(t); },
       onEnd: () => { listening = false; paintVoice(); },
       onError: code => addBubble('status', code === 'not-allowed' || code === 'service-not-allowed' ? 'Microphone permission was denied. Allow it in the browser site settings.' : code === 'no-speech' ? 'I did not hear anything. Try again.' : code === 'network' ? 'Voice needs an internet connection.' : 'Voice input failed (' + code + ').'),
     });
     if (!recog) return;
-    try { recog.start(); listening = true; paintVoice(); } catch (err) { addBubble('status', 'Could not start the microphone: ' + (err && err.message ? err.message : 'unknown error')); }
+    try { interim.textContent = 'Listening\u2026'; recog.start(); listening = true; paintVoice(); } catch (err) { addBubble('status', 'Could not start the microphone: ' + (err && err.message ? err.message : 'unknown error')); }
   }
   const vs = V.voiceSupport(window);
   if (vs.input) { micBtn = document.createElement('button'); micBtn.id = 'ag-mic'; micBtn.className = 'ag-mic'; micBtn.type = 'button'; micBtn.addEventListener('click', voiceToggle); send.before(micBtn); }
-  if (vs.output) { spkBtn = document.createElement('button'); spkBtn.id = 'ag-spk'; spkBtn.className = 'ag-spk'; spkBtn.type = 'button'; spkBtn.setAttribute('aria-label', 'Read answers aloud'); spkBtn.addEventListener('click', () => { const on = !V.getVoiceOut(); V.setVoiceOut(on); if (!on) V.stopSpeaking(window); paintVoice(); }); send.before(spkBtn); }
+  if (vs.output) { spkBtn = document.createElement('button'); spkBtn.id = 'ag-spk'; spkBtn.className = 'ag-spk'; spkBtn.type = 'button'; spkBtn.setAttribute('aria-label', 'Read answers aloud'); spkBtn.addEventListener('click', () => { const on = !V.getVoiceOut(); V.setVoiceOut(on); if (!on) V.stopSpeaking(window); paintVoice(); }); sheet.querySelector('.ag-head-btns').prepend(spkBtn); }
   paintVoice();
   // the ONE place answers are spoken (model answers and instant local answers), whichever page the question came from
   subscribeTelemetry(e => { if ((e.type === 'answer' || e.type === 'instant') && V.getVoiceOut() && e.metadata && e.metadata.text) V.speak(window, e.metadata.text, V.voiceLang(window)); });
+
+  // the "Speaking... Stop" strip follows the browser's own speech state (voice.js announces it)
+  window.addEventListener('bt-voice-state', e => { speakingBar.hidden = !(e.detail && e.detail.speaking); });
+  sheet.querySelector('#ag-spkstop').onclick = () => V.stopSpeaking(window);
+  // ── voice settings: spoken answers, speed and voice (all stored on this device by voice.js) ──
+  function showVoiceSettings() {
+    const sup = V.voiceSupport(window);
+    const card = el('div', { class: 'ag-card' });
+    card.append(el('div', { class: 'ag-card-t' }, 'Voice settings'));
+    const row = (label, ctl) => { const r = el('label', { class: 'ag-set-row' }); r.append(el('span', {}, label), ctl); return r; };
+    if (sup.output) {
+      const on = el('input', { type: 'checkbox', 'aria-label': 'Speak answers aloud' }); on.checked = V.getVoiceOut();
+      on.onchange = () => { V.setVoiceOut(on.checked); if (!on.checked) V.stopSpeaking(window); paintVoice(); };
+      const speed = el('select', { 'aria-label': 'Speech speed' }); const cur = V.getVoiceRate();
+      [['0.85', 'Slower'], ['1', 'Normal'], ['1.15', 'Faster']].forEach(([v, l]) => { const o = el('option', { value: v }, l); if (Math.abs(cur - Number(v)) < 0.05) o.selected = true; speed.append(o); });
+      speed.onchange = () => V.setVoiceRate(speed.value);
+      card.append(row('Speak answers aloud', on), row('Speed', speed));
+      let voices = []; try { voices = (window.speechSynthesis.getVoices() || []).filter(v => v.lang && v.lang.slice(0, 2) === V.voiceLang(window).slice(0, 2)); } catch (_) { /* device default */ }
+      if (voices.length) {
+        const sel = el('select', { 'aria-label': 'Voice' }); sel.append(el('option', { value: '' }, 'Device default')); const pick = V.getVoiceName();
+        voices.forEach(v => { const o = el('option', { value: v.name }, v.name); if (v.name === pick) o.selected = true; sel.append(o); });
+        sel.onchange = () => V.setVoiceName(sel.value); card.append(row('Voice', sel));
+      }
+      const test = el('button', { class: 'ag-undo-btn', type: 'button' }, 'Test voice'); test.onclick = () => V.speak(window, 'Hello. I am Jarvis. Here is how I sound.', V.voiceLang(window));
+      card.append(test);
+    } else card.append(el('div', { class: 'ag-warn' }, 'This browser cannot speak answers aloud.'));
+    card.append(el('div', { class: 'ag-warn' }, 'Voice uses your browser\u2019s speech service. Audio may be processed by the browser vendor. Voice can never approve a change.'));
+    log.append(card); log.scrollTop = log.scrollHeight;
+  }
+  sheet.querySelector('#ag-vox').onclick = showVoiceSettings;
 
   text.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(text.value); } });
 }

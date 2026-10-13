@@ -1,4 +1,4 @@
-// Voice in the ONE chat on the real BT Intelligence page: the mic and speaker live in the docked assistant chat, the spoken
+// Voice in the ONE global Jarvis panel, used while BT Intelligence is open: the mic and speaker live in the panel, the spoken
 // text goes through the same ask() path as typing, and an error asks nothing and says why.
 import { test, describe, before } from 'node:test';
 import assert from 'node:assert/strict';
@@ -24,34 +24,40 @@ const wait = (ms = 30) => new Promise(r => setTimeout(r, ms));
 const until = async (fn, n = 100) => { for (let i = 0; i < n; i++) { if (fn()) return true; await wait(10); } return false; };
 const q = s => document.querySelector(s);
 
-describe('AI Center voice (one chat)', () => {
-  before(async () => { const e = console.error; console.error = () => {}; mountAgentPanel(); ui.onShow(); await wait(120); console.error = e; });
-  test('the mic lives in the docked chat; the page has no second mic or input', () => {
-    assert.ok(q('#aic-chat #ag-mic'), 'mic inside the chat card');
+describe('Jarvis voice while BT Intelligence is open', () => {
+  before(async () => { const e = console.error; console.error = () => {}; mountAgentPanel(); ui.onShow(); await wait(120); window.BTAgent.open(); await wait(60); console.error = e; });
+  test('the mic lives in the panel; the page has no second mic or input', () => {
+    assert.ok(q('#ag-sheet #ag-mic'), 'mic inside the panel');
     assert.equal(document.querySelectorAll('.aic-mic, #aic-q').length, 0, 'no second voice/input control on the page');
     assert.equal(q('#ag-mic').disabled, false);
     assert.equal(q('#ag-mic').getAttribute('aria-pressed'), 'false');
     assert.equal(q('#ag-spk'), null, 'no speaker control without speech synthesis');
   });
-  test('tap, speak, and the text is asked through the one assistant and answered in the thread', async () => {
+  test('tap, speak: the listening strip shows what is heard, then the text is asked through the one assistant', async () => {
     q('#ag-mic').click(); await wait(30);
     assert.equal(q('#ag-mic').getAttribute('aria-pressed'), 'true');
+    assert.ok(q('#ag-sheet').classList.contains('ag-lis'), 'listening state is shown');
+    inst.onresult({ resultIndex: 0, results: [Object.assign([{ transcript: 'who owes' }], { isFinal: false })] });
+    assert.equal(q('#ag-interim').textContent, 'who owes', 'live transcript');
     inst.onresult({ resultIndex: 0, results: [Object.assign([{ transcript: 'who owes me money' }], { isFinal: true })] });
     inst.onend();
-    assert.ok(await until(() => /Nobody owes anything/.test(q('#aic-chat #ag-log').textContent)));
-    assert.ok([...document.querySelectorAll('#aic-chat .ag-user')].some(b => b.textContent.includes('who owes me money')));
+    assert.ok(await until(() => /Nobody owes anything/.test(q('#ag-log').textContent)));
+    assert.ok([...document.querySelectorAll('#ag-log .ag-user')].some(b => b.textContent.includes('who owes me money')));
     assert.equal(q('#ag-mic').getAttribute('aria-pressed'), 'false');
+    assert.ok(!q('#ag-sheet').classList.contains('ag-lis'));
   });
   test('a recognition error asks nothing and shows a reason in the chat', async () => {
     await until(() => !q('#ag-mic').disabled);
-    const asked = document.querySelectorAll('#aic-chat .ag-user').length;
+    const asked = document.querySelectorAll('#ag-log .ag-user').length;
     q('#ag-mic').click(); await wait(30);
     inst.onerror({ error: 'not-allowed' }); inst.onend(); await wait(30);
-    assert.equal(document.querySelectorAll('#aic-chat .ag-user').length, asked);
-    assert.match(q('#aic-chat #ag-log').textContent, /permission was denied/i);
+    assert.equal(document.querySelectorAll('#ag-log .ag-user').length, asked);
+    assert.match(q('#ag-log').textContent, /permission was denied/i);
   });
-  test('the one-line summary lives in Needs attention (no decorative speech bubble)', () => {
-    assert.equal(q('#aic-core .aic-bubble'), null);
-    assert.match(q('#aic-att').textContent, /NEEDS ATTENTION/);
+  test('voice settings open in the panel (replacing the old avatar settings) and say voice cannot approve', () => {
+    q('#ag-vox').click();
+    assert.match(q('#ag-log').textContent, /Voice settings/);
+    assert.match(q('#ag-log').textContent, /Voice can never approve/);
+    assert.equal(document.querySelectorAll('input[type=file]').length, 0, 'no photo upload any more');
   });
 });
