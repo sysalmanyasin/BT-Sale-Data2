@@ -13,7 +13,7 @@ import { syncKnowledge, getPrefs as getKnowPrefs, setPrefs as setKnowPrefs, clea
 import { logToolCall } from '../core/audit.js';
 import { renderMarkdown } from '../core/markdown-lite.js';
 import { getPageContext } from '../tools/app.js';
-import { getWritesEnabled, setWritesEnabled, getBriefingSeen, setBriefingSeen } from '../core/prefs.js';
+import { getStyle, setStyle, STYLES, getWritesEnabled, setWritesEnabled, getBriefingSeen, setBriefingSeen } from '../core/prefs.js';
 import { buildBriefing } from '../tools/briefing.js';
 import { badgeState, cardItems } from '../core/briefing-badge.js';
 import { pushUndo, runUndo, clearUndo } from '../core/undo.js';
@@ -87,6 +87,7 @@ export function mountAgentPanel() {
       <button class="ag-mi" id="ag-mem" type="button" role="menuitem">Memory and house rules</button>
       <button class="ag-mi" id="ag-stats" type="button" role="menuitem">Usage and activity</button>
       <button class="ag-mi" id="ag-vox" type="button" role="menuitem">Voice settings</button>
+      <button class="ag-mi" id="ag-style" type="button" role="menuitem"></button>
       <hr>
       <button class="ag-mi" id="ag-lock" type="button" role="menuitem"></button>
       <button class="ag-mi ag-dng" id="ag-kill" type="button" role="menuitem"></button>
@@ -387,8 +388,8 @@ export function mountAgentPanel() {
         if (ev.type === 'writes_killed') { killed = true; paintLock(); }
         if (ev.type === 'tool_end' && !ev.ok && !ev.rejected && ev.error && /writes_disabled/.test(ev.error)) paintLock();
       };
-      const r = plan.orchestrate ? await runInvestigation({ question: q, plan, callServer, context: getPageContext(), signal: abort.signal, sensitive, onEvent, finding: opts.investigate ? opts.investigate.finding || null : null, onResult: keepInvestigation }) : await runAgent({
-        history, userText: q, context: getPageContext(), callServer, signal: abort.signal, sensitive, stream: true,
+      const r = plan.orchestrate ? await runInvestigation({ question: q, plan, callServer, context: withStyle(getPageContext()), signal: abort.signal, sensitive, onEvent, finding: opts.investigate ? opts.investigate.finding || null : null, onResult: keepInvestigation }) : await runAgent({
+        history, userText: q, context: withStyle(getPageContext()), callServer, signal: abort.signal, sensitive, stream: true,
         routeServer: t => callAction('route', { text: t }).then(r => r.domains || []),
         reviewServer: p => callAction('review', { proposal: { tool: p.tool, title: p.preview && p.preview.title, lines: ((p.preview && p.preview.lines) || []).map(String), amount: p.preview && p.preview.amount, today: new Date().toISOString().slice(0, 10) } }),
         writesEnabled: getWritesEnabled(), writesKilled: killed, approve, onUndoable: addUndoRow, prevSpecialist: lastSpecialist,
@@ -418,6 +419,13 @@ export function mountAgentPanel() {
   function autosize() { text.style.height = 'auto'; text.style.height = Math.min(text.scrollHeight, 120) + 'px'; }
   // ── open / close / page awareness ──
   const isOpen = () => !sheet.hidden;
+  // Personality: the id rides along in the context; the server maps it to the actual wording.
+  const withStyle = (c) => ({ ...c, style: getStyle() });
+  const styleBtn = sheet.querySelector('#ag-style');
+  const styleName = () => (STYLES.find(x => x[0] === getStyle()) || STYLES[0])[1];
+  const paintStyle = () => { styleBtn.innerHTML = '<span>Personality</span><small>' + styleName() + '</small>'; };
+  styleBtn.onclick = () => { const i = STYLES.findIndex(x => x[0] === getStyle()); setStyle(STYLES[(i + 1) % STYLES.length][0]); paintStyle(); };
+  paintStyle();
   const curPage = () => { try { return getPageContext().current_page; } catch (_) { return null; } };
   let expanded = false, lastPage = curPage();
   function paintCtx() { ctx.innerHTML = '<i></i><span>Viewing <b>' + escHtml(viewingLabel(curPage())) + '</b></span>'; }
