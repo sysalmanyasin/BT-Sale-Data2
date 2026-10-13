@@ -19,6 +19,8 @@ window.btGetSupabaseClient = () => ({ auth: { getSession: async () => ({ data: {
 let script = [];
 globalThis.fetch = window.fetch = async () => ({ ok: true, status: 200, headers: { get: () => 'application/json' }, body: null, json: async () => script.shift() || { message: { role: 'assistant', content: 'ok' } } });
 
+const today = new Date().toISOString().slice(0, 10);
+window.inventoryBridgeGetFullData = () => ({ lastSync: { syncedAt: new Date().toISOString() }, products: [{ name: 'Gone Item', qty: 0, price: 10, netQty30Days: 12, lastSaleDate: today }] });
 const { mountAgentPanel } = await import('../../js/agent/ui/agent-panel.js');
 const ui = await import('../../js/ai-center/ui.js');
 const wait = (ms = 30) => new Promise(r => setTimeout(r, ms));
@@ -40,11 +42,17 @@ describe('one global Jarvis, used from BT Intelligence', () => {
   test('the Ask Jarvis button in the hero opens the panel with the welcome message, briefing card and this page\'s questions', async () => {
     q('#aic-hero .dk-askj').click(); await wait(60);
     assert.equal(q('#ag-sheet').hidden, false);
-    assert.match(q('#ag-log').textContent, /read your sales, staff, ledgers and inventory/i);
-    assert.ok(q('#ag-log .ag-today'), 'briefing card');
+    assert.match(q('#ag-log').textContent, /How can I help/i);
+    const line = q('#ag-log .ag-today .ag-today-h');
+    assert.ok(line, 'slim attention line');
+    assert.match(line.textContent, /need.* attention/);
+    const body = q('#ag-log .ag-today-body');
+    assert.equal(body.hidden, true, 'details stay closed until tapped');
+    line.click(); assert.equal(body.hidden, false, 'tap opens the details');
+    line.click(); assert.equal(body.hidden, true, 'tap again closes them');
     const chips = [...document.querySelectorAll('#ag-chips .ag-chip')].map(b => b.textContent);
     assert.equal(chips.length, 4); assert.ok(chips.includes('What needs my attention today?'));
-    assert.match(q('#ag-sub').textContent, /Read-only|stopped|approve/i);
+    assert.ok(!q('#ag-sub'), 'no permission subtitle under the name');
   });
   test('every tool of the old header is reachable from the menu', () => {
     ['#ag-hist', '#ag-mem', '#ag-stats', '#ag-vox', '#ag-kill', '#ag-lock', '#ag-clear'].forEach(id => assert.ok(q('#ag-menu ' + id), id + ' missing'));
@@ -93,6 +101,6 @@ describe('one global Jarvis, used from BT Intelligence', () => {
   test('new chat clears the conversation in the panel', async () => {
     q('#ag-clear').click();
     assert.equal(document.querySelectorAll('#ag-log .ag-user').length, 0);
-    assert.match(q('#ag-log').textContent, /Hi! I can read/);
+    assert.match(q('#ag-log').textContent, /How can I help/);
   });
 });

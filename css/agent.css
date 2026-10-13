@@ -119,3 +119,53 @@ body.bt-kiosk-mode .ag-fab{display:none}
 .ag-spk.on{border-color:var(--accent);color:var(--accent);background:var(--alt,var(--s3))}
 .ag-spk{border:0;background:none;width:36px;height:36px;border-radius:var(--r-sm)}
 .ag-spk svg{width:19px;height:19px}
+
+/* ── Clean look (v11.76): quiet header, soft surfaces, smooth motion. Overrides the rules above. ── */
+.ag-fab-l{display:none!important}
+.ag-ctx{display:none}
+.ag-sheet{border:0;border-radius:24px 24px 0 0;box-shadow:0 -8px 40px rgba(15,23,42,.18),0 -1px 0 var(--border);animation:ag-rise .28s cubic-bezier(.2,.8,.2,1)}
+@media(min-width:720px){.ag-sheet{border:1px solid var(--border);border-radius:20px;box-shadow:0 24px 64px rgba(15,23,42,.22)}}
+@keyframes ag-rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes ag-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.ag-grip{height:22px}
+.ag-grip i{width:36px;height:4px;background:var(--border-strong);opacity:.6}
+.ag-head{border-bottom:0;padding:0 8px 6px 20px}
+.ag-title strong{font-size:17px;font-weight:650;letter-spacing:-.01em}
+.ag-ico{width:38px;height:38px;border-radius:50%;color:var(--muted);transition:background .15s,color .15s}
+.ag-ico:hover{background:var(--s3);color:var(--text)}
+.ag-menu{border:0;border-radius:16px;box-shadow:0 12px 40px rgba(15,23,42,.2);padding:6px;animation:ag-in .16s ease-out}
+.ag-mi{border-radius:10px;padding:11px 12px;transition:background .15s}
+.ag-log{padding:6px 18px 14px;gap:10px;scroll-behavior:smooth}
+.ag-msg{padding:11px 15px;border-radius:20px;font-size:15px;line-height:1.5;animation:ag-in .22s ease-out}
+.ag-user{background:var(--accent);border-bottom-right-radius:6px}
+.ag-assistant{background:var(--s2);border:0;border-bottom-left-radius:6px}
+.ag-status{padding:2px 8px}
+.ag-chips{padding:6px 18px 4px;gap:8px}
+.ag-chip{border:0;background:var(--s2);color:var(--text);padding:9px 15px;font-size:13px;transition:background .15s,color .15s,transform .12s}
+.ag-chip:hover{background:var(--s3);color:var(--accent)}
+.ag-chip:active{transform:scale(.97)}
+.ag-input{padding:8px 14px calc(14px + env(safe-area-inset-bottom,0px));gap:8px;align-items:center}
+.ag-input textarea{border:0;background:var(--s2);border-radius:24px;padding:12px 18px;transition:box-shadow .15s,background .15s}
+.ag-input textarea:focus{box-shadow:0 0 0 2px var(--accent);background:var(--surface)}
+.ag-send{width:44px;height:44px;transition:transform .12s,opacity .15s}
+.ag-send:active{transform:scale(.93)}
+.ag-mic{border:0;background:var(--s2);width:44px;height:44px;transition:background .15s}
+.ag-speaking{border-radius:999px;background:var(--s2);color:var(--muted);font-weight:500;margin:0 18px 6px;animation:ag-in .2s ease-out}
+.ag-listen{border:0;background:var(--rlt);border-radius:24px}
+/* approvals / undo keep their safety cues, in a softer shell */
+.ag-card{border:1px solid var(--border-strong);border-left:3px solid var(--accent);border-radius:16px;box-shadow:0 2px 12px rgba(15,23,42,.06);animation:ag-in .22s ease-out}
+.ag-card-b button{border-radius:999px}
+.ag-undo-btn{border:0;background:var(--s2)}
+/* attention: one slim line that opens on tap */
+.ag-today{align-self:stretch;background:none;border:0;padding:0;font-size:13px;animation:ag-in .22s ease-out}
+.ag-today-h{display:flex;align-items:center;gap:10px;width:100%;border:0;background:var(--s2);color:var(--t2,var(--text));border-radius:999px;padding:9px 14px;font:inherit;font-size:13px;cursor:pointer;text-align:left;transition:background .15s}
+.ag-today-h:hover{background:var(--s3)}
+.ag-today-h i{width:7px;height:7px;border-radius:50%;background:var(--amber,#d97706);flex:none}
+.ag-today-h span{flex:1}
+.ag-today-h b{font-size:18px;line-height:1;font-weight:400;color:var(--muted);transition:transform .2s}
+.ag-today.ag-open .ag-today-h b{transform:rotate(90deg)}
+.ag-today-body{padding:10px 6px 2px;animation:ag-in .2s ease-out}
+.ag-today-body[hidden]{display:none}
+.ag-today-body ul{margin:0 0 10px;padding-left:18px;line-height:1.5;color:var(--t2,var(--text))}
+.ag-today-b{border:0;background:var(--accent);color:#fff;font-weight:600;padding:8px 16px}
+@media(prefers-reduced-motion:reduce){.ag-sheet,.ag-msg,.ag-card,.ag-menu,.ag-today,.ag-today-body,.ag-speaking{animation:none}.ag-log{scroll-behavior:auto}}

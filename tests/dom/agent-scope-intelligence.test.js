@@ -80,7 +80,7 @@ describe('Jarvis is one global assistant', () => {
     assert.ok(await until(() => /Sales look fine/.test(q('#ag-log').textContent)));
     await goPage('inventory');
     assert.match(q('#ag-log').textContent, /Sales look fine/, 'the chat is kept');
-    assert.match(q('#ag-log .ag-divl:last-of-type').textContent, /Now viewing Inventory/);
+    assert.ok(!q('#ag-log .ag-divl'), 'no page-switch divider in the chat');
   });
 
   test('closing keeps the thread; the panel and button swap back; Escape closes', async () => {

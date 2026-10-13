@@ -75,7 +75,7 @@ export function mountAgentPanel() {
   sheet.innerHTML = `
     <button class="ag-grip" id="ag-grip" type="button" aria-label="Resize chat"><i></i></button>
     <header class="ag-head">
-      <div class="ag-title"><strong>Jarvis</strong><span class="ag-sub" id="ag-sub"></span></div>
+      <div class="ag-title"><strong>Jarvis</strong></div>
       <div class="ag-head-btns">
         <button class="ag-ico" id="ag-exp" type="button"></button>
         <button class="ag-ico" id="ag-more" type="button" aria-label="More options" aria-haspopup="menu" aria-expanded="false" title="More">${ICON.more}</button>
@@ -109,7 +109,6 @@ export function mountAgentPanel() {
   const send = sheet.querySelector('#ag-send');
   const chips = sheet.querySelector('#ag-chips');
   const lockBtn = sheet.querySelector('#ag-lock');
-  const sub = sheet.querySelector('#ag-sub');
   const ctx = sheet.querySelector('#ag-ctx');
   const menu = sheet.querySelector('#ag-menu');
   const moreBtn = sheet.querySelector('#ag-more');
@@ -134,7 +133,6 @@ export function mountAgentPanel() {
     lockBtn.title = on ? 'Changes allowed (you approve each one). Tap to lock.' : 'Read-only. Tap to allow changes.';
     lockBtn.classList.toggle('ag-on', on);
     moreBtn.classList.toggle('ag-flag', killed);
-    sub.textContent = killed ? 'Changes stopped on all devices' : on ? 'Can propose changes · you approve each' : 'Read-only · reads your live data';
   }
   // ── proactive briefing: badge on the ✨ button + a "Today" card (no AI call, no tokens) ──
   let briefing = null;
@@ -161,15 +159,18 @@ export function mountAgentPanel() {
   function addBriefingCard() {
     if (!briefing) return;
     const { items, more, clear } = cardItems(briefing);
+    if (clear) return; // nothing urgent: say nothing
+    const total = items.length + more;
     const card = el('div', { class: 'ag-today' });
-    if (clear) card.innerHTML = '<div class="ag-today-t">✓ Nothing urgent today</div>';
-    else {
-      card.innerHTML = '<div class="ag-today-t">' + items.length + (more ? '+' : '') + ' thing' + (items.length + more === 1 ? '' : 's') + ' need attention</div><ul>'
-        + items.map(i => '<li>' + escHtml(i.message) + '</li>').join('') + (more ? '<li>…and ' + more + ' more</li>' : '') + '</ul>';
-      const b = el('button', { class: 'ag-today-b' }, 'Explain and suggest actions');
-      b.onclick = () => ask('What needs my attention today?');
-      card.append(b);
-    }
+    const head = el('button', { class: 'ag-today-h', type: 'button', 'aria-expanded': 'false' });
+    head.innerHTML = '<i></i><span>' + total + (total === 1 ? ' item needs' : ' items need') + ' attention</span><b aria-hidden="true">\u203A</b>';
+    const body = el('div', { class: 'ag-today-body', hidden: '' });
+    body.innerHTML = '<ul>' + items.map(i => '<li>' + escHtml(i.message) + '</li>').join('') + (more ? '<li>\u2026and ' + more + ' more</li>' : '') + '</ul>';
+    const b = el('button', { class: 'ag-today-b', type: 'button' }, 'Review with Jarvis');
+    b.onclick = () => ask('What needs my attention today?');
+    body.append(b);
+    head.onclick = () => { const open = body.hidden; body.hidden = !open; card.classList.toggle('ag-open', open); head.setAttribute('aria-expanded', String(open)); log.scrollTop = log.scrollHeight; };
+    card.append(head, body);
     log.append(card);
   }
   function rejectAllPending() { pending.forEach(r => r(false)); pending.clear(); }
@@ -338,9 +339,7 @@ export function mountAgentPanel() {
   }
   function welcome() {
     log.innerHTML = '';
-    addBubble('assistant', getWritesEnabled()
-      ? "Hi! I can read your data and, with your approval on each one, add ledger entries, staff notes and staff credit, set targets and add or correct a day's sales, and delete records (you type DELETE to confirm). What do you need?"
-      : "Hi! I can read your sales, staff, ledgers and inventory, and open pages for you. Open the ⋯ menu and choose Allow changes if you want me to be able to propose changes (you'd still approve each one). What would you like to know?");
+    addBubble('assistant', 'How can I help?');
     refreshBriefing(); addBriefingCard(); markSeen(); showPendingUndos();
     renderChips();
   }
@@ -445,7 +444,6 @@ export function mountAgentPanel() {
     const p = curPage(); if (p === lastPage) return;
     lastPage = p; paintFab(); paintCtx();
     if (!history.length) renderChips();
-    if (isOpen() && log.children.length) { const d = el('div', { class: 'ag-divl' }, 'Now viewing ' + viewingLabel(p)); log.append(d); log.scrollTop = log.scrollHeight; }
   }
   window.addEventListener('hashchange', () => setTimeout(onPage, 150));
   try { if (window.MutationObserver) new window.MutationObserver(ms => { if (ms.some(m => m.target && m.target.classList && m.target.classList.contains('page'))) onPage(); }).observe(document.body, { attributes: true, attributeFilter: ['class'], subtree: true }); } catch (_) { /* pages still update on hashchange */ }
