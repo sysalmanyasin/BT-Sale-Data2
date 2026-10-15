@@ -162,8 +162,7 @@ Deno.serve(async (req: Request) => {
           sensitivity: "high",
           context: { app: "android-ask-dua", mode: "read_only", style: "closing" },
           messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: "Live business records (read-only JSON):\\n" + JSON.stringify(context).slice(0, 90000) + "\\n\\nQuestion: " + question },
+            { role: "user", content: "READ-ONLY MODE — " + systemPrompt + "\\n\\nLive business records (read-only JSON):\\n" + JSON.stringify(context).slice(0, 90000) + "\\n\\nQuestion: " + question },
           ],
         }),
       });
