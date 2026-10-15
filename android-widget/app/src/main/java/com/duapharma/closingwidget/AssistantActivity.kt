@@ -63,7 +63,7 @@ class AssistantActivity : AppCompatActivity() {
             kind.setSelection(when (it) { "expense" -> 1; "credit" -> 2; else -> 0 })
         }
         if (intent.getBooleanExtra("focus_ask_dua", false)) {
-            screenScroll.post { screenScroll.smoothScrollTo(0, answer.top) }
+            screenScroll.post { screenScroll.fullScroll(View.FOCUS_DOWN) }
         }
     }
 
