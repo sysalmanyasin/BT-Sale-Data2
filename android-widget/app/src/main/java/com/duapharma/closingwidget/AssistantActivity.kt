@@ -54,7 +54,7 @@ class AssistantActivity : AppCompatActivity() {
         status = text("Not signed in", 14f)
         divider()
         text("⚡ Quick Add", 19f, true)
-        kind = spinner(listOf("Jazz Cash", "Expenses / Patty", "New Section", "Staff Credit")); root.addView(kind)
+        kind = spinner(listOf("Jazz Cash", "Expenses / Patty", "Staff Credit")); root.addView(kind)
         date = edit("Date (YYYY-MM-DD)", InputType.TYPE_CLASS_TEXT).apply { setText(SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())) }
         section = spinner(emptyList()); category = spinner(emptyList()); staff = spinner(emptyList())
         label("Section"); root.addView(section); label("Category"); root.addView(category)
@@ -66,7 +66,7 @@ class AssistantActivity : AppCompatActivity() {
         kind.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onNothingSelected(parent: AdapterView<*>?) {}
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                val credit = position == 3
+                val credit = position == 2
                 section.visibility = if (credit) View.GONE else View.VISIBLE
                 category.visibility = if (credit) View.GONE else View.VISIBLE
                 deduction.visibility = if (credit) View.VISIBLE else View.GONE
@@ -192,7 +192,7 @@ class AssistantActivity : AppCompatActivity() {
         if (credit) {
             val i = staff.selectedItemPosition
             if (i !in staffIds.indices) { status.text = "Choose an active staff member."; return }
-            body.put("staffId", staffIds[i]).put("deduction", deduction.isChecked)
+            body.put("staffId", staffIds[i])
         } else {
             val sec = sectionIds.getOrNull(section.selectedItemPosition); val cat = categoryIds.getOrNull(category.selectedItemPosition)
             if (sec == null || cat == null) { status.text = "Choose a valid section and category."; return }
