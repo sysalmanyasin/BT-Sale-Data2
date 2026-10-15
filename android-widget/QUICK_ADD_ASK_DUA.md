@@ -1,15 +1,23 @@
 # Android Quick Add and Ask Dua
 
-The Android app includes two new launcher widgets—**Quick Add** (Jazz Cash, Add Credit, Add Expense shortcuts) and **Ask Dua**—plus the full **Quick Add / Ask Dua** screen. Both use the BT Sale Data Supabase project. Add them from Android Home screen → Widgets after installing the updated APK.
+The Android app now has two redesigned home-screen widgets—**Quick Add** (Jazz Cash, Add Credit, Add Expense shortcuts) and **Ask Dua**—plus a modern dark/neon assistant screen.
+
+## Google sign-in setup
+
+- Quick Add and Ask Dua use the same Supabase Google OAuth provider as BT Sales IC. There is no separate email/password login.
+- In Supabase Dashboard → Authentication → URL Configuration → Redirect URLs, add this exact URL:
+  `com.duapharma.closingwidget://auth/callback`
+- Keep Google enabled under Authentication → Providers and keep the existing Google OAuth client configuration unchanged.
+- The Android sign-in uses the PKCE authorization-code flow. The verifier and refresh token are stored in Android Keystore-backed encrypted preferences.
+- The user's Google email must be active in `public.bt_authorized_users`; Google authentication alone does not grant business access.
 
 ## Access and security
 
-- Sign in with an individual Supabase Auth account whose email is active in `public.bt_authorized_users`.
 - The existing widget-service account remains read-only and is not used for writes.
-- The `android-assistant` Edge Function requires a JWT and independently checks the signed-in user's authorization before every action.
-- Quick Add inserts into `bt_inbox_ledger` or `bt_inbox_staff_credit`. Existing database triggers fold those events into the shared payload. It never sends a replacement payload or invokes arbitrary SQL/RPC.
+- The `android-assistant` Edge Function requires a JWT and independently checks `bt_authorized_users` before every action.
+- Quick Add inserts into `bt_inbox_ledger` or `bt_inbox_staff_credit`. Existing database triggers fold those events into the shared payload; the app never sends a replacement payload or invokes arbitrary SQL/RPC.
 - Each submit uses a client UUID as the inbox primary key. The client keeps that ID across retries until it receives confirmation, so replaying the same request cannot add the same row twice.
-- Ask Dua receives a bounded, server-selected subset of business records and invokes a configured server-side AI provider without tools. The Ask Dua branch has no write operation. If no AI provider responds, it returns an error without changing data.
+- Ask Dua calls the same `bt-agent` provider pool and rate limits as BT Sales IC. The mobile call sends no tools and is explicitly read-only; the server returns text only and does not execute tool calls.
 
 ## Build
 
@@ -17,11 +25,10 @@ Pushes affecting `android-widget/**` trigger **Build Closing Widget APK** in Git
 
 ## Smoke test after installing
 
-1. Open **Quick Add / Ask Dua** and sign in using an authorized staff account.
-2. Add a small legitimate test entry only if you intend it to become part of the real ledger; verify it appears in the matching ledger and that the trigger folded it into the payload.
-3. Try submitting the same request twice in a network-retry test; the inbox UUID primary key must prevent a second insert.
-4. Ask Dua a question whose answer can be checked against current ledger/credit records.
-5. Verify Ask Dua fails safely when no provider is configured or available and that the request does not alter business data.
-6. Confirm all existing home-screen widgets still refresh and inventory search still opens.
+1. Add `com.duapharma.closingwidget://auth/callback` to Supabase's Redirect URLs before testing Google sign-in.
+2. Open Quick Add / Ask Dua and continue with Google. Use a Google account whose email is active in `bt_authorized_users`.
+3. Ask Dua a question whose answer can be checked against current records.
+4. If you choose to test a write, enter a legitimate business transaction only; verify it appears in the matching ledger. Do not create synthetic production transactions.
+5. Confirm all existing home-screen widgets still refresh and inventory search still opens.
 
-No synthetic production transaction should be used for testing.
+The build can compile without the redirect allowlist, but Google sign-in will not complete until that exact redirect is allowed in Supabase Auth settings.
