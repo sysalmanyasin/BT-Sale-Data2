@@ -232,10 +232,25 @@ class AssistantActivity : AppCompatActivity() {
         }
     }
 
+    private fun darkAdapter(items: List<String>): ArrayAdapter<String> =
+        object : ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, items) {
+            override fun getView(position: Int, convertView: View?, parent: android.view.ViewGroup): View =
+                (super.getView(position, convertView, parent) as TextView).apply {
+                    setTextColor(Color.WHITE)
+                    textSize = 14f
+                    setPadding(dp(10), dp(4), dp(10), dp(4))
+                }
+            override fun getDropDownView(position: Int, convertView: View?, parent: android.view.ViewGroup): View =
+                (super.getDropDownView(position, convertView, parent) as TextView).apply {
+                    setTextColor(Color.WHITE)
+                    setBackgroundColor(Color.rgb(17, 29, 51))
+                    textSize = 14f
+                    setPadding(dp(12), dp(12), dp(12), dp(12))
+                }
+        }.also { it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
+
     private fun spinner(items: List<String>): Spinner = Spinner(this).apply {
-        adapter = ArrayAdapter(this@AssistantActivity, android.R.layout.simple_spinner_dropdown_item, items).also {
-            it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        }
+        adapter = darkAdapter(items)
         background = resources.getDrawable(R.drawable.bg_input_field, theme)
         setPadding(dp(8), dp(4), dp(8), dp(4))
         layoutParams = LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(5); bottomMargin = dp(5) }
@@ -413,8 +428,8 @@ class AssistantActivity : AppCompatActivity() {
                     sections = sectionObject
                     sectionIds.clear(); sectionIds.addAll(ids)
                     staffIds.clear(); staffIds.addAll(newStaffIds)
-                    section.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, names)
-                    staff.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, staffNames)
+                    section.adapter = darkAdapter(names)
+                    staff.adapter = darkAdapter(staffNames)
                     val desired = if (kind.selectedItemPosition == 1) "expense" else "jazzcash"
                     val index = sectionIds.indexOf(desired)
                     if (index >= 0) section.setSelection(index)
@@ -442,7 +457,7 @@ class AssistantActivity : AppCompatActivity() {
             categoryIds.add(row.optString("id"))
             labels.add(row.optString("label"))
         }
-        category.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, labels)
+        category.adapter = darkAdapter(labels)
     }
 
     private fun submitEntry() {
