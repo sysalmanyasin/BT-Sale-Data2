@@ -1,44 +1,103 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:gravity="center"
-    android:padding="24dp">
+    android:fillViewport="true"
+    android:background="@drawable/bg_app_background">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Closing Summary Widget"
-        android:textSize="20sp"
-        android:textStyle="bold" />
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center_vertical"
+        android:padding="24dp">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="24dp"
-        android:gravity="center"
-        android:text="Long-press your home screen → Widgets to add Closing Summary, Quick Add, or Ask Dua." />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="BT  /  SALES INTELLIGENCE"
+            android:textColor="#FF58DFFF"
+            android:textSize="11sp"
+            android:letterSpacing="0.12"
+            android:textStyle="bold" />
 
-    <Button
-        android:id="@+id/refresh_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Refresh widget now" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Closing\nSummary"
+            android:textColor="#FFFFFFFF"
+            android:textSize="34sp"
+            android:lineSpacingExtra="1dp"
+            android:textStyle="bold" />
 
-    <Button
-        android:id="@+id/assistant_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="⚡ Quick Add / Ask Dua" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="24dp"
+            android:text="Your business dashboard, right on your home screen."
+            android:textColor="#FFB3C1DE"
+            android:textSize="14sp" />
 
-    <Button
-        android:id="@+id/search_inventory_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="🔍 Search Inventory" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:background="@drawable/bg_futuristic_card">
 
-</LinearLayout>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="WIDGET CONTROL"
+                android:textColor="#FF8193B9"
+                android:textSize="10sp"
+                android:letterSpacing="0.12"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/refresh_button"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_button_accent"
+                android:text="↻   Refresh all widgets"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFFFF"
+                android:textSize="14sp" />
+
+            <Button
+                android:id="@+id/assistant_button"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_button_violet"
+                android:text="✦   Quick Add  /  Ask Dua"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFFFF"
+                android:textSize="14sp" />
+
+            <Button
+                android:id="@+id/search_inventory_button"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_input_field"
+                android:text="⌕   Search inventory"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFFFF"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:gravity="center"
+            android:text="LONG-PRESS HOME SCREEN  →  WIDGETS"
+            android:textColor="#FF7F92B8"
+            android:textSize="10sp"
+            android:letterSpacing="0.08" />
+    </LinearLayout>
+</ScrollView>
