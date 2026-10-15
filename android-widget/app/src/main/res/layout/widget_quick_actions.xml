@@ -1,15 +1,85 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent"
-    android:orientation="vertical" android:padding="8dp"
-    android:background="#FFFFFFFF">
-    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:text="⚡ Quick Add" android:textStyle="bold" android:textSize="14sp"
-        android:paddingBottom="4dp" />
-    <Button android:id="@+id/quick_add_action" android:layout_width="match_parent"
-        android:layout_height="wrap_content" android:text="Jazz Cash" android:minHeight="36dp" />
-    <Button android:id="@+id/add_credit_action" android:layout_width="match_parent"
-        android:layout_height="wrap_content" android:text="Add Credit" android:minHeight="36dp" />
-    <Button android:id="@+id/add_expense_action" android:layout_width="match_parent"
-        android:layout_height="wrap_content" android:text="Add Expense" android:minHeight="36dp" />
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="12dp"
+    android:background="@drawable/bg_widget_card">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="QUICK ACTIONS"
+            android:textColor="#FF58DFFF"
+            android:textSize="10sp"
+            android:letterSpacing="0.12"
+            android:textStyle="bold" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="● LIVE"
+            android:textColor="#FF54E3C2"
+            android:textSize="9sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:layout_marginBottom="8dp"
+        android:text="Add to your ledger"
+        android:textColor="#FFFFFFFF"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <Button
+        android:id="@+id/quick_add_action"
+        android:layout_width="match_parent"
+        android:layout_height="38dp"
+        android:layout_marginBottom="6dp"
+        android:background="@drawable/bg_widget_teal"
+        android:minHeight="0dp"
+        android:minWidth="0dp"
+        android:paddingLeft="8dp"
+        android:paddingRight="8dp"
+        android:text="＋  Jazz Cash"
+        android:textAllCaps="false"
+        android:textColor="#FFFFFFFF"
+        android:textSize="12sp" />
+
+    <Button
+        android:id="@+id/add_credit_action"
+        android:layout_width="match_parent"
+        android:layout_height="38dp"
+        android:layout_marginBottom="6dp"
+        android:background="@drawable/bg_widget_teal"
+        android:minHeight="0dp"
+        android:minWidth="0dp"
+        android:paddingLeft="8dp"
+        android:paddingRight="8dp"
+        android:text="＋  Staff Credit"
+        android:textAllCaps="false"
+        android:textColor="#FFFFFFFF"
+        android:textSize="12sp" />
+
+    <Button
+        android:id="@+id/add_expense_action"
+        android:layout_width="match_parent"
+        android:layout_height="38dp"
+        android:background="@drawable/bg_widget_teal"
+        android:minHeight="0dp"
+        android:minWidth="0dp"
+        android:paddingLeft="8dp"
+        android:paddingRight="8dp"
+        android:text="＋  Expense"
+        android:textAllCaps="false"
+        android:textColor="#FFFFFFFF"
+        android:textSize="12sp" />
 </LinearLayout>
