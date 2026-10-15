@@ -33,4 +33,7 @@ verify_jwt = false
 # Drive backup/restore: JWT on (anon key passes) + Admin PIN / auto key enforced in code.
 [functions.google-drive]
 verify_jwt = true
-\n# Android staff assistant: JWT required; handler also checks bt_authorized_users.\n[functions.android-assistant]\nverify_jwt = true\n
+
+# Android staff assistant: JWT required; handler also checks bt_authorized_users.
+[functions.android-assistant]
+verify_jwt = true
