@@ -5,7 +5,7 @@
 //   • adapters.js  (existing tools / bridges / agent tables)
 //   • telemetry    (real agent events)
 //   • model.js     (pure mapping + rules)
-// "Ask Jarvis" buttons open the global assistant panel (js/agent/ui/agent-panel.js) through window.BTAgent; approval
+// "Ask Dua" buttons open the global assistant panel (js/agent/ui/agent-panel.js) through window.BTAgent; approval
 // cards, the lock, the kill switch, undo and audit all stay in that one system. This page has no chat of its own.
 // All text is inserted with textContent (never innerHTML) except the
 // assistant's own markdown, which goes through its existing escaping renderer.
@@ -95,13 +95,13 @@ function ask(q) {
   q = String(q || '').trim(); if (!q) return;
   const A = window.BTAgent;
   if (!A) { toast('The assistant is still loading. Try again in a moment.'); return; }
-  if (A.isBusy()) { toast('Jarvis is already working on a request.'); return; }
+  if (A.isBusy()) { toast('Dua is already working on a request.'); return; }
   Promise.resolve(A.ask(q)).catch(() => {});
 }
 function investigate(f) {
   const A = window.BTAgent;
   if (A && typeof A.investigate === 'function') {
-    if (A.isBusy()) { toast('Jarvis is already working on a request.'); return; }
+    if (A.isBusy()) { toast('Dua is already working on a request.'); return; }
     S.awaitingFor = f.id; closeModal();
     // A real investigation: the finding (with the rule evidence) goes to the orchestrator, which runs the relevant specialists.
     Promise.resolve(A.investigate({
@@ -274,7 +274,7 @@ if (typeof window !== 'undefined' && !window.__btJarvisTalk) {
     S.voice.talking = !!on; AV.setTalking(on);
     document.querySelectorAll('.aic-stage').forEach(el => el.setAttribute('data-talk', on ? '1' : '0'));
     const pill = document.querySelector('.aic-hpill');
-    if (pill) { pill.classList.toggle('talk', !!on); pill.textContent = on ? 'Jarvis speaking' : (pill.classList.contains('off') ? 'Jarvis offline' : 'Jarvis online'); }
+    if (pill) { pill.classList.toggle('talk', !!on); pill.textContent = on ? 'Dua speaking' : (pill.classList.contains('off') ? 'Dua offline' : 'Dua online'); }
     clearInterval(poll); poll = null;
     if (on) poll = setInterval(() => { try { if (!window.speechSynthesis.speaking) apply(false); } catch (_) { apply(false); } }, 700); // some mobile browsers never fire "end"
   };
@@ -290,7 +290,7 @@ function secCore(info) {
   const open = () => openAvatarSettings();
   return h('div', { class: 'aic-corerow', id: 'aic-core' },
     h('div', { class: 'aic-stage', 'data-s': core.state.toLowerCase(), 'data-talk': S.voice.talking ? '1' : '0' },
-      h('div', { class: 'aic-orb', role: 'button', tabindex: '0', 'aria-label': 'Jarvis avatar and voice settings', title: 'Tap to change the avatar and voice', onclick: open, onkeydown: ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); open(); } } },
+      h('div', { class: 'aic-orb', role: 'button', tabindex: '0', 'aria-label': 'Dua avatar and voice settings', title: 'Tap to change the avatar and voice', onclick: open, onkeydown: ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); open(); } } },
         jarvisAvatar(), h('span', { class: 'aic-avgear', 'aria-hidden': 'true', text: '\u2699' }))),
     h('div', { class: 'aic-cs aic-sr' }, h('h2', { text: core.state.replace(/_/g, ' ') }), h('p', { text: core.detail })));
 }
@@ -311,18 +311,18 @@ function openAvatarSettings() {
         h('label', { class: 'aic-avbtn' }, P.photo ? 'Change photo' : 'Use my photo', h('input', { type: 'file', accept: 'image/*', hidden: true, onchange: ev => setAvatarPhoto(ev.target.files && ev.target.files[0]) })),
         P.photo ? h('button', { class: 'aic-g', text: 'Remove photo', onclick: clearAvatarPhoto }) : null),
       P.photo ? row('Mouth height', h('input', { type: 'range', min: AV.MOUTH_MIN, max: AV.MOUTH_MAX, value: P.mouthY, 'aria-label': 'Mouth height', oninput: ev => { AV.setMouthY(ev.target.value); render(); const pv = document.querySelector('.jv-set-prev'); if (pv) pv.replaceChildren(jarvisAvatar()); } })) : null,
-      P.photo ? h('p', { class: 'aic-sub', text: 'Slide until the moving jaw starts just under your lips. Your picture stays on this device only.' }) : h('p', { class: 'aic-sub', text: 'Add a clear, front-facing photo and Jarvis will talk with your face. It stays on this device only.' }),
+      P.photo ? h('p', { class: 'aic-sub', text: 'Slide until the moving jaw starts just under your lips. Your picture stays on this device only.' }) : h('p', { class: 'aic-sub', text: 'Add a clear, front-facing photo and Dua will talk with your face. It stays on this device only.' }),
       row('Move while talking', check(P.live, on => { AV.setLive(on); render(); }))),
     h('div', { class: 'jv-set-g' },
       h('h4', { text: 'Voice' }),
       sup.output ? [
-        row('Jarvis speaks answers', check(V.getVoiceOut(), on => { V.setVoiceOut(on); if (!on) V.stopSpeaking(window); })),
+        row('Dua speaks answers', check(V.getVoiceOut(), on => { V.setVoiceOut(on); if (!on) V.stopSpeaking(window); })),
         row('Speed', h('select', { 'aria-label': 'Speech speed', onchange: ev => V.setVoiceRate(ev.target.value) }, [['0.85', 'Slower'], ['1', 'Normal'], ['1.15', 'Faster']].map(([v, l]) => h('option', { value: v, selected: Math.abs(speed - Number(v)) < 0.05 ? true : null, text: l })))),
         voices.length ? row('Voice', h('select', { 'aria-label': 'Voice', onchange: ev => V.setVoiceName(ev.target.value) }, [h('option', { value: '', text: 'Device default' }), ...voices.map(v => h('option', { value: v.name, selected: v.name === pick ? true : null, text: v.name }))])) : null,
-        h('div', { class: 'jv-set-btns' }, h('button', { class: 'aic-p', text: 'Test voice', onclick: () => V.speak(window, 'Hello. I am Jarvis. Here is how I sound.', V.voiceLang(window)) })),
+        h('div', { class: 'jv-set-btns' }, h('button', { class: 'aic-p', text: 'Test voice', onclick: () => V.speak(window, 'Hello. I am Dua. Here is how I sound.', V.voiceLang(window)) })),
       ] : h('p', { class: 'aic-sub', text: 'This browser cannot speak answers aloud.' }),
       h('p', { class: 'aic-sub', text: 'The mouth moves with a speech rhythm while the browser speaks. It is not exact lip-sync, and the voice is a device voice, not a copy of yours.' })));
-  openModal('Jarvis avatar', body, { sub: 'Face and voice' });
+  openModal('Dua avatar', body, { sub: 'Face and voice' });
 }
 // Mission + lifecycle of the latest request: kept (it is the verify/read-back evidence) but moved out from under the avatar into Diagnostics.
 function secMission(info) {
@@ -692,7 +692,7 @@ function fleetTile(id, act) {
         h('span', { class: 'aic-pill aic-' + (on ? 'ok' : waiting ? 'wn' : 'mu'), text: state }),
         info.job ? h('span', { class: 'aic-fjob', text: info.job }) : null,
         h('small', { class: 'aic-fstats', text: detail + (on || waiting || !st.runs ? '' : ' · ' + stats) + ' · ' + (id === 'analyst' ? 'all tools' : tools.length + ' tools') }))),
-    info.q ? h('button', { class: 'aic-fask', onclick: () => ask(info.q), title: 'Ask JARVIS this question', text: 'Ask: ' + info.q }) : null);
+    info.q ? h('button', { class: 'aic-fask', onclick: () => ask(info.q), title: 'Ask DUA this question', text: 'Ask: ' + info.q }) : null);
 }
 
 // ── agent runs: timeline rebuilt from the real activity log ──
@@ -726,7 +726,7 @@ function runRow(run) {
 function runsBlock(heading = true) {
   const runs = allRuns();
   return h('div', { class: 'aic-runs' }, heading ? h('div', { class: 'aic-k', text: 'RECENT RUNS · FROM THE REAL ACTIVITY LOG' }) : null,
-    runs.length ? h('ul', { class: 'aic-runl' }, runs.slice(0, 3).map(runRow)) : empty('No agent runs recorded on this device yet. Ask JARVIS something and the run appears here.'),
+    runs.length ? h('ul', { class: 'aic-runl' }, runs.slice(0, 3).map(runRow)) : empty('No agent runs recorded on this device yet. Ask DUA something and the run appears here.'),
     runs.length > 3 ? h('details', { class: 'aic-log' }, h('summary', { text: 'Earlier runs · ' + (runs.length - 3) }), h('ul', { class: 'aic-runl' }, runs.slice(3, 15).map(runRow))) : null);
 }
 
@@ -1087,7 +1087,7 @@ function histNode() {
       x.outcomeState ? h('span', { class: 'aic-pill aic-' + C.ACTION_STATES[x.outcomeState].tone, title: C.ACTION_STATES[x.outcomeState].note, text: C.ACTION_STATES[x.outcomeState].label }) : null))));
 }
 // Hero (Command Deck): greeting panel | avatar | product panel. The avatar is the only picture on this page; tapping it opens its settings.
-// It lives here only: the Jarvis chat panel (a separate, global assistant) has no avatar.
+// It lives here only: the Dua chat panel (a separate, global assistant) has no avatar.
 function secHero(info) {
   const up = !/^(OFFLINE|ERROR)$/i.test(info.core.state);
   return card('hero', 'monitor investigate act',
@@ -1095,8 +1095,8 @@ function secHero(info) {
       h('div', { class: 'dk-hp dk-hp-l' }, h('small', { text: 'Hi, I\u2019m your' }), h('b', { text: 'AI Assistant' }), h('span', { text: 'Here to help you make smarter decisions.' })),
       secCore(info),
       h('div', { class: 'dk-hp dk-hp-r' }, h('b', { text: 'BT INTELLIGENCE' }), h('small', { text: 'PHARMACY BUSINESS INSIGHTS & ANALYTICS' }),
-        h('div', { class: 'aic-hbub', role: 'status' }, h('span', { class: 'aic-hpill ' + (up ? 'on' : 'off') + (S.voice.talking ? ' talk' : ''), text: S.voice.talking ? 'Jarvis speaking' : up ? 'Jarvis online' : 'Jarvis offline' })),
-        h('button', { class: 'aic-p dk-askj', text: 'Ask Jarvis', 'aria-label': 'Ask Jarvis', onclick: () => { if (window.BTAgent) window.BTAgent.open(); else toast('The assistant is still loading. Try again in a moment.'); } }))));
+        h('div', { class: 'aic-hbub', role: 'status' }, h('span', { class: 'aic-hpill ' + (up ? 'on' : 'off') + (S.voice.talking ? ' talk' : ''), text: S.voice.talking ? 'Dua speaking' : up ? 'Dua online' : 'Dua offline' })),
+        h('button', { class: 'aic-p dk-askj', text: 'Ask Dua', 'aria-label': 'Ask Dua', onclick: () => { if (window.BTAgent) window.BTAgent.open(); else toast('The assistant is still loading. Try again in a moment.'); } }))));
 }
 
 // ───────────────────────── Command Deck: tabs + overview cards ─────────────────────────
@@ -1199,7 +1199,7 @@ function secDkApprovals() {
     h('div', { class: 'dk-ban ' + (list.length ? 'wn' : 'ok') }, ic(list.length ? 'alert' : 'shield', 'dk-ic'), list.length ? h('span', {}, h('b', { text: 'Action required: ' }), list.length + (list.length === 1 ? ' change needs' : ' changes need') + ' your approval') : h('span', { text: 'Nothing is waiting for your approval.' })),
     h('div', { class: 'dk-rows dk-flat' }, list.map(a => h('div', { class: 'dk-line' }, h('span', { class: 'dk-lt' }, h('b', { text: a.title }), h('small', { text: a.sub })), h('button', { class: 'dk-pill', text: 'Review', onclick: reviewApproval }))),
       recent.map(e => h('div', { class: 'dk-line' }, h('span', { class: 'dk-lt' }, h('b', { text: String(e.metadata.question).slice(0, 80) }), h('small', { text: 'Asked ' + clock(e.timestamp) })), h('button', { class: 'dk-pill', text: 'Open', onclick: () => { S.open.chat = true; paint(); } }))),
-      !list.length && !recent.length ? empty('No requests yet. Ask Jarvis something.') : null));
+      !list.length && !recent.length ? empty('No requests yet. Ask Dua something.') : null));
 }
 function secDkOps() {
   const o = DK.opsStrip(S.snap, S.health);
@@ -1209,7 +1209,7 @@ function secDkOps() {
     h('div', { class: 'dk-ops' }, o.items.map(i => h('div', { class: 'dk-chip dk-' + i.tone }, h('small', { text: i.label }), h('b', { text: i.text })))));
 }
 
-// Earlier investigations stay on this page (they are business history). The chat itself is the global Jarvis panel.
+// Earlier investigations stay on this page (they are business history). The chat itself is the global Dua panel.
 function secHist() {
   return card('hist', 'monitor investigate act', sectionHeader('EARLIER INVESTIGATIONS'), histNode());
 }
@@ -1302,7 +1302,7 @@ function paint() {
 // ───────────────────────── lifecycle ─────────────────────────
 function onTelemetry(e) {
   if (!S.mounted) return;
-  if (e.type === 'approval_requested' && window.BTAgent && pageOn()) { toast('Jarvis needs your approval.'); if (typeof window.BTAgent.approvals === 'function') S.mode = 'act'; }
+  if (e.type === 'approval_requested' && window.BTAgent && pageOn()) { toast('Dua needs your approval.'); if (typeof window.BTAgent.approvals === 'function') S.mode = 'act'; }
   if (e.type === 'answer' && S.awaitingFor) { S.assess[S.awaitingFor] = { text: (e.metadata && e.metadata.text) || '', at: e.timestamp, investigation: window.BTAgent && typeof window.BTAgent.investigationFor === 'function' ? window.BTAgent.investigationFor(S.awaitingFor) : null }; S.awaitingFor = null; }
   if (e.type === 'error' || e.type === 'cancelled') S.awaitingFor = null;
   if (e.type === 'tool_end' && e.status === 'ok' && e.metadata && (e.metadata.risk === 'write' || e.metadata.risk === 'critical') && e.source !== 'ai-center') setTimeout(() => refresh({ force: true }), 800);

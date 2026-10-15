@@ -1,4 +1,4 @@
-// ONE assistant: the global Jarvis panel is the only chat. BT Intelligence has none of its own; its "Ask Jarvis" actions and
+// ONE assistant: the global Dua panel is the only chat. BT Intelligence has none of its own; its "Ask Dua" actions and
 // the command palette go into the same panel and the same thread. The panel keeps every feature of the old docked chat
 // (history, memory + house rules, usage, kill switch, lock, new chat, briefing, chips, approvals) and is unaffected by the
 // Center's constant repaints.
@@ -27,7 +27,7 @@ const wait = (ms = 30) => new Promise(r => setTimeout(r, ms));
 const until = async (fn, n = 100) => { for (let i = 0; i < n; i++) { if (fn()) return true; await wait(10); } return false; };
 const q = s => document.querySelector(s);
 
-describe('one global Jarvis, used from BT Intelligence', () => {
+describe('one global Dua, used from BT Intelligence', () => {
   before(async () => { const e = console.error; console.error = () => {}; mountAgentPanel(); ui.onShow(); await wait(150); console.error = e; });
 
   test('the page has no chat; the one panel floats on the body and starts closed', () => {
@@ -39,7 +39,7 @@ describe('one global Jarvis, used from BT Intelligence', () => {
     assert.equal(document.querySelectorAll('#ag-sheet').length, 1);
     assert.equal(typeof window.BTAgent.dock, 'undefined');
   });
-  test('the Ask Jarvis button in the hero opens the panel with the welcome message, briefing card and this page\'s questions', async () => {
+  test('the Ask Dua button in the hero opens the panel with the welcome message, briefing card and this page\'s questions', async () => {
     q('#aic-hero .dk-askj').click(); await wait(60);
     assert.equal(q('#ag-sheet').hidden, false);
     assert.match(q('#ag-log').textContent, /How can I help/i);

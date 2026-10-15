@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════════════════════════════
-// AGENT PANEL: the ONE chat assistant, "Jarvis". A floating button on every page opens a compact panel over the current page
+// AGENT PANEL: the ONE chat assistant, "Dua". A floating button on every page opens a compact panel over the current page
 // (a floating card on desktop, a bottom sheet on a phone), so nobody has to leave what they are doing. The BT Intelligence page
-// has no chat of its own: its "Ask Jarvis" buttons call window.BTAgent, which opens this panel.
+// has no chat of its own: its "Ask Dua" buttons call window.BTAgent, which opens this panel.
 // Pure presentation: everything is delegated to runAgent(), so tools, permissions, approvals, undo, audit and the kill switch
 // are unchanged. Page awareness (which page, which starter questions) lives in core/page-suggestions.js.
 // ══════════════════════════════════════════════════════════════════════
@@ -69,17 +69,17 @@ export function mountAgentPanel() {
   let sensitive = false;
   let lastSpecialist = null;
 
-  const fab = el('button', { id: 'ag-fab', class: 'ag-fab', type: 'button', 'aria-label': 'Ask Jarvis', title: 'Ask Jarvis' });
-  fab.innerHTML = ICON.chat + '<span class="ag-fab-l">Ask Jarvis</span>';
-  const sheet = el('section', { id: 'ag-sheet', class: 'ag-sheet', hidden: '', role: 'dialog', 'aria-label': 'Jarvis assistant' });
+  const fab = el('button', { id: 'ag-fab', class: 'ag-fab', type: 'button', 'aria-label': 'Ask Dua', title: 'Ask Dua' });
+  fab.innerHTML = ICON.chat + '<span class="ag-fab-l">Ask Dua</span>';
+  const sheet = el('section', { id: 'ag-sheet', class: 'ag-sheet', hidden: '', role: 'dialog', 'aria-label': 'Dua assistant' });
   sheet.innerHTML = `
     <button class="ag-grip" id="ag-grip" type="button" aria-label="Resize chat"><i></i></button>
     <header class="ag-head">
-      <div class="ag-title"><strong>Jarvis</strong></div>
+      <div class="ag-title"><strong>Dua</strong></div>
       <div class="ag-head-btns">
         <button class="ag-ico" id="ag-exp" type="button"></button>
         <button class="ag-ico" id="ag-more" type="button" aria-label="More options" aria-haspopup="menu" aria-expanded="false" title="More">${ICON.more}</button>
-        <button class="ag-ico" id="ag-close" type="button" aria-label="Close Jarvis" title="Close">${ICON.x}</button>
+        <button class="ag-ico" id="ag-close" type="button" aria-label="Close Dua" title="Close">${ICON.x}</button>
       </div>
     </header>
     <div class="ag-menu" id="ag-menu" role="menu" hidden>
@@ -167,7 +167,7 @@ export function mountAgentPanel() {
     head.innerHTML = '<i></i><span>' + total + (total === 1 ? ' item needs' : ' items need') + ' attention</span><b aria-hidden="true">\u203A</b>';
     const body = el('div', { class: 'ag-today-body', hidden: '' });
     body.innerHTML = '<ul>' + items.map(i => '<li>' + escHtml(i.message) + '</li>').join('') + (more ? '<li>\u2026and ' + more + ' more</li>' : '') + '</ul>';
-    const b = el('button', { class: 'ag-today-b', type: 'button' }, 'Review with Jarvis');
+    const b = el('button', { class: 'ag-today-b', type: 'button' }, 'Review with Dua');
     b.onclick = () => ask('What needs my attention today?');
     body.append(b);
     head.onclick = () => { const open = body.hidden; body.hidden = !open; card.classList.toggle('ag-open', open); head.setAttribute('aria-expanded', String(open)); log.scrollTop = log.scrollHeight; };
@@ -514,12 +514,12 @@ export function mountAgentPanel() {
   send.onclick = () => ask(text.value);
   text.addEventListener('input', autosize);
 
-  // ── JARVIS voice in the chat sheet: browser speech only; text goes through the SAME ask() as typing, so approvals,
+  // ── DUA voice in the chat sheet: browser speech only; text goes through the SAME ask() as typing, so approvals,
   //    hard blocks, the kill switch and audit are unchanged (and voice can never approve: approvals need a real tap). ──
   function voiceStop() { if (recog) recog.stop(); }
   function paintVoice() {
     sheet.classList.toggle('ag-lis', listening);
-    if (micBtn) { micBtn.classList.toggle('on', listening); micBtn.setAttribute('aria-pressed', String(listening)); micBtn.innerHTML = listening ? ICON.stop : ICON.mic; micBtn.title = listening ? 'Listening. Tap to stop' : 'Speak to Jarvis'; micBtn.setAttribute('aria-label', listening ? 'Stop listening' : 'Speak to Jarvis'); }
+    if (micBtn) { micBtn.classList.toggle('on', listening); micBtn.setAttribute('aria-pressed', String(listening)); micBtn.innerHTML = listening ? ICON.stop : ICON.mic; micBtn.title = listening ? 'Listening. Tap to stop' : 'Speak to Dua'; micBtn.setAttribute('aria-label', listening ? 'Stop listening' : 'Speak to Dua'); }
     if (spkBtn) { const on = V.getVoiceOut(); spkBtn.classList.toggle('on', on); spkBtn.setAttribute('aria-pressed', String(on)); spkBtn.innerHTML = on ? ICON.spk : ICON.spkoff; spkBtn.title = on ? 'Spoken answers on' : 'Spoken answers off'; }
   }
   function voiceToggle() {
@@ -567,7 +567,7 @@ export function mountAgentPanel() {
         voices.forEach(v => { const o = el('option', { value: v.name }, v.name); if (v.name === pick) o.selected = true; sel.append(o); });
         sel.onchange = () => V.setVoiceName(sel.value); card.append(row('Voice', sel));
       }
-      const test = el('button', { class: 'ag-undo-btn', type: 'button' }, 'Test voice'); test.onclick = () => V.speak(window, 'Hello. I am Jarvis. Here is how I sound.', V.voiceLang(window));
+      const test = el('button', { class: 'ag-undo-btn', type: 'button' }, 'Test voice'); test.onclick = () => V.speak(window, 'Hello. I am Dua. Here is how I sound.', V.voiceLang(window));
       card.append(test);
     } else card.append(el('div', { class: 'ag-warn' }, 'This browser cannot speak answers aloud.'));
     card.append(el('div', { class: 'ag-warn' }, 'Voice uses your browser\u2019s speech service. Audio may be processed by the browser vendor. Voice can never approve a change.'));

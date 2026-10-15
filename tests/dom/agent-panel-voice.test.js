@@ -1,4 +1,4 @@
-// JARVIS voice INSIDE the chat sheet: real panel + real runAgent loop; only the network and the browser's speech engines are faked.
+// DUA voice INSIDE the chat sheet: real panel + real runAgent loop; only the network and the browser's speech engines are faked.
 import { test, describe, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { installDomEnv } from '../helpers/dom-env.js';

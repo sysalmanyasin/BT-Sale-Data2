@@ -1,6 +1,6 @@
 // BT Intelligence — the talking avatar (js/ai-center/ui.js docks it in the hero and opens its settings sheet).
 //   • With the owner's photo: a 2D "jaw drop" lip-sync (the lower face is a clipped copy of the same photo that moves down a few
-//     pixels while Jarvis speaks, with a dark mouth opening behind it) plus a gentle head sway. The mouth line height is adjustable.
+//     pixels while Dua speaks, with a dark mouth opening behind it) plus a gentle head sway. The mouth line height is adjustable.
 //   • Without a photo: a friendly illustrated face in the brand colours that blinks and moves its mouth.
 // The mouth is driven by a speech-like rhythm while the browser is speaking (the Web Speech API exposes no audio stream), so it
 // reads as talking but is not frame-accurate lip-sync. No photo or audio ever leaves the device. Pure SVG, no innerHTML.

@@ -26,7 +26,7 @@ test('the palette lives in ONE file: the other ai-center sheets only use tokens 
     assert.doesNotMatch(css, /#20DDF5|#8b9bff|#7c8cff|#c084fc|#A78BFA|#080D18|#06070d|#111B2B|#0e1018/i, f + ' still carries the old palette');
   }
 });
-test('the JARVIS token block only aliases app tokens', () => {
+test('the DUA token block only aliases app tokens', () => {
   const m = read('css/ai-center-jarvis.css').match(/\.aic-page\.aic-jarvis\{([\s\S]*?)\n\}/); assert.ok(m);
   assert.doesNotMatch(m[1], /--j-[\w]+:\s*#/);
   assert.match(m[1], /--j-cy:var\(--accent\)/);

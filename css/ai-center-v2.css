@@ -175,7 +175,7 @@ body.aic-open .ag-send,body.aic-open .ag-user{background:linear-gradient(135deg,
 }
 .aic-page.aic-jarvis .aic-snap-tile .aic-it-f .aic-pill.aic-wn{display:none}
 
-/* ── Jarvis speaking + chat directly under him ── */
+/* ── Dua speaking + chat directly under him ── */
 .aic-page.aic-jarvis .aic-main>#aic-hero{order:-2;margin-bottom:-6px;border-bottom-left-radius:8px;border-bottom-right-radius:8px}
 .aic-page.aic-jarvis .aic-main>#aic-chat{order:-1;grid-column:1/-1;display:flex;flex-direction:column;gap:12px;max-width:760px;width:100%;justify-self:center;border-top-left-radius:8px;border-top-right-radius:8px}
 .aic-page.aic-jarvis .aic .aic-thread{display:flex;flex-direction:column;gap:10px;max-height:min(52vh,460px);overflow-y:auto}

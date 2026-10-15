@@ -1,4 +1,4 @@
-// BT JARVIS voice (shared by the AI Center bar AND the chat sheet): browser-native speech only (Web Speech API). No audio is recorded, stored or sent by BT itself.
+// BT DUA voice (shared by the AI Center bar AND the chat sheet): browser-native speech only (Web Speech API). No audio is recorded, stored or sent by BT itself.
 // Input  : SpeechRecognition -> text -> the SAME ask() path as typing. Voice can never approve anything: approvals
 //          still need a real user tap (BTAgent.decide refuses untrusted gestures).
 // Output : speechSynthesis reads a short plain-text version of the latest answer. Off by default.
@@ -46,7 +46,7 @@ export function speak(win, text, lang = 'en-US') {
   win.speechSynthesis.speak(u); return true;
 }
 export function stopSpeaking(win) { if (voiceSupport(win).output) { win.speechSynthesis.cancel(); emitVoiceState(win, false); } }
-// The AI Center avatar listens for this to animate while Jarvis is talking. No audio data is involved.
+// The AI Center avatar listens for this to animate while Dua is talking. No audio data is involved.
 function emitVoiceState(win, speaking) { try { win.dispatchEvent(new win.CustomEvent('bt-voice-state', { detail: { speaking } })); } catch (_) { /* fake window in tests */ } }
 
 // Shared preference + language, so the AI Center toggle and the chat-sheet toggle always agree.
@@ -55,7 +55,7 @@ export function getVoiceOut() { try { return localStorage.getItem(LS_OUT) === '1
 export function setVoiceOut(on) { try { localStorage.setItem(LS_OUT, on ? '1' : '0'); } catch (_) { /* private mode: the toggle still works for this page */ } }
 export function voiceLang(win = window) { const l = win.navigator && win.navigator.language; return l && /^[a-z]{2}(-[A-Z]{2})?$/.test(l) ? l : 'en-US'; }
 
-// Spoken-answer speed and voice (chosen in the Jarvis avatar settings). Both fall back to the device default.
+// Spoken-answer speed and voice (chosen in the Dua avatar settings). Both fall back to the device default.
 const LS_RATE = 'bt_voice_rate_v1', LS_NAME = 'bt_voice_name_v1';
 export function getVoiceRate() { try { const r = Number(localStorage.getItem(LS_RATE)); return r >= 0.6 && r <= 1.6 ? r : 1; } catch (_) { return 1; } }
 export function setVoiceRate(r) { try { localStorage.setItem(LS_RATE, String(Math.min(1.6, Math.max(0.6, Number(r) || 1)))); } catch (_) { /* private mode */ } }

@@ -40,5 +40,5 @@ if (!swHad) writeFileSync(swPath, sw);
 
 console.log(htmlHad && swHad
   ? 'Already applied — nothing changed.'
-  : `JARVIS Command Deck stylesheet integrated.${next ? ` Service-worker cache is now ${next}.` : ''}`);
+  : `DUA Command Deck stylesheet integrated.${next ? ` Service-worker cache is now ${next}.` : ''}`);
 console.log('Next: run npm test and visually inspect mobile + desktop before deploying.');

@@ -1,4 +1,4 @@
-// Voice in the ONE global Jarvis panel, used while BT Intelligence is open: the mic and speaker live in the panel, the spoken
+// Voice in the ONE global Dua panel, used while BT Intelligence is open: the mic and speaker live in the panel, the spoken
 // text goes through the same ask() path as typing, and an error asks nothing and says why.
 import { test, describe, before } from 'node:test';
 import assert from 'node:assert/strict';
@@ -24,7 +24,7 @@ const wait = (ms = 30) => new Promise(r => setTimeout(r, ms));
 const until = async (fn, n = 100) => { for (let i = 0; i < n; i++) { if (fn()) return true; await wait(10); } return false; };
 const q = s => document.querySelector(s);
 
-describe('Jarvis voice while BT Intelligence is open', () => {
+describe('Dua voice while BT Intelligence is open', () => {
   before(async () => { const e = console.error; console.error = () => {}; mountAgentPanel(); ui.onShow(); await wait(120); window.BTAgent.open(); await wait(60); console.error = e; });
   test('the mic lives in the panel; the page has no second mic or input', () => {
     assert.ok(q('#ag-sheet #ag-mic'), 'mic inside the panel');

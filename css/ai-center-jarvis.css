@@ -1,4 +1,4 @@
-/* BT JARVIS command-deck layer. Loaded AFTER ai-center.css.
+/* BT DUA command-deck layer. Loaded AFTER ai-center.css.
    Strategy: ai-center.css is built entirely on the app's tokens (--bg, --surface, --text, --accent ...), so redefining
    those tokens on .aic-page.aic-jarvis re-themes every existing card regardless of cascade order. The class is added
    in js/ai-center/ui.js mount(); nothing outside the AI Center page is touched. */
@@ -105,7 +105,7 @@
 .aic-jarvis .aic-log summary{cursor:pointer;min-height:40px;display:flex;align-items:center;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--j-mu)}
 .aic-jarvis .aic-log[open] summary{color:var(--j-cy)}
 
-/* ── Ask JARVIS chat: colours come from the brand tokens (see ai-center-chat.css) ── */
+/* ── Ask DUA chat: colours come from the brand tokens (see ai-center-chat.css) ── */
 @media(prefers-reduced-motion:reduce){body.aic-open .ag-status{animation:none}}
 
 /* ── collapsed-card header summary (real values) ── */

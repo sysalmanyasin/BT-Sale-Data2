@@ -47,7 +47,7 @@ describe('AI Center page', () => {
     assert.ok(hero, 'hero card missing');
     assert.ok(hero.querySelector('#aic-core svg.aic-avatar'), 'avatar lives in the hero');
     assert.equal(document.querySelectorAll('svg.aic-avatar').length, 1, 'exactly one avatar on the page');
-    assert.match(hero.querySelector('.aic-hpill').textContent, /^Jarvis (online|offline)$/);
+    assert.match(hero.querySelector('.aic-hpill').textContent, /^Dua (online|offline)$/);
     assert.equal(hero.querySelectorAll('.aic-hbtn, .aic-hbub p, .aic-avset, .aic-mission, .aic-lifed').length, 0, 'greeting, quick buttons, avatar buttons, mission and lifecycle are gone from under the avatar');
     assert.ok(hero.querySelector('.aic-cs.aic-sr h2'), 'the state is still available to screen readers');
   });
@@ -93,7 +93,7 @@ describe('AI Center page', () => {
     q('.aic-x').click();
     assert.equal(q('.aic-modal'), null);
   });
-  test('Ask Jarvis buttons open the global Jarvis panel; the page keeps no chat of its own', async () => {
+  test('Ask Dua buttons open the global Dua panel; the page keeps no chat of its own', async () => {
     const calls = [];
     window.BTAgent = { ask: q2 => { calls.push(['ask', q2]); return Promise.resolve(); }, isBusy: () => false, open() { calls.push(['open']); }, writesAllowed: () => false, killed: () => false };
     q('#aic-hero .dk-askj').click();
@@ -105,17 +105,17 @@ describe('AI Center page', () => {
     delete window.BTAgent;
   });
 
-  test('Jarvis speaking: the voice-state event animates the avatar and the status pill, and clears again', async () => {
+  test('Dua speaking: the voice-state event animates the avatar and the status pill, and clears again', async () => {
     window.dispatchEvent(new window.CustomEvent('bt-voice-state', { detail: { speaking: true } }));
     assert.equal(q('#aic-hero .aic-stage').getAttribute('data-talk'), '1');
-    assert.equal(q('.aic-hpill').textContent, 'Jarvis speaking');
+    assert.equal(q('.aic-hpill').textContent, 'Dua speaking');
     window.dispatchEvent(new window.CustomEvent('bt-voice-state', { detail: { speaking: false } }));
     assert.equal(q('#aic-hero .aic-stage').getAttribute('data-talk'), '0');
-    assert.match(q('.aic-hpill').textContent, /^Jarvis (online|offline)$/);
+    assert.match(q('.aic-hpill').textContent, /^Dua (online|offline)$/);
     assert.equal(q('#aic-chat'), null, 'no chat card on this page');
   });
 
-  test('JARVIS layer: page is themed, SVG avatar is decorative, state text stays real DOM text', async () => {
+  test('DUA layer: page is themed, SVG avatar is decorative, state text stays real DOM text', async () => {
     assert.ok(q('#page-ai-center').classList.contains('aic-jarvis'));
     const av = q('#aic-core .aic-orb svg.aic-avatar');
     assert.ok(av, 'avatar svg missing');

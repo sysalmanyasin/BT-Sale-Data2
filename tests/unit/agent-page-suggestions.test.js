@@ -1,4 +1,4 @@
-// Page awareness for the global Jarvis panel: which area a page belongs to, what it is called, and which starter questions it gets.
+// Page awareness for the global Dua panel: which area a page belongs to, what it is called, and which starter questions it gets.
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { areaOf, pageName, viewingLabel, suggestionsFor, hidesButton, GENERAL_SUGGESTIONS } from '../../js/agent/core/page-suggestions.js';

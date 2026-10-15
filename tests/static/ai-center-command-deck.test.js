@@ -7,7 +7,7 @@ const sw = readFileSync(new URL('../../sw.js', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../../css/ai-center-command-deck.css', import.meta.url), 'utf8');
 const bare = css.replace(/\/\*[\s\S]*?\*\//g, '');
 
-test('command-deck layer loads after the existing mobile and JARVIS styles', () => {
+test('command-deck layer loads after the existing mobile and DUA styles', () => {
   const deck = html.indexOf('css/ai-center-command-deck.css');
   assert.ok(deck > 0, 'command-deck stylesheet is linked in index.html');
   assert.ok(html.indexOf('css/mobile.css') < deck);

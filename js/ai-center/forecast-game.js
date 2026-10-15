@@ -18,7 +18,7 @@ export const view = () => last;
 
 const rsF = v => 'Rs ' + Math.round(v).toLocaleString('en-PK');
 
-// ── celebration: confetti + banner + Jarvis speaks (or his mouth moves when voice is off) ──
+// ── celebration: confetti + banner + Dua speaks (or his mouth moves when voice is off) ──
 export function celebrate(text, { confetti = true } = {}) {
   if (typeof document === 'undefined') return;
   try {

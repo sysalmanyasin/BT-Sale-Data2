@@ -1,4 +1,4 @@
-// Page awareness for the global Jarvis panel. Pure: maps the page the person is looking at to an area (Sales, Inventory, Cash,
+// Page awareness for the global Dua panel. Pure: maps the page the person is looking at to an area (Sales, Inventory, Cash,
 // Audit, BT Intelligence), a readable name for the "Viewing ..." line, and a few starter questions that suit that page.
 // The questions are ordinary typed questions: they go through the same ask() path as anything the person types, so the router,
 // tools, permissions and approvals are unchanged. Nothing here reads data or writes anything.
@@ -35,7 +35,7 @@ const BY_AREA = Object.freeze({
   inventory: ['What is low on stock?', 'Which items have under 7 days of cover?', 'Draft a reorder list', 'Which stock is slow moving?'],
   cash: ['What is blocking closing?', "Explain today's cash difference", "Today's payments breakdown", 'Which staff credit balances need review?'],
   audit: ['Summarise the audit variance', 'What expires soon?', 'Which items need a recount?', 'Which audit gaps are the biggest?'],
-  intel: ['What needs my attention today?', 'Which inventory risks are most urgent?', 'What is blocking closing?', 'What is Jarvis proposing right now?'],
+  intel: ['What needs my attention today?', 'Which inventory risks are most urgent?', 'What is blocking closing?', 'What is Dua proposing right now?'],
 });
 
 const clean = id => String(id == null ? '' : id).replace(/^page-/, '').trim().toLowerCase();
@@ -59,5 +59,5 @@ export function viewingLabel(pageId) {
 /** Starter questions for the page (always a fresh array of 3-4 strings). */
 export function suggestionsFor(pageId) { return [...(BY_AREA[areaOf(pageId)] || GENERAL_SUGGESTIONS)]; }
 
-/** The Emergency Billing counter-sale screen: Jarvis never floats over it (the person can still open it deliberately). */
+/** The Emergency Billing counter-sale screen: Dua never floats over it (the person can still open it deliberately). */
 export const hidesButton = pageId => clean(pageId) === 'emergency-billing';

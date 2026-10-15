@@ -1,4 +1,4 @@
-/* BT JARVIS COMMAND DECK — additive presentation layer
+/* BT DUA COMMAND DECK — additive presentation layer
    Scoped to the Intelligence Centre. No business logic, data, approvals or audit behavior changes.
    Deliberately does NOT touch grid placement (.aic-main columns, grid-column/row, #aic-* ordering),
    the instrument-strip column counts, or the section-header accent bar — ai-center.css and
@@ -171,7 +171,7 @@ body.aic-open .ag-input {
   justify-content: flex-start;
   text-align: left;
 }
-/* Toasts ("Synced from another device") must sit above the JARVIS chat bar, not on top of the input. */
+/* Toasts ("Synced from another device") must sit above the DUA chat bar, not on top of the input. */
 body.aic-open #toast {
   bottom: calc(132px + env(safe-area-inset-bottom));
 }

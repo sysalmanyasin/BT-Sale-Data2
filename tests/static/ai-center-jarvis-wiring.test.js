@@ -1,4 +1,4 @@
-// The JARVIS layer must actually be loaded: after ai-center.css in index.html, and precached by the service worker.
+// The DUA layer must actually be loaded: after ai-center.css in index.html, and precached by the service worker.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

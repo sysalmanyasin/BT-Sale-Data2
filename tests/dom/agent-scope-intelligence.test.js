@@ -1,4 +1,4 @@
-// Jarvis is ONE floating assistant on every page: the button is always there (except the Emergency Billing counter screen),
+// Dua is ONE floating assistant on every page: the button is always there (except the Emergency Billing counter screen),
 // it opens a compact panel over the current page without navigating, it knows which page you are on, it offers starter
 // questions for Sales / Inventory / Cash / Audit, and an approval that is waiting stays waiting when the panel is closed
 // or the page changes. Real panel, real runAgent loop, real tools; only the network and Supabase are stubbed.
@@ -37,11 +37,11 @@ const q = s => document.querySelector(s);
 const chips = () => [...document.querySelectorAll('#ag-chips .ag-chip')].map(b => b.textContent);
 const goPage = async id => { document.querySelectorAll('.page').forEach(p => p.classList.remove('on')); q('#page-' + id).classList.add('on'); await wait(30); };
 
-describe('Jarvis is one global assistant', () => {
+describe('Dua is one global assistant', () => {
   before(async () => { const e = console.error; console.error = () => {}; setWritesEnabled(false); mountAgentPanel(); await wait(30); console.error = e; });
 
-  test('the button says Ask Jarvis, the old header shortcut is gone, and the panel starts closed', () => {
-    assert.equal(q('#ag-fab').getAttribute('aria-label'), 'Ask Jarvis');
+  test('the button says Ask Dua, the old header shortcut is gone, and the panel starts closed', () => {
+    assert.equal(q('#ag-fab').getAttribute('aria-label'), 'Ask Dua');
     assert.equal(q('#ag-center'), null);
     assert.equal(q('#ag-sheet').hidden, true);
     assert.equal(document.querySelectorAll('#ag-sheet').length, 1);

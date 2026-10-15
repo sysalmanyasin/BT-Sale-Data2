@@ -1,4 +1,4 @@
-/* BT Intelligence — talking avatar + its settings sheet + the collapsed "Ask Jarvis" card. Loaded LAST among the ai-center sheets.
+/* BT Intelligence — talking avatar + its settings sheet + the collapsed "Ask Dua" card. Loaded LAST among the ai-center sheets.
    Colours are brand tokens only (variables.css), so light and dark follow the rest of the app. */
 .aic-sr{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
@@ -43,7 +43,7 @@
   .aic-page.aic-jarvis .aic-hbub{align-items:center;text-align:center;align-self:center}
 }
 
-/* ── Ask Jarvis: a collapsed card; its own title replaces the chat's inner title ── */
+/* ── Ask Dua: a collapsed card; its own title replaces the chat's inner title ── */
 .aic-page.aic-jarvis #aic-chat.aic-folded{padding-top:14px;padding-bottom:14px}
 .aic-page.aic-jarvis #aic-chat>.aic-sh{padding-bottom:0;border:0}
 .aic-page.aic-jarvis #aic-chat:not(.aic-folded)>.aic-sh{padding-bottom:10px}

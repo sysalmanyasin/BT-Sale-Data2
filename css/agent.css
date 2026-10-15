@@ -1,5 +1,5 @@
 /* AI assistant panel — uses the app's design tokens (light + dark). */
-/* Jarvis: one floating assistant on every page. Uses the app's own tokens (light + dark). */
+/* Dua: one floating assistant on every page. Uses the app's own tokens (light + dark). */
 .ag-fab{position:fixed;right:16px;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:900;height:52px;min-width:52px;padding:0;border-radius:26px;border:0;cursor:pointer;color:#fff;background:var(--grad-header,var(--accent));box-shadow:var(--sh-lg);display:flex;align-items:center;justify-content:center;gap:8px;font:600 14px var(--sans);transition:transform .12s}
 .ag-fab svg{width:22px;height:22px;flex:none}
 .ag-fab:active{transform:scale(.95)}

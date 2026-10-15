@@ -66,6 +66,6 @@ describe('AI Center keeps the avatar but has no chat', () => {
     assert.ok(q('#aic-hero #aic-core .aic-orb svg.aic-avatar'), 'avatar stays in the hero');
     assert.equal(q('.aic-chatbtn'), null); assert.equal(q('.aic-cmd'), null);
     assert.equal(q('#aic-chat'), null, 'the chat card is gone'); assert.equal(q('.aic-chatslot'), null);
-    assert.equal(q('#aic-q'), null); assert.ok(q('#aic-hero .dk-askj'), 'one way into the global Jarvis panel');
+    assert.equal(q('#aic-q'), null); assert.ok(q('#aic-hero .dk-askj'), 'one way into the global Dua panel');
   });
 });
