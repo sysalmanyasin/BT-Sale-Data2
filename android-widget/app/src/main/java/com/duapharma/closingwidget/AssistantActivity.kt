@@ -33,6 +33,7 @@ class AssistantActivity : AppCompatActivity() {
     private var token: String? = null
     private var pendingRequestId: String? = null
     private lateinit var root: LinearLayout
+    private var activeContainer: LinearLayout? = null
     private lateinit var screenScroll: ScrollView
     private lateinit var status: TextView
     private lateinit var signInButton: Button
@@ -168,7 +169,10 @@ class AssistantActivity : AppCompatActivity() {
             background = resources.getDrawable(R.drawable.bg_futuristic_card, theme)
         }
         root.addView(panel, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(2) })
+        val previous = activeContainer
+        activeContainer = panel
         panel.content()
+        activeContainer = previous
     }
 
     private fun rowTitle(number: String, title: String, tag: String, accent: Int) {
@@ -194,7 +198,7 @@ class AssistantActivity : AppCompatActivity() {
         row.addView(TextView(this).apply {
             text = "●"; textSize = 11f; setTextColor(accent)
         })
-        addView(row)
+        target().addView(row, LinearLayout.LayoutParams(-1, -2))
         spacer(12)
     }
 
@@ -206,7 +210,7 @@ class AssistantActivity : AppCompatActivity() {
             setPadding(0, dp(4), 0, dp(4))
             if (bold) setTypeface(null, android.graphics.Typeface.BOLD)
         }
-        root.addView(view)
+        target().addView(view, LinearLayout.LayoutParams(-1, -2))
         return view
     }
 
@@ -224,7 +228,7 @@ class AssistantActivity : AppCompatActivity() {
             background = resources.getDrawable(R.drawable.bg_input_field, theme)
             setPadding(dp(13), dp(11), dp(13), dp(11))
             layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5); bottomMargin = dp(6) }
-            root.addView(this)
+            target().addView(this)
         }
     }
 
@@ -235,7 +239,7 @@ class AssistantActivity : AppCompatActivity() {
         background = resources.getDrawable(R.drawable.bg_input_field, theme)
         setPadding(dp(8), dp(4), dp(8), dp(4))
         layoutParams = LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(5); bottomMargin = dp(5) }
-        root.addView(this)
+        target().addView(this)
     }
 
     private fun button(value: String, backgroundId: Int, click: () -> Unit): Button {
@@ -249,12 +253,12 @@ class AssistantActivity : AppCompatActivity() {
             elevation = dp(2).toFloat()
             setOnClickListener { click() }
             layoutParams = LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(8); bottomMargin = dp(8) }
-            root.addView(this)
+            target().addView(this)
         }
     }
 
-    private fun LinearLayout.addView(view: View) { addView(view, LinearLayout.LayoutParams(-1, -2)) }
-    private fun spacer(height: Int) { root.addView(View(this), LinearLayout.LayoutParams(1, dp(height))) }
+    private fun target(): LinearLayout = activeContainer ?: root
+    private fun spacer(height: Int) { target().addView(View(this), LinearLayout.LayoutParams(1, dp(height))) }
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
 
     private fun prefs() = run {
