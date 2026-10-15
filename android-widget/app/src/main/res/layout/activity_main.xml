@@ -19,13 +19,20 @@
         android:layout_marginTop="8dp"
         android:layout_marginBottom="24dp"
         android:gravity="center"
-        android:text="Long-press your home screen → Widgets → Closing Summary to add it." />
+        android:text="Long-press your home screen → Widgets to add Closing Summary, Quick Add, or Ask Dua." />
 
     <Button
         android:id="@+id/refresh_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Refresh widget now" />
+
+    <Button
+        android:id="@+id/assistant_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="⚡ Quick Add / Ask Dua" />
 
     <Button
         android:id="@+id/search_inventory_button"
