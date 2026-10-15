@@ -82,6 +82,12 @@ Deno.serve(async (req: Request) => {
       const staff = (Array.isArray(payload.staff) ? payload.staff : []).find((s: any) =>
         s && s.active !== false && clean(s.staffId, 80) === staffId && clean(s.name, 120));
       if (!staff) return reply({ error: "Choose an active staff member from the current registry." }, 400);
+      // The existing fold trigger updates an existing month/staff row. Refuse to create a malformed row if that month is not initialized.
+      const monthLabel = new Date(date + "T00:00:00Z").toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+      const monthRows = payload.manager?.credit?.[monthLabel];
+      if (!Array.isArray(monthRows) || !monthRows.some((row: any) => row?.staffId === staffId)) {
+        return reply({ error: "That month has no initialized staff-credit row yet. Open Staff Credit in BT Sale Data for that month, then retry." }, 409);
+      }
       const { error } = await sb.from("bt_inbox_staff_credit").insert({
         id: requestId, staff_id: staffId, amount,
         description, entry_date: date, source: "closing_app",
