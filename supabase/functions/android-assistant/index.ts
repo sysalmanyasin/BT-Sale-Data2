@@ -71,7 +71,7 @@ Deno.serve(async (req: Request) => {
     const date = clean(body.date, 10);
     const description = clean(body.description, 240);
     const amount = Number(body.amount);
-    if (!uuidRe.test(requestId) || !dateRe.test(date) || Number.isNaN(Date.parse(date + "T00:00:00Z")))
+    if (!uuidRe.test(requestId) || !dateRe.test(date) || !Number.isFinite(Date.parse(date + "T00:00:00Z")) || new Date(date + "T00:00:00Z").toISOString().slice(0, 10) !== date)
       return reply({ error: "A valid request ID and date are required." }, 400);
     if (!Number.isFinite(amount) || amount <= 0 || amount > 100000000)
       return reply({ error: "Amount must be greater than zero and within the allowed limit." }, 400);
