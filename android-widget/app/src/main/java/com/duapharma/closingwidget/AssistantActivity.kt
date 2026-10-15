@@ -54,7 +54,7 @@ class AssistantActivity : AppCompatActivity() {
         status = text("Not signed in", 14f)
         divider()
         text("⚡ Quick Add", 19f, true)
-        kind = spinner(listOf("Jazz Cash", "Expenses / Patty", "New Section", "Staff Credit"))
+        kind = spinner(listOf("Jazz Cash", "Expenses / Patty", "New Section", "Staff Credit")); root.addView(kind)
         date = edit("Date (YYYY-MM-DD)", InputType.TYPE_CLASS_TEXT).apply { setText(SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())) }
         section = spinner(emptyList()); category = spinner(emptyList()); staff = spinner(emptyList())
         label("Section"); root.addView(section); label("Category"); root.addView(category)
