@@ -35,7 +35,11 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "Refreshing widgets…", Toast.LENGTH_SHORT).show()
         }
 
-        findViewById<Button>(R.id.assistant_button).setOnClickListener {\n            startActivity(Intent(this, AssistantActivity::class.java))\n        }\n\n        findViewById<Button>(R.id.search_inventory_button).setOnClickListener {
+        findViewById<Button>(R.id.assistant_button).setOnClickListener {
+            startActivity(Intent(this, AssistantActivity::class.java))
+        }
+
+        findViewById<Button>(R.id.search_inventory_button).setOnClickListener {
             startActivity(Intent(this, ProductSearchActivity::class.java))
         }
     }
