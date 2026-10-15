@@ -52,17 +52,7 @@ Deno.serve(async (req: Request) => {
         { id: "guardIncentive", label: "Guard Incentive" }, { id: "pattyHO", label: "Patty HO" },
       ] },
     };
-    const custom = payload.ledgerCustomTypes && typeof payload.ledgerCustomTypes === "object" ? payload.ledgerCustomTypes : {};
     const sections: Record<string, any> = { ...builtins };
-    for (const [type, def] of Object.entries(custom)) {
-      if (!type.startsWith("custom:") || !def || typeof def !== "object") continue;
-      sections[type] = {
-        label: clean((def as any).label, 80) || type,
-        categories: (Array.isArray((def as any).categories) ? (def as any).categories : [])
-          .filter((c: any) => c && clean(c.id, 80) && clean(c.label, 100))
-          .map((c: any) => ({ id: clean(c.id, 80), label: clean(c.label, 100) })),
-      };
-    }
     return reply({ sections, staff });
   }
 
