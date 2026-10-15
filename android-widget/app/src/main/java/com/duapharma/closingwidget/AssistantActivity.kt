@@ -199,7 +199,7 @@ class AssistantActivity : AppCompatActivity() {
             body.put("ledgerType", sec).put("categoryId", cat)
         }
         status.text = "Submitting…"
-        thread { try { val result = api(body); runOnUiThread { status.text = result.optString("message", "Entry saved."); amount.text.clear(); description.text.clear() } }
+        thread { try { val result = api(body); runOnUiThread { status.text = result.optString("message", "Entry saved."); pendingRequestId = null; amount.text.clear(); description.text.clear() } }
             catch (e: Exception) { runOnUiThread { status.text = e.message ?: "Entry was not confirmed; check the ledger before retrying." } } }
     }
     private fun askDua() {
