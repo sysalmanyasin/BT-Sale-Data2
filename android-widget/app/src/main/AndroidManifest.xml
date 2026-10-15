@@ -147,7 +147,7 @@
         <activity
             android:name=".AssistantActivity"
             android:exported="false"
-            android:label="Quick Add & Ask Dua"
+            android:label="Quick Add &amp; Ask Dua"
             android:windowSoftInputMode="adjustResize" />
 
         <activity
