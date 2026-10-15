@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:gravity="center" android:padding="10dp"
+    android:background="#FFFFFFFF">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="💬 Ask Dua" android:textStyle="bold" android:textSize="15sp"
+        android:gravity="center" />
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="Read-only business assistant" android:textSize="11sp" android:gravity="center"
+        android:paddingTop="3dp" android:paddingBottom="4dp" />
+    <Button android:id="@+id/ask_dua_open" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:text="Ask a question" android:minHeight="36dp" />
+</LinearLayout>
