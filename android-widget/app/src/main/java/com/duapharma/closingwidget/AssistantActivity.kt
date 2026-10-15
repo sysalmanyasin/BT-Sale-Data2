@@ -58,8 +58,7 @@ class AssistantActivity : AppCompatActivity() {
         window.navigationBarColor = Color.rgb(7, 12, 27)
         window.decorView.systemUiVisibility = 0
         buildScreen()
-        restore()
-        handleOAuthCallback(intent)
+        if (intent.data == null) restore() else handleOAuthCallback(intent)
         intent.getStringExtra("initial_kind")?.let {
             kind.setSelection(when (it) { "expense" -> 1; "credit" -> 2; else -> 0 })
         }
