@@ -1,6 +1,6 @@
 # Android Quick Add and Ask Dua
 
-The Android app's **Quick Add / Ask Dua** screen uses the BT Sale Data Supabase project.
+The Android app includes two new launcher widgets—**Quick Add** (Jazz Cash, Add Credit, Add Expense shortcuts) and **Ask Dua**—plus the full **Quick Add / Ask Dua** screen. Both use the BT Sale Data Supabase project. Add them from Android Home screen → Widgets after installing the updated APK.
 
 ## Access and security
 
