@@ -83,7 +83,7 @@ Deno.serve(async (req: Request) => {
         s && s.active !== false && clean(s.staffId, 80) === staffId && clean(s.name, 120));
       if (!staff) return reply({ error: "Choose an active staff member from the current registry." }, 400);
       const { error } = await sb.from("bt_inbox_staff_credit").insert({
-        id: requestId, staff_id: staffId, amount: Number(body.amount) * (body.deduction === true ? -1 : 1),
+        id: requestId, staff_id: staffId, amount,
         description, entry_date: date, source: "closing_app",
       });
       if (error) {
