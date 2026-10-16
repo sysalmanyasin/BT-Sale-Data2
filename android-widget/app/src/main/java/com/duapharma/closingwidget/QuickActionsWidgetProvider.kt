@@ -28,8 +28,8 @@ class QuickActionsWidgetProvider : AppWidgetProvider() {
 
         // Jazz Cash, Expenses, Staff Credit, Custom section
         private val KIND_COLORS = intArrayOf(
-            Color.parseColor("#5B5FD6"), Color.parseColor("#D98206"),
-            Color.parseColor("#0F9F8F"), Color.parseColor("#D6336C")
+            Color.parseColor("#8B8EFF"), Color.parseColor("#FFB84D"),
+            Color.parseColor("#22E5D3"), Color.parseColor("#FF6B9A")
         )
         private val BAR_IDS = intArrayOf(R.id.qa_bar1, R.id.qa_bar2, R.id.qa_bar3, R.id.qa_bar4)
         private val LEG_IDS = intArrayOf(R.id.qa_leg1, R.id.qa_leg2, R.id.qa_leg3, R.id.qa_leg4)

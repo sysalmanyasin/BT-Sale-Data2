@@ -186,6 +186,10 @@ from it on every widget refresh.
   "refresh all widgets" button; not required for the widgets to work,
   just gives the app something to open from the launcher.
 
+## Widget design: Neon Glass
+
+All widgets share one dark "neon glass" look: deep-navy cards with a soft cyan/violet corner glow, a 1dp neon edge and a glowing top line, glass inner panels, ring badges, gradient progress bars and uppercase HUD-style captions. It is driven entirely by tokens in `res/values/colors.xml` and the shared drawables (`widget_background`, `widget_grid_background`, `badge_circle_*`, `chip_*`, `tile_*`), so a new widget only needs to reference those. Data providers, refresh behaviour and Supabase access are unchanged.
+
 ## Launcher UI
 
 The launcher now uses a clean, light dashboard with high-contrast actions. The existing widget data providers, refresh behavior, and Supabase access model are unchanged.
