@@ -7,65 +7,89 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:gravity="center_vertical"
-        android:padding="24dp">
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:paddingTop="36dp"
+        android:paddingBottom="28dp">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="BT  /  SALES INTELLIGENCE"
-            android:textColor="#FF58DFFF"
-            android:textSize="11sp"
+            android:text="BT SALE DATA"
+            android:textColor="#FF087F8C"
+            android:textSize="12sp"
             android:letterSpacing="0.12"
             android:textStyle="bold" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:text="Closing\nSummary"
-            android:textColor="#FFFFFFFF"
-            android:textSize="34sp"
-            android:lineSpacingExtra="1dp"
+            android:layout_marginTop="12dp"
+            android:text="Business,\nat a glance."
+            android:textColor="#FF14213D"
+            android:textSize="36sp"
+            android:fontFamily="sans"
+            android:lineSpacingExtra="0dp"
             android:textStyle="bold" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="24dp"
-            android:text="Your business dashboard, right on your home screen."
-            android:textColor="#FFB3C1DE"
-            android:textSize="14sp" />
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="28dp"
+            android:text="Your essential numbers and actions, ready from your home screen."
+            android:textColor="#FF64748B"
+            android:textSize="15sp"
+            android:lineSpacingExtra="3dp" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp"
+            android:padding="20dp"
             android:background="@drawable/bg_futuristic_card">
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="WIDGET CONTROL"
-                android:textColor="#FF8193B9"
-                android:textSize="10sp"
-                android:letterSpacing="0.12"
+                android:text="YOUR DASHBOARD"
+                android:textColor="#FF64748B"
+                android:textSize="11sp"
+                android:letterSpacing="0.10"
                 android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="22 home-screen widgets"
+                android:textColor="#FF14213D"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="12dp"
+                android:text="Sales · Closing · Credit · Inventory · STR"
+                android:textColor="#FF64748B"
+                android:textSize="13sp" />
 
             <Button
                 android:id="@+id/refresh_button"
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
-                android:layout_marginTop="10dp"
+                android:layout_marginTop="4dp"
                 android:background="@drawable/bg_button_accent"
-                android:text="↻   Refresh all widgets"
+                android:text="Refresh all widgets"
                 android:textAllCaps="false"
                 android:textColor="#FFFFFFFF"
-                android:textSize="14sp" />
+                android:textSize="15sp"
+                android:fontFamily="sans"
+                android:textStyle="bold" />
 
             <Button
                 android:id="@+id/assistant_button"
@@ -73,10 +97,12 @@
                 android:layout_height="52dp"
                 android:layout_marginTop="10dp"
                 android:background="@drawable/bg_button_violet"
-                android:text="✦   Quick Add  /  Ask Dua"
+                android:text="Quick Add  ·  Ask Dua"
                 android:textAllCaps="false"
-                android:textColor="#FFFFFFFF"
-                android:textSize="14sp" />
+                android:textColor="#FF14213D"
+                android:textSize="15sp"
+                android:fontFamily="sans"
+                android:textStyle="bold" />
 
             <Button
                 android:id="@+id/search_inventory_button"
@@ -84,20 +110,40 @@
                 android:layout_height="52dp"
                 android:layout_marginTop="10dp"
                 android:background="@drawable/bg_input_field"
-                android:text="⌕   Search inventory"
+                android:text="Search inventory"
                 android:textAllCaps="false"
-                android:textColor="#FFFFFFFF"
-                android:textSize="14sp" />
+                android:textColor="#FF334155"
+                android:textSize="15sp"
+                android:fontFamily="sans"
+                android:textStyle="bold" />
         </LinearLayout>
 
-        <TextView
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
-            android:gravity="center"
-            android:text="LONG-PRESS HOME SCREEN  →  WIDGETS"
-            android:textColor="#FF7F92B8"
-            android:textSize="10sp"
-            android:letterSpacing="0.08" />
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:background="@drawable/bg_input_field">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="GET STARTED"
+                android:textColor="#FF087F8C"
+                android:textSize="10sp"
+                android:letterSpacing="0.10"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="Long-press your home screen, open Widgets, then choose Closing Summary."
+                android:textColor="#FF64748B"
+                android:textSize="13sp"
+                android:lineSpacingExtra="2dp" />
+        </LinearLayout>
+
     </LinearLayout>
 </ScrollView>
