@@ -186,6 +186,10 @@ from it on every widget refresh.
   "refresh all widgets" button; not required for the widgets to work,
   just gives the app something to open from the launcher.
 
+## Launcher UI
+
+The launcher now uses a clean, light dashboard with high-contrast actions. The existing widget data providers, refresh behavior, and Supabase access model are unchanged.
+
 ## Building locally
 
 Requires Android Studio (or the command-line SDK) with SDK 34 and
