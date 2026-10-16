@@ -16,7 +16,8 @@ object AssistantStore {
     private const val FILE = "assistant_staff_session"
     private const val MAX_RECENT = 3
 
-    data class Entry(val title: String, val detail: String, val amount: Double, val ts: Long)
+    /** kind: 0 Jazz Cash, 1 Expenses, 2 Staff Credit, 3 Custom section. */
+    data class Entry(val title: String, val detail: String, val amount: Double, val ts: Long, val kind: Int = 0)
 
     fun prefs(context: Context): SharedPreferences {
         val app = context.applicationContext
@@ -37,7 +38,7 @@ object AssistantStore {
         list.add(0, entry)
         val arr = JSONArray()
         list.take(MAX_RECENT).forEach {
-            arr.put(JSONObject().put("t", it.title).put("d", it.detail).put("a", it.amount).put("ts", it.ts))
+            arr.put(JSONObject().put("t", it.title).put("d", it.detail).put("a", it.amount).put("ts", it.ts).put("k", it.kind))
         }
         p.edit().putString("recent_entries", arr.toString()).apply()
     }
@@ -48,16 +49,21 @@ object AssistantStore {
             val arr = JSONArray(raw)
             (0 until arr.length()).mapNotNull { i ->
                 arr.optJSONObject(i)?.let {
-                    Entry(it.optString("t"), it.optString("d"), it.optDouble("a", 0.0), it.optLong("ts"))
+                    Entry(it.optString("t"), it.optString("d"), it.optDouble("a", 0.0), it.optLong("ts"), it.optInt("k", 0))
                 }
             }
         } catch (_: Exception) { emptyList() }
     }
 
-    fun saveTotal(context: Context, value: Double) {
-        safe(context)?.edit()?.putString("total_credit", value.toString())
+    /** parts = Staff, Jazz Cash, Patty/Expenses, Misc. */
+    fun saveSummary(context: Context, total: Double, parts: List<Double>) {
+        safe(context)?.edit()?.putString("total_credit", total.toString())
+            ?.putString("total_parts", parts.joinToString(","))
             ?.putLong("total_credit_ts", System.currentTimeMillis())?.apply()
     }
+
+    fun parts(context: Context): List<Double>? =
+        safe(context)?.getString("total_parts", null)?.split(",")?.mapNotNull { it.toDoubleOrNull() }?.takeIf { it.size == 4 }
 
     /** value to timestamp, or null if never fetched. */
     fun total(context: Context): Pair<Double, Long>? {

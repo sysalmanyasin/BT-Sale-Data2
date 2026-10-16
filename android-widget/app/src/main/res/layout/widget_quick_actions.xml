@@ -3,8 +3,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="14dp"
-    android:background="@drawable/bg_widget_card">
+    android:padding="16dp"
+    android:background="@drawable/bg_widget_light">
 
     <LinearLayout
         android:id="@+id/qa_header"
@@ -12,111 +12,242 @@
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:orientation="horizontal">
-        <LinearLayout
+        <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:orientation="vertical">
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="TOTAL CREDIT"
-                android:textColor="#FF58DFFF"
-                android:textSize="10sp"
-                android:letterSpacing="0.12"
-                android:textStyle="bold" />
-            <TextView
-                android:id="@+id/qa_total"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="₨—"
-                android:textColor="#FFFFFFFF"
-                android:textSize="28sp"
-                android:textStyle="bold" />
-        </LinearLayout>
+            android:text="TOTAL CREDIT"
+            android:textColor="#FF667085"
+            android:textSize="10sp"
+            android:letterSpacing="0.1"
+            android:textStyle="bold" />
+        <ImageView
+            android:layout_width="13dp"
+            android:layout_height="13dp"
+            android:src="@drawable/ic_w_refresh" />
         <TextView
             android:id="@+id/qa_updated"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:gravity="end"
+            android:layout_marginStart="3dp"
             android:text="Tap to refresh"
-            android:textColor="#FF9DABCA"
-            android:textSize="9sp" />
+            android:textColor="#FF98A2B3"
+            android:textSize="10sp" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/qa_total"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="₨—"
+        android:textColor="#FF101828"
+        android:textSize="32sp"
+        android:textStyle="bold" />
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="8dp"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/bg_track_light">
+        <ProgressBar
+            android:id="@+id/qa_bar4"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="8dp"
+            android:max="1000"
+            android:minHeight="8dp"
+            android:maxHeight="8dp"
+            android:progress="0"
+            android:progressDrawable="@drawable/prog_pink" />
+        <ProgressBar
+            android:id="@+id/qa_bar3"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="8dp"
+            android:max="1000"
+            android:minHeight="8dp"
+            android:maxHeight="8dp"
+            android:progress="0"
+            android:progressDrawable="@drawable/prog_amber" />
+        <ProgressBar
+            android:id="@+id/qa_bar2"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="8dp"
+            android:max="1000"
+            android:minHeight="8dp"
+            android:maxHeight="8dp"
+            android:progress="0"
+            android:progressDrawable="@drawable/prog_indigo" />
+        <ProgressBar
+            android:id="@+id/qa_bar1"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="8dp"
+            android:max="1000"
+            android:minHeight="8dp"
+            android:maxHeight="8dp"
+            android:progress="0"
+            android:progressDrawable="@drawable/prog_teal" />
+    </FrameLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="12dp"
+        android:orientation="horizontal">
+        <TextView
+            android:id="@+id/qa_leg1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:maxLines="1"
+            android:text="● Staff"
+            android:textColor="#FF0F9F8F"
+            android:textSize="10sp" />
+        <TextView
+            android:id="@+id/qa_leg2"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:maxLines="1"
+            android:text="● Jazz"
+            android:textColor="#FF5B5FD6"
+            android:textSize="10sp" />
+        <TextView
+            android:id="@+id/qa_leg3"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:maxLines="1"
+            android:text="● Patty"
+            android:textColor="#FFD98206"
+            android:textSize="10sp" />
+        <TextView
+            android:id="@+id/qa_leg4"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:maxLines="1"
+            android:text="● Misc"
+            android:textColor="#FFD6336C"
+            android:textSize="10sp" />
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
         android:orientation="horizontal">
-        <Button
+        <LinearLayout
             android:id="@+id/quick_add_action"
             android:layout_width="0dp"
-            android:layout_height="40dp"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginEnd="4dp"
-            android:background="@drawable/bg_widget_teal"
-            android:minHeight="0dp"
-            android:minWidth="0dp"
-            android:paddingLeft="2dp"
-            android:paddingRight="2dp"
-            android:text="＋ Jazz"
-            android:textAllCaps="false"
-            android:textColor="#FFFFFFFF"
-            android:textSize="11sp" />
-        <Button
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
+            <FrameLayout
+                android:layout_width="46dp"
+                android:layout_height="46dp"
+                android:background="@drawable/circ_teal">
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_w_wallet" />
+            </FrameLayout>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Jazz"
+                android:textColor="#FF475467"
+                android:textSize="11sp" />
+        </LinearLayout>
+        <LinearLayout
             android:id="@+id/add_credit_action"
             android:layout_width="0dp"
-            android:layout_height="40dp"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginEnd="4dp"
-            android:background="@drawable/bg_widget_teal"
-            android:minHeight="0dp"
-            android:minWidth="0dp"
-            android:paddingLeft="2dp"
-            android:paddingRight="2dp"
-            android:text="＋ Credit"
-            android:textAllCaps="false"
-            android:textColor="#FFFFFFFF"
-            android:textSize="11sp" />
-        <Button
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
+            <FrameLayout
+                android:layout_width="46dp"
+                android:layout_height="46dp"
+                android:background="@drawable/circ_indigo">
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_w_group" />
+            </FrameLayout>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Credit"
+                android:textColor="#FF475467"
+                android:textSize="11sp" />
+        </LinearLayout>
+        <LinearLayout
             android:id="@+id/add_expense_action"
             android:layout_width="0dp"
-            android:layout_height="40dp"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginEnd="4dp"
-            android:background="@drawable/bg_widget_teal"
-            android:minHeight="0dp"
-            android:minWidth="0dp"
-            android:paddingLeft="2dp"
-            android:paddingRight="2dp"
-            android:text="＋ Expense"
-            android:textAllCaps="false"
-            android:textColor="#FFFFFFFF"
-            android:textSize="11sp" />
-        <Button
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
+            <FrameLayout
+                android:layout_width="46dp"
+                android:layout_height="46dp"
+                android:background="@drawable/circ_amber">
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_w_receipt" />
+            </FrameLayout>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Expense"
+                android:textColor="#FF475467"
+                android:textSize="11sp" />
+        </LinearLayout>
+        <LinearLayout
             android:id="@+id/add_section_action"
             android:layout_width="0dp"
-            android:layout_height="40dp"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginEnd="4dp"
-            android:background="@drawable/bg_widget_teal"
-            android:minHeight="0dp"
-            android:minWidth="0dp"
-            android:paddingLeft="2dp"
-            android:paddingRight="2dp"
-            android:text="＋ Section"
-            android:textAllCaps="false"
-            android:textColor="#FFFFFFFF"
-            android:textSize="11sp" />
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
+            <FrameLayout
+                android:layout_width="46dp"
+                android:layout_height="46dp"
+                android:background="@drawable/circ_pink">
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_w_layers" />
+            </FrameLayout>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Section"
+                android:textColor="#FF475467"
+                android:textSize="11sp" />
+        </LinearLayout>
     </LinearLayout>
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
-        android:text="LAST 3 ENTRIES FROM HERE"
-        android:textColor="#FF778BB4"
+        android:text="RECENT"
+        android:textColor="#FF667085"
         android:textSize="10sp"
         android:letterSpacing="0.1"
         android:textStyle="bold" />
@@ -125,18 +256,25 @@
         android:id="@+id/qa_row1"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:background="@drawable/bg_widget_row_dark"
+        android:layout_marginTop="5dp"
+        android:background="@drawable/bg_row_light"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingStart="10dp"
-        android:paddingEnd="10dp"
-        android:paddingTop="6dp"
-        android:paddingBottom="6dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="7dp"
+        android:paddingBottom="7dp"
         android:visibility="gone">
+        <TextView
+            android:id="@+id/qa_row1_dot"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="●"
+            android:textSize="12sp" />
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
             android:layout_weight="1"
             android:orientation="vertical">
             <TextView
@@ -145,8 +283,8 @@
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:textColor="#FFFFFFFF"
-                android:textSize="12sp"
+                android:textColor="#FF101828"
+                android:textSize="13sp"
                 android:textStyle="bold" />
             <TextView
                 android:id="@+id/qa_row1_meta"
@@ -154,7 +292,7 @@
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:textColor="#FF9DABCA"
+                android:textColor="#FF667085"
                 android:textSize="10sp" />
         </LinearLayout>
         <TextView
@@ -162,7 +300,6 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
-            android:textColor="#FF54E3C2"
             android:textSize="13sp"
             android:textStyle="bold" />
     </LinearLayout>
@@ -170,18 +307,25 @@
         android:id="@+id/qa_row2"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:background="@drawable/bg_widget_row_dark"
+        android:layout_marginTop="5dp"
+        android:background="@drawable/bg_row_light"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingStart="10dp"
-        android:paddingEnd="10dp"
-        android:paddingTop="6dp"
-        android:paddingBottom="6dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="7dp"
+        android:paddingBottom="7dp"
         android:visibility="gone">
+        <TextView
+            android:id="@+id/qa_row2_dot"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="●"
+            android:textSize="12sp" />
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
             android:layout_weight="1"
             android:orientation="vertical">
             <TextView
@@ -190,8 +334,8 @@
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:textColor="#FFFFFFFF"
-                android:textSize="12sp"
+                android:textColor="#FF101828"
+                android:textSize="13sp"
                 android:textStyle="bold" />
             <TextView
                 android:id="@+id/qa_row2_meta"
@@ -199,7 +343,7 @@
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:textColor="#FF9DABCA"
+                android:textColor="#FF667085"
                 android:textSize="10sp" />
         </LinearLayout>
         <TextView
@@ -207,7 +351,6 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
-            android:textColor="#FF54E3C2"
             android:textSize="13sp"
             android:textStyle="bold" />
     </LinearLayout>
@@ -215,18 +358,25 @@
         android:id="@+id/qa_row3"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:background="@drawable/bg_widget_row_dark"
+        android:layout_marginTop="5dp"
+        android:background="@drawable/bg_row_light"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingStart="10dp"
-        android:paddingEnd="10dp"
-        android:paddingTop="6dp"
-        android:paddingBottom="6dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="7dp"
+        android:paddingBottom="7dp"
         android:visibility="gone">
+        <TextView
+            android:id="@+id/qa_row3_dot"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="●"
+            android:textSize="12sp" />
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
             android:layout_weight="1"
             android:orientation="vertical">
             <TextView
@@ -235,8 +385,8 @@
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:textColor="#FFFFFFFF"
-                android:textSize="12sp"
+                android:textColor="#FF101828"
+                android:textSize="13sp"
                 android:textStyle="bold" />
             <TextView
                 android:id="@+id/qa_row3_meta"
@@ -244,7 +394,7 @@
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:textColor="#FF9DABCA"
+                android:textColor="#FF667085"
                 android:textSize="10sp" />
         </LinearLayout>
         <TextView
@@ -252,7 +402,6 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
-            android:textColor="#FF54E3C2"
             android:textSize="13sp"
             android:textStyle="bold" />
     </LinearLayout>
@@ -261,7 +410,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
-        android:text="Nothing added from this widget yet."
-        android:textColor="#FF9DABCA"
+        android:text="Entries you add here will show up in this list."
+        android:textColor="#FF98A2B3"
         android:textSize="11sp" />
 </LinearLayout>

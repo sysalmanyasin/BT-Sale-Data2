@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.view.View
 import android.widget.RemoteViews
 import java.text.SimpleDateFormat
@@ -23,11 +24,30 @@ class QuickActionsWidgetProvider : AppWidgetProvider() {
     companion object {
         const val ACTION_REFRESH = "com.duapharma.closingwidget.QUICKACTIONS_REFRESH"
 
-        private data class RowIds(val root: Int, val title: Int, val meta: Int, val amount: Int)
+        private data class RowIds(val root: Int, val dot: Int, val title: Int, val meta: Int, val amount: Int)
+
+        // Jazz Cash, Expenses, Staff Credit, Custom section
+        private val KIND_COLORS = intArrayOf(
+            Color.parseColor("#5B5FD6"), Color.parseColor("#D98206"),
+            Color.parseColor("#0F9F8F"), Color.parseColor("#D6336C")
+        )
+        private val BAR_IDS = intArrayOf(R.id.qa_bar1, R.id.qa_bar2, R.id.qa_bar3, R.id.qa_bar4)
+        private val LEG_IDS = intArrayOf(R.id.qa_leg1, R.id.qa_leg2, R.id.qa_leg3, R.id.qa_leg4)
+        private val LEG_NAMES = arrayOf("Staff", "Jazz", "Patty", "Misc")
+
+        private fun short(v: Double): String {
+            val a = Math.abs(v)
+            val sign = if (v < 0) "-" else ""
+            return sign + when {
+                a >= 1_000_000 -> String.format(Locale.US, "%.1fM", a / 1_000_000)
+                a >= 1_000 -> Math.round(a / 1_000).toString() + "K"
+                else -> Math.round(a).toString()
+            }
+        }
         private val ROWS = listOf(
-            RowIds(R.id.qa_row1, R.id.qa_row1_title, R.id.qa_row1_meta, R.id.qa_row1_amount),
-            RowIds(R.id.qa_row2, R.id.qa_row2_title, R.id.qa_row2_meta, R.id.qa_row2_amount),
-            RowIds(R.id.qa_row3, R.id.qa_row3_title, R.id.qa_row3_meta, R.id.qa_row3_amount),
+            RowIds(R.id.qa_row1, R.id.qa_row1_dot, R.id.qa_row1_title, R.id.qa_row1_meta, R.id.qa_row1_amount),
+            RowIds(R.id.qa_row2, R.id.qa_row2_dot, R.id.qa_row2_title, R.id.qa_row2_meta, R.id.qa_row2_amount),
+            RowIds(R.id.qa_row3, R.id.qa_row3_dot, R.id.qa_row3_title, R.id.qa_row3_meta, R.id.qa_row3_amount),
         )
 
         /** Redraws from cache instantly, then re-fetches the total in the background. */
@@ -45,7 +65,10 @@ class QuickActionsWidgetProvider : AppWidgetProvider() {
             if (ids.isEmpty()) return
             render(context, manager, ids, "Refreshing…")
             val summary = try { CreditRepository.fetchCreditSummary(context) } catch (_: Exception) { null }
-            if (summary != null) AssistantStore.saveTotal(context, summary.totalOutstanding)
+            if (summary != null) AssistantStore.saveSummary(
+                context, summary.totalOutstanding,
+                listOf(summary.staffCreditTotal, summary.jazzCashTotal, summary.pattyExpensesTotal, summary.miscSectionsTotal)
+            )
             render(context, manager, ids, null)
         }
 
@@ -60,6 +83,18 @@ class QuickActionsWidgetProvider : AppWidgetProvider() {
                 else "Updated " + SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date(total.second))
             )
 
+            // Split bar: cumulative, so each bar is drawn over the previous one (Staff, Jazz, Patty, Misc).
+            val parts = AssistantStore.parts(context)
+            val positive = parts?.map { Math.max(0.0, it) } ?: listOf(0.0, 0.0, 0.0, 0.0)
+            val sum = positive.sum()
+            var running = 0.0
+            for (i in 0 until 4) {
+                running += positive[i]
+                val progress = if (sum > 0) Math.round(running / sum * 1000).toInt() else 0
+                views.setProgressBar(BAR_IDS[i], 1000, progress, false)
+                views.setTextViewText(LEG_IDS[i], "● " + LEG_NAMES[i] + (if (parts != null) " " + short(parts[i]) else ""))
+            }
+
             val timeFmt = SimpleDateFormat("d MMM, h:mm a", Locale.getDefault())
             val entries = AssistantStore.recent(context)
             ROWS.forEachIndexed { i, row ->
@@ -71,6 +106,9 @@ class QuickActionsWidgetProvider : AppWidgetProvider() {
                     views.setTextViewText(row.title, e.title)
                     views.setTextViewText(row.meta, e.detail + " · " + timeFmt.format(Date(e.ts)))
                     views.setTextViewText(row.amount, CreditRepository.formatAmount(e.amount))
+                    val color = KIND_COLORS[e.kind.coerceIn(0, 3)]
+                    views.setTextColor(row.dot, color)
+                    views.setTextColor(row.amount, color)
                 }
             }
             views.setViewVisibility(R.id.qa_empty, if (entries.isEmpty()) View.VISIBLE else View.GONE)

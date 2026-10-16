@@ -573,7 +573,7 @@ class AssistantActivity : AppCompatActivity() {
                     pendingRequestId = null
                     amount.text.clear()
                     description.text.clear()
-                    AssistantStore.addEntry(applicationContext, AssistantStore.Entry(title, detail, value, System.currentTimeMillis()))
+                    AssistantStore.addEntry(applicationContext, AssistantStore.Entry(title, detail, value, System.currentTimeMillis(), position))
                     refreshWidgets()
                 }
             } catch (error: Exception) {

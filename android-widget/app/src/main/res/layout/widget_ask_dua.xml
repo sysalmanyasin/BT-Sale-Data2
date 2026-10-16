@@ -3,50 +3,56 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="14dp"
-    android:background="@drawable/bg_widget_card">
+    android:padding="16dp"
+    android:background="@drawable/bg_widget_light_violet">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:orientation="horizontal">
-        <TextView
+        <FrameLayout
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="@drawable/circ_violet">
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_w_sparkle" />
+        </FrameLayout>
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
             android:layout_weight="1"
-            android:text="BT  /  AI"
-            android:textColor="#FFB99AFF"
-            android:textSize="10sp"
-            android:letterSpacing="0.12"
-            android:textStyle="bold" />
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="READ ONLY"
-            android:textColor="#FF9DABCA"
-            android:textSize="9sp" />
+            android:orientation="vertical">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Ask Dua"
+                android:textColor="#FF101828"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Read-only · live data"
+                android:textColor="#FF667085"
+                android:textSize="10sp" />
+        </LinearLayout>
     </LinearLayout>
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:text="Ask Dua"
-        android:textColor="#FFFFFFFF"
-        android:textSize="20sp"
-        android:textStyle="bold" />
 
     <LinearLayout
         android:id="@+id/dua_panel"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:layout_marginTop="6dp"
-        android:layout_marginBottom="6dp"
-        android:background="@drawable/bg_widget_row_dark"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="10dp"
+        android:background="@drawable/bg_dua_panel_light"
         android:orientation="vertical"
-        android:padding="10dp">
+        android:padding="12dp">
         <TextView
             android:id="@+id/dua_question"
             android:layout_width="match_parent"
@@ -54,76 +60,93 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:text="Your business, in plain language."
-            android:textColor="#FFB99AFF"
-            android:textSize="10sp"
+            android:textColor="#FF6D4AFF"
+            android:textSize="11sp"
             android:textStyle="bold" />
         <TextView
             android:id="@+id/dua_answer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="3dp"
+            android:layout_marginTop="4dp"
             android:ellipsize="end"
             android:maxLines="8"
             android:text="Tap a suggestion or ask your own question."
-            android:textColor="#FFE5EBFF"
-            android:textSize="12sp" />
+            android:textColor="#FF1D2939"
+            android:textSize="13sp" />
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
         android:orientation="horizontal">
         <TextView
             android:id="@+id/dua_chip_sales"
             android:layout_width="0dp"
             android:layout_height="30dp"
             android:layout_weight="1"
-            android:layout_marginEnd="4dp"
-            android:background="@drawable/bg_chip_violet"
+            android:layout_marginEnd="6dp"
+            android:background="@drawable/bg_chip_light_violet"
             android:gravity="center"
             android:maxLines="1"
             android:ellipsize="end"
             android:text="Today’s sales"
-            android:textColor="#FFD8C8FF"
-            android:textSize="10sp" />
+            android:textColor="#FF5A3FD1"
+            android:textSize="11sp" />
         <TextView
             android:id="@+id/dua_chip_expenses"
             android:layout_width="0dp"
             android:layout_height="30dp"
             android:layout_weight="1"
-            android:layout_marginEnd="4dp"
-            android:background="@drawable/bg_chip_violet"
+            android:layout_marginEnd="6dp"
+            android:background="@drawable/bg_chip_light_violet"
             android:gravity="center"
             android:maxLines="1"
             android:ellipsize="end"
             android:text="Month expenses"
-            android:textColor="#FFD8C8FF"
-            android:textSize="10sp" />
+            android:textColor="#FF5A3FD1"
+            android:textSize="11sp" />
         <TextView
             android:id="@+id/dua_chip_credit"
             android:layout_width="0dp"
             android:layout_height="30dp"
             android:layout_weight="1"
-            android:layout_marginEnd="4dp"
-            android:background="@drawable/bg_chip_violet"
+            android:layout_marginEnd="6dp"
+            android:background="@drawable/bg_chip_light_violet"
             android:gravity="center"
             android:maxLines="1"
             android:ellipsize="end"
             android:text="Total credit"
-            android:textColor="#FFD8C8FF"
-            android:textSize="10sp" />
+            android:textColor="#FF5A3FD1"
+            android:textSize="11sp" />
     </LinearLayout>
 
-    <Button
+    <LinearLayout
         android:id="@+id/ask_dua_open"
         android:layout_width="match_parent"
-        android:layout_height="40dp"
-        android:layout_marginTop="6dp"
-        android:background="@drawable/bg_widget_violet"
-        android:minHeight="0dp"
-        android:minWidth="0dp"
-        android:text="✦  Ask a question"
-        android:textAllCaps="false"
-        android:textColor="#FFFFFFFF"
-        android:textSize="12sp" />
+        android:layout_height="44dp"
+        android:background="@drawable/bg_pill_light_violet"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="16dp"
+        android:paddingEnd="5dp">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:maxLines="1"
+            android:text="Ask about sales, expenses, credit…"
+            android:textColor="#FF7A71B3"
+            android:textSize="13sp" />
+        <FrameLayout
+            android:layout_width="34dp"
+            android:layout_height="34dp"
+            android:background="@drawable/circ_violet">
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_w_send" />
+        </FrameLayout>
+    </LinearLayout>
 </LinearLayout>
