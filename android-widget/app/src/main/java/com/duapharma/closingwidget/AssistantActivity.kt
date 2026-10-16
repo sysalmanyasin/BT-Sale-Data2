@@ -68,9 +68,11 @@ class AssistantActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.statusBarColor = Color.rgb(7, 12, 27)
-        window.navigationBarColor = Color.rgb(7, 12, 27)
-        window.decorView.systemUiVisibility = 0
+        window.statusBarColor = Color.rgb(246, 247, 251)
+        window.navigationBarColor = Color.rgb(246, 247, 251)
+        var flags = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+        if (android.os.Build.VERSION.SDK_INT >= 26) flags = flags or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        window.decorView.systemUiVisibility = flags
         buildScreen()
         if (intent.data == null) restore() else handleOAuthCallback(intent)
         if (savedInstanceState == null) handleLaunchExtras(intent)
@@ -104,7 +106,7 @@ class AssistantActivity : AppCompatActivity() {
 
     private fun buildScreen() {
         screenScroll = ScrollView(this).apply {
-            setBackgroundResource(R.drawable.bg_app_background)
+            setBackgroundResource(R.drawable.bg_app_light)
             isFillViewport = true
             clipToPadding = false
         }
@@ -115,25 +117,25 @@ class AssistantActivity : AppCompatActivity() {
         screenScroll.addView(root)
         setContentView(screenScroll)
 
-        val eyebrow = text("BT  /  SALES INTELLIGENCE", 11f, true, Color.rgb(88, 220, 255))
+        val eyebrow = text("BT  /  SALES INTELLIGENCE", 11f, true, Color.rgb(15, 159, 143))
         eyebrow.letterSpacing = 0.13f
-        text("Your business.\nOne conversation.", 30f, true, Color.WHITE).apply {
+        text("Your business.\nOne conversation.", 30f, true, Color.rgb(16, 24, 40)).apply {
             setPadding(0, dp(8), 0, dp(5))
         }
-        text("QUICK ACTIONS  ·  LIVE BUSINESS DATA", 11f, true, Color.rgb(154, 168, 198))
+        text("QUICK ACTIONS  ·  LIVE BUSINESS DATA", 11f, true, Color.rgb(102, 112, 133))
         spacer(16)
 
         card {
-            text("SECURE SESSION", 11f, true, Color.rgb(119, 139, 180))
-            status = text("Connect your Google account to continue.", 14f, false, Color.rgb(229, 235, 255))
-            signInButton = button("Continue with Google", R.drawable.bg_button_accent) { startGoogleSignIn() }
-            text("Uses your authorized BT Sale Data identity. No separate password.", 12f, false, Color.rgb(137, 153, 184))
+            text("SECURE SESSION", 11f, true, Color.rgb(102, 112, 133))
+            status = text("Connect your Google account to continue.", 14f, false, Color.rgb(29, 41, 57))
+            signInButton = button("Continue with Google", R.drawable.bg_button_accent_light) { startGoogleSignIn() }
+            text("Uses your authorized BT Sale Data identity. No separate password.", 12f, false, Color.rgb(152, 162, 179))
         }
 
         spacer(14)
         card {
-            rowTitle("01", "Quick Add", "FAST · VERIFIED WRITES", Color.rgb(66, 225, 205))
-            text("Same four destinations as Quick Add in BT Sale Data.", 13f, false, Color.rgb(158, 173, 202))
+            rowTitle("01", "Quick Add", "FAST · VERIFIED WRITES", Color.rgb(15, 159, 143))
+            text("Same four destinations as Quick Add in BT Sale Data.", 13f, false, Color.rgb(102, 112, 133))
             kind = spinner(listOf("📒 Jazz Cash", "🧾 Expenses / Patty", "👥 Staff Credit", "＋ New Section"))
             date = field("Date", InputType.TYPE_NULL).apply {
                 setText(SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date()))
@@ -141,7 +143,7 @@ class AssistantActivity : AppCompatActivity() {
                 isClickable = true
                 setOnClickListener { pickDate() }
             }
-            monthHint = text("", 11f, false, Color.rgb(88, 220, 255))
+            monthHint = text("", 11f, false, Color.rgb(15, 159, 143))
             sectionLabel = label("SECTION")
             section = spinner(emptyList())
             categoryLabel = label("CATEGORY")
@@ -154,7 +156,7 @@ class AssistantActivity : AppCompatActivity() {
             shift = spinner(listOf("No shift", "Morning", "Evening", "Night", "Both", "Off"))
             amount = field("Amount (PKR)", InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL)
             description = field("Short description", InputType.TYPE_CLASS_TEXT)
-            button("＋   Save entry securely", R.drawable.bg_button_accent) { submitEntry() }
+            button("＋   Save entry securely", R.drawable.bg_button_accent_light) { submitEntry() }
 
             kind.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
                 override fun onNothingSelected(parent: AdapterView<*>?) {}
@@ -172,17 +174,17 @@ class AssistantActivity : AppCompatActivity() {
 
         spacer(14)
         card {
-            rowTitle("02", "Ask Dua", "READ-ONLY AI", Color.rgb(179, 133, 255))
-            text("Ask in plain language. Dua uses the same BT Sales IC AI provider pool and live business context, without write tools.", 13f, false, Color.rgb(158, 173, 202))
+            rowTitle("02", "Ask Dua", "READ-ONLY AI", Color.rgb(109, 74, 255))
+            text("Ask in plain language. Dua uses the same BT Sales IC AI provider pool and live business context, without write tools.", 13f, false, Color.rgb(102, 112, 133))
             question = field("e.g. What were this month's expenses?", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE).apply {
                 minLines = 2
                 gravity = Gravity.TOP or Gravity.START
             }
-            button("✦   Ask Dua", R.drawable.bg_button_violet) { askDua() }
-            answer = text("Your answer will appear here.", 14f, false, Color.rgb(229, 235, 255))
+            button("✦   Ask Dua", R.drawable.bg_button_violet_light) { askDua() }
+            answer = text("Your answer will appear here.", 14f, false, Color.rgb(29, 41, 57))
             answer.setTextIsSelectable(true)
             answer.setPadding(dp(12), dp(12), dp(12), dp(12))
-            answer.background = resources.getDrawable(R.drawable.bg_answer_panel, theme)
+            answer.background = resources.getDrawable(R.drawable.bg_answer_light, theme)
         }
 
         kind.setSelection(0)
@@ -192,7 +194,7 @@ class AssistantActivity : AppCompatActivity() {
         val panel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(16), dp(16), dp(16), dp(16))
-            background = resources.getDrawable(R.drawable.bg_futuristic_card, theme)
+            background = resources.getDrawable(R.drawable.bg_card_light, theme)
         }
         root.addView(panel, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(2) })
         val previous = activeContainer
@@ -209,13 +211,13 @@ class AssistantActivity : AppCompatActivity() {
             setTextColor(accent)
             setTypeface(null, android.graphics.Typeface.BOLD)
             gravity = Gravity.CENTER
-            background = resources.getDrawable(R.drawable.bg_number_chip, theme)
+            background = resources.getDrawable(R.drawable.bg_number_chip_light, theme)
             setPadding(dp(10), dp(7), dp(10), dp(7))
         }
         row.addView(numberView)
         val titles = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(10), 0, 0, 0) }
         titles.addView(TextView(this).apply {
-            text = title; textSize = 20f; setTextColor(Color.WHITE); setTypeface(null, android.graphics.Typeface.BOLD)
+            text = title; textSize = 20f; setTextColor(Color.rgb(16, 24, 40)); setTypeface(null, android.graphics.Typeface.BOLD)
         })
         titles.addView(TextView(this).apply {
             text = tag; textSize = 9f; letterSpacing = 0.1f; setTextColor(accent)
@@ -228,7 +230,7 @@ class AssistantActivity : AppCompatActivity() {
         spacer(12)
     }
 
-    private fun text(value: String, size: Float, bold: Boolean = false, color: Int = Color.WHITE): TextView {
+    private fun text(value: String, size: Float, bold: Boolean = false, color: Int = Color.rgb(16, 24, 40)): TextView {
         val view = TextView(this).apply {
             text = value
             textSize = size
@@ -241,7 +243,7 @@ class AssistantActivity : AppCompatActivity() {
     }
 
     private fun label(value: String): TextView =
-        text(value, 10f, true, Color.rgb(127, 146, 183)).apply { letterSpacing = 0.08f; setPadding(0, dp(10), 0, dp(2)) }
+        text(value, 10f, true, Color.rgb(102, 112, 133)).apply { letterSpacing = 0.08f; setPadding(0, dp(10), 0, dp(2)) }
 
     private fun show(visible: Boolean, vararg views: View) {
         views.forEach { it.visibility = if (visible) View.VISIBLE else View.GONE }
@@ -303,9 +305,9 @@ class AssistantActivity : AppCompatActivity() {
             hint = hintText
             inputType = type
             textSize = 14f
-            setTextColor(Color.WHITE)
-            setHintTextColor(Color.rgb(116, 131, 162))
-            background = resources.getDrawable(R.drawable.bg_input_field, theme)
+            setTextColor(Color.rgb(16, 24, 40))
+            setHintTextColor(Color.rgb(152, 162, 179))
+            background = resources.getDrawable(R.drawable.bg_input_light, theme)
             setPadding(dp(13), dp(11), dp(13), dp(11))
             layoutParams = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5); bottomMargin = dp(6) }
             target().addView(this)
@@ -316,14 +318,14 @@ class AssistantActivity : AppCompatActivity() {
         object : ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, items) {
             override fun getView(position: Int, convertView: View?, parent: android.view.ViewGroup): View =
                 (super.getView(position, convertView, parent) as TextView).apply {
-                    setTextColor(Color.WHITE)
+                    setTextColor(Color.rgb(16, 24, 40))
                     textSize = 14f
                     setPadding(dp(10), dp(4), dp(10), dp(4))
                 }
             override fun getDropDownView(position: Int, convertView: View?, parent: android.view.ViewGroup): View =
                 (super.getDropDownView(position, convertView, parent) as TextView).apply {
-                    setTextColor(Color.WHITE)
-                    setBackgroundColor(Color.rgb(17, 29, 51))
+                    setTextColor(Color.rgb(16, 24, 40))
+                    setBackgroundColor(Color.WHITE)
                     textSize = 14f
                     setPadding(dp(12), dp(12), dp(12), dp(12))
                 }
@@ -331,8 +333,8 @@ class AssistantActivity : AppCompatActivity() {
 
     private fun spinner(items: List<String>): Spinner = Spinner(this).apply {
         adapter = darkAdapter(items)
-        background = resources.getDrawable(R.drawable.bg_input_field, theme)
-        setPadding(dp(8), dp(4), dp(8), dp(4))
+        background = resources.getDrawable(R.drawable.bg_spinner_light, theme)
+        setPadding(dp(8), dp(4), dp(36), dp(4))
         layoutParams = LinearLayout.LayoutParams(-1, dp(48)).apply { topMargin = dp(5); bottomMargin = dp(5) }
         target().addView(this)
     }
