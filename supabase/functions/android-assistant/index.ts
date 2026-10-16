@@ -131,7 +131,7 @@ Deno.serve(async (req: Request) => {
     const credit = payload.manager?.credit && typeof payload.manager.credit === "object" ? payload.manager.credit : {};
     const staff = (Array.isArray(payload.staff) ? payload.staff : []).filter((s: any) => s && s.active !== false)
       .map((s: any) => ({ staffId: clean(s.staffId, 40), name: clean(s.name, 80) }));
-    const context = {
+    const context: any = {
       today: new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Karachi" }),
       data_as_of: salesRow.updated_at || null,
       ledger: ledgerEntries.map((e: any) => ({
@@ -156,6 +156,24 @@ Deno.serve(async (req: Request) => {
         targets: payload.targets || {},
       },
     };
+    // bt-agent clips every message to 24,000 characters. The old single 90,000-character message lost its tail,
+    // which is where the question was, so Dua answered "what would you like to know?". Keep the records under
+    // budget and send the question as its own final message.
+    const BUDGET = 20000;
+    let records = JSON.stringify(context);
+    while (records.length > BUDGET && context.ledger.length > 20) {
+      context.ledger = context.ledger.slice(Math.ceil(context.ledger.length * 0.25));
+      records = JSON.stringify(context);
+    }
+    if (records.length > BUDGET) {
+      context.salesSummary.daily = Object.fromEntries(Object.entries(context.salesSummary.daily).slice(-31));
+      context.salesSummary.monthly = Object.fromEntries(Object.entries(context.salesSummary.monthly).slice(-12));
+      records = JSON.stringify(context);
+    }
+    if (records.length > BUDGET) {
+      context.staffCredit = Object.fromEntries(Object.entries(context.staffCredit).slice(-2));
+      records = JSON.stringify(context);
+    }
     // Reuse the same BT Sales IC AI provider pool, rate limits, model selection,
     // and owner preferences as the web app. No tools are sent to bt-agent, so
     // this mobile Ask Dua call is strictly read-only.
@@ -173,7 +191,9 @@ Deno.serve(async (req: Request) => {
           sensitivity: "high",
           context: { app: "android-ask-dua", mode: "read_only", style: "closing" },
           messages: [
-            { role: "user", content: "READ-ONLY MODE — " + systemPrompt + "\n\nLive business records (read-only JSON):\n" + JSON.stringify(context).slice(0, 90000) + "\n\nQuestion: " + question },
+            { role: "user", content: "READ-ONLY MODE — " + systemPrompt + "\n\nLive business records (read-only JSON):\n" + records.slice(0, 22000) },
+            { role: "assistant", content: "Records received. What is your question?" },
+            { role: "user", content: question },
           ],
         }),
       });
