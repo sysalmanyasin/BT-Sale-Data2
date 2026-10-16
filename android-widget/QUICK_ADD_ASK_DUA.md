@@ -32,3 +32,10 @@ Pushes affecting `android-widget/**` trigger **Build Closing Widget APK** in Git
 5. Confirm all existing home-screen widgets still refresh and inventory search still opens.
 
 The build can compile without the redirect allowlist, but Google sign-in will not complete until that exact redirect is allowed in Supabase Auth settings.
+
+## Widget v2 (Quick Add + Ask Dua)
+
+- **Quick Add widget (4×3):** live total credit (same figure as the Total Credit widget; tap the header to refresh), four buttons (Jazz Cash, Credit, Expense, Section) and the last 3 entries saved from the app/widget. The last-3 list and the cached total live in the encrypted `AssistantStore`.
+- **Ask Dua widget (4×3):** shows the last question/answer, three one-tap questions (they open the app and ask immediately), and an "Ask a question" button.
+- **Quick Add screen now mirrors BT Sale Data:** four destinations including custom sections, date picker, staff-credit month hint, credit/deduction toggle, all five shifts (Morning, Evening, Night, Both, Off).
+- **Deploy the Edge Function** after pulling: `supabase functions deploy android-assistant`. It now returns custom sections in `metadata`, accepts Both/Off shifts, allows negative staff-credit amounts (deductions) and passes today's date to Ask Dua.

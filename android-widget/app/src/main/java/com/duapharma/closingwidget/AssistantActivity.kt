@@ -1,6 +1,11 @@
 package com.duapharma.closingwidget
 
+import android.app.DatePickerDialog
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
+import android.view.inputmethod.InputMethodManager
+import java.util.Calendar
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
@@ -48,6 +53,15 @@ class AssistantActivity : AppCompatActivity() {
     private lateinit var question: EditText
     private lateinit var answer: TextView
     private val sectionIds = mutableListOf<String>()
+    private val shownSectionIds = mutableListOf<String>()
+    private var pendingAutoAsk = false
+    private lateinit var sectionLabel: TextView
+    private lateinit var categoryLabel: TextView
+    private lateinit var staffLabel: TextView
+    private lateinit var shiftLabel: TextView
+    private lateinit var creditTypeLabel: TextView
+    private lateinit var creditType: Spinner
+    private lateinit var monthHint: TextView
     private val categoryIds = mutableListOf<String>()
     private val staffIds = mutableListOf<String>()
     private var sections = JSONObject()
@@ -59,18 +73,33 @@ class AssistantActivity : AppCompatActivity() {
         window.decorView.systemUiVisibility = 0
         buildScreen()
         if (intent.data == null) restore() else handleOAuthCallback(intent)
-        intent.getStringExtra("initial_kind")?.let {
-            kind.setSelection(when (it) { "expense" -> 1; "credit" -> 2; else -> 0 })
-        }
-        if (intent.getBooleanExtra("focus_ask_dua", false)) {
-            screenScroll.post { screenScroll.fullScroll(View.FOCUS_DOWN) }
-        }
+        if (savedInstanceState == null) handleLaunchExtras(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        handleOAuthCallback(intent)
+        if (intent.data != null) handleOAuthCallback(intent) else handleLaunchExtras(intent)
+    }
+
+    private fun handleLaunchExtras(i: Intent) {
+        i.getStringExtra("initial_kind")?.let {
+            kind.setSelection(when (it) { "expense" -> 1; "credit" -> 2; "custom" -> 3; else -> 0 })
+        }
+        val prompt = i.getStringExtra("ask_prompt")
+        if (prompt != null) {
+            question.setText(prompt)
+            if (token != null) askDua() else pendingAutoAsk = true
+        }
+        if (i.getBooleanExtra("focus_ask_dua", false) || prompt != null) {
+            screenScroll.post {
+                screenScroll.fullScroll(View.FOCUS_DOWN)
+                if (prompt == null) {
+                    question.requestFocus()
+                    (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showSoftInput(question, InputMethodManager.SHOW_IMPLICIT)
+                }
+            }
+        }
     }
 
     private fun buildScreen() {
@@ -104,18 +133,24 @@ class AssistantActivity : AppCompatActivity() {
         spacer(14)
         card {
             rowTitle("01", "Quick Add", "FAST · VERIFIED WRITES", Color.rgb(66, 225, 205))
-            text("Post an entry through the existing protected ledger pipeline.", 13f, false, Color.rgb(158, 173, 202))
-            kind = spinner(listOf("Jazz Cash", "Expenses / Patty", "Staff Credit"))
-            date = field("Date (YYYY-MM-DD)", InputType.TYPE_CLASS_TEXT).apply {
+            text("Same four destinations as Quick Add in BT Sale Data.", 13f, false, Color.rgb(158, 173, 202))
+            kind = spinner(listOf("📒 Jazz Cash", "🧾 Expenses / Patty", "👥 Staff Credit", "＋ New Section"))
+            date = field("Date", InputType.TYPE_NULL).apply {
                 setText(SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date()))
+                isFocusable = false
+                isClickable = true
+                setOnClickListener { pickDate() }
             }
-            label("LEDGER SECTION")
+            monthHint = text("", 11f, false, Color.rgb(88, 220, 255))
+            sectionLabel = label("SECTION")
             section = spinner(emptyList())
-            label("CATEGORY")
+            categoryLabel = label("CATEGORY")
             category = spinner(emptyList())
-            label("STAFF MEMBER  ·  CREDIT ONLY")
+            staffLabel = label("STAFF MEMBER")
             staff = spinner(emptyList())
-            label("SHIFT  ·  JAZZ CASH ONLY")
+            creditTypeLabel = label("TYPE")
+            creditType = spinner(listOf("Credit given", "Deduction (−)"))
+            shiftLabel = label("SHIFT")
             shift = spinner(listOf("No shift", "Morning", "Evening", "Night", "Both", "Off"))
             amount = field("Amount (PKR)", InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL)
             description = field("Short description", InputType.TYPE_CLASS_TEXT)
@@ -124,16 +159,7 @@ class AssistantActivity : AppCompatActivity() {
             kind.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
                 override fun onNothingSelected(parent: AdapterView<*>?) {}
                 override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                    val creditMode = position == 2
-                    section.visibility = if (creditMode) View.GONE else View.VISIBLE
-                    category.visibility = if (creditMode) View.GONE else View.VISIBLE
-                    staff.visibility = if (creditMode) View.VISIBLE else View.GONE
-                    shift.visibility = if (position == 0) View.VISIBLE else View.GONE
-                    if (!creditMode && sectionIds.isNotEmpty()) {
-                        val index = sectionIds.indexOf(if (position == 1) "expense" else "jazzcash")
-                        if (index >= 0) section.setSelection(index)
-                        populateCategories(section.selectedItemPosition)
-                    }
+                    applyKind(position)
                 }
             }
             section.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
@@ -154,6 +180,7 @@ class AssistantActivity : AppCompatActivity() {
             }
             button("✦   Ask Dua", R.drawable.bg_button_violet) { askDua() }
             answer = text("Your answer will appear here.", 14f, false, Color.rgb(229, 235, 255))
+            answer.setTextIsSelectable(true)
             answer.setPadding(dp(12), dp(12), dp(12), dp(12))
             answer.background = resources.getDrawable(R.drawable.bg_answer_panel, theme)
         }
@@ -213,8 +240,62 @@ class AssistantActivity : AppCompatActivity() {
         return view
     }
 
-    private fun label(value: String) {
+    private fun label(value: String): TextView =
         text(value, 10f, true, Color.rgb(127, 146, 183)).apply { letterSpacing = 0.08f; setPadding(0, dp(10), 0, dp(2)) }
+
+    private fun show(visible: Boolean, vararg views: View) {
+        views.forEach { it.visibility = if (visible) View.VISIBLE else View.GONE }
+    }
+
+    private fun applyKind(position: Int) {
+        val credit = position == 2
+        show(position == 3, sectionLabel, section)
+        show(!credit, categoryLabel, category)
+        show(credit, staffLabel, staff, creditTypeLabel, creditType)
+        show(position == 0, shiftLabel, shift)
+        updateMonthHint()
+        if (!credit && sectionIds.isNotEmpty()) refillSections(position)
+    }
+
+    private fun refillSections(position: Int) {
+        shownSectionIds.clear()
+        when (position) {
+            0 -> shownSectionIds.add("jazzcash")
+            1 -> shownSectionIds.add("expense")
+            else -> shownSectionIds.addAll(sectionIds.filter { it != "jazzcash" && it != "expense" })
+        }
+        val labels = shownSectionIds.map { sections.optJSONObject(it)?.optString("label", it) ?: it }
+        section.adapter = darkAdapter(labels)
+        populateCategories(0)
+        if (position == 3 && shownSectionIds.isEmpty()) {
+            status.text = "No custom sections yet. Create one in BT Sale Data → Manager → C. Misc Sections."
+        }
+    }
+
+    private fun pickDate() {
+        val cal = Calendar.getInstance()
+        runCatching { SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(date.text.toString())?.let { cal.time = it } }
+        DatePickerDialog(this, { _, y, m, d ->
+            date.setText(String.format(Locale.US, "%04d-%02d-%02d", y, m + 1, d))
+            updateMonthHint()
+        }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH)).show()
+    }
+
+    private fun monthLabelOf(isoDate: String): String = runCatching {
+        SimpleDateFormat("MMMM yyyy", Locale.US).format(SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(isoDate)!!)
+    }.getOrDefault("")
+
+    private fun updateMonthHint() {
+        val credit = kind.selectedItemPosition == 2
+        monthHint.text = if (credit) "Filed under " + monthLabelOf(date.text.toString()) + " staff credit" else ""
+        monthHint.visibility = if (credit) View.VISIBLE else View.GONE
+    }
+
+    private fun refreshWidgets() {
+        val app = applicationContext
+        QuickActionsWidgetProvider.updateAll(app)
+        // The ledger folds inbox rows into the shared payload a few seconds later; refresh the total again then.
+        Handler(Looper.getMainLooper()).postDelayed({ QuickActionsWidgetProvider.updateAll(app) }, 8000)
     }
 
     private fun field(hintText: String, type: Int): EditText {
@@ -275,14 +356,7 @@ class AssistantActivity : AppCompatActivity() {
     private fun spacer(height: Int) { target().addView(View(this), LinearLayout.LayoutParams(1, dp(height))) }
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
 
-    private fun prefs() = run {
-        val key = MasterKey.Builder(applicationContext).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build()
-        EncryptedSharedPreferences.create(
-            applicationContext, "assistant_staff_session", key,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
-    }
+    private fun prefs() = AssistantStore.prefs(applicationContext)
 
     private fun startGoogleSignIn() {
         val verifierBytes = ByteArray(32).also { SecureRandom().nextBytes(it) }
@@ -427,14 +501,11 @@ class AssistantActivity : AppCompatActivity() {
                     sections = sectionObject
                     sectionIds.clear(); sectionIds.addAll(ids)
                     staffIds.clear(); staffIds.addAll(newStaffIds)
-                    section.adapter = darkAdapter(names)
                     staff.adapter = darkAdapter(staffNames)
-                    val desired = if (kind.selectedItemPosition == 1) "expense" else "jazzcash"
-                    val index = sectionIds.indexOf(desired)
-                    if (index >= 0) section.setSelection(index)
-                    populateCategories(section.selectedItemPosition)
+                    applyKind(kind.selectedItemPosition)
                     status.text = "Authorized · Google session active"
                     signInButton.text = "Google account connected ✓"
+                    if (pendingAutoAsk) { pendingAutoAsk = false; askDua() }
                 }
             } catch (error: Exception) {
                 runOnUiThread {
@@ -447,7 +518,7 @@ class AssistantActivity : AppCompatActivity() {
     }
 
     private fun populateCategories(position: Int) {
-        val sectionId = sectionIds.getOrNull(position) ?: return
+        val sectionId = shownSectionIds.getOrNull(position) ?: return
         val rows = sections.optJSONObject(sectionId)?.optJSONArray("categories") ?: JSONArray()
         categoryIds.clear()
         val labels = mutableListOf<String>()
@@ -461,27 +532,37 @@ class AssistantActivity : AppCompatActivity() {
 
     private fun submitEntry() {
         if (token == null) { status.text = "Continue with Google first."; return }
-        val value = amount.text.toString().toDoubleOrNull()
-        if (value == null || value <= 0 || description.text.toString().isBlank()) {
+        val raw = amount.text.toString().toDoubleOrNull()
+        if (raw == null || raw <= 0 || description.text.toString().isBlank()) {
             status.text = "Enter a positive amount and description."
             return
         }
-        val creditMode = kind.selectedItemPosition == 2
+        val position = kind.selectedItemPosition
+        val creditMode = position == 2
+        val value = if (creditMode && creditType.selectedItemPosition == 1) -raw else raw
+        val desc = description.text.toString().trim()
         if (pendingRequestId == null) pendingRequestId = UUID.randomUUID().toString()
         val body = JSONObject().put("action", "quick_add").put("requestId", pendingRequestId)
             .put("kind", if (creditMode) "credit" else "ledger")
             .put("date", date.text.toString().trim()).put("amount", value)
-            .put("description", description.text.toString().trim())
+            .put("description", desc)
+        val title: String
+        val detail: String
         if (creditMode) {
             val index = staff.selectedItemPosition
             if (index !in staffIds.indices) { status.text = "Choose an active staff member."; return }
             body.put("staffId", staffIds[index])
+            title = "Staff · " + staff.selectedItem.toString()
+            detail = monthLabelOf(date.text.toString()) + " · " + desc
         } else {
-            val ledgerType = sectionIds.getOrNull(section.selectedItemPosition)
+            val ledgerType = shownSectionIds.getOrNull(if (position == 3) section.selectedItemPosition else 0)
             val categoryId = categoryIds.getOrNull(category.selectedItemPosition)
             if (ledgerType == null || categoryId == null) { status.text = "Choose a valid section and category."; return }
             body.put("ledgerType", ledgerType).put("categoryId", categoryId)
             if (ledgerType == "jazzcash" && shift.selectedItemPosition > 0) body.put("shift", shift.selectedItem.toString())
+            val sectionName = when (position) { 0 -> "Jazz Cash"; 1 -> "Expenses"; else -> section.selectedItem?.toString() ?: "Section" }
+            title = sectionName + " · " + (category.selectedItem?.toString() ?: "")
+            detail = desc
         }
         status.text = "Saving securely…"
         thread {
@@ -492,6 +573,8 @@ class AssistantActivity : AppCompatActivity() {
                     pendingRequestId = null
                     amount.text.clear()
                     description.text.clear()
+                    AssistantStore.addEntry(applicationContext, AssistantStore.Entry(title, detail, value, System.currentTimeMillis()))
+                    refreshWidgets()
                 }
             } catch (error: Exception) {
                 runOnUiThread { status.text = error.message ?: "Entry was not confirmed. Check the ledger before retrying." }
@@ -507,9 +590,11 @@ class AssistantActivity : AppCompatActivity() {
         thread {
             try {
                 val result = api(JSONObject().put("action", "ask_dua").put("question", query))
+                val text = result.optString("answer", "No answer returned.")
+                AssistantStore.saveAnswer(applicationContext, query, text)
+                AskDuaWidgetProvider.updateAll(applicationContext)
                 runOnUiThread {
-                    answer.text = result.optString("answer", "No answer returned.") +
-                        "\\n\\n" + "READ-ONLY  ·  " + result.optString("provider", "BT Sales IC AI")
+                    answer.text = text + "\n\n" + "READ-ONLY  ·  " + result.optString("provider", "BT Sales IC AI")
                 }
             } catch (error: Exception) {
                 runOnUiThread { answer.text = error.message ?: "Ask Dua is unavailable." }
