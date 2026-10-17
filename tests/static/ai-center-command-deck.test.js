@@ -1,20 +1,21 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { cssSection } from '../helpers/css-section.js';
 
 const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
 const sw = readFileSync(new URL('../../sw.js', import.meta.url), 'utf8');
-const css = readFileSync(new URL('../../css/ai-center-command-deck.css', import.meta.url), 'utf8');
+const css = cssSection('ai-center-command-deck.css');
 const bare = css.replace(/\/\*[\s\S]*?\*\//g, '');
 
 test('command-deck layer loads after the existing mobile and DUA styles', () => {
-  const deck = html.indexOf('css/ai-center-command-deck.css');
-  assert.ok(deck > 0, 'command-deck stylesheet is linked in index.html');
+  const deck = html.indexOf('css/ai-center-theme.css');
+  assert.ok(deck > 0, 'theme stylesheet (contains the command deck) is linked in index.html');
   assert.ok(html.indexOf('css/mobile.css') < deck);
-  assert.ok(html.indexOf('css/ai-center-jarvis.css') < deck);
+  assert.ok(html.indexOf('css/ai-center.css') < deck, 'the base + DUA stylesheet loads before the theme');
 });
 test('command-deck stylesheet is precached by the service worker', () => {
-  assert.match(sw, /\.\/css\/ai-center-command-deck\.css/);
+  assert.match(sw, /\.\/css\/ai-center-theme\.css/);
 });
 test('redesign remains scoped to the Intelligence Centre and chat sheet', () => {
   assert.match(css, /\.aic-page\.aic-jarvis/);

@@ -1,3 +1,6 @@
+/* BT AI CENTER -- base + DUA layer. Merged from ai-center.css and ai-center-jarvis.css (in that order).
+   Loaded BEFORE css/mobile.css. Each former file is kept as a BEGIN/END section, in its original order. */
+/* ===== BEGIN ai-center.css ===== */
 /* BT AI CENTER — light manager dashboard.
    Uses the app's existing brand tokens (--accent / --accent-dk) so the
    AI Center feels like the same product instead of a separate dark tool.
@@ -688,3 +691,253 @@ body.aic-open .ag-fab{display:none}
   .aic-twrap{max-width:100%;-webkit-overflow-scrolling:touch}
 }
 .aic-cmd,.aic-page .aic-cmd{background:linear-gradient(to bottom,transparent 0,var(--bg) 12px,var(--bg) 100%)}
+/* ===== END ai-center.css ===== */
+/* ===== BEGIN ai-center-jarvis.css ===== */
+/* BT DUA command-deck layer. Loaded AFTER ai-center.css.
+   Strategy: ai-center.css is built entirely on the app's tokens (--bg, --surface, --text, --accent ...), so redefining
+   those tokens on .aic-page.aic-jarvis re-themes every existing card regardless of cascade order. The class is added
+   in js/ai-center/ui.js mount(); nothing outside the AI Center page is touched. */
+/* BT Intelligence layer — BRAND THEME. Every colour below is an app token (variables.css), so this page looks like the rest of the
+   app and follows its light/dark switch. --j-* are plain aliases kept for the rules in this and the sibling ai-center files. */
+.aic-page.aic-jarvis{
+  --j-bg:var(--bg);--j-s1:var(--surface);--j-s2:var(--s2);--j-tx:var(--text);--j-mu:var(--muted);--j-ln:var(--border);
+  --j-cy:var(--accent);--j-ok:var(--green);--j-wn:var(--amber);--j-er:var(--red);
+  --j-vi:color-mix(in srgb,var(--purple) 78%,var(--text));
+  --grad:var(--accent-dk);
+  background:var(--bg);
+}
+/* cheap perf: drop the heavy blur from the earlier glass layer */
+.aic-page.aic-jarvis .aic-card,.aic-page.aic-jarvis .aic-hdr,.aic-page.aic-jarvis .aic-chip{-webkit-backdrop-filter:none;backdrop-filter:none}
+.aic-page.aic-jarvis .aic-card{border-radius:10px;background:linear-gradient(180deg,var(--j-s2),var(--j-s1))}
+.aic-page.aic-jarvis .aic-card::before{height:1px;left:12px;right:12px;opacity:.7;background:linear-gradient(90deg,transparent,var(--j-cy),transparent)}
+.aic-page.aic-jarvis .aic-hdr{background:color-mix(in srgb,var(--surface) 100%,transparent);border-radius:0;border-inline:0}
+.aic-page.aic-jarvis .aic-hr1 h1{letter-spacing:.34em}
+.aic-page.aic-jarvis .aic-hero b,.aic-page.aic-jarvis .aic-since b{background:none;-webkit-text-fill-color:currentColor;color:var(--j-cy)}
+.aic-page.aic-jarvis .aic-hr1 h1{background:none;-webkit-text-fill-color:currentColor;color:var(--j-cy)}
+
+/* ── central holographic core ── */
+.aic-jarvis #aic-core{position:relative;overflow:hidden;background:radial-gradient(circle at 50% 38%,color-mix(in srgb,var(--accent) 12%,transparent),transparent 62%),linear-gradient(180deg,var(--j-s2),var(--j-s1))}
+.aic-jarvis .aic-stage{width:min(300px,78%)}
+.aic-jarvis .aic-stage::after{opacity:.8}
+.aic-jarvis .aic-stage .aic-orb{inset:14%;overflow:hidden;border-radius:50%;align-content:end;background:radial-gradient(circle at 50% 40%,color-mix(in srgb,var(--c) 28%,var(--surface)),var(--surface) 72%);box-shadow:0 0 0 1px color-mix(in srgb,var(--c) 55%,transparent),0 0 36px -6px color-mix(in srgb,var(--c) 55%,transparent)}
+.aic-jarvis .aic-avatar{position:absolute;inset:0;width:100%;height:100%}
+.aic-jarvis .av-body,.aic-jarvis .av-head{fill:var(--surface);stroke:color-mix(in srgb,var(--c) 70%,#fff);stroke-width:1.4}
+.aic-jarvis .av-line,.aic-jarvis .av-phone{fill:none;stroke:color-mix(in srgb,var(--c) 60%,transparent);stroke-width:1.6;stroke-linecap:round}
+.aic-jarvis .av-chest{fill:var(--c)}
+.aic-jarvis .av-eye{fill:var(--c)}
+.aic-jarvis .aic-orb-t{position:relative;z-index:1;padding-bottom:7%}
+.aic-jarvis .aic-orb b{font-size:11px;letter-spacing:.3em;color:var(--j-tx);text-shadow:none}
+.aic-jarvis .aic-orb small{font-size:11px;color:var(--c);text-shadow:none}
+/* the eyes only pulse while the system is genuinely working; idle/offline/error stay still */
+@media (prefers-reduced-motion:no-preference){
+  .aic-jarvis .aic-stage[data-s=investigating] .av-eye,.aic-jarvis .aic-stage[data-s=analyzing] .av-eye,.aic-jarvis .aic-stage[data-s=executing] .av-eye,.aic-jarvis .aic-stage[data-s=correlating] .av-eye,.aic-jarvis .aic-stage[data-s=detecting] .av-eye{animation:j-eye 1.6s ease-in-out infinite}
+  @keyframes j-eye{50%{opacity:.35}}
+}
+@media (prefers-reduced-motion:reduce){.aic-jarvis .aic-ring,.aic-jarvis .aic-stage::after,.aic-jarvis .aic-skel i{animation:none!important}}
+
+/* ── desktop HUD: core centred between findings (left) and signals (right) ── */
+@media(min-width:1000px){
+  .aic-jarvis .aic-main{grid-template-columns:minmax(280px,1fr) minmax(360px,1.2fr) minmax(280px,1fr);align-items:start}
+  .aic-jarvis #aic-core{grid-column:2;grid-row:1/3;order:0}
+  .aic-jarvis #aic-att{grid-column:1;grid-row:1/3;order:0}
+  .aic-jarvis #aic-fc{grid-column:3;grid-row:1;order:0}
+  .aic-jarvis #aic-actc{grid-column:3;grid-row:2;order:0}
+  .aic-jarvis #aic-sys,.aic-jarvis #aic-resp{grid-column:1/4}
+}
+@media(max-width:480px){.aic-jarvis .aic-stage{width:min(220px,70%)}}
+
+/* ── agent fleet tiles ── */
+.aic-jarvis .aic-fleet{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
+.aic-jarvis .aic-ftile{display:grid;gap:6px;align-content:start;padding:8px;border-radius:8px;background:var(--j-s1);border:1px solid var(--border)}
+.aic-jarvis .aic-ftile .aic-fmain{display:flex;align-items:flex-start;justify-content:flex-start;gap:10px;text-align:left;width:100%;height:auto;padding:4px;background:none;border:0;border-radius:6px}
+.aic-jarvis .aic-ftile .aic-fask{justify-content:flex-start;text-align:left;width:100%;height:auto;min-height:40px;padding:7px 10px;font-size:12px;line-height:1.35;color:var(--j-cy);background:color-mix(in srgb,var(--accent) 6%,transparent);border:1px solid color-mix(in srgb,var(--j-cy) 28%,transparent);border-radius:7px}
+.aic-jarvis .aic-ftile .aic-fjob{color:var(--j-tx);font-size:13px;line-height:1.35}
+.aic-jarvis .aic-ftile.idle{background:transparent;border-style:dashed}
+.aic-jarvis .aic-ftile.await{border-color:var(--j-wn);box-shadow:inset 3px 0 0 var(--j-wn)}
+.aic-jarvis #aic-runs .aic-runs{margin-top:0;border-top:0;padding-top:0}
+.aic-jarvis .aic-ftile.on{border-color:var(--j-cy);box-shadow:inset 3px 0 0 var(--j-cy)}
+.aic-jarvis .aic-fport{flex:none;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-weight:800;color:var(--j-cy);background:radial-gradient(circle,var(--alt),var(--surface));border:1px solid var(--j-ln)}
+.aic-jarvis .aic-ftile.on .aic-fport{border-color:var(--j-cy)}
+.aic-jarvis .aic-fbody{display:grid;gap:3px;min-width:0;justify-items:start}
+.aic-jarvis .aic-fbody small{color:var(--j-mu);font-size:12px;line-height:1.35}
+@media(min-width:1000px){.aic-jarvis #aic-fleet{grid-column:1/4}.aic-jarvis #aic-runs{grid-column:1/4}}
+@media(max-width:480px){.aic-jarvis .aic-fleet{grid-template-columns:1fr}}
+
+/* ── landing hero + mobile priority (matches the reference: avatar first, then status, fleet, findings) ── */
+.aic-jarvis .aic-orb-t{display:none} /* lifecycle name is shown by the heading under the orb; no text over the avatar */
+.aic-jarvis .av-ring{fill:none;stroke:var(--c);stroke-width:1;opacity:.7}
+.aic-jarvis .aic-stage{width:min(260px,72%)}
+.aic-jarvis .aic-stage .aic-orb{inset:10%}
+.aic-jarvis .aic-cs h2{color:var(--c);font-size:15px;letter-spacing:.34em}
+.aic-jarvis .aic-main[data-mode=monitor] #aic-core{padding-bottom:12px}
+.aic-jarvis #aic-core{order:1}.aic-jarvis #aic-sum{order:2}.aic-jarvis #aic-fleet{order:3}.aic-jarvis #aic-runs{order:3}.aic-jarvis #aic-att{order:4}
+.aic-jarvis #aic-sys{order:5}.aic-jarvis #aic-fc{order:6}.aic-jarvis #aic-corr{order:7}.aic-jarvis #aic-actc{order:8}
+.aic-jarvis #aic-resp{order:9}.aic-jarvis #aic-since{order:10}.aic-jarvis #aic-net{order:11}
+.aic-jarvis #aic-reo{order:12}.aic-jarvis #aic-fill{order:13}.aic-jarvis #aic-money{order:14}
+.aic-jarvis #aic-act{order:15}.aic-jarvis #aic-obs{order:16}.aic-jarvis #aic-health{order:17}.aic-jarvis #aic-tools{order:18}.aic-jarvis #aic-repo{order:19}
+@media(min-width:1000px){
+  .aic-jarvis #aic-sum{grid-column:1/4;order:0}
+  .aic-jarvis #aic-core,.aic-jarvis #aic-att,.aic-jarvis #aic-fc,.aic-jarvis #aic-actc{order:0}
+  .aic-jarvis #aic-reo,.aic-jarvis #aic-fill,.aic-jarvis #aic-money{grid-column:auto}
+}
+
+/* ── single front page: essentials first, folded cards after ── */
+.aic-jarvis #aic-core{order:1}.aic-jarvis #aic-sum{order:2}.aic-jarvis #aic-att{order:3}.aic-jarvis #aic-actc{order:4}
+.aic-jarvis #aic-fleet{order:5}.aic-jarvis #aic-runs{order:5}.aic-jarvis #aic-sys{order:6}.aic-jarvis #aic-fc{order:7}.aic-jarvis #aic-resp{order:8}.aic-jarvis #aic-tools{order:9}
+.aic-jarvis #aic-corr{order:10}.aic-jarvis #aic-since{order:11}.aic-jarvis #aic-net{order:12}.aic-jarvis #aic-reo{order:13}.aic-jarvis #aic-fill{order:14}
+.aic-jarvis #aic-money{order:15}.aic-jarvis #aic-act{order:16}.aic-jarvis #aic-obs{order:17}.aic-jarvis #aic-health{order:18}.aic-jarvis #aic-repo{order:19}
+@media(min-width:1000px){
+  .aic-jarvis #aic-sum{grid-column:1/4;grid-row:1}
+  .aic-jarvis #aic-att{grid-column:1;grid-row:2/4}
+  .aic-jarvis #aic-core{grid-column:2;grid-row:2/4}
+  .aic-jarvis #aic-fc{grid-column:3;grid-row:2}
+  .aic-jarvis #aic-actc{grid-column:3;grid-row:3}
+  .aic-jarvis #aic-runs,.aic-jarvis #aic-fleet,.aic-jarvis #aic-sys,.aic-jarvis #aic-resp,.aic-jarvis #aic-tools{grid-column:1/4}
+}
+
+/* ── audit log folds inside Action Center ── */
+.aic-jarvis .aic-log{margin-top:10px;border-top:1px solid var(--border);padding-top:8px}
+.aic-jarvis .aic-log summary{cursor:pointer;min-height:40px;display:flex;align-items:center;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--j-mu)}
+.aic-jarvis .aic-log[open] summary{color:var(--j-cy)}
+
+/* ── Ask DUA chat: colours come from the brand tokens (see ai-center-chat.css) ── */
+@media(prefers-reduced-motion:reduce){body.aic-open .ag-status{animation:none}}
+
+/* ── collapsed-card header summary (real values) ── */
+.aic-jarvis .aic-fsum{margin-left:auto;font-size:12px;font-weight:700;letter-spacing:.04em;padding:2px 8px;border-radius:999px;border:1px solid var(--border);color:var(--j-mu);white-space:nowrap}
+.aic-jarvis .aic-fsum-ok{color:var(--j-ok);border-color:color-mix(in srgb,var(--j-ok) 45%,transparent)}
+.aic-jarvis .aic-fsum-wn{color:var(--j-wn);border-color:color-mix(in srgb,var(--j-wn) 55%,transparent)}
+.aic-jarvis .aic-fold:not(.aic-folded) .aic-fsum{display:none}
+.aic-jarvis .aic-showall{width:100%;margin:2px 0 8px;border-style:dashed;color:var(--j-cy)}
+
+/* ── voice controls ── */
+.aic-jarvis .aic-mic.on{background:var(--j-er);border-color:var(--j-er);color:var(--surface)}
+@media(prefers-reduced-motion:no-preference){.aic-jarvis .aic-mic.on{animation:j-rec 1.2s ease-in-out infinite}@keyframes j-rec{50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--red) 25%,transparent)}}}
+.aic-jarvis .aic-spk.on{border-color:var(--j-cy);color:var(--j-cy)}
+
+/* ── speech bubble under the avatar (real count; mirrors the reference chat bubble) ── */
+.aic-jarvis .aic-bubble{position:relative;width:fit-content;max-width:90%;margin:6px auto 4px;padding:8px 14px;border-radius:14px;border:1px solid var(--j-ln);background:color-mix(in srgb,var(--accent) 8%,transparent);color:var(--j-tx);font-size:14px;text-align:center}
+.aic-jarvis .aic-bubble::before{content:"";position:absolute;left:50%;top:-6px;width:10px;height:10px;transform:translateX(-50%) rotate(45deg);background:var(--alt);border-left:1px solid var(--j-ln);border-top:1px solid var(--j-ln)}
+
+/* ── accessibility: dark text on bright cyan fills (white on var(--accent) is only 1.65:1; this is 11.6:1) ── */
+.aic-page.aic-jarvis .aic button.aic-p,.aic-page.aic-jarvis .aic button.aic-p:hover:not(:disabled),
+.aic-page.aic-jarvis .aic-seg button.on,.aic-page.aic-jarvis .aic-seg button.on:hover:not(:disabled),
+body.aic-open .aic-modal button.aic-p{color:#fff;font-weight:700}
+.aic-page.aic-jarvis .aic-hub{color:#fff}
+.aic-page.aic-jarvis .aic button.aic-p:disabled{opacity:.55}
+
+/* ── dialogs mount on <body>: they keep the app tokens; only the focus ring and backdrop are set here ── */
+body.aic-open .aic-backdrop{background:rgba(21,29,58,.45)}
+body.aic-open .aic-modal :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── weekday bar chart (real weekday_baseline) ── */
+.aic-jarvis .aic-bars{list-style:none;margin:8px 0 6px;padding:0;display:grid;grid-template-columns:repeat(7,1fr);gap:6px;align-items:end;height:140px}
+.aic-jarvis .aic-bar{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0;gap:3px}
+.aic-jarvis .aic-bf{display:block;width:100%;max-width:34px;border-radius:4px 4px 0 0;background:linear-gradient(180deg,var(--accent),var(--accent-dk));min-height:4px}
+.aic-jarvis .aic-bar.today .aic-bf{background:linear-gradient(180deg,var(--purple),var(--purple))}
+.aic-jarvis .aic-bv{font-size:12px;color:var(--j-tx);font-variant-numeric:tabular-nums}
+.aic-jarvis .aic-bl{font-size:12px;color:var(--j-mu)}
+.aic-jarvis .aic-bar.today .aic-bl{color:var(--j-vi);font-weight:700}
+@media(max-width:480px){.aic-jarvis .aic-bv{font-size:11px;letter-spacing:-.02em}}
+@media(prefers-reduced-motion:no-preference){.aic-jarvis .aic-bf{transition:height .3s ease}}
+
+/* ── desktop fixes from real screenshots ── */
+/* long values (e.g. weekday forecast) were forced nowrap and squeezed their label to one letter per line: stack them */
+.aic-jarvis .aic-wf .aic-met{grid-template-columns:minmax(0,1fr);gap:1px}
+.aic-jarvis .aic-wf .aic-met dt{margin-top:8px}
+.aic-jarvis .aic-wf .aic-met dd{white-space:normal;text-align:left;overflow-wrap:anywhere}
+.aic-jarvis .aic-fport{font-size:12px;letter-spacing:.04em}
+.aic-jarvis .aic-bv{font-size:12px;letter-spacing:0}
+/* compact toolbar */
+.aic-jarvis .aic-tool .aic-seg{grid-template-columns:repeat(2,minmax(0,190px));justify-content:end}
+@media(max-width:700px){.aic-jarvis .aic-tool .aic-seg{grid-template-columns:1fr 1fr;justify-content:stretch}}
+@media(min-width:1000px){
+  /* attention | core | forecast on row 2; Action Center fills the space under attention+core; forecast spans both rows */
+  .aic-jarvis #aic-att{grid-column:1;grid-row:2}
+  .aic-jarvis #aic-core{grid-column:2;grid-row:2}
+  .aic-jarvis #aic-fc{grid-column:3;grid-row:2/4}
+  .aic-jarvis #aic-actc{grid-column:1/3;grid-row:3}
+  /* secondary cards: a clean 3-up grid when folded, full width when opened */
+  .aic-jarvis .aic-main>.aic-fold.aic-folded{grid-column:span 1!important;grid-row:auto}
+  .aic-jarvis .aic-main>.aic-fold:not(.aic-folded):not(#aic-fleet):not(#aic-sys){grid-column:1/-1}
+}
+
+/* ── priority: business first (summary → Business Systems → everything else) ── */
+.aic-jarvis #aic-sum{order:1}.aic-jarvis #aic-core{order:2}.aic-jarvis #aic-sys{order:3}.aic-jarvis #aic-att{order:4}
+.aic-jarvis #aic-fc{order:5}.aic-jarvis #aic-actc{order:6}.aic-jarvis #aic-fleet{order:7}.aic-jarvis #aic-runs{order:7}.aic-jarvis #aic-resp{order:8}
+@media(min-width:1000px){
+  .aic-jarvis #aic-sum{grid-column:1/4;grid-row:1}
+  .aic-jarvis #aic-sys{grid-column:1/4;grid-row:2}
+  .aic-jarvis #aic-att{grid-column:1;grid-row:3}
+  .aic-jarvis #aic-core{grid-column:2;grid-row:3}
+  .aic-jarvis #aic-fc{grid-column:3;grid-row:3/5}
+  .aic-jarvis #aic-actc{grid-column:1/3;grid-row:4}
+  .aic-jarvis #aic-fleet{grid-column:1/4;grid-row:auto}.aic-jarvis #aic-runs{grid-column:1/4;grid-row:auto}
+}
+
+/* ── urgency: a pending approval jumps above everything ── */
+.aic-jarvis .aic-main[data-pri=approvals] #aic-actc{order:0;border-color:var(--j-wn);box-shadow:0 0 0 1px color-mix(in srgb,var(--j-wn) 45%,transparent)}
+@media(min-width:1000px){
+  .aic-jarvis .aic-main[data-pri=approvals] #aic-actc{grid-column:1/4;grid-row:1}
+  .aic-jarvis .aic-main[data-pri=approvals] #aic-sum{grid-row:2}
+  .aic-jarvis .aic-main[data-pri=approvals] #aic-sys{grid-row:3}
+  .aic-jarvis .aic-main[data-pri=approvals] #aic-att,.aic-jarvis .aic-main[data-pri=approvals] #aic-core{grid-row:4}
+  .aic-jarvis .aic-main[data-pri=approvals] #aic-fc{grid-row:4/6}
+}
+
+/* ── detailed humanoid avatar (matches the reference: visor, headset, shoulder armour, chest core) ── */
+.aic-jarvis .av-visor{fill:var(--surface);stroke:color-mix(in srgb,var(--c) 45%,transparent);stroke-width:1}
+.aic-jarvis .av-neck{fill:var(--s3);stroke:color-mix(in srgb,var(--c) 40%,transparent);stroke-width:1}
+.aic-jarvis .av-cup{fill:var(--surface);stroke:var(--c);stroke-width:1.6}
+.aic-jarvis .av-phone{stroke-width:3.2}
+.aic-jarvis .av-body,.aic-jarvis .av-head{stroke-width:1.2}
+.aic-jarvis .aic-stage{width:min(300px,76%)}
+.aic-jarvis .aic-stage .aic-orb{inset:8%}
+@media(min-width:1000px){.aic-jarvis .aic-stage{width:min(360px,86%)}}
+
+/* ── agent run timeline (real events only) ── */
+.aic-jarvis .aic-runs{margin-top:14px;border-top:1px solid var(--border);padding-top:10px}
+.aic-jarvis .aic-runl{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:8px}
+.aic-jarvis .aic-runb{display:grid;gap:4px;width:100%;height:auto;text-align:left;padding:10px 12px;border-radius:8px;background:var(--j-s1);border:1px solid var(--border);justify-items:start}
+.aic-jarvis .aic-run-running .aic-runb,.aic-jarvis .aic-run-awaiting_approval .aic-runb{border-color:var(--j-cy)}
+.aic-jarvis .aic-run-failed .aic-runb{border-color:color-mix(in srgb,var(--j-er) 60%,transparent)}
+.aic-jarvis .aic-runq{font-weight:700;color:var(--j-tx);overflow-wrap:anywhere}
+.aic-jarvis .aic-runst{display:flex;gap:4px;margin-top:2px}
+.aic-jarvis .aic-runst i{display:block;width:26px;height:6px;border-radius:3px;background:var(--j-ok)}
+.aic-jarvis .aic-runst i.aic-tl-active,.aic-jarvis .aic-runst i.aic-tl-waiting{background:var(--j-wn)}
+.aic-jarvis .aic-runst i.aic-tl-failed{background:var(--j-er)}
+.aic-tl{list-style:none;margin:6px 0 10px;padding:0 0 0 14px;border-left:2px solid var(--border)}
+.aic-tls{position:relative;padding:0 0 10px 12px}
+.aic-tld{position:absolute;left:-22px;top:3px;width:12px;height:12px;border-radius:50%;background:var(--j-ok,var(--green));border:2px solid var(--surface,var(--surface))}
+.aic-tl-active>.aic-tld,.aic-tl-waiting>.aic-tld{background:var(--j-wn,var(--amber))}
+.aic-tl-failed>.aic-tld{background:var(--j-er,var(--red))}
+.aic-tls time{font-size:12px;color:var(--muted)}
+@media(prefers-reduced-motion:no-preference){.aic-tl-active>.aic-tld{animation:j-rec 1.4s ease-in-out infinite}}
+
+/* ── chat-sheet voice buttons ── */
+body.aic-open .ag-mic.on{background:var(--red);border-color:var(--red);color:var(--surface)}
+@media(prefers-reduced-motion:no-preference){body.aic-open .ag-mic.on,.ag-mic.on{animation:j-rec 1.2s ease-in-out infinite}}
+
+/* ── instrument tiles: horizontal snap strip on phones, wrapped grid on wider screens ── */
+.aic-jarvis .aic-insts{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x proximity;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+.aic-jarvis .aic-it{flex:0 0 150px;scroll-snap-align:start;display:flex;align-items:center;gap:8px;text-align:left;height:auto;min-height:64px;padding:8px 10px;border-radius:10px;background:linear-gradient(180deg,var(--j-s2),var(--j-s1));border:1px solid var(--border);color:var(--j-tx)}
+.aic-jarvis button.aic-it:hover{border-color:var(--j-cy)}
+.aic-jarvis .aic-it-b{display:grid;gap:1px;min-width:0}
+.aic-jarvis .aic-it-l{font-size:11px;letter-spacing:.14em;color:var(--j-mu);font-weight:700}
+.aic-jarvis .aic-it-v{font-size:19px;line-height:1.1;font-variant-numeric:tabular-nums;color:var(--j-tx)}
+.aic-jarvis .aic-it-v.aic-ok{color:var(--j-ok)}.aic-jarvis .aic-it-v.aic-wn{color:var(--j-wn)}.aic-jarvis .aic-it-v.aic-cr{color:var(--j-er)}
+.aic-jarvis .aic-it small{font-size:12px;color:var(--j-mu);line-height:1.25;overflow-wrap:anywhere}
+.aic-ring-g{flex:none;width:44px;height:44px}
+.rg-track{fill:none;stroke:var(--border);stroke-width:5}
+.rg-val{fill:none;stroke:var(--j-cy,var(--accent));stroke-width:5;stroke-linecap:round}
+.aic-g-ok .rg-val{stroke:var(--j-ok,var(--green))}.aic-g-wn .rg-val{stroke:var(--j-wn,var(--amber))}.aic-g-cr .rg-val{stroke:var(--j-er,var(--red))}
+@media(min-width:700px){.aic-jarvis .aic-insts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));overflow:visible}.aic-jarvis .aic-it{flex:none}}
+/* order: business first, then the instrument strip */
+.aic-jarvis #aic-inst{order:4}.aic-jarvis #aic-att{order:5}.aic-jarvis #aic-fc{order:6}.aic-jarvis #aic-actc{order:7}.aic-jarvis #aic-fleet{order:8}.aic-jarvis #aic-runs{order:8}.aic-jarvis #aic-resp{order:9}
+@media(min-width:1000px){
+  /* under the core: attention | core | forecast on row 3; Action Center col 1 and instruments col 2 on row 4 */
+  .aic-jarvis #aic-actc{grid-column:1;grid-row:4}
+  .aic-jarvis #aic-inst{grid-column:2;grid-row:4}
+  .aic-jarvis .aic-insts{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+/* ===== END ai-center-jarvis.css ===== */
