@@ -195,76 +195,6 @@ if ('serviceWorker' in navigator) {
 
   </div>
 
-  <!-- ─ Panel 3: Password fallback ─ -->
-  <div class="pbox" id="gauth-pin" style="display:none">
-
-    <!-- Sub-view 1: Normal password entry -->
-    <div id="pw-view-enter">
-      <div id="pnote" class="pnote" style="display:none">First time? Create a password (8–20 characters).</div>
-      <div style="color:rgba(255,255,255,.6);font-size:12px;text-align:center;margin-bottom:18px">Enter your password to continue (offline mode)</div>
-      <div class="pw-wrap">
-        <input class="pw-inp" type="password" id="pw-input"
-          minlength="8" maxlength="20" autocomplete="current-password"
-          placeholder="Password (8–20 characters)"
-          oninput="pwStrengthUpdate()"
-          onkeydown="if(event.key==='Enter')pwSubmit()">
-        <button class="pw-toggle" type="button" onclick="pwToggleShow()" title="Show/hide">👁</button>
-      </div>
-      <div class="pw-strength" id="pw-strength-bar"></div>
-      <div class="pw-hint" id="pw-hint">8–20 characters</div>
-      <button class="btn btn-p" style="width:100%;height:44px;font-size:14px;margin-bottom:4px"
-        onclick="pwSubmit()">🔓 Unlock</button>
-      <div class="pmsg" id="pmsg"></div>
-      <div style="text-align:center;margin-top:10px">
-        <button class="gauth-link" onclick="pwShowForgot()">Forgot password?</button>
-      </div>
-      <div class="gauth-sep">or</div>
-      <button class="gauth-link" onclick="gauthShowMain()">← Back to Google Sign-in</button>
-    </div>
-
-    <!-- Sub-view 2: Verify identity via Google -->
-    <div id="pw-view-verify" style="display:none">
-      <div style="font-size:22px;text-align:center;margin-bottom:8px">🔑</div>
-      <div style="font-size:15px;font-weight:600;color:#fff;text-align:center;margin-bottom:6px">Reset Password</div>
-      <div style="font-size:12px;color:rgba(255,255,255,.55);text-align:center;margin-bottom:24px;line-height:1.5">
-        Verify your identity with Google to<br>set a new offline password.
-      </div>
-      <div id="pw-reset-error" style="display:none;color:#fca5a5;font-size:12px;text-align:center;margin-bottom:12px;background:rgba(220,38,38,.15);border-radius:8px;padding:8px"></div>
-      <div id="google-reset-btn-wrap" style="display:flex;justify-content:center;margin-bottom:16px">
-        <div id="google-reset-btn"></div>
-      </div>
-      <div style="text-align:center">
-        <button class="gauth-link" onclick="pwShowEnter()">← Back</button>
-      </div>
-    </div>
-
-    <!-- Sub-view 3: Set new password (after Google verification) -->
-    <div id="pw-view-newpw" style="display:none">
-      <div style="font-size:22px;text-align:center;margin-bottom:8px">✅</div>
-      <div style="font-size:15px;font-weight:600;color:#fff;text-align:center;margin-bottom:4px">Identity Verified</div>
-      <div id="pw-reset-who" style="font-size:11px;color:rgba(255,255,255,.45);text-align:center;margin-bottom:20px"></div>
-      <div class="pw-wrap">
-        <input class="pw-inp" type="password" id="pw-new1"
-          minlength="8" maxlength="20" autocomplete="new-password"
-          placeholder="New password (8–20 chars)"
-          oninput="pwResetStrength()"
-          onkeydown="if(event.key==='Enter')document.getElementById('pw-new2').focus()">
-        <button class="pw-toggle" type="button" onclick="pwResetToggle('pw-new1')" title="Show/hide">👁</button>
-      </div>
-      <div class="pw-strength" id="pw-reset-strength-bar" style="margin-bottom:6px"></div>
-      <div class="pw-wrap" style="margin-top:8px">
-        <input class="pw-inp" type="password" id="pw-new2"
-          minlength="8" maxlength="20" autocomplete="new-password"
-          placeholder="Confirm new password"
-          onkeydown="if(event.key==='Enter')pwResetSubmit()">
-        <button class="pw-toggle" type="button" onclick="pwResetToggle('pw-new2')" title="Show/hide">👁</button>
-      </div>
-      <div id="pw-reset-msg" style="font-size:12px;color:rgba(255,255,255,.45);text-align:center;margin:8px 0;min-height:16px"></div>
-      <button class="btn btn-p" style="width:100%;height:44px;font-size:14px"
-        onclick="pwResetSubmit()">💾 Save New Password</button>
-    </div>
-
-  </div>
 </div>
 
 <!-- Baked-in Client ID bootstrap -->
@@ -275,9 +205,7 @@ if ('serviceWorker' in navigator) {
   try{localStorage.setItem('bt_gauth_cid',CID);}catch(e){}
   function _skipToSignIn(){
     var m=document.getElementById('gauth-main');
-    var p=document.getElementById('gauth-pin');
     if(m)m.style.display='';
-    if(p)p.style.display='none';
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',_skipToSignIn);
   else _skipToSignIn();
