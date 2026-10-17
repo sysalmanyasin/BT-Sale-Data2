@@ -125,7 +125,7 @@ npx serve .
 ├── css/                        # Per-domain stylesheets (ai-center*.css for BT Intelligence)
 ├── icons/
 ├── docs/                       # AI Center architecture, KPI verification, final report
-├── scripts/                    # build-repo-index.mjs, agent-live-eval.mjs, apply-redesign.mjs
+├── scripts/                    # build-repo-index.mjs, agent-live-eval.mjs
 │
 ├── inventory-search/           # Standalone Inventory Search PWA
 ├── android-widget/             # 22 home-screen widgets (Kotlin)
