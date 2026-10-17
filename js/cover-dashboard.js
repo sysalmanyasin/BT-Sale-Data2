@@ -1684,7 +1684,25 @@ export function renderCoverDashboard() {
       </div>`;
   }).join('');
 
-  container.innerHTML = groupsHtml;
+  // Unified quick actions: keep the most-used daily workflows one tap away,
+  // especially on phones. These reuse the existing tile definitions and navigation.
+  const QUICK_ACTION_KEYS = ['dashboard', 'inventory', 'stockledger', 'reorder', 'closing-book'];
+  const quickActions = QUICK_ACTION_KEYS.map(key => tiles.find(t => t.page === key)).filter(Boolean);
+  const quickActionsHtml = quickActions.length ? `
+    <section class="cover-quick-actions" aria-label="Quick actions">
+      <div class="cover-quick-actions-heading"><span>⚡</span><div><strong>Quick actions</strong><small>Common tasks, one tap away</small></div></div>
+      <div class="cover-quick-actions-grid">
+        ${quickActions.map(t => `<button type="button" class="cover-quick-action" data-quick-page="${_esc(t.page)}">
+          <span class="cover-quick-action-icon">${t.icon}</span><span class="cover-quick-action-label">${_esc(t.title)}</span><span class="cover-quick-action-arrow" aria-hidden="true">↗</span>
+        </button>`).join('')}
+      </div>
+    </section>` : '';
+  container.innerHTML = quickActionsHtml + groupsHtml;
+  container.querySelectorAll('[data-quick-page]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (typeof window.showPage === 'function') window.showPage(btn.dataset.quickPage);
+    });
+  });
   _renderKpiRow();
   // IC Herald (js/herald/) replaces the old narrow attention-strip chip
   // row — same #cover-herald mount point index.html now provides, but
