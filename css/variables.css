@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
 :root{
   --bg:#f8f9fc;--surface:#fff;--s2:#fcfcfd;--s3:#f8f9fb;--border:#e5e8f0;--border-strong:#c3cadb;--grid:#c3cadb;
   --r-xs:6px;--r-sm:9px;--r-md:12px;--r-lg:16px;--r-xl:22px;--r-pill:999px;
