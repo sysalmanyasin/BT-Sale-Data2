@@ -1,6 +1,6 @@
 {
-  "cache": "bt-sales-v11.83",
-  "hash": "2ce037e807b5",
+  "cache": "bt-sales-v11.84",
+  "hash": "fd03cf302035",
   "files": {
     "css/activity-log.css": "cd60f74d",
     "css/agent.css": "23f106de",
@@ -19,7 +19,7 @@
     "css/herald.css": "fbbb1802",
     "css/inventory-health-dashboard.css": "709e0eeb",
     "css/inventory-native.css": "d12fee23",
-    "css/layout-v2.css": "057389a3",
+    "css/layout-v2.css": "81dc462b",
     "css/mobile-dashboard.css": "8c6c429d",
     "css/mobile.css": "17b3a212",
     "css/modals.css": "7b740be0",
@@ -37,7 +37,7 @@
     "icons/icon-192.png": "22867a0e",
     "icons/icon-512.png": "5783f250",
     "icons/icon.svg": "5804ff69",
-    "index.html": "89319b13",
+    "index.html": "81534b77",
     "js/actions.js": "729c9d54",
     "js/activity-log.js": "d66bf59d",
     "js/agent/core/after-write.js": "c9384ff3",
