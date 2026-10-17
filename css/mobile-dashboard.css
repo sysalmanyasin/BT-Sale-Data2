@@ -1,0 +1,101 @@
+/* Mobile-first Cover dashboard and unified operations overview.
+   Additive overrides only: preserve existing business calculations and navigation. */
+
+#page-cover { min-width: 0; }
+#page-cover .cover-page-hero,
+#page-cover .cover-group,
+#page-cover .cover-kpi-row,
+#page-cover .cover-hero-row,
+#page-cover .cover-pins-row { min-width: 0; }
+
+#page-cover .cover-kpi-tile,
+#page-cover .cover-pin-tile,
+#page-cover .cover-tile,
+#page-cover .cover-group-refresh,
+#page-cover .cover-collapse-toggle-btn {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#page-cover .cover-kpi-tile:focus-visible,
+#page-cover .cover-pin-tile:focus-visible,
+#page-cover .cover-tile:focus-visible,
+#page-cover .cover-group-header:focus-visible,
+#page-cover .cover-group-refresh:focus-visible,
+#page-cover .cover-collapse-toggle-btn:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 860px) {
+  #page-cover { padding-top: 8px; }
+  #page-cover .cover-page-hero {
+    border-radius: 18px;
+    padding: 20px 18px 16px;
+    margin-bottom: 16px;
+  }
+  #page-cover .cover-page-hero-mark {
+    width: 130px;
+    height: 130px;
+    right: -24px;
+    bottom: -28px;
+    opacity: .2;
+  }
+  #page-cover .cover-page-hero-title { font-size: clamp(20px, 5vw, 25px); }
+  #page-cover .cover-page-hero-row { gap: 10px; }
+  #page-cover .cover-page-hero-date { text-align: left; padding: 8px 10px; }
+  #page-cover .cover-kpi-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  #page-cover .cover-kpi-tile { min-height: 106px; padding: 11px; border-radius: 12px; }
+  #page-cover .cover-kpi-value { font-size: clamp(16px, 4.4vw, 20px); overflow-wrap: anywhere; }
+  #page-cover .cover-kpi-label { font-size: 11px; line-height: 1.35; }
+  #page-cover .cover-group {
+    margin-bottom: 14px;
+    padding: 14px 12px;
+    border-radius: 14px;
+    border-left-width: 4px;
+  }
+  #page-cover .cover-group-header { min-height: 44px; gap: 8px; margin-bottom: 12px; }
+  #page-cover .cover-group-icon { width: 34px; height: 34px; border-radius: 10px; }
+  #page-cover .cover-group-line { display: none; }
+  #page-cover .cover-group-title { font-size: 12px; }
+  #page-cover .cover-group-subtitle { white-space: normal; line-height: 1.35; }
+  #page-cover .cover-group-chevron { width: 30px; height: 30px; flex: 0 0 30px; }
+  #page-cover .cover-group-refresh { width: 40px; height: 40px; border-radius: 11px; }
+  #page-cover .cover-hero-row { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  #page-cover .cover-hero-card { padding: 14px; border-radius: 12px; }
+  #page-cover .cover-hero-value { font-size: clamp(19px, 5vw, 23px); overflow-wrap: anywhere; }
+  #page-cover .cover-search-row { margin-bottom: 12px; }
+  #page-cover .cover-collapse-toggle-btn { min-height: 44px; }
+  #page-cover .cover-pins-row { gap: 8px; padding: 2px 2px 12px; margin-bottom: 12px; }
+  #page-cover .cover-pin-tile { width: 82px; min-height: 88px; padding: 10px 6px; }
+  #page-cover .cover-staff-card { width: 138px; }
+}
+
+@media (max-width: 380px) {
+  #page-cover .cover-page-hero { padding: 16px 14px 14px; }
+  #page-cover .cover-page-hero-sub { font-size: 12px; }
+  #page-cover .cover-kpi-row { gap: 6px; }
+  #page-cover .cover-kpi-tile { padding: 9px; min-height: 100px; }
+  #page-cover .cover-kpi-icon { width: 24px; height: 24px; }
+  #page-cover .cover-group { padding: 12px 10px; }
+  #page-cover .cover-group-subtitle { display: none; }
+}
+
+/* Unified dashboard readability: consistent spacing and predictable card grids. */
+#page-cover .cover-group-body,
+#page-cover .cover-group-body > div { min-width: 0; }
+#page-cover .cover-tile { min-width: 0; overflow-wrap: anywhere; }
+#page-cover .cover-tile button,
+#page-cover .cover-tile a { min-height: 40px; }
+
+@media (prefers-reduced-motion: reduce) {
+  #page-cover .cover-group,
+  #page-cover .cover-kpi-tile,
+  #page-cover .cover-pin-tile,
+  #page-cover .cover-tile,
+  #page-cover .cover-group-chevron,
+  #page-cover .cover-group-refresh {
+    transition: none !important;
+    animation: none !important;
+  }
+}
