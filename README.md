@@ -125,7 +125,7 @@ npx serve .
 ├── css/                        # Per-domain stylesheets (ai-center*.css for BT Intelligence)
 ├── icons/
 ├── docs/                       # AI Center architecture, KPI verification, final report
-├── scripts/                    # build-repo-index.mjs, agent-live-eval.mjs
+├── scripts/                    # build.mjs, build-repo-index.mjs, agent-live-eval.mjs
 │
 ├── inventory-search/           # Standalone Inventory Search PWA
 ├── android-widget/             # 22 home-screen widgets (Kotlin)
@@ -410,7 +410,7 @@ More detail in [`tests/README.md`](tests/README.md).
 
 - The web app deploys as static files via GitHub Pages (`.nojekyll`, `CNAME`).
 - `sw.js` defines a versioned `CACHE_NAME` with an inline changelog comment above it. Check the live value in `sw.js` rather than trusting any number in documentation.
-- When shipped files change, bump `CACHE_NAME` **and** its comment together. Also bump `?v=` query strings in `index.html` for changed assets.
+- When shipped files change, run `npm run build`. It stamps every local script/stylesheet in `index.html` with a content-hash `?v=`, bumps `CACHE_NAME` (`bt-sales-vX.Y`) and updates `build-manifest.json`. CI runs `npm run build:check` and fails if you forgot. Nothing is bundled or minified: the app is served straight from the repo root and relies on script load order.
 - A module that another module **imports** (not only ones `index.html` loads with a tag) must also be in `APP_SHELL`, or it may be missing on a first offline start. `tests/static/file-references.test.js` checks the tag-loaded files.
 - Database changes ship as dated files in `supabase/migrations/`. Pushes to `main` that touch `supabase/**` run `supabase-deploy.yml` (tests first, then changed functions and new migrations; needs repo secrets `SUPABASE_ACCESS_TOKEN` and `SUPABASE_DB_URL`). The Audit Hub SQL in `supabase/audit-project/` is applied by hand to that other project.
 
