@@ -99,3 +99,75 @@
     animation: none !important;
   }
 }
+
+
+/* Unified one-tap actions on the Cover dashboard */
+#page-cover .cover-quick-actions {
+  position: relative;
+  margin: 0 0 18px;
+  padding: 14px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--sh);
+}
+#page-cover .cover-quick-actions-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 12px;
+  color: var(--text);
+}
+#page-cover .cover-quick-actions-heading > span {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}
+#page-cover .cover-quick-actions-heading div { display: flex; flex-direction: column; gap: 2px; }
+#page-cover .cover-quick-actions-heading strong { font-size: 13px; line-height: 1.25; }
+#page-cover .cover-quick-actions-heading small { font-size: 11px; color: var(--muted); }
+#page-cover .cover-quick-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+#page-cover .cover-quick-action {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  gap: 7px;
+  min-width: 0;
+  min-height: 76px;
+  padding: 10px 5px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--alt);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+#page-cover .cover-quick-action:active { transform: scale(.97); }
+#page-cover .cover-quick-action:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+#page-cover .cover-quick-action-icon { font-size: 22px; line-height: 1; }
+#page-cover .cover-quick-action-label { font-size: 11px; font-weight: 700; line-height: 1.2; text-align: center; overflow-wrap: anywhere; }
+#page-cover .cover-quick-action-arrow { position: absolute; top: 5px; right: 7px; color: var(--muted); font-size: 11px; }
+@media (max-width: 600px) {
+  #page-cover .cover-quick-actions { padding: 12px; margin-bottom: 14px; }
+  #page-cover .cover-quick-actions-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+  #page-cover .cover-quick-action { min-height: 72px; padding: 10px 4px; }
+}
+@media (max-width: 360px) {
+  #page-cover .cover-quick-actions-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #page-cover .cover-quick-action { transition: none; }
+}
