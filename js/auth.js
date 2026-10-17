@@ -1,9 +1,5 @@
 // ══════════════════════════════════════════
 // AUTH GATE — Google Sign-In only.
-// (PIN/password offline fallback was removed — see the comments further
-// down at the pwSubmit/pwResetSubmit stubs. This header used to say
-// "+ PIN fallback"; that stopped being true and the header hadn't been
-// updated to match.)
 // ══════════════════════════════════════════
 
 // NOTE: unlockApp and initAutoRefresh (below) stay TRUE bare globals,
@@ -153,130 +149,6 @@ async function _gauthSyncFromSupabase() {
 }
 _gauthSyncFromSupabase();
 
-// ── Password strength helpers ─────────────────────────────────────
-const _PW_LEVELS = [
-  {label:'',            color:'transparent'},
-  {label:'Very weak',   color:'#dc2626'},
-  {label:'Weak',        color:'#f97316'},
-  {label:'Fair',        color:'#eab308'},
-  {label:'Strong',      color:'#22c55e'},
-  {label:'Very strong', color:'#15803d'},
-];
-function _pwStrengthScore(pw) {
-  let s=0;
-  if(pw.length>=8)  s++;
-  if(pw.length>=12) s++;
-  if(/[A-Z]/.test(pw)) s++;
-  if(/[0-9]/.test(pw)) s++;
-  if(/[^A-Za-z0-9]/.test(pw)) s++;
-  return s;
-}
-function pwStrengthUpdate() {
-  const pw  = document.getElementById('pw-input')?.value||'';
-  const score = _pwStrengthScore(pw);
-  const bar  = document.getElementById('pw-strength-bar');
-  const hint = document.getElementById('pw-hint');
-  if(bar){ bar.style.width=(score/5*100)+'%'; bar.style.background=_PW_LEVELS[score].color; bar.style.height='3px'; }
-  if(hint){
-    if(!pw){ hint.textContent='8–20 characters'; hint.style.color='rgba(255,255,255,.35)'; return; }
-    hint.textContent=_PW_LEVELS[score].label+(pw.length<8?' · too short ('+pw.length+'/8)':'');
-    hint.style.color=_PW_LEVELS[score].color||'rgba(255,255,255,.35)';
-  }
-}
-function pwToggleShow() {
-  const inp=document.getElementById('pw-input');
-  if(inp) inp.type = inp.type==='password'?'text':'password';
-}
-function pwSubmit() {
-  // PIN/password offline fallback removed — Google Sign-In with an authorised
-  // email is now the only way to unlock the app.
-  const msg = document.getElementById('pmsg');
-  if(msg) msg.textContent='Password sign-in is disabled. Please use Google Sign-In.';
-  gauthShowMain();
-}
-// ── Forgot-password / reset flow ─────────────────────────────────
-function pwShowEnter() {
-  document.getElementById('pw-view-enter').style.display='';
-  document.getElementById('pw-view-verify').style.display='none';
-  document.getElementById('pw-view-newpw').style.display='none';
-  setTimeout(()=>{ const i=document.getElementById('pw-input'); if(i) i.focus(); }, 80);
-}
-function pwShowForgot() {
-  document.getElementById('pw-view-enter').style.display='none';
-  document.getElementById('pw-view-verify').style.display='';
-  document.getElementById('pw-view-newpw').style.display='none';
-  document.getElementById('pw-reset-error').style.display='none';
-  _gauthRenderResetBtn();
-}
-function pwShowNewPw(email, name) {
-  document.getElementById('pw-view-enter').style.display='none';
-  document.getElementById('pw-view-verify').style.display='none';
-  document.getElementById('pw-view-newpw').style.display='';
-  document.getElementById('pw-reset-who').textContent = 'Verified as ' + (name||email);
-  document.getElementById('pw-new1').value='';
-  document.getElementById('pw-new2').value='';
-  document.getElementById('pw-reset-msg').textContent='';
-  document.getElementById('pw-reset-strength-bar').style.width='0';
-  setTimeout(()=>document.getElementById('pw-new1').focus(), 80);
-}
-
-function pwResetStrength() {
-  const pw = document.getElementById('pw-new1')?.value||'';
-  const score = _pwStrengthScore(pw);
-  const bar   = document.getElementById('pw-reset-strength-bar');
-  if(bar){ bar.style.width=(score/5*100)+'%'; bar.style.background=_PW_LEVELS[score].color; bar.style.height='3px'; }
-}
-function pwResetToggle(id) {
-  const inp=document.getElementById(id);
-  if(inp) inp.type = inp.type==='password'?'text':'password';
-}
-function pwResetSubmit() {
-  // PIN/password offline fallback removed — nothing to reset, nothing to unlock.
-  toast('⚠ Password sign-in has been disabled. Use Google Sign-In.','w');
-  gauthShowMain();
-}
-
-// ── Google reset-verification button ─────────────────────────────
-function _gauthRenderResetBtn() {
-  const clientId = Repository.getItem(GAUTH_CID_K);
-  const wrap = document.getElementById('google-reset-btn-wrap');
-  if(!clientId||!window.google){
-    if(wrap) wrap.innerHTML='<div style="color:rgba(255,255,255,.4);font-size:12px;text-align:center">Google Sign-in not configured.<br>Contact the administrator.</div>';
-    return;
-  }
-  try {
-    google.accounts.id.initialize({
-      client_id: clientId,
-      callback: _gauthResetCallback,
-      auto_select: false
-    });
-    google.accounts.id.renderButton(
-      document.getElementById('google-reset-btn'),
-      { theme:'outline', size:'large', width:260, text:'continue_with' }
-    );
-  } catch(e) {
-    const errEl=document.getElementById('pw-reset-error');
-    if(errEl){ errEl.textContent='Google Sign-in error: '+e.message; errEl.style.display='block'; }
-  }
-}
-
-function _gauthResetCallback(response) {
-  try {
-    const payload = JSON.parse(atob(response.credential.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
-    const email   = payload.email;
-    const errEl   = document.getElementById('pw-reset-error');
-    if(!gauthIsAllowed(email)){
-      errEl.textContent='⛔ '+email+' is not authorised. Use an authorised Google account.';
-      errEl.style.display='block'; return;
-    }
-    errEl.style.display='none';
-    pwShowNewPw(email, payload.name);
-  } catch(e) {
-    const errEl=document.getElementById('pw-reset-error');
-    if(errEl){ errEl.textContent='Sign-in failed: '+e.message; errEl.style.display='block'; }
-  }
-}
-
 // ── Google Auth helpers ───────────────────────────────────────────
 function gauthGetSession() {
   try { const s=JSON.parse(Repository.getItem(GAUTH_SESS_K)); if(s&&s.exp>Date.now()) return s; } catch(e){}
@@ -308,7 +180,6 @@ function gauthIsAllowed(email) {
 function gauthShowMain() {
   document.getElementById('gauth-setup').style.display='none';
   document.getElementById('gauth-main').style.display='';
-  document.getElementById('gauth-pin').style.display='none';
   _gauthRenderBtn();
 }
 
@@ -674,7 +545,6 @@ function _tcLoadGAuthStatus() {
 document.addEventListener('DOMContentLoaded', initAuthGate);
 
 function lockApp() {
-  const pmsg = document.getElementById('pmsg'); if(pmsg) pmsg.textContent='';
   gauthClearSession();
   window._appInited = false;
   if (typeof resetSupabaseSync === 'function') resetSupabaseSync();
@@ -688,14 +558,6 @@ function lockApp() {
 // Bridge what's used externally, from index.html, or via a same-file
 // event attribute. unlockApp/initAutoRefresh are NOT here — they stay
 // bare globals declared before this IIFE (see note above).
-window.pwStrengthUpdate = pwStrengthUpdate;
-window.pwToggleShow = pwToggleShow;
-window.pwSubmit = pwSubmit;
-window.pwShowEnter = pwShowEnter;
-window.pwShowForgot = pwShowForgot;
-window.pwResetStrength = pwResetStrength;
-window.pwResetToggle = pwResetToggle;
-window.pwResetSubmit = pwResetSubmit;
 window.gauthShowMain = gauthShowMain;
 window._gauthOAuthSignIn = _gauthOAuthSignIn;
 window._driveSilentReauth = _driveSilentReauth;
