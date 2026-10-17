@@ -38,17 +38,4 @@
 .setup-inp{width:100%;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);border-radius:9px;padding:10px 14px;color:#fff;font-size:13px;font-family:var(--sans);outline:none;box-sizing:border-box;margin-top:8px;}
 .setup-inp::placeholder{color:rgba(255,255,255,.3);}
 .setup-inp:focus{border-color:rgba(99,179,237,.6);box-shadow:0 0 0 3px rgba(37,99,235,.25);}
-/* PIN keypad (fallback) */
-.pdots{display:flex;gap:14px;justify-content:center;margin-bottom:28px;}
-.pmsg{text-align:center;font-size:12px;color:rgba(255,255,255,.45);margin-top:10px;min-height:18px;}
-.pw-inp{width:100%;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);border-radius:9px;padding:12px 14px;color:#fff;font-size:15px;font-family:var(--mono);outline:none;box-sizing:border-box;letter-spacing:.08em;}
-.pw-inp::placeholder{color:rgba(255,255,255,.25);letter-spacing:0;}
-.pw-inp:focus{border-color:rgba(99,179,237,.7);box-shadow:0 0 0 3px rgba(37,99,235,.3);}
-.pw-inp.err{border-color:rgba(220,38,38,.7);box-shadow:0 0 0 3px rgba(220,38,38,.2);animation:shake .3s;}
-.pw-toggle{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;font-size:16px;padding:4px;}
-.pw-toggle:hover{color:rgba(255,255,255,.7);}
-.pw-wrap{position:relative;margin-bottom:6px;}
-.pw-strength{height:3px;border-radius:2px;transition:all .3s;background:rgba(255,255,255,.1);}
-.pw-hint{font-size:10px;color:rgba(255,255,255,.35);text-align:right;margin-bottom:16px;min-height:14px;}
-@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
 @keyframes spin{to{transform:rotate(360deg)}}
