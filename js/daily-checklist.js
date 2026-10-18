@@ -82,14 +82,22 @@ var SEC = [
 ];
 var TBL = [
   { id: 'mc', n: '25–27', t: 'Manual cash bill and Credit sales', it: [
-    ['25', 'Marketing:', 'Dr Saira Taj (Dermatologist)'],
+    ['25', 'Marketing:', 'Dr Saira Taj (Dermatologist)', 0, 'mkt'],
     ['26', 'Manual cash memo entered in computer or not', 'Book Pending Value: 890'],
     ['27', 'Credit sales entered in the computer before handing medicine', 'Yes: All Bills entered at time of Handing Medicines']] },
   { id: 'rpo', n: '28–31', t: 'RPO and Short excess status', it: [
-    ['28', 'Value of plus items', '-2211'], ['28 A', 'RPOs Status', '', 1], ['28 B', 'RPO Reviewed Carefully', 'Yes/No'],
-    ['29 C', 'Any amendment in RPOs', 'Yes/No'], ['30', 'Short & Excess Values of Randoms', '-2211'],
+    ['28', 'Value of plus items', '-2211'], ['29 A', 'RPOs Status', '', 1, 'rpos'], ['29 B', 'RPO Reviewed Carefully', '', 0, 'rpor'],
+    ['29 C', 'Any amendment in RPOs', '', 0, 'rpoa'], ['30', 'Short & Excess Values of Randoms', '-2211'],
     ['31', 'Number of customers discount given after approval.', '18']] }
 ];
+/* Dropdown items (25, 29A, 29B, 29C): option lists live in this device's localStorage and are editable via the ✎ button. */
+var DD_KEY = 'bt_daily_checklist_opts_v1';
+var DD_DEF = {
+  mkt:  ['Dr Saira Taj (Dermatologist)', 'No marketing visit today', 'Company representative visited', 'Doctor visit / sample drop'],
+  rpos: ['Reviewed - no issues', 'Pending review', 'Partially reviewed', 'No RPO today'],
+  rpor: ['Yes', 'No', 'Partially'],
+  rpoa: ['No amendment', 'Yes - amended', 'Yes - pending approval']
+};
 var COMP_DEF = [
   ["Fazal Din's Pharma Plus", '2.1 Crore', '500-550K', '17 Million +'],
   ['Green Plus Pharmacy', '4.5 to 5 Crore', '1200-1400K', '40 Million +'],
@@ -201,7 +209,35 @@ function prefillSales(force) {
 }
 
 /* ── page markup ────────────────────────────────────────────────── */
+function ddItem(i) {
+  var k = i[4], lab = esc(i[1]);
+  return '<div class="dcl-item" data-no="' + esc(i[0]) + '" data-label="' + lab + '"><div class="dcl-label">' +
+    (i[0] ? '<span class="dcl-no">' + esc(i[0]) + '</span>' : '') + lab + '</div>' +
+    '<div class="dcl-ddwrap"><select id="dcl-dd_' + k + '" data-dd="' + k + '" data-def="' + esc(i[2]) + '" aria-label="' + lab + '"' + (i[3] ? ' data-optional="1"' : '') + '>' + ddOptionsHtml(k, i[2]) + '</select>' +
+    '<button type="button" class="dcl-ddedit" data-act="ddedit" data-dd="' + k + '" title="Edit dropdown list" aria-label="Edit list for ' + lab + '">✎</button></div>' +
+    '<div class="dcl-ddpanel" data-ddp="' + k + '" hidden><div class="dcl-ddhint">One option per line (minimum 3). Saved on this device only.</div>' +
+    '<textarea rows="5" data-optional="1" aria-label="Options for ' + lab + '"></textarea><div class="dcl-ddbtns">' +
+    '<button type="button" class="dcl-btn dcl-primary" data-act="ddsave" data-dd="' + k + '">Save list</button>' +
+    '<button type="button" class="dcl-btn" data-act="ddreset" data-dd="' + k + '">Default list</button>' +
+    '<button type="button" class="dcl-btn" data-act="ddcancel" data-dd="' + k + '">Cancel</button></div></div></div>';
+}
+function ddAct(act, k) {
+  var p = root.querySelector('.dcl-ddpanel[data-ddp="' + k + '"]'), sel = $('dd_' + k); if (!p || !sel) return;
+  var ta = p.querySelector('textarea');
+  if (act === 'ddedit') { if (p.hidden) ta.value = ddOpts(k).join('\n'); p.hidden = !p.hidden; return; }
+  if (act === 'ddcancel') { p.hidden = true; return; }
+  if (act === 'ddreset') { ddSaveOpts(k, null); ta.value = DD_DEF[k].join('\n'); toast('List reset to default'); }
+  else {
+    var seen = {}, list = ta.value.split('\n').map(function (x) { return x.trim(); }).filter(function (x) { var l = x.toLowerCase(); if (!x || seen[l]) return false; seen[l] = 1; return true; });
+    if (list.length < 3) { toast('Add at least 3 options'); return; }
+    if (!ddSaveOpts(k, list)) { toast('Could not save the list'); return; }
+    toast('List saved on this device');
+  }
+  var cur = sel.value; sel.innerHTML = ddOptionsHtml(k, cur); sel.value = cur;
+  p.hidden = true; queueSave(); progress();
+}
 function item(i) {
+  if (i[4]) return ddItem(i);
   return '<div class="dcl-item" data-no="' + esc(i[0]) + '" data-label="' + esc(i[1]) + '"><div class="dcl-label">' +
     (i[0] ? '<span class="dcl-no">' + esc(i[0]) + '</span>' : '') + esc(i[1]) + '</div><input type="text" data-def="' + esc(i[2]) +
     '" value="' + esc(i[2]) + '" aria-label="' + esc(i[1]) + '"' + (i[3] ? ' data-optional="1"' : '') + '></div>';
@@ -281,7 +317,7 @@ function syncSig() {
 
 /* ── progress / rail ────────────────────────────────────────────── */
 function secProgress(sec) {
-  var ins = [].slice.call(sec.querySelectorAll('input:not([type=date]):not([type=time]):not([readonly]):not([data-optional]), textarea:not([data-optional])'));
+  var ins = [].slice.call(sec.querySelectorAll('input:not([type=date]):not([type=time]):not([readonly]):not([data-optional]), textarea:not([data-optional]), select:not([data-optional])'));
   if (!ins.length) return 1;
   return ins.filter(function (i) { return i.value.trim() !== ''; }).length / ins.length;
 }
@@ -313,10 +349,22 @@ function jumpNext() {
 
 /* ── persistence: one key, per-date drafts ──────────────────────── */
 function store() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } }
+function ddAll() { try { return JSON.parse(localStorage.getItem(DD_KEY)) || {}; } catch (e) { return {}; } }
+function ddOpts(k) { var a = ddAll()[k]; return (Array.isArray(a) && a.length >= 3) ? a : DD_DEF[k].slice(); }
+function ddSaveOpts(k, list) { var o = ddAll(); if (list) o[k] = list; else delete o[k]; try { localStorage.setItem(DD_KEY, JSON.stringify(o)); return true; } catch (e) { return false; } }
+function ddOptionsHtml(k, cur) {
+  var list = ddOpts(k); if (cur && list.indexOf(cur) < 0) list = list.concat(cur);   // keep an answer that is no longer in the list
+  return '<option value="">— Select —</option>' + list.map(function (o) { return '<option value="' + esc(o) + '"' + (o === cur ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('');
+}
+/* set an input/select value; for a select, add the option first if the saved answer isn't in the list any more */
+function putVal(e, v) {
+  if (e.tagName === 'SELECT' && v && ![].some.call(e.options, function (o) { return o.value === v; })) { var o = document.createElement('option'); o.value = v; o.textContent = v; e.appendChild(o); }
+  e.value = v;
+}
 function put(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); return true; } catch (e) { return false; } }
 function collect() {
   var f = {}, comp = [];
-  root.querySelectorAll('input[id],textarea[id]').forEach(function (e) { if (e.id.indexOf('dcl-m_') !== 0) f[e.id] = e.value; });
+  root.querySelectorAll('input[id],textarea[id],select[id]').forEach(function (e) { if (e.id.indexOf('dcl-m_') !== 0) f[e.id] = e.value; });
   root.querySelectorAll('#dcl-compTable tbody tr').forEach(function (tr) { comp.push([].map.call(tr.querySelectorAll('input'), function (i) { return i.value; })); });
   return { f: f, comp: comp };
 }
@@ -329,14 +377,14 @@ function save() {
 function queueSave() { $('savetext').textContent = 'Saving…'; clearTimeout(saveTimer); saveTimer = setTimeout(save, 500); }
 
 function loadDay(iso) {
-  root.querySelectorAll('input[id],textarea[id]').forEach(function (e) {
+  root.querySelectorAll('input[id],textarea[id],select[id]').forEach(function (e) {
     if (e.id.indexOf('dcl-m_') === 0) return;
-    e.value = e.hasAttribute('data-def') ? e.getAttribute('data-def') : ''; e.classList.remove('dcl-fromapp');
+    putVal(e, e.hasAttribute('data-def') ? e.getAttribute('data-def') : ''); e.classList.remove('dcl-fromapp');
   });
   compRows(COMP_DEF);
   var d = (store().days || {})[iso];
   if (d) {
-    Object.keys(d.f).forEach(function (id) { var e = document.getElementById(id); if (e) e.value = d.f[id]; });
+    Object.keys(d.f).forEach(function (id) { var e = document.getElementById(id); if (e) putVal(e, d.f[id]); });
     if (d.comp && d.comp.length) compRows(d.comp);
   }
   if (!val('pull_date')) $('pull_date').value = iso;
@@ -350,10 +398,10 @@ function collectModel() {
   var m = { branch: val('m_branch'), rows: [], extra: [], stock: [], lt7: [], meter: [], comp: [], notes: '' };
   root.querySelectorAll('.dcl-sec[data-chk]').forEach(function (sec) {
     if (sec.dataset.group) m.rows.push({ type: 'group', no: sec.dataset.groupno, title: sec.dataset.group });
-    sec.querySelectorAll('.dcl-item').forEach(function (it) { m.rows.push({ type: 'item', no: it.dataset.no || '', label: it.dataset.label || '', val: it.querySelector('input').value }); });
+    sec.querySelectorAll('.dcl-item').forEach(function (it) { m.rows.push({ type: 'item', no: it.dataset.no || '', label: it.dataset.label || '', val: it.querySelector('input,select').value }); });
   });
   root.querySelectorAll('.dcl-sec[data-tbl]').forEach(function (sec) {
-    var rows = []; sec.querySelectorAll('.dcl-item').forEach(function (it) { rows.push({ no: it.dataset.no || '', label: it.dataset.label || '', val: it.querySelector('input').value }); });
+    var rows = []; sec.querySelectorAll('.dcl-item').forEach(function (it) { rows.push({ no: it.dataset.no || '', label: it.dataset.label || '', val: it.querySelector('input,select').value }); });
     m.extra.push({ title: sec.dataset.tbltitle, rows: rows });
   });
   var negify = function (n) { var x = Math.abs(n); return x ? '-' + x : '0'; };
@@ -486,8 +534,10 @@ function build() {
   });
   $('m_date').addEventListener('change', function () { save(); $('pull_date').value = ''; loadDay(this.value); });
   $('pull_date').addEventListener('change', function () { prefill(true); });
+  root.addEventListener('change', function (e) { if (e.target.tagName === 'SELECT') { queueSave(); progress(); } });
   root.addEventListener('click', function (e) {
     var b = e.target.closest('[data-act]'); if (!b) return;
+    if (/^dd/.test(b.dataset.act)) return ddAct(b.dataset.act, b.dataset.dd);
     ({ next: jumpNext, reset: resetDay, copy: copyReport, print: printReport, email: emailReport,
        pull: function () { prefill(true); }, addcomp: function () { addCompRow(); queueSave(); } })[b.dataset.act]();
   });
