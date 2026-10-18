@@ -96,7 +96,7 @@
       .sfm-icon { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
       .sfm-label { flex: 1; }
       .sfm-shortcut {
-        font-size: 10px;
+        font-size:11px;
         color: var(--muted, #94a3b8);
         font-family: var(--mono, monospace);
         margin-left: auto;
@@ -107,7 +107,7 @@
         margin: 5px 10px;
       }
       .sfm-section {
-        font-size: 9px;
+        font-size:11px;
         font-weight: 700;
         letter-spacing: .08em;
         text-transform: uppercase;

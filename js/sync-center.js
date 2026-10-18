@@ -644,7 +644,7 @@ function _sc_renderSession() {
   const activeSession = _sc_sessions.find(s => s.status === STATUS_ACTIVE);
   const ownerName = activeSession
     ? (activeSession.device_id === udid
-        ? `${_sc_deviceName} <span style="color:var(--accent);font-size:10px">(You)</span>`
+        ? `${_sc_deviceName} <span style="color:var(--accent);font-size:11px">(You)</span>`
         : activeSession.device_name)
     : '<span style="color:var(--muted)">None</span>';
 
@@ -661,8 +661,8 @@ function _sc_renderSession() {
   const recentCount = _sc_sessions.filter(s => now - new Date(s.last_seen).getTime() < 2 * 60_000).length;
 
   const statusHtml = _sc_status === STATUS_ACTIVE
-    ? '<span style="color:var(--green);font-weight:800">● ACTIVE</span> <span style="color:var(--muted);font-size:10px">(write enabled)</span>'
-    : '<span style="color:var(--amber,#f59e0b);font-weight:800">◐ PASSIVE</span> <span style="color:var(--muted);font-size:10px">(read only)</span>';
+    ? '<span style="color:var(--green);font-weight:800">● ACTIVE</span> <span style="color:var(--muted);font-size:11px">(write enabled)</span>'
+    : '<span style="color:var(--amber,#f59e0b);font-weight:800">◐ PASSIVE</span> <span style="color:var(--muted);font-size:11px">(read only)</span>';
 
   const lockStr = _sc_priorityLock && _sc_priorityLockUntil
     ? `<span style="color:var(--amber,#f59e0b);font-weight:700">🔐 ON</span> until ${new Date(_sc_priorityLockUntil).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' })}`
@@ -676,7 +676,7 @@ function _sc_renderSession() {
     </div>`;
 
   el.innerHTML = [
-    row('🖥', 'This Device',      `<strong>${_sc_deviceName}</strong> <span style="color:var(--muted);font-size:9px;font-family:var(--mono)">${udid}</span>`),
+    row('🖥', 'This Device',      `<strong>${_sc_deviceName}</strong> <span style="color:var(--muted);font-size:11px;font-family:var(--mono)">${udid}</span>`),
     row('⚡', 'Device Status',    statusHtml),
     row('👑', 'Session Owner',    ownerName),
     row('⏱', 'Active Since',     activeSinceStr),
@@ -717,14 +717,14 @@ function _sc_renderDevices() {
     const dotColor  = isOnline ? (isActive ? 'var(--green)' : 'var(--accent)') : 'var(--border)';
     const statusColor = isActive ? 'var(--green)' : 'var(--muted)';
     const lockBadge = s.priority_lock
-      ? `<span style="background:var(--amber,#f59e0b);color:#000;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px">LOCKED</span>`
+      ? `<span style="background:var(--amber,#f59e0b);color:#000;font-size:11px;font-weight:700;padding:1px 5px;border-radius:4px">LOCKED</span>`
       : '';
     // F11: show idle time for this device's row
     const idleTag = isMe && _sc_status === STATUS_ACTIVE
       ? (() => {
           const idleSec = Math.round((now - _sc_lastActivity) / 1000);
           const idleStr = idleSec < 60 ? `Idle ${idleSec}s` : `Idle ${Math.floor(idleSec/60)}m`;
-          return `<div style="font-size:9px;color:var(--amber,#f59e0b)">${idleStr}</div>`;
+          return `<div style="font-size:11px;color:var(--amber,#f59e0b)">${idleStr}</div>`;
         })()
       : '';
     return `
@@ -736,15 +736,15 @@ function _sc_renderDevices() {
         <div style="flex:1;min-width:0">
           <div style="font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px;flex-wrap:wrap">
             ${s.device_name || 'Unknown'}
-            ${isMe ? '<span style="font-size:10px;color:var(--accent);font-weight:600">(You)</span>' : ''}
+            ${isMe ? '<span style="font-size:11px;color:var(--accent);font-weight:600">(You)</span>' : ''}
             ${lockBadge}
           </div>
-          <div style="font-size:9px;color:var(--muted);font-family:var(--mono);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.device_id}</div>
+          <div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.device_id}</div>
           ${idleTag}
         </div>
         <div style="text-align:right;flex-shrink:0">
           <div style="font-size:11px;font-weight:800;color:${statusColor}">${s.status}</div>
-          <div style="font-size:10px;color:var(--muted)">${ageStr}</div>
+          <div style="font-size:11px;color:var(--muted)">${ageStr}</div>
         </div>
       </div>`;
   }).join('');
@@ -764,7 +764,7 @@ function _sc_renderHealth() {
       <span style="width:20px;text-align:center">${icon}</span>
       <span style="color:var(--muted);flex:1">${label}</span>
       <span style="color:${ok ? 'var(--green)' : 'var(--red)'};font-weight:700;min-width:24px;text-align:center">${ok ? '✓' : '✕'}</span>
-      <span style="color:var(--muted);font-size:10px;min-width:80px;text-align:right">${detail}</span>
+      <span style="color:var(--muted);font-size:11px;min-width:80px;text-align:right">${detail}</span>
     </div>`;
 
   el.innerHTML = [
@@ -898,7 +898,7 @@ function _sc_renderSettings() {
       <div style="font-size:11px;font-weight:700;letter-spacing:.07em;color:var(--accent);margin-bottom:8px">THIS DEVICE</div>
       <div style="font-size:12px;line-height:2">
         <div><span style="color:var(--muted)">Device Name:</span> <strong style="color:var(--text)">${_sc_deviceName}</strong></div>
-        <div><span style="color:var(--muted)">Device ID (UDID):</span> <code style="font-size:10px;color:var(--accent);font-family:var(--mono)">${udid}</code></div>
+        <div><span style="color:var(--muted)">Device ID (UDID):</span> <code style="font-size:11px;color:var(--accent);font-family:var(--mono)">${udid}</code></div>
         <div><span style="color:var(--muted)">Browser:</span> <span style="color:var(--t2);font-size:11px">${navigator.userAgent.split(' ').slice(-2).join(' ')}</span></div>
       </div>
     </div>
@@ -908,7 +908,7 @@ function _sc_renderSettings() {
       <div style="font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.7">
         Go to your Supabase project → SQL Editor → paste and run:
       </div>
-      <pre style="background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:10px;font-family:var(--mono);color:var(--green);overflow-x:auto;white-space:pre;line-height:1.7;margin:0">CREATE TABLE IF NOT EXISTS bt_sessions (
+      <pre style="background:var(--s1);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:11px;font-family:var(--mono);color:var(--green);overflow-x:auto;white-space:pre;line-height:1.7;margin:0">CREATE TABLE IF NOT EXISTS bt_sessions (
   device_id           TEXT PRIMARY KEY,
   device_name         TEXT,
   status              TEXT DEFAULT 'PASSIVE',

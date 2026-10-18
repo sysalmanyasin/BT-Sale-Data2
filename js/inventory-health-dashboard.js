@@ -21,6 +21,8 @@
 // best-effort trend logs elsewhere in this app.
 // ══════════════════════════════════════════════════════════════════════
 
+import { chartTheme, applyChartDefaults } from './shared/chart-theme.js';
+
 window.InventoryHealthDashboard = (function () {
   "use strict";
 
@@ -225,17 +227,20 @@ window.InventoryHealthDashboard = (function () {
     if (!canvas || typeof Chart === 'undefined') return;
     const c = healthCounts();
     if (healthChart) { healthChart.destroy(); healthChart = null; }
+    applyChartDefaults(Chart);
+    const th = chartTheme();
     healthChart = new Chart(canvas, {
       type: 'doughnut',
       data: {
         labels: ['Healthy', 'Reorder', 'Excess', 'Dead Stock', 'Never Sold', 'Zero Stock'],
         datasets: [{
           data: [c.healthy, c.reorder, c.excess, c.dead, c.neverSold, c.zeroStock],
-          backgroundColor: ['#16a34a', '#f59e0b', '#64748b', '#dc2626', '#7c3aed', '#94a3b8'],
-          borderWidth: 0,
+          // Shared --st-* status tokens: same colour per category as the Cover donut.
+          backgroundColor: [th.status.healthy, th.status.reorder, th.status.excess, th.status.dead, th.status.never, th.status.zero],
+          borderWidth: 2, borderColor: th.surface,
         }],
       },
-      options: { plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }, cutout: '62%' },
+      options: { plugins: { legend: { position: 'bottom', labels: { color: th.text, boxWidth: 12, font: { size: 12 } } } }, cutout: '62%' },
     });
   }
 
@@ -245,11 +250,12 @@ window.InventoryHealthDashboard = (function () {
     const top = movers('top', 7);
     const slow = movers('slow', 7);
     if (moversChart) { moversChart.destroy(); moversChart = null; }
+    applyChartDefaults(Chart);
     moversChart = new Chart(canvas, {
       type: 'bar',
       data: {
         labels: top.map(r => r.name.length > 18 ? r.name.slice(0, 18) + '…' : r.name),
-        datasets: [{ label: 'Top Movers — 30d Sale Value', data: top.map(r => r.saleValue30), backgroundColor: '#2563eb' }],
+        datasets: [{ label: 'Top Movers — 30d Sale Value', data: top.map(r => r.saleValue30), backgroundColor: chartTheme().accent }],
       },
       options: {
         indexAxis: 'y',
@@ -274,11 +280,13 @@ window.InventoryHealthDashboard = (function () {
     if (!canvas || typeof Chart === 'undefined') return;
     const series = getTrendSeries();
     if (trendChart) { trendChart.destroy(); trendChart = null; }
+    applyChartDefaults(Chart);
+    const trendCol = chartTheme().status.reorder;
     trendChart = new Chart(canvas, {
       type: 'line',
       data: {
         labels: series.map(p => p.d.slice(5)),
-        datasets: [{ label: 'Reorder Value', data: series.map(p => p.v), borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,.15)', fill: true, tension: 0.25 }],
+        datasets: [{ label: 'Reorder Value', data: series.map(p => p.v), borderColor: trendCol, backgroundColor: 'color-mix(in srgb, ' + trendCol + ' 15%, transparent)', fill: true, tension: 0.25 }],
       },
       options: {
         plugins: { legend: { display: false }, title: { display: true, text: 'Reorder Value Trend (one point/day viewed)', font: { size: 12 } } },
@@ -292,11 +300,12 @@ window.InventoryHealthDashboard = (function () {
     if (!canvas || typeof Chart === 'undefined') return;
     const data = supplierBreakdown(8);
     if (supplierChart) { supplierChart.destroy(); supplierChart = null; }
+    applyChartDefaults(Chart);
     supplierChart = new Chart(canvas, {
       type: 'bar',
       data: {
         labels: data.map(d => d[0].length > 16 ? d[0].slice(0, 16) + '…' : d[0]),
-        datasets: [{ label: 'Stock Value', data: data.map(d => d[1]), backgroundColor: '#0ea5e9' }],
+        datasets: [{ label: 'Stock Value', data: data.map(d => d[1]), backgroundColor: chartTheme().accent }],
       },
       options: {
         plugins: { legend: { display: false }, title: { display: true, text: 'Stock Value by Supplier (Top 8)', font: { size: 12 } } },

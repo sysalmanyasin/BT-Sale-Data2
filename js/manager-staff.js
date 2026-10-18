@@ -60,17 +60,17 @@ function renderStaffRegistry() {
   <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:1080px;border:2px solid var(--border)">
     <thead>
       <tr style="background:var(--accent);color:#fff">
-        <th style="padding:9px 8px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em" title="Editable Sr# — controls row order in Salary, Generic & Credit sheets">Sr#</th>
-        <th style="padding:9px 10px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Staff ID</th>
-        <th style="padding:9px 10px;text-align:left;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Name</th>
-        <th style="padding:9px 10px;text-align:left;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Designation</th>
-        <th style="padding:9px 10px;text-align:left;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Father Name</th>
-        <th style="padding:9px 10px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">CNIC</th>
-        <th style="padding:9px 10px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Blood Group</th>
-        <th style="padding:9px 10px;text-align:left;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Phone</th>
-        <th style="padding:9px 10px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em" title="This calendar month's credit balance — tap a name to add or edit">This Month</th>
-        <th style="padding:9px 10px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Active</th>
-        <th style="padding:9px 10px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:10px;text-transform:uppercase;letter-spacing:.05em">Actions</th>
+        <th style="padding:9px 8px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:11px;text-transform:uppercase;letter-spacing:.05em" title="Editable Sr# — controls row order in Salary, Generic & Credit sheets">Sr#</th>
+        <th style="padding:9px 10px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:11px;text-transform:uppercase;letter-spacing:.05em">Staff ID</th>
+        <th style="padding:9px 10px;text-align:left;border:1px solid rgba(255,255,255,.2);font-size:11px;text-transform:uppercase;letter-spacing:.05em">Name</th>
+        <th style="padding:9px 10px;text-align:left;border:1px solid rgba(255,255,255,.2);font-size:11px;text-transform:uppercase;letter-spacing:.05em">Designation</th>
+        <th style="padding:9px 10px;text-align:left;border:1px solid rgba(255,255,255,.2);font-size:11px;text-transform:uppercase;letter-spacing:.05em">Father Name</th>
+        <th style="padding:9px 10px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:11px;text-transform:uppercase;letter-spacing:.05em">CNIC</th>
+        <th style="padding:9px 10px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:11px;text-transform:uppercase;letter-spacing:.05em">Blood Group</th>
+        <th style="padding:9px 10px;text-align:left;border:1px solid rgba(255,255,255,.2);font-size:11px;text-transform:uppercase;letter-spacing:.05em">Phone</th>
+        <th style="padding:9px 10px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:11px;text-transform:uppercase;letter-spacing:.05em" title="This calendar month's credit balance — tap a name to add or edit">This Month</th>
+        <th style="padding:9px 10px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:11px;text-transform:uppercase;letter-spacing:.05em">Active</th>
+        <th style="padding:9px 10px;text-align:center;border:1px solid rgba(255,255,255,.2);font-size:11px;text-transform:uppercase;letter-spacing:.05em">Actions</th>
       </tr>
     </thead>
     <tbody>
@@ -122,7 +122,7 @@ function renderStaffRegistry() {
           <input type="checkbox" ${emp.active!==false?'checked':''} onchange="staffToggleActive(${i},this.checked)" title="Active/Inactive">
         </td>
         <td style="padding:7px 10px;border:1px solid var(--border);text-align:center;white-space:nowrap">
-          <button class="btn btn-p" style="font-size:10px;padding:3px 10px;margin-right:4px" onclick="openStaffCard(${i})">✏ Edit</button>
+          <button class="btn btn-p" style="font-size:11px;padding:3px 10px;margin-right:4px" onclick="openStaffCard(${i})">✏ Edit</button>
           <button class="mgr-del" onclick="staffDelete(${i})" title="Remove">🗑</button>
         </td>
       </tr>`;
@@ -408,9 +408,9 @@ function renderStaffCreditHistory(empName) {
       </div>
       ${rows ? `<table style="width:100%;border-collapse:collapse">
         <thead><tr style="background:var(--s2)">
-          <th style="padding:5px 10px;font-size:10px;text-align:left;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Date</th>
-          <th style="padding:5px 10px;font-size:10px;text-align:left;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Description</th>
-          <th style="padding:5px 10px;font-size:10px;text-align:right;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Amount</th>
+          <th style="padding:5px 10px;font-size:11px;text-align:left;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Date</th>
+          <th style="padding:5px 10px;font-size:11px;text-align:left;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Description</th>
+          <th style="padding:5px 10px;font-size:11px;text-align:right;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">Amount</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>` : '<p style="text-align:center;color:var(--muted);font-size:12px;padding:12px">No entries for this month</p>'}

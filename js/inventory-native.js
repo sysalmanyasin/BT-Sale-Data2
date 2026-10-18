@@ -137,7 +137,7 @@ function _rowHtml(p) {
   return `<tr class="bti-row">
     <td>
       <div style="font-size:13px;font-weight:700;color:var(--text);line-height:1.3">${esc(p.name)}</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:2px">${p.code ? esc(p.code) : 'No SKU'} · ${esc(p.generic || '—')}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px">${p.code ? esc(p.code) : 'No SKU'} · ${esc(p.generic || '—')}</div>
     </td>
     <td style="text-align:right;font-weight:700;font-size:13px;color:${isNegative ? '#dc2626' : 'var(--text)'}">${isNegative ? '⚠️ ' : ''}${p.qty.toLocaleString()}</td>
     <td style="text-align:right;font-size:13px">Rs ${Number(p.price || 0).toLocaleString()}</td>

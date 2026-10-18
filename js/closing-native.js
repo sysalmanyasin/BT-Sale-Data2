@@ -178,7 +178,7 @@ function mlAllSnapshots(cdb) {
 }
 
 // ── Format helpers (ported) ──────────────────────────────────────────
-function clFmt(v) { return 'Rs. ' + Math.round(Math.abs(v)).toLocaleString(); }
+function clFmt(v) { return '₨ ' + Math.round(Math.abs(v)).toLocaleString(); }
 function clFmtSigned(v) { return (v >= 0 ? '+' : '−') + ' Rs. ' + Math.round(Math.abs(v)).toLocaleString(); }
 function clFmtDate(ds) { try { return new Date(ds + 'T00:00:00').toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' }); } catch (e) { return ds; } }
 
@@ -484,7 +484,7 @@ function buildShiftPrintPage(cdb, key, rec) {
     <div class="ps-hero ${isShort1 ? 'ps-hero-short' : ''}">
       <div>
         <div class="ps-hero-label">${diffLbl1} — Net Cash vs Net Sale</div>
-        <div class="ps-hero-val">Rs. ${Math.abs(diff1).toLocaleString('en-PK')}</div>
+        <div class="ps-hero-val">₨ ${Math.abs(diff1).toLocaleString('en-PK')}</div>
       </div>
       <div class="ps-hero-sub">Net Cash Available minus Net Shift Sale. Zero means the till matches exactly.</div>
     </div>`;
@@ -597,7 +597,7 @@ function buildFinalPrintPage(cdb, ds, shift, rec) {
     <div class="ps-hero ${isShort2 ? 'ps-hero-short' : ''}">
       <div>
         <div class="ps-hero-label">${esc(finalDiffLabel)} — Period Reconciliation</div>
-        <div class="ps-hero-val">Rs. ${Math.abs(finalDiff).toLocaleString('en-PK')}</div>
+        <div class="ps-hero-val">₨ ${Math.abs(finalDiff).toLocaleString('en-PK')}</div>
       </div>
       <div class="ps-hero-sub">Net Final Cash Available compared to Net Final Sale across the full period since the last Final Closing.</div>
     </div>`;

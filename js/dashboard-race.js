@@ -147,7 +147,7 @@ function buildRaceForecast() {
     <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:8px">
       <span>🏁 Race the Forecast — ${lat.Month_Year}</span>
       <span style="flex:1;height:1px;background:var(--border);opacity:.4;display:inline-block"></span>
-      <button type="button" onclick="_raceReplay()" style="font-size:10px;padding:2px 9px;border-radius:99px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer">↻ Replay</button>
+      <button type="button" onclick="_raceReplay()" style="font-size:11px;padding:2px 9px;border-radius:99px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer">↻ Replay</button>
     </div>
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">
       <div style="position:relative;height:26px;background:var(--s2,#f8fafc);border-radius:99px;overflow:visible;margin-top:6px">
@@ -161,22 +161,22 @@ function buildRaceForecast() {
         <span>${isLive ? 'in progress' : 'closed'}</span>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
-        <div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">So far</div><div style="font-size:13px;font-weight:700;font-family:var(--mono)">₨${ff(latAct)}</div></div>
-        <div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Target</div><div style="font-size:13px;font-weight:700;font-family:var(--mono)">₨${ff(latTgt)}</div></div>
-        <div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">🏃 Algorithm forecast</div><div style="font-size:13px;font-weight:700;font-family:var(--mono)">₨${ff(forecastTotal)}</div></div>
+        <div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">So far</div><div style="font-size:13px;font-weight:700;font-family:var(--mono)">₨${ff(latAct)}</div></div>
+        <div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Target</div><div style="font-size:13px;font-weight:700;font-family:var(--mono)">₨${ff(latTgt)}</div></div>
+        <div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">🏃 Algorithm forecast</div><div style="font-size:13px;font-weight:700;font-family:var(--mono)">₨${ff(forecastTotal)}</div></div>
       </div>
       <div style="margin-top:12px;border-top:1px solid var(--border);padding-top:10px">
-        <label style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px">● Your own ₨/day estimate for the remaining ${daysLeft} day${daysLeft === 1 ? '' : 's'}</label>
+        <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:5px">● Your own ₨/day estimate for the remaining ${daysLeft} day${daysLeft === 1 ? '' : 's'}</label>
         <div style="display:flex;gap:8px">
           <input id="race-fc-manual-input" type="number" inputmode="numeric" placeholder="e.g. 55000"
             value="${manualRate != null ? manualRate : ''}"
             oninput="_racePreviewManualRate(this.value)"
             onchange="_raceSetManualRate(this.value)"
             style="flex:1;min-width:0;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--s2,#f8fafc);color:var(--text);font-family:var(--mono);font-size:12px">
-          ${manualRate != null ? `<button type="button" onclick="document.getElementById('race-fc-manual-input').value='';_raceSetManualRate('')" style="font-size:10px;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer">Clear</button>` : ''}
+          ${manualRate != null ? `<button type="button" onclick="document.getElementById('race-fc-manual-input').value='';_raceSetManualRate('')" style="font-size:11px;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer">Clear</button>` : ''}
         </div>
         <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:10px;color:var(--muted)">Your forecast</span>
+          <span style="font-size:11px;color:var(--muted)">Your forecast</span>
           <span id="race-fc-custom-total" style="font-size:13px;font-weight:700;font-family:var(--mono);color:var(--accent)">${customForecast != null ? '₨' + ff(customForecast) : '—'}</span>
         </div>
       </div>
@@ -292,7 +292,7 @@ function buildBarRace() {
     <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:8px">
       <span>🏆 Bar Race</span>
       <span style="flex:1;height:1px;background:var(--border);opacity:.4;display:inline-block"></span>
-      <button type="button" onclick="_raceReplay()" style="font-size:10px;padding:2px 9px;border-radius:99px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer">↻ Replay</button>
+      <button type="button" onclick="_raceReplay()" style="font-size:11px;padding:2px 9px;border-radius:99px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer">↻ Replay</button>
     </div>
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">
       <div style="display:flex;gap:6px;margin-bottom:12px">
@@ -301,7 +301,7 @@ function buildBarRace() {
       </div>
       ${controlsHtml}
       <div id="race-bars-wrap">${bars}</div>
-      ${unitLabel ? `<div style="font-size:10px;color:var(--muted);margin-top:4px">${unitLabel}</div>` : ''}
+      ${unitLabel ? `<div style="font-size:11px;color:var(--muted);margin-top:4px">${unitLabel}</div>` : ''}
     </div>`;
 
   _racePlayBars();

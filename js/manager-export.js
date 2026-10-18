@@ -128,7 +128,7 @@ function _msBuildSalesSummary(mon) {
 
       ${week.length ? `
       <div style="margin-top:12px">
-        <div style="font-size:10px;font-weight:700;color:#94a3b8;letter-spacing:.07em;text-transform:uppercase;margin-bottom:6px">Last 7 Days Trend</div>
+        <div style="font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:.07em;text-transform:uppercase;margin-bottom:6px">Last 7 Days Trend</div>
         <table style="width:100%;border-collapse:collapse">${trendRows}</table>
       </div>` : ''}
     </div>`;
@@ -197,7 +197,7 @@ function _msBuildManagerSummary(mon) {
 
   const creditHtml = creditRows.length ? `
     <div style="margin-top:12px">
-      <div style="font-size:10px;font-weight:700;color:#94a3b8;letter-spacing:.07em;text-transform:uppercase;margin-bottom:6px">Top Credit Outstanding</div>
+      <div style="font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:.07em;text-transform:uppercase;margin-bottom:6px">Top Credit Outstanding</div>
       <table style="width:100%;border-collapse:collapse">
         ${creditRows.map(r => `<tr>
           <td style="padding:4px 8px;font-size:12px;color:#1e293b">${r.name}</td>
@@ -211,8 +211,8 @@ function _msBuildManagerSummary(mon) {
       <div class="ms-section-title">🗂 Manager Summary — ${mon}</div>
       <table style="width:100%;border-collapse:collapse">
         <thead><tr>
-          <th style="padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em">Category</th>
-          <th style="padding:6px 8px;text-align:right;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em">Amount</th>
+          <th style="padding:6px 8px;text-align:left;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em">Category</th>
+          <th style="padding:6px 8px;text-align:right;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.07em">Amount</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
@@ -265,14 +265,14 @@ function buildManagerSummaryHTML(mon) {
     .ms-kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px;
       background: #e2e8f0; }
     .ms-kpi { background: #fff; padding: 10px 14px; }
-    .ms-kpi-label { font-size: 10px; font-weight: 700; color: #94a3b8;
+    .ms-kpi-label { font-size:11px; font-weight: 700; color: #94a3b8;
       text-transform: uppercase; letter-spacing: .07em; margin-bottom: 3px; }
     .ms-kpi-value { font-size: 16px; font-weight: 800; color: #1e293b; }
-    .ms-kpi-sub { font-size: 10px; color: #64748b; margin-top: 2px; }
+    .ms-kpi-sub { font-size:11px; color: #64748b; margin-top: 2px; }
     .ms-amt { text-align: right; font-weight: 700; font-size: 13px; padding: 5px 8px; }
     table tr:nth-child(even) td { background: #f8fafc; }
     table td { padding: 5px 8px; font-size: 12px; color: #1e293b; }
-    .ms-footer { text-align: center; font-size: 10px; color: #94a3b8;
+    .ms-footer { text-align: center; font-size:11px; color: #94a3b8;
       margin-top: 20px; padding-top: 10px; border-top: 1px solid #e2e8f0; }
     @media print {
       body { padding: 10px; }

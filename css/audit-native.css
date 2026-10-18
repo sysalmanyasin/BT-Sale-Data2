@@ -28,7 +28,7 @@
 .an-history-item { border: 1px solid var(--border); border-radius: 9px; margin-bottom: 8px; overflow: hidden; }
 .an-history-item:last-child { margin-bottom: 0; }
 .an-history-header { display: flex; align-items: center; justify-content: space-between; padding: 9px 11px; cursor: pointer; background: var(--s2); }
-.an-arrow { font-size: 10px; color: var(--muted); transition: transform .2s; }
+.an-arrow { font-size:11px; color: var(--muted); transition: transform .2s; }
 .an-history-item.an-open .an-arrow { transform: rotate(90deg); }
 .an-history-body { display: none; padding: 8px 11px 10px; }
 .an-history-item.an-open .an-history-body { display: block; }

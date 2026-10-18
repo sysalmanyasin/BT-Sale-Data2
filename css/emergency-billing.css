@@ -329,7 +329,7 @@ table.eb-hist-table tbody tr:hover { background: color-mix(in srgb, var(--accent
 table.eb-hist-table td { padding: 8px 10px; vertical-align: middle; }
 table.eb-hist-table td.eb-hist-num { font-family: var(--mono); font-weight: 700; }
 table.eb-hist-table td.eb-hist-total { font-family: var(--mono); text-align: right; font-weight: 700; }
-.eb-hist-badge { display: inline-block; padding: 2px 8px; border-radius: var(--r-pill); font-size: 10.5px; font-weight: 700; }
+.eb-hist-badge { display: inline-block; padding: 2px 8px; border-radius: var(--r-pill); font-size:11px; font-weight: 700; }
 .eb-hist-badge-refund { background: var(--rlt); color: var(--red); border: 1px solid var(--red); }
 .eb-hist-badge-unrecon { background: var(--alt2); color: var(--amber); border: 1px solid var(--amber); }
 .eb-hist-badge-recon { background: var(--glt); color: var(--green); border: 1px solid var(--green); }
@@ -407,7 +407,7 @@ table.eb-refund-table td { padding: 6px 4px; border-bottom: 1px solid var(--bord
 .eb-rcpt-item { padding: 4px 0; }
 .eb-rcpt-item-meta { display: flex; justify-content: space-between; color: #444; }
 .eb-rcpt-net { font-weight: 700; font-size: 13px; }
-.eb-rcpt-foot { margin-top: var(--sp-3); font-size: 10px; color: #777; text-align: center; }
+.eb-rcpt-foot { margin-top: var(--sp-3); font-size:11px; color: #777; text-align: center; }
 .eb-receipt-modal-actions { display: flex; gap: var(--sp-2); justify-content: center; margin-top: var(--sp-4); }
 
 /* ── Print — only the receipt shows, everything else on the page is
@@ -425,6 +425,6 @@ table.eb-refund-table td { padding: 6px 4px; border-bottom: 1px solid var(--bord
   /* Settings tab's "Receipt Width: 58mm (narrow)" option — applied as a
      class on #eb-receipt-print itself (see showReceipt() in
      emergency-billing-native.js) rather than a second print stylesheet. */
-  #eb-receipt-print.eb-w58 { width: 58mm; font-size: 10px; padding: 3mm; }
+  #eb-receipt-print.eb-w58 { width: 58mm; font-size:11px; padding: 3mm; }
   #eb-receipt-modal, .eb-receipt-modal-actions, #eb-history-detail-modal { display: none !important; }
 }

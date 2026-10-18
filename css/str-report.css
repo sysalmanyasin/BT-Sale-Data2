@@ -47,7 +47,7 @@
 .str-chip-row { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
 .str-chip { flex: 1 1 220px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; box-shadow: var(--sh); }
 .str-chip-label { font-size: 12px; font-weight: 700; color: var(--text); }
-.str-chip-sub { font-size: 10.5px; color: var(--muted); display: block; margin-top: 1px; }
+.str-chip-sub { font-size:11px; color: var(--muted); display: block; margin-top: 1px; }
 .str-chip-count { font-size: 18px; font-weight: 800; color: var(--pink, #db2777); }
 .str-chip-active { border-color: var(--pink, #db2777); background: color-mix(in srgb, var(--pink, #db2777) 8%, var(--surface)); }
 
@@ -66,11 +66,11 @@
 
 .str-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: var(--sh); }
 .str-table { width: 100%; border-collapse: collapse; min-width: 620px; }
-.str-table thead th { position: sticky; top: 0; background: var(--s2); color: var(--muted); font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.str-table thead th { position: sticky; top: 0; background: var(--s2); color: var(--muted); font-size:11px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
 .str-row td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; cursor: pointer; }
 .str-row:hover td { background: var(--s2); }
 
-.str-badge { display: inline-block; font-size: 10.5px; font-weight: 800; padding: 3px 9px; border-radius: 20px; text-transform: uppercase; letter-spacing: .02em; }
+.str-badge { display: inline-block; font-size:11px; font-weight: 800; padding: 3px 9px; border-radius: 20px; text-transform: uppercase; letter-spacing: .02em; }
 .str-badge-amber { background: #fffbeb; color: #b45309; }
 .str-badge-blue { background: #eff6ff; color: #1d4ed8; }
 .str-badge-green { background: #ecfdf5; color: #047857; }
@@ -97,7 +97,7 @@
 
 .str-detail-table-wrap { overflow-x: auto; }
 .str-detail-table { width: 100%; border-collapse: collapse; min-width: 520px; font-size: 12px; }
-.str-detail-table thead th { text-align: left; font-size: 10.5px; font-weight: 800; text-transform: uppercase; color: var(--muted); padding: 7px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.str-detail-table thead th { text-align: left; font-size:11px; font-weight: 800; text-transform: uppercase; color: var(--muted); padding: 7px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
 .str-detail-row td { padding: 7px 8px; border-bottom: 1px solid var(--border); }
 .str-detail-table tbody tr.str-detail-row:nth-of-type(even) { background: color-mix(in srgb, var(--s2) 45%, transparent); }
 .str-detail-supplier-row td { padding: 8px 8px 5px; font-size: 11.5px; font-weight: 800; color: var(--text); background: var(--s2); border-top: 2px solid var(--border); }
@@ -137,6 +137,6 @@
 .str-zd-str-head-row { display: flex; align-items: flex-start; gap: 10px; }
 .str-zd-checkbox-wrap { display: flex; align-items: center; padding-top: 2px; cursor: pointer; }
 .str-zd-checkbox { width: 18px; height: 18px; cursor: pointer; accent-color: var(--pink, #db2777); }
-.str-zd-badge { font-size: 10.5px; font-weight: 800; padding: 3px 9px; border-radius: 20px; background: #fef2f2; color: #b91c1c; text-transform: uppercase; letter-spacing: .02em; }
+.str-zd-badge { font-size:11px; font-weight: 800; padding: 3px 9px; border-radius: 20px; background: #fef2f2; color: #b91c1c; text-transform: uppercase; letter-spacing: .02em; }
 .str-zd-select-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
 #str-zd-select-status { font-size: 11px; color: var(--muted); font-weight: 700; }

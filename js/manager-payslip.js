@@ -107,16 +107,16 @@ function renderStaffPayslip(name) {
         <div style="font-size:11px;opacity:.85">${_mgrEsc(salRow.desig || emp.designation || '')} · ${my} · ${salRow.days || 31} days</div>
       </div>
       <div style="padding:12px 16px">
-        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:2px">Salary</div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:2px">Salary</div>
         ${row('HO Salary', salRow.hoSal)}
         ${row('Advance', salRow.advance, { color: _ni(salRow.advance) > 0 ? 'var(--red,#dc2626)' : 'var(--text)' })}
         ${row('Generic Add-on', salRow.generic)}
         ${_slipExtras(salRow).map(e => row(_mgrEsc(e.name) + (e.sign === '-' ? ' (−)' : ' (+)'), e.amount, { color: e.sign === '-' ? 'var(--red,#dc2626)' : 'var(--text)' })).join('')}
-        <div style="font-size:10px;color:var(--muted);padding:0 0 4px">↳ Incentive (4% of ₨${_fc2(genRow.genericSale)}): ₨${_fc2(_genIncentive(genRow))} + Extra: ₨${_fc2(genRow.extra)}</div>
+        <div style="font-size:11px;color:var(--muted);padding:0 0 4px">↳ Incentive (4% of ₨${_fc2(genRow.genericSale)}): ₨${_fc2(_genIncentive(genRow))} + Extra: ₨${_fc2(genRow.extra)}</div>
         ${row('Net Salary', net, { bold: true, top: true, color: netCol })}
       </div>
       <div style="padding:0 16px 14px">
-        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:6px 0 2px">Credit Ledger</div>
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:6px 0 2px">Credit Ledger</div>
         ${row('Previous Balance', crdRow.prevBal)}
         <div style="margin:4px 0">${entryRows}</div>
         ${row('Salary Paid (from Credit sheet)', crdRow.salary)}
@@ -193,7 +193,7 @@ function printStaffPayslip() {
         <tr><td colspan="2" style="padding:6px 8px;font-weight:700;border-top:2px solid #000">NET CREDIT BALANCE</td><td style="padding:6px 8px;text-align:right;font-family:monospace;font-weight:700;border-top:2px solid #000">₨${_fc2(crdNetVal)}</td></tr>
       </tbody>
     </table>
-    <p style="font-size:10px;color:#888;margin-top:18px">This is a system-generated slip — no signature required.</p>
+    <p style="font-size:11px;color:#888;margin-top:18px">This is a system-generated slip — no signature required.</p>
   </div>`);
 }
 

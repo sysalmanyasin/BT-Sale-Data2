@@ -132,7 +132,7 @@ function buildSalesHeatmap() {
     cols.push({ label, cellsHtml });
   }
 
-  const monthRow = cols.map(c => `<div style="width:11px;font-size:9px;color:var(--muted);white-space:nowrap">${c.label}</div>`).join('');
+  const monthRow = cols.map(c => `<div style="width:11px;font-size:11px;color:var(--muted);white-space:nowrap">${c.label}</div>`).join('');
   const grid = cols.map(c => `<div style="display:flex;flex-direction:column;gap:3px">${c.cellsHtml.join('')}</div>`).join('');
 
   const saleDays = positives.length;
@@ -159,8 +159,8 @@ function buildSalesHeatmap() {
         <div style="display:flex;gap:3px">${grid}</div>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
-        <div style="font-size:10px;color:var(--muted)">₨${ff(yearTotal)} across ${saleDays} sale day${saleDays === 1 ? '' : 's'} in ${year} · tap a filled day to open it</div>
-        <div style="display:flex;align-items:center;gap:4px;font-size:9px;color:var(--muted)">Less ${legendChips} More</div>
+        <div style="font-size:11px;color:var(--muted)">₨${ff(yearTotal)} across ${saleDays} sale day${saleDays === 1 ? '' : 's'} in ${year} · tap a filled day to open it</div>
+        <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted)">Less ${legendChips} More</div>
       </div>
     </div>`;
 }

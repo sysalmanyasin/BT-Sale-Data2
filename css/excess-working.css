@@ -11,7 +11,6 @@
     --teal:var(--accent);
     --teal-dark:var(--accent-dk);
     --rust:var(--red);
-    --amber:var(--amber);
     --indigo:var(--accent);
     --rust-bg:var(--rlt);
     --amber-bg:var(--alt2);
@@ -186,7 +185,7 @@
 .excessworking-app .dbxstatus.ok {color:var(--teal-dark);}
 .excessworking-app .dbxlabel.ok {color:var(--teal-dark);}
 .excessworking-app .srctag {
-  font-family:var(--mono); font-size:9.5px; letter-spacing:.06em; text-transform:uppercase;
+  font-family:var(--mono); font-size:11px; letter-spacing:.06em; text-transform:uppercase;
   background:var(--indigo-bg); color:var(--indigo); padding:2px 7px; border-radius:20px;
   font-weight:600; margin-left:2px;
 }
@@ -224,7 +223,7 @@
   }
 .excessworking-app .card .tag {
     font-family:var(--mono);
-    font-size:10.5px;
+    font-size:11px;
     letter-spacing:.1em;
     text-transform:uppercase;
     padding:3px 8px;
@@ -248,7 +247,7 @@
 .excessworking-app .card .lbl {font-size:12.5px; color:var(--ink-soft);}
 .excessworking-app .stamp {
     position:absolute; top:14px; right:-10px;
-    font-family:var(--mono); font-size:10px; letter-spacing:.08em;
+    font-family:var(--mono); font-size:11px; letter-spacing:.08em;
     color:currentColor; opacity:.35;
     border:1.5px solid currentColor; border-radius:4px;
     padding:3px 8px;
@@ -395,7 +394,7 @@
 .excessworking-app .stat.corrected .bar-fill {background:var(--teal); height:100%;}
 
 .excessworking-app .status-pill {
-  font-family:var(--mono); font-size:10.5px; letter-spacing:.04em; text-transform:uppercase;
+  font-family:var(--mono); font-size:11px; letter-spacing:.04em; text-transform:uppercase;
   padding:3px 9px; border-radius:20px; font-weight:600; white-space:nowrap;
 }
 .excessworking-app .status-pill.Excess {background:var(--rust-bg); color:var(--rust);}

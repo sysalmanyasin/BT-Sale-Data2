@@ -129,8 +129,8 @@ import { getFullData as _invGetFullData } from './inventory-bridge.js';
 .ns-note-card.pinned::before { content: '📌'; position: absolute; top: 8px; right: 10px; font-size: 13px; }
 .ns-note-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 3px; }
 .ns-note-preview { font-size: 11.5px; color: var(--muted); line-height: 1.5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ns-note-meta { font-size: 10px; color: var(--muted); margin-top: 5px; display: flex; gap: 8px; align-items: center; }
-.ns-tag { display: inline-block; padding: 1px 7px; border-radius: 10px; background: #eff6ff; color: #1d4ed8; font-size: 10px; font-weight: 600; }
+.ns-note-meta { font-size:11px; color: var(--muted); margin-top: 5px; display: flex; gap: 8px; align-items: center; }
+.ns-tag { display: inline-block; padding: 1px 7px; border-radius: 10px; background: #eff6ff; color: #1d4ed8; font-size:11px; font-weight: 600; }
 .ns-tag.orange { background: #fff7ed; color: #c2410c; }
 .ns-tag.green  { background: #f0fdf4; color: #16a34a; }
 .ns-tag.purple { background: #faf5ff; color: #7c3aed; }
@@ -163,7 +163,7 @@ import { getFullData as _invGetFullData } from './inventory-bridge.js';
 .ns-data-more-hint { padding: 10px 12px; font-size: 11.5px; color: var(--muted); text-align: center; }
 .ns-data-table-wrap { flex: 1; overflow: auto; }
 .ns-data-table { border-collapse: collapse; min-width: 100%; font-size: 12px; }
-.ns-data-table th { background: #1e3a5f; color: #fff; font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacing: .05em; padding: 7px 10px; border: 1px solid #2d4a6f; position: sticky; top: 0; white-space: nowrap; }
+.ns-data-table th { background: #1e3a5f; color: #fff; font-weight: 700; font-size:11px; text-transform: uppercase; letter-spacing: .05em; padding: 7px 10px; border: 1px solid #2d4a6f; position: sticky; top: 0; white-space: nowrap; }
 .ns-data-table td { padding: 5px 10px; border: 1px solid var(--border); color: var(--text); font-size: 12px; white-space: nowrap; }
 .ns-data-table tr:nth-child(even) td { background: var(--s2); }
 .ns-data-table tr:hover td { background: #eff6ff; }
@@ -296,7 +296,7 @@ function _nsOpenNote(id) {
       </div>
       <textarea class="ns-editor-body" id="nse-body" placeholder="Write anything here…">${_nsEsc(note ? note.body : '')}</textarea>
       <div>
-        <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Tags (comma-separated)</div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Tags (comma-separated)</div>
         <input class="ns-tag-input" id="nse-tags" placeholder="e.g. sale, urgent, staff" value="${_nsEsc(note ? note.tags : '')}">
       </div>
       <div class="ns-editor-footer">

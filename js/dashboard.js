@@ -220,8 +220,8 @@ function buildDashboard() {
       <div class="kvalue">${k.value}</div>
       ${k.bar ? '<div class="kpbar"><div class="kpfill ' + k.bar.cls + '" style="width:' + k.bar.pct + '%"></div></div>'
               : (k.delta ? '<div class="kdelta ' + (k.up ? 'up' : 'dn') + '">' + (k.up ? '▲' : '▼') + ' ' + k.delta + '</div>' : '')}
-      ${k.sub   ? '<div style="font-size:10px;color:var(--muted);margin-top:4px">'  + k.sub   + '</div>' : ''}
-      ${k.extra ? '<div style="font-size:10px;color:var(--muted);margin-top:2px">' + k.extra + '</div>' : ''}
+      ${k.sub   ? '<div style="font-size:11px;color:var(--muted);margin-top:4px">'  + k.sub   + '</div>' : ''}
+      ${k.extra ? '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + k.extra + '</div>' : ''}
     </div>`).join('');
 
   buildCharts(data);
@@ -321,8 +321,8 @@ function buildCreditSection(lat) {
   // _ledgerBreakdown already attached per row — no second data pass.
   const pattyEntryRow = e => `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0 4px 16px;border-bottom:1px dashed var(--border)">
-      <span style="font-size:10.5px;color:var(--muted)">${_esc(e.date || '—')}${e.desc ? ' · ' + _esc(e.desc) : ''}</span>
-      <span style="font-size:10.5px;font-family:var(--mono);color:${amtColor(e.sign * e.amount)}">${fmtAmt(e.sign * e.amount)}</span>
+      <span style="font-size:11px;color:var(--muted)">${_esc(e.date || '—')}${e.desc ? ' · ' + _esc(e.desc) : ''}</span>
+      <span style="font-size:11px;font-family:var(--mono);color:${amtColor(e.sign * e.amount)}">${fmtAmt(e.sign * e.amount)}</span>
     </div>`;
 
   const pattyDetailRows = rows => rows.map(r => {
@@ -352,10 +352,10 @@ function buildCreditSection(lat) {
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
         <input type="date" value="${_esc(_dashPattyDateFrom)}" onchange="dashSetPattyDateFrom(this.value)"
           style="font-size:11px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;background:var(--s2);color:var(--text)">
-        <span style="font-size:10px;color:var(--muted)">to</span>
+        <span style="font-size:11px;color:var(--muted)">to</span>
         <input type="date" value="${_esc(_dashPattyDateTo)}" onchange="dashSetPattyDateTo(this.value)"
           style="font-size:11px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;background:var(--s2);color:var(--text)">
-        ${(_dashPattyDateFrom || _dashPattyDateTo) ? `<span onclick="dashClearPattyDates()" style="font-size:10px;color:var(--red,#dc2626);cursor:pointer;text-decoration:underline">✕ Clear</span>` : ''}
+        ${(_dashPattyDateFrom || _dashPattyDateTo) ? `<span onclick="dashClearPattyDates()" style="font-size:11px;color:var(--red,#dc2626);cursor:pointer;text-decoration:underline">✕ Clear</span>` : ''}
       </div>
       <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
         ${[
@@ -366,12 +366,12 @@ function buildCreditSection(lat) {
           ['w4', 'Wk4 (23-End)'],
         ].map(([key, label]) => `
         <span onclick="dashSetPattyPreset('${key}')"
-          style="font-size:9.5px;font-weight:600;padding:3px 8px;border-radius:20px;cursor:pointer;white-space:nowrap;
+          style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;cursor:pointer;white-space:nowrap;
             ${_dashPattyActivePreset === key
               ? 'background:' + pattyTint.accent + ';color:#fff;border:1px solid ' + pattyTint.accent
               : 'background:var(--s2);color:var(--t2);border:1px solid var(--border)'}">${label}</span>`).join('')}
         <span onclick="dashClearPattyDates()"
-          style="font-size:9.5px;font-weight:600;padding:3px 8px;border-radius:20px;cursor:pointer;white-space:nowrap;
+          style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;cursor:pointer;white-space:nowrap;
             background:var(--s2);color:var(--red,#dc2626);border:1px solid var(--border)">↺ Reset</span>
       </div>
       <div style="border-top:1px solid var(--border);padding-top:6px">${pattyDetailRows(d.pattyRows)}</div>
@@ -404,8 +404,8 @@ function buildCreditSection(lat) {
     </div>` : ''}
     <div style="background:var(--grad-header);border-radius:var(--r-md);padding:16px 22px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--sh-md)">
       <div>
-        <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:3px">💰 Total Outstanding Credits</div>
-        <div style="font-size:10px;color:rgba(255,255,255,.45)">Staff (${my}) + Jazz Cash + Patty/Expenses + Misc Sections, all-time</div>
+        <div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.65);margin-bottom:3px">💰 Total Outstanding Credits</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.45)">Staff (${my}) + Jazz Cash + Patty/Expenses + Misc Sections, all-time</div>
       </div>
       <div style="font-size:25px;font-weight:800;font-family:var(--mono);color:${d.grandTotal >= 0 ? '#4ade80' : '#f87171'}">${fmtAmt(d.grandTotal)}</div>
     </div>`;
@@ -574,12 +574,12 @@ function buildTop10Days() {
             <span style="font-size:16px;flex-shrink:0">${medal}</span>
             <div style="min-width:0">
               <div style="font-size:13px;font-weight:700;color:var(--text);font-family:var(--mono)">${d.Date}</div>
-              <div style="font-size:10px;color:var(--muted);margin-top:1px">${d.Month_Year}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:1px">${d.Month_Year}</div>
             </div>
           </div>
           <div style="text-align:right;flex-shrink:0">
             <div style="font-size:14px;font-weight:700;color:var(--accent);font-family:var(--mono)">₨${ff(total)}</div>
-            <div style="font-size:10px;color:var(--muted);margin-top:1px">👥 ${fc(customers)}${avgBill ? ' · ₨' + ff(avgBill) + '/bill' : ''}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:1px">👥 ${fc(customers)}${avgBill ? ' · ₨' + ff(avgBill) + '/bill' : ''}</div>
           </div>
         </div>
         <div style="background:var(--border);border-radius:99px;height:3px;overflow:hidden">
@@ -592,7 +592,7 @@ function buildTop10Days() {
     <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:8px">
       <span>🏆 Top 10 Best Days — All Time</span>
       <span style="flex:1;height:1px;background:var(--border);opacity:.4;display:inline-block"></span>
-      <span style="font-size:10px;font-weight:400;color:var(--muted)">tap to open report</span>
+      <span style="font-size:11px;font-weight:400;color:var(--muted)">tap to open report</span>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:8px">
       ${rows}
@@ -643,7 +643,7 @@ function buildDayOfWeek() {
     const barColor = isTop ? 'var(--green)' : isWorst ? 'var(--red,#dc2626)' : 'var(--accent)';
     return `
       <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:0">
-        <div style="font-size:10px;font-weight:600;color:${isWorst?'#dc2626':isTop?'var(--green)':'var(--muted)'};font-family:var(--mono)">₨${ff(avg)}</div>
+        <div style="font-size:11px;font-weight:600;color:${isWorst?'#dc2626':isTop?'var(--green)':'var(--muted)'};font-family:var(--mono)">₨${ff(avg)}</div>
         <div style="width:100%;background:var(--border);border-radius:99px 99px 4px 4px;height:80px;display:flex;align-items:flex-end;overflow:hidden">
           <div style="width:100%;height:${pct}%;background:${barColor};border-radius:99px 99px 0 0;transition:height .5s;position:relative">
             ${isTop ? '<div style="position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:11px">⭐</div>' : ''}
@@ -651,7 +651,7 @@ function buildDayOfWeek() {
           </div>
         </div>
         <div style="font-size:11px;font-weight:${isTop||isWorst?'700':'500'};color:${isTop?'var(--accent)':isWorst?'#dc2626':'var(--text)'}">${DOW_LABELS[i]}</div>
-        <div style="font-size:9px;color:var(--muted)">${buckets[i].count}d</div>
+        <div style="font-size:11px;color:var(--muted)">${buckets[i].count}d</div>
       </div>`;
   }).join('');
 
@@ -662,7 +662,7 @@ function buildDayOfWeek() {
     .sort((a,b) => b.avg - a.avg);
 
   const rankText = ranked.map((x,i) =>
-    `<span style="font-size:10px;color:var(--muted)">${i+1}. <strong style="color:var(--text)">${x.label}</strong> ₨${ff(x.avg)}</span>`
+    `<span style="font-size:11px;color:var(--muted)">${i+1}. <strong style="color:var(--text)">${x.label}</strong> ₨${ff(x.avg)}</span>`
   ).join(' &nbsp;·&nbsp; ');
 
   el.innerHTML = `
@@ -722,7 +722,7 @@ function buildBestWorstPerYear() {
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px">
         <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
           <span>${yr}</span>
-          ${isCurrentYear ? '<span style="font-size:9px;background:var(--accent);color:#fff;padding:2px 7px;border-radius:99px;font-weight:600">LIVE</span>' : ''}
+          ${isCurrentYear ? '<span style="font-size:11px;background:var(--accent);color:#fff;padding:2px 7px;border-radius:99px;font-weight:600">LIVE</span>' : ''}
         </div>
 
         <div style="display:flex;flex-direction:column;gap:8px">
@@ -730,12 +730,12 @@ function buildBestWorstPerYear() {
           <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:rgba(5,150,105,.08);border:1px solid rgba(5,150,105,.2);border-radius:8px;cursor:pointer"
                onclick="openMonthModal('${best.Month_Year}')" title="Open ${best.Month_Year}">
             <div>
-              <div style="font-size:9px;font-weight:700;color:#059669;letter-spacing:.06em;text-transform:uppercase">🏆 Best</div>
+              <div style="font-size:11px;font-weight:700;color:#059669;letter-spacing:.06em;text-transform:uppercase">🏆 Best</div>
               <div style="font-size:13px;font-weight:700;color:var(--text);margin-top:2px">${bestMonth}</div>
             </div>
             <div style="text-align:right">
               <div style="font-size:14px;font-weight:700;font-family:var(--mono);color:#059669">₨${ff(bestTotal)}</div>
-              <div style="font-size:10px;color:var(--muted);margin-top:1px">👥 ${fc(n(best.Customers))}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:1px">👥 ${fc(n(best.Customers))}</div>
             </div>
           </div>
 
@@ -743,17 +743,17 @@ function buildBestWorstPerYear() {
           <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.15);border-radius:8px;cursor:pointer"
                onclick="openMonthModal('${worst.Month_Year}')" title="Open ${worst.Month_Year}">
             <div>
-              <div style="font-size:9px;font-weight:700;color:#dc2626;letter-spacing:.06em;text-transform:uppercase">📉 Slowest</div>
+              <div style="font-size:11px;font-weight:700;color:#dc2626;letter-spacing:.06em;text-transform:uppercase">📉 Slowest</div>
               <div style="font-size:13px;font-weight:700;color:var(--text);margin-top:2px">${worstMonth}</div>
             </div>
             <div style="text-align:right">
               <div style="font-size:14px;font-weight:700;font-family:var(--mono);color:#dc2626">₨${ff(worstTotal)}</div>
-              <div style="font-size:10px;color:var(--muted);margin-top:1px">👥 ${fc(n(worst.Customers))}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:1px">👥 ${fc(n(worst.Customers))}</div>
             </div>
           </div>
 
           <!-- Gap bar -->
-          <div style="font-size:9px;color:var(--muted);text-align:center;margin-top:2px">
+          <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:2px">
             Gap: <strong style="color:var(--text)">₨${ff(bestTotal - worstTotal)}</strong>
             &nbsp;·&nbsp; Best is <strong style="color:var(--text)">${bestTotal && worstTotal ? (bestTotal/worstTotal).toFixed(1) : '—'}×</strong> slowest
           </div>
@@ -765,7 +765,7 @@ function buildBestWorstPerYear() {
     <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:8px">
       <span>🏆 Best & Slowest Month — Per Year</span>
       <span style="flex:1;height:1px;background:var(--border);opacity:.4;display:inline-block"></span>
-      <span style="font-size:10px;font-weight:400;color:var(--muted)">tap to open month</span>
+      <span style="font-size:11px;font-weight:400;color:var(--muted)">tap to open month</span>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px">
       ${yearCards}
@@ -804,7 +804,7 @@ function printDashboardReport() {
     const label = card.querySelector('.klabel')?.textContent || '';
     const value = card.querySelector('.kvalue')?.textContent || '';
     const sub = card.querySelector('.kdelta')?.textContent || '';
-    return `<div class="pr-kpi"><div class="pr-kpi-l">${label}</div><div class="pr-kpi-v">${value}</div>${sub ? `<div style="font-size:9px;color:#64748b;margin-top:3px">${sub}</div>` : ''}</div>`;
+    return `<div class="pr-kpi"><div class="pr-kpi-l">${label}</div><div class="pr-kpi-v">${value}</div>${sub ? `<div style="font-size:11px;color:#64748b;margin-top:3px">${sub}</div>` : ''}</div>`;
   }).join('');
 
   const summaryTbl = tbl.outerHTML.replace('id="tbl-summary"', 'class="pr-tbl"');

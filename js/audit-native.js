@@ -133,7 +133,7 @@ function renderAssignmentsPage() {
           <span>${esc(a.auditorName)} · ${a.itemCount} lines</span>
           <span class="an-val-badge ${a.submitted ? 'an-val-green' : 'an-val-grey'}">${a.submitted ? 'Submitted' : esc(a.status)}</span>
         </div>
-        ${clickable ? `<div class="an-progress-track"><div class="an-progress-fill" style="width:${a.pct}%"></div></div><div style="font-size:10px;color:var(--muted);text-align:right">${a.counted}/${a.itemCount} · tap to peek at live counts →</div>` : ''}
+        ${clickable ? `<div class="an-progress-track"><div class="an-progress-fill" style="width:${a.pct}%"></div></div><div style="font-size:11px;color:var(--muted);text-align:right">${a.counted}/${a.itemCount} · tap to peek at live counts →</div>` : ''}
       </div>`;
     }).join('') || `<div style="font-size:12px;color:var(--muted);padding:6px 0">No assignments yet.</div>`;
 
@@ -235,7 +235,7 @@ function renderSnapshotModal() {
     return `<div class="an-movable-row">
       <span style="min-width:0">
         <div style="font-size:12px;font-weight:700;color:var(--text)">${esc(r.name)}</div>
-        <div style="font-size:10px;color:var(--muted)">${esc(r.company)} · Sys ${r.qty}</div>
+        <div style="font-size:11px;color:var(--muted)">${esc(r.company)} · Sys ${r.qty}</div>
       </span>
       <span style="text-align:right;font-weight:700">${r.hasCount ? r.counted : '<span style="color:var(--muted);font-weight:600">not yet</span>'}</span>
       <span style="text-align:right;min-width:36px">${varHtml}</span>
@@ -262,7 +262,7 @@ function renderSnapshotModal() {
       <button class="an-sort-btn" style="margin-left:auto" onclick="anCycleSnapshotSort()">↕️ ${sortLabel}</button>
     </div>
     ${snap.extraNote ? `<div style="background:#FFFBEB;border:1px solid #F59E0B;border-radius:8px;padding:8px 10px;margin-bottom:10px">
-      <div style="font-size:10.5px;font-weight:800;color:#B45309;text-transform:uppercase;margin-bottom:3px">Items found — not in system</div>
+      <div style="font-size:11px;font-weight:800;color:#B45309;text-transform:uppercase;margin-bottom:3px">Items found — not in system</div>
       <div style="font-size:12px;color:var(--text);white-space:pre-wrap">${esc(snap.extraNote)}</div></div>` : ''}
     <div style="max-height:42vh;overflow:auto;margin-bottom:10px">${rowsHtml || `<div style="font-size:12px;color:var(--muted);padding:10px 0">No items match this filter.</div>`}</div>
     <button class="an-btn-primary" style="width:100%" onclick="anRefreshSnapshot()">🔄 Refresh</button>`;

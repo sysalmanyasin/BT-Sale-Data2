@@ -346,9 +346,9 @@ function strZdPrint() {
           </div>
           <table style="width:100%;border-collapse:collapse;border:1px solid #ddd">
             <thead><tr style="background:#111;color:#fff">
-              <th style="padding:5px;font-size:10px;text-align:center;border:1px solid #333">Sr#</th>
-              <th style="padding:5px;font-size:10px;text-align:left;border:1px solid #333">Product</th>
-              ${cols.map(c => `<th style="padding:5px;font-size:10px;text-align:center;border:1px solid #333">${c.label}</th>`).join('')}
+              <th style="padding:5px;font-size:11px;text-align:center;border:1px solid #333">Sr#</th>
+              <th style="padding:5px;font-size:11px;text-align:left;border:1px solid #333">Product</th>
+              ${cols.map(c => `<th style="padding:5px;font-size:11px;text-align:center;border:1px solid #333">${c.label}</th>`).join('')}
             </tr></thead>
             <tbody>${groupsHtml}</tbody>
           </table>

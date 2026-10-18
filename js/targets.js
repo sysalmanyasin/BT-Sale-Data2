@@ -45,7 +45,7 @@ function renderTargetList() {
       <span style="font-family:var(--mono);font-size:11px;color:var(--muted)">₨${fc(t[mon])}</span>
       <div style="flex:1;background:var(--border);border-radius:99px;height:5px;overflow:hidden"><div style="height:100%;width:${p}%;background:${c};border-radius:99px"></div></div>
       <span style="font-size:11px;font-weight:600;color:${c}">${p}%</span>
-      <button class="btn btn-d" style="padding:2px 7px;font-size:10px" onclick="delTarget('${mon}')">✕</button>
+      <button class="btn btn-d" style="padding:2px 7px;font-size:11px" onclick="delTarget('${mon}')">✕</button>
     </div>`;
   }).join('');
 }

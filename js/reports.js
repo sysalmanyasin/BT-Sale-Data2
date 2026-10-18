@@ -177,7 +177,7 @@ function openMonthModal(my) {
       <tbody>${days.map(d=>`<tr class="cl" onclick="openDayFromMonth('${d.Date}','${my}')">
         <td>${d.Date}</td><td>₨${fc(n(d.TOTAL))}</td><td>${fc(n(d.Customers))}</td>
         <td>${n(d['F/Issue'])?'₨'+fc(n(d['F/Issue'])):'—'}</td>
-        <td style="text-align:left;font-size:10px;color:var(--muted)">${d['Low Sale Reason']||''}</td>
+        <td style="text-align:left;font-size:11px;color:var(--muted)">${d['Low Sale Reason']||''}</td>
         <td class="no-print"><button onclick="event.stopPropagation();closeMon();setTimeout(()=>openEditModal('${d.Date}','${my}'),220)" title="Edit ${d.Date}" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(217,119,6,.3);background:var(--alt);color:#d97706;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">✏️</button></td>
       </tr>`).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:18px">No daily data</td></tr>'}
       </tbody></table>
@@ -371,31 +371,31 @@ function renderReport() {
       <div class="rheader">BAHRIA TOWN SALE REPORT</div>
       <div class="rdate-row"><span>Date:</span><span style="color:#c00">${_selDate}</span></div>
       <div class="rsec">Cash Sale:</div>
-      ${rreq('cashSale','Cash Sale <small style="font-size:10px;color:#888">(Sales Only)</small>',r.cashSale)}
+      ${rreq('cashSale','Cash Sale <small style="font-size:11px;color:#888">(Sales Only)</small>',r.cashSale)}
       ${rreq('meezan','Meezan Bank',r.meezan)}
       ${rreq('alfalah','Bank Alfalah',r.alfalah)}
       ${rreq('alHabib','Bank Al Habib',r.alHabib)}
       ${ropt('hbl','HBL',r.hbl)}${ropt('mcb','MCB',r.mcb)}
-      ${rreq('cashRet','Cash Returns <small style="font-size:10px;color:#888">(Returns Only)</small>',r.cashRet)}
+      ${rreq('cashRet','Cash Returns <small style="font-size:11px;color:#888">(Returns Only)</small>',r.cashRet)}
       ${r.customRows.filter(c=>c.cash).map(c=>vis(c.id)&&c.value!==0?rrow(c.label,c.value):'').join('')}
       <div class="rnet"><span>Net Cash Sale:</span><span class="rv">${fv(r.netCash)}</span></div>
       <div class="rsec">Credit Sale:</div>
-      ${rreq('pso','PSO <small style="font-size:10px;color:#888">(Sales Only)</small>',r.pso)}
-      ${rreq('nespak','Nespak <small style="font-size:10px;color:#888">(Sales Only)</small>',r.nespak)}
-      ${rreq('parco','Parco <small style="font-size:10px;color:#888">(Sales Only)</small>',r.parco)}
+      ${rreq('pso','PSO <small style="font-size:11px;color:#888">(Sales Only)</small>',r.pso)}
+      ${rreq('nespak','Nespak <small style="font-size:11px;color:#888">(Sales Only)</small>',r.nespak)}
+      ${rreq('parco','Parco <small style="font-size:11px;color:#888">(Sales Only)</small>',r.parco)}
       ${rreq('askari','Askari',r.askari)}
-      ${rreq('lda','LDA <small style="font-size:10px;color:#888">(Sales Only)</small>',r.lda)}
+      ${rreq('lda','LDA <small style="font-size:11px;color:#888">(Sales Only)</small>',r.lda)}
       ${rreq('tepa','Tepa',r.tepa)}
       ${rreq('fissue','Free Issue',r.fissue)}
       ${ropt('gourmet','Gourmet',r.gourmet)}${ropt('wapda','Wapda Hospital',r.wapda)}${ropt('bth','BTH',r.bth)}
       ${ropt('berger','Berger Paints',r.berger)}${ropt('ecolean','Ecolean PK',r.ecolean)}${ropt('style_t','Style Textile',r.style_t)}
       ${ropt('babar','Syed Babar Ali Foundation',r.babar)}${ropt('rahnuma','Rahnuma NGO',r.rahnuma)}${ropt('healthP','Health Pass',r.healthP)}
       ${ropt('nisar','Nisar Spinning Mills',r.nisar)}${ropt('foodP','Food Panda',r.foodP)}
-      ${rreq('psoRet','Credit Return PSO <small style="font-size:10px;color:#888">(Returns Only)</small>',r.psoRet)}
-      ${rreq('nespakRet','Credit Return Nespak <small style="font-size:10px;color:#888">(Returns Only)</small>',r.nespakRet)}
-      ${rreq('parcoRet','Credit Return Parco <small style="font-size:10px;color:#888">(Returns Only)</small>',r.parcoRet)}
-      ${rreq('tepaRet','Credit Return Tepa <small style="font-size:10px;color:#888">(Returns Only)</small>',r.tepaRet)}
-      ${rreq('ldaRet','Credit Return LDA <small style="font-size:10px;color:#888">(Returns Only)</small>',r.ldaRet)}
+      ${rreq('psoRet','Credit Return PSO <small style="font-size:11px;color:#888">(Returns Only)</small>',r.psoRet)}
+      ${rreq('nespakRet','Credit Return Nespak <small style="font-size:11px;color:#888">(Returns Only)</small>',r.nespakRet)}
+      ${rreq('parcoRet','Credit Return Parco <small style="font-size:11px;color:#888">(Returns Only)</small>',r.parcoRet)}
+      ${rreq('tepaRet','Credit Return Tepa <small style="font-size:11px;color:#888">(Returns Only)</small>',r.tepaRet)}
+      ${rreq('ldaRet','Credit Return LDA <small style="font-size:11px;color:#888">(Returns Only)</small>',r.ldaRet)}
       ${ropt('askariRet','Askari Returns',r.askariRet)}
       ${r.customRows.filter(c=>!c.cash).map(c=>vis(c.id)&&c.value!==0?rrow(c.label,c.value):'').join('')}
       <div class="rnet"><span>Net Credit Sale:</span><span class="rv">${fv(r.netCredit)}</span></div>

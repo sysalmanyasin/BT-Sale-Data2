@@ -86,7 +86,7 @@ function renderSalaryTable(rows) {
     const _sNameCell = '<div style="display:flex;align-items:center;gap:5px">'
       + (_sSid
           ? '<button onclick="openStaffCard('+_sIdx+')" title="Open '+_mgrEsc(_sName||'Staff')+' Card"'
-            + ' style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:10px;font-weight:700;font-family:monospace;flex-shrink:0">'+_sSid+'</button>'
+            + ' style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:11px;font-weight:700;font-family:monospace;flex-shrink:0">'+_sSid+'</button>'
           : '')
       + '<span style="font-weight:600">'+(_mgrEsc(_sName) || '<em style="color:var(--muted)">(unnamed)</em>')+'</span></div>';
     // Days input: use ?? not || — "Copy → Next Month" intentionally resets
@@ -101,7 +101,7 @@ function renderSalaryTable(rows) {
       <td class="mgr-td" style="color:var(--t2)">${_mgrEsc(_sDesig) || '<span style="color:var(--muted)">—</span>'}</td>
       <td class="mgr-td sal-c" style="width:88px"><input type="number" value="${r.days ?? 31}" class="mgr-inp sal-num" placeholder="31" oninput="salRowChange(${i},'days',this.value)"></td>
       <td class="mgr-td"><input type="number" value="${r.hoSal||0}" class="mgr-inp sal-num" placeholder="0" oninput="salRowChange(${i},'hoSal',this.value);recalcSalNet(${i})"></td>
-      <td class="mgr-td" ${_advTitle ? 'title="'+_advTitle+'" style="position:relative"' : ''}><input type="number" value="${r.advance||0}" class="mgr-inp sal-num${_advTitle?' sal-adv-linked':''}" placeholder="0" oninput="salRowChange(${i},'advance',this.value);recalcSalNet(${i})">${_advTitle ? '<span style="position:absolute;top:2px;right:3px;font-size:9px;color:var(--accent);pointer-events:none" title="'+_advTitle+'">💳</span>' : ''}</td>
+      <td class="mgr-td" ${_advTitle ? 'title="'+_advTitle+'" style="position:relative"' : ''}><input type="number" value="${r.advance||0}" class="mgr-inp sal-num${_advTitle?' sal-adv-linked':''}" placeholder="0" oninput="salRowChange(${i},'advance',this.value);recalcSalNet(${i})">${_advTitle ? '<span style="position:absolute;top:2px;right:3px;font-size:11px;color:var(--accent);pointer-events:none" title="'+_advTitle+'">💳</span>' : ''}</td>
       <td class="mgr-td"><input type="number" value="${r.generic||0}" class="mgr-inp sal-num" placeholder="0" oninput="salRowChange(${i},'generic',this.value);recalcSalNet(${i})"></td>
       ${_cols.map(c => `<td class="mgr-td"><input type="number" value="${_ni(r.extras.find(e => e.id === c.id)?.amount) || 0}" class="mgr-inp sal-num" placeholder="0" oninput="salExtraChange(${i},'${c.id}',this.value);recalcSalNet(${i})"></td>`).join('')}
       <td class="mgr-td"><input type="number" id="sal-net-${i}" class="mgr-inp calc sal-num" value="${_salNet(r)}" readonly></td>

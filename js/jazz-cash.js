@@ -244,7 +244,7 @@ function _renderTally() {
         <div><span style="opacity:.7">Expense App says</span><br><span style="font-weight:700;font-family:var(--mono)">₨${_jcFmt(appTarget)}</span></div>
         <div><span style="opacity:.7">Difference</span><br>
           <span style="font-weight:700;font-family:var(--mono);color:${diff>=0?'#86efac':'#fca5a5'}">${diff>=0?'+':'−'}₨${_jcFmt(Math.abs(diff))}</span>
-          ${diff===0?'<span style="font-size:10px;margin-left:5px;background:rgba(255,255,255,.2);padding:1px 6px;border-radius:4px">✓ Perfect</span>':diff>0?'<span style="font-size:10px;margin-left:5px;opacity:.7">extra</span>':'<span style="font-size:10px;margin-left:5px;opacity:.7">short</span>'}
+          ${diff===0?'<span style="font-size:11px;margin-left:5px;background:rgba(255,255,255,.2);padding:1px 6px;border-radius:4px">✓ Perfect</span>':diff>0?'<span style="font-size:11px;margin-left:5px;opacity:.7">extra</span>':'<span style="font-size:11px;margin-left:5px;opacity:.7">short</span>'}
         </div>
       </div>
     </div>
@@ -332,7 +332,7 @@ function _tallyAccountsHtml(accounts,jcBal) {
     <div class="tally-acc-row" data-acid="${a.id}" style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);${a.id==='jc_balance'?'background:#f0fdf4':''}">
       <div style="font-size:13px;font-weight:${a.id==='jc_balance'?'700':'500'};color:${a.id==='jc_balance'?'var(--green)':'var(--text)'}">
         ${a.id==='jc_balance'?'📒 ':''}${a.name}
-        ${a.id==='jc_balance'?'<span style="font-size:10px;font-weight:400;color:var(--muted);margin-left:4px">(auto from ledger)</span>':''}
+        ${a.id==='jc_balance'?'<span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:4px">(auto from ledger)</span>':''}
       </div>
       <input type="number" value="${a.id==='jc_balance'?jcBal:(a.amount||'')}"
         ${a.id==='jc_balance'?'readonly':''} placeholder="0"

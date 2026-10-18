@@ -48,7 +48,7 @@ function renderGenericTable(rows) {
     const _gNameCell = '<div style="display:flex;align-items:center;gap:5px">'
       + (_gSid
           ? '<button onclick="openStaffCard('+_gIdx+')" title="Open '+_mgrEsc(_gName||'Staff')+' Card"'
-            + ' style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:10px;font-weight:700;font-family:monospace;flex-shrink:0">'+_gSid+'</button>'
+            + ' style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:11px;font-weight:700;font-family:monospace;flex-shrink:0">'+_gSid+'</button>'
           : '')
       + '<span style="font-weight:600">'+(_mgrEsc(_gName) || '<em style="color:var(--muted)">(unnamed)</em>')+'</span></div>';
     return `<tr class="mgr-tr">

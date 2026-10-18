@@ -112,7 +112,7 @@ export const ActivityLog = (function () {
 
   const LEDGER_TYPE_LABELS = { jazzcash: 'Jazz Cash', petty: 'Petty / Expenses', expense: 'Expense' };
   function _ledgerTypeLabel(t) { return LEDGER_TYPE_LABELS[t] || (t ? t.charAt(0).toUpperCase() + t.slice(1) : 'Custom'); }
-  function _fmtAmount(n) { return 'Rs. ' + (Number(n) || 0).toLocaleString('en-PK'); }
+  function _fmtAmount(n) { return '₨ ' + (Number(n) || 0).toLocaleString('en-PK'); }
 
   // ── Record + push one entry ──────────────────────────────────────
   function _record(section, action, summary, details) {

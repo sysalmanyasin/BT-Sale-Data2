@@ -45,7 +45,7 @@ function _rowHtml(h, itemCount) {
   return `<tr class="str-row" onclick="strOpenDetail(${h.strId})">
     <td>
       <div style="font-size:13px;font-weight:700;color:var(--text)">${S.esc(h.strNumber || '—')}</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:2px">Master ${S.esc(h.masterStrId || '—')}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px">Master ${S.esc(h.masterStrId || '—')}</div>
     </td>
     <td style="font-size:12px;color:var(--text)">${S.fmtDate(h.strDate)}</td>
     <td style="font-size:11.5px;color:var(--t2)">${S.esc(h.dispatchBranch || '—')} → ${S.esc(h.receiveBranch || '—')}</td>
@@ -334,13 +334,13 @@ function strPrintDetail() {
     </table>
     <table style="width:100%;border-collapse:collapse;border:1px solid #ddd">
       <thead><tr style="background:#111;color:#fff">
-        <th style="padding:6px;font-size:10.5px;text-align:center;border:1px solid #333">Sr#</th>
-        <th style="padding:6px;font-size:10.5px;text-align:left;border:1px solid #333">Product</th>
-        <th style="padding:6px;font-size:10.5px;text-align:center;border:1px solid #333">R. Price</th>
-        <th style="padding:6px;font-size:10.5px;text-align:center;border:1px solid #333">STR Qty</th>
-        <th style="padding:6px;font-size:10.5px;text-align:center;border:1px solid #333">Dispatch Qty</th>
-        <th style="padding:6px;font-size:10.5px;text-align:center;border:1px solid #333">Receive Qty</th>
-        <th style="padding:6px;font-size:10.5px;text-align:center;border:1px solid #333">Difference</th>
+        <th style="padding:6px;font-size:11px;text-align:center;border:1px solid #333">Sr#</th>
+        <th style="padding:6px;font-size:11px;text-align:left;border:1px solid #333">Product</th>
+        <th style="padding:6px;font-size:11px;text-align:center;border:1px solid #333">R. Price</th>
+        <th style="padding:6px;font-size:11px;text-align:center;border:1px solid #333">STR Qty</th>
+        <th style="padding:6px;font-size:11px;text-align:center;border:1px solid #333">Dispatch Qty</th>
+        <th style="padding:6px;font-size:11px;text-align:center;border:1px solid #333">Receive Qty</th>
+        <th style="padding:6px;font-size:11px;text-align:center;border:1px solid #333">Difference</th>
       </tr></thead>
       <tbody>${groupsHtml || `<tr><td colspan="7" style="padding:12px;text-align:center;color:#888;font-size:11px;border:1px solid #ddd">No line items synced for this STR</td></tr>`}</tbody>
       <tfoot><tr style="border-top:2px solid #111">

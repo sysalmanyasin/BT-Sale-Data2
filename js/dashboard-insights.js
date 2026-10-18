@@ -50,7 +50,7 @@
   pointer-events: none;
 }
 .dbi-briefing-label {
-  font-size: 9px; font-weight: 700; letter-spacing: .1em;
+  font-size:11px; font-weight: 700; letter-spacing: .1em;
   text-transform: uppercase; color: #7dd3fc; margin-bottom: 6px;
   display: flex; align-items: center; gap: 6px;
 }
@@ -121,7 +121,7 @@
   transition: height .4s ease;
 }
 .dbi-pace-pct {
-  font-size: 10px; font-weight: 700; color: var(--muted);
+  font-size:11px; font-weight: 700; color: var(--muted);
 }
 
 /* ── Insight strip ── */
@@ -180,14 +180,21 @@
   gap: 6px;
 }
 .dbi-rule-alert {
-  background: #fff7ed;
-  border: 1px solid #fed7aa;
+  /* Severity-coded (rules-engine.js ranks red > amber > info) and built on
+     the theme tokens so alerts also work in dark mode. Default = amber. */
+  --sev: var(--amber);
+  --sev-bg: var(--alt2);
+  background: var(--sev-bg);
+  border: 1px solid color-mix(in srgb, var(--sev) 35%, var(--border));
+  border-left: 4px solid var(--sev);
   border-radius: 9px;
   padding: 8px 12px;
   font-size: 12.5px;
-  color: #92400e;
+  color: var(--text);
   line-height: 1.5;
 }
+.dbi-rule-alert[data-sev="red"]  { --sev: var(--red);    --sev-bg: var(--rlt); }
+.dbi-rule-alert[data-sev="info"] { --sev: var(--accent); --sev-bg: var(--alt); }
 `;
   document.head.appendChild(el);
 })();
@@ -481,9 +488,10 @@ function _dbiBuildRuleAlerts() {
   try { fired = aimRulesCheckAll(); } catch(_) {}
   if (!fired.length) return '';
 
-  const items = fired.map(f =>
-    `<div class="dbi-rule-alert">${f.msg}</div>`
-  ).join('');
+  const items = fired.map(f => {
+    const sev = ['red', 'amber', 'info'].includes(f.severity) ? f.severity : 'amber';
+    return `<div class="dbi-rule-alert" data-sev="${sev}">${f.msg}</div>`;
+  }).join('');
   return `<div class="dbi-rules-stack">${items}</div>`;
 }
 

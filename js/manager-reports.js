@@ -116,15 +116,15 @@ function printSalaryReport() {
     </div>
     <table style="width:100%;border-collapse:collapse;font-size:12px">
       <thead><tr style="background:#f8fafc">
-        <th style="padding:7px 8px;text-align:left;border-bottom:2px solid #000;font-size:10px">#</th>
-        <th style="padding:7px 8px;text-align:left;border-bottom:2px solid #000;font-size:10px">Name</th>
-        <th style="padding:7px 8px;text-align:left;border-bottom:2px solid #000;font-size:10px">Designation</th>
-        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">Days</th>
-        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">HO Salary</th>
-        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">Advance</th>
-        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">Generic</th>
-        ${xcols.map(c => `<th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">${_mgrEsc(c.name)} (${c.sign === '-' ? '−' : '+'})</th>`).join('')}
-        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">Net Salary</th>
+        <th style="padding:7px 8px;text-align:left;border-bottom:2px solid #000;font-size:11px">#</th>
+        <th style="padding:7px 8px;text-align:left;border-bottom:2px solid #000;font-size:11px">Name</th>
+        <th style="padding:7px 8px;text-align:left;border-bottom:2px solid #000;font-size:11px">Designation</th>
+        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:11px">Days</th>
+        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:11px">HO Salary</th>
+        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:11px">Advance</th>
+        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:11px">Generic</th>
+        ${xcols.map(c => `<th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:11px">${_mgrEsc(c.name)} (${c.sign === '-' ? '−' : '+'})</th>`).join('')}
+        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:11px">Net Salary</th>
       </tr></thead>
       <tbody>${trows}</tbody>
       <tfoot><tr style="background:#eff6ff">
@@ -156,13 +156,13 @@ function printGenericReport() {
     </div>
     <table style="width:100%;border-collapse:collapse;font-size:12px">
       <thead><tr style="background:#f8fafc">
-        <th style="padding:7px 8px;text-align:left;border-bottom:2px solid #000;font-size:10px">#</th>
-        <th style="padding:7px 8px;text-align:left;border-bottom:2px solid #000;font-size:10px">Name</th>
-        <th style="padding:7px 8px;text-align:left;border-bottom:2px solid #000;font-size:10px">Designation</th>
-        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">Generic Sale</th>
-        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">Incentive (4%)</th>
-        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">Extra</th>
-        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:10px">Final</th>
+        <th style="padding:7px 8px;text-align:left;border-bottom:2px solid #000;font-size:11px">#</th>
+        <th style="padding:7px 8px;text-align:left;border-bottom:2px solid #000;font-size:11px">Name</th>
+        <th style="padding:7px 8px;text-align:left;border-bottom:2px solid #000;font-size:11px">Designation</th>
+        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:11px">Generic Sale</th>
+        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:11px">Incentive (4%)</th>
+        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:11px">Extra</th>
+        <th style="padding:7px 8px;text-align:right;border-bottom:2px solid #000;font-size:11px">Final</th>
       </tr></thead>
       <tbody>${trows}</tbody>
       <tfoot><tr style="background:#eff6ff">
@@ -260,10 +260,10 @@ function printCreditSummaryReport(myArg) {
     </div>
     <table style="width:100%;border-collapse:collapse;font-size:12px">
       <thead><tr style="background:#f8fafc">
-        <th style="padding:7px 10px;text-align:left;border-bottom:2px solid #000;font-size:10px">Employee</th>
-        <th style="padding:7px 10px;text-align:right;border-bottom:2px solid #000;font-size:10px">Prev Balance</th>
-        <th style="padding:7px 10px;text-align:right;border-bottom:2px solid #000;font-size:10px">Entries</th>
-        <th style="padding:7px 10px;text-align:right;border-bottom:2px solid #000;font-size:10px">Net Balance</th>
+        <th style="padding:7px 10px;text-align:left;border-bottom:2px solid #000;font-size:11px">Employee</th>
+        <th style="padding:7px 10px;text-align:right;border-bottom:2px solid #000;font-size:11px">Prev Balance</th>
+        <th style="padding:7px 10px;text-align:right;border-bottom:2px solid #000;font-size:11px">Entries</th>
+        <th style="padding:7px 10px;text-align:right;border-bottom:2px solid #000;font-size:11px">Net Balance</th>
       </tr></thead>
       <tbody>${rows || '<tr><td colspan="4" style="padding:10px;text-align:center;color:#94a3b8">No staff credit data for this month</td></tr>'}</tbody>
       <tfoot><tr style="background:#eff6ff">

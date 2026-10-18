@@ -51,11 +51,11 @@ function _buildDayTable(monthYear) {
     <table style="width:100%;border-collapse:collapse;font-size:12px">
       <thead>
         <tr style="border-bottom:1px solid var(--border)">
-          <th style="padding:6px 12px;text-align:left;font-weight:700;color:var(--muted);font-size:10px;letter-spacing:.06em;text-transform:uppercase">Date</th>
-          <th style="padding:6px 12px;text-align:right;font-weight:700;color:var(--muted);font-size:10px;letter-spacing:.06em;text-transform:uppercase">Total Sale</th>
-          <th style="padding:6px 12px;text-align:right;font-weight:700;color:var(--muted);font-size:10px;letter-spacing:.06em;text-transform:uppercase">COMP SALE</th>
-          <th style="padding:6px 12px;text-align:right;font-weight:700;color:var(--muted);font-size:10px;letter-spacing:.06em;text-transform:uppercase">Difference</th>
-          <th style="padding:6px 12px;text-align:right;font-weight:700;color:var(--muted);font-size:10px;letter-spacing:.06em;text-transform:uppercase">Running Total</th>
+          <th style="padding:6px 12px;text-align:left;font-weight:700;color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase">Date</th>
+          <th style="padding:6px 12px;text-align:right;font-weight:700;color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase">Total Sale</th>
+          <th style="padding:6px 12px;text-align:right;font-weight:700;color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase">COMP SALE</th>
+          <th style="padding:6px 12px;text-align:right;font-weight:700;color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase">Difference</th>
+          <th style="padding:6px 12px;text-align:right;font-weight:700;color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase">Running Total</th>
         </tr>
       </thead>
       <tbody>${dayRows}</tbody>
@@ -151,11 +151,11 @@ function renderDiffReport() {
       <div style="display:flex;gap:20px;flex-wrap:wrap">
         <div style="text-align:center">
           <div style="font-size:16px;font-weight:700;font-family:var(--mono);color:var(--text)">${nMonths}</div>
-          <div style="font-size:10px;color:var(--muted);margin-top:2px">Months</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Months</div>
         </div>
         <div style="text-align:center">
           <div style="font-size:16px;font-weight:700;font-family:var(--mono);color:${bannerText}">${avgSign}₨${fc(avgDiff)}</div>
-          <div style="font-size:10px;color:var(--muted);margin-top:2px">Avg / Month</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Avg / Month</div>
         </div>
       </div>
     </div>

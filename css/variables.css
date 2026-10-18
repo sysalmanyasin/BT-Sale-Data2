@@ -31,6 +31,11 @@
      dialog chrome) so those surfaces stay on-brand instead of each
      hand-rolling a slightly-different navy/blue gradient. */
   --grad-header:linear-gradient(135deg,#141b3d,var(--accent-dk) 65%,var(--accent));
+  /* Inventory status palette — ONE meaning per colour, reused by every chart
+     and badge (Cover donut, Inventory Health, Stock Ledger tags). Aliases of
+     the semantic hues above, so dark mode follows automatically. */
+  --st-healthy:var(--green);--st-reorder:var(--amber);--st-excess:var(--accent);
+  --st-dead:var(--red);--st-never:var(--purple);--st-zero:var(--muted);
 }
 /* ── Dark mode — Aug 2026 ────────────────────────────────────────────
    Overrides the same custom-property names on :root (root = <html>),

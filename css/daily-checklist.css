@@ -15,7 +15,7 @@
 #page-dailychecklist .dcl-fill{height:100%;width:0;background:linear-gradient(90deg,var(--dc-green),var(--dc-deep));transition:width .4s}
 #page-dailychecklist .dcl-plabel{font-size:11.5px;color:var(--dc-muted);font-weight:600;white-space:nowrap}
 #page-dailychecklist .dcl-meta{background:var(--dc-card);border:1px solid var(--dc-line);border-radius:12px;padding:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px 20px;margin-bottom:14px}
-#page-dailychecklist .dcl-mf label,#page-dailychecklist .dcl-stat label{display:block;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--dc-faint);margin-bottom:5px;font-weight:700}
+#page-dailychecklist .dcl-mf label,#page-dailychecklist .dcl-stat label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--dc-faint);margin-bottom:5px;font-weight:700}
 #page-dailychecklist .dcl-mf input{width:100%;border:none;border-bottom:1.5px solid var(--dc-line);padding:4px 2px 6px;font-size:14.5px;font-weight:600;color:var(--dc-deep);background:transparent}
 [data-theme="dark"] #page-dailychecklist .dcl-mf input{color:var(--dc-green)}
 #page-dailychecklist .dcl-wrap{display:flex;align-items:flex-start;gap:16px}
@@ -62,7 +62,7 @@
 #page-dailychecklist .dcl-sub i{font-size:11.5px;color:var(--dc-faint);text-transform:none;letter-spacing:0}
 #page-dailychecklist .dcl-tscroll{overflow-x:auto}
 #page-dailychecklist .dcl-table{width:100%;border-collapse:collapse;min-width:520px}
-#page-dailychecklist .dcl-table th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--dc-faint);padding:8px 10px;border-bottom:1.5px solid var(--dc-line)}
+#page-dailychecklist .dcl-table th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--dc-faint);padding:8px 10px;border-bottom:1.5px solid var(--dc-line)}
 #page-dailychecklist .dcl-table td{padding:6px 8px;border-bottom:1px solid var(--dc-line)}
 #page-dailychecklist .dcl-table td input{padding:6px 8px;font-size:13px}
 #page-dailychecklist .dcl-add{margin-top:8px;border-style:dashed;background:var(--dc-tint)}
@@ -70,7 +70,7 @@
 #page-dailychecklist .dcl-sigline{border-bottom:1.5px solid var(--dc-ink);height:44px;display:flex;align-items:flex-end;padding-bottom:4px;font-style:italic;color:var(--dc-muted)}
 #page-dailychecklist .dcl-snap{position:sticky;bottom:0;z-index:5;background:var(--dc-deep);color:#EFFFF3;padding:10px 16px;border-radius:12px;display:flex;gap:22px;justify-content:center;flex-wrap:wrap;box-shadow:0 -6px 20px rgba(0,0,0,.18)}
 #page-dailychecklist .dcl-snap div{display:flex;align-items:baseline;gap:7px}
-#page-dailychecklist .dcl-snap span{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:#9FC4AA}
+#page-dailychecklist .dcl-snap span{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#9FC4AA}
 #page-dailychecklist .dcl-snap b{font-family:var(--mono,monospace);font-size:15px}
 #page-dailychecklist .dcl-toast{position:fixed;top:80px;left:50%;transform:translate(-50%,-10px);background:var(--dc-deep);color:#EFFFF3;padding:10px 18px;border-radius:9px;font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:9500}
 #page-dailychecklist .dcl-toast.show{opacity:1;transform:translate(-50%,0)}

@@ -301,7 +301,7 @@ function renderEntryList() {
       <span style="font-size:12px">${e.Month_Year}</span>
       <span style="font-family:var(--mono);font-size:12px">₨${fc(n(e.TOTAL))}</span>
       <span style="color:var(--muted);font-size:12px">👥${fc(n(e.Customers))}</span>
-      <button class="btn btn-d" style="padding:2px 8px;font-size:10px;margin-left:auto" onclick="delEntry(${i})">✕</button>
+      <button class="btn btn-d" style="padding:2px 8px;font-size:11px;margin-left:auto" onclick="delEntry(${i})">✕</button>
     </div>`).join('');
 }
 

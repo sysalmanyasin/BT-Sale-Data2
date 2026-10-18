@@ -367,9 +367,9 @@ body.aic-open .ag-fab{display:none}
   .aic-hdr{padding:8px 0 10px}
   .aic-hr1{align-items:center;gap:8px}
   .aic-hr1 h1{font-size:12px;letter-spacing:.15em}
-  .aic-live{font-size:10px;letter-spacing:.07em}
+  .aic-live{font-size:11px;letter-spacing:.07em}
   .aic-tele{gap:6px;margin-top:8px}
-  .aic-chip{padding:5px 8px;font-size:10px}
+  .aic-chip{padding:5px 8px;font-size:11px}
   .aic-card{padding:13px;border-radius:12px}
   .aic-sh{align-items:flex-start;margin-bottom:10px}
   .aic-sh h2{font-size:11px;letter-spacing:.1em}
@@ -383,7 +383,7 @@ body.aic-open .ag-fab{display:none}
   .aic-evi{grid-template-columns:58px minmax(0,1fr);gap:8px;font-size:12px}
   .aic-evi>:last-child{grid-column:2}
   .aic-evi .aic-sub{grid-column:2}
-  .aic-evi time{font-size:10px}
+  .aic-evi time{font-size:11px}
   .aic-filters{gap:6px}
   .aic-filters button{min-height:38px;padding-inline:10px}
   .aic-twrap table{min-width:500px}

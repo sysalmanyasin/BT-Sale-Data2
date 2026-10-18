@@ -98,9 +98,9 @@ function renderCreditLedger(emps) {
           <div style="padding:0 14px 14px">
           <table style="width:100%;border-collapse:collapse;min-width:420px;border:1px solid var(--border)">
             <thead><tr style="background:var(--accent);color:#fff">
-              <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.06em;border:1px solid rgba(255,255,255,.2)">Date</th>
-              <th style="padding:7px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.06em;border:1px solid rgba(255,255,255,.2)">Description</th>
-              <th style="padding:7px 10px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:.06em;border:1px solid rgba(255,255,255,.2)">Amount (₨)</th>
+              <th style="padding:7px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em;border:1px solid rgba(255,255,255,.2)">Date</th>
+              <th style="padding:7px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em;border:1px solid rgba(255,255,255,.2)">Description</th>
+              <th style="padding:7px 10px;text-align:center;font-size:11px;text-transform:uppercase;letter-spacing:.06em;border:1px solid rgba(255,255,255,.2)">Amount (₨)</th>
               <th style="padding:7px 10px;border:1px solid rgba(255,255,255,.2)"></th>
             </tr></thead>
             <tbody id="crd-tbody-${ei}">${entryRowsFor(emp, ei)}</tbody>

@@ -134,7 +134,7 @@ function renderPettyGroups() {
     return `
     <div class="petty-group" id="petty-grp-${gi}">
       <div class="petty-group-hd">
-        <span style="font-size:10px;font-weight:700;color:var(--accent);letter-spacing:.05em">GROUP ${gi + 1}</span>
+        <span style="font-size:11px;font-weight:700;color:var(--accent);letter-spacing:.05em">GROUP ${gi + 1}</span>
         <input class="mgr-inp" type="text" value="${(g.period||'').replace(/"/g,'&quot;')}" placeholder="Period / Date range (e.g. 1–7 June 2026)"
           oninput="pettyRowChange_period(${gi},this.value)"
           style="flex:1;max-width:320px">
@@ -143,10 +143,10 @@ function renderPettyGroups() {
       <div class="petty-group-body">
         <table style="width:100%;border-collapse:collapse;font-size:12px">
           <thead><tr style="background:var(--s2)">
-            <th style="padding:6px 8px;text-align:left;font-size:10px;color:var(--muted);border-bottom:2px solid var(--border)">#</th>
-            <th style="padding:6px 8px;text-align:left;font-size:10px;color:var(--muted);border-bottom:2px solid var(--border)">Description</th>
-            <th style="padding:6px 8px;text-align:right;font-size:10px;color:var(--muted);border-bottom:2px solid var(--border)">Amount (₨)</th>
-            <th style="padding:6px 8px;text-align:center;font-size:10px;color:var(--muted);border-bottom:2px solid var(--border)">Del</th>
+            <th style="padding:6px 8px;text-align:left;font-size:11px;color:var(--muted);border-bottom:2px solid var(--border)">#</th>
+            <th style="padding:6px 8px;text-align:left;font-size:11px;color:var(--muted);border-bottom:2px solid var(--border)">Description</th>
+            <th style="padding:6px 8px;text-align:right;font-size:11px;color:var(--muted);border-bottom:2px solid var(--border)">Amount (₨)</th>
+            <th style="padding:6px 8px;text-align:center;font-size:11px;color:var(--muted);border-bottom:2px solid var(--border)">Del</th>
           </tr></thead>
           <tbody>${rows}</tbody>
         </table>
@@ -186,9 +186,9 @@ function _pettyGroupBlockHTML(g, gi) {
     </div>
     <table style="width:100%;border-collapse:collapse;font-size:12px">
       <thead><tr style="background:#f8fafc">
-        <th style="padding:5px 8px;text-align:left;border-bottom:1px solid #d1d5db;font-size:10px">#</th>
-        <th style="padding:5px 8px;text-align:left;border-bottom:1px solid #d1d5db;font-size:10px">Description</th>
-        <th style="padding:5px 8px;text-align:right;border-bottom:1px solid #d1d5db;font-size:10px">Amount</th>
+        <th style="padding:5px 8px;text-align:left;border-bottom:1px solid #d1d5db;font-size:11px">#</th>
+        <th style="padding:5px 8px;text-align:left;border-bottom:1px solid #d1d5db;font-size:11px">Description</th>
+        <th style="padding:5px 8px;text-align:right;border-bottom:1px solid #d1d5db;font-size:11px">Amount</th>
       </tr></thead>
       <tbody>${rows}</tbody>
       <tfoot><tr style="background:#eff6ff">

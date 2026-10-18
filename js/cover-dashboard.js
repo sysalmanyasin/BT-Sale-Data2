@@ -10,6 +10,7 @@ import * as SalePaymentsBridge from './sale-payments-bridge.js';
 import * as StrBridge from './str-bridge.js';
 import * as StrShared from './str-shared.js';
 import { computeInventoryHealth } from './shared/summary-calc.js';
+import { chartTheme, applyChartDefaults } from './shared/chart-theme.js';
 
 const TGT_KEY = 'bt_targets';
 let _closingRefreshInFlight = false;
@@ -127,7 +128,7 @@ function _sparklineSvg(values) {
   const pts = values.map((v, i) => `${(pad + i * step).toFixed(1)},${(hgt - pad - ((v - min) / range) * (hgt - pad * 2)).toFixed(1)}`).join(' ');
   const up = values[values.length - 1] >= values[0];
   return `<svg class="cover-hero-spark" width="${w}" height="${hgt}" viewBox="0 0 ${w} ${hgt}">
-    <polyline points="${pts}" fill="none" stroke="${up ? '#059669' : '#dc2626'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <polyline points="${pts}" fill="none" style="stroke:${up ? 'var(--green)' : 'var(--red)'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>`;
 }
 
@@ -372,7 +373,7 @@ function _managerCreditRankedHtml() {
   return rows.map(r => `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="showPage('manager')">
       <span style="font-size:11.5px;color:var(--text);font-weight:600">${_esc(r.name)}</span>
-      <span style="font-size:11.5px;font-weight:700;font-family:var(--mono);color:${r.net > 0 ? '#AE3B2C' : '#15803d'}">₨${fc(Math.abs(r.net))}</span>
+      <span style="font-size:11.5px;font-weight:700;font-family:var(--mono);color:${r.net > 0 ? 'var(--red)' : 'var(--green)'}">₨${fc(Math.abs(r.net))}</span>
     </div>`).join('');
 }
 
@@ -552,7 +553,7 @@ function _closingLatestCredit() {
   if (!latest) return { label: 'Latest Credit', value: 'No credit records', sub: '' };
   const rec = latest.rec;
   const credit = n(rec.outTotalE);
-  return { label: 'Latest Credit', value: 'Rs. ' + fc(credit), sub: `${_clFmtDate(latest.date)} · ${latest.shift}` };
+  return { label: 'Latest Credit', value: '₨ ' + fc(credit), sub: `${_clFmtDate(latest.date)} · ${latest.shift}` };
 }
 
 function _closingLatestMisc() {
@@ -563,7 +564,7 @@ function _closingLatestMisc() {
   keys.sort((a, b) => _sheetSortKey(cdb, a).localeCompare(_sheetSortKey(cdb, b)));
   const key = keys[keys.length - 1]; const rec = cdb.sheets[key]; const parts = key.split('_'); const date = parts[0], shift = parts[1];
   const total = (rec.miscRows || []).reduce((s, r) => s + (parseFloat(r.val) || 0), 0);
-  return { label: 'Latest Misc / Ongoing', value: 'Rs. ' + fc(total), sub: `${_clFmtDate(date)} · ${shift}` };
+  return { label: 'Latest Misc / Ongoing', value: '₨ ' + fc(total), sub: `${_clFmtDate(date)} · ${shift}` };
 }
 
 // Phase 3.1 — Current-state Inventory doughnut: Never Sold / Dead Stock /
@@ -603,21 +604,26 @@ function _renderInventoryChart(invSl, invEw) {
 
   const pct = v => total ? Math.round(v / total * 1000) / 10 : 0;
 
+  // Colours come from the shared --st-* status tokens (css/variables.css) so
+  // the same category is the same colour on Cover, Inventory Health and in
+  // dark mode, instead of hard-coded hex values.
+  applyChartDefaults(Chart);
+  const th = chartTheme();
   _invChart = new Chart(canvas, {
     type: 'doughnut',
     data: {
       labels: ['Never Sold (60D)', 'Dead Stock (60D)', 'Excess (corrected)', 'Healthy'],
       datasets: [{
         data: [never, dead, excess, healthy],
-        backgroundColor: ['#AE3B2C', '#A8762A', '#33507D', '#059669'],
-        borderWidth: 2, borderColor: '#fff',
+        backgroundColor: [th.status.never, th.status.dead, th.status.excess, th.status.healthy],
+        borderWidth: 2, borderColor: th.surface,
       }],
     },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: {
-        legend: { position: 'right', labels: { color: '#334155', font: { size: 10 }, boxWidth: 10, padding: 5 } },
-        tooltip: { callbacks: { label: c => c.label + ': Rs. ' + fc(c.raw) + ' (' + pct(c.raw) + '%)' } },
+        legend: { position: 'right', labels: { color: th.text, font: { size: 12 }, boxWidth: 12, padding: 8 } },
+        tooltip: { callbacks: { label: c => c.label + ': ₨ ' + fc(c.raw) + ' (' + pct(c.raw) + '%)' } },
       },
     },
   });
@@ -657,9 +663,17 @@ function _renderWeekdayChart() {
     counts[wd]++;
   });
 
+  // Themed + meaningful colour: strongest weekday = green, weakest = amber,
+  // the rest a quiet accent tint (was one flat orange for every bar).
+  applyChartDefaults(Chart);
+  const th = chartTheme();
+  const entered = sums.map((v, i) => (counts[i] ? v : null));
+  const hi = Math.max(...entered.filter(v => v != null));
+  const lo = Math.min(...entered.filter(v => v != null));
+  const barColor = v => (v === hi ? th.status.healthy : (v === lo && hi !== lo ? th.status.reorder : th.accent + '99'));
   _weekdayChart = new Chart(canvas, {
     type: 'bar',
-    data: { labels: WD, datasets: [{ label: 'Total sales', data: sums, backgroundColor: 'rgba(217,119,6,.65)', borderColor: '#d97706', borderWidth: 1.5, borderRadius: 3 }] },
+    data: { labels: WD, datasets: [{ label: 'Total sales', data: sums, backgroundColor: sums.map((v, i) => counts[i] ? barColor(v) : th.accent + '33'), borderWidth: 0, borderRadius: 4 }] },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: {
@@ -667,8 +681,8 @@ function _renderWeekdayChart() {
         tooltip: { callbacks: { label: c => '₨' + fc(c.raw) + ' across ' + counts[c.dataIndex] + ' day' + (counts[c.dataIndex] === 1 ? '' : 's') + ' entered' } },
       },
       scales: {
-        x: { ticks: { color: '#64748b', font: { size: 9 } }, grid: { color: '#f1f5f9' } },
-        y: { ticks: { color: '#64748b', font: { size: 9 }, callback: v => '₨' + ff(v) }, grid: { color: '#e2e8f0' } },
+        x: { ticks: { font: { size: 11 } }, grid: { display: false } },
+        y: { ticks: { font: { size: 11 }, callback: v => '₨' + ff(v) } },
       },
     },
   });
@@ -786,19 +800,19 @@ function _inventoryMiniTableHtml(rows, kind) {
         <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="showPage('reorder')">
           <div style="min-width:0">
             <div style="font-size:11.5px;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px">${_esc(r.name || r.code)}</div>
-            <div style="font-size:10px;color:var(--muted)">${cover} cover · reorder ${fc(r.demandQtyP)} units</div>
-            <div style="font-size:10px;color:var(--muted)">sold 30d: ${fc(r.saleQty30)} units · Rs. ${fc(r.saleValue30)}</div>
+            <div style="font-size:11px;color:var(--muted)">${cover} cover · reorder ${fc(r.demandQtyP)} units</div>
+            <div style="font-size:11px;color:var(--muted)">sold 30d: ${fc(r.saleQty30)} units · ₨ ${fc(r.saleValue30)}</div>
           </div>
-          <div style="font-size:11.5px;font-weight:700;font-family:var(--mono);color:#AE3B2C;flex-shrink:0">Rs. ${fc(r.demandValueP)}</div>
+          <div style="font-size:11.5px;font-weight:700;font-family:var(--mono);color:var(--red);flex-shrink:0">₨ ${fc(r.demandValueP)}</div>
         </div>`;
     }
     return `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="showPage('excess')">
         <div style="min-width:0">
           <div style="font-size:11.5px;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px">${_esc(r.name)}</div>
-          <div style="font-size:10px;color:var(--muted)">${_esc(r.company || 'Unspecified')}${r.daysOld != null ? ' · ' + r.daysOld + 'd old' : ''}</div>
+          <div style="font-size:11px;color:var(--muted)">${_esc(r.company || 'Unspecified')}${r.daysOld != null ? ' · ' + r.daysOld + 'd old' : ''}</div>
         </div>
-        <div style="font-size:11.5px;font-weight:700;font-family:var(--mono);color:#A8762A;flex-shrink:0">Rs. ${fc(r.excessContribution)}</div>
+        <div style="font-size:11.5px;font-weight:700;font-family:var(--mono);color:var(--amber);flex-shrink:0">₨ ${fc(r.excessContribution)}</div>
       </div>`;
   };
   return `<div style="max-height:280px;overflow-y:auto">${rows.map(row).join('')}</div>`;
@@ -825,13 +839,13 @@ function _topRunningTableHtml(rows) {
   return `<div style="max-height:280px;overflow-y:auto">${rows.map((r, i) => `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">
       <div style="min-width:0;display:flex;gap:8px;align-items:center">
-        <span style="font-size:10px;color:var(--muted);width:16px;flex-shrink:0">${i + 1}</span>
+        <span style="font-size:11px;color:var(--muted);width:16px;flex-shrink:0">${i + 1}</span>
         <div style="min-width:0">
           <div style="font-size:11.5px;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px">${_esc(r.name || r.code)}</div>
-          <div style="font-size:10px;color:var(--muted)">${fc(r.saleQtyP)} units sold</div>
+          <div style="font-size:11px;color:var(--muted)">${fc(r.saleQtyP)} units sold</div>
         </div>
       </div>
-      <div style="font-size:11.5px;font-weight:700;font-family:var(--mono);color:#33507D;flex-shrink:0">Rs. ${fc(r.saleValueP)}</div>
+      <div style="font-size:11.5px;font-weight:700;font-family:var(--mono);color:var(--accent);flex-shrink:0">₨ ${fc(r.saleValueP)}</div>
     </div>`).join('')}</div>`;
 }
 
@@ -853,13 +867,13 @@ function _reorderNowCardInnerHtml() {
   const win = _getReorderWindow();
   const rows = _reorderNowRows();
   const totalFlagged = _reorderTotalFlagged();
-  const pill = (active, label, onclick) => `<span onclick="${onclick}" style="cursor:pointer;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:4px;${active ? 'background:#AE3B2C;color:#fff' : 'background:#e2e8f0;color:#475569'}">${label}</span>`;
+  const pill = (active, label, onclick) => `<button type="button" class="cover-pill cover-pill--red${active ? ' is-on' : ''}" aria-pressed="${active}" onclick="${onclick}">${label}</button>`;
   return `
     <div class="ctitle" style="flex-wrap:wrap;row-gap:6px">
-      <span class="cdot" style="background:#AE3B2C"></span>Reorder Now — most urgent (${rows.length} of ${totalFlagged} flagged)
+      <span class="cdot" style="background:var(--red)"></span>Reorder Now — most urgent (${rows.length} of ${totalFlagged} flagged)
       <span style="margin-left:auto;display:flex;align-items:center">${pill(win === 30, '30D', '_coverSetReorderWindow(30)')}${pill(win === 60, '60D', '_coverSetReorderWindow(60)')}${pill(win === 90, '90D', '_coverSetReorderWindow(90)')}</span>
       <span style="display:flex;align-items:center">${pill(th === 7, '<7D', '_coverSetReorderThreshold(7)')}${pill(th === 14, '<14D', '_coverSetReorderThreshold(14)')}${pill(th === 30, '<30D', '_coverSetReorderThreshold(30)')}</span>
-      <span onclick="showPage('reorder')" style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:4px;margin-left:6px;cursor:pointer;font-weight:700">FULL REPORT ↗</span>
+      <button type="button" class="cover-chip-link" onclick="showPage('reorder')">FULL REPORT ↗</button>
     </div>
     <div id="cover-reorder-now-table">${_inventoryMiniTableHtml(rows, 'reorder')}</div>`;
 }
@@ -872,10 +886,10 @@ function _renderReorderNowCard() {
 function _topRunningCardInnerHtml() {
   const win = _getTopRunWindow();
   const cnt = _getTopRunCount();
-  const pill = (active, label, onclick) => `<span onclick="${onclick}" style="cursor:pointer;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:4px;${active ? 'background:#33507D;color:#fff' : 'background:#e2e8f0;color:#475569'}">${label}</span>`;
+  const pill = (active, label, onclick) => `<button type="button" class="cover-pill cover-pill--accent${active ? ' is-on' : ''}" aria-pressed="${active}" onclick="${onclick}">${label}</button>`;
   return `
     <div class="ctitle" style="flex-wrap:wrap;row-gap:6px">
-      <span class="cdot" style="background:#33507D"></span>Top Running Items — value-wise
+      <span class="cdot" style="background:var(--accent)"></span>Top Running Items — value-wise
       <span style="margin-left:auto;display:flex;align-items:center">${pill(cnt === 10, 'Top 10', '_coverSetTopRunCount(10)')}${pill(cnt === 20, 'Top 20', '_coverSetTopRunCount(20)')}</span>
       <span style="display:flex;align-items:center">${pill(win === 30, '30D', '_coverSetTopRunWindow(30)')}${pill(win === 60, '60D', '_coverSetTopRunWindow(60)')}${pill(win === 90, '90D', '_coverSetTopRunWindow(90)')}</span>
     </div>
@@ -947,7 +961,7 @@ function _groupSubtitle(groupName) {
       case 'Inventory': {
         const { slStats } = _inventoryHeroStats();
         if (!slStats || !slStats.dataReady) return 'Syncing inventory…';
-        return 'Rs. ' + fc(slStats.totalInventoryValue) + ' total · Rs. ' + fc(slStats.negativeValue) + ' negative';
+        return '₨ ' + fc(slStats.totalInventoryValue) + ' total · ₨ ' + fc(slStats.negativeValue) + ' negative';
       }
       case 'STR Report':
         return _strStatus();
@@ -1050,10 +1064,10 @@ function _strRowsListHtml(rows, opts) {
     <div style="padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="showPage('str');setTimeout(function(){window.strOpenDetail&&window.strOpenDetail(${h.strId})},30)">
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
         <span style="font-size:12px;font-weight:700;color:var(--text)">${_esc(h.strNumber || ('STR-' + h.strId))}</span>
-        <span style="font-size:10.5px;color:var(--muted);flex-shrink:0">${_esc(StrShared.fmtDate(h.strDate))}</span>
+        <span style="font-size:11px;color:var(--muted);flex-shrink:0">${_esc(StrShared.fmtDate(h.strDate))}</span>
       </div>
-      ${opts.showBranch ? `<div style="font-size:10.5px;color:var(--muted)">from ${_esc(h.dispatchBranch || '—')}</div>` : ''}
-      ${h.comments ? `<div style="font-size:10.5px;color:var(--t2);margin-top:1px">${_esc(h.comments)}</div>` : ''}
+      ${opts.showBranch ? `<div style="font-size:11px;color:var(--muted)">from ${_esc(h.dispatchBranch || '—')}</div>` : ''}
+      ${h.comments ? `<div style="font-size:11px;color:var(--t2);margin-top:1px">${_esc(h.comments)}</div>` : ''}
     </div>`).join('')}</div>`;
 }
 
@@ -1064,14 +1078,14 @@ function _strReceivedValueCardHtml(data) {
   const yEntry = days.find(d => d.date === yStr);
   return `
     <div class="card">
-      <div class="ctitle"><span class="cdot" style="background:#059669"></span>Stock Received Value — Yesterday</div>
-      <div class="cover-hero-value" style="margin:2px 0 10px">Rs. ${fc(yEntry ? yEntry.value : 0)}</div>
-      <div style="font-size:10.5px;color:var(--muted);margin-bottom:6px">Days with received stock, last 7 days</div>
+      <div class="ctitle"><span class="cdot" style="background:var(--green)"></span>Stock Received Value — Yesterday</div>
+      <div class="cover-hero-value" style="margin:2px 0 10px">₨ ${fc(yEntry ? yEntry.value : 0)}</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Days with received stock, last 7 days</div>
       ${days.length ? days.map(d => {
         const lbl = _strDayLabel(d.date);
         return `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:11.5px">
           <span style="color:var(--text)">${_esc(lbl.date)} <span style="color:var(--muted)">(${_esc(lbl.day)})</span></span>
-          <span style="font-weight:700;font-family:var(--mono)">Rs. ${fc(d.value)}</span>
+          <span style="font-weight:700;font-family:var(--mono)">₨ ${fc(d.value)}</span>
         </div>`;
       }).join('') : `<div style="font-size:11px;color:var(--muted);padding:8px 0">No received-stock data in the last 7 days.</div>`}
     </div>`;
@@ -1103,26 +1117,26 @@ function _strHeroHtml() {
     </div>
     <div class="cover-hero-row">
       <div class="card">
-        <div class="ctitle"><span class="cdot" style="background:#b45309"></span>Awaited — not dispatched (${awaited.length})
-          <span onclick="event.stopPropagation();showPage('str');window.strClearFilters&&window.strClearFilters();window.strSetStage&&window.strSetStage('awaited')" style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:4px;margin-left:6px;cursor:pointer;font-weight:700">FULL LIST ↗</span>
+        <div class="ctitle"><span class="cdot" style="background:var(--amber)"></span>Awaited — not dispatched (${awaited.length})
+          <button type="button" class="cover-chip-link" onclick="event.stopPropagation();showPage('str');window.strClearFilters&&window.strClearFilters();window.strSetStage&&window.strSetStage('awaited')">FULL LIST ↗</button>
         </div>
-        <div style="font-size:10px;color:var(--muted);margin:-4px 0 6px">Dispatch from Bahria Town</div>
+        <div style="font-size:11px;color:var(--muted);margin:-4px 0 6px">Dispatch from Bahria Town</div>
         ${_strRowsListHtml(awaited)}
       </div>
       <div class="card">
-        <div class="ctitle"><span class="cdot" style="background:#1d4ed8"></span>Dispatched — not received (${dispatchedBT.length})
-          <span onclick="event.stopPropagation();showPage('str');window.strClearFilters&&window.strClearFilters();window.strSetStage&&window.strSetStage('dispatched')" style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:4px;margin-left:6px;cursor:pointer;font-weight:700">FULL LIST ↗</span>
+        <div class="ctitle"><span class="cdot" style="background:var(--accent)"></span>Dispatched — not received (${dispatchedBT.length})
+          <button type="button" class="cover-chip-link" onclick="event.stopPropagation();showPage('str');window.strClearFilters&&window.strClearFilters();window.strSetStage&&window.strSetStage('dispatched')">FULL LIST ↗</button>
         </div>
-        <div style="font-size:10px;color:var(--muted);margin:-4px 0 6px">Dispatch from Bahria Town</div>
+        <div style="font-size:11px;color:var(--muted);margin:-4px 0 6px">Dispatch from Bahria Town</div>
         ${_strRowsListHtml(dispatchedBT)}
       </div>
     </div>
     <div class="cover-hero-row cover-hero-row-single">
       <div class="card">
-        <div class="ctitle"><span class="cdot" style="background:#db2777"></span>Inbound — dispatched, not received at BT (${inboundPending.length})
-          <span onclick="event.stopPropagation();showPage('str');window.strClearFilters&&window.strClearFilters();window.strSetStage&&window.strSetStage('dispatched')" style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:4px;margin-left:6px;cursor:pointer;font-weight:700">FULL LIST ↗</span>
+        <div class="ctitle"><span class="cdot" style="background:var(--pink)"></span>Inbound — dispatched, not received at BT (${inboundPending.length})
+          <button type="button" class="cover-chip-link" onclick="event.stopPropagation();showPage('str');window.strClearFilters&&window.strClearFilters();window.strSetStage&&window.strSetStage('dispatched')">FULL LIST ↗</button>
         </div>
-        <div style="font-size:10px;color:var(--muted);margin:-4px 0 6px">Dispatch from warehouse / Warehouse 2 / other branches</div>
+        <div style="font-size:11px;color:var(--muted);margin:-4px 0 6px">Dispatch from warehouse / Warehouse 2 / other branches</div>
         ${_strRowsListHtml(inboundPending, { showBranch: true })}
       </div>
     </div>`;
@@ -1359,7 +1373,7 @@ function _kpiTiles() {
     const v = parseFloat(String(credits.value || '').replace(/[^0-9.-]/g, ''));
     out.push({
       icon: '💳', label: 'Outstanding Credit',
-      value: isNaN(v) ? '—' : 'Rs. ' + fc(v),
+      value: isNaN(v) ? '—' : '₨ ' + fc(v),
       cls: isNaN(v) ? 'neutral' : (v <= 0 ? 'green' : v < 50000 ? 'amber' : 'red'),
       page: 'manager',
     });
@@ -1462,7 +1476,7 @@ export function renderCoverDashboard() {
             <span class="ccs-ic">${s.icon}</span>
             <div class="ccs-text">
               <div class="ccs-lbl">${_esc(s.label)}</div>
-              <div class="ccs-val">Rs. ${_esc(fc(s.value))}</div>
+              <div class="ccs-val">₨ ${_esc(fc(s.value))}</div>
             </div>
           </div>`).join('')}
       </div>` : ''}
@@ -1476,19 +1490,19 @@ export function renderCoverDashboard() {
       <div class="ccs-stat-grid">
         <div class="ccs-stat ccs-cash">
           <span class="ccs-ic">💵</span>
-          <div class="ccs-text"><div class="ccs-lbl">Cash</div><div class="ccs-val">Rs. ${_esc(fc(h.cash))}</div></div>
+          <div class="ccs-text"><div class="ccs-lbl">Cash</div><div class="ccs-val">₨ ${_esc(fc(h.cash))}</div></div>
         </div>
         <div class="ccs-stat ccs-bank">
           <span class="ccs-ic">🏦</span>
-          <div class="ccs-text"><div class="ccs-lbl">Banks</div><div class="ccs-val">Rs. ${_esc(fc(h.banks))}</div></div>
+          <div class="ccs-text"><div class="ccs-lbl">Banks</div><div class="ccs-val">₨ ${_esc(fc(h.banks))}</div></div>
         </div>
         <div class="ccs-stat ccs-cashbank">
           <span class="ccs-ic">💰</span>
-          <div class="ccs-text"><div class="ccs-lbl">Cash &amp; Banks</div><div class="ccs-val">Rs. ${_esc(fc(h.cashBanks))}</div></div>
+          <div class="ccs-text"><div class="ccs-lbl">Cash &amp; Banks</div><div class="ccs-val">₨ ${_esc(fc(h.cashBanks))}</div></div>
         </div>
         <div class="ccs-stat ccs-credit">
           <span class="ccs-ic">📋</span>
-          <div class="ccs-text"><div class="ccs-lbl">Credit Clients (incl. free issue)</div><div class="ccs-val">Rs. ${_esc(fc(h.credit))}</div></div>
+          <div class="ccs-text"><div class="ccs-lbl">Credit Clients (incl. free issue)</div><div class="ccs-val">₨ ${_esc(fc(h.credit))}</div></div>
         </div>
         <div class="ccs-stat ccs-cust">
           <span class="ccs-ic">👥</span>
@@ -1500,20 +1514,20 @@ export function renderCoverDashboard() {
   const todaySale = _todaySaleBreakdown();
   const todaySaleCard = h => `
     <div class="cover-hero-card cover-closing-summary-card cover-today-sale-card">
-      <div class="cover-hero-label">${_esc(h.label)} <span onclick="showPage('sale-payments')" style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:4px;margin-left:6px;cursor:pointer;font-weight:700">OPEN ↗</span></div>
+      <div class="cover-hero-label">${_esc(h.label)} <button type="button" class="cover-chip-link" onclick="showPage('sale-payments')">OPEN ↗</button></div>
       <div class="cover-hero-value">${_esc(h.value)}</div>
       <div class="ccs-stat-grid">
         <div class="ccs-stat ccs-cash">
           <span class="ccs-ic">💵</span>
-          <div class="ccs-text"><div class="ccs-lbl">Cash</div><div class="ccs-val">Rs. ${_esc(fc(h.cash))}</div></div>
+          <div class="ccs-text"><div class="ccs-lbl">Cash</div><div class="ccs-val">₨ ${_esc(fc(h.cash))}</div></div>
         </div>
         <div class="ccs-stat ccs-cardpay">
           <span class="ccs-ic">💳</span>
-          <div class="ccs-text"><div class="ccs-lbl">Card</div><div class="ccs-val">Rs. ${_esc(fc(h.card))}</div></div>
+          <div class="ccs-text"><div class="ccs-lbl">Card</div><div class="ccs-val">₨ ${_esc(fc(h.card))}</div></div>
         </div>
         <div class="ccs-stat ccs-credit">
           <span class="ccs-ic">📋</span>
-          <div class="ccs-text"><div class="ccs-lbl">Credit</div><div class="ccs-val">Rs. ${_esc(fc(h.credit))}</div></div>
+          <div class="ccs-text"><div class="ccs-lbl">Credit</div><div class="ccs-val">₨ ${_esc(fc(h.credit))}</div></div>
         </div>
       </div>
       ${h.sub ? `<div class="cover-hero-sub" style="margin-top:8px">${_esc(h.sub)}</div>` : ''}
@@ -1528,7 +1542,7 @@ export function renderCoverDashboard() {
     </div>
     <div class="cover-hero-row-single">
       <div class="card">
-        <div class="ctitle"><span class="cdot" style="background:#d97706"></span>Sales by Weekday — ${_esc(_currentMonthYear())}</div>
+        <div class="ctitle"><span class="cdot" style="background:var(--amber)"></span>Sales by Weekday — ${_esc(_currentMonthYear())}</div>
         <div style="height:200px"><canvas id="cover-weekday-chart"></canvas></div>
       </div>
     </div>`;
@@ -1539,8 +1553,8 @@ export function renderCoverDashboard() {
     </div>
     <div class="cover-hero-row-single">
       <div class="card">
-        <div class="ctitle"><span class="cdot" style="background:#AE3B2C"></span>Staff Credit — ranked, who owes the most
-          <span onclick="showPage('manager')" style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:4px;margin-left:6px;cursor:pointer;font-weight:700">OPEN ↗</span>
+        <div class="ctitle"><span class="cdot" style="background:var(--red)"></span>Staff Credit — ranked, who owes the most
+          <button type="button" class="cover-chip-link" onclick="showPage('manager')">OPEN ↗</button>
         </div>
         <div id="cover-credit-ranked-table">${_managerCreditRankedHtml()}</div>
       </div>
@@ -1582,25 +1596,25 @@ export function renderCoverDashboard() {
     inventoryHeroHtml = (invSl && invSl.dataReady) ? `
     <div class="cover-hero-row cover-hero-row-single">
       <div class="card">
-        <div class="ctitle"><span class="cdot" style="background:#33507D"></span>Inventory Health — right now</div>
+        <div class="ctitle"><span class="cdot" style="background:var(--accent)"></span>Inventory Health — right now</div>
         <div style="height:220px"><canvas id="cover-inventory-chart"></canvas></div>
       </div>
     </div>
     <div class="cover-hero-row">
-      ${heroCard({ label: 'Total Inventory Level', value: 'Rs. ' + fc(invSl.totalInventoryValue), sub: 'as of ' + invSl.asOf })}
-      ${heroCard({ label: 'Negative Value', value: 'Rs. ' + fc(invSl.negativeValue), sub: 'negative qty × retail price' })}
-      ${heroCard({ label: 'Never Sold (60D)', value: 'Rs. ' + fc(invSl.neverSold60Value), sub: '>60 days received, zero sales' })}
-      ${heroCard({ label: 'Dead Stock (60D)', value: 'Rs. ' + fc(invSl.deadStock60Value), sub: 'quiet 60+ days' })}
+      ${heroCard({ label: 'Total Inventory Level', value: '₨ ' + fc(invSl.totalInventoryValue), sub: 'as of ' + invSl.asOf })}
+      ${heroCard({ label: 'Negative Value', value: '₨ ' + fc(invSl.negativeValue), sub: 'negative qty × retail price' })}
+      ${heroCard({ label: 'Never Sold (60D)', value: '₨ ' + fc(invSl.neverSold60Value), sub: '>60 days received, zero sales' })}
+      ${heroCard({ label: 'Dead Stock (60D)', value: '₨ ' + fc(invSl.deadStock60Value), sub: 'quiet 60+ days' })}
     </div>
     <div class="cover-hero-row">
-      ${heroCard({ label: 'Excess Stock Total', value: invEw ? 'Rs. ' + fc(invEw.rawExcessValue) : '—', sub: 'raw, before correction' })}
-      ${heroCard({ label: 'Corrected Excess Stock', value: invEw ? 'Rs. ' + fc(invEw.correctedExcessValue) : '—', sub: 'after retain list + misc buffer' })}
+      ${heroCard({ label: 'Excess Stock Total', value: invEw ? '₨ ' + fc(invEw.rawExcessValue) : '—', sub: 'raw, before correction' })}
+      ${heroCard({ label: 'Corrected Excess Stock', value: invEw ? '₨ ' + fc(invEw.correctedExcessValue) : '—', sub: 'after retain list + misc buffer' })}
       ${(() => {
         const u = invRr ? _reorderUrgentStats() : null;
         return heroCard({
           label: 'Reorder Alert (<30d cover · Top 500 by 60d value)',
           value: u ? u.urgentCount + ' items <7d cover' : '—',
-          sub: u ? `${u.zeroStock} stockout now · ${u.critical} still stocked, <7d left · ${invRr.itemsShown} items <30d total · Rs. ${fc(invRr.totalReorderValue)} to reorder` : 'no data yet',
+          sub: u ? `${u.zeroStock} stockout now · ${u.critical} still stocked, <7d left · ${invRr.itemsShown} items <30d total · ₨ ${fc(invRr.totalReorderValue)} to reorder` : 'no data yet',
         });
       })()}
     </div>
@@ -1609,8 +1623,8 @@ export function renderCoverDashboard() {
         ${_reorderNowCardInnerHtml()}
       </div>
       <div class="card">
-        <div class="ctitle"><span class="cdot" style="background:#A8762A"></span>Excess Stock — highest value
-          <span onclick="showPage('excess')" style="font-size:9px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:4px;margin-left:6px;cursor:pointer;font-weight:700">FULL REPORT ↗</span>
+        <div class="ctitle"><span class="cdot" style="background:var(--amber)"></span>Excess Stock — highest value
+          <button type="button" class="cover-chip-link" onclick="showPage('excess')">FULL REPORT ↗</button>
         </div>
         <div id="cover-excess-stock-table">${_inventoryMiniTableHtml(_excessStockRows(), 'excess')}</div>
       </div>
