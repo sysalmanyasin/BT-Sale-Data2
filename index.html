@@ -95,6 +95,7 @@
 <link rel="stylesheet" href="css/pdf-library.css?v=40934673">
 <link rel="stylesheet" href="css/activity-log.css?v=cd60f74d">
 <link rel="stylesheet" href="css/cash-deposit-report.css?v=a725c219">
+<link rel="stylesheet" href="css/daily-checklist.css?v=f7d199cc">
 <link rel="stylesheet" href="css/sale-payments.css?v=4fcd958d">
 <link rel="stylesheet" href="css/sheets-app.css?v=6171a00c">
 <link rel="stylesheet" href="css/attendance.css?v=8463e920">
@@ -307,6 +308,7 @@ if ('serviceWorker' in navigator) {
   <a class="bnav-sub-item" href="#data" data-page="data">Daily Data</a>
   <a class="bnav-sub-item" href="#entry" data-page="entry">Add Entry</a>
   <a class="bnav-sub-item" href="#report" data-page="report">Sale Report</a>
+  <a class="bnav-sub-item" href="#dailychecklist" data-page="dailychecklist">Daily Check List</a>
   <a class="bnav-sub-item" href="#cashdeposit" data-page="cashdeposit">Cash Deposit</a>
   <a class="bnav-sub-item" href="#sale-payments" data-page="sale-payments">Payments</a>
   <a class="bnav-sub-item" href="#diff" data-page="diff">DIFF Report</a>
@@ -639,6 +641,9 @@ if ('serviceWorker' in navigator) {
     </div>
   </div>
 </div>
+
+<!-- DAILY CHECK LIST — native port of the branch checklist; built by js/daily-checklist.js into this container. -->
+<div class="page" id="page-dailychecklist"></div>
 
 <!-- CASH TO BE DEPOSITED — derived report (Cash Sale − Cash Returns +
      FDPP POS + FDPP Consumer) for every day on record. Tick any set of
@@ -2706,7 +2711,7 @@ if ('serviceWorker' in navigator) {
 <script defer src="js/storage.js?v=08bf43f7"></script>
 
 <!-- 5. UI: showPage, toast, clock, rebuild, dropdowns -->
-<script defer src="js/ui.js?v=1c84ab51"></script>
+<script defer src="js/ui.js?v=753d014b"></script>
 
 <!-- 6b. Sync center (needs EventBus). Supabase client lib itself now
      loads much earlier above — see comment there. -->
@@ -2743,8 +2748,9 @@ if ('serviceWorker' in navigator) {
 <!-- 10. Reports: day modal, month modal, all print helpers -->
 <script defer src="js/reports.js?v=4d0268b3"></script>
 <script type="module" src="js/cash-deposit-report.js?v=0a87caf2"></script>
+<script type="module" src="js/daily-checklist.js?v=42c1bbbb"></script>
 <script type="module" src="js/icons.js?v=b583b55a"></script>
-<script type="module" src="js/nav-sections.js?v=6dadfa38"></script>
+<script type="module" src="js/nav-sections.js?v=0f68033a"></script>
 <script defer src="js/desktop-sidebar.js?v=dc244b6b"></script>
 <script type="module" src="js/global-search.js?v=25cbde9c"></script>
 <script type="module" src="js/subtab-strip.js?v=d127a5eb"></script>

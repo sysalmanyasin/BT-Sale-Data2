@@ -71,7 +71,6 @@
     // service worker never has to share a tab with this app's.
     inventorySearch: { label: 'Inventory Search', icon: '🔎', href: '/inventory-search/', external: true },
     reports: [
-      { label: 'Daily Check List', icon: '✅', href: 'https://reports.duapharma.com/daily_report.html', external: true },
       { label: 'Excess Stock Control', icon: '📦', href: 'https://reports.duapharma.com/excess-stock-control.html', external: true },
       { label: 'Branch Invoice Desk', icon: '🧮', href: 'https://reports.duapharma.com/invoice-desk.html', external: true },
     ],
@@ -177,7 +176,7 @@
   // labels with no emoji of their own at all — curated real icons here
   // instead of every one of them falling back to the same generic 📄.
   const _CURATED_ICONS = {
-    '#index': '📇', '#data': '🗓️', '#entry': '➕', '#report': '📄', '#cashdeposit': '💵', '#sale-payments': '💳', '#diff': '🧮',
+    '#index': '📇', '#data': '🗓️', '#entry': '➕', '#report': '📄', '#dailychecklist': '✅', '#cashdeposit': '💵', '#sale-payments': '💳', '#diff': '🧮',
   };
   function _leafFromList(item) {
     if (item.icon) return { label: item.label, icon: item.icon, href: item.href, kids: [] };

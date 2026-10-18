@@ -1,6 +1,6 @@
 {
-  "cache": "bt-sales-v11.84",
-  "hash": "fd03cf302035",
+  "cache": "bt-sales-v11.85",
+  "hash": "6deb09b732e7",
   "files": {
     "css/activity-log.css": "cd60f74d",
     "css/agent.css": "23f106de",
@@ -14,6 +14,7 @@
     "css/closing-native.css": "d5642bb0",
     "css/components.css": "741c875a",
     "css/cover-dashboard.css": "cf5c77f9",
+    "css/daily-checklist.css": "f7d199cc",
     "css/emergency-billing.css": "273a8400",
     "css/excess-working.css": "34678425",
     "css/herald.css": "fbbb1802",
@@ -37,7 +38,7 @@
     "icons/icon-192.png": "22867a0e",
     "icons/icon-512.png": "5783f250",
     "icons/icon.svg": "5804ff69",
-    "index.html": "81534b77",
+    "index.html": "503bea21",
     "js/actions.js": "729c9d54",
     "js/activity-log.js": "d66bf59d",
     "js/agent/core/after-write.js": "c9384ff3",
@@ -118,6 +119,7 @@
     "js/conflict-ui.js": "620aa04a",
     "js/cover-dashboard.js": "2f55bb92",
     "js/custom-sections.js": "45a2aa6f",
+    "js/daily-checklist.js": "42c1bbbb",
     "js/dashboard-controls.js": "c3b65901",
     "js/dashboard-heatmap.js": "8bc935de",
     "js/dashboard-insights.js": "1cdebe0f",
@@ -159,7 +161,7 @@
     "js/manager-shared.js": "988b2ce4",
     "js/manager-staff.js": "2b0af27a",
     "js/manager-unmatched.js": "f7c0b8df",
-    "js/nav-sections.js": "6dadfa38",
+    "js/nav-sections.js": "0f68033a",
     "js/notes-sheets.js": "5ba04e46",
     "js/pdf-library.js": "d0efd50b",
     "js/print.js": "8042b13a",
@@ -199,7 +201,7 @@
     "js/sync-tombstones.js": "11e0a35d",
     "js/targets.js": "5b81004e",
     "js/ui-extras.js": "ddb51ca7",
-    "js/ui.js": "1c84ab51",
+    "js/ui.js": "753d014b",
     "manifest.json": "c5f2bcd9"
   }
 }

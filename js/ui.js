@@ -19,7 +19,7 @@ function showPage(id) {
     const pg = document.getElementById('page-'+id);
     if(pg) pg.classList.add('on');
     document.querySelectorAll('.ntab[data-page="'+id+'"],.bnav-item[data-page="'+id+'"],.bnav-sub-item[data-page="'+id+'"]').forEach(t=>t.classList.add('active'));
-    const _saleDataPages = ['index','data','entry','report','diff','cashdeposit','sale-payments'];
+    const _saleDataPages = ['index','data','entry','report','dailychecklist','diff','cashdeposit','sale-payments'];
     const _inSaleData = _saleDataPages.indexOf(id) !== -1;
     const _subnav = document.getElementById('saledata-subnav');
     if (_subnav) _subnav.style.display = _inSaleData ? '' : 'none';
@@ -144,6 +144,7 @@ function showPage(id) {
     if(id==='manager') { loadManagerPage(); }
     if(id==='manager-dashboard') { if (typeof buildDashboard === 'function') buildDashboard(); }
     if(id==='report') { dsInit(); }
+    if(id==='dailychecklist') { if (typeof window.loadDailyChecklistPage === 'function') window.loadDailyChecklistPage(); }
     if(id==='cashdeposit') { if (typeof cdrInit === 'function') cdrInit(); }
     if(id==='sale-payments') { if (typeof window.spOnShowSalePayments === 'function') window.spOnShowSalePayments(); }
     if(id==='diff')   { renderDiffReport(); }
