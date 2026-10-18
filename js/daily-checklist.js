@@ -15,7 +15,8 @@
      2. Day rows use the same keys as the Daily Data column picker
         ("Cash Sale", "HBL", "PSO Returns", "Customers", "TOTAL" …).
      3. The row's date lives in Date / date / DATE (ISO, dd-mm-yyyy or Date).
-     4. Print.renderNewTab(html,title) exists; otherwise a Blob-tab fallback is used.
+     4. Print.renderNewTab(html,opts) exists; otherwise a Blob-tab fallback is used.
+     5. Sale figures come from window.dayData (reports.js) when present, so they match the Sale Report.
    ════════════════════════════════════════════════════════════════════ */
 import { DAILY } from './config.js';
 
@@ -135,12 +136,23 @@ function prefill(force) {
   var iso = val('pull_date') || val('m_date'), note = $('appnote');
   var r = findDay(iso);
   if (!r) { if (note) note.textContent = 'No sale entry in app for ' + fmtDateNice(iso); if (force) toast('No sale entry found for ' + fmtDateNice(iso)); return false; }
-  var cashRet = sumKeys(r, MAP.cashRet), credRet = sumKeys(r, MAP.creditRet);
-  // Original form treats sale figures as NET of returns; returns are reference only.
+  // Use the Sale Report's own calculation (window.dayData, reports.js) so figures always match it —
+  // including custom fields such as "Bank Alfalah 2". Falls back to the CONFIG column lists.
+  var cashNet, credNet, cashRet, credRet, dd = null;
+  if (typeof window.dayData === 'function') { try { dd = window.dayData(r); } catch (e) { dd = null; } }
+  if (dd && typeof dd.netCash === 'number') {
+    cashNet = dd.netCash; credNet = dd.netCredit;
+    cashRet = Math.abs(dd.cashRet || 0);
+    credRet = Math.abs((dd.askariRet || 0) + (dd.psoRet || 0) + (dd.nespakRet || 0) + (dd.parcoRet || 0) + (dd.tepaRet || 0) + (dd.ldaRet || 0));
+  } else {
+    cashRet = sumKeys(r, MAP.cashRet); credRet = sumKeys(r, MAP.creditRet);
+    cashNet = sumKeys(r, MAP.cash) - cashRet; credNet = sumKeys(r, MAP.credit) - credRet;
+  }
+  // Checklist treats sale figures as NET of returns; returns are reference only.
   var set = function (id, v) { var e = $(id); if (!e) return; if (!force && e.value !== '') return; e.value = String(r2(v)); e.classList.add('dcl-fromapp'); };
-  set('s_cashsale', sumKeys(r, MAP.cash) - cashRet);
+  set('s_cashsale', cashNet);
   set('s_cashreturn', cashRet);
-  set('s_creditsale', sumKeys(r, MAP.credit) - credRet);
+  set('s_creditsale', credNet);
   set('s_creditreturn', credRet);
   var appTotal = sumKeys(r, [MAP.total]), cust = sumKeys(r, [MAP.customers]);
   var net = num('s_cashsale') + num('s_creditsale');
