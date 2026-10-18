@@ -9,27 +9,27 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:paddingStart="24dp"
-        android:paddingEnd="24dp"
-        android:paddingTop="36dp"
+        android:paddingStart="22dp"
+        android:paddingEnd="22dp"
+        android:paddingTop="30dp"
         android:paddingBottom="28dp">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="BT SALE DATA"
+            android:text="BT SALE DATA  /  INTELLIGENCE"
             android:textColor="#FF087F8C"
-            android:textSize="12sp"
+            android:textSize="11sp"
             android:letterSpacing="0.12"
             android:textStyle="bold" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Business,\nat a glance."
+            android:layout_marginTop="10dp"
+            android:text="Your business.\nOne clear view."
             android:textColor="#FF14213D"
-            android:textSize="36sp"
+            android:textSize="34sp"
             android:fontFamily="sans"
             android:lineSpacingExtra="0dp"
             android:textStyle="bold" />
@@ -37,67 +37,54 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:layout_marginBottom="28dp"
-            android:text="Your essential numbers and actions, ready from your home screen."
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="22dp"
+            android:text="Search stock, review closing, or ask Dua for a grounded briefing."
             android:textColor="#FF64748B"
-            android:textSize="15sp"
+            android:textSize="14sp"
             android:lineSpacingExtra="3dp" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="20dp"
+            android:padding="18dp"
             android:background="@drawable/bg_futuristic_card">
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="YOUR DASHBOARD"
-                android:textColor="#FF64748B"
-                android:textSize="11sp"
-                android:letterSpacing="0.10"
+                android:text="YOUR CONTROL CENTER"
+                android:textColor="#FF087F8C"
+                android:textSize="10sp"
+                android:letterSpacing="0.12"
                 android:textStyle="bold" />
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="22 home-screen widgets"
-                android:textColor="#FF14213D"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:layout_marginBottom="12dp"
+                android:layout_marginTop="7dp"
                 android:text="Sales · Closing · Credit · Inventory · STR"
-                android:textColor="#FF64748B"
-                android:textSize="13sp" />
-
-            <Button
-                android:id="@+id/refresh_button"
-                android:layout_width="match_parent"
-                android:layout_height="52dp"
-                android:layout_marginTop="4dp"
-                android:background="@drawable/bg_button_accent"
-                android:text="Refresh all widgets"
-                android:textAllCaps="false"
-                android:textColor="#FFFFFFFF"
-                android:textSize="15sp"
-                android:fontFamily="sans"
+                android:textColor="#FF14213D"
+                android:textSize="16sp"
                 android:textStyle="bold" />
 
-            <Button
-                android:id="@+id/assistant_button"
+            <TextView
                 android:layout_width="match_parent"
-                android:layout_height="52dp"
-                android:layout_marginTop="10dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="5dp"
+                android:layout_marginBottom="10dp"
+                android:text="22 existing home-screen widgets remain available."
+                android:textColor="#FF64748B"
+                android:textSize="12sp" />
+
+            <Button
+                android:id="@+id/ai_briefing_button"
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:layout_marginTop="4dp"
                 android:background="@drawable/bg_button_violet"
-                android:text="Quick Add  ·  Ask Dua"
+                android:text="✦  AI Business Briefing"
                 android:textAllCaps="false"
                 android:textColor="#FF14213D"
                 android:textSize="15sp"
@@ -107,13 +94,39 @@
             <Button
                 android:id="@+id/search_inventory_button"
                 android:layout_width="match_parent"
-                android:layout_height="52dp"
+                android:layout_height="54dp"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_button_accent"
+                android:text="⌕  Search Inventory"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFFFF"
+                android:textSize="15sp"
+                android:fontFamily="sans"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/assistant_button"
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
                 android:layout_marginTop="10dp"
                 android:background="@drawable/bg_input_field"
-                android:text="Search inventory"
+                android:text="Quick Add  ·  Ask Dua"
                 android:textAllCaps="false"
                 android:textColor="#FF334155"
                 android:textSize="15sp"
+                android:fontFamily="sans"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/refresh_button"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_input_field"
+                android:text="↻  Refresh all widgets"
+                android:textAllCaps="false"
+                android:textColor="#FF334155"
+                android:textSize="14sp"
                 android:fontFamily="sans"
                 android:textStyle="bold" />
         </LinearLayout>
@@ -121,7 +134,7 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
+            android:layout_marginTop="16dp"
             android:orientation="vertical"
             android:padding="16dp"
             android:background="@drawable/bg_input_field">
@@ -129,7 +142,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="GET STARTED"
+                android:text="DATA YOU CAN TRUST"
                 android:textColor="#FF087F8C"
                 android:textSize="10sp"
                 android:letterSpacing="0.10"
@@ -139,11 +152,20 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
-                android:text="Long-press your home screen, open Widgets, then choose Closing Summary."
+                android:text="Inventory Search is read-only. Ask Dua should flag unavailable data instead of guessing. Quick Add continues to use your authorized Google sign-in."
                 android:textColor="#FF64748B"
                 android:textSize="13sp"
                 android:lineSpacingExtra="2dp" />
         </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Tip: long-press your home screen → Widgets to add Closing Summary, Inventory Health, Reorder Now, and other shortcuts."
+            android:textColor="#FF64748B"
+            android:textSize="12sp"
+            android:lineSpacingExtra="2dp" />
 
     </LinearLayout>
 </ScrollView>
