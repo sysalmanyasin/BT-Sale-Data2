@@ -574,6 +574,9 @@ async function copyReportRich() {
 // ══════════════════════════════════════════
 
 // Bridge what's used externally or from index.html.
+// dayData is the single source of truth for Sale Report figures (incl. custom fields like
+// "Bank Alfalah 2"); js/daily-checklist.js (an ES module) reads it via window.dayData.
+window.dayData = dayData;
 window.openDayModal = openDayModal;
 window.closeDay = closeDay;
 window.openMonthModal = openMonthModal;

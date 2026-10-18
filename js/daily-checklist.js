@@ -177,6 +177,15 @@ function prefillSales(force) {
   } else {
     cashRet = sumKeys(r, MAP.cashRet); credRet = sumKeys(r, MAP.creditRet);
     cashNet = sumKeys(r, MAP.cash) - cashRet; credNet = sumKeys(r, MAP.credit) - credRet;
+    // Fallback must still honour custom fields (Manage Fields, e.g. "Bank Alfalah 2") exactly like dayData() does,
+    // otherwise the checklist silently drifts from the Sale Report.
+    if (typeof _fmCustom !== 'undefined' && _fmCustom) {
+      _fmCustom.forEach(function (f) {
+        if (!f || f.calcType === 'none') return;
+        var raw = sumKeys(r, [f.id]), signed = f.calcType === 'sub' ? -Math.abs(raw) : raw;
+        if (f.section !== 'Credit Clients') cashNet += signed; else credNet += signed;
+      });
+    }
   }
   // Checklist treats sale figures as NET of returns; returns are reference only.
   var set = function (id, v) { var e = $(id); if (!e) return; if (!force && e.value !== '') return; e.value = String(r2(v)); e.classList.add('dcl-fromapp'); };
