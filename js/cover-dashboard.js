@@ -993,6 +993,19 @@ function _strReceivedByDay(data) {
     .map(([date, value]) => ({ date, value }))
     .sort((a, b) => b.date.localeCompare(a.date));
 }
+// Read-only bridge for the Daily Check List (js/daily-checklist.js): the same
+// "Stock Received Value" figure the card below shows, for one ISO date. Returns
+// null when STR data isn't loaded or the date is older than StrBridge's rolling
+// 7-day window (a 0 there would be "unknown", not "nothing received").
+window.btStrReceivedValueOn = function (iso) {
+  const data = _strData();
+  if (!data || !iso) return null;
+  const o = new Date(); o.setDate(o.getDate() - 6);
+  const oldest = o.getFullYear() + '-' + String(o.getMonth() + 1).padStart(2, '0') + '-' + String(o.getDate()).padStart(2, '0');
+  if (iso < oldest) return null;
+  const hit = _strReceivedByDay(data).find(d => d.date === iso);
+  return hit ? hit.value : 0;
+};
 function _strDayLabel(dateStr) {
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return { date: dateStr, day: '' };

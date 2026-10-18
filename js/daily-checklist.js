@@ -132,7 +132,37 @@ function findDay(iso) {
 }
 function sumKeys(r, keys) { return keys.reduce(function (a, k) { var v = parseFloat(String(r[k] == null ? 0 : r[k]).replace(/,/g, '')); return a + (isNaN(v) ? 0 : v); }, 0); }
 
+function setField(id, v, force) { var e = $(id); if (!e) return; if (!force && e.value !== '') return; e.value = String(r2(v)); e.classList.add('dcl-fromapp'); }
+function isoMinusDays(iso, d) { var x = new Date(iso + 'T00:00:00'); x.setDate(x.getDate() - d); return new Date(x - x.getTimezoneOffset() * 60000).toISOString().slice(0, 10); }
+
+/* Stock figures from the app: received = STR "Stock Received Value" for the day before the checklist date;
+   closing stock + negative value = live Inventory (Stock Ledger) totals, so only filled for today's checklist. */
+function prefillStock(force) {
+  var out = [], md = val('m_date'), yIso = md ? isoMinusDays(md, 1) : '';
+  var rec = (typeof window.btStrReceivedValueOn === 'function' && yIso) ? window.btStrReceivedValueOn(yIso) : null;
+  if (rec != null) { setField('s_receive', Math.round(rec), force); out.push('Stock received ' + fmtDateNice(yIso) + ': ₨ ' + fmt(Math.round(rec))); }
+  else out.push('Stock received: STR data not available for ' + fmtDateNice(yIso));
+  if (md === todayIso()) {
+    var st = null;
+    try { st = window.StockLedgerApp && window.StockLedgerApp.getCoverStats ? window.StockLedgerApp.getCoverStats() : null; } catch (e) { st = null; }
+    if (st && st.dataReady) {
+      setField('s_closing', Math.round(st.totalInventoryValue), force);
+      setField('s_negstock', Math.round(st.negativeValue), force);
+      out.push('Inventory ₨ ' + fmt(Math.round(st.totalInventoryValue)) + ' · negative ' + fmt(Math.round(st.negativeValue)));
+    } else out.push('Inventory still syncing — tap Re-pull in a moment');
+  } else out.push('Closing stock / negative value are live figures — enter manually for past dates');
+  return out.join(' · ');
+}
+
 function prefill(force) {
+  var stockText = prefillStock(force);
+  var ok = prefillSales(force), note = $('appnote');
+  if (note && stockText) note.innerHTML = (note.innerHTML ? note.innerHTML + '<br>' : '') + '✓ ' + esc(stockText);
+  calcAll(); queueSave(); progress();
+  return ok;
+}
+
+function prefillSales(force) {
   var iso = val('pull_date') || val('m_date'), note = $('appnote');
   var r = findDay(iso);
   if (!r) { if (note) note.textContent = 'No sale entry in app for ' + fmtDateNice(iso); if (force) toast('No sale entry found for ' + fmtDateNice(iso)); return false; }
@@ -158,7 +188,6 @@ function prefill(force) {
   var net = num('s_cashsale') + num('s_creditsale');
   if (note) note.innerHTML = '✓ From app (' + fmtDateNice(iso) + '): TOTAL ₨ ' + fmt(appTotal) + ' · Customers ' + fmt(cust) +
     (appTotal && Math.abs(appTotal - net) > 0.5 ? ' · <b>Δ vs net ' + fmt(r2(appTotal - net)) + '</b>' : '');
-  calcAll(); queueSave(); progress();
   return true;
 }
 
