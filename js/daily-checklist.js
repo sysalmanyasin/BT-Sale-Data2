@@ -150,6 +150,30 @@
     lines.push('', 'NOTES', d.notes || 'None', '', 'Draft generated: ' + d.updatedAt);
     return lines.join('\n');
   }
+  function reportHtml(root) {
+    const d = collect(root), f = d.figures, inventory = getInventory();
+    const n = k => Number(f[k]) || 0;
+    const esc = escapeHtml;
+    const cell = 'border:1px solid #cbd5e1;padding:7px 10px;font:13px Arial,sans-serif;';
+    const heading = 'background:#17365d;color:#fff;font-weight:700;padding:10px;font:14px Arial,sans-serif;';
+    const row = (label, value, bold) => '<tr><td style="' + cell + (bold ? 'font-weight:700;' : '') + '">' + esc(label) + '</td><td style="' + cell + 'text-align:right;' + (bold ? 'font-weight:700;' : '') + '">' + esc(value) + '</td></tr>';
+    let html = '<div style="font-family:Arial,sans-serif;max-width:680px"><table style="width:100%;border-collapse:collapse;border:1px solid #cbd5e1"><tr><td colspan="2" style="' + heading + '">BT SALES IC — DAILY CHECKLIST · ' + esc(d.date) + '</td></tr>';
+    html += '<tr><td colspan="2" style="' + cell + 'background:#eaf0f8;font-weight:700">DAILY FIGURES</td></tr>';
+    html += row('Cash sales', f.cashSales || 'Not entered') + row('Credit sales', f.creditSales || 'Not entered') + row('Cash returns', f.cashReturns || 'Not entered') + row('Credit returns', f.creditReturns || 'Not entered');
+    html += row('Net sales', money(n('cashSales') + n('creditSales') - n('cashReturns') - n('creditReturns')), true) + row('Warehouse receipts', f.receipts || 'Not entered') + row('Verified closing stock', f.closingStock || 'Not entered');
+    html += '<tr><td colspan="2" style="' + cell + 'background:#eaf0f8;font-weight:700">CURRENT INVENTORY SNAPSHOT</td></tr>';
+    if (inventory) html += row('Products', inventory.products.toLocaleString('en-PK')) + row('Current stock value', money(inventory.value)) + row('Zero / negative stock items', inventory.zeroStock.toLocaleString('en-PK')) + row('Negative stock value', money(inventory.negativeValue));
+    else html += row('Inventory', 'Not loaded');
+    html += '<tr><td colspan="2" style="' + cell + 'background:#eaf0f8;font-weight:700">MANUAL CHECKS</td></tr>';
+    checks.forEach(([id, label]) => {
+      const value = d.checks[id] || 'PENDING';
+      const remark = d.remarks[id] ? ' — ' + d.remarks[id] : '';
+      html += row(value + ' — ' + label, remark.trim() || (value === 'No' ? 'Action required' : ''), value === 'No');
+    });
+    html += '<tr><td colspan="2" style="' + cell + 'background:#eaf0f8;font-weight:700">NOTES</td></tr>';
+    html += '<tr><td colspan="2" style="' + cell + '">' + esc(d.notes || 'None').replace(/\n/g, '<br>') + '</td></tr></table><p style="font:11px Arial,sans-serif;color:#64748b">Inventory values are a current snapshot, not historical closing stock. Review before sending.</p></div>';
+    return html;
+  }
   function bind(root) {
     root.querySelector('[data-dc-date]').addEventListener('change', () => render(root));
     root.querySelector('[data-dc-refresh]').addEventListener('click', () => render(root));
@@ -173,8 +197,24 @@
       }
       if (event.target.closest('[data-dc-copy]')) {
         const text = reportText(root);
-        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(() => { root.querySelector('[data-dc-status]').textContent = 'Report copied. Review it before sending.'; }).catch(() => fallbackCopy(text, root));
-        else fallbackCopy(text, root);
+        // Match BT Sales IC's existing Gmail workflow: write rich HTML and
+        // plain text together so Gmail can preserve table styling on paste.
+        const html = reportHtml(root);
+        try {
+          if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
+            const item = new ClipboardItem({
+              'text/html': new Blob([html], { type: 'text/html' }),
+              'text/plain': new Blob([text], { type: 'text/plain' })
+            });
+            navigator.clipboard.write([item]).then(() => {
+              root.querySelector('[data-dc-status]').textContent = 'Formatted report copied — paste into Gmail and review before sending.';
+            }).catch(() => fallbackCopy(text, root));
+          } else if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(() => {
+              root.querySelector('[data-dc-status]').textContent = 'Copied as plain text in this browser. Rich HTML copy is not supported here.';
+            }).catch(() => fallbackCopy(text, root));
+          } else fallbackCopy(text, root);
+        } catch (_) { fallbackCopy(text, root); }
       }
     });
     root.addEventListener('input', event => {
