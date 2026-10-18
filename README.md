@@ -31,7 +31,7 @@
 | **Default branch** | `main` |
 | **Web deployment** | GitHub Pages with a custom domain (`CNAME`) |
 | **Primary backend** | Supabase |
-| **Web build step** | None — static files are served directly |
+| **Web release build** | `npm run build` — stamps asset versions and updates PWA cache metadata; no bundling/minification |
 
 ---
 
