@@ -79,14 +79,20 @@
 
 ## Quick start
 
-There is **no build step** for the web app. Serve the repo root with any static server.
+The web app is served as static files from the repository root, but run the release build before shipping changes. The build does not bundle or minify code; it stamps local script/stylesheet URLs and updates the PWA cache version and `build-manifest.json`.
 
 ```bash
 git clone https://github.com/sysalmanyasin/BT-Sale-Data2.git
 cd BT-Sale-Data2
 
-# Run the tests
+# Install the test dependency
 npm install
+
+# Prepare release stamps / PWA cache metadata before shipping changes
+npm run build
+
+# Verify build metadata and run tests
+npm run build:check
 npm test
 
 # Serve locally (any static server works)
@@ -106,7 +112,7 @@ npx serve .
 
 | Layer | Technology |
 |---|---|
-| **Frontend** | Vanilla JavaScript (ES modules, plus legacy `<script>` modules mid-migration), HTML/CSS, no build step |
+| **Frontend** | Vanilla JavaScript (ES modules plus legacy `<script>` modules mid-migration), HTML/CSS; static delivery with a release-stamping build script (no bundling/minification) |
 | **AI** | `bt-agent` Edge Function over a free-provider pool (Groq, Cerebras, Gemini, OpenRouter) with fail-over; browser-driven tool loop; pgvector knowledge index; Web Speech API for voice (browser-native, nothing recorded by BT) |
 | **Backend** | Supabase: PostgreSQL, Auth, Storage, Edge Functions, REST, RPCs for transaction-sensitive work (e.g. refunds) |
 | **PWA** | `manifest.json`, root `sw.js`, offline app shell, update detection, safe reload |
