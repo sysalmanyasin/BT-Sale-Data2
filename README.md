@@ -1,28 +1,41 @@
-# Bahria Town Sales Intelligence Centre
+# 🏥 Bahria Town Sales Intelligence Centre
 
-[![Live](https://img.shields.io/badge/live-bt.duapharma.com-2ea44f)](https://bt.duapharma.com)
-![Type](https://img.shields.io/badge/type-PWA-5a0fc8)
-![Frontend](https://img.shields.io/badge/frontend-vanilla%20JS%20%7C%20no%20build-f7df1e)
-![Backend](https://img.shields.io/badge/backend-Supabase-3ecf8e)
-![Android](https://img.shields.io/badge/android-Kotlin-7f52ff)
-![Tests](https://img.shields.io/badge/tests-1086%20passing-brightgreen)
-![AI](https://img.shields.io/badge/AI-BT%20Intelligence%20%7C%20approval--gated-0b5fff)
+<p align="center">
+  <strong>A pharmacy operations platform for sales, inventory, staff, reporting, and AI-assisted insights.</strong>
+</p>
 
-**BT Sales IC** is a personal, single-user pharmacy operations PWA for Bahria Town. One codebase covers daily sales capture, reporting, management tools, inventory intelligence, read-only closing/audit bridges, attendance, a break-glass emergency billing counter, spreadsheets, PDF archiving, cross-device sync, **BT Intelligence** (the AI Center: a control room and talking assistant over the app's own data), and native Android companions.
+<p align="center">
+  <a href="https://bt.duapharma.com"><img src="https://img.shields.io/badge/Live_App-bt.duapharma.com-198754?style=for-the-badge" alt="Live app"></a>
+  <img src="https://img.shields.io/badge/Platform-PWA-6f42c1?style=for-the-badge" alt="Platform: PWA">
+  <img src="https://img.shields.io/badge/Frontend-Vanilla_JS-f7df1e?style=for-the-badge" alt="Frontend: Vanilla JavaScript">
+  <img src="https://img.shields.io/badge/Backend-Supabase-3ecf8e?style=for-the-badge" alt="Backend: Supabase">
+  <img src="https://img.shields.io/badge/Android-Kotlin-7f52ff?style=for-the-badge" alt="Android: Kotlin">
+</p>
 
-> **Scope:** built around a single pharmacy and a single primary operator. It is **not** a multi-tenant SaaS.
+<p align="center">
+  <img src="https://img.shields.io/badge/Tests-1086_passing-brightgreen?style=flat-square" alt="Tests: 1086 passing">
+  <img src="https://img.shields.io/badge/AI-BT_Intelligence-0b5fff?style=flat-square" alt="BT Intelligence">
+  <img src="https://img.shields.io/badge/Architecture-Single--pharmacy-orange?style=flat-square" alt="Single pharmacy architecture">
+</p>
+
+**BT Sales IC** is a personal, single-user pharmacy operations Progressive Web App (PWA) built for Bahria Town. It brings daily sales capture, reporting, management tools, inventory intelligence, closing and audit views, attendance, emergency billing, spreadsheets, PDF archiving, cross-device sync, **BT Intelligence**, and native Android companions into one operational workspace.
+
+> [!IMPORTANT]
+> **Designed for one pharmacy and one primary operator.** This project is not a multi-tenant SaaS platform.
 >
-> **Source of truth:** this README describes the current codebase. Where it conflicts with the code or database schema, the code and schema win.
+> **Documentation rule:** this README is a guide to the current codebase. If it conflicts with the implementation or database schema, the code and schema take precedence.
 
-| | |
+| Project detail | Value |
 |---|---|
-| **Live app** | <https://bt.duapharma.com> |
+| **Live application** | [bt.duapharma.com](https://bt.duapharma.com) |
 | **Default branch** | `main` |
-| **Deployment** | GitHub Pages + custom domain (`CNAME`) |
+| **Web deployment** | GitHub Pages with a custom domain (`CNAME`) |
+| **Primary backend** | Supabase |
+| **Web build step** | None — static files are served directly |
 
 ---
 
-## Table of contents
+## 🧭 Table of contents
 
 - [At a glance](#at-a-glance)
 - [Quick start](#quick-start)
@@ -31,6 +44,7 @@
 - [Architecture](#architecture)
 - [Features](#features)
 - [Android apps](#android-apps)
+- [Definitions and conventions](#definitions-and-conventions)
 - [BT Intelligence (AI Center)](#bt-intelligence-ai-center)
 - [AI systems](#ai-systems)
 - [Authentication & security](#authentication--security)
