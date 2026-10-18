@@ -217,6 +217,19 @@ The migration is incremental, so some `window.*` bridges remain. Do not remove o
 
 **Sale Payments bridge** is a read-only view of the separate *Candela POS → Dropbox → Supabase* pipeline. It is not the PWA's source of truth.
 
+### Daily Check List
+
+The native **Daily Check List** page sits beside **Sale Report** in the Sales sub-navigation. It brings the branch's daily operational checklist into the PWA rather than relying on the former external page.
+
+- **Checklist workflow:** section-based checklist, completion progress, navigation to the next incomplete section, and per-day draft saving.
+- **Editable dropdowns:** items **25, 29A, 29B and 29C** use option lists that can be edited and reset to defaults. Custom option lists are saved on the current device.
+- **Sales prefill:** pulls the selected date's sales figures from the app and uses the Sale Report's `dayData()` calculation when available, including custom fields such as **Bank Alfalah 2**. Prefill fills eligible fields without overwriting manual edits.
+- **Stock prefill:** yesterday's received-stock value is sourced from STR data; today's opening/closing stock and negative-value figures use available inventory totals where supported. Historical closing-stock values must be entered manually.
+- **Output:** copy, print and email-friendly report actions.
+- **Local draft storage:** checklist drafts use `bt_daily_checklist_v1`; editable dropdown options use a separate device-local key. These are UI-local drafts/settings, not a synced business-data source.
+
+**Files:** `js/daily-checklist.js` and `css/daily-checklist.css`.
+
 ### Emergency Billing
 
 A break-glass counter-billing system, separate from Daily Sale Entry. It is a supplement, not a replacement: emergency transactions still need reconciliation against normal sales entry.
@@ -422,7 +435,7 @@ More detail in [`tests/README.md`](tests/README.md).
 
 ## Deployment & PWA versioning
 
-- The web app deploys as static files via GitHub Pages (`.nojekyll`, `CNAME`).
+- The web app deploys as static files via GitHub Pages (`.nojekyll`, `CNAME`). The service-worker cache version currently in `sw.js` is `bt-sales-v11.90`; check the file for the current value rather than treating this README as the version source.
 - `sw.js` defines a versioned `CACHE_NAME` with an inline changelog comment above it. Check the live value in `sw.js` rather than trusting any number in documentation.
 - When shipped files change, run `npm run build`. It stamps every local script/stylesheet in `index.html` with a content-hash `?v=`, bumps `CACHE_NAME` (`bt-sales-vX.Y`) and updates `build-manifest.json`. CI runs `npm run build:check` and fails if you forgot. Nothing is bundled or minified: the app is served straight from the repo root and relies on script load order.
 - A module that another module **imports** (not only ones `index.html` loads with a tag) must also be in `APP_SHELL`, or it may be missing on a first offline start. `tests/static/file-references.test.js` checks the tag-loaded files.
