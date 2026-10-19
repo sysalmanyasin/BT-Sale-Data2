@@ -23,3 +23,9 @@ test('every rail link targets an existing section, and exactly one is marked cur
   assert.equal(links.filter((a) => a.classList.contains('active')).length, 1);
   assert.equal(links.filter((a) => a.getAttribute('aria-current') === 'location').length, 1);
 });
+
+test('rail is not a <nav> element (global `nav{height:56px;...}` rules would squash it into a chip)', () => {
+  const rail = document.getElementById('dcl-rail');
+  assert.notEqual(rail.tagName, 'NAV');
+  assert.equal(rail.getAttribute('role'), 'navigation');
+});

@@ -258,7 +258,7 @@ function pageHtml() {
     '<div class="dcl-meta">' +
     [['branch', 'Branch', 'text'], ['preparedby', 'Prepared By', 'text'], ['designation', 'Designation', 'text'], ['date', 'Date', 'date'], ['time', 'Time', 'time'], ['contact', 'Contact', 'text']]
       .map(function (f) { return '<div class="dcl-mf"><label>' + f[1] + '</label><input id="dcl-m_' + f[0] + '" type="' + f[2] + '"></div>'; }).join('') + '</div>' +
-    '<div class="dcl-wrap"><nav class="dcl-rail" id="dcl-rail" aria-label="Checklist sections"><div class="dcl-rail-head"><span class="dcl-rail-title">Jump to</span></div><div class="dcl-rail-list" id="dcl-rail-list"></div></nav><div class="dcl-main">';
+    '<div class="dcl-wrap"><div class="dcl-rail" id="dcl-rail" role="navigation" aria-label="Checklist sections"><div class="dcl-rail-head"><span class="dcl-rail-title">Jump to</span></div><div class="dcl-rail-list" id="dcl-rail-list"></div></div><div class="dcl-main">';
   SEC.forEach(function (s) { h += wrap(s.id, s.n, s.t, 'data-chk="1"' + (s.g ? ' data-group="' + esc(s.t) + '" data-groupno="' + s.g + '"' : ''), s.it.map(item).join('')); });
 
   h += wrap('stocks', '24', 'Stocks Report', '',
@@ -347,13 +347,15 @@ function buildRail() {
     window.addEventListener('resize', function () { syncRailTop(); spy(); });
   }
 }
+/* NOTE: the rail must NOT be a <nav> element — css/nav.css, layout-v2.css and mobile.css style every bare `nav` tag
+   (56px height, gradient, underline, z-index 200), which squashed the rail into a small chip. */
 /* The app has three sticky bars stacked on top (status bar, nav, sub-tab strip). The rail and the
    section scroll-margin both have to start BELOW them, so measure their real height instead of
    hard-coding it — --dcl-top is read by css/daily-checklist.css. */
 function syncRailTop() {
   if (!root) return;
   var h = 0;
-  ['.status-bar', 'nav', '#dynamic-subtab-strip'].forEach(function (sel) {
+  ['.status-bar', '#nav', '#dynamic-subtab-strip'].forEach(function (sel) {
     var el = document.querySelector(sel);
     if (el && el.offsetHeight && getComputedStyle(el).display !== 'none') h += el.offsetHeight;
   });
