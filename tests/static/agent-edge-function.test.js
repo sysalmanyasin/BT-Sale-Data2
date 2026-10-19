@@ -67,9 +67,9 @@ describe('bt-agent resilience', () => {
     assert.match(fn, /model\.includes\('gpt-oss'\)/);
     assert.ok(!/extra: \{ reasoning_effort/.test(fn));
   });
-  test('groq has several fallback models (each has its own free-tier bucket)', () => {
+  test('groq has fallback models (each has its own free-tier bucket)', () => {
     const groq = fn.slice(fn.indexOf("id: 'groq'"), fn.indexOf("id: 'cerebras'"));
-    assert.ok((groq.match(/'[a-z0-9./-]+'/g) || []).length >= 4);
+    assert.ok((groq.match(/'[a-z0-9./-]+'/g) || []).length >= 3);
   });
   test('waits out a short Retry-After once, and logs provider failures', () => {
     assert.match(fn, /retry-after/); assert.match(fn, /console\.error\('\[bt-agent\] provider failed/);

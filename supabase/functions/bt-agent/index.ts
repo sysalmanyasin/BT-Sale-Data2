@@ -38,7 +38,7 @@ type Provider = {
 // so edit this list (or move it to a table) rather than touching the logic.
 const PROVIDERS: Provider[] = [
   { id: 'groq', baseUrl: 'https://api.groq.com/openai/v1', keyEnv: 'GROQ_API_KEY',
-    models: ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'meta-llama/llama-4-scout-17b-16e-instruct', 'openai/gpt-oss-20b'], trainsOnFreeTier: false, dailyCap: 13_000 },
+    models: ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'], trainsOnFreeTier: false, dailyCap: 13_000 },
   { id: 'cerebras', baseUrl: 'https://api.cerebras.ai/v1', keyEnv: 'CEREBRAS_API_KEY',
     models: ['gpt-oss-120b', 'llama-3.3-70b'], trainsOnFreeTier: false },
   { id: 'gemini', baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai', keyEnv: 'GEMINI_API_KEY',

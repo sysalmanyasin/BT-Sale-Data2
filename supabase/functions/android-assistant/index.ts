@@ -127,7 +127,7 @@ Deno.serve(async (req: Request) => {
   if (action === "ask_dua") {
     const question = clean(body.question, 1200);
     if (!question) return reply({ error: "Type a question first." }, 400);
-    const ledgerEntries = Array.isArray(payload.ledger?.entries) ? payload.ledger.entries.slice(-250) : [];
+    const ledgerEntries = Array.isArray(payload.ledger?.entries) ? payload.ledger.entries.slice(-60) : [];
     const credit = payload.manager?.credit && typeof payload.manager.credit === "object" ? payload.manager.credit : {};
     const staff = (Array.isArray(payload.staff) ? payload.staff : []).filter((s: any) => s && s.active !== false)
       .map((s: any) => ({ staffId: clean(s.staffId, 40), name: clean(s.name, 80) }));
@@ -141,7 +141,7 @@ Deno.serve(async (req: Request) => {
       openingBalances: payload.ledger?.openingBalances || {},
       ledgerCustomTypes: Object.fromEntries(Object.entries(payload.ledgerCustomTypes || {}).map(([k, v]: [string, any]) =>
         [k, { label: clean(v?.label, 80), categories: (Array.isArray(v?.categories) ? v.categories : []).map((c: any) => ({ id: clean(c.id, 80), label: clean(c.label, 80), sign: Number(c.sign) === -1 ? -1 : 1 })) }])),
-      staffCredit: Object.fromEntries(Object.entries(credit).slice(-8).map(([month, rows]: [string, any]) =>
+      staffCredit: Object.fromEntries(Object.entries(credit).slice(-2).map(([month, rows]: [string, any]) =>
         [month, (Array.isArray(rows) ? rows : []).slice(0, 100).map((e: any) => ({
           staffId: clean(e.staffId, 40), name: clean(e.name, 80), prevBal: Number(e.prevBal) || 0,
           salary: Number(e.salary) || 0, lessGeneric: Number(e.lessGeneric) || 0,
@@ -151,15 +151,15 @@ Deno.serve(async (req: Request) => {
         }))])),
       staffRegistry: staff,
       salesSummary: {
-        daily: payload.daily && typeof payload.daily === "object" ? Object.fromEntries(Object.entries(payload.daily).slice(-45)) : {},
-        monthly: payload.monthly && typeof payload.monthly === "object" ? Object.fromEntries(Object.entries(payload.monthly).slice(-24)) : {},
+        daily: payload.daily && typeof payload.daily === "object" ? Object.fromEntries(Object.entries(payload.daily).slice(-14)) : {},
+        monthly: payload.monthly && typeof payload.monthly === "object" ? Object.fromEntries(Object.entries(payload.monthly).slice(-12)) : {},
         targets: payload.targets || {},
       },
     };
-    // bt-agent clips every message to 24,000 characters. The old single 90,000-character message lost its tail,
+    // Groq free tier allows ~8,000 tokens per minute, so the records are kept small (BUDGET). bt-agent also clips every message to 24,000 characters. The old single 90,000-character message lost its tail,
     // which is where the question was, so Dua answered "what would you like to know?". Keep the records under
     // budget and send the question as its own final message.
-    const BUDGET = 20000;
+    const BUDGET = 9000;
     let records = JSON.stringify(context);
     while (records.length > BUDGET && context.ledger.length > 20) {
       context.ledger = context.ledger.slice(Math.ceil(context.ledger.length * 0.25));
@@ -191,7 +191,7 @@ Deno.serve(async (req: Request) => {
           sensitivity: "high",
           context: { app: "android-ask-dua", mode: "read_only", style: "closing" },
           messages: [
-            { role: "user", content: "READ-ONLY MODE — " + systemPrompt + "\n\nLive business records (read-only JSON):\n" + records.slice(0, 22000) },
+            { role: "user", content: "READ-ONLY MODE — " + systemPrompt + "\n\nLive business records (read-only JSON):\n" + records.slice(0, 9000) },
             { role: "assistant", content: "Records received. What is your question?" },
             { role: "user", content: question },
           ],
