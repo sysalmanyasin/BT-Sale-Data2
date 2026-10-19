@@ -108,7 +108,7 @@ var COMP_DEF = [
 var META_DEF = { branch: 'Bahria Town', preparedby: 'Salman Yasin', designation: 'Co Manager', contact: '0302-8496090' };
 
 /* ── helpers ────────────────────────────────────────────────────── */
-var root = null, built = false, saveTimer = null;
+var root = null, built = false, saveTimer = null, railBound = false, spyRaf = 0;
 var esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
 var $ = function (id) { return document.getElementById('dcl-' + id); };
 var val = function (id) { var e = $(id); return e ? e.value : ''; };
@@ -258,7 +258,7 @@ function pageHtml() {
     '<div class="dcl-meta">' +
     [['branch', 'Branch', 'text'], ['preparedby', 'Prepared By', 'text'], ['designation', 'Designation', 'text'], ['date', 'Date', 'date'], ['time', 'Time', 'time'], ['contact', 'Contact', 'text']]
       .map(function (f) { return '<div class="dcl-mf"><label>' + f[1] + '</label><input id="dcl-m_' + f[0] + '" type="' + f[2] + '"></div>'; }).join('') + '</div>' +
-    '<div class="dcl-wrap"><nav class="dcl-rail" id="dcl-rail"><div class="dcl-rail-title">Jump to</div></nav><div class="dcl-main">';
+    '<div class="dcl-wrap"><nav class="dcl-rail" id="dcl-rail" aria-label="Checklist sections"><div class="dcl-rail-head"><span class="dcl-rail-title">Jump to</span></div><div class="dcl-rail-list" id="dcl-rail-list"></div></nav><div class="dcl-main">';
   SEC.forEach(function (s) { h += wrap(s.id, s.n, s.t, 'data-chk="1"' + (s.g ? ' data-group="' + esc(s.t) + '" data-groupno="' + s.g + '"' : ''), s.it.map(item).join('')); });
 
   h += wrap('stocks', '24', 'Stocks Report', '',
@@ -333,13 +333,51 @@ function progress() {
   $('plabel').textContent = done + ' of ' + secs.length + ' sections complete';
 }
 function buildRail() {
-  var rail = $('rail');
+  var list = $('rail-list');
   root.querySelectorAll('.dcl-sec').forEach(function (s) {
     var a = document.createElement('a'); a.href = '#' + s.id;
-    a.innerHTML = '<i class="dcl-dot"></i><span class="dcl-rn">' + s.querySelector('.dcl-num').textContent + '</span><span>' + esc(s.dataset.title) + '</span>';
+    a.innerHTML = '<i class="dcl-dot"></i><span class="dcl-rn">' + s.querySelector('.dcl-num').textContent + '</span><span class="dcl-rt">' + esc(s.dataset.title) + '</span>';
     a.addEventListener('click', function (e) { e.preventDefault(); s.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
-    rail.appendChild(a);
+    list.appendChild(a);
   });
+  syncRailTop(); spy();
+  if (!railBound) {
+    railBound = true;
+    window.addEventListener('scroll', onSpyScroll, { passive: true });
+    window.addEventListener('resize', function () { syncRailTop(); spy(); });
+  }
+}
+/* The app has three sticky bars stacked on top (status bar, nav, sub-tab strip). The rail and the
+   section scroll-margin both have to start BELOW them, so measure their real height instead of
+   hard-coding it — --dcl-top is read by css/daily-checklist.css. */
+function syncRailTop() {
+  if (!root) return;
+  var h = 0;
+  ['.status-bar', 'nav', '#dynamic-subtab-strip'].forEach(function (sel) {
+    var el = document.querySelector(sel);
+    if (el && el.offsetHeight && getComputedStyle(el).display !== 'none') h += el.offsetHeight;
+  });
+  if (h) root.style.setProperty('--dcl-top', h + 'px');
+}
+function onSpyScroll() { if (spyRaf) return; spyRaf = requestAnimationFrame(function () { spyRaf = 0; spy(); }); }
+/* Highlight the rail entry for the section currently under the sticky header (scroll-spy). */
+function spy() {
+  if (!root) return;
+  var secs = root.querySelectorAll('.dcl-sec'); if (!secs.length) return;
+  var top = (parseFloat(root.style.getPropertyValue('--dcl-top')) || 130) + 24, cur = secs[0];
+  for (var i = 0; i < secs.length; i++) { if (secs[i].getBoundingClientRect().top - top <= 0) cur = secs[i]; else break; }
+  if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) cur = secs[secs.length - 1];   // bottom of page
+  var links = root.querySelectorAll('.dcl-rail a'), act = null;
+  for (var j = 0; j < links.length; j++) {
+    var on = links[j].getAttribute('href') === '#' + cur.id;
+    links[j].classList.toggle('active', on);
+    if (on) { links[j].setAttribute('aria-current', 'location'); act = links[j]; } else links[j].removeAttribute('aria-current');
+  }
+  var list = $('rail-list');   // keep the active entry visible inside the rail only (never scrolls the page)
+  if (act && list && list.clientHeight && list.scrollHeight > list.clientHeight) {
+    if (act.offsetTop < list.scrollTop) list.scrollTop = act.offsetTop - 4;
+    else if (act.offsetTop + act.offsetHeight > list.scrollTop + list.clientHeight) list.scrollTop = act.offsetTop + act.offsetHeight - list.clientHeight + 4;
+  }
 }
 function jumpNext() {
   var t = [].slice.call(root.querySelectorAll('.dcl-sec')).filter(function (s) { return secProgress(s) < 1; })[0];
@@ -546,6 +584,7 @@ function build() {
 function show() {
   if (!built && !build()) return;
   var iso = val('m_date') || todayIso(); loadDay(iso); syncSig();
+  syncRailTop(); setTimeout(function () { syncRailTop(); spy(); }, 300);   // the sub-tab strip fills in just after the page opens
 }
 function onHash() { if (/^#dailychecklist/.test(location.hash)) show(); }
 document.addEventListener('DOMContentLoaded', onHash);
