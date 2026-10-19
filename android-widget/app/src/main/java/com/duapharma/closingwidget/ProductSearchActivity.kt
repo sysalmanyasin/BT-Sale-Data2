@@ -12,6 +12,7 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import kotlin.concurrent.thread
 
@@ -35,6 +36,10 @@ class ProductSearchActivity : AppCompatActivity() {
         val searchButton = findViewById<Button>(R.id.search_button)
         val statusText = findViewById<TextView>(R.id.search_status_text)
         val detailContainer = findViewById<LinearLayout>(R.id.search_detail_container)
+
+        findViewById<Button>(R.id.chat_button).setOnClickListener {
+            startActivity(Intent(this, InventoryChatActivity::class.java))
+        }
 
         fun runSearch(query: String) {
             if (query.isBlank()) {
@@ -149,5 +154,28 @@ class ProductSearchActivity : AppCompatActivity() {
         addRow("Sold — 30 days", "${InventoryRepository.formatQty(detail.qty30)} units")
         addRow("Sold — 60 days", "${InventoryRepository.formatQty(detail.qty60)} units")
         addRow("Sold — 90 days", "${InventoryRepository.formatQty(detail.qty90)} units")
+
+        val aiOut = TextView(this).apply { textSize = 14f; setTextColor(0xFF1A1C1F.toInt()); setTextIsSelectable(true); setPadding(0, 16, 0, 0); visibility = View.GONE }
+        val aiNote = TextView(this).apply {
+            text = "AI-generated reference only — not patient-specific advice. Verify before use."
+            textSize = 11f; setTextColor(0xFF8A8F98.toInt()); visibility = View.GONE
+        }
+        val aiBtn = Button(this).apply { text = "Ask AI about this medicine"; isAllCaps = false }
+        var asked = false
+        aiBtn.setOnClickListener {
+            aiBtn.isEnabled = false; aiBtn.text = "Thinking…"; aiOut.visibility = View.GONE
+            val force = asked
+            thread {
+                val r = try { Result.success(AiClient.medicineInfo(detail.name, detail.generic, detail.company, force)) } catch (e: Exception) { Result.failure(e) }
+                runOnUiThread {
+                    aiBtn.isEnabled = true
+                    r.onSuccess { info -> asked = true; aiOut.text = info; aiOut.visibility = View.VISIBLE; aiNote.visibility = View.VISIBLE; aiBtn.text = "Refresh" }
+                     .onFailure { e -> aiOut.text = "Could not reach AI service. ${e.message ?: ""}"; aiOut.visibility = View.VISIBLE; aiBtn.text = if (asked) "Refresh" else "Ask AI about this medicine" }
+                }
+            }
+        }
+        detailContainer.addView(aiBtn)
+        detailContainer.addView(aiOut)
+        detailContainer.addView(aiNote)
     }
 }

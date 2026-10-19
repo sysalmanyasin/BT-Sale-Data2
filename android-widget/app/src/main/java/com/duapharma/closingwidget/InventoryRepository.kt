@@ -421,6 +421,78 @@ object InventoryRepository {
         )
     }
 
+
+    // ---------------------------------------------------------------
+    // Chat context (mirrors inventory-search/app.js buildChatContext)
+    // ---------------------------------------------------------------
+    private val CHAT_STOPWORDS = setOf(
+        "how", "much", "many", "do", "does", "did", "we", "you", "i", "is", "are", "was", "were",
+        "have", "has", "had", "the", "a", "an", "of", "for", "in", "on", "at", "to", "and", "or",
+        "any", "some", "please", "pls", "plz", "stock", "stocks", "available", "availability",
+        "quantity", "qty", "price", "prices", "cost", "costs", "what", "what's", "whats", "tell",
+        "me", "about", "show", "find", "check", "get", "need", "want", "left", "remaining",
+        "currently", "current", "still", "there", "it", "can", "could", "would", "will"
+    )
+
+    private fun chatWords(message: String): List<String> {
+        val words = message.lowercase(Locale.US).replace(Regex("[?!.,*()]"), "")
+            .split(Regex("\\s+")).filter { it.isNotEmpty() && it !in CHAT_STOPWORDS }
+        return (if (words.isEmpty()) message.lowercase(Locale.US).split(Regex("\\s+")).filter { it.isNotEmpty() } else words)
+            .map { it.replace(Regex("[^\\p{L}\\p{N}\\-]"), "") }.filter { it.isNotEmpty() }.take(4)
+    }
+
+    private fun slimRows(arr: JSONArray?, max: Int): JSONArray {
+        val out = JSONArray()
+        if (arr == null) return out
+        for (i in 0 until minOf(arr.length(), max)) {
+            val o = arr.getJSONObject(i)
+            out.put(JSONObject().apply {
+                put("name", o.optString("name", "")); put("generic", o.optString("generic", ""))
+                put("company", o.optString("company", "")); put("supplier", o.optString("supplier", ""))
+                put("qty", o.optDouble("qty", 0.0)); put("price", o.optDouble("price", 0.0))
+            })
+        }
+        return out
+    }
+
+    /** Builds the {matches, lowStock, outOfStock, totalProducts} block the inventory-chat function expects. Null if inventory is unreachable. */
+    fun buildChatContext(message: String): JSONObject? {
+        val cols = "name,generic,company,supplier,qty,price"
+        val base = "$INV_SUPABASE_URL/rest/v1/inventory_products?select=$cols"
+        val words = chatWords(message)
+        var matches: JSONArray? = null
+        if (words.isNotEmpty()) {
+            val conds = words.joinToString(",") { w -> "or(name.ilike.*$w*,generic.ilike.*$w*,company.ilike.*$w*)" }
+            val f = URLEncoder.encode("($conds)", "UTF-8")
+            matches = fetchJsonArray("$base&and=$f&order=name.asc&limit=20", INV_SUPABASE_ANON_KEY)
+            if (matches != null && matches.length() == 0) {
+                val w = words[0]
+                val f2 = URLEncoder.encode("(name.ilike.*$w*,generic.ilike.*$w*,company.ilike.*$w*)", "UTF-8")
+                matches = fetchJsonArray("$base&or=$f2&order=name.asc&limit=20", INV_SUPABASE_ANON_KEY)
+            }
+        }
+        val low = fetchJsonArray("$base&qty=gt.0&qty=lte.5&order=qty.asc&limit=10", INV_SUPABASE_ANON_KEY)
+        val out = fetchJsonArray("$base&qty=eq.0&limit=10", INV_SUPABASE_ANON_KEY)
+        if (matches == null && low == null && out == null) return null
+        return JSONObject().apply {
+            put("matches", slimRows(matches, 20)); put("lowStock", slimRows(low, 10)); put("outOfStock", slimRows(out, 10))
+            put("totalProducts", countProducts())
+        }
+    }
+
+    private fun countProducts(): Int {
+        var c: HttpURLConnection? = null
+        return try {
+            c = URL("$INV_SUPABASE_URL/rest/v1/inventory_products?select=code&limit=1").openConnection() as HttpURLConnection
+            c.setRequestProperty("apikey", INV_SUPABASE_ANON_KEY)
+            c.setRequestProperty("Authorization", "Bearer $INV_SUPABASE_ANON_KEY")
+            c.setRequestProperty("Prefer", "count=exact")
+            c.connectTimeout = 12_000; c.readTimeout = 12_000
+            if (c.responseCode !in 200..299) return 0
+            c.headerFields["Content-Range"]?.firstOrNull()?.substringAfter("/")?.toIntOrNull() ?: 0
+        } catch (e: Exception) { 0 } finally { c?.disconnect() }
+    }
+
     // ---------------------------------------------------------------
     // Shared HTTP helper
     // ---------------------------------------------------------------

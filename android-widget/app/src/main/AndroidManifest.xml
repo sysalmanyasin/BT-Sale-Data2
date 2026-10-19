@@ -21,26 +21,6 @@
         </activity>
 
         <receiver
-            android:name=".QuickActionsWidgetProvider"
-            android:label="Quick Add"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data android:name="android.appwidget.provider" android:resource="@xml/quick_actions_widget_info" />
-        </receiver>
-
-        <receiver
-            android:name=".AskDuaWidgetProvider"
-            android:label="Ask Dua"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data android:name="android.appwidget.provider" android:resource="@xml/ask_dua_widget_info" />
-        </receiver>
-
-        <receiver
             android:name=".ClosingWidgetProvider"
             android:label="@string/widget_title_label"
             android:exported="false">
@@ -145,18 +125,10 @@
         </receiver>
 
         <activity
-            android:name=".AssistantActivity"
-            android:exported="true"
-            android:launchMode="singleTop"
-            android:label="Quick Add &amp; Ask Dua"
-            android:windowSoftInputMode="adjustResize">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="com.duapharma.closingwidget" android:host="auth" android:path="/callback" />
-            </intent-filter>
-        </activity>
+            android:name=".InventoryChatActivity"
+            android:exported="false"
+            android:label="Inventory Assistant"
+            android:windowSoftInputMode="adjustResize" />
 
         <activity
             android:name=".ProductSearchActivity"

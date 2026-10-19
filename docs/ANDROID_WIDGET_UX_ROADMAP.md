@@ -8,7 +8,7 @@ This is a design proposal, not a claim that these UI changes have already been i
 
 ## What exists today
 
-The `android-widget` module is a native Kotlin app built around `AppWidgetProvider` and `RemoteViews`. It includes 22 documented home-screen widgets across closing/sales, credit, inventory, and STR workflows, plus inventory search and the Quick Add / Ask Dua assistant. The launcher screen currently offers three primary actions: refresh all widgets, open Quick Add / Ask Dua, and search inventory. The launcher and assistant retain some futuristic dark/neon styling.
+The `android-widget` module is a native Kotlin app built around `AppWidgetProvider` and `RemoteViews`. It includes 22 documented home-screen widgets across closing/sales, credit, inventory, and STR workflows, plus inventory search (with the inventory chat assistant and medicine AI info). The launcher screen offers two primary actions: refresh all widgets and search inventory. The launcher and assistant retain some futuristic dark/neon styling.
 
 ## Recommended visual direction
 

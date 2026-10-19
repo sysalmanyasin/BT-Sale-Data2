@@ -26,6 +26,14 @@
         android:textColor="#8A8F98"
         android:textSize="12sp" />
 
+    <Button
+        android:id="@+id/chat_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"
+        android:text="💬  Ask inventory assistant"
+        android:textAllCaps="false" />
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

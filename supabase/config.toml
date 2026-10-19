@@ -34,6 +34,3 @@ verify_jwt = false
 [functions.google-drive]
 verify_jwt = true
 
-# Android staff assistant: JWT required; handler also checks bt_authorized_users.
-[functions.android-assistant]
-verify_jwt = true

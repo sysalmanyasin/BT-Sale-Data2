@@ -39,7 +39,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
             android:layout_marginBottom="22dp"
-            android:text="Search stock, review closing, or ask Dua for a grounded briefing."
+            android:text="Search stock, check medicine info, or ask the inventory assistant."
             android:textColor="#FF64748B"
             android:textSize="14sp"
             android:lineSpacingExtra="3dp" />
@@ -74,22 +74,9 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="5dp"
                 android:layout_marginBottom="10dp"
-                android:text="22 existing home-screen widgets remain available."
+                android:text="20 home-screen widgets available."
                 android:textColor="#FF64748B"
                 android:textSize="12sp" />
-
-            <Button
-                android:id="@+id/ai_briefing_button"
-                android:layout_width="match_parent"
-                android:layout_height="54dp"
-                android:layout_marginTop="4dp"
-                android:background="@drawable/bg_button_violet"
-                android:text="✦  AI Business Briefing"
-                android:textAllCaps="false"
-                android:textColor="#FF14213D"
-                android:textSize="15sp"
-                android:fontFamily="sans"
-                android:textStyle="bold" />
 
             <Button
                 android:id="@+id/search_inventory_button"
@@ -100,19 +87,6 @@
                 android:text="⌕  Search Inventory"
                 android:textAllCaps="false"
                 android:textColor="#FFFFFFFF"
-                android:textSize="15sp"
-                android:fontFamily="sans"
-                android:textStyle="bold" />
-
-            <Button
-                android:id="@+id/assistant_button"
-                android:layout_width="match_parent"
-                android:layout_height="54dp"
-                android:layout_marginTop="10dp"
-                android:background="@drawable/bg_input_field"
-                android:text="Quick Add  ·  Ask Dua"
-                android:textAllCaps="false"
-                android:textColor="#FF334155"
                 android:textSize="15sp"
                 android:fontFamily="sans"
                 android:textStyle="bold" />
@@ -152,7 +126,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
-                android:text="Inventory Search is read-only. Ask Dua should flag unavailable data instead of guessing. Quick Add continues to use your authorized Google sign-in."
+                android:text="Inventory Search is read-only. The assistant answers stock and price only from live inventory records and never guesses."
                 android:textColor="#FF64748B"
                 android:textSize="13sp"
                 android:lineSpacingExtra="2dp" />
