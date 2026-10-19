@@ -83,3 +83,14 @@ jobs:
           name: closing-widget-debug-apk
           path: android-widget/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+      # Manual runs only: attach the APK to a PRIVATE draft release (visible to repo collaborators only).
+      # Never make this release public: the debug APK embeds the widget service password.
+      - name: Attach APK to private draft release (manual runs only)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "apk-run-${{ github.run_number }}" app/build/outputs/apk/debug/app-debug.apk \
+            --draft --target "${{ github.sha }}" --title "Debug APK (run ${{ github.run_number }})" \
+            --notes "Private draft. Do not publish: the APK embeds the widget service password."
