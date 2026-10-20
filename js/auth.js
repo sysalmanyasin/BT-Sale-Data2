@@ -410,9 +410,11 @@ function gauthConfirmUser() { unlockApp(); }
 function gauthSignOut() {
   // Local-only sign-out (this device/tab). Also drops the Supabase session
   // on this device so it doesn't silently linger past the UI sign-out.
+  // scope:'local' is REQUIRED: supabase-js defaults to 'global', which would also kill the
+  // session on every other device (phone) the moment you sign out on one.
   try {
-    if (typeof window.btGetSupabaseClient === 'function') window.btGetSupabaseClient().auth.signOut();
-    if (typeof window.inventoryBridgeGetClient === 'function') window.inventoryBridgeGetClient().auth.signOut();
+    if (typeof window.btGetSupabaseClient === 'function') window.btGetSupabaseClient().auth.signOut({ scope: 'local' });
+    if (typeof window.inventoryBridgeGetClient === 'function') window.inventoryBridgeGetClient().auth.signOut({ scope: 'local' });
   } catch(e) { /* best-effort */ }
   gauthClearSession();
   document.getElementById('gauth-user-bar').style.display='none';

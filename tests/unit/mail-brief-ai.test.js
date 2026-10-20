@@ -19,6 +19,8 @@ const H = (from, subject) => [{ name: 'From', value: from }, { name: 'To', value
 const metaOf = (id) => ({ id, messages: [{ id: id + 'm', internalDate: String(NOW), labelIds: ['INBOX'], snippet: 'preview', payload: { headers: H('Taimur I. Mumtaz <taimur@fdpp.pk>', 'Pending STR ' + id) } }] });
 const fullOf = (id) => ({ id, messages: [
   { id: id + '1', internalDate: String(NOW - 5000), payload: { headers: H('Taimur I. Mumtaz <taimur@fdpp.pk>', 'Pending STR ' + id), mimeType: 'text/plain', body: { data: b64u('Dear all,\nSTR 917761 qty 270 Rs 18,420 not received, dated 20-10-2026. Call 0300-1234567 or mail x@y.com.\nKind regards\nTaimur') } } },
+  { id: id + '3', internalDate: String(NOW - 3000), payload: { headers: H('Usman Razzaq <bahria.exp@fdpp.pk>', 'Re: Pending STR ' + id), mimeType: 'text/plain', body: { data: b64u('Please arrange the less than zero items within 2 days at Bahria Town branch.') } } },
+  { id: id + '4', internalDate: String(NOW - 2000), payload: { headers: H('Dr Ammar Younis <defence.cat@fdpp.pk>', 'Re: Pending STR ' + id), mimeType: 'text/plain', body: { data: b64u('Biometric status:\nBranch      Submitted\nDefence     Yes\nModel Town    No\nBahria     Yes') } } },
   { id: id + '2', internalDate: String(NOW), payload: { headers: H('Bahria <' + ME + '>', 'Re: Pending STR ' + id), mimeType: 'text/plain', body: { data: b64u('Noted\n\nOn Tue, 20 Oct 2026 at 2:50 PM Taimur wrote:\n> QUOTED-SECRET old text') } } }] });
 
 let calls = [], agent = [];
@@ -61,7 +63,14 @@ test('brief sends cleaned full text, identity and figures; renders sections', as
   assert.ok(prompt.includes('917761') && prompt.includes('Rs 18,420') && prompt.includes('20-10-2026'), 'figures and dates survive');
   assert.ok(!prompt.includes('QUOTED-SECRET'), 'quoted history is stripped');
   assert.ok(!prompt.includes('0300-1234567') && !prompt.includes('x@y.com'), 'contact details are redacted');
-  assert.match(prompt, /short replies: you: Noted/);
+  assert.match(prompt, /short replies: you \(Salman, Bahria Town\): Noted/);
+  // senders are tagged so the AI can tell your branch from other branches
+  assert.ok(prompt.includes('[your branch: Mian Usman Razzaq, Co-Branch Manager]'), 'own-branch mailbox tagged');
+  assert.ok(prompt.includes('Dr Ammar Younis [other branch]'), 'other branch tagged');
+  // table rows stay on their own lines with column separators (no merged cells)
+  assert.match(prompt, /Defence \| Yes\n\s+Model Town \| No\n\s+Bahria \| Yes/);
+  // accuracy rules and roles are in the prompt
+  assert.ok(prompt.includes('never call money "units"') && prompt.includes('Sales Manager (sales1@)') && prompt.includes('9 AM-5 PM and 4 PM-12 AM'));
   const heads = [...out.querySelectorAll('.mail-ai-sec')].map((e) => e.textContent);
   assert.deepEqual(heads, ['Needs your action · 1', 'Stock & operations · 1']);
   assert.match(out.querySelector('.mail-foot').textContent, /Briefed 3 of 3 threads/);
@@ -86,4 +95,18 @@ test('one failed chunk still shows the rest and says so', async () => {
   const out = await brief();
   assert.match(out.querySelector('.mail-foot').textContent, /1 of 2 parts failed/);
   assert.equal(out.querySelectorAll('.mail-ai-l').length, 1);
+});
+
+test('an expired app login is caught before any email is downloaded, with a clear message', async () => {
+  setup([{ threads: ids(0, 2) }], []);
+  await MailBriefing.refresh();
+  await waitFor(() => MailBriefing.snapshot().counts.threads === 2);
+  const good = window.btGetSupabaseClient;
+  window.btGetSupabaseClient = () => ({ auth: { getSession: async () => ({ data: { session: null }, error: null }) } });
+  calls = [];
+  const out = await brief();
+  window.btGetSupabaseClient = good;
+  assert.match(out.querySelector('.mail-err').textContent, /app login has expired.*Sign Out.*sign in with Google again/);
+  assert.equal(calls.filter((c) => /format=full/.test(c)).length, 0, 'no full emails downloaded');
+  assert.equal(agent.requests.length, 0, 'no AI request sent');
 });
