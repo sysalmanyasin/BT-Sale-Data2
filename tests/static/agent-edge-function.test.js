@@ -131,7 +131,7 @@ describe('service worker precaches every agent file', () => {
     const missing = files.filter(f => !sw.includes("'" + f + "'"));
     assert.deepEqual(missing, []);
   });
-  test('CACHE_NAME was bumped for this release', () => assert.match(sw, /const CACHE_NAME = 'bt-sales-v11\.(19|[2-9]\d)'/));
+  test('CACHE_NAME was bumped for this release', () => assert.match(sw, /const CACHE_NAME = 'bt-sales-v11\.(19|[2-9]\d|\d{3,})'/));
 });
 
 describe('bt-agent actions, streaming, knowledge', () => {

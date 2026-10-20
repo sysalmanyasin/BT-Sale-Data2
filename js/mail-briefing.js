@@ -8,13 +8,16 @@
 //    Identity Services. The access token lives in memory only; nothing
 //    here can send, label, archive or delete mail.
 //  - Sorting is plain rules (RULES below, edit freely) run in the browser.
-//    Mail matching RULES.priv (insurance, staff matters) is counted but
-//    never shown and never sent to AI.
+//    HIDE_PRIVATE is off (personal app): insurance and staff-matter mail is
+//    shown and briefed like any other. Set it to true to count such mail
+//    (RULES.priv) but never show it or send it to AI.
 //  - "Brief with AI" sends redacted subject/snippet lines of the non-private
 //    items through the app's own bt-agent (js/agent/core/server.js) with
 //    sensitivity "high", so only non-training providers can see them.
 //  - Follow-ups are small device-local records (thread id, subject, due
 //    date) kept through Repository. They do not touch Gmail.
+//  - After the first connect, a silent reconnect (prompt 'none') fetches a fresh token whenever the
+//    page opens, the token expires, or the assistant asks; if Google needs a tap, the button stays.
 //  - Follow-ups also remember when you flagged the thread; each refresh checks
 //    those threads and marks "Reply received" when someone else wrote after you.
 //  - The assistant reads this through MailBriefing.snapshot()/followUps() (js/agent/tools/mail.js):
@@ -30,8 +33,9 @@ export const MailBriefing = (function () {
   'use strict';
 
   const SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
-  const K = { cid: 'bt_mail_cid', days: 'bt_mail_days', fu: 'bt_mail_followups_v1', email: 'bt_mail_email' };
+  const K = { cid: 'bt_mail_cid', days: 'bt_mail_days', fu: 'bt_mail_followups_v1', email: 'bt_mail_email', auto: 'bt_mail_auto' };
   const MAX_THREADS = 40, TZ = 'Asia/Karachi';
+  const HIDE_PRIVATE = false;
 
   const RULES = {
     // first match wins; the label is shown in the briefing
@@ -68,12 +72,17 @@ export const MailBriefing = (function () {
   const dayStr = (d) => d.toLocaleDateString('en-CA', { timeZone: TZ });
   const redact = (s) => String(s).replace(/[\w.+-]+@[\w.-]+/g, '[email]').replace(/\d{5}-\d{7}-\d/g, '[id]').replace(/\+?\d[\d\s-]{8,}\d/g, '[phone]');
   const mailUrl = (id) => 'https://mail.google.com/mail/u/' + encodeURIComponent(me || '0') + '/#all/' + id;
+  const setGo = (f) => { const b = $('#mail-go'); if (b) f(b); };
   const status = (t, bad) => { const s = $('#mail-st'); if (s) { s.textContent = t || ''; s.className = 'mail-status' + (bad ? ' mail-err' : ''); } };
 
   // ── Gmail (read-only REST) ──────────────────────────────────────────
-  async function gapi(path) {
+  async function gapi(path, retried) {
     const r = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/' + path, { headers: { Authorization: 'Bearer ' + token } });
-    if (r.status === 401) { token = null; throw new Error('Session expired. Tap Connect again.'); }
+    if (r.status === 401) {
+      token = null;
+      if (!retried && Repository.getItem(K.auto)) { try { await silentToken(); return gapi(path, true); } catch (_) { /* needs a tap */ } }
+      throw new Error('Session expired. Tap Connect again.');
+    }
     if (!r.ok) { let m = ''; try { m = (await r.json()).error.message; } catch (_) { /* no body */ } throw new Error('Gmail error ' + r.status + (m ? ': ' + m : '')); }
     return r.json();
   }
@@ -89,7 +98,7 @@ export const MailBriefing = (function () {
     const group = (RULES.groups.find((g) => g[1].test(email)) || ['Other'])[0];
     const direct = (hdr(last, 'to') + ',' + hdr(last, 'cc')).toLowerCase().includes(me);
     const unread = ms.some((m) => (m.labelIds || []).includes('UNREAD'));
-    const priv = RULES.priv.test(text + ' ' + email);
+    const priv = HIDE_PRIVATE && RULES.priv.test(text + ' ' + email);
     let score = 0;
     if (unread) score += 2; if (direct) score += 2; if (RULES.action.test(text)) score += 2;
     if ((last.labelIds || []).includes('IMPORTANT')) score++;
@@ -101,11 +110,11 @@ export const MailBriefing = (function () {
 
   async function run() {
     if (!token || busy) return;
-    busy = true; $('#mail-go').disabled = true;
+    busy = true; setGo((b) => { b.disabled = true; });
     try {
       status('Reading mail...');
       if (!me) { const p = await gapi('profile'); me = p.emailAddress.toLowerCase(); Repository.setItem(K.email, me); }
-      const days = Number($('#mail-days').value); Repository.setItem(K.days, String(days));
+      const days = Number(($('#mail-days') || {}).value || Repository.getItem(K.days) || 3); Repository.setItem(K.days, String(days));
       const q = 'newer_than:' + days + 'd (in:inbox OR in:sent) -category:promotions -category:social';
       const list = await gapi('threads?maxResults=' + MAX_THREADS + '&q=' + encodeURIComponent(q));
       const ids = (list.threads || []).map((t) => t.id), out = []; let i = 0, done = 0;
@@ -121,11 +130,13 @@ export const MailBriefing = (function () {
       };
       await Promise.all([worker(), worker(), worker(), worker()]);
       items = out.sort((a, b) => b.score - a.score || b.when - a.when);
-      render(!!list.nextPageToken); status('');
+      if ($('#mail-res')) render(!!list.nextPageToken);
+      status('');
       await checkFU();
-      $('#mail-out').hidden = false; $('#mail-go').textContent = 'Refresh';
+      const dc = $('#mail-out'); if (dc) dc.hidden = false;
+      setGo((b) => { b.textContent = 'Refresh'; });
     } catch (e) { status(e.message || String(e), true); }
-    finally { busy = false; $('#mail-go').disabled = false; renderFU(); }
+    finally { busy = false; setGo((b) => { b.disabled = false; }); renderFU(); }
   }
 
   // ── Follow-ups (device-local) ───────────────────────────────────────
@@ -185,7 +196,7 @@ export const MailBriefing = (function () {
     const by = (k) => items.filter((i) => i.kind === k);
     const act = by('act'), wait = by('wait').sort((a, b) => a.when - b.when), rou = by('routine'), pv = by('private');
     $('#mail-res').replaceChildren(
-      el('p', { class: 'mail-muted', text: items.length + ' threads read' + (more ? ' (newest ' + MAX_THREADS + ' only)' : '') + '. ' + act.length + ' need action, ' + wait.length + ' waiting on others, ' + rou.length + ' routine, ' + pv.length + ' private hidden.' }),
+      el('p', { class: 'mail-muted', text: items.length + ' threads read' + (more ? ' (newest ' + MAX_THREADS + ' only)' : '') + '. ' + act.length + ' need action, ' + wait.length + ' waiting on others, ' + rou.length + ' routine' + (pv.length ? ', ' + pv.length + ' private hidden' : '') + '.' }),
       el('div', { class: 'mail-bar' }, el('button', { class: 'btn btn-s', id: 'mail-ai', type: 'button', onclick: aiBrief, text: 'Brief with AI' })),
       el('div', { id: 'mail-aiout' }),
       section('Needs action', 'most important first', act, 15),
@@ -212,21 +223,45 @@ export const MailBriefing = (function () {
   }
 
   // ── Connect / disconnect ────────────────────────────────────────────
+  let pending = null;
+  const savedCid = () => (Repository.getItem(K.cid) || ($('#mail-cid') && $('#mail-cid').value.trim()) || '');
+  function requestToken(silent) {
+    return new Promise((resolve, reject) => {
+      const cid = savedCid();
+      if (!/\.apps\.googleusercontent\.com$/.test(cid)) return reject(new Error('Paste the full Client ID first (ends with .apps.googleusercontent.com).'));
+      if (!window.google || !google.accounts || !google.accounts.oauth2) return reject(new Error('Google sign-in is still loading. Try again in a moment.'));
+      const tc = google.accounts.oauth2.initTokenClient({
+        client_id: cid, scope: SCOPE, login_hint: me || undefined,
+        callback: (r) => { if (r.error) { reject(new Error('Google said: ' + r.error)); return; } token = r.access_token; Repository.setItem(K.auto, '1'); resolve(token); },
+        error_callback: (e) => reject(new Error('Sign-in problem: ' + ((e && e.type) || 'unknown') + '. Allow pop-ups and try again.')),
+      });
+      tc.requestAccessToken({ prompt: silent ? 'none' : '' });
+      if (silent) setTimeout(() => reject(new Error('Silent sign-in timed out')), 8000);
+    });
+  }
+  // One silent request at a time; resolves with a fresh token or rejects when Google needs a tap.
+  function silentToken() {
+    if (!pending) pending = requestToken(true).finally(() => { pending = null; });
+    return pending;
+  }
+  const waitGoogle = async () => { for (let i = 0; i < 25 && !(window.google && google.accounts && google.accounts.oauth2); i++) await new Promise((r) => setTimeout(r, 200)); };
+  // Reconnect without a tap when the user has connected before. Never throws; returns true when connected.
+  async function reconnect() {
+    if (token) return true;
+    if (busy || !Repository.getItem(K.auto) || !Repository.getItem(K.cid)) return false;
+    try { status('Reconnecting...'); loadGsi(); await waitGoogle(); await silentToken(); await run(); return !!token; }
+    catch (_) { status('Tap Connect and brief me to continue.'); return false; }
+  }
   function connect() {
     const cid = $('#mail-cid').value.trim();
     if (!/\.apps\.googleusercontent\.com$/.test(cid)) { status('Paste the full Client ID first (ends with .apps.googleusercontent.com).', true); $('#mail-conn').open = true; return; }
     if (!window.google || !google.accounts || !google.accounts.oauth2) { status('Google sign-in is still loading. Try again in a moment.', true); return; }
     Repository.setItem(K.cid, cid);
-    const tc = google.accounts.oauth2.initTokenClient({
-      client_id: cid, scope: SCOPE, login_hint: me || undefined,
-      callback: (r) => { if (r.error) { status('Google said: ' + r.error, true); return; } token = r.access_token; run(); },
-      error_callback: (e) => status('Sign-in problem: ' + ((e && e.type) || 'unknown') + '. Allow pop-ups and try again.', true),
-    });
-    tc.requestAccessToken({ prompt: '' });
+    requestToken(false).then(run).catch((e) => status(e.message || String(e), true));
   }
   function disconnect() {
     if (token && window.google) google.accounts.oauth2.revoke(token, () => {});
-    token = null; items = []; $('#mail-res').replaceChildren(); $('#mail-out').hidden = true; $('#mail-go').textContent = 'Connect and brief me';
+    token = null; items = []; Repository.removeItem(K.auto); $('#mail-res').replaceChildren(); $('#mail-out').hidden = true; setGo((b) => { b.textContent = 'Connect and brief me'; });
     status('Disconnected. Gmail access revoked.');
   }
 
@@ -255,11 +290,12 @@ export const MailBriefing = (function () {
           el('button', { class: 'btn btn-s', id: 'mail-out', type: 'button', hidden: '', text: 'Disconnect', onclick: disconnect })),
         el('div', { class: 'mail-status', id: 'mail-st', role: 'status' }),
         el('div', { id: 'mail-res' }),
-        el('p', { class: 'mail-muted', text: 'Read-only. Mail is sorted in this browser. Insurance and staff-matter mail is hidden from the AI.' }));
+        el('p', { class: 'mail-muted', text: 'Read-only. Mail is sorted in this browser. AI briefings use redacted previews and only non-training providers.' }));
       const cidBox = $('#mail-conn'); if (cidBox && !savedCid) cidBox.open = true;
       $('#mail-days').value = Repository.getItem(K.days) || '3';
     }
     loadGsi(); renderFU();
+    if (!token && !items.length) reconnect();
   }
 
   // ── Read-only access for the assistant (js/agent/tools/mail.js) ─────
@@ -280,9 +316,9 @@ export const MailBriefing = (function () {
   const getFollowUpRecord = (id) => readJSON(K.fu, {})[id] || null;
   function setFollowUp(id, v, item) { setFU(item || { id }, v); }
   function restoreFollowUp(id, rec) { const all = readJSON(K.fu, {}); if (rec) all[id] = rec; else delete all[id]; writeJSON(K.fu, all); renderFU(); }
-  async function refresh() { if (!token) throw new Error('Gmail is not connected. Open Utility > Mail and tap Connect and brief me.'); await run(); }
+  async function refresh() { if (!token && !(await reconnect())) throw new Error('Gmail is not connected. Open Utility > Mail and tap Connect and brief me.'); await run(); }
 
-  return { onShow, isConnected, snapshot, followUps, findItem, followUpSubject, getFollowUpRecord, setFollowUp, restoreFollowUp, refresh };
+  return { onShow, reconnect, isConnected, snapshot, followUps, findItem, followUpSubject, getFollowUpRecord, setFollowUp, restoreFollowUp, refresh };
 })();
 
 window.MailBriefing = MailBriefing;
