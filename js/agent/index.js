@@ -15,6 +15,7 @@ import './tools/forecast.js';
 import './tools/closing.js';
 import './tools/billing.js';
 import './tools/documents.js';
+import './tools/mail.js'; // Utility > Mail briefing + follow-ups (read-only Gmail, device-local follow-ups)
 import './tools/memory-tool.js';
 import './tools/planning.js'; // weekday forecast, reorder draft, STR fill rate, money overview (read-only)
 import './tools/verify.js';

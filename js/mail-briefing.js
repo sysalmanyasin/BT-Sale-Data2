@@ -15,6 +15,11 @@
 //    sensitivity "high", so only non-training providers can see them.
 //  - Follow-ups are small device-local records (thread id, subject, due
 //    date) kept through Repository. They do not touch Gmail.
+//  - Follow-ups also remember when you flagged the thread; each refresh checks
+//    those threads and marks "Reply received" when someone else wrote after you.
+//  - The assistant reads this through MailBriefing.snapshot()/followUps() (js/agent/tools/mail.js):
+//    redacted, private mail excluded, nothing leaves the device except through bt-agent
+//    with sensitivity "high".
 //  - Email text is only ever inserted with textContent, never innerHTML.
 // ══════════════════════════════════════════════════════════════════════
 
@@ -117,16 +122,32 @@ export const MailBriefing = (function () {
       await Promise.all([worker(), worker(), worker(), worker()]);
       items = out.sort((a, b) => b.score - a.score || b.when - a.when);
       render(!!list.nextPageToken); status('');
+      await checkFU();
       $('#mail-out').hidden = false; $('#mail-go').textContent = 'Refresh';
     } catch (e) { status(e.message || String(e), true); }
     finally { busy = false; $('#mail-go').disabled = false; renderFU(); }
   }
 
   // ── Follow-ups (device-local) ───────────────────────────────────────
+  // Re-reads each flagged thread (metadata only) and records when someone other than you wrote after the flag.
+  async function checkFU() {
+    const all = readJSON(K.fu, {}), ids = Object.keys(all).slice(0, 25); let changed = false;
+    for (const id of ids) {
+      try {
+        const th = await gapi('threads/' + id + '?format=metadata&metadataHeaders=From');
+        const ms = th.messages || [], last = ms[ms.length - 1]; if (!last) continue;
+        const theirs = addr(hdr(last, 'from')) !== me, t = Number(last.internalDate);
+        const replied = !!(theirs && t > (all[id].since || 0));
+        if (replied && !all[id].replied) { all[id].replied = true; all[id].repliedAt = t; changed = true; }
+        else if (!replied && all[id].replied) { delete all[id].replied; delete all[id].repliedAt; changed = true; }
+      } catch (e) { if (!token) break; /* one thread failing must not stop the rest */ }
+    }
+    if (changed) writeJSON(K.fu, all);
+  }
   function setFU(it, v) {
     const all = readJSON(K.fu, {});
     if (v === 'done' || !v) delete all[it.id];
-    else { const d = new Date(); d.setDate(d.getDate() + ({ today: 0, tomorrow: 1, '3d': 3 }[v] || 0)); all[it.id] = { subject: it.subject, due: dayStr(d) }; }
+    else { const d = new Date(); d.setDate(d.getDate() + ({ today: 0, tomorrow: 1, '3d': 3 }[v] || 0)); all[it.id] = { subject: it.subject, due: dayStr(d), since: it.when || Date.now() }; }
     writeJSON(K.fu, all); renderFU();
   }
   function fuSelect(it) {
@@ -142,7 +163,7 @@ export const MailBriefing = (function () {
     box.append(el('div', { class: 'mail-fu' }, el('h3', { text: 'Follow-ups (' + ids.length + ')' }), ...ids.map((id) => {
       const f = all[id], late = f.due < today;
       return el('div', { class: 'mail-item ' + (late ? 'mail-od' : 'wait') }, el('b', { text: f.subject }),
-        el('div', { class: 'mail-meta', text: (late ? 'Overdue, was due ' : 'Due ') + f.due }),
+        el('div', { class: 'mail-meta', text: (late ? 'Overdue, was due ' : 'Due ') + f.due + (f.replied ? ' · Reply received ' + fmt(f.repliedAt) : '') }),
         el('div', { class: 'mail-row' }, el('a', { href: mailUrl(id), target: '_blank', rel: 'noopener', text: 'Open in Gmail' }),
           el('button', { class: 'btn btn-s', type: 'button', onclick: () => setFU({ id }, 'done'), text: 'Done' })));
     })));
@@ -241,7 +262,27 @@ export const MailBriefing = (function () {
     loadGsi(); renderFU();
   }
 
-  return { onShow };
+  // ── Read-only access for the assistant (js/agent/tools/mail.js) ─────
+  const isConnected = () => !!token;
+  function snapshot() {
+    const pick = (k, n) => items.filter((i) => i.kind === k).slice(0, n).map((i) => ({
+      id: i.id, subject: redact(i.subject), from: i.group, when: fmt(i.when), unread: i.unread, messages: i.n, snippet: redact(i.snippet).slice(0, 140) }));
+    return { connected: !!token, loaded: items.length > 0, counts: { threads: items.length, act: items.filter((i) => i.kind === 'act').length,
+      wait: items.filter((i) => i.kind === 'wait').length, routine: items.filter((i) => i.kind === 'routine').length, private_hidden: items.filter((i) => i.kind === 'private').length },
+      needs_action: pick('act', 15), waiting_on_others: pick('wait', 10) };
+  }
+  function followUps() {
+    const all = readJSON(K.fu, {}), today = dayStr(new Date());
+    return Object.keys(all).sort((a, b) => all[a].due.localeCompare(all[b].due)).map((id) => ({ id, subject: redact(all[id].subject), due: all[id].due, overdue: all[id].due < today, reply_received: !!all[id].replied }));
+  }
+  const findItem = (id) => items.find((i) => i.id === id) || null;
+  const followUpSubject = (id) => (readJSON(K.fu, {})[id] || {}).subject || null;
+  const getFollowUpRecord = (id) => readJSON(K.fu, {})[id] || null;
+  function setFollowUp(id, v, item) { setFU(item || { id }, v); }
+  function restoreFollowUp(id, rec) { const all = readJSON(K.fu, {}); if (rec) all[id] = rec; else delete all[id]; writeJSON(K.fu, all); renderFU(); }
+  async function refresh() { if (!token) throw new Error('Gmail is not connected. Open Utility > Mail and tap Connect and brief me.'); await run(); }
+
+  return { onShow, isConnected, snapshot, followUps, findItem, followUpSubject, getFollowUpRecord, setFollowUp, restoreFollowUp, refresh };
 })();
 
 window.MailBriefing = MailBriefing;

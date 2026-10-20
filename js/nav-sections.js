@@ -224,6 +224,8 @@
     const groups = [];
 
     if (flat.cover) groups.push(Object.assign(_leaf(flat.cover), { _section: 'core', _sortKey: -1 }));
+    // Mail sits right under Cover (Core section), ahead of every Cover-ordered row.
+    if (document.getElementById('page-mail')) groups.push(Object.assign(_leaf(_VIRTUAL.mail), { _section: 'core', _sortKey: -0.5 }));
 
     // Sale Data: Home first, then its existing Index/Daily Data/etc subs.
     if (flat.index) {
@@ -324,7 +326,6 @@
     }
 
     if (document.getElementById('page-pdf-library')) groups.push(Object.assign(_leaf(_VIRTUAL.pdfLibrary), { _section: 'utility' }));
-    if (document.getElementById('page-mail')) groups.push(Object.assign(_leaf(_VIRTUAL.mail), { _section: 'utility' }));
     if (document.getElementById('page-activity-log')) groups.push(Object.assign(_leaf(_VIRTUAL.activityLog), { _section: 'utility' }));
 
     return groups;
