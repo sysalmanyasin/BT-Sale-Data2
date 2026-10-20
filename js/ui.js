@@ -117,6 +117,7 @@ function showPage(id) {
     if (id === 'ai-center' && window.AICenter && typeof window.AICenter.onShow === 'function') window.AICenter.onShow();
     if (id === 'pdf-library' && window.PdfLibrary && typeof window.PdfLibrary.onShow === 'function') window.PdfLibrary.onShow();
     if (id === 'activity-log' && window.ActivityLog && typeof window.ActivityLog.onShow === 'function') window.ActivityLog.onShow();
+    if (id === 'mail' && window.MailBriefing && typeof window.MailBriefing.onShow === 'function') window.MailBriefing.onShow();
     _curPage = id;
     // Announce navigation through EventBus so any subscriber can react
     // (closes MF-03 — _curPage was previously a silent bare `let`).

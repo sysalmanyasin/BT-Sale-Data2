@@ -64,6 +64,7 @@
   // Rows with no bnav item / page of their own behind them.
   const _VIRTUAL = {
     pdfLibrary: { label: 'PDF Library', icon: '📚', href: '#pdf-library' },
+    mail: { label: 'Mail', icon: '✉️', href: '#mail' },
     activityLog: { label: 'Activity Log', icon: '🕒', href: '#activity-log' },
     auditExternal: { label: 'Audit', icon: '🧾', href: 'https://random.duapharma.com', external: true },
     // Standalone PWA (own index.html/sw.js, own home-screen install) —
@@ -323,6 +324,7 @@
     }
 
     if (document.getElementById('page-pdf-library')) groups.push(Object.assign(_leaf(_VIRTUAL.pdfLibrary), { _section: 'utility' }));
+    if (document.getElementById('page-mail')) groups.push(Object.assign(_leaf(_VIRTUAL.mail), { _section: 'utility' }));
     if (document.getElementById('page-activity-log')) groups.push(Object.assign(_leaf(_VIRTUAL.activityLog), { _section: 'utility' }));
 
     return groups;

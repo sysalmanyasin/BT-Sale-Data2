@@ -93,6 +93,7 @@
 <link rel="stylesheet" href="css/reorder-report.css?v=9d57ee33">
 <link rel="stylesheet" href="css/inventory-health-dashboard.css?v=4517ebab">
 <link rel="stylesheet" href="css/pdf-library.css?v=f6cc76b5">
+<link rel="stylesheet" href="css/mail-briefing.css?v=5e6f1733">
 <link rel="stylesheet" href="css/activity-log.css?v=2e5bd5de">
 <link rel="stylesheet" href="css/cash-deposit-report.css?v=a725c219">
 <link rel="stylesheet" href="css/daily-checklist.css?v=6075491e">
@@ -2125,6 +2126,12 @@ if ('serviceWorker' in navigator) {
   </div>
 </div>
 
+<!-- ══ MAIL BRIEFING ══ (see js/mail-briefing.js) — read-only Gmail briefing -->
+<div class="page" id="page-mail">
+  <div class="hero"><div class="hlabel">Mail</div><div class="htitle">✉️ Mail Briefing</div><div class="hsub">Read-only Gmail briefing — what needs action, what is waiting on others, and your follow-ups. Nothing is sent, labelled or deleted.</div></div>
+  <div id="mail-root"></div>
+</div>
+
 <!-- ══ ACTIVITY LOG ══ (see js/activity-log.js) -->
 <div class="page" id="page-activity-log">
   <div class="hero"><div class="hlabel">Activity Log</div><div class="htitle">🕒 Activity Log</div><div class="hsub">Date, time, section, and what changed — add, edit, or delete — synced across every device.</div></div>
@@ -2711,7 +2718,7 @@ if ('serviceWorker' in navigator) {
 <script defer src="js/storage.js?v=08bf43f7"></script>
 
 <!-- 5. UI: showPage, toast, clock, rebuild, dropdowns -->
-<script defer src="js/ui.js?v=753d014b"></script>
+<script defer src="js/ui.js?v=6cbf37e7"></script>
 
 <!-- 6b. Sync center (needs EventBus). Supabase client lib itself now
      loads much earlier above — see comment there. -->
@@ -2723,6 +2730,7 @@ if ('serviceWorker' in navigator) {
 <!-- 6d. Supabase sync (Floor 1 extension — needs Repository + Actions) -->
 <script defer src="js/supabase.js?v=c9b9ec15"></script>
 <script type="module" src="js/pdf-library.js?v=d0efd50b"></script>
+<script type="module" src="js/mail-briefing.js?v=794e0259"></script>
 <script type="module" src="js/activity-log.js?v=759790b2"></script>
 
 <!-- 7. Targets: monthly target management -->
@@ -2750,7 +2758,7 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/cash-deposit-report.js?v=0a87caf2"></script>
 <script type="module" src="js/daily-checklist.js?v=fc26b04b"></script>
 <script type="module" src="js/icons.js?v=b583b55a"></script>
-<script type="module" src="js/nav-sections.js?v=0f68033a"></script>
+<script type="module" src="js/nav-sections.js?v=d5d8eac5"></script>
 <script type="module" src="js/global-search.js?v=25cbde9c"></script>
 <script type="module" src="js/subtab-strip.js?v=d127a5eb"></script>
 
