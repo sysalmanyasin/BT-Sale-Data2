@@ -1,23 +1,95 @@
 /* ══════════════════════════════════════════
    MAIL BRIEFING — Utility page (js/mail-briefing.js)
+   Layout: sticky toolbar + filter chips, compact tap-to-expand rows,
+   swipe actions, quiet priority dots, collapsible AI brief.
    ══════════════════════════════════════════ */
 #mail-root{max-width:760px;}
-.mail-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0;}
-.mail-sel,.mail-in{padding:9px 10px;border-radius:8px;border:1px solid var(--border);font-size:13px;background:var(--surface);color:var(--text);font-family:var(--sans);}
+#page-mail .hsub{display:none;}            /* the long hero blurb costs a screen; the footer line says the same */
+#page-mail .hero{padding-top:14px;padding-bottom:14px;}
+
+/* sticky header: toolbar + status + chips */
+.mail-sticky{position:sticky;top:0;z-index:20;background:var(--bg);margin:0 -4px 6px;padding:8px 4px 8px;box-shadow:0 1px 0 var(--border);}
+.mail-bar{display:flex;gap:8px;align-items:center;margin:0;}
+.mail-bar .btn,.mail-bar .mail-sel{min-height:42px;}
+.mail-sel,.mail-in{padding:9px 10px;border-radius:10px;border:1px solid var(--border);font-size:14px;background:var(--surface);color:var(--text);font-family:var(--sans);}
+.mail-bar .mail-sel{flex:1 1 auto;min-width:0;}
 .mail-in{width:100%;box-sizing:border-box;}
+#mail-go{flex:0 0 auto;}
+#mail-go.mail-icon{flex:0 0 44px;width:44px;padding:0;font-size:20px;line-height:1;}
+#mail-go:disabled{opacity:.6;}
+#mail-go.mail-icon:disabled{animation:mail-spin 1s linear infinite;}
+@keyframes mail-spin{to{transform:rotate(360deg);}}
+.mail-more{flex:0 0 44px;width:44px;padding:0;font-size:20px;line-height:1;}
+.mail-barwrap{position:relative;flex:0 0 auto;}
+.mail-menu{position:absolute;right:0;top:calc(100% + 6px);min-width:200px;z-index:30;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.18);overflow:hidden;}
+.mail-menu[hidden],.mail-mi[hidden]{display:none;}
+.mail-mi{display:block;width:100%;text-align:left;padding:13px 16px;background:none;border:0;border-bottom:1px solid var(--border);color:var(--text);font:500 14px var(--sans);cursor:pointer;}
+.mail-mi:last-child{border-bottom:0;}
 .mail-conn{margin:8px 0;}
-.mail-status{font-size:12px;color:var(--muted);min-height:16px;margin:4px 0;}
+.mail-status{font-size:12px;color:var(--muted);margin:6px 2px 0;}
+.mail-status:empty{display:none;}
 .mail-status.mail-err,.mail-err{color:var(--red);}
-.mail-muted{font-size:12px;color:var(--muted);line-height:1.4;}
-#mail-res h3,.mail-fu h3{font-size:14px;margin:16px 0 8px;color:var(--text);}
-#mail-res h3 small{font-weight:400;color:var(--muted);}
-.mail-item{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--muted);border-radius:10px;padding:10px 12px;margin-bottom:8px;box-shadow:var(--sh);}
-.mail-item.act{border-left-color:var(--red);}
-.mail-item.wait{border-left-color:var(--amber);}
-.mail-item.routine{border-left-color:var(--green);}
-.mail-item.mail-od{border-left-color:var(--red);}
-.mail-item b{font-size:13px;word-break:break-word;}
-.mail-meta{font-size:11px;color:var(--muted);margin:3px 0;}
-.mail-snip{font-size:12px;color:var(--t2);line-height:1.4;word-break:break-word;}
-.mail-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:12px;}
-.mail-ai{white-space:pre-wrap;background:var(--alt);border-radius:10px;padding:12px;font-size:13px;line-height:1.5;margin:8px 0;}
+.mail-muted{font-size:12px;color:var(--muted);line-height:1.5;}
+.mail-foot{margin:16px 2px 8px;text-align:center;}
+.mail-empty{text-align:center;color:var(--muted);font-size:14px;padding:28px 0;}
+.mail-link{background:none;border:0;padding:0;color:var(--accent);font:inherit;font-size:12px;cursor:pointer;text-decoration:underline;}
+
+/* filter chips */
+.mail-chips{display:flex;gap:6px;overflow-x:auto;margin-top:8px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+.mail-chips::-webkit-scrollbar{display:none;}
+.mail-chips:empty{display:none;}
+.mail-chip{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;padding:7px 12px;min-height:34px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--text);font:500 13px var(--sans);cursor:pointer;}
+.mail-chip i{width:8px;height:8px;border-radius:50%;display:inline-block;}
+.mail-chip b{font-weight:700;}
+.mail-chip.on{border-color:var(--accent);background:var(--alt);color:var(--accent);}
+.mail-chip-ai{margin-left:auto;border-style:dashed;}
+
+/* section headings */
+.mail-h{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:18px 2px 8px;}
+.mail-h small{font-weight:400;text-transform:none;letter-spacing:0;}
+
+/* rows */
+.mail-sw{position:relative;border-radius:12px;margin-bottom:6px;overflow:hidden;}
+.mail-sw-bg{position:absolute;inset:0;display:none;justify-content:space-between;align-items:center;padding:0 18px;font:600 13px var(--sans);color:#fff;}
+.mail-sw.sw-r .mail-sw-bg{display:flex;background:var(--green);}
+.mail-sw.sw-l .mail-sw-bg{display:flex;background:var(--amber);}
+.mail-sw.sw-r .mail-sw-fu,.mail-sw.sw-l .mail-sw-done{visibility:hidden;}
+.mail-item{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:12px;touch-action:pan-y;transition:transform .18s ease;}
+.mail-head{display:flex;align-items:center;gap:10px;padding:11px 12px;min-height:50px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.mail-head:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;border-radius:12px;}
+.mail-dot{flex:0 0 8px;width:8px;height:8px;border-radius:50%;background:var(--border-strong);}
+.mail-item.act .mail-dot,.mail-item.mail-od .mail-dot{background:var(--red);}
+.mail-item.wait .mail-dot{background:var(--amber);}
+.mail-main{flex:1 1 auto;min-width:0;}
+.mail-t{font-size:15px;font-weight:500;line-height:1.3;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mail-item.unread .mail-t{font-weight:700;}
+.mail-sub{font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mail-side{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:4px;font-size:12px;color:var(--muted);}
+.mail-tags{display:flex;gap:4px;}
+.mail-tag{font-size:10.5px;font-weight:600;line-height:1.5;padding:0 7px;border-radius:999px;background:var(--s3);color:var(--t2);white-space:nowrap;}
+.mail-body{display:none;padding:10px 12px 12px 30px;border-top:1px solid var(--border);}
+.mail-item.open .mail-body{display:block;}
+.mail-part+.mail-part{margin-top:10px;padding-top:10px;border-top:1px dashed var(--border);}
+.mail-pt{font-size:13px;font-weight:600;margin-bottom:2px;word-break:break-word;}
+.mail-meta{font-size:12px;color:var(--muted);margin:2px 0 4px;}
+.mail-snip{font-size:13px;color:var(--t2);line-height:1.5;word-break:break-word;}
+.mail-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px;font-size:13px;}
+.mail-body a{font-size:13px;}
+
+/* routine fold */
+.mail-fold{display:flex;justify-content:space-between;align-items:center;width:100%;margin:14px 0 6px;padding:12px 14px;border:1px dashed var(--border-strong);border-radius:12px;background:none;color:var(--t2);font:600 13px var(--sans);cursor:pointer;}
+
+/* AI brief */
+.mail-ai{background:var(--alt);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin:8px 0;font-size:13px;line-height:1.5;}
+.mail-ai-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.mail-ai-h .mail-link{margin-left:6px;}
+.mail-ai-l{padding:4px 0;}
+.mail-ai-l+.mail-ai-l{border-top:1px solid var(--border);}
+.mail-ai.collapsed .mail-ai-l:nth-child(n+4){display:none;}
+
+/* undo toast */
+.mail-toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(132px + env(safe-area-inset-bottom,0px));z-index:10002;display:flex;align-items:center;gap:14px;max-width:min(92vw,420px);padding:10px 14px;border-radius:10px;background:#0f172a;color:#fff;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.25);}
+.mail-toast[hidden]{display:none;}
+.mail-toast-b{background:none;border:0;color:#7dd3fc;font:700 13px var(--sans);cursor:pointer;padding:4px 0;}
+
+@media (prefers-reduced-motion:reduce){.mail-item{transition:none;}#mail-go.mail-icon:disabled{animation:none;}}
