@@ -311,9 +311,9 @@ body[data-domain="str"] {
 /* Collapsed by default (task: sections + sub-sections start collapsed
    every time the drawer opens). The nav-hit span carries navigation +
    hover/active feedback; the chevron button is a separate hit target
-   that only toggles visibility of .sections-subs, so tapping the label
-   still jumps straight to the page while tapping the arrow just
-   expands/collapses. */
+   that only toggles visibility of .sections-subs. Group rows (label or
+   arrow) expand/collapse; leaf rows navigate. A group's own page is
+   reached via its "Open <name>" first child. */
 .sections-nav-hit { flex: 1; display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-1); border-radius: var(--r-sm); transition: background .15s; min-width: 0; }
 .sections-nav-hit:hover, .sections-nav-hit:active { background: var(--s2); }
 .sections-toggle {

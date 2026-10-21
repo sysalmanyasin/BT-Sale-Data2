@@ -7,9 +7,11 @@
 // full directory one tap away.
 //
 // Every group renders collapsed by default each time the drawer opens;
-// tapping a group's ▸ chevron expands/collapses just that group, while
-// tapping the label/icon (when the row has a real page behind it) still
-// navigates straight there, same as before.
+// tapping anywhere on a group row (label, icon or ▸ chevron) expands or
+// collapses it, and opening one top-level group closes the others. A
+// group with a real page behind it (Sales, Manager, Tools...) gets an
+// "Open <name>" row first inside it to reach that page. Rows with no
+// children still navigate straight there.
 //
 // Rows can now nest arbitrarily deep (July 2026 re-org): a group can
 // contain another group, which can contain another group, and so on
@@ -365,14 +367,40 @@
     }
   }
 
+  // User tap on a group row (label, icon or chevron): expand/collapse it.
+  // Opening a top-level group also closes any other open top-level group
+  // (accordion) so the list stays short on a phone. Kept separate from
+  // _toggleGroup, which js/global-search.js calls to auto-expand matches
+  // and must not collapse siblings.
+  function _tapGroup(el) {
+    const group = el.closest('.sections-group');
+    if (!group) return;
+    const willOpen = !group.classList.contains('sections-group-open');
+    if (willOpen && group.parentElement && group.parentElement.id === 'sections-list') {
+      group.parentElement.querySelectorAll(':scope > .sections-group.sections-group-open').forEach(other => {
+        if (other !== group) _toggleGroup(other.querySelector(':scope > .sections-row-main .sections-toggle') || other);
+      });
+    }
+    _toggleGroup(el);
+  }
+
   function _renderNode(node, depth) {
     if (!node) return '';
     const isGroup = !!(node.kids && node.kids.length);
+    // A group that has its own page (Sales, Manager, Tools...) now expands
+    // on tap instead of navigating, so its page stays reachable through an
+    // explicit first row. Built here at render time only; _buildTree()
+    // (also used by js/subtab-strip.js) is unchanged.
+    const kids = (isGroup && node.href)
+      ? [{ label: 'Open ' + node.label, icon: '↗️', href: node.href, external: node.external, kids: [] }].concat(node.kids)
+      : (node.kids || []);
     const rowClass = isGroup ? 'sections-row-main' : 'sections-row-sub';
     const labelSpan = depth === 0
       ? `<span class="recents-label">${_esc(node.label)}</span>`
       : `<span class="sections-sub-label">${_esc(node.label)}</span>`;
-    const hitClick = node.href
+    const hitClick = isGroup
+      ? `BTNavSections._tap(this);`
+      : node.href
       ? (node.external
           ? `window.open('${_esc(node.href)}','_blank');closeSectionsDrawer();`
           : `location.hash='${_esc(node.href)}';closeSectionsDrawer();`)
@@ -388,9 +416,9 @@
             ${iconSpan}
             ${labelSpan}
           </span>
-          ${isGroup ? `<button type="button" class="sections-toggle" aria-label="Expand ${_esc(node.label)}" onclick="event.stopPropagation();BTNavSections._toggle(this);">▸</button>` : ''}
+          ${isGroup ? `<button type="button" class="sections-toggle" aria-label="Expand ${_esc(node.label)}" onclick="event.stopPropagation();BTNavSections._tap(this);">▸</button>` : ''}
         </div>
-        ${isGroup ? `<div class="sections-subs">${node.kids.map(k => _renderNode(k, depth + 1)).join('')}</div>` : ''}
+        ${isGroup ? `<div class="sections-subs">${kids.map(k => _renderNode(k, depth + 1)).join('')}</div>` : ''}
       </div>`;
   }
 
@@ -464,6 +492,6 @@
   // (and risking drift from) its own copy of this mapping. Returns a
   // fresh build every call — cheap (small DOM, runs on open/nav-change
   // only) and always current, same as the drawer itself.
-  window.BTNavSections = { _toggle: _toggleGroup, getTree: _buildTree };
+  window.BTNavSections = { _toggle: _toggleGroup, _tap: _tapGroup, getTree: _buildTree };
 
 })();
