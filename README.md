@@ -447,13 +447,13 @@ Public Supabase client keys are acceptable only when protected by proper RLS. If
 ## Testing
 
 ```bash
-npm install
+npm ci                   # clean, lockfile-based install
 npm test                 # run everything
 npm run test:verbose     # spec reporter
 npm run test:watch       # re-run on change
 ```
 
-**Last verified (2026-10-12, `npm test`, Node 22.22.2, HEAD `c789064`):** 207 suites, 1086 tests, 1086 pass, 0 failures, 0 skipped (about 2 minutes).
+**Historical baseline (2026-10-12, Node 22.22.2, HEAD `c789064`):** 207 suites and 1,086 tests passed at that time. This is not a claim about the current checkout; use the live [GitHub Actions test status](https://github.com/sysalmanyasin/BT-Sale-Data2/actions/workflows/test.yml) for the latest CI result.
 
 **Coverage:** AI agent (core, tools, writes/deletes/approvals, undo, kill switch, streaming, routing, 60+ case eval suite), AI Center (model, deck, voice, avatar, forecast game, audit tab, repo index, DOM behaviour), Edge Function and secret-leak checks, static file integrity, script references, manifest validation, service-worker shell consistency, JS syntax, pure modules, EventBus, print API surface, Staff Registry (Repository + Actions), DOM and navigation behaviour.
 
