@@ -17,7 +17,19 @@ localStorage.setItem('bt_mail_cid', 'x.apps.googleusercontent.com'); localStorag
 const NOW = Date.now();
 const H = (from, subject) => [{ name: 'From', value: from }, { name: 'To', value: ME }, { name: 'Subject', value: subject }];
 const metaOf = (id) => ({ id, messages: [{ id: id + 'm', internalDate: String(NOW), labelIds: ['INBOX'], snippet: 'preview', payload: { headers: H('Taimur I. Mumtaz <taimur@fdpp.pk>', 'Pending STR ' + id) } }] });
-const fullOf = (id) => ({ id, messages: [
+const TABLE_HTML = '<div>Hello</div><table><tr><td colspan="9">Over 60 Days Dead and 60 Days Excess report</td></tr><tr><td colspan="9">20 October, 2026</td></tr>'
+  + '<tr><td rowspan="2">Branch</td><td colspan="8">Stock not ever sold and 60 days dead stock</td></tr>'
+  + '<tr><td> Not Ever\r\n Sold 60 Days </td><td>Percentage Notever</td><td> 60 Days Dead </td><td>Percentage Dead</td><td>90 Days Excess</td><td>Percentage Excess</td><td>Stock Position</td><td>Number of days stock</td></tr>'
+  + '<tr><td>Awaisia</td><td>243,072</td><td>1.04%</td><td>1,136,973</td><td>4.87%</td><td>530,622</td><td>2.27%</td><td>23,370,445</td><td>48</td></tr>'
+  + '<tr><td>Bahria town</td><td>814,325</td><td>3.48%</td><td>1,251,358</td><td>5.36%</td><td>593,580</td><td>2.54%</td><td>23,367,141</td><td>41</td></tr>'
+  + '<tr><td>Defence-1</td><td>944,525</td><td>2.99%</td><td>1,810,703</td><td>5.74%</td><td>1,051,545</td><td>3.33%</td><td>31,554,008</td><td>54</td></tr>'
+  + '<tr><td>Mainmarket</td><td>811,000</td><td>1.55%</td><td>1,434,719</td><td>2.75%</td><td>1,055,993</td><td>2.02%</td><td>52,195,090</td><td>33</td></tr>'
+  + '<tr><td>Ait</td><td>578,994</td><td>2.33%</td><td>1,254,410</td><td>5.04%</td><td>917,217</td><td>3.69%</td><td>24,881,643</td><td>43</td></tr></table>'
+  + '<div class="gmail_quote">QUOTED-TABLE-SECRET</div>';
+const tableThread = (id) => ({ id, messages: [{ id: id + '1', internalDate: String(NOW), payload: { headers: H('Sarfraz Rathore <purchase3@fazaldins.org>', 'Over 60 Days Dead and 60 Days Excess report'), mimeType: 'multipart/alternative', parts: [
+  { mimeType: 'text/plain', body: { data: b64u('Branch Stock 814,325 3.48% 1,251,358\n5.36% 593,580 flattened garbage') } },
+  { mimeType: 'text/html', body: { data: b64u(TABLE_HTML) } }] } }] });
+const fullOf = (id) => id === 'tbl' ? tableThread(id) : ({ id, messages: [
   { id: id + '1', internalDate: String(NOW - 5000), payload: { headers: H('Taimur I. Mumtaz <taimur@fdpp.pk>', 'Pending STR ' + id), mimeType: 'text/plain', body: { data: b64u('Dear all,\nSTR 917761 qty 270 Rs 18,420 not received, dated 20-10-2026. Call 0300-1234567 or mail x@y.com.\nKind regards\nTaimur') } } },
   { id: id + '3', internalDate: String(NOW - 3000), payload: { headers: H('Usman Razzaq <bahria.exp@fdpp.pk>', 'Re: Pending STR ' + id), mimeType: 'text/plain', body: { data: b64u('Please arrange the less than zero items within 2 days at Bahria Town branch.') } } },
   { id: id + '4', internalDate: String(NOW - 2000), payload: { headers: H('Dr Ammar Younis <defence.cat@fdpp.pk>', 'Re: Pending STR ' + id), mimeType: 'text/plain', body: { data: b64u('Biometric status:\nBranch      Submitted\nDefence     Yes\nModel Town    No\nBahria     Yes') } } },
@@ -40,6 +52,7 @@ globalThis.fetch = async (url, init) => {
   return json({});
 };
 const setup = (pages, replies) => { calls = []; agent = { pages, replies, requests: [] }; };
+const refs = (a, b) => '{' + Array.from({ length: b - a + 1 }, (_, k) => 'T' + (a + k)).join(',') + '}';
 const ids = (a, b) => Array.from({ length: b - a }, (_, k) => ({ id: 't' + (a + k) }));
 
 const { MailBriefing } = await import('../../js/mail-briefing.js');
@@ -56,7 +69,7 @@ test('reads every page of threads (archived mail included) and keeps counting', 
 });
 
 test('brief sends cleaned full text, identity and figures; renders sections', async () => {
-  respond({ pages: [], replies: ['## Needs your action\nTaimur — STR 917761 not received (Rs 18,420)\n## Stock & operations\nWarehouse — 3 STRs pending'], requests: [] });
+  respond({ pages: [], replies: ['## Needs your action\nTaimur — STR 917761 not received (Rs 18,420) {T1,T2}\n## Stock & operations\nWarehouse — 3 STRs pending {T3}'], requests: [] });
   const out = await brief();
   const prompt = agent.requests[0];
   assert.match(prompt, /Salman Yasin/); assert.ok(prompt.includes(ME));
@@ -74,16 +87,21 @@ test('brief sends cleaned full text, identity and figures; renders sections', as
   const heads = [...out.querySelectorAll('.mail-ai-sec')].map((e) => e.textContent);
   assert.deepEqual(heads, ['Needs your action · 1', 'Stock & operations · 1']);
   assert.match(out.querySelector('.mail-foot').textContent, /Briefed 3 of 3 threads/);
+  // thread ids are not dates: each thread has an explicit date, ids are T-numbers, and no bare [n] index is sent
+  assert.match(prompt, /T1 \| (?:LOOKS LIKE ACTION|YOU WROTE LAST[^|]*|ROUTINE) \| last message \d{1,2} \w{3} 2026/);
+  assert.ok(!/^\[\d+\] /m.test(prompt));
+  assert.match(prompt, /first \(Taimur I\. Mumtaz, \d{1,2} \w{3} 2026/);
+  assert.ok(!/\{T\d/.test(out.textContent), 'thread ids are removed from the displayed lines');
 });
 
 test('big mailboxes are chunked and the sectioned answers are merged', async () => {
   setup([{ threads: ids(0, 30) }], []);
   await MailBriefing.refresh();
   await waitFor(() => MailBriefing.snapshot().counts.threads === 30);
-  agent.replies = ['## Needs your action\nA — first', '## Needs your action\nB — second\n## Insurance\nC — third'];
+  agent.replies = ['## Needs your action\nA — first ' + refs(1, 14), '## Needs your action\nB — second ' + refs(15, 28) + '\n## Insurance\nC — third ' + refs(29, 30)];
   const out = await brief();
-  assert.equal(agent.requests.length, 2);
-  assert.match(agent.requests[1], /part 2 of 2/);
+  assert.equal(agent.requests.length, 3);
+  assert.match(agent.requests[1], /part 2 of 3/);
   assert.deepEqual([...out.querySelectorAll('.mail-ai-sec')].map((e) => e.textContent), ['Needs your action · 2', 'Insurance · 1']);
 });
 
@@ -91,10 +109,11 @@ test('one failed chunk still shows the rest and says so', async () => {
   setup([{ threads: ids(0, 30) }], []);
   await MailBriefing.refresh();
   await waitFor(() => MailBriefing.snapshot().counts.threads === 30);
-  agent.replies = ['## Other\nOnly — part one', 500];
+  agent.replies = ['## Other\nOnly — part one ' + refs(1, 14), 500, '## Other\nThird — part ' + refs(29, 30), 500, 500];
   const out = await brief();
-  assert.match(out.querySelector('.mail-foot').textContent, /1 of 2 parts failed/);
-  assert.equal(out.querySelectorAll('.mail-ai-l').length, 1);
+  assert.match(out.querySelector('.mail-foot').textContent, /3 of 5 requests failed/);
+  const heads = [...out.querySelectorAll('.mail-ai-sec')].map((e) => e.textContent);
+  assert.deepEqual(heads, ['Other · 2', 'Not summarised · 14'], 'threads of the failed request are listed, not dropped');
 });
 
 test('an expired app login is caught before any email is downloaded, with a clear message', async () => {
@@ -109,4 +128,50 @@ test('an expired app login is caught before any email is downloaded, with a clea
   assert.match(out.querySelector('.mail-err').textContent, /app login has expired.*Sign Out.*sign in with Google again/);
   assert.equal(calls.filter((c) => /format=full/.test(c)).length, 0, 'no full emails downloaded');
   assert.equal(agent.requests.length, 0, 'no AI request sent');
+});
+
+test('threads the answer skipped are asked again, and the coverage is complete', async () => {
+  setup([{ threads: ids(0, 3) }], []);
+  await MailBriefing.refresh();
+  await waitFor(() => MailBriefing.snapshot().counts.threads === 3);
+  agent.replies = ['## Other\nFirst two — done {T1,T2}', '## Staff & HR\nThe third — done {T3}'];
+  const out = await brief();
+  assert.equal(agent.requests.length, 2);
+  assert.match(agent.requests[1], /skipped in an earlier pass/);
+  assert.ok(/\nT3 \|/.test('\n' + agent.requests[1]) && !/\nT1 \|/.test('\n' + agent.requests[1]), 'only the skipped thread is re-sent');
+  assert.match(out.querySelector('.mail-foot').textContent, /Briefed 3 of 3 threads/);
+  assert.ok(!out.querySelector('.mail-foot').textContent.includes('failed'));
+});
+
+test('threads that stay unmentioned after two extra passes are listed by subject', async () => {
+  setup([{ threads: ids(0, 3) }], []);
+  await MailBriefing.refresh();
+  await waitFor(() => MailBriefing.snapshot().counts.threads === 3);
+  agent.replies = ['## Other\nOnly one {T1}', '## Other\nStill nothing new {T1}', '## Other\nStill nothing new {T1}'];
+  const out = await brief();
+  assert.equal(agent.requests.length, 3, 'first pass + at most two checking passes');
+  assert.deepEqual([...out.querySelectorAll('.mail-ai-sec')].map((e) => e.textContent), ['Other · 3', 'Not summarised · 2']);
+  assert.match(out.querySelector('.mail-foot').textContent, /Briefed 1 of 3 threads/);
+});
+
+test('an answer without thread ids is shown as is and the app says coverage could not be checked', async () => {
+  setup([{ threads: ids(0, 2) }], []);
+  await MailBriefing.refresh();
+  await waitFor(() => MailBriefing.snapshot().counts.threads === 2);
+  agent.replies = ['## Other\nSomething happened'];
+  const out = await brief();
+  assert.equal(agent.requests.length, 1, 'no endless re-asking');
+  assert.match(out.querySelector('.mail-foot').textContent, /coverage could not be checked/);
+});
+
+test('HTML tables become "Label: Column=value" rows, Bahria first, quoted history dropped', async () => {
+  setup([{ threads: [{ id: 'tbl' }] }], []);
+  await MailBriefing.refresh();
+  await waitFor(() => MailBriefing.snapshot().counts.threads === 1);
+  agent.replies = ['## Stock & operations\nPurchase — report {T1}'];
+  await brief();
+  const prompt = agent.requests[0];
+  assert.ok(prompt.includes('Bahria town: Not Ever Sold 60 Days=814,325; Percentage Notever=3.48%; 60 Days Dead=1,251,358; Percentage Dead=5.36%; 90 Days Excess=593,580; Percentage Excess=2.54%; Stock Position=23,367,141; Number of days stock=41'));
+  assert.ok(prompt.indexOf('Bahria Town rows:') > -1 && prompt.indexOf('Bahria Town rows:') < prompt.indexOf('Awaisia:'), 'Bahria row is first');
+  assert.ok(!prompt.includes('QUOTED-TABLE-SECRET') && !prompt.includes('flattened garbage'));
 });
