@@ -67,6 +67,9 @@ export const MailBriefing = (function () {
   };
 
   let token = null, busy = false, items = [], me = (Repository.getItem(K.email) || '');
+  // Cover strip (js/cover-mail-strip.js) subscribes here; called after every refresh and AI brief.
+  const listeners = [];
+  const emit = () => listeners.forEach((f) => { try { f(); } catch (_) { /* a listener must never break mail */ } });
 
   const $ = (s) => document.querySelector(s);
   function el(t, a, ...c) {
@@ -193,7 +196,7 @@ export const MailBriefing = (function () {
       const dc = $('#mail-out'); if (dc) dc.hidden = false;
       setGo((b) => goLabel(b, true));
     } catch (e) { status(e.message || String(e), true); }
-    finally { busy = false; setGo((b) => { b.disabled = false; }); renderFU(); }
+    finally { busy = false; setGo((b) => { b.disabled = false; }); renderFU(); emit(); }
   }
 
   // ── Follow-ups (device-local) ───────────────────────────────────────
@@ -748,7 +751,7 @@ export const MailBriefing = (function () {
         + (verified ? '' : ' · coverage could not be checked')
         + (failed ? ' · ' + failed + ' of ' + asked + ' requests failed' + (lastErr && lastErr.message ? ' (' + lastErr.message + ')' : '') + ', tap Brief again' : ''));
     } catch (e) { out.replaceChildren(el('p', { class: 'mail-err', text: isLoginErr(e) ? LOGIN_MSG : (e.message || String(e)) })); }
-    finally { lock(false); }
+    finally { lock(false); emit(); }
   }
 
   // ── Connect / disconnect ────────────────────────────────────────────
@@ -868,9 +871,25 @@ export const MailBriefing = (function () {
   const getFollowUpRecord = (id) => readJSON(K.fu, {})[id] || null;
   function setFollowUp(id, v, item) { setFU(item || { id }, v); }
   function restoreFollowUp(id, rec) { const all = readJSON(K.fu, {}); if (rec) all[id] = rec; else delete all[id]; writeJSON(K.fu, all); renderFU(); }
+  // ── Cover strip API (read-only; same Gmail scope, same AI path as the Mail page) ──
+  const getDays = () => { const n = Number(Repository.getItem(K.days) || 3); return [1, 3, 7].includes(n) ? n : 3; };
+  async function setDays(n) {
+    n = [1, 3, 7].includes(Number(n)) ? Number(n) : 3;
+    Repository.setItem(K.days, String(n));
+    try { onShow(); } catch (_) { /* hidden page build is best-effort */ }
+    const sel = $('#mail-days'); if (sel) sel.value = String(n);
+    if (token) await run(); else await reconnect();
+    emit();
+  }
+  async function runBrief() { try { onShow(); } catch (_) { /* ignore */ } if (!items.length) return false; await aiBrief(); return true; }
+  function briefNode() { // detached copy of the last AI brief (built with textContent only), or null
+    const o = $('#mail-aiout'), n = o && o.querySelector('.mail-ai'); if (!n) return null;
+    const c = n.cloneNode(true); const h = c.querySelector('.mail-ai-h span'); if (h) h.remove(); return c;
+  }
+  const onChange = (fn) => { if (typeof fn === 'function') listeners.push(fn); };
   async function refresh() { if (!token && !(await reconnect())) throw new Error('Gmail is not connected. Open Utility > Mail and tap Connect and brief me.'); await run(); }
 
-  return { onShow, reconnect, isConnected, snapshot, followUps, findItem, followUpSubject, getFollowUpRecord, setFollowUp, restoreFollowUp, refresh };
+  return { onShow, reconnect, isConnected, snapshot, followUps, getDays, setDays, runBrief, briefNode, onChange, findItem, followUpSubject, getFollowUpRecord, setFollowUp, restoreFollowUp, refresh };
 })();
 
 window.MailBriefing = MailBriefing;

@@ -1,0 +1,32 @@
+/* COVER MAIL STRIP (js/cover-mail-strip.js) — tokens from variables.css only */
+#cover-mail-strip{margin:0 0 14px;}
+.cms{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--sh);overflow:hidden;}
+.cms-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.cms-h:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
+.cms-ic{font-size:22px;}
+.cms-t{flex:1 1 140px;min-width:0;}
+.cms-tt{font-weight:600;color:var(--text);}
+.cms-sub{font-size:12px;color:var(--muted);}
+.cms-c{display:flex;gap:6px;flex-wrap:wrap;}
+.cms-c span{font:600 12px var(--mono);padding:4px 9px;border-radius:8px;background:var(--bg);border:1px solid var(--border);}
+.cms-c .a{color:var(--red);}.cms-c .w{color:var(--amber);}.cms-c .f{color:var(--accent);}
+.cms-chev{color:var(--muted);transition:transform .2s;}
+.cms.open .cms-chev{transform:rotate(180deg);}
+.cms-days,.cms-tabs{display:flex;gap:6px;flex-wrap:wrap;}
+.cms-days{padding:0 14px 12px;}
+.cms-tabs{margin-bottom:10px;}
+.cms-chip{font:600 12px var(--sans);border:1px solid var(--border);background:var(--bg);color:var(--muted);border-radius:99px;padding:6px 14px;min-height:36px;cursor:pointer;}
+.cms-chip.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+.cms-chip:disabled{opacity:.6;cursor:default;}
+.cms-b{border-top:1px solid var(--border);padding:12px 14px;}
+.cms-sec{font:600 11px var(--sans);letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:12px 0 2px;}
+.cms-sec.a{color:var(--red);}
+.cms-it{padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;color:var(--text);}
+.cms-it:last-child{border-bottom:0;}
+.cms-it small{display:block;color:var(--muted);font-size:11.5px;}
+.cms-mute{font-size:12.5px;color:var(--muted);margin:8px 0;}
+.cms-err{font-size:12.5px;color:var(--red);margin:8px 0;}
+.cms-btn{font:600 12.5px var(--sans);border:1px solid var(--accent);color:var(--accent);background:transparent;border-radius:10px;padding:8px 14px;min-height:40px;cursor:pointer;margin:10px 8px 0 0;}
+.cms-btn.p{background:var(--accent);color:#fff;}
+.cms-btn:disabled{opacity:.6;cursor:default;}
+@media (prefers-reduced-motion:reduce){.cms-chev{transition:none;}}
