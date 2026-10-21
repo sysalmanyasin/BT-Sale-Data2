@@ -16,7 +16,9 @@ localStorage.setItem('bt_mail_cid', 'x.apps.googleusercontent.com'); localStorag
 
 const NOW = Date.now();
 const H = (from, subject) => [{ name: 'From', value: from }, { name: 'To', value: ME }, { name: 'Subject', value: subject }];
-const metaOf = (id) => ({ id, messages: [{ id: id + 'm', internalDate: String(NOW), labelIds: ['INBOX'], snippet: 'preview', payload: { headers: H('Taimur I. Mumtaz <taimur@fdpp.pk>', 'Pending STR ' + id) } }] });
+const SUBJ = {}, WHEN = {}, SENDER = {};
+const metaOf = (id) => ({ id, messages: [{ id: id + 'm', internalDate: String(WHEN[id] || NOW), labelIds: ['INBOX'], snippet: 'preview', payload: { headers: H(SENDER[id] || 'Taimur I. Mumtaz <taimur@fdpp.pk>', SUBJ[id] || ('Pending STR ' + id)) } }] });
+const resetMocks = () => [SUBJ, WHEN, SENDER].forEach((o) => Object.keys(o).forEach((k) => delete o[k]));
 const TABLE_HTML = '<div>Hello</div><table><tr><td colspan="9">Over 60 Days Dead and 60 Days Excess report</td></tr><tr><td colspan="9">20 October, 2026</td></tr>'
   + '<tr><td rowspan="2">Branch</td><td colspan="8">Stock not ever sold and 60 days dead stock</td></tr>'
   + '<tr><td> Not Ever\r\n Sold 60 Days </td><td>Percentage Notever</td><td> 60 Days Dead </td><td>Percentage Dead</td><td>90 Days Excess</td><td>Percentage Excess</td><td>Stock Position</td><td>Number of days stock</td></tr>'
@@ -90,6 +92,7 @@ test('brief sends cleaned full text, identity and figures; renders sections', as
   // thread ids are not dates: each thread has an explicit date, ids are T-numbers, and no bare [n] index is sent
   assert.match(prompt, /T1 \| (?:LOOKS LIKE ACTION|YOU WROTE LAST[^|]*|ROUTINE) \| last message \d{1,2} \w{3} 2026/);
   assert.ok(!/^\[\d+\] /m.test(prompt));
+  assert.match(prompt, /Bahria Town already replied: yes \| suggested heading: Stock & operations/);
   assert.match(prompt, /first \(Taimur I\. Mumtaz, \d{1,2} \w{3} 2026/);
   assert.ok(!/\{T\d/.test(out.textContent), 'thread ids are removed from the displayed lines');
 });
@@ -98,7 +101,7 @@ test('big mailboxes are chunked and the sectioned answers are merged', async () 
   setup([{ threads: ids(0, 30) }], []);
   await MailBriefing.refresh();
   await waitFor(() => MailBriefing.snapshot().counts.threads === 30);
-  agent.replies = ['## Needs your action\nA — first ' + refs(1, 14), '## Needs your action\nB — second ' + refs(15, 28) + '\n## Insurance\nC — third ' + refs(29, 30)];
+  agent.replies = ['## Needs your action\nA — first ' + refs(1, 10), '## Needs your action\nB — second ' + refs(11, 20), '## Insurance\nC — third ' + refs(21, 30)];
   const out = await brief();
   assert.equal(agent.requests.length, 3);
   assert.match(agent.requests[1], /part 2 of 3/);
@@ -109,11 +112,11 @@ test('one failed chunk still shows the rest and says so', async () => {
   setup([{ threads: ids(0, 30) }], []);
   await MailBriefing.refresh();
   await waitFor(() => MailBriefing.snapshot().counts.threads === 30);
-  agent.replies = ['## Other\nOnly — part one ' + refs(1, 14), 500, '## Other\nThird — part ' + refs(29, 30), 500, 500];
+  agent.replies = ['## Other\nOnly — part one ' + refs(1, 10), 500, '## Other\nThird — part ' + refs(21, 30), 500, 500];
   const out = await brief();
   assert.match(out.querySelector('.mail-foot').textContent, /3 of 5 requests failed/);
   const heads = [...out.querySelectorAll('.mail-ai-sec')].map((e) => e.textContent);
-  assert.deepEqual(heads, ['Other · 2', 'Not summarised · 14'], 'threads of the failed request are listed, not dropped');
+  assert.deepEqual(heads, ['Other · 2', 'Not summarised · 10'], 'threads of the failed request are listed, not dropped');
 });
 
 test('an expired app login is caught before any email is downloaded, with a clear message', async () => {
@@ -174,4 +177,59 @@ test('HTML tables become "Label: Column=value" rows, Bahria first, quoted histor
   assert.ok(prompt.includes('Bahria town: Not Ever Sold 60 Days=814,325; Percentage Notever=3.48%; 60 Days Dead=1,251,358; Percentage Dead=5.36%; 90 Days Excess=593,580; Percentage Excess=2.54%; Stock Position=23,367,141; Number of days stock=41'));
   assert.ok(prompt.indexOf('Bahria Town rows:') > -1 && prompt.indexOf('Bahria Town rows:') < prompt.indexOf('Awaisia:'), 'Bahria row is first');
   assert.ok(!prompt.includes('QUOTED-TABLE-SECRET') && !prompt.includes('flattened garbage'));
+});
+
+test('a same-day repeat or correction marks the older thread as replaced', async () => {
+  resetMocks();
+  Object.assign(SUBJ, { bio1: 'Bio Metric Attendance Status DTD:20-10-2026', bio2: 'Bio Metric Machine Status DTD:20-10-2026', jt1: 'Job Timing Issues', jt2: 'Job Timing (Corrected)' });
+  Object.assign(WHEN, { bio1: NOW - 3000, bio2: NOW, jt1: NOW - 2000, jt2: NOW - 1000 });
+  setup([{ threads: [{ id: 'bio1' }, { id: 'bio2' }, { id: 'jt1' }, { id: 'jt2' }] }], []);
+  await MailBriefing.refresh();
+  await waitFor(() => MailBriefing.snapshot().counts.threads === 4);
+  agent.replies = ['## Staff & HR\nHR — status and timings ' + refs(1, 4)];
+  await brief();
+  const p = agent.requests[0];
+  assert.equal((p.match(/OLDER VERSION, replaced by T\d+/g) || []).length, 2);
+  assert.match(p, /Bio Metric Attendance Status[^\n]*OLDER VERSION/);
+  assert.match(p, /Job Timing Issues[^\n]*OLDER VERSION/);
+  assert.ok(!/Bio Metric Machine Status[^\n]*OLDER VERSION/.test(p) && !/Corrected\)[^\n]*OLDER VERSION/.test(p), 'the newest version stays in full');
+  resetMocks();
+});
+
+test('"Warehouse to branches" and "Branches to warehouse" are different reports, not repeats', async () => {
+  resetMocks();
+  Object.assign(SUBJ, { w1: 'Warehouse to branches pending Str', w2: 'Branches to warehouse pending Str' });
+  Object.assign(WHEN, { w1: NOW - 2000, w2: NOW });
+  setup([{ threads: [{ id: 'w1' }, { id: 'w2' }] }], []);
+  await MailBriefing.refresh();
+  await waitFor(() => MailBriefing.snapshot().counts.threads === 2);
+  agent.replies = ['## Stock & operations\nPurchase — pending STRs ' + refs(1, 2)];
+  await brief();
+  assert.ok(!/OLDER VERSION/.test(agent.requests[0]));
+  resetMocks();
+});
+
+test('a thread whose newest message came from your own branch counts as waiting on others', async () => {
+  resetMocks();
+  SENDER.own1 = 'Usman Razzaq <bahria.exp@fdpp.pk>';
+  setup([{ threads: [{ id: 'own1' }, { id: 'other1' }] }], []);
+  await MailBriefing.refresh();
+  await waitFor(() => MailBriefing.snapshot().counts.threads === 2);
+  agent.replies = ['## Waiting on others\nBahria — asked warehouse ' + refs(1, 2)];
+  await brief();
+  assert.match(agent.requests[0], /YOU WROTE LAST[^\n]*Pending STR own1/);
+  assert.ok(!/YOU WROTE LAST[^\n]*Pending STR other1/.test(agent.requests[0]));
+  resetMocks();
+});
+
+test('an answer cut off in the middle of a line loses that half line, and its thread is asked again', async () => {
+  resetMocks();
+  setup([{ threads: ids(0, 2) }], []);
+  await MailBriefing.refresh();
+  await waitFor(() => MailBriefing.snapshot().counts.threads === 2);
+  agent.replies = ['## Insurance\nAGICO notified: Maryam — slab Rs 4,532 {T1}\ninfo@agico.com.pk — E', '## Insurance\nAGICO notified: Shameela — slab Rs 7,242 {T2}'];
+  const out = await brief();
+  assert.equal(agent.requests.length, 2);
+  assert.ok(!out.textContent.includes('info@agico.com.pk — E'));
+  assert.equal(out.querySelectorAll('.mail-ai-l').length, 2);
 });
