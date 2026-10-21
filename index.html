@@ -84,7 +84,7 @@
 <link rel="stylesheet" href="css/nav.css?v=bd9d6dcc">
 <link rel="stylesheet" href="css/closing-native.css?v=2655981b">
 <link rel="stylesheet" href="css/closing-book-print.css?v=80bc3517">
-<link rel="stylesheet" href="css/emergency-billing.css?v=f93246d8">
+<link rel="stylesheet" href="css/emergency-billing.css?v=57ef78b7">
 <link rel="stylesheet" href="css/audit-native.css?v=e7294094">
 <link rel="stylesheet" href="css/inventory-native.css?v=acfe8ce5">
 <link rel="stylesheet" href="css/str-report.css?v=92ddce50">
@@ -110,7 +110,7 @@
 <link rel="stylesheet" href="css/ai-center.css?v=7797e5ea">
 <link rel="stylesheet" href="css/mobile.css?v=6e958d71">
 <link rel="stylesheet" href="css/ai-center-theme.css?v=93140eb5">
-<link rel="stylesheet" href="css/mobile-dashboard.css?v=8c6c429d">
+<link rel="stylesheet" href="css/mobile-dashboard.css?v=d990e704">
 <link rel="stylesheet" href="css/layout-v2.css?v=3c7d0235">
 
 <!-- Service Worker registration -->
@@ -353,14 +353,6 @@ if ('serviceWorker' in navigator) {
   </div>
 
   <div id="cover-herald"></div>
-  <!-- Emergency Billing signal card (architecture doc §5/Phase 4) — only
-       a domain-less, single-page tool, so it doesn't get a full
-       cover-group tile like Sales/Inventory/etc; just a small banner,
-       populated by js/emergency-billing-native.js's ebRenderCoverBanner()
-       (called from renderCoverDashboard() below), shown only when
-       there's something to say (today's invoices exist and/or older
-       days are still unreconciled) and hidden otherwise. -->
-  <div id="cover-emergency-billing-banner"></div>
   <div id="cover-pins-row"></div>
 
   <div id="cover-container">Loading…</div>
@@ -2678,7 +2670,7 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/ledger-store.js?v=1be8785c"></script>
 <script type="module" src="js/ledger-actions.js?v=e3f43a1e"></script>
 <script type="module" src="js/ledger-page.js?v=fb6aea45"></script>
-<script type="module" src="js/cover-dashboard.js?v=9d1f3ec2"></script>
+<script type="module" src="js/cover-dashboard.js?v=c5e3242b"></script>
 <script type="module" src="js/herald/herald-engine.js?v=8d9d1d0c"></script>
 <script type="module" src="js/herald/herald-page.js?v=e2bdfb9f"></script>
 <script src="js/status-bar.js?v=70dc1273"></script>
@@ -2699,7 +2691,7 @@ if ('serviceWorker' in navigator) {
      signal card are a later phase — open directly via #emergency-billing
      for now. -->
 <script type="module" src="js/emergency-billing-bridge.js?v=c4179f92"></script>
-<script type="module" src="js/emergency-billing-native.js?v=46b4bff8"></script>
+<script type="module" src="js/emergency-billing-native.js?v=c6b1f411"></script>
 <script type="module" src="js/str-bridge.js?v=74de3225"></script>
 <script type="module" src="js/str-native.js?v=69dc163b"></script>
 <script type="module" src="js/str-report-native.js?v=5ccf75c3"></script>

@@ -361,17 +361,6 @@ table.eb-hist-detail-table td.num { text-align: right; font-family: var(--mono);
 .eb-set-status { font-size: 12px; color: var(--green); font-weight: 700; opacity: 0; transition: opacity .2s; }
 .eb-set-status.visible { opacity: 1; }
 
-/* ── Cover signal card ──────────────────────────────────────────── */
-.eb-cover-banner {
-  display: flex; align-items: center; gap: var(--sp-3);
-  background: var(--alt2); border: 1px solid var(--amber);
-  border-radius: var(--r-md); padding: var(--sp-3) var(--sp-4);
-  margin: 0 0 var(--sp-3); cursor: pointer;
-}
-.eb-cover-banner-icon { font-size: 18px; }
-.eb-cover-banner-text { font-size: 13px; color: var(--amber); }
-.eb-cover-banner-text strong { font-weight: 700; }
-
 /* ── History's Saved Bill modal shell — also hosts the inline Refund
    form now (renderRefundFormInline() swaps #eb-history-detail-body's
    contents in place; same modal, same .eb-refund-box shell). ───────── */

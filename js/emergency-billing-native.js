@@ -852,17 +852,6 @@ import { BTDate } from './bt-date.js';
     setTimeout(() => window.print(), 50);
   }
 
-  // ── Local-day helper — still used by the Cover banner's "N days not
-  // yet reconciled" count (see renderCoverBanner() below). The on-page
-  // Reconciliation panel that used to live here (grouped unreconciled
-  // invoices by day + "Mark Reconciled") has been removed from the
-  // Billing tab; reconciliation status is still visible per-invoice as
-  // a badge on the History tab.
-  function _localDayKey(isoStr) {
-    const d = new Date(isoStr);
-    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-  }
-
   // ── Refund / partial-refund — reachable only from Billing History now:
   // open a saved bill (openHistoryDetail() below) and use "Refund This",
   // which swaps the same #eb-history-detail-body inline into this form
@@ -965,7 +954,6 @@ import { BTDate } from './bt-date.js';
       }
       say('✅ Refund ' + result.invoiceNumber + ' recorded — ' + cur() + result.netTotal.toFixed(2) + ' returned.');
       closeHistoryDetailModal();
-      renderCoverBanner(true);
       // Refresh whatever's on screen in Billing History so the new refund
       // row (and the original's updated status) show up immediately.
       if (historyResults.length) runHistorySearch();
@@ -974,50 +962,6 @@ import { BTDate } from './bt-date.js';
       btn.disabled = false; btn.textContent = 'Process Refund';
     }
   }
-
-  // ── Cover signal card ──────────────────────────────────────────────
-  // Small banner on Cover, not a full domain group tile (see index.html's
-  // #cover-emergency-billing-banner note). Throttled the same way the
-  // other bridges throttle their full-table pulls — Cover re-renders
-  // often (tab switches, drag-reorder, every checkout), and this isn't
-  // data that needs to be second-fresh.
-  const COVER_BANNER_MIN_REFRESH_MS = 60000;
-  let _bannerCache = null, _bannerFetchedAt = 0, _bannerInFlight = null;
-
-  async function renderCoverBanner(force) {
-    const mount = $('cover-emergency-billing-banner');
-    if (!mount) return; // Cover isn't the page currently in the DOM
-    const fresh = !force && _bannerCache && (Date.now() - _bannerFetchedAt < COVER_BANNER_MIN_REFRESH_MS);
-    if (fresh) { mount.innerHTML = _bannerCache; return; }
-    if (_bannerInFlight) return; // a refresh is already underway
-    _bannerInFlight = (async () => {
-      try {
-        const [today, unreconciled] = await Promise.all([
-          EBBridge.fetchInvoices({ from: new Date(new Date().setHours(0,0,0,0)).toISOString(), to: new Date(new Date().setHours(23,59,59,999)).toISOString() }),
-          EBBridge.fetchInvoices({ unreconciledOnly: true }),
-        ]);
-        if (!today.length && !unreconciled.length) { _bannerCache = ''; _bannerFetchedAt = Date.now(); mount.innerHTML = ''; return; }
-        const todayNet = today.reduce((s, i) => s + (i.is_refund ? -1 : 1) * (parseFloat(i.net_total) || 0), 0);
-        const unreconciledDays = new Set(unreconciled.map(i => _localDayKey(i.billed_at))).size;
-        const c = cur();
-        const html =
-          '<div class="eb-cover-banner" onclick="location.hash=\'#emergency-billing\'">' +
-            '<span class="eb-cover-banner-icon">🚨</span>' +
-            '<div class="eb-cover-banner-text">' +
-              '<strong>POS</strong>' +
-              (today.length ? ' — ' + today.length + ' invoice' + (today.length !== 1 ? 's' : '') + ' today · ' + c + todayNet.toFixed(2) : '') +
-              (unreconciledDays ? ' · ' + unreconciledDays + ' day' + (unreconciledDays !== 1 ? 's' : '') + ' not yet reconciled' : '') +
-            '</div>' +
-          '</div>';
-        _bannerCache = html; _bannerFetchedAt = Date.now();
-        mount.innerHTML = html;
-      } catch (e) {
-        console.error('Emergency Billing cover banner failed', e);
-      } finally { _bannerInFlight = null; }
-    })();
-  }
-
-  window.ebRenderCoverBanner = renderCoverBanner;
 
   // ── Tabs (Billing / History / Settings) ─────────────────────────────
   let historyAutoLoaded = false;
@@ -1511,7 +1455,7 @@ import { BTDate } from './bt-date.js';
   // recordSale) — re-render in case another device/tab's sale affected
   // anything this page is showing. Cart/held bills are per-device
   // localStorage, so this mostly just re-renders what's already there.
-  function onBridgeRefresh() { renderCart(); renderHeldBills(); renderCoverBanner(true); renderInventoryStatus(); }
+  function onBridgeRefresh() { renderCart(); renderHeldBills(); renderInventoryStatus(); }
 
   window.ebOnShowEmergencyBilling = onShowEmergencyBilling;
   window.emergencyBillingNativeOnRefresh = onBridgeRefresh;
