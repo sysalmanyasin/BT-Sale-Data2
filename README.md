@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Tests-1086_passing-brightgreen?style=flat-square" alt="Tests: 1086 passing">
+  <a href="https://github.com/sysalmanyasin/BT-Sale-Data2/actions/workflows/test.yml"><img src="https://github.com/sysalmanyasin/BT-Sale-Data2/actions/workflows/test.yml/badge.svg?branch=main" alt="GitHub Actions tests"></a>
   <img src="https://img.shields.io/badge/AI-BT_Intelligence-0b5fff?style=flat-square" alt="BT Intelligence">
   <img src="https://img.shields.io/badge/Architecture-Single--pharmacy-orange?style=flat-square" alt="Single pharmacy architecture">
 </p>
@@ -41,6 +41,7 @@
 - [Quick start](#quick-start)
 - [Tech stack](#tech-stack)
 - [Repository structure](#repository-structure)
+- [Module index](docs/module-index.md)
 - [Architecture](#architecture)
 - [Features](#features)
 - [Android apps](#android-apps)
@@ -79,31 +80,46 @@
 
 ## Quick start
 
-The web app is served as static files from the repository root, but run the release build before shipping changes. The build does not bundle or minify code; it stamps local script/stylesheet URLs and updates the PWA cache version and `build-manifest.json`.
+The web app is served as static files from the repository root. Node.js 22 is the version used by CI; use a compatible Node.js release and npm.
+
+### Prerequisites
+
+- Git
+- Node.js 22 (recommended; used by GitHub Actions)
+- npm
+- A modern browser
+
+### Install and verify
 
 ```bash
 git clone https://github.com/sysalmanyasin/BT-Sale-Data2.git
 cd BT-Sale-Data2
 
-# Install the test dependency
-npm install
+# Install the exact dependency versions from the lockfile
+npm ci
 
-# Prepare release stamps / PWA cache metadata before shipping changes
-npm run build
-
-# Verify build metadata and run tests
-npm run build:check
+# Run the automated test suite
 npm test
 
-# Serve locally (any static server works)
-npx serve .
-# or: python3 -m http.server 8080
+# Verify release stamps and PWA cache metadata without changing files
+npm run build:check
 ```
 
-**Notes**
+### Run locally
 
-- Sign-in uses Google Sign-In and a Supabase backend, so a fully working local instance needs your own Supabase project and Google client configuration. The test suite does **not** need either.
-- Service workers require `localhost` or HTTPS.
+```bash
+# Any static server can serve the repository root
+npx serve .
+# or
+python3 -m http.server 8080
+```
+
+Open the local URL printed by your server. Service workers require `localhost` or HTTPS.
+
+**Configuration notes**
+
+- Sign-in uses Google Sign-In and Supabase. A fully working local instance needs your own Supabase project and Google client configuration; the automated test suite does **not** need either.
+- Before shipping changes to files included in the PWA, run `npm run build`. It stamps local script/stylesheet URLs and updates the service-worker cache version and `build-manifest.json`; it does not bundle or minify the app. Then run `npm run build:check` and `npm test`.
 - Android apps build through GitHub Actions (see [Android apps](#android-apps)).
 
 ---
@@ -132,19 +148,27 @@ npx serve .
 ├── CNAME                       # Custom domain
 ├── package.json                # Test scripts (only dev dependency: jsdom)
 │
-├── js/                         # ~93 top-level application modules
-│   ├── shared/                 # Shared calculation modules (summary-calc, inventory-metrics, planning-metrics,
-│   │                           #   today-forecast, credit-alerts, agent-shared)
-│   ├── herald/                 # herald-engine.js, herald-page.js
-│   ├── nav-sections.js         # Single source for all navigation
-│   ├── agent/                  # AI assistant: core/ (registry, router, specialists, undo, telemetry…), tools/ (57 tools), ui/ (panel, voice)
-│   ├── ai-center/              # BT Intelligence: ui.js, model.js, deck-model.js, copilot.js, adapters.js,
-│   │                           #   avatar.js, forecast-game.js, repo-intel.js, repo-index.json
+├── js/                         # Application modules (see docs/module-index.md)
+│   ├── shared/                 # Shared, reusable business calculations
+│   │   ├── summary-calc.js     # Sales/closing and inventory summary calculations
+│   │   ├── inventory-metrics.js # Shared slow-moving-stock definitions
+│   │   ├── planning-metrics.js # Forecast, reorder and operational metrics
+│   │   ├── today-forecast.js   # Pure daily-sale forecast and scoring logic
+│   │   ├── credit-alerts.js    # Duplicate, aged and unrolled credit alerts
+│   │   └── agent-shared.js     # Redaction, chunking and knowledge-index helpers
+│   ├── herald/                 # Deterministic operational headlines
+│   ├── nav-sections.js         # Navigation tree and All Sections drawer
+│   ├── global-search.js        # Search sections and Staff Registry
+│   ├── boot-guard.js           # Guard against script dependency-order failures
+│   ├── daily-checklist.js      # Daily Check List page and date-specific drafts
+│   ├── record-day.js           # Reacts to new daily-sales records
+│   ├── agent/                  # Assistant: core/ (routing, approvals, audit, undo), tools/, ui/
+│   ├── ai-center/              # BT Intelligence interface and forecast game
 │   ├── emergency-billing-native.js
 │   └── emergency-billing-bridge.js
 ├── css/                        # Per-domain stylesheets (ai-center*.css for BT Intelligence)
 ├── icons/
-├── docs/                       # AI Center architecture, KPI verification, final report
+├── docs/                       # Module index, AI Center architecture, KPI verification, final report
 ├── scripts/                    # build.mjs, build-repo-index.mjs, agent-live-eval.mjs
 │
 ├── inventory-search/           # Standalone Inventory Search PWA
@@ -368,7 +392,7 @@ Deterministic business logic (Dashboard, Herald, calculators) stays AI-free. AI 
 
 | System | Where | Behaviour |
 |---|---|---|
-| **BT Assistant (Phase 2)** | `js/agent/**`, `css/agent.css`, `bt-agent` Edge Function | One chat, docked inside the **BT Intelligence** page (the ✨ button on other pages jumps there); 57 registered tools. Ask **"What needs my attention today?"** for a deterministic morning briefing (missing sales days, yesterday vs average, target pace, out-of-stock sellers, items running out, dead stock). **Reads** Sales, Staff (no CNIC/phone/address), Ledgers, Staff credit balances, Inventory via registered tools and can open pages. **Changes are locked by default** (🔒 in the header, device-local). Once unlocked it can propose these changes (all approval-gated): add staff credit/payment (Credit Ledger, bucketed by the entry date's month, same shape as Quick Add; warns when a new month row won't carry last month's balance), add ledger entry, add staff note, set monthly target, add a new daily-sales entry (mirrors the Entry page: returns stored negative, TOTAL/DIFF computed, month recomputed, refuses existing dates), correct one field of an existing daily-sales entry, **roll the staff Credit Ledger forward** to the next month (never overwrites a different non-zero opening balance), and save a fact to memory (`remember_fact`). After a change it refreshes dashboards and honours `bt_auto_save` (same as the app's own pages). **Deletes** (one ledger entry, staff note, credit entry or sales day per call; never staff, months or sections) are `critical`: the person must **type DELETE** on the card (enforced in `runTool`, a bare tap is rejected), the model must name the exact record it read first (id / entry number + amount / date + total, mismatches are refused), and each is undoable for the session. Every change shows an **approval card** (large amounts, duplicates, >50% edits and all daily-sales edits need a second confirming tap), is written through `Actions`/`LedgerActions`, is audited (`agent_audit`, incl. approved/rejected) and has a session **Undo**. The gate is enforced in `tool-registry.runTool` (not the prompt): locked, no-approver or rejected ⇒ `run()` never executes; max 5 proposals per request. Browser drives the tool loop; the Edge Function does one model step per call over a free-provider pool (Groq, Cerebras, Gemini, OpenRouter) with fail-over; needs a session **and** an active `bt_authorized_users` row; ledger/staff conversations never go to providers that may train on free-tier prompts. **Gaps A–E (Oct 2026):** server-side **kill switch** (⛔, all devices), **hard blocks** in code for salary finalisation, refunds and bulk deletes (`core/hard-blocks.js`), **reload-proof undo** (recipes stored in `agent_audit`, rebuilt via each tool's `makeUndo`), 📊 **usage + activity** screen, 🧠 **Memory + "how I run this pharmacy"** (owner-written only), **STR** and **Closing** read tools + specialists, an **instant path** for common one-liners with no model call (`core/instant.js`), and **duplicate / carried-over credit** alerts shared by the app and the ntfy push (`js/shared/credit-alerts.js`). `agent_schedules` exists but nothing executes it yet. **Phase 4 (Oct 2026):** **streaming** replies, saved **conversation history** (🕘, 90 days), **Emergency Billing** (read-only) and **Documents** (notes, sheets) specialists, **model-assisted routing** for clue-less questions and an **advisory model reviewer** on large changes (both fall back to the rules), a **knowledge index** with `search_knowledge` (pgvector; owner-triggered, redacted, staff notes only with a non-training embedder) and an approval-gated **remember_fact**. See `supabase/functions/bt-agent/DEPLOY.md`. |
+| **BT Assistant** | `js/agent/**`, `css/agent.css`, `bt-agent` Edge Function | The Dua assistant is surfaced through BT Intelligence; the ✨ entry point on other pages opens that experience. Its registered tools cover read-only analysis and approval-gated operations. Ask **"What needs my attention today?"** for a deterministic morning briefing (missing sales days, yesterday vs average, target pace, out-of-stock sellers, items running out, dead stock). **Reads** Sales, Staff (no CNIC/phone/address), Ledgers, Staff credit balances, Inventory via registered tools and can open pages. **Changes are locked by default** (🔒 in the header, device-local). Once unlocked it can propose these changes (all approval-gated): add staff credit/payment (Credit Ledger, bucketed by the entry date's month, same shape as Quick Add; warns when a new month row won't carry last month's balance), add ledger entry, add staff note, set monthly target, add a new daily-sales entry (mirrors the Entry page: returns stored negative, TOTAL/DIFF computed, month recomputed, refuses existing dates), correct one field of an existing daily-sales entry, **roll the staff Credit Ledger forward** to the next month (never overwrites a different non-zero opening balance), and save a fact to memory (`remember_fact`). After a change it refreshes dashboards and honours `bt_auto_save` (same as the app's own pages). **Deletes** (one ledger entry, staff note, credit entry or sales day per call; never staff, months or sections) are `critical`: the person must **type DELETE** on the card (enforced in `runTool`, a bare tap is rejected), the model must name the exact record it read first (id / entry number + amount / date + total, mismatches are refused), and each is undoable for the session. Every change shows an **approval card** (large amounts, duplicates, >50% edits and all daily-sales edits need a second confirming tap), is written through `Actions`/`LedgerActions`, is audited (`agent_audit`, incl. approved/rejected) and has a session **Undo**. The gate is enforced in `tool-registry.runTool` (not the prompt): locked, no-approver or rejected ⇒ `run()` never executes; max 5 proposals per request. Browser drives the tool loop; the Edge Function does one model step per call over a free-provider pool (Groq, Cerebras, Gemini, OpenRouter) with fail-over; needs a session **and** an active `bt_authorized_users` row; ledger/staff conversations never go to providers that may train on free-tier prompts. **Gaps A–E (Oct 2026):** server-side **kill switch** (⛔, all devices), **hard blocks** in code for salary finalisation, refunds and bulk deletes (`core/hard-blocks.js`), **reload-proof undo** (recipes stored in `agent_audit`, rebuilt via each tool's `makeUndo`), 📊 **usage + activity** screen, 🧠 **Memory + "how I run this pharmacy"** (owner-written only), **STR** and **Closing** read tools + specialists, an **instant path** for common one-liners with no model call (`core/instant.js`), and **duplicate / carried-over credit** alerts shared by the app and the ntfy push (`js/shared/credit-alerts.js`). `agent_schedules` exists but nothing executes it yet. **Phase 4 (Oct 2026):** **streaming** replies, saved **conversation history** (🕘, 90 days), **Emergency Billing** (read-only) and **Documents** (notes, sheets) specialists, **model-assisted routing** for clue-less questions and an **advisory model reviewer** on large changes (both fall back to the rules), a **knowledge index** with `search_knowledge` (pgvector; owner-triggered, redacted, staff notes only with a non-training embedder) and an approval-gated **remember_fact**. See `supabase/functions/bt-agent/DEPLOY.md`. |
 | **BT Intelligence (AI Center)** | `js/ai-center/**`, `css/ai-center*.css`, `docs/ai-center-*.md` | The control room and talking Dua described [above](#bt-intelligence-ai-center). Read-only over the assistant; includes the Forecast Game and the Audit tab. |
 | **Medicine reference** | `inventory-search/` → `medicine-ai-info` Edge Function | Groq first, Gemini fallback; results cached ~30 days; no login required. Reference-only, not clinical decision support. |
 | **Inventory chat** | `inventory-search/` → `inventory-chat` Edge Function | Limited to product context supplied by the client; keeps no server-side inventory copy. |
@@ -441,7 +465,7 @@ More detail in [`tests/README.md`](tests/README.md).
 
 ## Deployment & PWA versioning
 
-- The web app deploys as static files via GitHub Pages (`.nojekyll`, `CNAME`). The service-worker cache version currently in `sw.js` is `bt-sales-v11.90`; check the file for the current value rather than treating this README as the version source.
+- The web app deploys as static files via GitHub Pages (`.nojekyll`, `CNAME`). The service-worker cache version changes as part of the release build. Check `sw.js` and `build-manifest.json` for the current generated value rather than treating this README as the version source.
 - `sw.js` defines a versioned `CACHE_NAME` with an inline changelog comment above it. Check the live value in `sw.js` rather than trusting any number in documentation.
 - When shipped files change, run `npm run build`. It stamps every local script/stylesheet in `index.html` with a content-hash `?v=`, bumps `CACHE_NAME` (`bt-sales-vX.Y`) and updates `build-manifest.json`. CI runs `npm run build:check` and fails if you forgot. Nothing is bundled or minified: the app is served straight from the repo root and relies on script load order.
 - A module that another module **imports** (not only ones `index.html` loads with a tag) must also be in `APP_SHELL`, or it may be missing on a first offline start. `tests/static/file-references.test.js` checks the tag-loaded files.
