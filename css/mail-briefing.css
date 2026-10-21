@@ -97,3 +97,4 @@
 .mail-ai-sec:first-child{padding-top:0;}
 .mail-ai-sec+.mail-ai-l{border-top:none;}
 .mail-ai .mail-foot{margin:8px 0 0;}
+.mail-stale{margin:8px 0 0;padding-top:8px;border-top:1px solid var(--border);font-size:12px;color:var(--amber);}

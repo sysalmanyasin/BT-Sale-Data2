@@ -17,9 +17,9 @@ localStorage.setItem('bt_mail_cid', 'x.apps.googleusercontent.com'); localStorag
 
 const NOW = Date.now();
 const H = (from, subject) => [{ name: 'From', value: from }, { name: 'To', value: ME }, { name: 'Subject', value: subject }];
-const SUBJ = {}, WHEN = {}, SENDER = {}, BODY = {};
-const metaOf = (id) => ({ id, messages: [{ id: id + 'm', internalDate: String(WHEN[id] || NOW), labelIds: ['INBOX'], snippet: 'preview', payload: { headers: H(SENDER[id] || 'Taimur I. Mumtaz <taimur@fdpp.pk>', SUBJ[id] || ('Pending STR ' + id)) } }] });
-const resetMocks = () => [SUBJ, WHEN, SENDER, BODY].forEach((o) => Object.keys(o).forEach((k) => delete o[k]));
+const SUBJ = {}, WHEN = {}, SENDER = {}, BODY = {}, SNIP = {};
+const metaOf = (id) => ({ id, messages: [{ id: id + 'm', internalDate: String(WHEN[id] || NOW), labelIds: ['INBOX'], snippet: SNIP[id] || 'preview', payload: { headers: H(SENDER[id] || 'Taimur I. Mumtaz <taimur@fdpp.pk>', SUBJ[id] || ('Pending STR ' + id)) } }] });
+const resetMocks = () => [SUBJ, WHEN, SENDER, BODY, SNIP].forEach((o) => Object.keys(o).forEach((k) => delete o[k]));
 const TABLE_HTML = '<div>Hello</div><table><tr><td colspan="9">Over 60 Days Dead and 60 Days Excess report</td></tr><tr><td colspan="9">20 October, 2026</td></tr>'
   + '<tr><td rowspan="2">Branch</td><td colspan="8">Stock not ever sold and 60 days dead stock</td></tr>'
   + '<tr><td> Not Ever\r\n Sold 60 Days </td><td>Percentage Notever</td><td> 60 Days Dead </td><td>Percentage Dead</td><td>90 Days Excess</td><td>Percentage Excess</td><td>Stock Position</td><td>Number of days stock</td></tr>'
@@ -210,9 +210,9 @@ test('"Warehouse to branches" and "Branches to warehouse" are different reports,
   resetMocks();
 });
 
-test('a thread whose newest message came from your own branch counts as waiting on others', async () => {
+test('a thread whose newest message is your own branch asking something counts as waiting on others', async () => {
   resetMocks();
-  SENDER.own1 = 'Usman Razzaq <bahria.exp@fdpp.pk>';
+  SENDER.own1 = 'Usman Razzaq <bahria.exp@fdpp.pk>'; SNIP.own1 = 'Kindly arrange the pending items within 2 days.';
   setup([{ threads: [{ id: 'own1' }, { id: 'other1' }] }], []);
   await MailBriefing.refresh();
   await waitFor(() => MailBriefing.snapshot().counts.threads === 2);
