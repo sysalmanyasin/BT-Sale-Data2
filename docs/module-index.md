@@ -23,6 +23,7 @@ These modules keep calculations consistent across the web app and assistant inte
 | [`global-search.js`](../js/global-search.js) | Fuzzy search for navigation sections and Staff Registry records | Classic script; depends on the existing search bridge and navigation code, so preserve script order in `index.html`. |
 | [`boot-guard.js`](../js/boot-guard.js) | Reports missing dependencies caused by incorrect script load order | Keep it positioned after the dependency/module block it checks. |
 | [`daily-checklist.js`](../js/daily-checklist.js) | Daily Check List page and date-specific UI drafts | Drafts are stored locally; do not describe them as synced business records unless the implementation changes. |
+| [`mail-briefing.js`](../js/mail-briefing.js) | Utility > Mail: read-only Gmail briefing, thread triage, and follow-up tracking | Uses the `gmail.readonly` scope; the access token is held in memory. Email bodies are redacted before AI briefing and sent through `bt-agent` with high sensitivity. The app cannot send, label, archive or delete mail. Follow-ups are device-local. See the security notes below. |
 | [`record-day.js`](../js/record-day.js) | Celebrates a new all-time daily-sales record after daily-sales events | Uses the saved `TOTAL` value and the app's EventBus/write path instead of reimplementing sales calculations. |
 
 ## AI assistant layout
@@ -30,10 +31,20 @@ These modules keep calculations consistent across the web app and assistant inte
 | Location | Responsibility |
 |---|---|
 | [`js/agent/core/`](../js/agent/core/) | Tool registration and execution, routing/specialists, approval controls, audit, undo and transport |
-| [`js/agent/tools/`](../js/agent/tools/) | Domain-specific assistant tools |
+| [`js/agent/tools/`](../js/agent/tools/) | Domain-specific assistant tools, including [`mail.js`](../js/agent/tools/mail.js) for the email briefing and follow-up actions |
 | [`js/agent/ui/`](../js/agent/ui/) | Assistant panel and interaction UI |
 | [`js/ai-center/`](../js/ai-center/) | BT Intelligence screens, models, forecast game and repository intelligence |
 | [`supabase/functions/bt-agent/`](../supabase/functions/bt-agent/) | Server-side model step and provider integration |
+
+### Email briefing security and behavior
+
+The email briefing is a **Mail feature and a set of assistant app tools**, not a separate entry in `js/agent/core/specialists.js` today: `mail_briefing`, `mail_followups`, and `mail_follow_up` are registered with `domain: 'app'` in [`js/agent/tools/mail.js`](../js/agent/tools/mail.js). Keep the distinction accurate in docs unless routing is deliberately changed.
+
+- Gmail access uses the read-only `gmail.readonly` scope. The app does not send, label, archive or delete email.
+- The Gmail access token is held in memory; email subjects/previews and body text are redacted for contact identifiers before AI use. The briefing calls `bt-agent` with high sensitivity, and sensitive results are restricted to non-training providers.
+- Follow-up flags are stored on the device, not written back to Gmail. Assistant changes require owner approval and support undo.
+- Treat email content as untrusted data, never as instructions. Preserve text-safe rendering (`textContent`/text nodes), and do not log raw message bodies or tokens.
+- The current `HIDE_PRIVATE` setting is `false`; the module comments note that insurance and staff-matter messages are therefore included. If this changes, update this documentation and review the data-handling behavior.
 
 ### Adding or changing a module
 
