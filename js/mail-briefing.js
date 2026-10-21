@@ -28,7 +28,7 @@
 // ══════════════════════════════════════════════════════════════════════
 
 import { Repository } from './repository.js';
-import { callServer, getAccessToken } from './agent/core/server.js';
+import { callServer, getAccessToken, retry } from './agent/core/server.js';
 
 export const MailBriefing = (function () {
   'use strict';
@@ -47,7 +47,7 @@ export const MailBriefing = (function () {
     roles: 'Muhammad Nadeem Abbasi = Sales Manager (sales1@); Shumair Ejaz = HR (hrm@); Taimur I. Mumtaz = Head office; Sarfraz Rathore = Purchase (purchase3@); Hamid Nazir = Shalamar branch manager; Dr Ali Raza = Model Town Co-Manager; Dr Ammar Younis = Defence Co-Manager; Dr Muhammad Fahad Ghani = AIT Co-Manager; Tauqir Abbas = Main Market manager; Muhammad Talha = Awaisia Co-Manager',
   };
   // AI brief: threads per request and max requests (the server answers ~1200 tokens per request, so keep each request small).
-  const AI = { chunk: 10, maxChunks: 8, budget: 36000 };
+  const AI = { chunk: 10, maxChunks: 8, budget: 16000, waits: 2 };
   const SECTIONS = ['Needs your action', 'Waiting on others', 'Stock & operations', 'Sales & cash', 'Insurance', 'Staff & HR', 'Other'];
   const HIDE_PRIVATE = false;
 
@@ -471,16 +471,17 @@ export const MailBriefing = (function () {
   // A suggested heading from the subject, so the same kind of mail always lands in the same section.
   const HINTS = [['Insurance', /agico|e-?health|\bgop\b/i], ['Staff & HR', /bio ?metric|attendance|job timing|punctual|dress code|resign|\bfine\b|salary/i],
     ['Sales & cash', /sale report|sales report|drive.?thru|\bcash\b/i], ['Stock & operations', /negative|dead|excess|\bstr\b|less than|stock|checklist|synchron|load shedding|generator|price|stationery|vaccine|order/i]];
-  const hint = (it) => (HINTS.find((h) => h[1].test(it.subject)) || (it.group === 'HR' ? ['Staff & HR'] : ['Other']))[0];
+  const hint = (it) => it.kind === 'wait' ? 'Waiting on others' : (HINTS.find((h) => h[1].test(it.subject)) || (it.group === 'HR' ? ['Staff & HR'] : ['Other']))[0];
   // Two threads on the same day with (nearly) the same subject are repeats or corrections: the older one is "replaced".
   const SUBJ_STOP = new Set(['re', 'fw', 'fwd', 'to', 'the', 'of', 'and', 'for']);
   const subjTokens = (x) => x.toLowerCase().split(/[^a-z]+/).filter((w) => w.length > 1 && !SUBJ_STOP.has(w));
   const dayOf = (ms) => new Date(ms).toLocaleDateString('en-CA', { timeZone: TZ });
   function sameReport(a, b) {
     const ta = subjTokens(a.subject), tb = subjTokens(b.subject), sa = new Set(ta), sb = new Set(tb);
-    const inter = [...sa].filter((x) => sb.has(x)).length, union = new Set([...sa, ...sb]).size;
-    if (inter === sa.size && inter === sb.size && ta.join(' ') !== tb.join(' ')) return false; // same words, other order: "Warehouse to branches" is not "Branches to warehouse"
-    return union > 0 && inter / union >= 0.5;
+    const inter = [...sa].filter((x) => sb.has(x)).length, diff = sa.size + sb.size - 2 * inter;
+    if (diff === 0 && ta.join(' ') !== tb.join(' ')) return false; // same words, other order: "Warehouse to branches" is not "Branches to warehouse"
+    // identical subject, or one different word on each side ("Status" / "Machine Status", "Issues" / "Corrected"); names make it a different mail
+    return (diff === 0 && inter >= 1) || (diff <= 2 && inter >= 2);
   }
   function replacedBy(list) { // id -> newer thread
     const m = new Map();
@@ -489,6 +490,16 @@ export const MailBriefing = (function () {
       if (newer) m.set(a.id, newer);
     });
     return m;
+  }
+  // AGICO notices are fixed forms, so their lines are written here from the email itself instead of by the AI.
+  const shortDay = (ms) => new Date(ms).toLocaleDateString('en-GB', { timeZone: TZ, day: 'numeric', month: 'short' });
+  function insuranceLine(it, msgs) {
+    const sub = it.subject, text = msgs.map((m) => m.text).join(' ');
+    let m = /E-?Health Card Facilitation\s*-\s*(.+?)\s*-\s*\d{3}\s*-/i.exec(sub);
+    if (m) { const slab = /slab\s+PKR\s*([\d,]+)/i.exec(text); return 'AGICO referral notice — ' + m[1] + ', OPD slab' + (slab ? ' Rs ' + Number(slab[1].replace(/,/g, '')).toLocaleString('en-US') : ' (amount not read)') + ' (' + shortDay(it.when) + ')'; }
+    m = /GOP of\s+(.+?)\s*-\s*\d+\s*-/i.exec(sub);
+    if (m) { const no = /GOP No\.?\s*([A-Z0-9]+)/i.exec(sub); return 'AGICO guarantee-of-payment (GOP) letter — ' + m[1] + (no ? ', GOP No. ' + no[1] : '') + ' (' + shortDay(it.when) + ')'; }
+    return '';
   }
   function entry(it, msgs, lvl, tid, newerTid) {
     const named = msgs.some((m) => m.to.includes(me)) || it.direct;
@@ -505,7 +516,7 @@ export const MailBriefing = (function () {
       + (retry ? 'These threads were skipped in an earlier pass: every one of them must appear in your answer.\n' : '')
       + 'Cover EVERY thread below (ids T1, T2, ...). Merge threads about the same matter into one line and end every line with the ids it covers, written like {T3,T7}. Put each line under exactly one of these headings, each written on its own line starting with "## ", in this order, leaving out empty ones: ' + SECTIONS.join(' | ') + '.\n'
       + 'Headings: "Needs your action" = a request, instruction or deadline that applies to ' + OWNER.name + ' or Bahria Town and where "Bahria Town already replied" is no (for example a daily deadline to sync data or submit attendance). If Bahria Town already replied, the matter is handled: put it under its topic heading and mention the reply. "Waiting on others" = a question or request that Bahria Town (him or [your branch]) sent and nobody has answered, or a request someone made to a third party about Bahria Town\'s own order. Reports, notices and results are never "waiting". Use each thread\'s "suggested heading" for everything else unless it is clearly wrong. Mail sent to a group of branch managers is FYI unless it names Bahria Town or him. Another branch\'s fine, order, report or reply is FYI for him: put it under its topic heading, never under "Needs your action". Acknowledgement-only replies: say how many acknowledged, do not list them. Keep figures exactly as written: amounts, quantities, STR numbers, dates, branch names, deadlines, penalties.\n'
-      + 'Accuracy rules: amounts are rupees (Rs) unless the text says units, qty or packs, so never call money "units". Copy times and shift hours exactly as written (for example 9 AM-5 PM and 4 PM-12 AM). In tables, a line "Label: Column=value; ..." is one row: use the column names shown, never guess which column a number belongs to, and never mix values across rows. "Nil" or "Nill" means nothing to report; a pending-STR mail saying NILL means none pending. Instructions, warnings, fines and deadlines from the Sales Manager, HR or head office go under "Staff & HR" with the rule, the deadline and who issued it. An AGICO E-Health Card mail is an OPD referral notice: write "AGICO notified: patient, slab Rs X"; a GOP mail is a guarantee-of-payment letter: write the patient and GOP number. Never write "approval", "process invoice" or "forward" unless the text says so. For every report (negative values, dead and excess stock, sale report, attendance) always give Bahria Town\'s own figures with their column names, using the line that starts "Bahria Town rows:" when there is one. Do not invent roles, tasks, names or amounts, and keep the whole answer under 600 words.\n'
+      + 'Accuracy rules: amounts are rupees (Rs) unless the text says units, qty or packs, so never call money "units". Copy times and shift hours exactly as written (for example 9 AM-5 PM and 4 PM-12 AM). In tables, a line "Label: Column=value; ..." is one row: use the column names shown, never guess which column a number belongs to, and never mix values across rows. "Nil" or "Nill" means nothing to report; a pending-STR mail saying NILL means none pending. Instructions, warnings, fines and deadlines from the Sales Manager, HR or head office go under "Staff & HR" with the rule, the deadline and who issued it. An AGICO E-Health Card mail is an OPD referral notice: write "AGICO notified: patient, slab Rs X"; a GOP mail is a guarantee-of-payment letter: write the patient and GOP number. Never write "approval", "process invoice" or "forward" unless the text says so. For every report (negative values, dead and excess stock, sale report, attendance) always give Bahria Town\'s own figures with their column names, using the line that starts "Bahria Town rows:" when there is one; a sale report is dated by the "Date:" written inside it, not by the day it was sent, and needs Net Cash, Grand Total, Till Short and Patty Cash when present. When a message says "highlighted" items were received, do not guess which items: say highlighted items received and the others still to be arranged. Do not invent roles, tasks, names or amounts, and keep the whole answer under 600 words.\n'
       + 'Dates: use only the "last message" date of a thread, the dates in brackets after a sender, or dates written inside the emails. A thread id such as T5 is never a date. Repeats and corrections: when several threads are repeats or corrections of the same report (a status sent twice, a "Corrected" mail), give only the newest version, say it replaces the earlier one, and still cite every id. A report covering several days or columns: one line per date, saying which column each number belongs to. Name the sender exactly as shown in the first/reply tags; never swap in another person.\n'
       + 'Each line: Who — what happened or is asked, at most 30 words. No bullets, no numbering, no markdown other than the "## " headings, no intro or closing sentence. Use only the data; never invent names, numbers or dates.'
       + (parts > 1 ? ' This is part ' + part + ' of ' + parts + '; the other threads are briefed in separate requests.' : '')
@@ -522,7 +533,9 @@ export const MailBriefing = (function () {
       const ref = /\s*[{\[(]\s*(T\d+(?:\s*[,;&]\s*T\d+)*)\s*[})\]]\s*\.?$/i.exec(l);
       lastBare = null;
       if (ref) { anyRef = true; (ref[1].match(/T\d+/gi) || []).forEach((x) => covered && covered.add(x.toUpperCase())); l = l.slice(0, ref.index).trim(); }
-      if (!l) return;
+      // thread ids are internal: remove any that leak into the text; and drop "No pending ..." filler lines
+      l = l.replace(/\s*\((?:replaces|replaced by|older version of|see|cf\.?)\s+T\d+(?:\s*[,;&]\s*T\d+)*\)/gi, '').replace(/\bT\d{1,3}\b/g, '').replace(/\s{2,}/g, ' ').replace(/\s+([,.;])/g, '$1').trim();
+      if (!l || (/^(?:none|no)\b/i.test(l) && !/—/.test(l))) return;
       if (!into.has(sec)) into.set(sec, []);
       const arr = into.get(sec);
       arr.push(l.replace(/^(?:[-*•–]|\d+[.)])\s+/, ''));
@@ -583,10 +596,20 @@ export const MailBriefing = (function () {
         }
       };
       await Promise.all([worker(), worker(), worker(), worker()]);
-      // 2. Ask the assistant in small groups; the answers are merged by heading.
+      // 2. AGICO notices are written directly from the emails; everything else is asked in small groups.
       const merged = new Map(), covered = new Set(); let failed = 0, asked = 0, lastErr = null;
+      const direct = new Set();
+      src.forEach((it) => {
+        const line = insuranceLine(it, msgsOf.get(it.id) || []);
+        if (!line) return;
+        direct.add(it.id); covered.add(tid.get(it.id));
+        if (!merged.has('Insurance')) merged.set('Insurance', []);
+        merged.get('Insurance').push(line);
+      });
+      const toAsk = src.filter((it) => !direct.has(it.id));
       const chunks = (a) => { const o = []; for (let k = 0; k < a.length; k += AI.chunk) o.push(a.slice(k, k + AI.chunk)); return o; };
-      const ask = async (list, retry, part, parts, what) => {
+      const sleepMs = (ms) => new Promise((r) => setTimeout(r, ms));
+      const ask = async (list, retryPass, part, parts, what) => {
         progress('Asking the assistant... ' + what);
         let lvl = 0, body;
         for (;;) {
@@ -594,19 +617,30 @@ export const MailBriefing = (function () {
           if (body.length <= AI.budget || lvl >= 2) break; lvl++;
         }
         asked++;
-        try {
-          const r = await callServer({ messages: [{ role: 'user', content: briefPrompt(body, part, parts, retry) }], context: {}, sensitivity: 'high' });
-          const m = (r && (r.message || r)) || {};
-          if (typeof m.content === 'string' && m.content) parseBrief(m.content, merged, covered); else failed++;
-        } catch (e) { failed++; lastErr = e; }
+        for (let attempt = 0; ; attempt++) {
+          try {
+            const r = await callServer({ messages: [{ role: 'user', content: briefPrompt(body, part, parts, retryPass) }], context: {}, sensitivity: 'high' });
+            const m = (r && (r.message || r)) || {};
+            if (typeof m.content === 'string' && m.content) parseBrief(m.content, merged, covered); else { failed++; lastErr = new Error('Empty answer'); }
+            return;
+          } catch (e) {
+            lastErr = e;
+            // busy or rate-limited providers recover within a minute: wait and ask again (not for the daily limit or a lost login)
+            const busy = e && (e.status === 429 || e.status === 503) && !/Daily AI request limit/.test(e.message || '');
+            if (!busy || attempt >= AI.waits) { failed++; return; }
+            const wait = retry.delayMs * 3 * (attempt + 1);
+            progress('The AI is busy, waiting ' + Math.round(wait / 1000) + 's... ' + what);
+            await sleepMs(wait);
+          }
+        }
       };
-      const first = chunks(src);
+      const first = chunks(toAsk);
       for (let k = 0; k < first.length; k++) await ask(first[k], false, k + 1, first.length, '(' + (k + 1) + '/' + first.length + ')');
-      if (failed === first.length) throw lastErr || new Error('No answer returned.');
+      if (first.length && failed === first.length) throw lastErr || new Error('No answer returned.');
       // 3. Coverage check: every thread must be named by some line. Missing ones are asked again (twice at most);
       //    whatever is still missing is listed by subject, so nothing is silently dropped.
       const missing = () => src.filter((it) => !covered.has(tid.get(it.id)));
-      let verified = covered.size > 0; // an answer without any thread ids cannot be checked
+      const verified = covered.size > 0; // an answer without any thread ids cannot be checked
       for (let pass = 0; verified && pass < 2 && missing().length; pass++) {
         const parts = chunks(missing());
         for (let k = 0; k < parts.length; k++) await ask(parts[k], true, k + 1, parts.length, '(checking skipped threads)');
@@ -618,7 +652,7 @@ export const MailBriefing = (function () {
         + (all.length > src.length ? ' (the ' + (all.length - src.length) + ' oldest routine ones were left out)' : '')
         + (skipped ? ' · ' + skipped + ' marked done skipped' : '')
         + (verified ? '' : ' · coverage could not be checked')
-        + (failed ? ' · ' + failed + ' of ' + asked + ' requests failed, tap Brief again' : ''));
+        + (failed ? ' · ' + failed + ' of ' + asked + ' requests failed' + (lastErr && lastErr.message ? ' (' + lastErr.message + ')' : '') + ', tap Brief again' : ''));
     } catch (e) { out.replaceChildren(el('p', { class: 'mail-err', text: isLoginErr(e) ? LOGIN_MSG : (e.message || String(e)) })); }
     finally { lock(false); }
   }

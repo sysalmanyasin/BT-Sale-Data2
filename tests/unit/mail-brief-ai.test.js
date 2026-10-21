@@ -2,6 +2,7 @@
 // tells the assistant who the reader is, chunks big mailboxes, and merges the sectioned answers.
 import { test } from 'node:test'; import assert from 'node:assert/strict';
 import { installDomEnv } from '../helpers/dom-env.js';
+import { retry } from '../../js/agent/core/server.js';
 installDomEnv();
 document.body.innerHTML = '<div id="mail-root"></div>';
 const ME = 'bahria.cat@fdpp.pk';
@@ -16,9 +17,9 @@ localStorage.setItem('bt_mail_cid', 'x.apps.googleusercontent.com'); localStorag
 
 const NOW = Date.now();
 const H = (from, subject) => [{ name: 'From', value: from }, { name: 'To', value: ME }, { name: 'Subject', value: subject }];
-const SUBJ = {}, WHEN = {}, SENDER = {};
+const SUBJ = {}, WHEN = {}, SENDER = {}, BODY = {};
 const metaOf = (id) => ({ id, messages: [{ id: id + 'm', internalDate: String(WHEN[id] || NOW), labelIds: ['INBOX'], snippet: 'preview', payload: { headers: H(SENDER[id] || 'Taimur I. Mumtaz <taimur@fdpp.pk>', SUBJ[id] || ('Pending STR ' + id)) } }] });
-const resetMocks = () => [SUBJ, WHEN, SENDER].forEach((o) => Object.keys(o).forEach((k) => delete o[k]));
+const resetMocks = () => [SUBJ, WHEN, SENDER, BODY].forEach((o) => Object.keys(o).forEach((k) => delete o[k]));
 const TABLE_HTML = '<div>Hello</div><table><tr><td colspan="9">Over 60 Days Dead and 60 Days Excess report</td></tr><tr><td colspan="9">20 October, 2026</td></tr>'
   + '<tr><td rowspan="2">Branch</td><td colspan="8">Stock not ever sold and 60 days dead stock</td></tr>'
   + '<tr><td> Not Ever\r\n Sold 60 Days </td><td>Percentage Notever</td><td> 60 Days Dead </td><td>Percentage Dead</td><td>90 Days Excess</td><td>Percentage Excess</td><td>Stock Position</td><td>Number of days stock</td></tr>'
@@ -31,7 +32,7 @@ const TABLE_HTML = '<div>Hello</div><table><tr><td colspan="9">Over 60 Days Dead
 const tableThread = (id) => ({ id, messages: [{ id: id + '1', internalDate: String(NOW), payload: { headers: H('Sarfraz Rathore <purchase3@fazaldins.org>', 'Over 60 Days Dead and 60 Days Excess report'), mimeType: 'multipart/alternative', parts: [
   { mimeType: 'text/plain', body: { data: b64u('Branch Stock 814,325 3.48% 1,251,358\n5.36% 593,580 flattened garbage') } },
   { mimeType: 'text/html', body: { data: b64u(TABLE_HTML) } }] } }] });
-const fullOf = (id) => id === 'tbl' ? tableThread(id) : ({ id, messages: [
+const fullOf = (id) => id === 'tbl' ? tableThread(id) : BODY[id] ? ({ id, messages: [{ id: id + '1', internalDate: String(WHEN[id] || NOW), payload: { headers: H(SENDER[id] || 'Info@agico.com.pk', SUBJ[id] || id), mimeType: 'text/plain', body: { data: b64u(BODY[id]) } } }] }) : ({ id, messages: [
   { id: id + '1', internalDate: String(NOW - 5000), payload: { headers: H('Taimur I. Mumtaz <taimur@fdpp.pk>', 'Pending STR ' + id), mimeType: 'text/plain', body: { data: b64u('Dear all,\nSTR 917761 qty 270 Rs 18,420 not received, dated 20-10-2026. Call 0300-1234567 or mail x@y.com.\nKind regards\nTaimur') } } },
   { id: id + '3', internalDate: String(NOW - 3000), payload: { headers: H('Usman Razzaq <bahria.exp@fdpp.pk>', 'Re: Pending STR ' + id), mimeType: 'text/plain', body: { data: b64u('Please arrange the less than zero items within 2 days at Bahria Town branch.') } } },
   { id: id + '4', internalDate: String(NOW - 2000), payload: { headers: H('Dr Ammar Younis <defence.cat@fdpp.pk>', 'Re: Pending STR ' + id), mimeType: 'text/plain', body: { data: b64u('Biometric status:\nBranch      Submitted\nDefence     Yes\nModel Town    No\nBahria     Yes') } } },
@@ -45,7 +46,7 @@ globalThis.fetch = async (url, init) => {
   calls.push(u);
   if (u.includes('/functions/v1/bt-agent')) {
     const content = JSON.parse(init.body).messages[0].content; agent.requests.push(content);
-    const r = agent.replies.shift(); if (r === 500) return json({ error: 'boom' }, 500);
+    const r = agent.replies.shift(); if (r === 500 || r === 503) return json({ error: r === 503 ? 'AI providers are busy.' : 'boom' }, r);
     return json({ message: { content: r } });
   }
   if (/threads\?/.test(u)) { const page = agent.pages.shift() || {}; return json(page); }
@@ -219,6 +220,7 @@ test('a thread whose newest message came from your own branch counts as waiting 
   await brief();
   assert.match(agent.requests[0], /YOU WROTE LAST[^\n]*Pending STR own1/);
   assert.ok(!/YOU WROTE LAST[^\n]*Pending STR other1/.test(agent.requests[0]));
+  assert.match(agent.requests[0], /Pending STR own1[^\n]*suggested heading: Waiting on others/);
   resetMocks();
 });
 
@@ -232,4 +234,75 @@ test('an answer cut off in the middle of a line loses that half line, and its th
   assert.equal(agent.requests.length, 2);
   assert.ok(!out.textContent.includes('info@agico.com.pk — E'));
   assert.equal(out.querySelectorAll('.mail-ai-l').length, 2);
+});
+
+test('AGICO notices are written from the email itself, never by the AI, without "approved"', async () => {
+  resetMocks();
+  Object.assign(SUBJ, { ins1: 'E-Health Card Facilitation - MRS. MARYAM FARHAN - 002 - 002 - 002162', ins2: 'E-Health Card Facilitation - MRS. SHAMEELA ZAFAR - 006 - 006 - 002162',
+    gop1: '[ABDUL RAZZAQ MIR] GOP of SANA SAEED - 004 - MR No.  - GOP No. 202609HI218327' });
+  Object.assign(WHEN, { ins1: NOW, ins2: NOW - 600000, gop1: NOW - 1000 });
+  Object.assign(BODY, { ins1: 'Dear Corporate Team, referred for OPD treatment with slab PKR 4532/- at your esteemed Hospital.', ins2: 'Dear Corporate Team, referred for OPD treatment with slab PKR 7242/- at your esteemed Hospital.', gop1: 'Case approved for requested treatment as per enclosed GOP letter.' });
+  setup([{ threads: [{ id: 'ins1' }, { id: 'ins2' }, { id: 'gop1' }, { id: 'norm1' }] }], []);
+  await MailBriefing.refresh();
+  await waitFor(() => MailBriefing.snapshot().counts.threads === 4);
+  agent.replies = ['## Stock & operations\nPurchase — pending STR ' + refs(1, 4)];
+  const out = await brief();
+  const prompt = agent.requests[0];
+  assert.ok(!/E-Health|GOP of|MARYAM|SANA SAEED/.test(prompt.slice(prompt.lastIndexOf('<emails>'))), 'insurance notices are not sent to the AI');
+  const lines = [...out.querySelectorAll('.mail-ai-l')].map((e) => e.textContent);
+  assert.ok(lines.some((l) => /MRS\. MARYAM FARHAN.*slab Rs 4,532/.test(l)) && lines.some((l) => /MRS\. SHAMEELA ZAFAR.*slab Rs 7,242/.test(l)), 'both patients listed with their slab');
+  assert.ok(lines.some((l) => /SANA SAEED.*GOP No\. 202609HI218327/.test(l)));
+  assert.ok(!lines.some((l) => /approved/i.test(l)));
+  assert.match(out.querySelector('.mail-foot').textContent, /Briefed 4 of 4 threads/);
+  resetMocks();
+});
+
+test('two same-day mails that differ by names are not "replaced"', async () => {
+  resetMocks();
+  Object.assign(SUBJ, { n1: 'Salary slip - ALI KHAN - 001', n2: 'Salary slip - ZAID AHMED - 002' });
+  Object.assign(WHEN, { n1: NOW - 5000, n2: NOW });
+  setup([{ threads: [{ id: 'n1' }, { id: 'n2' }] }], []);
+  await MailBriefing.refresh();
+  await waitFor(() => MailBriefing.snapshot().counts.threads === 2);
+  agent.replies = ['## Other\nHR — slips ' + refs(1, 2)];
+  await brief();
+  assert.ok(!/OLDER VERSION/.test(agent.requests[0]));
+  resetMocks();
+});
+
+test('leaked thread ids and "No pending ..." filler lines never reach the screen', async () => {
+  resetMocks();
+  setup([{ threads: ids(0, 2) }], []);
+  await MailBriefing.refresh();
+  await waitFor(() => MailBriefing.snapshot().counts.threads === 2);
+  agent.replies = ['## Waiting on others\nNo pending requests from Bahria Town or other branches.\n## Insurance\nAGICO notified: Maryam — slab Rs 4,532 (replaces T4) {T1}\nHR — see T2 for timings {T2}'];
+  const out = await brief();
+  assert.deepEqual([...out.querySelectorAll('.mail-ai-sec')].map((e) => e.textContent), ['Insurance · 2'], 'the empty Waiting section is gone');
+  assert.ok(!/\bT\d/.test(out.textContent.replace(/Briefed.*/, '')), 'no thread ids on screen');
+});
+
+test('a busy AI is waited out and asked again instead of giving up', async () => {
+  resetMocks();
+  const saved = retry.delayMs; retry.delayMs = 0;
+  setup([{ threads: ids(0, 2) }], []);
+  await MailBriefing.refresh();
+  await waitFor(() => MailBriefing.snapshot().counts.threads === 2);
+  agent.replies = [503, 503, '## Other\nBoth — fine ' + refs(1, 2)];
+  const out = await brief();
+  retry.delayMs = saved;
+  assert.equal(agent.requests.length, 3, 'first try, the built-in retry, then one patient retry');
+  assert.equal(out.querySelectorAll('.mail-ai-l').length, 1);
+  assert.ok(!out.querySelector('.mail-foot').textContent.includes('failed'));
+});
+
+test('a request that stays busy is reported with the reason', async () => {
+  resetMocks();
+  const saved = retry.delayMs; retry.delayMs = 0;
+  setup([{ threads: ids(0, 2) }], []);
+  await MailBriefing.refresh();
+  await waitFor(() => MailBriefing.snapshot().counts.threads === 2);
+  agent.replies = [503, 503, 503, 503, 503, 503];
+  const out = await brief();
+  retry.delayMs = saved;
+  assert.match(out.querySelector('.mail-err').textContent, /busy/i);
 });

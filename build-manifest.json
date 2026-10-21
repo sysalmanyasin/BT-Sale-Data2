@@ -1,6 +1,6 @@
 {
-  "cache": "bt-sales-v11.107",
-  "hash": "fd3c1fe543a8",
+  "cache": "bt-sales-v11.108",
+  "hash": "75152ae65a2a",
   "files": {
     "css/activity-log.css": "2e5bd5de",
     "css/agent.css": "fae342e7",
@@ -39,7 +39,7 @@
     "icons/icon-192.png": "22867a0e",
     "icons/icon-512.png": "5783f250",
     "icons/icon.svg": "5804ff69",
-    "index.html": "4e43f05c",
+    "index.html": "5c0f139d",
     "js/actions.js": "729c9d54",
     "js/activity-log.js": "759790b2",
     "js/agent/core/after-write.js": "c9384ff3",
@@ -149,7 +149,7 @@
     "js/ledger-page.js": "fb6aea45",
     "js/ledger-quick-add.js": "0ff72bdb",
     "js/ledger-store.js": "1be8785c",
-    "js/mail-briefing.js": "39c9d5b8",
+    "js/mail-briefing.js": "4d5efa71",
     "js/manager-attendance.js": "dd4f34b9",
     "js/manager-credit.js": "6e2e5f20",
     "js/manager-export.js": "e65a2913",
