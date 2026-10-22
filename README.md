@@ -83,7 +83,7 @@
 | JS modules under `js/` | 165 |
 | Supabase Edge Functions | 8 |
 | Dated SQL migrations | 24 |
-| Test files (`*.test.js`) | 87 |
+| Test files (`*.test.js`) | 88 |
 | Android home-screen widgets | 22 |
 | GitHub Actions workflows | 5 |
 <!-- repo-facts:end -->
@@ -242,6 +242,12 @@ The migration is incremental, so some `window.*` bridges remain. Do not remove o
 ### Cover & Herald
 
 **Cover** is the operational hub: domain cards (reorderable), cross-domain signals, inventory/sales/manager/audit indicators, Herald headlines, and shortcuts to companion apps.
+
+**Cover has two views**, switched with the `Summary | Detailed` control under the header and remembered per user (`bt_cover_view_v1`, default **Summary**):
+- **Summary** — one short screen: compact hero, KPI cards, Herald, pins, then one colour-coded tile per section (headline figure plus a green/amber/red status dot where it can be judged honestly). Tapping a tile opens that section as a bottom sheet. The sheet is the section's existing `.cover-group`, so every card and button is the same code as Detailed. Close with ✕, Escape or the backdrop.
+- **Detailed** — the classic long page with every section expandable inline and Collapse/Expand all.
+
+Tile and group colours are the accents each section re-themes to once opened (`nav.css`, `body[data-domain]`); `tests/static/cover-design.test.js` enforces this, and `tests/dom/cover-view.test.js` drives the real module against the real `index.html`.
 
 **IC Herald** (`js/herald/`) generates daily headlines from Sales, Manager, Inventory, Closing, and Audit data. It is **deterministic business rules, not generative AI**.
 

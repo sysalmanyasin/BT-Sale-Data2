@@ -1243,6 +1243,148 @@ function _setOrder(arr) { try { Repository.setItem(ORDER_KEY, JSON.stringify(arr
 // own iteration — GROUP_ORDER itself is left untouched as the permanent
 // "this is the full known set" default/reconciliation source, same role
 // ALL_GROUP_SLUGS plays for collapse state.
+// ── Summary / Detailed view (Cover "Command Deck") ───────────────────────────
+// Summary (default): the page is one short screen — KPIs, Herald, pins, then one colour-coded tile
+// per section. Tapping a tile opens THAT SECTION'S EXISTING GROUP as a bottom sheet (the same
+// .cover-group element, so every card/button/handler is unchanged and nothing can drift).
+// Detailed: the classic long page. The choice persists via Repository (synced like other Cover prefs).
+const VIEW_KEY = 'bt_cover_view_v1';
+function _getView() {
+  try { return Repository.getItem(VIEW_KEY) === 'detailed' ? 'detailed' : 'summary'; } catch (e) { return 'summary'; }
+}
+function _setView(v) { try { Repository.setItem(VIEW_KEY, v === 'detailed' ? 'detailed' : 'summary'); } catch (e) { console.warn('[cover-dashboard] _setView', e); } }
+let _deckOpenSlug = null;
+
+function _applyView() {
+  const page = document.getElementById('page-cover');
+  if (!page) return;
+  const v = _getView();
+  page.dataset.view = v;
+  document.querySelectorAll('#cover-view-seg [data-cover-view]').forEach(b => {
+    b.setAttribute('aria-pressed', b.dataset.coverView === v ? 'true' : 'false');
+  });
+}
+
+// One short headline + status per section for its tile. Every figure comes from the helper the
+// section's own card already uses; anything unavailable falls back to the group subtitle.
+// status: 'ok' | 'warn' | 'bad' | '' (no dot when we can't judge honestly).
+const _STATUS_FROM_CLS = { green: 'ok', amber: 'warn', red: 'bad' };
+function _deckInfo(groupName) {
+  try {
+    switch (groupName) {
+      case 'Sales': {
+        const p = _targetPace();
+        return { text: p.value, status: _STATUS_FROM_CLS[p.cls] || '' };
+      }
+      case 'Manager':
+        const cr = _totalOutstandingCredits().value;
+        return { text: /^unavailable$/i.test(String(cr)) ? 'Credit unavailable' : cr + ' credit', status: '' };
+      case 'Closing': {
+        const s = _closingLatestSummary();
+        return { text: s.value || _groupSubtitle(groupName), status: '' };
+      }
+      case 'Audit': {
+        const sum = AuditBridge.getCachedSummary();
+        if (!sum) return { text: 'Syncing…', status: '' };
+        const open = sum.items.length;
+        return { text: open ? open + ' open' : 'No open audits', status: open ? 'warn' : 'ok' };
+      }
+      case 'Inventory': {
+        const RR = window.ReorderReportApp;
+        if (!RR || typeof RR.getFlaggedRowsFor !== 'function') return { text: _groupSubtitle(groupName), status: '' };
+        const st = _reorderUrgentStats();
+        return { text: st.total + ' to reorder', status: st.urgentCount > 0 ? 'bad' : (st.total > 0 ? 'warn' : 'ok') };
+      }
+      case 'STR Report': {
+        const data = _strData();
+        if (!data) return { text: 'Syncing…', status: '' };
+        const awaited = _strAwaitedRows(data).length;
+        return { text: awaited + ' awaited', status: awaited > 0 ? 'warn' : 'ok' };
+      }
+      case 'Reports':
+        return { text: '3 tools', status: '' };
+      case 'Notes & Sheets':
+      default:
+        return { text: _groupSubtitle(groupName), status: '' };
+    }
+  } catch (e) {
+    console.error('Cover Dashboard: _deckInfo(' + groupName + ') failed', e);
+    return { text: _groupSubtitle(groupName), status: '' };
+  }
+}
+
+const _STATUS_LABEL = { ok: 'All good', warn: 'Needs a look', bad: 'Needs attention' };
+function _deckHtml(groupNames) {
+  return groupNames.map(name => {
+    const meta = GROUP_META[name];
+    if (!meta) return '';
+    const info = _deckInfo(name);
+    const dot = info.status
+      ? `<span class="cover-deck-dot is-${info.status}" role="img" aria-label="${_STATUS_LABEL[info.status]}"></span>` : '';
+    return `<button type="button" class="cover-deck-tile" data-group="${meta.slug}" data-deck-open="${meta.slug}" aria-haspopup="dialog">
+      <span class="cover-deck-top"><span class="cover-deck-icon" aria-hidden="true">${meta.icon}</span>${dot}</span>
+      <span class="cover-deck-name">${_esc(name)}</span>
+      <span class="cover-deck-line">${_esc(info.text || '')}</span>
+    </button>`;
+  }).join('');
+}
+
+function _deckBackdrop() { return document.getElementById('cover-sheet-backdrop'); }
+function _closeDeck(returnFocus) {
+  const slug = _deckOpenSlug;
+  _deckOpenSlug = null;
+  document.querySelectorAll('#cover-container .cover-group.deck-open').forEach(g => g.classList.remove('deck-open'));
+  const bd = _deckBackdrop(); if (bd) bd.classList.remove('on');
+  if (returnFocus && slug) {
+    const t = document.querySelector('.cover-deck-tile[data-deck-open="' + slug + '"]');
+    if (t) t.focus();
+  }
+}
+function _openDeck(slug) {
+  const container = document.getElementById('cover-container');
+  const g = container && container.querySelector('.cover-group[data-group="' + slug + '"]');
+  if (!g) return;
+  container.querySelectorAll('.cover-group.deck-open').forEach(x => { if (x !== g) x.classList.remove('deck-open'); });
+  g.classList.add('deck-open');
+  _deckOpenSlug = slug;
+  const bd = _deckBackdrop(); if (bd) bd.classList.add('on');
+  g.scrollTop = 0;
+  // Charts built while the group was display:none have no size yet — resize now that it's visible.
+  try { if (_invChart) _invChart.resize(); if (_weekdayChart) _weekdayChart.resize(); } catch (e) { /* non-fatal */ }
+  const close = g.querySelector('[data-sheet-close]');
+  if (close) close.focus({ preventScroll: true });
+}
+let _deckWired = false;
+function _wireDeck() {
+  if (_deckWired) return;
+  _deckWired = true;
+  const deck = document.getElementById('cover-deck');
+  if (deck) deck.addEventListener('click', e => {
+    const t = e.target.closest('[data-deck-open]');
+    if (t) _openDeck(t.dataset.deckOpen);
+  });
+  const container = document.getElementById('cover-container');
+  if (container) container.addEventListener('click', e => {
+    if (e.target.closest('[data-sheet-close]')) { e.stopPropagation(); _closeDeck(true); }
+  });
+  const bd = _deckBackdrop(); if (bd) bd.addEventListener('click', () => _closeDeck(true));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && _deckOpenSlug) _closeDeck(true); });
+  document.querySelectorAll('#cover-view-seg [data-cover-view]').forEach(b => {
+    b.addEventListener('click', () => {
+      _closeDeck(false);
+      _setView(b.dataset.coverView);
+      _applyView();
+      _updateCollapseToggleLabel();
+    });
+  });
+  // Leaving Cover must not leave a sheet "open" for when the user comes back.
+  const page = document.getElementById('page-cover');
+  if (page && typeof MutationObserver === 'function') {
+    new MutationObserver(() => { if (_deckOpenSlug && !page.classList.contains('active')) _closeDeck(false); })
+      .observe(page, { attributes: true, attributeFilter: ['class'] });
+  }
+}
+
 function _orderedGroupNames() {
   const order = _getOrder();
   const bySlug = {};
@@ -1702,6 +1844,7 @@ export function renderCoverDashboard() {
           ${refreshFn ? `<button type="button" class="cover-group-refresh" data-bridge-refresh="${_esc(groupName)}" title="Refresh ${_esc(groupName)} data now" onclick="event.stopPropagation()">↻</button>` : ''}
           <div class="cover-group-line"></div>
           <div class="cover-group-chevron">▾</div>
+          <button type="button" class="cover-sheet-close" data-sheet-close aria-label="Close ${_esc(groupName)}">✕</button>
         </div>
         <div class="cover-group-body"><div>
           ${GROUP_HERO[groupName] || ''}
@@ -1713,6 +1856,11 @@ export function renderCoverDashboard() {
 
   container.innerHTML = groupsHtml;
   container.removeAttribute('aria-busy'); container.removeAttribute('aria-label');
+  _applyView();
+  const deckEl = document.getElementById('cover-deck');
+  if (deckEl) { deckEl.innerHTML = _deckHtml(_orderedGroupNames().filter(nm => container.querySelector('.cover-group[data-group="' + (GROUP_META[nm] || {}).slug + '"]'))); deckEl.removeAttribute('aria-busy'); }
+  if (_deckOpenSlug) { const keep = _deckOpenSlug; _deckOpenSlug = null; _openDeck(keep); }
+  _wireDeck();
   _renderKpiRow();
   // IC Herald (js/herald/) replaces the old narrow attention-strip chip
   // row — same #cover-herald mount point index.html now provides, but
@@ -1772,6 +1920,7 @@ export function renderCoverDashboard() {
   });
   container.querySelectorAll('[data-group-toggle]').forEach(header => {
     header.addEventListener('click', () => {
+      if (_getView() === 'summary') return;
       const slug = header.dataset.groupToggle;
       const groupEl = header.closest('.cover-group');
       if (groupEl) groupEl.classList.toggle('collapsed');
@@ -1821,6 +1970,7 @@ export function renderCoverDashboard() {
   }
 }
 
+_applyView();
 window.renderCoverDashboard = renderCoverDashboard;
 // nav-sections.js (classic script, not a module) reads this to mirror
 // Cover's own drag-reordered group sequence in the All Sections menu —

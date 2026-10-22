@@ -13,7 +13,7 @@ const index = read('index.html');
 const SLUG_TO_DOMAIN = { manager: 'manager', notes: 'notesheets', closing: 'closing', audit: 'audit', inventory: 'inventory', str: 'str' };
 
 const coverGroup = (slug) => {
-  const m = cover.match(new RegExp(`\\.cover-group\\[data-group="${slug}"\\]\\{--g-accent:var\\(--([\\w-]+)\\);--g-bg:var\\(--([\\w-]+)\\);\\}`));
+  const m = cover.match(new RegExp(`\\.cover-group\\[data-group="${slug}"\\](?:,\\.cover-deck-tile\\[data-group="${slug}"\\])?\\{--g-accent:var\\(--([\\w-]+)\\);--g-bg:var\\(--([\\w-]+)\\);\\}`));
   assert.ok(m, `cover-dashboard.css has no colour rule for group "${slug}"`);
   return { accent: m[1], bg: m[2] };
 };
@@ -60,5 +60,18 @@ describe('Cover design guard', () => {
     const strip = index.match(/cover-page-hero-domainstrip"[^>]*>((?:<span><\/span>)+)/);
     assert.ok(strip);
     assert.equal((strip[1].match(/<span>/g) || []).length, 8);
+  });
+
+  test('every Cover group colour rule is shared with its Summary deck tile (one source of truth)', () => {
+    for (const slug of ['sales', 'manager', 'notes', 'closing', 'audit', 'inventory', 'str', 'reports']) {
+      assert.ok(cover.includes(`.cover-group[data-group="${slug}"],.cover-deck-tile[data-group="${slug}"]{`), `deck tile colour not shared for ${slug}`);
+    }
+  });
+
+  test('Summary is the default view and Detailed stays reachable', () => {
+    assert.match(index, /id="page-cover" data-view="summary"/);
+    assert.match(index, /data-cover-view="summary" aria-pressed="true"/);
+    assert.match(index, /data-cover-view="detailed" aria-pressed="false"/);
+    assert.match(cover, /#page-cover\[data-view="detailed"\] #cover-deck/);
   });
 });

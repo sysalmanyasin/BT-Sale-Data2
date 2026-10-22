@@ -105,7 +105,7 @@
 <link rel="stylesheet" href="css/components.css?v=87a462ce">
 <link rel="stylesheet" href="css/modals.css?v=efd38885">
 <link rel="stylesheet" href="css/pages.css?v=8e255dd4">
-<link rel="stylesheet" href="css/cover-dashboard.css?v=b462de65">
+<link rel="stylesheet" href="css/cover-dashboard.css?v=f9e81b34">
 <link rel="stylesheet" href="css/herald.css?v=fbbb1802">
 <link rel="stylesheet" href="css/agent.css?v=fae342e7">
 <link rel="stylesheet" href="css/ai-center.css?v=7797e5ea">
@@ -330,7 +330,7 @@ if ('serviceWorker' in navigator) {
 <!-- ══ PAGES ══ -->
 
 <!-- COVER DASHBOARD PAGE (V2 plan §2) — landing page, concise cross-domain summary + tiles to each peer dashboard. Rendered by cover-dashboard.js -->
-<div class="page" id="page-cover">
+<div class="page" id="page-cover" data-view="summary">
   <div class="cover-page-hero">
     <div class="cover-page-hero-mark" aria-hidden="true"></div>
     <div class="cover-page-hero-row">
@@ -349,13 +349,19 @@ if ('serviceWorker' in navigator) {
   <div id="cover-kpi-row" class="cover-kpi-row"><div class="cover-skel-kpi"><span class="skel skel-kpi-ic"></span><span class="skel skel-kpi-v"></span><span class="skel skel-kpi-l"></span></div><div class="cover-skel-kpi"><span class="skel skel-kpi-ic"></span><span class="skel skel-kpi-v"></span><span class="skel skel-kpi-l"></span></div><div class="cover-skel-kpi"><span class="skel skel-kpi-ic"></span><span class="skel skel-kpi-v"></span><span class="skel skel-kpi-l"></span></div><div class="cover-skel-kpi"><span class="skel skel-kpi-ic"></span><span class="skel skel-kpi-v"></span><span class="skel skel-kpi-l"></span></div></div>
 
   <div class="cover-search-row">
+    <div class="cover-view-seg" id="cover-view-seg" role="group" aria-label="Cover view">
+      <button type="button" data-cover-view="summary" aria-pressed="true">Summary</button>
+      <button type="button" data-cover-view="detailed" aria-pressed="false">Detailed</button>
+    </div>
     <button type="button" id="cover-collapse-toggle" class="cover-collapse-toggle-btn" title="Expand or collapse every section">Collapse all</button>
   </div>
 
   <div id="cover-herald"></div>
   <div id="cover-pins-row"></div>
+  <div id="cover-deck" class="cover-deck" aria-busy="true" aria-label="Sections"><div class="cover-skel-tile"><span class="skel skel-kpi-ic"></span><span class="skel skel-kpi-l"></span><span class="skel skel-kpi-v"></span></div><div class="cover-skel-tile"><span class="skel skel-kpi-ic"></span><span class="skel skel-kpi-l"></span><span class="skel skel-kpi-v"></span></div><div class="cover-skel-tile"><span class="skel skel-kpi-ic"></span><span class="skel skel-kpi-l"></span><span class="skel skel-kpi-v"></span></div><div class="cover-skel-tile"><span class="skel skel-kpi-ic"></span><span class="skel skel-kpi-l"></span><span class="skel skel-kpi-v"></span></div><div class="cover-skel-tile"><span class="skel skel-kpi-ic"></span><span class="skel skel-kpi-l"></span><span class="skel skel-kpi-v"></span></div><div class="cover-skel-tile"><span class="skel skel-kpi-ic"></span><span class="skel skel-kpi-l"></span><span class="skel skel-kpi-v"></span></div><div class="cover-skel-tile"><span class="skel skel-kpi-ic"></span><span class="skel skel-kpi-l"></span><span class="skel skel-kpi-v"></span></div><div class="cover-skel-tile"><span class="skel skel-kpi-ic"></span><span class="skel skel-kpi-l"></span><span class="skel skel-kpi-v"></span></div></div>
   <div id="cover-mail-strip"></div>
 
+  <div id="cover-sheet-backdrop" aria-hidden="true"></div>
   <div id="cover-container" aria-busy="true" aria-label="Loading dashboard"><div class="cover-skel-group"><div class="cover-skel-head"><span class="skel skel-ic"></span><span class="skel skel-t"></span></div><span class="skel skel-line"></span><span class="skel skel-line w80"></span><span class="skel skel-line w55"></span></div><div class="cover-skel-group"><div class="cover-skel-head"><span class="skel skel-ic"></span><span class="skel skel-t"></span></div><span class="skel skel-line"></span><span class="skel skel-line w80"></span><span class="skel skel-line w55"></span></div><div class="cover-skel-group"><div class="cover-skel-head"><span class="skel skel-ic"></span><span class="skel skel-t"></span></div><span class="skel skel-line"></span><span class="skel skel-line w80"></span><span class="skel skel-line w55"></span></div></div>
 </div>
 
@@ -2671,7 +2677,7 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/ledger-store.js?v=1be8785c"></script>
 <script type="module" src="js/ledger-actions.js?v=e3f43a1e"></script>
 <script type="module" src="js/ledger-page.js?v=fb6aea45"></script>
-<script type="module" src="js/cover-dashboard.js?v=5bdf686d"></script>
+<script type="module" src="js/cover-dashboard.js?v=b0e291b1"></script>
 <script type="module" src="js/herald/herald-engine.js?v=8d9d1d0c"></script>
 <script type="module" src="js/herald/herald-page.js?v=e2bdfb9f"></script>
 <script src="js/status-bar.js?v=70dc1273"></script>
