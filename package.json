@@ -12,7 +12,9 @@
     "eval": "node --test \"tests/eval/*.test.js\"",
     "index:repo": "node scripts/build-repo-index.mjs",
     "build": "node scripts/build.mjs",
-    "build:check": "node scripts/build.mjs --check"
+    "build:check": "node scripts/build.mjs --check",
+    "readme:sync": "node scripts/readme-facts.mjs --write",
+    "readme:check": "node scripts/readme-facts.mjs --check"
   },
   "repository": {
     "type": "git",
