@@ -1956,7 +1956,9 @@ if ('serviceWorker' in navigator) {
         <button class="btn btn-p" onclick="driveAuthorize()">🔑 Authorize Drive</button>
         <button class="btn btn-g" onclick="driveBackupNow()">☁ Backup Now</button>
         <button class="btn" style="background:var(--s3);border-color:var(--border)" onclick="driveOpenRestoreModal()">🔄 Restore Backup</button>
+        <button class="btn" style="background:var(--s3);border-color:var(--border)" onclick="driveRunDrill(true)">🧪 Verify Backup</button>
       </div>
+      <div id="drive-health" style="font-size:12px;margin-top:10px;line-height:1.6"></div>
       <div id="drive-log" style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.8"></div>
     </div>
   </div>
@@ -2604,7 +2606,7 @@ if ('serviceWorker' in navigator) {
       <div id="drm-list"></div>
     </div>
     <div style="padding:14px 20px;border-top:1px solid var(--border);font-size:11px;color:var(--muted)">
-      ⚠ Restoring will <strong>merge</strong> backup data with current data (no duplicates). Existing entries are kept.
+      ⚠ Preview first, then restore. Restoring <strong>merges</strong> backup data with current data (no duplicates). Existing entries are never overwritten.
     </div>
   </div>
 </div>
@@ -2839,7 +2841,7 @@ if ('serviceWorker' in navigator) {
 <script defer src="js/fields.js?v=ea844a91"></script>
 
 <!-- 15. Google Drive backup / restore -->
-<script defer src="js/drive.js?v=b26685f4"></script>
+<script defer src="js/drive.js?v=5d0b6df1"></script>
 
 <!-- Staff Card Popup Modal -->
 <div class="sc-bg" id="sc-bg" onclick="if(event.target===this)closeStaffCard()">
