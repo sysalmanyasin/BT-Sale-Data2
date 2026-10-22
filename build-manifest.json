@@ -1,6 +1,6 @@
 {
-  "cache": "bt-sales-v11.114",
-  "hash": "97257e2c2f64",
+  "cache": "bt-sales-v11.115",
+  "hash": "6fa2cf0f9d2a",
   "files": {
     "css/activity-log.css": "2e5bd5de",
     "css/agent.css": "fae342e7",
@@ -15,6 +15,7 @@
     "css/components.css": "87a462ce",
     "css/cover-dashboard.css": "f9e81b34",
     "css/cover-mail-strip.css": "f594c912",
+    "css/cover-onescreen.css": "2488f40d",
     "css/daily-checklist.css": "6075491e",
     "css/emergency-billing.css": "57ef78b7",
     "css/excess-working.css": "2d6e5893",
@@ -40,7 +41,7 @@
     "icons/icon-192.png": "22867a0e",
     "icons/icon-512.png": "5783f250",
     "icons/icon.svg": "5804ff69",
-    "index.html": "25da32cf",
+    "index.html": "1985edc5",
     "js/actions.js": "729c9d54",
     "js/activity-log.js": "759790b2",
     "js/agent/core/after-write.js": "c9384ff3",

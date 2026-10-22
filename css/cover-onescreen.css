@@ -1,0 +1,81 @@
+/* ══════════════════════════════════════════════════════════════════
+   COVER — ONE-SCREEN DESKTOP LAYOUT   (css/cover-onescreen.css)
+   Goal: on a laptop/desktop window the whole Cover hub (hero, KPIs,
+   Summary/Detailed switch, Herald, 8 section tiles, Mail Briefing bar)
+   is visible without scrolling. Phones/tablets (<900px) are untouched.
+   Applies to the SUMMARY view only (#page-cover[data-view="summary"]); Detailed is unchanged.
+   Pure CSS, no markup/JS change. Load AFTER layout-v2.css.
+   ══════════════════════════════════════════════════════════════════ */
+@media (min-width: 900px) {
+
+  /* page padding: 24px → slim */
+  .page.on#page-cover[data-view="summary"] { padding-top: 8px; padding-bottom: 12px; }
+  #page-cover[data-view="summary"] { padding-top: 8px; }
+
+  /* ── Hero: one slim row ── */
+  #page-cover[data-view="summary"] .cover-page-hero { padding: 9px 18px 8px; margin-bottom: 8px; border-radius: 14px; }
+  #page-cover[data-view="summary"] .cover-page-hero-badge,
+  #page-cover[data-view="summary"] .cover-page-hero-sub { display: none; }
+  #page-cover[data-view="summary"] .cover-page-hero-row { flex-wrap: nowrap; align-items: center; gap: 12px; }
+  #page-cover[data-view="summary"] .cover-page-hero-greeting { font-size: 12px; margin-bottom: 0; }
+  #page-cover[data-view="summary"] .cover-page-hero-title { font-size: 20px; margin-bottom: 0; line-height: 1.2; }
+  #page-cover[data-view="summary"] .cover-page-hero-date { padding: 4px 12px; border-radius: 10px; font-size: 11.5px; }
+  #page-cover[data-view="summary"] .cover-page-hero-date .d-day { font-size: 14px; }
+  #page-cover[data-view="summary"] .cover-page-hero-domainstrip { margin-top: 7px; height: 3px; }
+  #page-cover[data-view="summary"] .cover-page-hero-mark { width: 110px; height: 110px; bottom: -30px; }
+  /* "N online in Closing" pill moves up beside the date instead of adding a row */
+  #page-cover[data-view="summary"] .cover-online-pill {
+    position: absolute; top: 12px; right: 190px; margin: 0; padding: 3px 11px; font-size: 12px; z-index: 2;
+  }
+
+  /* ── KPI tiles: icon beside value + label (the optional red sub-line sits underneath) ── */
+  #page-cover[data-view="summary"] .cover-kpi-row { gap: 8px; margin-bottom: 8px; }
+  #page-cover[data-view="summary"] .cover-kpi-tile {
+    display: grid; grid-template-columns: 30px auto minmax(0, 1fr);
+    column-gap: 10px; align-items: center; min-height: 0; padding: 7px 12px; border-radius: 12px;
+  }
+  #page-cover[data-view="summary"] .cover-kpi-icon { grid-column: 1; grid-row: 1 / -1; margin: 0; width: 30px; height: 30px; font-size: 15px; }
+  #page-cover[data-view="summary"] .cover-kpi-value { grid-column: 2 / 4; grid-row: 1; font-size: 18px; }
+  #page-cover[data-view="summary"] .cover-kpi-label { grid-column: 2; grid-row: 2; margin: 0; white-space: nowrap; }
+  #page-cover[data-view="summary"] .cover-kpi-sub { grid-column: 2 / 4; grid-row: 3; margin: 1px 0 0; }
+
+  /* ── Summary/Detailed switch row ── */
+  #page-cover[data-view="summary"] .cover-search-row { margin-bottom: 8px; }
+  #page-cover[data-view="summary"] .cover-view-seg { padding: 2px; border-radius: 11px; }
+  #page-cover[data-view="summary"] .cover-view-seg button { min-height: 28px; padding: 0 14px; border-radius: 9px; }
+  #page-cover[data-view="summary"] .cover-collapse-toggle-btn { min-height: 32px; }
+
+  /* ── Herald: collapsed masthead becomes ONE line ──
+     (.herald-top-row is flattened with display:contents so brand/date can be re-ordered) */
+  #page-cover[data-view="summary"] #cover-herald { margin: 0 0 8px; }
+  #page-cover[data-view="summary"] #cover-herald .herald-masthead { display: flex; align-items: center; gap: 14px; padding: 7px 14px; border-radius: 12px; }
+  #page-cover[data-view="summary"] #cover-herald .herald-masthead .herald-top-row { display: contents; }
+  #page-cover[data-view="summary"] #cover-herald .herald-masthead .herald-brand { order: 0; flex: 0 0 auto; font-size: 14px; }
+  #page-cover[data-view="summary"] #cover-herald .herald-masthead .herald-teaser {
+    order: 1; flex: 1 1 auto; min-width: 0; font-size: 13px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  #page-cover[data-view="summary"] #cover-herald .herald-masthead .herald-more { order: 2; flex: 0 0 auto; margin: 0; }
+  #page-cover[data-view="summary"] #cover-herald .herald-masthead .herald-date { order: 3; flex: 0 0 auto; }
+
+  /* ── Section tiles: icon left, name + status right ── */
+  #page-cover[data-view="summary"] .cover-deck { gap: 8px; margin-bottom: 8px; }
+  #page-cover[data-view="summary"] .cover-deck-tile {
+    display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; column-gap: 10px; row-gap: 1px;
+    align-items: center; min-height: 0; padding: 9px 12px; border-radius: 14px;
+  }
+  #page-cover[data-view="summary"] .cover-deck-top { display: contents; }
+  #page-cover[data-view="summary"] .cover-deck-icon { grid-column: 1; grid-row: 1 / span 2; }
+  #page-cover[data-view="summary"] .cover-deck-name { grid-column: 2; grid-row: 1; }
+  #page-cover[data-view="summary"] .cover-deck-dot { grid-column: 3; grid-row: 1; align-self: start; }
+  #page-cover[data-view="summary"] .cover-deck-line { grid-column: 2 / 4; grid-row: 2; font-size: 13.5px; }
+
+  /* ── Mail Briefing bar: slim; day chips only when it is open ── */
+  #page-cover[data-view="summary"] #cover-mail-strip { margin: 0; }
+  #page-cover[data-view="summary"] #cover-mail-strip .cms-h { padding: 7px 14px; gap: 8px; }
+  #page-cover[data-view="summary"] #cover-mail-strip .cms-ic { font-size: 18px; }
+  #page-cover[data-view="summary"] #cover-mail-strip .cms-c span { padding: 2px 8px; }
+  #page-cover[data-view="summary"] #cover-mail-strip .cms:not(.open) .cms-days { display: none; }
+  #page-cover[data-view="summary"] #cover-mail-strip .cms-days { padding: 0 14px 8px; }
+  #page-cover[data-view="summary"] #cover-mail-strip .cms-chip { min-height: 28px; padding: 3px 12px; }
+}
