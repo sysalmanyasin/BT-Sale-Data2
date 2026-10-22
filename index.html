@@ -81,7 +81,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="css/variables.css?v=ffd8fd7a">
 <link rel="stylesheet" href="css/auth.css?v=323700fc">
-<link rel="stylesheet" href="css/nav.css?v=4126a397">
+<link rel="stylesheet" href="css/nav.css?v=3eda704f">
 <link rel="stylesheet" href="css/closing-native.css?v=2655981b">
 <link rel="stylesheet" href="css/closing-book-print.css?v=80bc3517">
 <link rel="stylesheet" href="css/emergency-billing.css?v=57ef78b7">
@@ -105,7 +105,7 @@
 <link rel="stylesheet" href="css/components.css?v=87a462ce">
 <link rel="stylesheet" href="css/modals.css?v=efd38885">
 <link rel="stylesheet" href="css/pages.css?v=8e255dd4">
-<link rel="stylesheet" href="css/cover-dashboard.css?v=45e28300">
+<link rel="stylesheet" href="css/cover-dashboard.css?v=b462de65">
 <link rel="stylesheet" href="css/herald.css?v=fbbb1802">
 <link rel="stylesheet" href="css/agent.css?v=fae342e7">
 <link rel="stylesheet" href="css/ai-center.css?v=7797e5ea">
@@ -342,12 +342,11 @@ if ('serviceWorker' in navigator) {
       </div>
       <div class="cover-page-hero-date" id="cover-hero-date"></div>
     </div>
-    <div id="cover-online-pill" onclick="showOnlineStaffDetail()"
-      style="display:none;margin-top:8px;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;background:rgba(34,197,94,.15);color:#16a34a;font-size:0.78rem;font-weight:600;cursor:pointer;"></div>
-    <div class="cover-page-hero-domainstrip" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+    <div id="cover-online-pill" class="cover-online-pill" onclick="showOnlineStaffDetail()" style="display:none;"></div>
+    <div class="cover-page-hero-domainstrip" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
   </div>
 
-  <div id="cover-kpi-row" class="cover-kpi-row"></div>
+  <div id="cover-kpi-row" class="cover-kpi-row"><div class="cover-skel-kpi"><span class="skel skel-kpi-ic"></span><span class="skel skel-kpi-v"></span><span class="skel skel-kpi-l"></span></div><div class="cover-skel-kpi"><span class="skel skel-kpi-ic"></span><span class="skel skel-kpi-v"></span><span class="skel skel-kpi-l"></span></div><div class="cover-skel-kpi"><span class="skel skel-kpi-ic"></span><span class="skel skel-kpi-v"></span><span class="skel skel-kpi-l"></span></div><div class="cover-skel-kpi"><span class="skel skel-kpi-ic"></span><span class="skel skel-kpi-v"></span><span class="skel skel-kpi-l"></span></div></div>
 
   <div class="cover-search-row">
     <button type="button" id="cover-collapse-toggle" class="cover-collapse-toggle-btn" title="Expand or collapse every section">Collapse all</button>
@@ -357,7 +356,7 @@ if ('serviceWorker' in navigator) {
   <div id="cover-pins-row"></div>
   <div id="cover-mail-strip"></div>
 
-  <div id="cover-container">Loading…</div>
+  <div id="cover-container" aria-busy="true" aria-label="Loading dashboard"><div class="cover-skel-group"><div class="cover-skel-head"><span class="skel skel-ic"></span><span class="skel skel-t"></span></div><span class="skel skel-line"></span><span class="skel skel-line w80"></span><span class="skel skel-line w55"></span></div><div class="cover-skel-group"><div class="cover-skel-head"><span class="skel skel-ic"></span><span class="skel skel-t"></span></div><span class="skel skel-line"></span><span class="skel skel-line w80"></span><span class="skel skel-line w55"></span></div><div class="cover-skel-group"><div class="cover-skel-head"><span class="skel skel-ic"></span><span class="skel skel-t"></span></div><span class="skel skel-line"></span><span class="skel skel-line w80"></span><span class="skel skel-line w55"></span></div></div>
 </div>
 
 
@@ -2672,7 +2671,7 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/ledger-store.js?v=1be8785c"></script>
 <script type="module" src="js/ledger-actions.js?v=e3f43a1e"></script>
 <script type="module" src="js/ledger-page.js?v=fb6aea45"></script>
-<script type="module" src="js/cover-dashboard.js?v=c5e3242b"></script>
+<script type="module" src="js/cover-dashboard.js?v=5bdf686d"></script>
 <script type="module" src="js/herald/herald-engine.js?v=8d9d1d0c"></script>
 <script type="module" src="js/herald/herald-page.js?v=e2bdfb9f"></script>
 <script src="js/status-bar.js?v=70dc1273"></script>

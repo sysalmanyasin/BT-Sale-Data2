@@ -480,11 +480,11 @@ body[data-domain="str"] {
 #sections-list > .sections-group[data-domain="sales"]      { --g-accent: var(--accent);    --g-bg: var(--alt); }
 #sections-list > .sections-group[data-domain="manager"]    { --g-accent: var(--mgrblue);   --g-bg: var(--mgrblue-lt); }
 #sections-list > .sections-group[data-domain="notesheets"] { --g-accent: var(--green);     --g-bg: var(--glt); }
-#sections-list > .sections-group[data-domain="closing"]    { --g-accent: var(--amber);     --g-bg: var(--alt2); }
-#sections-list > .sections-group[data-domain="audit"]      { --g-accent: var(--red);       --g-bg: var(--rlt); }
+#sections-list > .sections-group[data-domain="closing"]    { --g-accent: var(--teal);      --g-bg: var(--tlt); }
+#sections-list > .sections-group[data-domain="audit"]      { --g-accent: var(--amber);     --g-bg: var(--alt2); }
 #sections-list > .sections-group[data-domain="inventory"]  { --g-accent: var(--pink);      --g-bg: var(--pink-lt); }
-#sections-list > .sections-group[data-domain="str"]        { --g-accent: var(--purple);    --g-bg: var(--purple-lt); }
-#sections-list > .sections-group[data-domain="reports"]    { --g-accent: var(--teal);      --g-bg: var(--tlt); }
+#sections-list > .sections-group[data-domain="str"]        { --g-accent: var(--pink);      --g-bg: var(--pink-lt); }
+#sections-list > .sections-group[data-domain="reports"]    { --g-accent: var(--purple);    --g-bg: var(--purple-lt); }
 #sections-list > .sections-group[data-domain="tools"]      { --g-accent: var(--accent-dk); --g-bg: var(--s3); }
 
 /* Card shell — same wash-gradient + top-right radial glow + tinted

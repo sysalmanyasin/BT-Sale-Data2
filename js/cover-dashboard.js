@@ -1712,6 +1712,7 @@ export function renderCoverDashboard() {
   }).join('');
 
   container.innerHTML = groupsHtml;
+  container.removeAttribute('aria-busy'); container.removeAttribute('aria-label');
   _renderKpiRow();
   // IC Herald (js/herald/) replaces the old narrow attention-strip chip
   // row — same #cover-herald mount point index.html now provides, but
