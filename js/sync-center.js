@@ -80,6 +80,7 @@ function _sc_getUDID() {
   return id;
 }
 // Expose under both naming conventions used across the codebase.
+window._sc_detectDeviceName = _sc_detectDeviceName; // read by activity-log.js (was an implicit classic-script global)
 window._sc_getUDID  = _sc_getUDID;   // F3 — used by typeof _sc_getUDID in supabase.js
 window._scGetUDID   = _sc_getUDID;   // legacy alias used by _buildPayload
 
