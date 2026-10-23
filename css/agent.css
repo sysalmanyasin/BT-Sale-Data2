@@ -6,7 +6,6 @@
 .ag-fab:focus-visible,.ag-ico:focus-visible,.ag-mi:focus-visible,.ag-chip:focus-visible,.ag-mic:focus-visible,.ag-send:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .ag-fab-l{display:none}
 .ag-fab.ag-hide{display:none}
-body.bt-kiosk-mode .ag-fab{display:none}
 @media(min-width:720px){.ag-fab{bottom:20px;right:20px;padding:0 20px 0 16px}.ag-fab-l{display:inline}}
 @media print{.ag-fab,.ag-sheet{display:none!important}}
 .ag-sheet{position:fixed;z-index:1000;right:0;bottom:0;left:0;height:min(64vh,560px);display:flex;flex-direction:column;background:var(--surface);color:var(--text);border:1px solid var(--border);border-width:1px 0 0;border-radius:var(--r-xl) var(--r-xl) 0 0;box-shadow:var(--sh-lg);font-family:var(--sans);overflow:hidden;animation:ag-rise .18s ease-out}

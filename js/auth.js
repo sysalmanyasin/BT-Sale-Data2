@@ -2,18 +2,21 @@
 // AUTH GATE — Google Sign-In only.
 // ══════════════════════════════════════════
 
-// NOTE: this file is an ES module. unlockApp stays *patchable*: drive.js
-// monkey-patches it by reassigning the global (`unlockApp = function(){...}`)
-// to add auto-backup-after-unlock. A module-local binding would make that
-// patch invisible to this file, so unlockApp is bridged onto window and
-// every call in this file goes through window.unlockApp() — it must never
-// call the local binding directly.
+// NOTE: this file is an ES module and the ONLY way into the app is a real,
+// verified Google sign-in. unlockApp is deliberately module-private: it is not
+// on window, so no other script (or console call) can open the app, and nothing
+// can monkey-patch it. It is only reached after (a) a fresh Google id_token was
+// accepted by Supabase, or (b) a saved session is re-verified against a live
+// Supabase session for the same allowed email (see _gauthCheckSession).
+// Other scripts that need "the app just unlocked" listen for the
+// 'bt:app-unlocked' event instead of patching a function.
 function unlockApp() {
   document.getElementById('pin-gate').style.display='none';
   document.getElementById('nav').style.display='flex';
   if (typeof showStatusBar === 'function') showStatusBar();
   if (window._appInited) return;
   window._appInited = true;
+  window.dispatchEvent(new CustomEvent('bt:app-unlocked'));
   initApp();
   if (typeof startSupabaseSync === 'function') startSupabaseSync();
   if (window.PdfLibrary && typeof window.PdfLibrary.runExpirySweep === 'function') {
@@ -91,9 +94,6 @@ function initAutoRefresh() {
     }
   });
 }
-
-window.unlockApp = unlockApp;
-window.initAutoRefresh = initAutoRefresh;
 
 (function() {
 'use strict';
@@ -318,7 +318,7 @@ async function _gauthHandleRedirectToken() {
     if (typeof _driveSaveToken === 'function') _driveSaveToken(token, Number(params.get('expires_in')));
     _driveUpdateBadge('ok'); // reflect Drive-ready state immediately in Tools
     gauthSetSession({ email:info.email, name:info.name||info.email, picture:info.picture||'' });
-    window.unlockApp();
+    unlockApp();
     return true;
   } catch(e) {
     _gauthShowError('Sign-in error: '+e.message);
@@ -384,28 +384,43 @@ function _driveSilentReauth(timeoutMs = 4000) {
 }
 
 // ── If a valid session exists, show resume bar ────────────────────
-function _gauthCheckSession() {
+// A saved session is only a hint about WHO signed in last. Alone it never opens
+// the app: it must match a live Supabase session (created by a verified Google
+// id_token) for the same, still-allowed email. Anything else -> locked.
+async function _gauthHasVerifiedSupabaseSession(email) {
+  try {
+    const c = (typeof window.btGetSupabaseClient === 'function') ? window.btGetSupabaseClient() : null;
+    if (!c || !c.auth) return false;
+    const { data, error } = await c.auth.getSession();
+    const u = !error && data && data.session && data.session.user;
+    return !!(u && u.email && email && u.email.toLowerCase() === email.toLowerCase());
+  } catch (e) { return false; }
+}
+function _gauthShowSignIn() {
+  const bar = document.getElementById('gauth-user-bar'); if (bar) bar.style.display = 'none';
+  const wrap = document.getElementById('gauth-btn-wrap'); if (wrap) wrap.style.display = 'flex';
+}
+async function _gauthCheckSession() {
   const s = gauthGetSession();
-  if(!s) {
-    document.getElementById('gauth-user-bar').style.display='none';
-    document.getElementById('gauth-btn-wrap').style.display='flex';
+  if (!s || !gauthIsAllowed(s.email) || !(await _gauthHasVerifiedSupabaseSession(s.email))) {
+    if (s) gauthClearSession(); // stale / forged / revoked -> discard, require real sign-in
+    _gauthShowSignIn();
     return;
   }
-  // Valid session → auto-unlock immediately, no button click required
-  window.unlockApp();
+  unlockApp();
   // If a still-valid Drive token survived this refresh/new tab (localStorage cache),
-  // there's nothing to do — Drive is already ready, no network call needed.
+  // there's nothing to do ? Drive is already ready, no network call needed.
   if (_driveAccessToken) {
-    if (typeof driveLog === 'function') driveLog('✓ Drive session restored from this browser session', 'ok');
+    if (typeof driveLog === 'function') driveLog('Drive session restored from this browser session', 'ok');
     return;
   }
   // Otherwise, restore the Drive token silently in the background so Drive backup/restore
   // work right away without forcing the user through a full redirect again.
   _driveSilentReauth().then(token => {
-    if (token && typeof driveLog === 'function') driveLog('✓ Drive session restored silently', 'ok');
+    if (token && typeof driveLog === 'function') driveLog('Drive session restored silently', 'ok');
   });
 }
-function gauthConfirmUser() { window.unlockApp(); }
+function gauthConfirmUser() { _gauthCheckSession(); } // re-verifies; never opens the app on its own
 function gauthSignOut() {
   // Local-only sign-out (this device/tab). Also drops the Supabase session
   // on this device so it doesn't silently linger past the UI sign-out.
@@ -442,48 +457,8 @@ async function gauthSignOutAllDevices() {
 }
 window.gauthSignOutAllDevices = gauthSignOutAllDevices;
 
-// ── Kiosk mode: https://bt.duapharma.com/#pos ───────────────────────
-// A deliberate, narrow bypass of Google Sign-In — scoped to ONLY the
-// POS/Emergency Billing page, nothing else. This is NOT the same as
-// unlockApp(): it never reveals #nav or #status-bar, never starts
-// Supabase sync for DAILY/MONTHLY/STAFF, never touches IndexedDB, and
-// never runs initApp()/rebuildAll(). A #pos visitor gets exactly one
-// page and nothing else — no way to reach sales history, credit,
-// inventory totals, or any other business data from this entry point.
-//
-// This is safe specifically because emergency-billing-bridge.js and
-// inventory-bridge.js already read/write through their own anon-role
-// Supabase clients, independent of this file's Google-authenticated
-// session (see those files' header comments) — the billing page has
-// never actually depended on unlockApp() having run.
-//
-// NOTE: this intentionally makes the POS page reachable by anyone
-// with the link, no login required. Don't widen this alias or reuse
-// this pattern for any other page without re-checking that its data
-// path is equally anon-scoped.
-function _isKioskHash() {
-  const raw = (window.location.hash || '').replace(/^#/, '').split('/')[0];
-  return raw === 'pos';
-}
-function _enterKioskMode() {
-  document.getElementById('pin-gate').style.display = 'none';
-  document.body.classList.add('bt-kiosk-mode');
-  if (typeof showPage === 'function') showPage('emergency-billing');
-}
-// If a kiosk device's hash is ever edited/navigated away from #pos
-// (e.g. someone typing in the address bar), snap back to #pos rather
-// than exposing whatever empty/broken page id they landed on — there's
-// no nav bar to have done this by clicking, so this only guards against
-// a manual URL edit.
-window.addEventListener('hashchange', () => {
-  if (document.body.classList.contains('bt-kiosk-mode') && !_isKioskHash()) {
-    history.replaceState(null, '', '#pos');
-  }
-});
-
 // ── Main gate init ────────────────────────────────────────────────
 function initAuthGate() {
-  if (_isKioskHash()) { _enterKioskMode(); return; }
   // Client ID now comes from Supabase (bt_auth_config) via _gauthSyncFromSupabase();
   // only seed the fallback here if nothing has ever been synced/cached.
   if (!Repository.getItem(GAUTH_CID_K)) {
@@ -547,6 +522,8 @@ document.addEventListener('DOMContentLoaded', initAuthGate);
 
 function lockApp() {
   gauthClearSession();
+  try { if (typeof window.btGetSupabaseClient === 'function') window.btGetSupabaseClient().auth.signOut({ scope: 'local' }); } catch (e) {}
+  try { if (typeof window.inventoryBridgeGetClient === 'function') window.inventoryBridgeGetClient().auth.signOut({ scope: 'local' }); } catch (e) {}
   window._appInited = false;
   if (typeof resetSupabaseSync === 'function') resetSupabaseSync();
   document.getElementById('pin-gate').style.display='flex';
@@ -557,8 +534,7 @@ function lockApp() {
 }
 
 // Bridge what's used externally, from index.html, or via a same-file
-// event attribute. unlockApp/initAutoRefresh are NOT here — they stay
-// bare globals declared before this IIFE (see note above).
+// event attribute. unlockApp/initAutoRefresh are deliberately NOT bridged.
 window.gauthShowMain = gauthShowMain;
 window._gauthOAuthSignIn = _gauthOAuthSignIn;
 window._driveSilentReauth = _driveSilentReauth;
