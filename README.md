@@ -237,8 +237,8 @@ User → Action → Repository → Data / State → EventBus → Pages / Compone
 
 | | Files |
 |---|---|
-| **Migrated (PR #11, merged)** | `sync-center`, `supabase`, `analytics`, `config`, `reports`, `reports-print`, `fields`, `quick-add`, `status-bar`, `boot-guard`; `dashboard*` and `data-page` use explicit imports |
-| **Migrated (`codex/es-module-auth`)** | `auth` |
+| **Migrated (PR #11)** | `sync-center`, `supabase`, `analytics`, `config`, `reports`, `reports-print`, `fields`, `quick-add`, `status-bar`, `boot-guard`; `dashboard*` and `data-page` use explicit imports |
+| **Migrated (PR #12)** | `auth` |
 | **Remaining** | `storage` (smallest, do first), `ui`, `drive` (largest, last) |
 
 How the migration is done:
@@ -483,7 +483,7 @@ npm run test:verbose     # spec reporter
 npm run test:watch       # re-run on change
 ```
 
-**Historical baseline (2026-10-24, Node 22, branch `codex/es-module-auth` on `74d168d`):** 1,191 tests passed at that time, 0 failed. This is not a claim about the current checkout; use the live [GitHub Actions test status](https://github.com/sysalmanyasin/BT-Sale-Data2/actions/workflows/test.yml) for the latest CI result. Structural facts (module, function, migration, test and widget counts) are enforced by `tests/static/readme-facts.test.js`; if it fails, run `npm run readme:sync`.
+**Historical baseline (2026-10-24, Node 22, `main` at `cf23c59`):** 1,191 tests passed at that time, 0 failed. This is not a claim about the current checkout; use the live [GitHub Actions test status](https://github.com/sysalmanyasin/BT-Sale-Data2/actions/workflows/test.yml) for the latest CI result. Structural facts (module, function, migration, test and widget counts) are enforced by `tests/static/readme-facts.test.js`; if it fails, run `npm run readme:sync`.
 
 **Coverage:** AI agent (core, tools, writes/deletes/approvals, undo, kill switch, streaming, routing, 60+ case eval suite), AI Center (model, deck, voice, avatar, forecast game, audit tab, repo index, DOM behaviour), Edge Function and secret-leak checks, static file integrity, script references, manifest validation, service-worker shell consistency, JS syntax, pure modules, EventBus, print API surface, Staff Registry (Repository + Actions), DOM and navigation behaviour.
 
