@@ -1,8 +1,14 @@
 // ══════════════════════════════════════════════════════════════════
 // SUPABASE SYNC  —  complete replacement for github.js
+// ES module conversion: imports data-layer bindings explicitly and bridges
+// the legacy public API onto window for inline handlers and classic scripts.
 // One table · one row · real-time push · offline queue · migration
 // Sync History (last 10 events stored in localStorage)
 // ══════════════════════════════════════════════════════════════════
+
+import { MONTHLY, DAILY, STAFF } from './config.js';
+import { Repository } from './repository.js';
+import { Actions } from './actions.js';
 
 const SB_URL     = 'https://wetbugzzchkghpzmowod.supabase.co';
 const SB_KEY     = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndldGJ1Z3p6Y2hrZ2hwem1vd29kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzMDg4OTIsImV4cCI6MjA5Nzg4NDg5Mn0.LXFrvQTOfI3ph4aA8xWYIUo-z1yxdX0znnN5f-KsOPM';
@@ -10,9 +16,7 @@ const SB_TABLE   = 'bt_salesdata';
 const SB_ID      = 'main';
 const SB_PENDING = 'bt_sb_pending';    // dirty flag for offline queue
 const SB_HISTORY = 'bt_sync_history'; // last 10 sync events
-// FIX: targets.js was migrated to a real ES module, so its TGT_K constant
-// is now file-scoped and no longer a global. supabase.js is still a classic
-// script, so it needs its own local copy of this key (mirrors cover-dashboard.js).
+// targets.js is an ES module, so keep the shared storage key local here too.
 const TGT_K      = 'bt_targets';
 
 let _sbClient      = null;
@@ -931,3 +935,15 @@ document.addEventListener('DOMContentLoaded', () => {
   _updateLastPollDisplay();
 });
 
+
+// Preserve the legacy global API: inline HTML handlers and older scripts still
+// call these names without imports. Keep implementation state module-private.
+Object.assign(window, {
+  _sbGetChannel, _sb, _recordHistory, renderSyncHistory, setSyncBadge,
+  handleSyncBadgeClick, sbLog, _markPending, _clearPending, _hasPending,
+  _nextPayloadVersion, _buildPayload, mergeIncomingData, pushToSupabase,
+  _doPush, pullFromSupabase, _startRealtime, _updateRealtimeStatus,
+  _updateLastPollDisplay, testSupabaseConnection, manualSync, ghCfg,
+  updateGhBadge, saveAutoSettings, startAutoInterval, resetSupabaseSync,
+  startSupabaseSync
+});
