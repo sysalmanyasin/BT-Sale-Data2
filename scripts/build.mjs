@@ -70,7 +70,7 @@ export function contentHash(stampedHtml, sw) {
   return { hash, files: Object.fromEntries(keys.map((k) => [k, files[k]])) };
 }
 
-const CACHE_RE = /const CACHE_NAME = 'bt-sales-v(\d+)\.(\d+)'; \/\/ /;
+const CACHE_RE = /const CACHE_NAME = 'bt-sales-v(\d+)\.(\d+)'; \/\/[^\r\n]*/;
 
 function run(check) {
   const html = readFileSync(P.index, 'utf8');

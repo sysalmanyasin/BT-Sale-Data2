@@ -1,11 +1,11 @@
-// NOTE: _fmCustom stays a true bare global (declared here, before the
-// IIFE below) because it's reassigned internally in this file 3 times
-// (not just mutated) AND read externally by config.js/data-page.js as a
-// bare identifier — wrapping it would mean those external reads only
-// ever see the very first array this file happened to have, not later
-// reassignments (fmLoad() replacing it entirely, fmResetAll() clearing
-// it, etc.).
-let _fmCustom  = [];   // [{id, label, section, calcType}]
+// ES module conversion: custom-field state remains live through a
+// window accessor because config.js, data-page.js, reports-print.js, and
+// legacy classic callers all read the current array. The accessor follows
+// reassignment in fmLoad()/fmResetAll(); it is not a stale snapshot.
+import { Repository } from './repository.js';
+import { Actions } from './actions.js';
+
+let _fmCustom = [];   // [{id, label, section, calcType}]
 
 (function() {
 'use strict';
@@ -79,7 +79,7 @@ function fmSave() {
   try {
     const autoSave = Repository.getItem('bt_auto_save') === '1'
                   || document.getElementById('auto-save')?.checked;
-    if (autoSave && typeof pushToSupabase === 'function') pushToSupabase();
+    if (autoSave && typeof window.pushToSupabase === 'function') window.pushToSupabase();
   } catch(e) {}
 }
 
@@ -104,13 +104,13 @@ function fmApply() {
     grid.appendChild(div);
   });
   // Re-run calcTotal so hidden fields don't break the sum
-  if (typeof calcTotal === 'function') calcTotal();
+  if (typeof window.calcTotal === 'function') window.calcTotal();
 }
 
 // ── Patch calcTotal to include custom add/sub fields ─────────────────────────
 function _patchCalcTotal() {
-  if (typeof calcTotal !== 'function') return;
-  const _orig = calcTotal;
+  if (typeof window.calcTotal !== 'function') return;
+  const _orig = window.calcTotal;
   window.calcTotal = function() {
     _orig();
     // Add/subtract custom field values on top of what the original computed
@@ -385,3 +385,12 @@ window.toggleTcard = toggleTcard;
 
 })();
 
+// Keep the classic-script contract without freezing the initial array value.
+Object.defineProperty(window, '_fmCustom', {
+  configurable: true,
+  enumerable: true,
+  get: () => _fmCustom,
+  set: value => { _fmCustom = Array.isArray(value) ? value : []; },
+});
+
+export { _fmCustom };

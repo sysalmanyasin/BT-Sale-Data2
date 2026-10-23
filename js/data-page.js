@@ -270,8 +270,8 @@ async function saveEntry() {
   // Custom fields (Field Manager → Custom tab) — store their raw value under
   // their own id so they survive reload/edit. Previously these only affected
   // the live TOTAL while filling the form and were never actually saved.
-  if (typeof _fmCustom !== 'undefined') {
-    _fmCustom.forEach(f => {
+  if (typeof window._fmCustom !== 'undefined') {
+    window._fmCustom.forEach(f => {
       const el = document.getElementById('e-' + f.id);
       if (!el) return;
       entry[f.id] = el.value !== '' ? parseFloat(el.value) : null;
@@ -452,10 +452,10 @@ function openEditModal(date, my) {
   // Custom fields (Field Manager → Custom tab) — without this the Edit modal
   // had no way to show or change a custom field's value, and resaving from
   // here would silently drop its contribution to TOTAL.
-  if (typeof _fmCustom !== 'undefined' && _fmCustom.length) {
+  if (typeof window._fmCustom !== 'undefined' && window._fmCustom.length) {
     html+=`<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 6px">Custom Fields</div>`;
     html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">`;
-    _fmCustom.forEach(f=>{
+    window._fmCustom.forEach(f=>{
       const val = rec[f.id];
       const raw = (val==null||val==='')?'':(Number(val)||0);
       const hint = f.calcType==='add'?' (+ adds)':f.calcType==='sub'?' (− subtracts)':'';
@@ -493,8 +493,8 @@ function editCalcTotal() {
   let t=0;
   DAILY_ADD_KEYS.forEach(k=>{ const el=document.getElementById('em-'+k.replace(/[^a-z0-9]/gi,'_')); if(el) t+=Math.abs(parseFloat(el.value)||0); });
   DAILY_SUB_KEYS.forEach(k=>{ const el=document.getElementById('em-'+k.replace(/[^a-z0-9]/gi,'_')); if(el) t-=Math.abs(parseFloat(el.value)||0); });
-  if (typeof _fmCustom !== 'undefined') {
-    _fmCustom.forEach(f=>{
+  if (typeof window._fmCustom !== 'undefined') {
+    window._fmCustom.forEach(f=>{
       if (f.calcType==='none') return;
       const el=document.getElementById('em-'+f.id.replace(/[^a-z0-9]/gi,'_')); if(!el) return;
       const v=Math.abs(parseFloat(el.value)||0);
@@ -537,8 +537,8 @@ async function saveEditModal() {
 
   // Custom fields (Field Manager → Custom tab) — persist their value too,
   // so it survives this edit instead of being dropped from TOTAL silently.
-  if (typeof _fmCustom !== 'undefined') {
-    _fmCustom.forEach(f=>{
+  if (typeof window._fmCustom !== 'undefined') {
+    window._fmCustom.forEach(f=>{
       const el=document.getElementById('em-'+f.id.replace(/[^a-z0-9]/gi,'_'));
       if(!el) return;
       changes[f.id]=el.value!==''?(parseFloat(el.value)||0):null;

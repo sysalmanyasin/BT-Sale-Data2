@@ -1,3 +1,10 @@
+import {
+  MONTHLY, DAILY, n, ff, fc, pct, CLIENT_COLS, BANK_COLS, DAILY_SUB_KEYS,
+  cashSales, creditSales, clamp, pctNum, yearlyCAGR, branchScore, recomputeMonthly
+} from './config.js';
+import { Repository } from './repository.js';
+import { getTgts } from './targets.js';
+
 // ══════════════════════════════════════════════════════════════════════
 // ANALYTICS  —  Floor 3 business computation module (CF-03 / CF-04 fix)
 //
@@ -32,6 +39,53 @@ const Analytics = (function () {
   function _currentMonthVal() {
     const d = new Date();
     return d.getFullYear() * 12 + d.getMonth();
+  }
+
+  // Never trust raw array order: remote merges can append older/newer months
+  // without sorting. Keep every analytics calculation on a chronological,
+  // non-future view of the monthly ledger.
+  function _chronologicalMonthly() {
+    const current = _currentMonthVal();
+    return MONTHLY.slice()
+      .filter(m => {
+        const value = _monthSortVal(m && m.Month_Year);
+        return value >= 0 && value <= current;
+      })
+      .sort((a, b) => _monthSortVal(a.Month_Year) - _monthSortVal(b.Month_Year));
+  }
+
+  // Parse the app's daily date format (DD/Mon/YYYY) for real chronology.
+  // String sorting puts "02/Jan/2026" after "15/Dec/2025", corrupting
+  // last-N weekday and same-weekday comparisons across month/year boundaries.
+  function _dailyDateValue(dateStr) {
+    const parts = String(dateStr || '').split('/');
+    if (parts.length !== 3) return NaN;
+    const monthIndex = _MN.findIndex(m => m.slice(0, 3).toLowerCase() === String(parts[1]).slice(0, 3).toLowerCase());
+    const day = parseInt(parts[0], 10);
+    const year = parseInt(parts[2], 10);
+    if (monthIndex < 0 || !Number.isInteger(day) || !Number.isInteger(year) || day < 1 || day > 31) return NaN;
+    const date = new Date(year, monthIndex, day);
+    if (date.getFullYear() !== year || date.getMonth() !== monthIndex || date.getDate() !== day) return NaN;
+    return date.getTime();
+  }
+
+  // MTD contribution from user-defined fields. Match config.js's monthly
+  // cash/credit aggregation rules, but use daily raw values (which are
+  // positive input values even for return/subtraction fields).
+  function _dailyCustomMTD(monthYear, dayLimit, creditSection) {
+    const custom = typeof _fmCustom !== 'undefined' && Array.isArray(_fmCustom) ? _fmCustom : [];
+    return custom.reduce((total, field) => {
+      if (!field || field.calcType === 'none') return total;
+      if (creditSection) {
+        if (field.section !== 'Credit Clients' || CLIENT_COLS.includes(field.id)) return total;
+      } else if (field.section === 'Credit Clients' || BANK_COLS.includes(field.id)) {
+        return total;
+      }
+      const value = DAILY
+        .filter(d => d.Month_Year === monthYear && _dayOf(d.Date) <= dayLimit)
+        .reduce((sum, d) => sum + Math.abs(n(d[field.id])), 0);
+      return total + (field.calcType === 'sub' ? -value : value);
+    }, 0);
   }
 
   // ── MTD helpers ───────────────────────────────────────────────────
@@ -172,9 +226,10 @@ const Analytics = (function () {
 
   // Returns the latest MONTHLY entry that is not in the future.
   function latestSalesMonth(lat) {
-    const current = _currentMonthVal();
-    if (lat && _monthSortVal(lat.Month_Year) <= current) return lat.Month_Year;
-    const latest = [...MONTHLY].reverse().find(m => _monthSortVal(m.Month_Year) <= current);
+    // The helper promises the latest non-future month, not merely a valid
+    // month supplied by a caller that may itself be stale or out of order.
+    const ordered = _chronologicalMonthly();
+    const latest = ordered[ordered.length - 1];
     return latest ? latest.Month_Year : '';
   }
 
@@ -293,19 +348,12 @@ const Analytics = (function () {
     // rows yet, so this never invents a month that has no real entries.
     const _now0 = new Date();
     const _curMY0 = _MN[_now0.getMonth()] + ' ' + _now0.getFullYear();
-    if (typeof recomputeMonthly === 'function') recomputeMonthly(_curMY0);
+    recomputeMonthly(_curMY0);
 
-    if (!MONTHLY.length) return null;
-
-    // Pick 'lat'/'prv' by actual chronological month value, never by raw
-    // array position. Synced-in month rows (mergePulledMonthly/gapFillMonthly
-    // in repository.js) are pushed onto MONTHLY without a re-sort, so the
-    // truly-latest month is not guaranteed to be the last array element —
-    // that mismatch was why the dashboard could stay stuck showing a
-    // "Closed" older month even after the current month's row existed with
-    // real data in it. Sorting a shallow copy here makes this computation
-    // correct regardless of how MONTHLY got into whatever order it's in.
-    const _sortedMonthly = MONTHLY.slice().sort((a, b) => _monthSortVal(a.Month_Year) - _monthSortVal(b.Month_Year));
+    // Sort and exclude future-dated rows. Remote merges can leave MONTHLY
+    // unsorted, and a future placeholder must never become the dashboard's
+    // "latest" month or distort its forecast/YTD values.
+    const _sortedMonthly = _chronologicalMonthly();
     const lat  = _sortedMonthly[_sortedMonthly.length - 1];
     const prv  = _sortedMonthly[_sortedMonthly.length - 2];
     if (!lat || !prv) return null;
@@ -328,14 +376,22 @@ const Analytics = (function () {
     const prvCash      = isLive
       ? CASH_FIELDS.reduce((s, f) => s + _dailyMTDField(prv.Month_Year, D, f), 0)
         - Math.abs(_dailyMTDField(prv.Month_Year, D, 'Cash Returns'))
+        + _dailyCustomMTD(prv.Month_Year, D, false)
       : cashSales(prv);
+    // Daily return inputs are positive raw values; monthly recompute stores
+    // returns as negatives. Subtract returns here so the MTD comparison uses
+    // the same sign convention as creditSales(monthlyRecord).
     const prvCredit    = isLive
-      ? CLIENT_COLS.reduce((s, c) => s + _dailyMTDField(prv.Month_Year, D, c), 0)
+      ? CLIENT_COLS.filter(c => !DAILY_SUB_KEYS.includes(c))
+          .reduce((sum, c) => sum + _dailyMTDField(prv.Month_Year, D, c), 0)
+        - CLIENT_COLS.filter(c => DAILY_SUB_KEYS.includes(c))
+          .reduce((sum, c) => sum + Math.abs(_dailyMTDField(prv.Month_Year, D, c)), 0)
+        + _dailyCustomMTD(prv.Month_Year, D, true)
       : creditSales(prv);
     const prvCustomers = isLive ? _dailyMTDField(prv.Month_Year, D, 'Customers') : n(prv.Customers);
 
     // YTD
-    const ytd  = MONTHLY
+    const ytd  = _sortedMonthly
       .filter(m => parseInt((m.Month_Year.split(' ')[1] || ''), 10) === curY)
       .reduce((s, m) => s + n(m.TOTAL), 0);
     const prevSameMonthYear = _MN[curMonthIdx] + ' ' + (curY - 1);
@@ -365,7 +421,10 @@ const Analytics = (function () {
     const daysInMon  = (_latMonIdx >= 0 && !isNaN(_latYrNum))
       ? new Date(_latYrNum, _latMonIdx + 1, 0).getDate()
       : new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    const dailyAvg    = latDays ? latAct / latDays : 0;
+    // Forecast against elapsed calendar days, not merely the count of rows
+    // with sales. Missing daily-entry rows must not inflate the run rate.
+    const forecastElapsedDays = isLive ? lastFilledDay : latDays;
+    const dailyAvg    = forecastElapsedDays ? latAct / forecastElapsedDays : 0;
     // For a closed month there is no more runway — the final total IS the result.
     const forecastTotal = isLive ? dailyAvg * daysInMon : latAct;
     const avgBill     = n(lat.Customers) ? latAct / n(lat.Customers) : 0;
@@ -376,10 +435,12 @@ const Analytics = (function () {
     const bScore = branchScore(lat, prv, latTgt, latAct);
 
     // Cumulative diff
-    const cumDiff = MONTHLY.reduce((s, m) => s + Math.round(n(m.TOTAL) - n(m['COMP SALE'])), 0);
+    // Keep every headline total on the same non-future chronological ledger
+    // as the dashboard's latest/prior month and YTD calculations.
+    const cumDiff = _sortedMonthly.reduce((s, m) => s + Math.round(n(m.TOTAL) - n(m['COMP SALE'])), 0);
 
     // Grand total
-    const gTotal = MONTHLY.reduce((s, m) => s + n(m.TOTAL), 0);
+    const gTotal = _sortedMonthly.reduce((s, m) => s + n(m.TOTAL), 0);
 
     // Hero sub-text counts
     const dailyRecordCount = DAILY.filter(d => n(d.TOTAL) > 0).length;
@@ -513,7 +574,7 @@ const Analytics = (function () {
   // plain fact objects (numbers, not HTML). dashboard-insights.js formats
   // each candidate into its icon/title/text/cta presentation.
   function computeInsightCandidates(tgts) {
-    const M = MONTHLY, D = DAILY;
+    const M = _chronologicalMonthly(), D = DAILY;
     if (M.length < 2 || !D.length) return [];
 
     const now = new Date();
@@ -521,33 +582,22 @@ const Analytics = (function () {
     const candidates = [];
 
     // A. Target pace
-    const tgt = n((tgts || {})[curMY]);
-    if (tgt > 0) {
-      const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-      const daysElapsed = now.getDate();
-      const daysLeft = daysInMonth - daysElapsed;
-      const monthRec = M.find(m => m.Month_Year === curMY);
-      const soFar = n((monthRec && monthRec.TOTAL) || 0);
-      const pct = tgt > 0 ? Math.round(soFar / tgt * 100) : 0;
-      const neededPerDay = daysLeft > 0 ? Math.ceil((tgt - soFar) / daysLeft) : 0;
-      if (soFar < tgt) {
-        candidates.push({ type: 'targetPace', curMY, pct, neededPerDay, daysLeft });
-      }
+    const pace = getTargetPaceForMonth(curMY, tgts);
+    if (pace && pace.soFar < pace.tgt) {
+      candidates.push({
+        type: 'targetPace', curMY, pct: pace.pct,
+        neededPerDay: pace.neededPerDay, daysLeft: pace.daysLeft,
+      });
     }
 
     // B. Weekday comparison
     const dow = now.getDay();
-    const sortedD = D.slice().sort((a, b) => {
-      const pa = a.Date || '', pb = b.Date || '';
-      return pa < pb ? -1 : pa > pb ? 1 : 0;
-    });
+    const sortedD = D.filter(d => Number.isFinite(_dailyDateValue(d.Date))).slice()
+      .sort((a, b) => _dailyDateValue(a.Date) - _dailyDateValue(b.Date));
     const sameDay = sortedD.filter(d => {
       try {
-        const parts = (d.Date || '').split('/');
-        if (parts.length < 3) return false;
-        const months = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
-        const dt = new Date(parseInt(parts[2]), months[parts[1]] || 0, parseInt(parts[0]));
-        return dt.getDay() === dow;
+        const value = _dailyDateValue(d.Date);
+        return Number.isFinite(value) && new Date(value).getDay() === dow;
       } catch (e) { return false; }
     }).slice(-5);
     if (sameDay.length >= 3) {
@@ -631,8 +681,10 @@ const Analytics = (function () {
   // widget (js/dashboard-race.js). Returns oldest→newest so a bar race
   // can play back in chronological order.
   function getSameMonthAcrossYears(monthName, count) {
+    const current = _currentMonthVal();
     const rows = MONTHLY
-      .filter(m => (m.Month_Year || '').split(' ')[0] === monthName)
+      .filter(m => (m.Month_Year || '').split(' ')[0] === monthName
+        && _monthSortVal(m.Month_Year) >= 0 && _monthSortVal(m.Month_Year) <= current)
       .map(m => ({
         year: parseInt((m.Month_Year || '').split(' ')[1], 10),
         monthYear: m.Month_Year,
@@ -650,16 +702,13 @@ const Analytics = (function () {
   // as Date.getDay(); dashboard-race.js reorders Mon..Sun for display,
   // same convention dashboard.js's buildDayOfWeek() already uses.
   function getRecentWeekdayAverages(count) {
-    const months = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
-    const sortedD = DAILY.filter(d => n(d.TOTAL) > 0 && d.Date).slice().sort((a, b) => {
-      const pa = a.Date || '', pb = b.Date || '';
-      return pa < pb ? -1 : pa > pb ? 1 : 0;
-    });
+    const sortedD = DAILY.filter(d => n(d.TOTAL) > 0 && Number.isFinite(_dailyDateValue(d.Date))).slice()
+      .sort((a, b) => _dailyDateValue(a.Date) - _dailyDateValue(b.Date));
     const byDow = Array.from({ length: 7 }, () => []);
     sortedD.forEach(d => {
-      const parts = (d.Date || '').split('/');
-      if (parts.length < 3) return;
-      const dt = new Date(parseInt(parts[2], 10), months[parts[1]] || 0, parseInt(parts[0], 10));
+      const value = _dailyDateValue(d.Date);
+      if (!Number.isFinite(value)) return;
+      const dt = new Date(value);
       byDow[dt.getDay()].push(n(d.TOTAL));
     });
     return byDow.map(vals => {
@@ -678,3 +727,5 @@ const Analytics = (function () {
 // Same low-risk bridge pattern already used for renderCoverDashboard,
 // closingBridgeRefresh, etc.
 window.Analytics = Analytics;
+
+export { Analytics };

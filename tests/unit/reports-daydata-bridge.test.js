@@ -6,25 +6,24 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { installDomEnv } from '../helpers/dom-env.js';
-import { loadClassicScript } from '../helpers/load-classic-script.js';
 
-function load(custom) {
+async function load(custom) {
   const dom = installDomEnv();
   const w = dom.window || globalThis.window || dom;
   w.n = (v) => { const x = parseFloat(String(v == null ? 0 : v).replace(/,/g, '')); return isNaN(x) ? 0 : x; };
   w._fmCustom = custom;
   w.toast = () => {};
-  loadClassicScript('js/reports.js', w);
+  await import('../../js/reports.js?test=' + Date.now() + Math.random());
   return w;
 }
 
-test('reports.js bridges dayData to window', () => {
-  const w = load([]);
+test('reports.js bridges dayData to window', async () => {
+  const w = await load([]);
   assert.equal(typeof w.dayData, 'function');
 });
 
-test('dayData folds custom fields (Bank Alfalah 2) into netCash so checklist == Sale Report', () => {
-  const w = load([{ id: 'custom_ALF2', label: 'Bank Alfalah 2', section: 'Banks', calcType: 'add' }]);
+test('dayData folds custom fields (Bank Alfalah 2) into netCash so checklist == Sale Report', async () => {
+  const w = await load([{ id: 'custom_ALF2', label: 'Bank Alfalah 2', section: 'Banks', calcType: 'add' }]);
   // 16 Oct 2026 figures from the Sale Report screenshot
   const row = { 'Cash Sale': 277701, 'Alfala Bank': 190017, custom_ALF2: 16321, 'PARCO': 6730, TOTAL: 490769 };
   const d = w.dayData(row);

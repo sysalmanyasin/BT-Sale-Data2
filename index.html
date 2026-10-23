@@ -2630,7 +2630,7 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/bt-search.js?v=cd0c4663"></script>
 
 <!-- 2. Config: Floor 2 state store — protected MONTHLY/DAILY/STAFF + utils -->
-<script type="module" src="js/config.js?v=6ac3816b"></script>
+<script type="module" src="js/config.js?v=c1a14ba9"></script>
 
 <!-- 2b. Floor 3: event bus, then Repository (Floor 1), then Actions (Floor 3)
      — strict order, and ALL FOUR of these must load before anything else,
@@ -2655,7 +2655,7 @@ if ('serviceWorker' in navigator) {
      globals aren't on window by the time this runs, the load order
      broke somewhere and this fails loud instead of every page silently
      showing blank/wrong data. See js/boot-guard.js for the full reasoning. -->
-<script defer src="js/boot-guard.js?v=4caffc53"></script>
+<script type="module" src="js/boot-guard.js?v=8b5407a0"></script>
 
 <!-- Ledger — generalized module (config.js/repository.js/event-bus.js
      dependency). Wired into Manager's Expense tab, Misc Sections, and
@@ -2683,7 +2683,7 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/cover-dashboard.js?v=b0e291b1"></script>
 <script type="module" src="js/herald/herald-engine.js?v=8d9d1d0c"></script>
 <script type="module" src="js/herald/herald-page.js?v=e2bdfb9f"></script>
-<script src="js/status-bar.js?v=70dc1273"></script>
+<script type="module" src="js/status-bar.js?v=8654ed27"></script>
 <script type="module" src="js/record-day.js?v=241024f4"></script>
 <script type="module" src="js/staff-notes.js?v=7c71c9f5"></script>
 <script type="module" src="js/closing-bridge.js?v=6f303408"></script>
@@ -2724,13 +2724,13 @@ if ('serviceWorker' in navigator) {
 
 <!-- 6b. Sync center (needs EventBus). Supabase client lib itself now
      loads much earlier above — see comment there. -->
-<script defer src="js/sync-center.js?v=e86fb514"></script>
+<script type="module" src="js/sync-center.js?v=1cfb7462"></script>
 
 <!-- 6c2. Conflict UI (Floor 4/5) — DOM code that reacts to Repository/Actions -->
 <script type="module" src="js/conflict-ui.js?v=620aa04a"></script>
 
 <!-- 6d. Supabase sync (Floor 1 extension — needs Repository + Actions) -->
-<script defer src="js/supabase.js?v=c9b9ec15"></script>
+<script type="module" src="js/supabase.js?v=ce597008"></script>
 <script type="module" src="js/pdf-library.js?v=d0efd50b"></script>
 <script type="module" src="js/mail-briefing.js?v=44ffc9aa"></script>
 <script type="module" src="js/cover-mail-strip.js?v=7faf246c"></script>
@@ -2740,24 +2740,24 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/targets.js?v=0c18568f"></script>
 
 <!-- 8. Analytics: Floor 3 KPI computation — must load before dashboard.js -->
-<script defer src="js/analytics.js?v=239492ea"></script>
+<script type="module" src="js/analytics.js?v=a519abdf"></script>
 
 <!-- 8b. Dashboard: Floor 5 pure renderer -->
 <script type="module" src="js/dashboard-controls.js?v=c3b65901"></script>
-<script type="module" src="js/dashboard.js?v=5036f7d1"></script>
+<script type="module" src="js/dashboard.js?v=9bad1d70"></script>
 <script type="module" src="js/dashboard-heatmap.js?v=82e03d89"></script>
-<script type="module" src="js/dashboard-race.js?v=1702973f"></script>
+<script type="module" src="js/dashboard-race.js?v=05a41dc5"></script>
 
 <!-- 8b. Dashboard Insights: briefing card, target pace, rotating insight strip, diff badge (Phase 3) -->
 <script type="module" src="js/rules-engine.js?v=26c6acb8"></script>
 <script type="module" src="js/rules-registrations.js?v=56a4d93d"></script>
-<script type="module" src="js/dashboard-insights.js?v=70b6e4c6"></script>
+<script type="module" src="js/dashboard-insights.js?v=bfb65c97"></script>
 
 <!-- 9. Index page: year/month grid rendering -->
 <script type="module" src="js/index-page.js?v=3c9d462a"></script>
 
 <!-- 10. Reports: day modal, month modal, all print helpers -->
-<script defer src="js/reports.js?v=e6db6678"></script>
+<script type="module" src="js/reports.js?v=bb18d014"></script>
 <script type="module" src="js/cash-deposit-report.js?v=0a87caf2"></script>
 <script type="module" src="js/daily-checklist.js?v=fc26b04b"></script>
 <script type="module" src="js/icons.js?v=b583b55a"></script>
@@ -2766,12 +2766,12 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/subtab-strip.js?v=d127a5eb"></script>
 
 <!-- 11. Data page: daily table + entry form -->
-<script type="module" src="js/data-page.js?v=f2895df1"></script>
+<script type="module" src="js/data-page.js?v=6437fe50"></script>
 <script type="module" src="js/entry-prefill.js?v=4890a824"></script>
 <script type="module" src="js/diff-report.js?v=1bc6582e"></script>
 
 <!-- 11b. Reports print helpers (extracted from manager.js — Step 8) -->
-<script type="module" src="js/reports-print.js?v=ac8d9edc"></script>
+<script type="module" src="js/reports-print.js?v=bb502220"></script>
 
 <!-- 11c. Manager Summary Export (Phase 5) -->
 <script type="module" src="js/manager-export.js?v=e65a2913"></script>
@@ -2828,7 +2828,7 @@ if ('serviceWorker' in navigator) {
 <!-- 13b. Jazz Cash — Balance Tally (Daily Ledger now runs on the generalized Ledger, see ledger-page.js) -->
 <script type="module" src="js/jazz-cash.js?v=65fdf505"></script>
 
-<script defer src="js/quick-add.js?v=4874c700"></script>
+<script type="module" src="js/quick-add.js?v=25d79799"></script>
 
 <!-- UI extras: left-edge tab strip, floating Dashboard FAB, month→target patch -->
 <script type="module" src="js/ui-extras.js?v=ddb51ca7"></script>
@@ -2838,7 +2838,7 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/ai-center/index.js?v=378a2115"></script>
 
 <!-- 14. Field manager modal -->
-<script defer src="js/fields.js?v=ea844a91"></script>
+<script type="module" src="js/fields.js?v=acc3c247"></script>
 
 <!-- 15. Google Drive backup / restore -->
 <script defer src="js/drive.js?v=5d0b6df1"></script>

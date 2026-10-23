@@ -1,3 +1,6 @@
+import { MONTHLY, DAILY, STAFF, n, ff, fc, pct, cashSales, creditSales } from './config.js';
+import { Analytics } from './analytics.js';
+
 // ══════════════════════════════════════════
 // FLOOR 5 — buildDashboard (pure renderer)
 //

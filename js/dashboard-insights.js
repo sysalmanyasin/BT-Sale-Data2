@@ -1,3 +1,8 @@
+import { MONTHLY, n, ff, pct } from './config.js';
+import { Analytics } from './analytics.js';
+import { Repository } from './repository.js';
+import { Actions } from './actions.js';
+
 /**
  * ╔══════════════════════════════════════════════════════════════════════╗
  * ║  DASHBOARD INSIGHTS  —  BT Sales App  ·  Phase 3                   ║
