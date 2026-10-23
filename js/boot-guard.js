@@ -13,7 +13,7 @@
 // every consumer would just read `undefined` and produce wrong numbers
 // or blank sections with no error pointing at the actual cause.
 //
-// This file is a classic <script defer>, placed immediately after the
+// This file is an ES module, placed immediately after the
 // module block (js/actions.js) in index.html — so by the time it runs,
 // every dependency below MUST already exist, or the load order broke.
 // Same "fail loud, name the exact cause" instinct as config.js's
@@ -51,3 +51,5 @@
     } catch (e) { console.warn('[boot-guard] alert() failed', e); }
   }
 })();
+
+export {};
