@@ -29,7 +29,11 @@ const keys = {
 };
 Object.assign(globalThis, keys);
 Object.assign(window, keys);
-window.SyncTombstones = { getAllTombstones: () => ({}) };
+window.SyncTombstones = {
+  getAllTombstones: () => ({}),
+  mergeTombstones: () => {},
+  isDeleted: () => false,
+};
 
 // The module must be importable without opening a connection. Any unexpected
 // attempt to create a client during import is a test failure.
@@ -87,4 +91,44 @@ describe('Supabase module conversion', () => {
     assert.equal(payload.payloadVersion, 1);
     assert.equal(window._nextPayloadVersion(), 2);
   });
+  test('merges manager data directionally without dropping other months', () => {
+    resetStorage();
+    const localMonth = { staff: [{ id: 'local' }], note: 'local edit' };
+    const remoteMonth = { staff: [{ id: 'remote' }], note: 'remote edit' };
+    localStorage.setItem(keys.MGR_KEY, JSON.stringify({
+      credit: {
+        '2026-10': localMonth,
+        '2026-09': { note: 'older local month' },
+      },
+    }));
+
+    window.mergeIncomingData({
+      manager: {
+        credit: {
+          '2026-10': remoteMonth,
+          '2026-08': { note: 'remote-only month' },
+        },
+      },
+    }, false);
+
+    let merged = JSON.parse(localStorage.getItem(keys.MGR_KEY));
+    assert.deepEqual(merged.credit['2026-10'], localMonth, 'push merge keeps the local version of an existing month');
+    assert.deepEqual(merged.credit['2026-08'], { note: 'remote-only month' }, 'push merge fills a missing month');
+    assert.deepEqual(merged.credit['2026-09'], { note: 'older local month' }, 'push merge preserves unrelated local months');
+
+    window.mergeIncomingData({
+      manager: {
+        credit: {
+          '2026-10': remoteMonth,
+          '2026-07': { note: 'pulled month' },
+        },
+      },
+    }, true);
+
+    merged = JSON.parse(localStorage.getItem(keys.MGR_KEY));
+    assert.deepEqual(merged.credit['2026-10'], remoteMonth, 'pull merge takes the remote version of an existing month');
+    assert.deepEqual(merged.credit['2026-07'], { note: 'pulled month' }, 'pull merge adds a remote-only month');
+    assert.deepEqual(merged.credit['2026-08'], { note: 'remote-only month' }, 'pull merge keeps previously merged months');
+  });
+
 });
