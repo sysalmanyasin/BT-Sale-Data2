@@ -2,16 +2,12 @@
 // AUTH GATE — Google Sign-In only.
 // ══════════════════════════════════════════
 
-// NOTE: unlockApp and initAutoRefresh (below) stay TRUE bare globals,
-// declared outside the IIFE that wraps the rest of this file. drive.js
-// monkey-patches unlockApp (captures the original, then reassigns
-// `unlockApp = function(){...}` to add auto-backup-after-unlock) and
-// this file itself calls unlockApp() internally in several places —
-// if unlockApp were IIFE-scoped, drive.js's patch would only ever
-// affect a window-level copy, while every internal call here would
-// keep calling the ORIGINAL, unpatched version. initAutoRefresh has to
-// travel with it since unlockApp calls it directly and it has no other
-// external dependents that would need it kept private/wrapped.
+// NOTE: this file is an ES module. unlockApp stays *patchable*: drive.js
+// monkey-patches it by reassigning the global (`unlockApp = function(){...}`)
+// to add auto-backup-after-unlock. A module-local binding would make that
+// patch invisible to this file, so unlockApp is bridged onto window and
+// every call in this file goes through window.unlockApp() — it must never
+// call the local binding directly.
 function unlockApp() {
   document.getElementById('pin-gate').style.display='none';
   document.getElementById('nav').style.display='flex';
@@ -95,6 +91,9 @@ function initAutoRefresh() {
     }
   });
 }
+
+window.unlockApp = unlockApp;
+window.initAutoRefresh = initAutoRefresh;
 
 (function() {
 'use strict';
@@ -319,7 +318,7 @@ async function _gauthHandleRedirectToken() {
     if (typeof _driveSaveToken === 'function') _driveSaveToken(token, Number(params.get('expires_in')));
     _driveUpdateBadge('ok'); // reflect Drive-ready state immediately in Tools
     gauthSetSession({ email:info.email, name:info.name||info.email, picture:info.picture||'' });
-    unlockApp();
+    window.unlockApp();
     return true;
   } catch(e) {
     _gauthShowError('Sign-in error: '+e.message);
@@ -393,7 +392,7 @@ function _gauthCheckSession() {
     return;
   }
   // Valid session → auto-unlock immediately, no button click required
-  unlockApp();
+  window.unlockApp();
   // If a still-valid Drive token survived this refresh/new tab (localStorage cache),
   // there's nothing to do — Drive is already ready, no network call needed.
   if (_driveAccessToken) {
@@ -406,7 +405,7 @@ function _gauthCheckSession() {
     if (token && typeof driveLog === 'function') driveLog('✓ Drive session restored silently', 'ok');
   });
 }
-function gauthConfirmUser() { unlockApp(); }
+function gauthConfirmUser() { window.unlockApp(); }
 function gauthSignOut() {
   // Local-only sign-out (this device/tab). Also drops the Supabase session
   // on this device so it doesn't silently linger past the UI sign-out.
