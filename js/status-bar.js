@@ -17,15 +17,14 @@
 //    that gap)
 //  - on every hash change (page switch), so it's never stale when you
 //    land back on Manager Dashboard right after editing something
-// Classic script (not a module) — loaded after cover-dashboard.js, but
+// ES module — loaded after cover-dashboard.js, but
 // only ever touches window.* + the DOM, so load order relative to the
 // module scripts doesn't matter as long as it runs after DOMContentLoaded,
 // which showStatusBar()/refreshStatusBar() always do (only ever called
 // from unlockApp(), which itself only runs after auth's DOMContentLoaded
 // listener fires).
 // ══════════════════════════════════════════════════════════════════════
-(function () {
-  'use strict';
+'use strict';
 
   function refreshStatusBar() {
     const bar = document.getElementById('status-bar');
@@ -69,6 +68,7 @@
   window.showStatusBar = showStatusBar;
   window.hideStatusBar = hideStatusBar;
 
-  window.addEventListener('hashchange', refreshStatusBar);
-  setInterval(refreshStatusBar, 30000);
-})();
+window.addEventListener('hashchange', refreshStatusBar);
+window.setInterval(refreshStatusBar, 30000);
+
+export { refreshStatusBar, showStatusBar, hideStatusBar };
