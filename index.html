@@ -2655,7 +2655,7 @@ if ('serviceWorker' in navigator) {
      globals aren't on window by the time this runs, the load order
      broke somewhere and this fails loud instead of every page silently
      showing blank/wrong data. See js/boot-guard.js for the full reasoning. -->
-<script defer src="js/boot-guard.js?v=4caffc53"></script>
+<script type="module" src="js/boot-guard.js?v=8b5407a0"></script>
 
 <!-- Ledger — generalized module (config.js/repository.js/event-bus.js
      dependency). Wired into Manager's Expense tab, Misc Sections, and
