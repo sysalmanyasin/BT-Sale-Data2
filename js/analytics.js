@@ -226,8 +226,8 @@ const Analytics = (function () {
 
   // Returns the latest MONTHLY entry that is not in the future.
   function latestSalesMonth(lat) {
-    const current = _currentMonthVal();
-    if (lat && _monthSortVal(lat.Month_Year) <= current) return lat.Month_Year;
+    // The helper promises the latest non-future month, not merely a valid
+    // month supplied by a caller that may itself be stale or out of order.
     const ordered = _chronologicalMonthly();
     const latest = ordered[ordered.length - 1];
     return latest ? latest.Month_Year : '';
@@ -593,11 +593,8 @@ const Analytics = (function () {
     const sortedD = D.slice().sort((a, b) => _dailyDateValue(a.Date) - _dailyDateValue(b.Date));
     const sameDay = sortedD.filter(d => {
       try {
-        const parts = (d.Date || '').split('/');
-        if (parts.length < 3) return false;
-        const months = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
-        const dt = new Date(parseInt(parts[2]), months[parts[1]] || 0, parseInt(parts[0]));
-        return dt.getDay() === dow;
+        const value = _dailyDateValue(d.Date);
+        return Number.isFinite(value) && new Date(value).getDay() === dow;
       } catch (e) { return false; }
     }).slice(-5);
     if (sameDay.length >= 3) {
