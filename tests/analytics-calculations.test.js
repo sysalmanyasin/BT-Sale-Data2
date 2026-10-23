@@ -91,3 +91,17 @@ test('dashboard KPI month selection ignores future rows and uses chronological o
   assert.equal(result.prv.Month_Year, monthYear(new Date(now.getFullYear(), now.getMonth() - 1, 1)));
   assert.notEqual(result.lat.TOTAL, '99999', 'future placeholder must not become the latest month');
 });
+
+test('yearly CAGR is stable when synced monthly rows arrive out of order', () => {
+  const rows = [];
+  for (let year = 2024; year <= 2025; year++) {
+    for (let month = 0; month < 12; month++) {
+      rows.push({
+        Month_Year: monthYear(new Date(year, month, 1)),
+        TOTAL: year === 2024 ? '100' : '200',
+      });
+    }
+  }
+  resetData(rows.reverse(), [], []);
+  assert.ok(Math.abs(config.yearlyCAGR() - 100) < 1e-9);
+});
