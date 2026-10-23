@@ -10,12 +10,12 @@ function _prRow(lbl, val, opts='') {
   return `<tr${opts}><td class="l">${lbl}</td><td class="r">${s}</td></tr>`;
 }
 function _prRowOpt(lbl, val, opts='') { return n(val) !== 0 ? _prRow(lbl, val, opts) : ''; }
-// Renders any custom fields (Manage Fields, fields.js's _fmCustom) whose
+// Renders any custom fields (Manage Fields, fields.js's window._fmCustom) whose
 // `section` is in `sections` — same gap as DAILY_COL_DEFS above, but for the
 // Summary table's monthly totals rather than the daily breakdown page.
 function _prCustomRowsOpt(m, sections) {
-  if (typeof _fmCustom === 'undefined' || !_fmCustom) return '';
-  return _fmCustom.filter(f => f.calcType !== 'none' && sections.includes(f.section))
+  if (typeof window._fmCustom === 'undefined' || !window._fmCustom) return '';
+  return window._fmCustom.filter(f => f.calcType !== 'none' && sections.includes(f.section))
     .map(f => _prRowOpt(f.label, f.calcType === 'sub' ? negR(m[f.id]) : n(m[f.id])))
     .join('');
 }
@@ -43,15 +43,15 @@ const DAILY_COL_DEFS_BUILTIN = [
   ['Cash to be Deposited','Cash to Deposit'],
 ];
 const _BUILTIN_COL_IDS = new Set(DAILY_COL_DEFS_BUILTIN.map(([k]) => k));
-// Custom fields (Manage Fields, fields.js's _fmCustom — e.g. "Bank Alfalah
+// Custom fields (Manage Fields, fields.js's window._fmCustom — e.g. "Bank Alfalah
 // 2") aren't in the static built-in list above, so the landscape daily
 // breakdown page silently dropped them, same bug as reports.js's dayData().
 // Computed as a getter (not a fixed const) so it always reflects whatever
 // custom fields exist at print time, not just whatever existed when this
 // file first parsed.
 function _daily_col_defs() {
-  const extra = (typeof _fmCustom !== 'undefined' && _fmCustom)
-    ? _fmCustom.filter(f => f.calcType !== 'none' && !_BUILTIN_COL_IDS.has(f.id)).map(f => [f.id, f.label])
+  const extra = (typeof window._fmCustom !== 'undefined' && window._fmCustom)
+    ? window._fmCustom.filter(f => f.calcType !== 'none' && !_BUILTIN_COL_IDS.has(f.id)).map(f => [f.id, f.label])
     : [];
   return DAILY_COL_DEFS_BUILTIN.concat(extra);
 }
@@ -133,8 +133,8 @@ function buildMonthlyPrintHTML(my) {
   // how the underlying record happens to be signed (see RETURN_FIELDS /
   // negR in config.js) — this is what keeps the printed report correct
   // even for records edited before that bug was fixed at the source.
-  const _customSubIds = (typeof _fmCustom !== 'undefined' && _fmCustom)
-    ? new Set(_fmCustom.filter(f => f.calcType === 'sub').map(f => f.id)) : new Set();
+  const _customSubIds = (typeof window._fmCustom !== 'undefined' && window._fmCustom)
+    ? new Set(window._fmCustom.filter(f => f.calcType === 'sub').map(f => f.id)) : new Set();
   const colVal = (d, key) => (RETURN_FIELDS.has(key) || _customSubIds.has(key)) ? negR(d[key]) : n(d[key]);
   const activeCols = _daily_col_defs().filter(([key]) => days.some(d => colVal(d, key) !== 0));
   const hasNotes = days.some(d => d['Low Sale Reason']);
@@ -241,13 +241,13 @@ function buildYearlyPrintHTML(yr) {
   }).join('');
 
   const clientCols = ['PSO','PSO Returns','NESPAK','NESPAK Returns','PARCO','PARCO Returns','TEPA','TEPA Returns','LDA','LDA Returns','Gourmet','Wapda Hospital','BTH','Berger Paints','Ecolean PK','Style Textile','Syed Babar Ali Foundation','Rahnuma NGO','Health Pass','Nisar Spinning Mills','Food Panda','Askari Bank','Askari Bank Returns','F/Issue'];
-  const _customSubIdsY = (typeof _fmCustom !== 'undefined' && _fmCustom)
-    ? new Set(_fmCustom.filter(f => f.calcType === 'sub').map(f => f.id)) : new Set();
-  const _customClientIds = (typeof _fmCustom !== 'undefined' && _fmCustom)
-    ? _fmCustom.filter(f => f.calcType !== 'none' && f.section === 'Credit Clients').map(f => f.id) : [];
-  const _customBankIds = (typeof _fmCustom !== 'undefined' && _fmCustom)
-    ? _fmCustom.filter(f => f.calcType !== 'none' && f.section !== 'Credit Clients').map(f => f.id) : [];
-  const _fmLabel = id => { const f = (_fmCustom || []).find(x => x.id === id); return f ? f.label : id; };
+  const _customSubIdsY = (typeof window._fmCustom !== 'undefined' && window._fmCustom)
+    ? new Set(window._fmCustom.filter(f => f.calcType === 'sub').map(f => f.id)) : new Set();
+  const _customClientIds = (typeof window._fmCustom !== 'undefined' && window._fmCustom)
+    ? window._fmCustom.filter(f => f.calcType !== 'none' && f.section === 'Credit Clients').map(f => f.id) : [];
+  const _customBankIds = (typeof window._fmCustom !== 'undefined' && window._fmCustom)
+    ? window._fmCustom.filter(f => f.calcType !== 'none' && f.section !== 'Credit Clients').map(f => f.id) : [];
+  const _fmLabel = id => { const f = (window._fmCustom || []).find(x => x.id === id); return f ? f.label : id; };
   const clientRows = clientCols.concat(_customClientIds).map(c => {
     const pick = (RETURN_FIELDS.has(c) || _customSubIdsY.has(c)) ? negR : n;
     const v = mons.reduce((s, m) => s + pick(m[c]), 0);
