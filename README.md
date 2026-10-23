@@ -82,8 +82,8 @@
 |---|---|
 | JS modules under `js/` | 165 |
 | Supabase Edge Functions | 8 |
-| Dated SQL migrations | 24 |
-| Test files (`*.test.js`) | 95 |
+| Dated SQL migrations | 25 |
+| Test files (`*.test.js`) | 96 |
 | Android home-screen widgets | 22 |
 | GitHub Actions workflows | 5 |
 <!-- repo-facts:end -->
@@ -506,7 +506,7 @@ More detail in [`tests/README.md`](tests/README.md).
 ## Known limitations
 
 **Main PWA**
-- **Sign-in is Google only, with no bypass.** The app opens only after a verified Google sign-in (Google id_token accepted by Supabase) for an allowed email. A saved session alone never opens it: it must match a live Supabase session for the same email, otherwise it is discarded. The old sign-in-free `#pos` kiosk entry was removed. This gate is client-side; real protection of data is Row Level Security. Emergency Billing tables still have an `anon_all` policy (`20260924182923_emergency_billing.sql`), so the public anon key can still read/write them until that is tightened to authenticated users.
+- **Sign-in is Google only, with no bypass.** The app opens only after a verified Google sign-in (Google id_token accepted by Supabase) for an allowed email. A saved session alone never opens it: it must match a live Supabase session for the same email, otherwise it is discarded. The old sign-in-free `#pos` kiosk entry was removed. This gate is client-side; real protection of data is Row Level Security. Emergency Billing now uses the signed-in Google session; the DB allows it only for an active `bt_authorized_users` email (`bt_is_authorized_user()`, migration `20261024120000`). The public anon key can still reach those tables until the **pending lockdown** `supabase/pending/20261024130000_emergency_billing_lockdown.sql` is promoted into `supabase/migrations/` (do that only after a real sale and refund have been done signed in; its header has the steps and the rollback).
 - Single pharmacy, not multi-tenant.
 - ES-module migration incomplete: `storage.js`, `ui.js` and `drive.js` are still classic scripts, and some `window.*` bridges remain on purpose (see [ES-module migration](#es-module-migration)).
 - Petty Cash keeps a separate legacy implementation.
