@@ -233,12 +233,27 @@ export function recomputeAllMonths() {
 // formerly duplicated in dashboard.js)
 // ══════════════════════════════════════════
 export function yearlyCAGR() {
-  if (MONTHLY.length < 24) return null;
-  const first12 = MONTHLY.slice(0,12).reduce((s,m)=>s+n(m.TOTAL),0);
-  const last12  = MONTHLY.slice(-12).reduce((s,m)=>s+n(m.TOTAL),0);
-  const yrsSpan = (MONTHLY.length-12)/12;
-  if (first12<=0 || yrsSpan<=0) return null;
-  return (Math.pow(last12/first12, 1/yrsSpan)-1)*100;
+  // Sync merges can append month rows out of order. CAGR must use the first
+  // and latest chronological 12-month windows, not the first/last 12 array
+  // positions. Also ignore future-dated placeholders so they cannot skew it.
+  const monthValue = (row) => {
+    const parts = String((row && row.Month_Year) || '').split(' ');
+    const monthIndex = ['January','February','March','April','May','June',
+      'July','August','September','October','November','December'].indexOf(parts[0]);
+    const year = parseInt(parts[1], 10);
+    return monthIndex >= 0 && Number.isInteger(year) ? year * 12 + monthIndex : -1;
+  };
+  const now = new Date();
+  const currentValue = now.getFullYear() * 12 + now.getMonth();
+  const ordered = MONTHLY.slice()
+    .filter(row => monthValue(row) >= 0 && monthValue(row) <= currentValue)
+    .sort((a, b) => monthValue(a) - monthValue(b));
+  if (ordered.length < 24) return null;
+  const first12 = ordered.slice(0, 12).reduce((sum, row) => sum + n(row.TOTAL), 0);
+  const last12 = ordered.slice(-12).reduce((sum, row) => sum + n(row.TOTAL), 0);
+  const yrsSpan = (ordered.length - 12) / 12;
+  if (first12 <= 0 || yrsSpan <= 0) return null;
+  return (Math.pow(last12 / first12, 1 / yrsSpan) - 1) * 100;
 }
 
 export function branchScore(lat,prv,latTgt,latAct) {
