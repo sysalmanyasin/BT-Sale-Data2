@@ -83,7 +83,7 @@ export const mBanks = m => BANK_COLS.reduce((s,k)=>s+n(m[k]),0) + _customBankSum
 export const years  = () => [...new Set(MONTHLY.map(m=>m.Month_Year.split(' ').pop()))].sort();
 export const months = () => [...new Set(DAILY.map(d=>d.Month_Year))];
 export const CC = ['#2563eb','#7c3aed','#059669','#d97706','#dc2626','#0891b2','#be185d','#65a30d','#9333ea','#c2410c'];
-export const CLIENT_COLS = ['PSO','NESPAK','PARCO','TEPA','LDA','Gourmet','Wapda Hospital','BTH','Berger Paints','Ecolean PK','Style Textile','Syed Babar Ali Foundation','Rahnuma NGO','Health Pass','Nisar Spinning Mills','Food Panda','Askari Bank','Askari Bank Returns'];
+export const CLIENT_COLS = ['PSO','PSO Returns','NESPAK','NESPAK Returns','PARCO','PARCO Returns','TEPA','TEPA Returns','LDA','LDA Returns','Gourmet','Wapda Hospital','BTH','Berger Paints','Ecolean PK','Style Textile','Syed Babar Ali Foundation','Rahnuma NGO','Health Pass','Nisar Spinning Mills','Food Panda','Askari Bank','Askari Bank Returns'];
 // Same fix, mirrored for custom fields tagged 'Credit Clients'.
 function _customCreditSum(m) {
   if (typeof _fmCustom === 'undefined' || !_fmCustom) return 0;
