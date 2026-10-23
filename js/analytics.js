@@ -1,3 +1,9 @@
+import {
+  MONTHLY, DAILY, n, ff, fc, pct, CLIENT_COLS, BANK_COLS,
+  cashSales, creditSales, clamp, pctNum, yearlyCAGR, branchScore
+} from './config.js';
+import { getTgts } from './targets.js';
+
 // ══════════════════════════════════════════════════════════════════════
 // ANALYTICS  —  Floor 3 business computation module (CF-03 / CF-04 fix)
 //
@@ -678,3 +684,5 @@ const Analytics = (function () {
 // Same low-risk bridge pattern already used for renderCoverDashboard,
 // closingBridgeRefresh, etc.
 window.Analytics = Analytics;
+
+export { Analytics };
