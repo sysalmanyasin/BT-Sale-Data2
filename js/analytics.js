@@ -435,10 +435,12 @@ const Analytics = (function () {
     const bScore = branchScore(lat, prv, latTgt, latAct);
 
     // Cumulative diff
-    const cumDiff = MONTHLY.reduce((s, m) => s + Math.round(n(m.TOTAL) - n(m['COMP SALE'])), 0);
+    // Keep every headline total on the same non-future chronological ledger
+    // as the dashboard's latest/prior month and YTD calculations.
+    const cumDiff = _sortedMonthly.reduce((s, m) => s + Math.round(n(m.TOTAL) - n(m['COMP SALE'])), 0);
 
     // Grand total
-    const gTotal = MONTHLY.reduce((s, m) => s + n(m.TOTAL), 0);
+    const gTotal = _sortedMonthly.reduce((s, m) => s + n(m.TOTAL), 0);
 
     // Hero sub-text counts
     const dailyRecordCount = DAILY.filter(d => n(d.TOTAL) > 0).length;
@@ -590,7 +592,8 @@ const Analytics = (function () {
 
     // B. Weekday comparison
     const dow = now.getDay();
-    const sortedD = D.slice().sort((a, b) => _dailyDateValue(a.Date) - _dailyDateValue(b.Date));
+    const sortedD = D.filter(d => Number.isFinite(_dailyDateValue(d.Date))).slice()
+      .sort((a, b) => _dailyDateValue(a.Date) - _dailyDateValue(b.Date));
     const sameDay = sortedD.filter(d => {
       try {
         const value = _dailyDateValue(d.Date);
@@ -678,8 +681,10 @@ const Analytics = (function () {
   // widget (js/dashboard-race.js). Returns oldest→newest so a bar race
   // can play back in chronological order.
   function getSameMonthAcrossYears(monthName, count) {
+    const current = _currentMonthVal();
     const rows = MONTHLY
-      .filter(m => (m.Month_Year || '').split(' ')[0] === monthName)
+      .filter(m => (m.Month_Year || '').split(' ')[0] === monthName
+        && _monthSortVal(m.Month_Year) >= 0 && _monthSortVal(m.Month_Year) <= current)
       .map(m => ({
         year: parseInt((m.Month_Year || '').split(' ')[1], 10),
         monthYear: m.Month_Year,
@@ -697,13 +702,13 @@ const Analytics = (function () {
   // as Date.getDay(); dashboard-race.js reorders Mon..Sun for display,
   // same convention dashboard.js's buildDayOfWeek() already uses.
   function getRecentWeekdayAverages(count) {
-    const sortedD = DAILY.filter(d => n(d.TOTAL) > 0 && d.Date).slice()
+    const sortedD = DAILY.filter(d => n(d.TOTAL) > 0 && Number.isFinite(_dailyDateValue(d.Date))).slice()
       .sort((a, b) => _dailyDateValue(a.Date) - _dailyDateValue(b.Date));
     const byDow = Array.from({ length: 7 }, () => []);
     sortedD.forEach(d => {
-      const parts = (d.Date || '').split('/');
-      if (parts.length < 3) return;
-      const dt = new Date(_dailyDateValue(d.Date));
+      const value = _dailyDateValue(d.Date);
+      if (!Number.isFinite(value)) return;
+      const dt = new Date(value);
       byDow[dt.getDay()].push(n(d.TOTAL));
     });
     return byDow.map(vals => {
