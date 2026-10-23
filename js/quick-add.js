@@ -1,3 +1,5 @@
+import { LedgerActions } from './ledger-actions.js';
+
 // ══════════════════════════════════════════════════════════════════
 // QUICK ADD — one widget, four destinations (Jazz Cash / Staff Credit /
 // Expenses / New Sections), reusable across pages.
@@ -61,7 +63,7 @@ let _qaCreditPrimed = false;
 function _qaEnsureCreditLoaded() {
   if (_qaCreditPrimed) return;
   if (window._crdData_cur && window._crdData_cur.length) { _qaCreditPrimed = true; return; }
-  if (typeof loadManagerPage === 'function') { loadManagerPage(); }
+  if (typeof window.loadManagerPage === 'function') { window.loadManagerPage(); }
   _qaCreditPrimed = true;
 }
 
@@ -117,7 +119,7 @@ function renderQuickAdd(containerId) {
       // Staff list comes from the full active registry, not whichever
       // month happens to be loaded in the Credit Ledger sheet — the
       // employee picked here may belong to a *different* target month.
-      const staffList = (typeof activeStaff === 'function') ? activeStaff() : (window._crdData_cur || []);
+      const staffList = (typeof window.activeStaff === 'function') ? window.activeStaff() : (window._crdData_cur || []);
       const staff = staffList.map((e, i) => `<option value="${i}">${_qaEsc(e.name)}</option>`);
       // Month select: same running list the Credit Ledger sheet's own
       // dropdown uses (mgrMonths, from manager-shared.js), so every month
@@ -204,10 +206,10 @@ function qaSubmitLedger(container, ledgerType, label) {
   const categoryId = container.querySelector('.qa-cat').value;
   const amount = container.querySelector('.qa-amount').value;
   const desc = container.querySelector('.qa-desc').value;
-  if (!date || !categoryId || !amount) { toast('⚠ Date, category, and amount are required', 'w'); return; }
+  if (!date || !categoryId || !amount) { window.toast('⚠ Date, category, and amount are required', 'w'); return; }
   try {
     LedgerActions.addEntry(ledgerType, { date, categoryId, amount, desc, shift: shiftEl ? shiftEl.value : null });
-    toast('✓ Added to ' + label);
+    window.toast('✓ Added to ' + label);
     container.querySelector('.qa-amount').value = '';
     container.querySelector('.qa-desc').value = '';
     // Refresh that tab's own view too, in case it's already open.
@@ -218,7 +220,7 @@ function qaSubmitLedger(container, ledgerType, label) {
       renderLedgerView('ledger-expense-container', 'expense', 'Expense');
     }
   } catch (err) {
-    toast('⚠ ' + err.message, 'e');
+    window.toast('⚠ ' + err.message, 'e');
   }
 }
 
@@ -228,17 +230,17 @@ function qaSubmitCustom(container) {
   const categoryId = container.querySelector('.qa-cat').value;
   const amount = container.querySelector('.qa-amount').value;
   const desc = container.querySelector('.qa-desc').value;
-  if (!ledgerType || !date || !categoryId || !amount) { toast('⚠ Date, category, and amount are required', 'w'); return; }
+  if (!ledgerType || !date || !categoryId || !amount) { window.toast('⚠ Date, category, and amount are required', 'w'); return; }
   try {
     LedgerActions.addEntry(ledgerType, { date, categoryId, amount, desc });
-    toast('✓ Added');
+    window.toast('✓ Added');
     container.querySelector('.qa-amount').value = '';
     container.querySelector('.qa-desc').value = '';
     if (document.getElementById('ledger-sections-container') && typeof renderMiscSectionsManager === 'function') {
       renderMiscSectionsManager('ledger-sections-container');
     }
   } catch (err) {
-    toast('⚠ ' + err.message, 'e');
+    window.toast('⚠ ' + err.message, 'e');
   }
 }
 
@@ -251,8 +253,8 @@ function qaSubmitCredit(container) {
   const my = monthEl ? monthEl.value : _qaMonthLabel(date);
   const desc = container.querySelector('.qa-desc').value;
   const amount = container.querySelector('.qa-amount').value;
-  if (isNaN(ei) || !staffList[ei]) { toast('⚠ Pick a staff member first', 'w'); return; }
-  if (!amount) { toast('⚠ Amount is required', 'w'); return; }
+  if (isNaN(ei) || !staffList[ei]) { window.toast('⚠ Pick a staff member first', 'w'); return; }
+  if (!amount) { window.toast('⚠ Amount is required', 'w'); return; }
   const name = staffList[ei].name;
   const entry = { date: _qaCrdDate(date), desc: desc || 'credit', amount: parseFloat(amount) || 0 };
 
@@ -268,15 +270,15 @@ function qaSubmitCredit(container) {
     if (typeof _scCreditSync === 'function') _scCreditSync(my);
     if (typeof renderStaffRegistry === 'function') renderStaffRegistry();
     if (window.Repository && window.Repository.getItem('bt_auto_save') === '1' && typeof window.pushToSupabase === 'function') window.pushToSupabase();
-    toast('✓ Added to ' + name + '’s ' + my + ' credit');
+    window.toast('✓ Added to ' + name + '’s ' + my + ' credit');
   } else {
     // Fallback: old behavior, only correct when `my` is the month
     // currently loaded into window._crdData_cur.
     _qaEnsureCreditLoaded();
-    if (!window._crdData_cur || !window._crdData_cur[ei]) { toast('⚠ Pick a staff member first', 'w'); return; }
+    if (!window._crdData_cur || !window._crdData_cur[ei]) { window.toast('⚠ Pick a staff member first', 'w'); return; }
     window._crdData_cur[ei].entries.push(entry);
-    if (typeof renderCreditLedger === 'function') renderCreditLedger(window._crdData_cur);
-    if (typeof saveCreditData === 'function') saveCreditData();
+    if (typeof window.renderCreditLedger === 'function') window.renderCreditLedger(window._crdData_cur);
+    if (typeof window.saveCreditData === 'function') window.saveCreditData();
   }
 
   container.querySelector('.qa-amount').value = '';
@@ -289,3 +291,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // shows a Staff Registry strip instead; see cover-dashboard.js.)
   if (document.getElementById('qa-panel-mgr')) renderQuickAdd('qa-panel-mgr');
 });
+
+// Public entry point retained for the manager page and future containers.
+window.renderQuickAdd = renderQuickAdd;
