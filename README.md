@@ -83,7 +83,7 @@
 | JS modules under `js/` | 165 |
 | Supabase Edge Functions | 8 |
 | Dated SQL migrations | 24 |
-| Test files (`*.test.js`) | 94 |
+| Test files (`*.test.js`) | 95 |
 | Android home-screen widgets | 22 |
 | GitHub Actions workflows | 5 |
 <!-- repo-facts:end -->
@@ -233,7 +233,18 @@ User → Action → Repository → Data / State → EventBus → Pages / Compone
 
 ### ES-module migration
 
-The migration is incremental, so some `window.*` bridges remain. Do not remove one just because a module export exists (see [Development rules](#development-rules)).
+**Status (2026-10-24): all app scripts are ES modules except three.** The remaining classic `<script defer>` files are `js/storage.js`, `js/ui.js` and `js/drive.js`; third-party CDN libraries (Chart.js, xlsx, jsPDF, Google Identity, Supabase UMD) stay classic by design.
+
+| | Files |
+|---|---|
+| **Migrated (PR #11, merged)** | `sync-center`, `supabase`, `analytics`, `config`, `reports`, `reports-print`, `fields`, `quick-add`, `status-bar`, `boot-guard`; `dashboard*` and `data-page` use explicit imports |
+| **Migrated (`codex/es-module-auth`)** | `auth` |
+| **Remaining** | `storage` (smallest, do first), `ui`, `drive` (largest, last) |
+
+How the migration is done:
+- Anything other files or inline `onclick` handlers still reach by bare name stays bridged on `window` (`window.fn = fn`). Do not remove a bridge just because a module export exists (see [Development rules](#development-rules)).
+- A bridged function that another file **monkey-patches** must be called through `window.` inside its own module. Example: `drive.js` reassigns `unlockApp`, so `auth.js` always calls `window.unlockApp()`; a direct call would silently bypass the patch.
+- Every migration step re-runs `npm run build` (new `?v=` hashes, `CACHE_NAME` bump, manifest) and must leave `npm test` and `npm run build:check` green.
 
 ---
 
@@ -472,7 +483,7 @@ npm run test:verbose     # spec reporter
 npm run test:watch       # re-run on change
 ```
 
-**Historical baseline (2026-10-22, Node 22, HEAD `5d95304`):** 208 suites and 1,139 tests passed at that time. This is not a claim about the current checkout; use the live [GitHub Actions test status](https://github.com/sysalmanyasin/BT-Sale-Data2/actions/workflows/test.yml) for the latest CI result. Structural facts (module, function, migration, test and widget counts) are enforced by `tests/static/readme-facts.test.js`; if it fails, run `npm run readme:sync`.
+**Historical baseline (2026-10-24, Node 22, branch `codex/es-module-auth` on `74d168d`):** 1,191 tests passed at that time, 0 failed. This is not a claim about the current checkout; use the live [GitHub Actions test status](https://github.com/sysalmanyasin/BT-Sale-Data2/actions/workflows/test.yml) for the latest CI result. Structural facts (module, function, migration, test and widget counts) are enforced by `tests/static/readme-facts.test.js`; if it fails, run `npm run readme:sync`.
 
 **Coverage:** AI agent (core, tools, writes/deletes/approvals, undo, kill switch, streaming, routing, 60+ case eval suite), AI Center (model, deck, voice, avatar, forecast game, audit tab, repo index, DOM behaviour), Edge Function and secret-leak checks, static file integrity, script references, manifest validation, service-worker shell consistency, JS syntax, pure modules, EventBus, print API surface, Staff Registry (Repository + Actions), DOM and navigation behaviour.
 
@@ -496,7 +507,7 @@ More detail in [`tests/README.md`](tests/README.md).
 
 **Main PWA**
 - Single pharmacy, not multi-tenant.
-- ES-module migration incomplete; some `window.*` bridges remain on purpose.
+- ES-module migration incomplete: `storage.js`, `ui.js` and `drive.js` are still classic scripts, and some `window.*` bridges remain on purpose (see [ES-module migration](#es-module-migration)).
 - Petty Cash keeps a separate legacy implementation.
 - Several integrations are read-only bridges.
 
