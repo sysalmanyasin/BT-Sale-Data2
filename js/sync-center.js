@@ -1,3 +1,6 @@
+import { Repository } from './repository.js';
+import { Actions } from './actions.js';
+
 // ══════════════════════════════════════════════════════════════════════════
 // SYNC CENTER  v1.1  (audited & fixed)
 // Single Active Device architecture · UDID · Activity tracking · Priority Lock
@@ -1118,3 +1121,21 @@ document.addEventListener('bt:synced', () => {
   _sc_lastSyncTime = new Date();
   _sc_renderSession();
 });
+
+// ── ES-module public API ──────────────────────────────────────────────────
+// Keep established integration points on window while legacy consumers
+// migrate to imports. The exported names are the preferred module API.
+const SyncCenter = Object.freeze({
+  initSyncCenter, scCanWrite, scStayActive, scTakeControl, scForceSync,
+  scTogglePriorityLock, scSaveTimeout, scClearOfflineQueue, scPullNow,
+  scConflictRecovery, scClearLogs, scSwitchTab, scCheckTable,
+  updateSyncCenterStatusBar, navTakeControl
+});
+Object.assign(window, SyncCenter);
+
+export {
+  initSyncCenter, scCanWrite, scStayActive, scTakeControl, scForceSync,
+  scTogglePriorityLock, scSaveTimeout, scClearOfflineQueue, scPullNow,
+  scConflictRecovery, scClearLogs, scSwitchTab, scCheckTable,
+  updateSyncCenterStatusBar, navTakeControl
+};
