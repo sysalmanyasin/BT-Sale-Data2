@@ -62,17 +62,17 @@ export const fc = v => Math.round(v).toLocaleString('en-PK');
 export const fv = v => { const r=Math.round(n(v)); if(r===0)return '0'; const s=Math.abs(r).toLocaleString('en-PK'); return r<0?'-'+s:s; };
 export const pct = (a,b) => b?((a-b)/b*100).toFixed(1)+'%':'—';
 export const BANK_COLS = ['HBL','MCB','Alfala Bank','Bank Al Habib','Meezan Bank (Paysa)'];
-// Folds in custom fields added via Manage Fields (fields.js's _fmCustom) that
+// Folds in custom fields added via Manage Fields (fields.js's window._fmCustom) that
 // belong to the Cash/Banks section — those were previously invisible here
 // (BANK_COLS is a static list), which under-counted Dashboard's "Cash Sales
 // (Cash+Bank)" tile and every other caller of mBanks()/cashSales() by exactly
-// however much a custom bank field was carrying. _fmCustom may be undefined
+// however much a custom bank field was carrying. window._fmCustom may be undefined
 // this early (fields.js hasn't run yet) — harmless, since mBanks() itself is
 // only ever called later, at render time, by which point it's populated.
 function _customBankSum(m) {
-  if (typeof _fmCustom === 'undefined' || !_fmCustom) return 0;
+  if (typeof window._fmCustom === 'undefined' || !window._fmCustom) return 0;
   let s = 0;
-  _fmCustom.forEach(f => {
+  window._fmCustom.forEach(f => {
     if (f.calcType === 'none' || f.section === 'Credit Clients' || BANK_COLS.includes(f.id)) return;
     const v = n(m[f.id]);
     s += f.calcType === 'sub' ? -Math.abs(v) : v;
@@ -86,9 +86,9 @@ export const CC = ['#2563eb','#7c3aed','#059669','#d97706','#dc2626','#0891b2','
 export const CLIENT_COLS = ['PSO','PSO Returns','NESPAK','NESPAK Returns','PARCO','PARCO Returns','TEPA','TEPA Returns','LDA','LDA Returns','Gourmet','Wapda Hospital','BTH','Berger Paints','Ecolean PK','Style Textile','Syed Babar Ali Foundation','Rahnuma NGO','Health Pass','Nisar Spinning Mills','Food Panda','Askari Bank','Askari Bank Returns'];
 // Same fix, mirrored for custom fields tagged 'Credit Clients'.
 function _customCreditSum(m) {
-  if (typeof _fmCustom === 'undefined' || !_fmCustom) return 0;
+  if (typeof window._fmCustom === 'undefined' || !window._fmCustom) return 0;
   let s = 0;
-  _fmCustom.forEach(f => {
+  window._fmCustom.forEach(f => {
     if (f.calcType === 'none' || f.section !== 'Credit Clients' || CLIENT_COLS.includes(f.id)) return;
     const v = n(m[f.id]);
     s += f.calcType === 'sub' ? -Math.abs(v) : v;
@@ -155,8 +155,8 @@ export function computeDailyTotals(rec) {
   let t = 0;
   DAILY_ADD_KEYS.forEach(k => { t += Math.abs(n(rec[k])); });
   DAILY_SUB_KEYS.forEach(k => { t -= Math.abs(n(rec[k])); });
-  if (typeof _fmCustom !== 'undefined') {
-    _fmCustom.forEach(f => {
+  if (typeof window._fmCustom !== 'undefined') {
+    window._fmCustom.forEach(f => {
       if (f.calcType === 'none') return;
       const v = Math.abs(n(rec[f.id]));
       if (f.calcType === 'add') t += v; else if (f.calcType === 'sub') t -= v;
@@ -189,14 +189,14 @@ export function recomputeMonthly(monthYear) {
     const sum = days.reduce((s, d) => s + pick(d[field]), 0);
     candidate[field] = sum || null;
   });
-  // Custom fields (Manage Fields, fields.js's _fmCustom) aren't in the
+  // Custom fields (Manage Fields, fields.js's window._fmCustom) aren't in the
   // static MONTHLY_SUM_FIELDS list above, so without this they never got a
   // monthly aggregate at all — mBanks()/creditSales() (this file) and any
   // print report reading m[customId] would find nothing there even though
   // the daily records carried real values. Mirrors computeDailyTotals'
-  // existing _fmCustom handling, one level up.
-  if (typeof _fmCustom !== 'undefined' && _fmCustom) {
-    _fmCustom.forEach(f => {
+  // existing window._fmCustom handling, one level up.
+  if (typeof window._fmCustom !== 'undefined' && window._fmCustom) {
+    window._fmCustom.forEach(f => {
       if (f.calcType === 'none') return;
       const pick = f.calcType === 'sub' ? negR : n;
       const sum = days.reduce((s, d) => s + pick(d[f.id]), 0);
