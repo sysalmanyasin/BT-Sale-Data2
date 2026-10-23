@@ -403,14 +403,14 @@ async function driveRunDrill(manual) {
 }
 
 // ── Auto-run after unlock ─────────────────────────────────────────────────
-// Hook unlockApp to trigger Drive auto-backup after initialization
-// Deferred to window load so unlockApp is guaranteed to be defined
+// auth.js dispatches 'bt:app-unlocked' once, right after a verified Google
+// sign-in opens the app (unlockApp itself is private to auth.js and is never
+// patched). Registered at script time so it also catches an unlock that
+// happens before window 'load' (saved-session resume).
+window.addEventListener('bt:app-unlocked', function(){
+  setTimeout(function(){ _driveAutoBackup(); }, 6000); // run 6s after app loads
+});
 window.addEventListener('load', function(){
-  const _origUnlock = unlockApp;
-  unlockApp = function() {
-    _origUnlock.apply(this, arguments);
-    setTimeout(function(){ _driveAutoBackup(); }, 6000); // run 6s after app loads
-  };
   driveRefreshHealth();
   setInterval(driveRefreshHealth, 5 * 60 * 1000);
 });

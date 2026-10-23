@@ -243,7 +243,7 @@ User → Action → Repository → Data / State → EventBus → Pages / Compone
 
 How the migration is done:
 - Anything other files or inline `onclick` handlers still reach by bare name stays bridged on `window` (`window.fn = fn`). Do not remove a bridge just because a module export exists (see [Development rules](#development-rules)).
-- A bridged function that another file **monkey-patches** must be called through `window.` inside its own module. Example: `drive.js` reassigns `unlockApp`, so `auth.js` always calls `window.unlockApp()`; a direct call would silently bypass the patch.
+- Don't monkey-patch module functions. Cross-file hooks use events instead: `auth.js` keeps `unlockApp` private and dispatches `bt:app-unlocked` once the app opens; `drive.js` listens for it to schedule the auto-backup.
 - Every migration step re-runs `npm run build` (new `?v=` hashes, `CACHE_NAME` bump, manifest) and must leave `npm test` and `npm run build:check` green.
 
 ---
@@ -506,6 +506,7 @@ More detail in [`tests/README.md`](tests/README.md).
 ## Known limitations
 
 **Main PWA**
+- **Sign-in is Google only, with no bypass.** The app opens only after a verified Google sign-in (Google id_token accepted by Supabase) for an allowed email. A saved session alone never opens it: it must match a live Supabase session for the same email, otherwise it is discarded. The old sign-in-free `#pos` kiosk entry was removed. This gate is client-side; real protection of data is Row Level Security. Emergency Billing tables still have an `anon_all` policy (`20260924182923_emergency_billing.sql`), so the public anon key can still read/write them until that is tightened to authenticated users.
 - Single pharmacy, not multi-tenant.
 - ES-module migration incomplete: `storage.js`, `ui.js` and `drive.js` are still classic scripts, and some `window.*` bridges remain on purpose (see [ES-module migration](#es-module-migration)).
 - Petty Cash keeps a separate legacy implementation.

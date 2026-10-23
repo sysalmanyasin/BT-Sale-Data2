@@ -284,8 +284,8 @@ const _PAGE_SUBROUTES = {
 // Short public alias(es) — kept separate from the real page id so
 // internal references (CSS, table names, the Android widget's own
 // deep link) never had to change just to give this one page a
-// friendlier public hash. See auth.js's kiosk-mode gate, which checks
-// this same alias before the Google Sign-In screen ever renders.
+// friendlier hash. It only routes AFTER a verified Google sign-in; there is
+// no sign-in-free entry to this (or any) page.
 const _HASH_ALIASES = { pos: 'emergency-billing' };
 function _routeFromHash(hash) {
   const raw = (hash || '').replace(/^#/, '');
