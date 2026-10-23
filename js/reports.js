@@ -1,3 +1,8 @@
+import { MONTHLY, DAILY, n, fc, fv } from './config.js';
+import { Repository } from './repository.js';
+import { Print } from './print.js';
+import { getTgts } from './targets.js';
+
 // ══════════════════════════════════════════
 // DAY DETAIL MODAL
 // ══════════════════════════════════════════
@@ -38,8 +43,8 @@ function dayData(d) {
   // and silently misattributes toggles to the wrong field).
   const customRows = [];
   let customCash = 0, customCredit = 0;
-  if (typeof _fmCustom !== 'undefined' && _fmCustom) {
-    _fmCustom.forEach(f => {
+  if (Array.isArray(window._fmCustom) && window._fmCustom) {
+    window._fmCustom.forEach(f => {
       if (f.calcType === 'none') return;
       const raw = n(d[f.id]);
       const signed = f.calcType === 'sub' ? -Math.abs(raw) : raw;
@@ -122,7 +127,7 @@ function buildDayHTML(r) {
 
 function openDayModal(date, my) {
   const d=Repository.getDailyEntry(date, my);
-  if(!d){ toast('Record not found for '+date,'w'); return; }
+  if(!d){ window.toast('Record not found for '+date,'w'); return; }
   _printDay={d,date,my};
   const r=dayData(d);
   const titleEl=document.getElementById('dm-title');
@@ -157,7 +162,7 @@ function openMonthModal(my) {
     // bug as dayData()/reports-print.js: a hardcoded field list that never
     // knew custom fields exist. Appended dynamically so any custom field
     // added now or later shows up here without another code change.
-    ...((typeof _fmCustom !== 'undefined' && _fmCustom) ? _fmCustom
+    ...((Array.isArray(window._fmCustom) && window._fmCustom) ? window._fmCustom
       .filter(f => f.calcType !== 'none')
       .map(f => [f.label, f.calcType === 'sub' ? negR(m[f.id]) : m[f.id]]) : [])
   ].filter(([,v])=>v!=null&&n(v)!==0);
@@ -194,7 +199,7 @@ function openDayFromMonth(date, my) {
 // Direct print from table row — no modal needed, reliable on all devices
 function printDayDirectly(date, my) {
   const d=Repository.getDailyEntry(date, my);
-  if(!d){ toast('Record not found for '+date,'w'); return; }
+  if(!d){ window.toast('Record not found for '+date,'w'); return; }
   _printDay={d,date,my};
   printCurrentDay();
 }
@@ -332,7 +337,7 @@ function renderRowManager() {
   // field's own id (e.g. "custom_MEDIQ"), so a toggle always applies to
   // that specific field, not to "whichever custom field happened to be in
   // this position today".
-  const customDefs = (typeof _fmCustom !== 'undefined' && _fmCustom) ? _fmCustom.filter(f => f.calcType !== 'none') : [];
+  const customDefs = (Array.isArray(window._fmCustom) && window._fmCustom) ? window.window._fmCustom.filter(f => f.calcType !== 'none') : [];
   const customCashRows   = customDefs.filter(f => f.section !== 'Credit Clients').map(f => [f.id, f.label]);
   const customCreditRows = customDefs.filter(f => f.section === 'Credit Clients').map(f => [f.id, f.label]);
   const group = (title, rows) => rows.length ? `
@@ -459,29 +464,29 @@ function buildPrintHTML(date, my, till, patty) {
 }
 
 function printDayReport() {
-  if(!_selDate){ toast('⚠ Select a date first','w'); return; }
+  if(!_selDate){ window.toast('⚠ Select a date first','w'); return; }
   const till=n(document.getElementById('rpt-till')?.value);
   const patty=n(document.getElementById('rpt-patty')?.value);
   const html=buildPrintHTML(_selDate,_selMy,till,patty);
-  if(!html){ toast('⚠ Record not found','e'); return; }
+  if(!html){ window.toast('⚠ Record not found','e'); return; }
   Print.render(html);
 }
 
 function printCurrentDay() {
-  if(!_printDay){ toast('⚠ No day open','w'); return; }
+  if(!_printDay){ window.toast('⚠ No day open','w'); return; }
   const html=buildPrintHTML(_printDay.date,_printDay.my,0,0);
-  if(!html){ toast('⚠ Record not found','e'); return; }
+  if(!html){ window.toast('⚠ Record not found','e'); return; }
   closeDay();
   Print.render(html);
 }
 
 function copyReportText() {
-  if(!_selDate){ toast('⚠ Select a date first','w'); return; }
+  if(!_selDate){ window.toast('⚠ Select a date first','w'); return; }
   const d=Repository.getDailyEntry(_selDate, _selMy);
-  if(!d){ toast('⚠ Record not found','e'); return; }
+  if(!d){ window.toast('⚠ Record not found','e'); return; }
   const till=n(document.getElementById('rpt-till')?.value);
   const patty=n(document.getElementById('rpt-patty')?.value);
-  navigator.clipboard.writeText(_reportPlainText(_selDate,_selMy,till,patty)).then(()=>toast('✓ Copied')).catch(()=>toast('⚠ Copy failed','w'));
+  navigator.clipboard.writeText(_reportPlainText(_selDate,_selMy,till,patty)).then(()=>window.toast('✓ Copied')).catch(()=>window.toast('⚠ Copy failed','w'));
 }
 
 function _reportPlainText(date, my, till, patty) {
@@ -546,11 +551,11 @@ function _reportPlainText(date, my, till, patty) {
 // support multi-type clipboard writes (older WebViews, non-HTTPS,
 // some in-app browsers).
 async function copyReportRich() {
-  if(!_selDate){ toast('⚠ Select a date first','w'); return; }
+  if(!_selDate){ window.toast('⚠ Select a date first','w'); return; }
   const till=n(document.getElementById('rpt-till')?.value);
   const patty=n(document.getElementById('rpt-patty')?.value);
   const html=buildPrintHTML(_selDate,_selMy,till,patty);
-  if(!html){ toast('⚠ Record not found','e'); return; }
+  if(!html){ window.toast('⚠ Record not found','e'); return; }
   const text=_reportPlainText(_selDate,_selMy,till,patty);
   try {
     if (window.ClipboardItem && navigator.clipboard && navigator.clipboard.write) {
@@ -559,15 +564,15 @@ async function copyReportRich() {
         'text/plain': new Blob([text], { type: 'text/plain' }),
       });
       await navigator.clipboard.write([item]);
-      toast('✓ Copied — paste keeps formatting');
+      window.toast('✓ Copied — paste keeps formatting');
       return;
     }
   } catch (e) { /* fall through to plain-text copy below */ }
   try {
     await navigator.clipboard.writeText(text);
-    toast('✓ Copied (plain text — this browser doesn\u2019t support rich copy)');
+    window.toast('✓ Copied (plain text — this browser doesn\u2019t support rich copy)');
   } catch (e) {
-    toast('⚠ Copy failed','w');
+    window.toast('⚠ Copy failed','w');
   }
 }
 
