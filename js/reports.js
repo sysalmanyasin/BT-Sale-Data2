@@ -337,7 +337,7 @@ function renderRowManager() {
   // field's own id (e.g. "custom_MEDIQ"), so a toggle always applies to
   // that specific field, not to "whichever custom field happened to be in
   // this position today".
-  const customDefs = (Array.isArray(window._fmCustom) && window._fmCustom) ? window.window._fmCustom.filter(f => f.calcType !== 'none') : [];
+  const customDefs = (Array.isArray(window._fmCustom) && window._fmCustom) ? window._fmCustom.filter(f => f.calcType !== 'none') : [];
   const customCashRows   = customDefs.filter(f => f.section !== 'Credit Clients').map(f => [f.id, f.label]);
   const customCreditRows = customDefs.filter(f => f.section === 'Credit Clients').map(f => [f.id, f.label]);
   const group = (title, rows) => rows.length ? `
