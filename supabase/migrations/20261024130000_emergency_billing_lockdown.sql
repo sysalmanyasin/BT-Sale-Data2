@@ -1,12 +1,9 @@
 -- ════════════════════════════════════════════════════════════════
--- EMERGENCY BILLING — PHASE 2 of 2: LOCKDOWN  (NOT AUTO-DEPLOYED)
+-- EMERGENCY BILLING — PHASE 2 of 2: LOCKDOWN  (APPLIED to production 2026-10-24)
 --
--- This file lives in supabase/pending/ on purpose: supabase-deploy.yml only
--- applies supabase/migrations/. To promote, `git mv` it into supabase/migrations/
--- ONLY after:
---   1. phase 1 (20261024120000_emergency_billing_authenticated_access.sql) is applied, and
---   2. the app build using the signed-in client is live, and
---   3. a real sale AND a real refund were done while signed in with Google.
+-- Applied via the Supabase connector after phase 1 was live, the app used the
+-- signed-in Google client, and a real sale + refund (EB-20261024-0008 / -0009)
+-- were done signed in. Idempotent: safe to re-run.
 --
 -- Effect: the public anon key can no longer read or write ANY emergency billing
 -- data or call its RPCs. Only an authenticated, ACTIVE bt_authorized_users email can.

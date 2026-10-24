@@ -7,7 +7,7 @@ import { readFileSync, existsSync, readdirSync } from 'node:fs';
 const read = (p) => readFileSync(new URL(`../../${p}`, import.meta.url), 'utf8');
 const sql = (s) => s.split('\n').filter((l) => !/^\s*--/.test(l)).join('\n');
 const P1 = 'supabase/migrations/20261024120000_emergency_billing_authenticated_access.sql';
-const P2 = 'supabase/pending/20261024130000_emergency_billing_lockdown.sql';
+const P2 = 'supabase/migrations/20261024130000_emergency_billing_lockdown.sql';
 
 test('phase 1 is additive: no drop / revoke / disable', () => {
   const s = sql(read(P1));
@@ -21,9 +21,9 @@ test('every authenticated policy is gated on the allow-list, never using (true)'
   assert.doesNotMatch(s, /to authenticated\s+using\s*\(\s*true\s*\)/i);
   assert.equal((s.match(/to authenticated using \(public\.bt_is_authorized_user\(\)\)/g) || []).length, 3);
 });
-test('lockdown is NOT in supabase/migrations (would auto-deploy before the client is verified)', () => {
+test('lockdown is promoted into supabase/migrations (applied in production) and nothing is left pending', () => {
   assert.ok(existsSync(new URL(`../../${P2}`, import.meta.url)));
-  assert.ok(!readdirSync(new URL('../../supabase/migrations/', import.meta.url)).some((f) => /emergency_billing_lockdown/.test(f)));
+  assert.ok(!existsSync(new URL('../../supabase/pending/20261024130000_emergency_billing_lockdown.sql', import.meta.url)));
 });
 test('lockdown removes anon access and guards both RPCs with the allow-list', () => {
   const s = sql(read(P2));
