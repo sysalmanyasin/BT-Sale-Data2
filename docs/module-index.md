@@ -20,7 +20,7 @@ These modules keep calculations consistent across the web app and assistant inte
 | Module | Responsibility | Important convention |
 |---|---|---|
 | [`nav-sections.js`](../js/nav-sections.js) | Navigation tree and All Sections drawer | Treat it as the main source for section navigation. |
-| [`global-search.js`](../js/global-search.js) | Fuzzy search for navigation sections and Staff Registry records | Classic script; depends on the existing search bridge and navigation code, so preserve script order in `index.html`. |
+| [`global-search.js`](../js/global-search.js) | Fuzzy search for navigation sections and Staff Registry records | ES module loaded with `type="module"`; imports and compatibility bridges should be reviewed when changing navigation/search APIs. |
 | [`boot-guard.js`](../js/boot-guard.js) | Reports missing dependencies caused by incorrect script load order | Keep it positioned after the dependency/module block it checks. |
 | [`daily-checklist.js`](../js/daily-checklist.js) | Daily Check List page and date-specific UI drafts | Drafts are stored locally; do not describe them as synced business records unless the implementation changes. |
 | [`mail-briefing.js`](../js/mail-briefing.js) | Utility > Mail: read-only Gmail briefing, thread triage, and follow-up tracking | Uses the `gmail.readonly` scope; the access token is held in memory. Email bodies are redacted before AI briefing and sent through `bt-agent` with high sensitivity. The app cannot send, label, archive or delete mail. Follow-ups are device-local. See the security notes below. |
@@ -50,7 +50,7 @@ The email briefing is a **Mail feature and a set of assistant app tools**, not a
 
 1. Search for an existing shared helper before implementing a new calculation.
 2. Keep pure business logic separate from DOM, storage and network code when practical.
-3. Respect the app's mixed ES-module/classic-script loading model. If a classic script consumes globals such as `Repository`, `Actions` or `EventBus`, verify its order in `index.html`.
+3. Treat ES modules as the default for new code. Some legacy classic scripts and `window` compatibility bridges may remain; verify the actual script declaration and caller before changing or removing a bridge.
 4. Route business-data writes through the established `Actions` / `LedgerActions` paths rather than writing parallel copies of records.
 5. For assistant tools, declare the appropriate risk level. Write/critical tools must provide a validation/approval preview and should provide an undo recipe; never rely on prompt wording as the authorization boundary.
 6. Keep duplicated browser/Edge Function helpers in sync when tests enforce byte-identical copies.
