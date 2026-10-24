@@ -1,20 +1,14 @@
 // ══════════════════════════════════════════
 // NAV
 // ══════════════════════════════════════════
-// NOTE: _curPage stays a true bare global (not wrapped below) because
-// ui.js reassigns it directly (`_curPage = id`), not just reads it —
-// wrapping it would silently desync ui.js's writes from this file's
-// copy, since a bare reassignment elsewhere would just create a new,
-// disconnected window property instead of updating the real binding.
-let _curPage = '';
+// This file is an ES module. _curPage is deliberately a PROPERTY OF window, not a
+// module-local `let`: ui.js (and drive.js / app-init.js) read and assign the bare
+// name `_curPage`, which resolves to window._curPage. A module-local binding would
+// silently desync from those writes and getCurrentPage() would go stale.
+if (typeof window._curPage === 'undefined') window._curPage = '';
 
-// Read-only getter, safe to bridge to window: this doesn't touch the
-// reassignment concern above (ui.js still writes the bare `_curPage`
-// directly, in the same shared classic-script scope as before) — it
-// just gives modules (which can't see that shared scope at all) a way
-// to read the current live value. Added for app-context.js's module
-// conversion; harmless to any existing classic-script consumer.
-function getCurrentPage() { return _curPage; }
+// Live read for modules that import-free consumers (app-context.js etc.) rely on.
+function getCurrentPage() { return window._curPage; }
 window.getCurrentPage = getCurrentPage;
 
 (function() {
