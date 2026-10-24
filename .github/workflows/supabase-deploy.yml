@@ -116,9 +116,19 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client >/dev/null
+          # Fail fast with a readable reason. GitHub runners are IPv4-only, and Supabase's direct
+          # host (db.<ref>.supabase.co) is IPv6-only: use the *Session pooler* connection string
+          # (aws-0-<region>.pooler.supabase.com:5432, user postgres.<ref>) for SUPABASE_DB_URL.
+          if ! psql "$DBURL" -v ON_ERROR_STOP=1 -tAc 'select 1' >/dev/null 2>/tmp/psql_err; then
+            echo "::error title=Cannot connect with SUPABASE_DB_URL::$(tr '\n' ' ' </tmp/psql_err | cut -c1-300) -- if this says 'Network is unreachable' or 'could not translate host', switch the secret to the Session pooler string."
+            exit 1
+          fi
           for f in $MIGS; do
             echo "::group::$f"
-            psql "$DBURL" -v ON_ERROR_STOP=1 --single-transaction -f "supabase/migrations/$f"
+            if ! psql "$DBURL" -v ON_ERROR_STOP=1 --single-transaction -f "supabase/migrations/$f" 2>/tmp/psql_err; then
+              echo "::error title=Migration failed: $f::$(tr '\n' ' ' </tmp/psql_err | cut -c1-400)"
+              exit 1
+            fi
             echo "::endgroup::"
           done
 
