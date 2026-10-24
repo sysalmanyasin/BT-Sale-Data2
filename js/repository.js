@@ -59,14 +59,18 @@ export const Repository = (function () {
 
   function getDailyEntry(date, monthYear) {
     const idx = findDailyIndex(date, monthYear);
-    return idx === -1 ? null : DAILY[idx];
+    // Never expose the committed record itself to read-only callers.
+    // A caller that edits this snapshot must explicitly pass it through
+    // upsertDaily() to commit changes and emit the corresponding event.
+    return idx === -1 ? null : { ...DAILY[idx] };
   }
 
   // Find a daily entry by date alone, regardless of month (used by
   // headless quick-actions that only know "today", not which month
   // record it lives in). Read-only — does not need internal-write guard.
   function findDailyByDate(date) {
-    return DAILY.find(d => d.Date === date) || null;
+    const record = DAILY.find(d => d.Date === date);
+    return record ? { ...record } : null;
   }
 
   function upsertDaily(entry) {
@@ -114,7 +118,7 @@ export const Repository = (function () {
 
   function getMonthlyEntry(monthYear) {
     const idx = findMonthlyIndex(monthYear);
-    return idx === -1 ? null : MONTHLY[idx];
+    return idx === -1 ? null : { ...MONTHLY[idx] };
   }
 
   function upsertMonthly(entry) {
