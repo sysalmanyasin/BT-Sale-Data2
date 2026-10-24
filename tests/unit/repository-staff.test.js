@@ -100,6 +100,17 @@ describe('Staff Registry — Repository + Actions (smoke)', () => {
     assert.ok(events.some((e) => e.name === 'staff:removed'));
   });
 
+
+  test('getStaff returns snapshots so caller edits cannot bypass Repository writes', () => {
+    Actions.addEmployee({ name: 'Protected' });
+    const snapshot = Repository.getStaff();
+    snapshot[0].name = 'Corrupted outside Repository';
+    snapshot.push({ id: 'fake', name: 'Fake' });
+    assert.equal(Repository.getStaff().length, 1);
+    assert.equal(Repository.getStaff()[0].name, 'Protected');
+    assert.equal(JSON.parse(localStorage.getItem('BT_Staff_v1'))[0].name, 'Protected');
+  });
+
   test('updateEmployee throws a clear error for an out-of-range index', () => {
     assert.throws(() => Actions.updateEmployee(5, { name: 'Ghost' }), /no employee at index 5/);
   });
