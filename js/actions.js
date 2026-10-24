@@ -23,9 +23,16 @@ export const Actions = (function () {
   function editDailyEntry(date, monthYear, changes) {
     const existing = Repository.getDailyEntry(date, monthYear);
     if (!existing) throw new Error('Actions.editDailyEntry: no entry found for ' + date + '/' + monthYear);
-    Object.assign(existing, changes);
-    computeDailyTotals(existing); // single source of truth (config.js) — Pages no longer compute this
-    return Repository.upsertDaily(existing);
+    if (!changes || typeof changes !== 'object' || Array.isArray(changes)) {
+      throw new TypeError('Actions.editDailyEntry: changes must be a plain object');
+    }
+
+    // Build a candidate rather than mutating the live Repository record before
+    // the write boundary. If validation/calculation throws, the committed row
+    // remains untouched. Repository.upsertDaily is the only commit operation.
+    const candidate = { ...existing, ...changes };
+    computeDailyTotals(candidate); // single source of truth (config.js)
+    return Repository.upsertDaily(candidate);
   }
 
   function removeDailyEntry(date, monthYear) {
