@@ -21,11 +21,10 @@
 //    this file's own getAvailableQty() is for display/UX only, not
 //    the security boundary.
 //
-// 2. Uses the app's SIGNED-IN Supabase client (the Google session that auth.js
-//    established via signInWithIdToken), never the public anon key. The tables
-//    and RPCs only accept an authenticated, allow-listed email (see
-//    supabase/migrations/20261024120000_emergency_billing_authenticated_access.sql
-//    and the pending lockdown); with no session every call fails closed.
+// 2. Own non-persisted client, same reasoning attendance-bridge.js and
+//    inventory-bridge.js document at length: a signed-in session on
+//    this project makes RLS resolve zero rows for some anon-scoped
+//    reads. This bridge never touches the signed-in client.
 //
 // Deliberately does NOT go through Repository/Actions/EventBus —
 // emergency_invoices isn't DAILY/MONTHLY/STAFF, so the config.js Proxy
@@ -35,8 +34,17 @@
 // writes to DAILY/MONTHLY/STAFF.
 // ══════════════════════════════════════════════════════════════════════
 
+const EB_SUPABASE_URL = 'https://wetbugzzchkghpzmowod.supabase.co';
+const EB_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndldGJ1Z3p6Y2hrZ2hwem1vd29kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzMDg4OTIsImV4cCI6MjA5Nzg4NDg5Mn0.LXFrvQTOfI3ph4aA8xWYIUo-z1yxdX0znnN5f-KsOPM';
+
+let _client = null;
 function _getClient() {
-  return (typeof window.btGetSupabaseClient === 'function') ? window.btGetSupabaseClient() : null;
+  if (_client) return _client;
+  if (typeof supabase === 'undefined') return null; // supabase-js UMD global, loaded via <script defer> in index.html
+  _client = supabase.createClient(EB_SUPABASE_URL, EB_SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+  return _client;
 }
 
 // Always "connected" — no manual pairing step, same as
