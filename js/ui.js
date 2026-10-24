@@ -1,17 +1,10 @@
-// NOTE: showPage, loadToolsPage, and populateTgtSel stay TRUE bare
-// globals, declared outside the IIFE that wraps the rest of this file.
-// ui-extras.js monkey-patches showPage directly on window
-// (window.showPage = function(page){...}) to add extra behavior. This
-// file itself calls showPage() internally (navigateTo(), the nav-tab
-// click wiring). If showPage were IIFE-scoped, ui-extras.js's patch
-// would only ever affect a window-level copy while every internal call
-// here kept calling the original, unpatched version — same risk as
-// auth.js's unlockApp and manager.js's loadManagerPage/switchMgrTab.
-// loadToolsPage and populateTgtSel have to travel with it: showPage
-// calls loadToolsPage directly, which calls populateTgtSel directly,
-// and neither has any other external dependent that would otherwise
-// keep it out of the IIFE.
-
+// NOTE: this file is an ES module. showPage stays PATCHABLE: ui-extras.js
+// replaces it (`window.showPage = function(page){...}`) to add behaviour, and
+// this file's own callers (navigateTo, the hash router) must run that patched
+// version. A module-local binding would hide the patch from them, so showPage is
+// bridged onto window and every internal CALL goes through window.showPage().
+// loadToolsPage / populateTgtSel are only called from showPage, so they stay
+// module-private. _curPage is a shared window property (see storage.js).
 function showPage(id) {
   try {
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
@@ -225,7 +218,7 @@ if (typeof updateGhBadge === 'undefined') {
 // JazzCash "LIVE" badge) call navigateTo() instead of showPage(); previously
 // this function didn't exist anywhere, so that badge silently did nothing.
 function navigateTo(pageId) {
-  if (typeof showPage === 'function') showPage(pageId);
+  if (typeof window.showPage === 'function') window.showPage(pageId);
 }
 
 
@@ -298,7 +291,7 @@ function _routeFromHash(hash) {
   const _already = (typeof _curPage !== 'undefined' && _curPage === page);
   const _route = _PAGE_SUBROUTES[page];
   if (!_already) {
-    showPage(page);
+    window.showPage(page);
     if (sub && _route) {
       // Sub-sections only exist in the DOM once the page's own load
       // function — triggered by showPage() above — has rendered them,
@@ -542,6 +535,7 @@ async function importJSON(e) {
 // Bridge what's used externally or from index.html. showPage/
 // loadToolsPage/populateTgtSel are NOT here — they stay bare globals
 // declared before this IIFE (see note above).
+window.showPage = showPage;
 window.navigateTo = navigateTo;
 window.rebuildDropdowns = rebuildDropdowns;
 window.rebuildAll = rebuildAll;
