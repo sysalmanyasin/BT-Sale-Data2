@@ -20,5 +20,5 @@ test('daily edit calculates a candidate before committing through Repository', (
 
 test('module index describes global-search as an ES module', () => {
   assert.match(moduleIndex, /global-search\.js[^\n]*ES module loaded with `type="module"`/);
-  assert.match(index, /<script\b(?=[^>]*\btype="module")(?=[^>]*\bsrc="[^"]*global-search\.js")[^>]*>/i);
+  assert.match(index, /<script\b(?=[^>]*\btype="module")(?=[^>]*\bsrc="[^"]*global-search\.js(?:\?[^"]*)?")[^>]*>/i);
 });
