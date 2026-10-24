@@ -83,7 +83,7 @@
 | JS modules under `js/` | 165 |
 | Supabase Edge Functions | 8 |
 | Dated SQL migrations | 25 |
-| Test files (`*.test.js`) | 98 |
+| Test files (`*.test.js`) | 99 |
 | Android home-screen widgets | 22 |
 | GitHub Actions workflows | 5 |
 <!-- repo-facts:end -->
@@ -233,17 +233,19 @@ User → Action → Repository → Data / State → EventBus → Pages / Compone
 
 ### ES-module migration
 
-**Status (2026-10-24): all app scripts are ES modules except one.** The remaining classic `<script defer>` file is `js/drive.js`; third-party CDN libraries (Chart.js, xlsx, jsPDF, Google Identity, Supabase UMD) stay classic by design.
+**Status (2026-10-24): complete. Every app script in `index.html` is an ES module (`<script type="module">`); no classic `<script defer>` app scripts remain.** Third-party CDN libraries (Chart.js, xlsx, jsPDF, Google Identity, Supabase UMD) stay classic scripts by design.
 
-| | Files |
+| Step | Files |
 |---|---|
-| **Migrated (PR #11)** | `sync-center`, `supabase`, `analytics`, `config`, `reports`, `reports-print`, `fields`, `quick-add`, `status-bar`, `boot-guard`; `dashboard*` and `data-page` use explicit imports |
-| **Migrated (PR #12)** | `auth` |
-| **Migrated (PRs #17, ui)** | `storage`, `ui` |
-| **Remaining** | `drive` (largest, last) |
+| PR #11 | `sync-center`, `supabase`, `analytics`, `config`, `reports`, `reports-print`, `fields`, `quick-add`, `status-bar`, `boot-guard`; `dashboard*` and `data-page` use explicit imports |
+| PR #12 | `auth` |
+| PR #17 | `storage` |
+| PR #18 | `ui` |
+| this PR | `drive` |
 
 How the migration is done:
 - Anything other files or inline `onclick` handlers still reach by bare name stays bridged on `window` (`window.fn = fn`). Do not remove a bridge just because a module export exists (see [Development rules](#development-rules)).
+- Shared mutable state that several files assign by bare name (`_curPage` in `storage.js`, `_driveAccessToken` in `drive.js`) is a `window` property, never a module-local `let`.
 - `ui.js` keeps `showPage` patchable (`ui-extras.js` wraps it), so its own callers use `window.showPage()`. Otherwise, don't monkey-patch module functions. Cross-file hooks use events instead: `auth.js` keeps `unlockApp` private and dispatches `bt:app-unlocked` once the app opens; `drive.js` listens for it to schedule the auto-backup.
 - Every migration step re-runs `npm run build` (new `?v=` hashes, `CACHE_NAME` bump, manifest) and must leave `npm test` and `npm run build:check` green.
 
@@ -509,7 +511,7 @@ More detail in [`tests/README.md`](tests/README.md).
 **Main PWA**
 - **Sign-in is Google only, with no bypass.** The app opens only after a verified Google sign-in (Google id_token accepted by Supabase) for an allowed email. A saved session alone never opens it: it must match a live Supabase session for the same email, otherwise it is discarded. The old sign-in-free `#pos` kiosk entry was removed. This gate is client-side; real protection of data is Row Level Security. Emergency Billing now uses the signed-in Google session. Phase 1 (`bt_is_authorized_user()` + allow-listed `authenticated` policies, migration `20261024120000`) is **applied in production**. The public anon key can still reach those tables until the **pending lockdown** `supabase/pending/20261024130000_emergency_billing_lockdown.sql` is promoted into `supabase/migrations/` (do that only after one real sale and one real refund were done signed in; its header has the steps and the rollback). CI migrations: `SUPABASE_DB_URL` must be the Session-pooler string (runners are IPv4-only).
 - Single pharmacy, not multi-tenant.
-- ES-module migration incomplete: `drive.js` is still a classic script, and some `window.*` bridges remain on purpose (see [ES-module migration](#es-module-migration)).
+- Some `window.*` bridges remain on purpose (see [ES-module migration](#es-module-migration)).
 - Petty Cash keeps a separate legacy implementation.
 - Several integrations are read-only bridges.
 
