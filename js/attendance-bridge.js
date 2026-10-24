@@ -27,29 +27,15 @@
 const ATT_SUPABASE_URL = 'https://wetbugzzchkghpzmowod.supabase.co';
 const ATT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndldGJ1Z3p6Y2hrZ2hwem1vd29kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzMDg4OTIsImV4cCI6MjA5Nzg4NDg5Mn0.LXFrvQTOfI3ph4aA8xWYIUo-z1yxdX0znnN5f-KsOPM';
 
-// Deliberately a separate, non-persisted client — same reasoning
-// inventory-bridge.js documents at length: mixing this read/write
-// traffic into auth.js's signed-in Google session client is where that
-// file hit a real, reproducible RLS-resolves-to-zero-rows bug.
-//
-// Access control here is anon-role RLS (USING(true)) — the same
-// pattern the rest of this app uses (bt_sessions etc, per the
-// 2026-08-05 security-audit migration), NOT a JWT role/staff_id claim
-// — this app has no real Supabase Auth session anywhere, confirmed via
-// this file's sibling js/supabase.js never calling signIn*/setSession.
-// "Manager can see everything, staff app can't see others" is enforced
-// client-side only (this file's callers, and the staff app only ever
-// querying its own staff_id) — see supabase/migrations/
-// *_attendance_rls_fix.sql for the full story and its accepted
-// tradeoff for a single-user app like this one.
-let _client = null;
+// The manager/admin side uses the app's SIGNED-IN Supabase client (the verified
+// Google session from auth.js), not the public anon key. The attendance policies
+// list `authenticated` alongside `anon`, so reads/inserts work for this session
+// (the old "zero rows" problem only affected tables with anon-ONLY policies).
+// Location edits are accepted only for an allow-listed signed-in user (database
+// side). The installed Android attendance app and iPhone Shortcuts are separate
+// clients that still use the anon key for check-in events; that is unchanged.
 function _getClient() {
-  if (_client) return _client;
-  if (typeof supabase === 'undefined') return null; // supabase-js UMD global, loaded via <script defer> in index.html
-  _client = supabase.createClient(ATT_SUPABASE_URL, ATT_SUPABASE_ANON_KEY, {
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-  });
-  return _client;
+  return (typeof window.btGetSupabaseClient === 'function') ? window.btGetSupabaseClient() : null;
 }
 
 export function isConnected() { return true; } // same always-on convention as InventoryBridge/AuditBridge

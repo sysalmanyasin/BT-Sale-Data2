@@ -103,11 +103,15 @@ window.PdfLibrary = (function () {
     return String(s || '').replace(/[^a-z0-9\-_. ]+/gi, '').trim().replace(/\s+/g, '-') || 'file';
   }
 
-  function _publicUrl(path) {
+  // The bucket is PRIVATE: files open through a short-lived signed URL that only a
+  // signed-in, allow-listed session can request (never a permanent public link).
+  async function _signedUrl(path, downloadName) {
     const client = _getClient();
     if (!client) return null;
-    const { data } = client.storage.from(BUCKET).getPublicUrl(path);
-    return data && data.publicUrl;
+    const opts = downloadName ? { download: downloadName } : undefined;
+    const { data, error } = await client.storage.from(BUCKET).createSignedUrl(path, 300, opts);
+    if (error) { console.error('PdfLibrary signed URL failed:', error); return null; }
+    return data && data.signedUrl;
   }
 
   // ══════════════════════════════════════════════════════════════════
@@ -425,16 +429,26 @@ window.PdfLibrary = (function () {
     document.getElementById('pl-filter-category').addEventListener('change', _renderGrid);
     document.getElementById('pl-refresh').addEventListener('click', _fetchAndRender);
 
-    document.getElementById('pl-grid').addEventListener('click', (e) => {
+    document.getElementById('pl-grid').addEventListener('click', async (e) => {
       const card = e.target.closest('.pl-card');
       if (!card) return;
       const row = _rows.find(r => String(r.id) === card.dataset.id);
       if (!row) return;
-      const url = _publicUrl(row.storage_path);
-      if (!url) { _toast('⚠️ Could not resolve file URL.', 'e'); return; }
-      if (e.target.closest('.pl-view')) {
-        window.open(url, '_blank');
-      } else if (e.target.closest('.pl-download')) {
+      const isView = !!e.target.closest('.pl-view');
+      const isDownload = !!e.target.closest('.pl-download');
+      if (!isView && !isDownload) return;
+      // Open the tab synchronously (inside the click) so popup blockers allow it,
+      // then point it at the signed URL once that resolves.
+      const tab = isView ? window.open('', '_blank') : null;
+      const url = await _signedUrl(row.storage_path, isDownload ? (row.filename || 'report.pdf') : null);
+      if (!url) {
+        if (tab) tab.close();
+        _toast('Could not open this file (sign in again and retry).', 'e');
+        return;
+      }
+      if (isView) {
+        if (tab) tab.location.href = url; else window.open(url, '_blank');
+      } else {
         const a = document.createElement('a');
         a.href = url;
         a.download = row.filename || 'report.pdf';

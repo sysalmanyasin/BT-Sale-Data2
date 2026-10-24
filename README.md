@@ -82,8 +82,8 @@
 |---|---|
 | JS modules under `js/` | 165 |
 | Supabase Edge Functions | 8 |
-| Dated SQL migrations | 26 |
-| Test files (`*.test.js`) | 99 |
+| Dated SQL migrations | 27 |
+| Test files (`*.test.js`) | 100 |
 | Android home-screen widgets | 22 |
 | GitHub Actions workflows | 5 |
 <!-- repo-facts:end -->
@@ -510,6 +510,7 @@ More detail in [`tests/README.md`](tests/README.md).
 
 **Main PWA**
 - **Sign-in is Google only, with no bypass.** The app opens only after a verified Google sign-in (Google id_token accepted by Supabase) for an allowed email. A saved session alone never opens it: it must match a live Supabase session for the same email, otherwise it is discarded. The old sign-in-free `#pos` kiosk entry was removed. This gate is client-side; real protection of data is Row Level Security. Emergency Billing now uses the signed-in Google session and is **locked down in production**: the public anon key can no longer read, write or call its RPCs. Only an active `bt_authorized_users` email can (`bt_is_authorized_user()`; migrations `20261024120000` and `20261024130000`, both applied 2026-10-24 and verified with a real sale and refund). Rollback steps are in the lockdown migration's header. Other tables still have known open items; see the security audit notes. CI migrations: `SUPABASE_DB_URL` must be the Session-pooler string (runners are IPv4-only).
+- **Security hardening batch 1 (applied 2026-10-24, migration `20261024150000`):** sales/closing widget summaries now require an allow-listed user or the widget service account; the unlimited manager-PIN guessing is throttled (5 failures / 15 min); legacy open `bt_sessions` policies are gone; excess TRUNCATE/REFERENCES/TRIGGER grants are revoked. The attendance admin page uses the signed-in session, and the PDF Library opens files through short-lived signed URLs. **Known remaining (need app updates, not just database changes):** the installed Android attendance app, the Android widget and the separate Closing web app still use the public key, so `bt_staff` (staff records), `staff_presence`, the attendance check-in tables and the QR secret stay readable by it until those clients are updated.
 - Single pharmacy, not multi-tenant.
 - Some `window.*` bridges remain on purpose (see [ES-module migration](#es-module-migration)).
 - Petty Cash keeps a separate legacy implementation.
