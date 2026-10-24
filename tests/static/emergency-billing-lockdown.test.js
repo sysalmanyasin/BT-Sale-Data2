@@ -36,8 +36,11 @@ test('lockdown removes anon access and guards both RPCs with the allow-list', ()
   assert.equal((s.match(/if not public\.bt_is_authorized_user\(\) then/g) || []).length, 2);
   assert.doesNotMatch(s, /grant execute[^;]*to anon/i);
 });
-test('emergency-billing-bridge uses the signed-in client, not an anon-key client', () => {
+// NOTE: the bridge is temporarily back on its anon client (hotfix) because phase 1 failed to apply in
+// production. When phase 1 is confirmed applied, switch js/emergency-billing-bridge.js to
+// window.btGetSupabaseClient() and re-add the "uses the signed-in client" assertion.
+test('bridge is not half-migrated: anon client OR signed-in client, never a broken mix', () => {
   const js = read('js/emergency-billing-bridge.js');
-  assert.match(js, /window\.btGetSupabaseClient/);
-  assert.doesNotMatch(js, /createClient|EB_SUPABASE_ANON_KEY|persistSession/);
+  const anon = /createClient/.test(js), signed = /window\.btGetSupabaseClient/.test(js);
+  assert.ok(anon !== signed);
 });
