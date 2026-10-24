@@ -26,6 +26,7 @@ test('module index describes global-search as an ES module', () => {
 });
 
 test('daily and monthly record getters return snapshots, not committed object references', () => {
+  assert.match(repository, /function getStaff\(\)[\s\S]*?return STAFF\.map\(record => \(\{ \.\.\.record \}\)\)/);
   assert.match(repository, /function getDaily\(\)[\s\S]*?return DAILY\.map\(record => \(\{ \.\.\.record \}\)\)/);
   assert.match(repository, /function getDailyEntry\(date, monthYear\)[\s\S]*?return idx === -1 \? null : \{ \.\.\.DAILY\[idx\] \}/);
   assert.match(repository, /function findDailyByDate\(date\)[\s\S]*?return record \? \{ \.\.\.record \} : null/);
