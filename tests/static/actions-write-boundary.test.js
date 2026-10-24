@@ -13,6 +13,7 @@ test('daily edit calculates a candidate before committing through Repository', (
   assert.notEqual(end, -1, 'editDailyEntry has a clear boundary');
   const body = actions.slice(start, end);
   assert.match(body, /const candidate = \{ \.\.\.existing, \.\.\.changes \}/);
+  assert.match(body, /Object\.getPrototypeOf\(changes\) !== Object\.prototype/);
   assert.match(body, /computeDailyTotals\(candidate\)/);
   assert.match(body, /Repository\.upsertDaily\(candidate\)/);
   assert.doesNotMatch(body, /Object\.assign\(existing,\s*changes\)/);
