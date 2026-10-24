@@ -31,3 +31,13 @@ test('batch 1 migration: widget summaries are guarded, PIN is throttled, bt_sess
   assert.match(s, /grant execute on function public\.attendance_verify_manager_pin\(text\) to anon, authenticated/);
   assert.doesNotMatch(s, /grant execute[^;]*widget_summary[^;]*to anon/i);
 });
+
+test('batch 2 migration: location writes and the PDF bucket need an allow-listed signed-in user', () => {
+  const s = sql(read('supabase/migrations/20261024160000_security_hardening_batch2.sql'));
+  assert.match(s, /create policy attendance_locations_insert_authorized[\s\S]*?to authenticated with check \(public\.bt_is_authorized_user\(\)\)/);
+  assert.match(s, /create policy attendance_locations_update_authorized[\s\S]*?to authenticated using \(public\.bt_is_authorized_user\(\)\)/);
+  assert.match(s, /update storage\.buckets set public = false where id = 'pdf-library'/);
+  assert.equal((s.match(/to authenticated (using|with check) \(bucket_id = 'pdf-library' and public\.bt_is_authorized_user\(\)\)/g) || []).length, 3);
+  // the installed Android attendance app must keep reading locations with the public key
+  assert.doesNotMatch(s, /drop policy[^;]*attendance_locations_select/);
+});
