@@ -50,7 +50,9 @@ export const Repository = (function () {
   // ──────────────────────────────────────────────────────────────────────
 
   function getDaily() {
-    return DAILY;
+    // Read-only consumers get a stable snapshot, not the protected live
+    // array or its mutable record objects. Writes must use Actions/Repository.
+    return DAILY.map(record => ({ ...record }));
   }
 
   function findDailyIndex(date, monthYear) {
