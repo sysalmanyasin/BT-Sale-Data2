@@ -1,11 +1,12 @@
 // ══════════════════════════════════════════════════════════════════
 // GOOGLE DRIVE DAILY BACKUP
 // ══════════════════════════════════════════════════════════════════
-// NOTE: _driveAccessToken stays a true bare global (not wrapped below)
-// because auth.js reassigns it directly in 3 places — wrapping it would
-// silently desync auth.js's writes from this file's copy, same as
-// storage.js's _curPage.
-let _driveAccessToken = '';
+// This file is an ES module. _driveAccessToken is deliberately a PROPERTY OF
+// window, not a module-local `let`: auth.js reassigns it (bare `_driveAccessToken
+// = token`) and sheets-api/app/picker read it, so all of them must share one
+// value. A module-local binding would silently desync those writes (same
+// reasoning as storage.js's _curPage).
+if (typeof window._driveAccessToken === 'undefined') window._driveAccessToken = '';
 
 (function() {
 'use strict';
