@@ -43,6 +43,34 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+// This endpoint is intentionally public for the Inventory Search PWA, but
+// each cache miss can spend a third-party AI API call. Bound input and add
+// best-effort per-IP throttling to reduce accidental loops and casual abuse.
+// This in-memory limit is per Edge Function isolate, not a global quota;
+// configure provider-side spending limits for a hard ceiling.
+const MAX_BODY_CHARS = 4_000;
+const MAX_FIELD_CHARS = 200;
+const RATE_LIMIT = 20;
+const RATE_WINDOW_MS = 60_000;
+const requestHits = new Map<string, number[]>();
+
+function rateLimited(ip: string): boolean {
+  const now = Date.now();
+  const recent = (requestHits.get(ip) || []).filter((time) => now - time < RATE_WINDOW_MS);
+  recent.push(now);
+  requestHits.set(ip, recent);
+  if (requestHits.size > 5_000) {
+    for (const [key, times] of requestHits) {
+      if (!times.length || now - times[times.length - 1] >= RATE_WINDOW_MS) requestHits.delete(key);
+    }
+  }
+  return recent.length > RATE_LIMIT;
+}
+
+function boundedText(value: unknown): string {
+  return typeof value === 'string' ? value.trim().slice(0, MAX_FIELD_CHARS) : '';
+}
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -172,15 +200,23 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
   if (req.method !== 'POST') return jsonResponse({ error: 'POST only' }, 405);
 
-  let body: { name?: string; generic?: string; company?: string; force?: boolean };
-  try { body = await req.json(); } catch (e) { return jsonResponse({ error: 'Invalid JSON body' }, 400); }
+  const ip = (req.headers.get('cf-connecting-ip') || req.headers.get('x-forwarded-for') || 'unknown').split(',')[0].trim();
+  if (rateLimited(ip)) return jsonResponse({ error: 'Too many requests. Wait a minute and try again.' }, 429);
 
-  const name = (body.name || '').trim();
-  const generic = (body.generic || '').trim();
-  const company = (body.company || '').trim();
+  let raw = '';
+  try { raw = await req.text(); } catch (_) { return jsonResponse({ error: 'Invalid body' }, 400); }
+  if (raw.length > MAX_BODY_CHARS) return jsonResponse({ error: 'Request too large' }, 413);
+
+  let body: { name?: string; generic?: string; company?: string; force?: boolean };
+  try { body = JSON.parse(raw); } catch (_) { return jsonResponse({ error: 'Invalid JSON body' }, 400); }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return jsonResponse({ error: 'Invalid JSON body' }, 400);
+
+  const name = boundedText(body.name);
+  const generic = boundedText(body.generic);
+  const company = boundedText(body.company);
   if (!name && !generic) return jsonResponse({ error: 'name or generic is required' }, 400);
 
-  const cached = body.force ? null : await readCache(name, generic);
+  const cached = body.force === true ? null : await readCache(name, generic);
   if (cached) return jsonResponse({ info: cached, cached: true });
 
   const prompt = buildPrompt(name, generic, company);
