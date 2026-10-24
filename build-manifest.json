@@ -1,6 +1,6 @@
 {
-  "cache": "bt-sales-v11.150",
-  "hash": "d342b9993bfc",
+  "cache": "bt-sales-v11.152",
+  "hash": "efe01d5e01bb",
   "files": {
     "css/activity-log.css": "2e5bd5de",
     "css/agent.css": "887c7226",
@@ -41,7 +41,7 @@
     "icons/icon-192.png": "22867a0e",
     "icons/icon-512.png": "5783f250",
     "icons/icon.svg": "5804ff69",
-    "index.html": "882746cb",
+    "index.html": "3df913b6",
     "js/actions.js": "729c9d54",
     "js/activity-log.js": "759790b2",
     "js/agent/core/after-write.js": "c9384ff3",
@@ -102,7 +102,7 @@
     "js/ai-center/forecast-game.js": "d4fcfd8e",
     "js/ai-center/index.js": "378a2115",
     "js/ai-center/model.js": "ffdf4937",
-    "js/ai-center/repo-index.json": "8de38ea8",
+    "js/ai-center/repo-index.json": "f7eef289",
     "js/ai-center/repo-intel.js": "4adce256",
     "js/ai-center/ui.js": "8077ea4a",
     "js/analytics.js": "a519abdf",
@@ -207,7 +207,7 @@
     "js/sync-tombstones.js": "11e0a35d",
     "js/targets.js": "0c18568f",
     "js/ui-extras.js": "ddb51ca7",
-    "js/ui.js": "1a546f80",
+    "js/ui.js": "9827e11a",
     "manifest.json": "c5f2bcd9"
   }
 }
