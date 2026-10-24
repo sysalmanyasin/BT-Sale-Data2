@@ -377,7 +377,9 @@ export const Repository = (function () {
   const STAFF_KEY = 'BT_Staff_v1';
 
   function getStaff() {
-    return STAFF;
+    // Consumers use this API for lookup/rendering. Return snapshots so
+    // a caller cannot mutate a committed employee object without Actions.
+    return STAFF.map(record => ({ ...record }));
   }
 
   // Replaces the contents of STAFF IN PLACE (so the existing Proxy
