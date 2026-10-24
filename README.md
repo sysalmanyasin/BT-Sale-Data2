@@ -82,7 +82,7 @@
 |---|---|
 | JS modules under `js/` | 165 |
 | Supabase Edge Functions | 8 |
-| Dated SQL migrations | 25 |
+| Dated SQL migrations | 26 |
 | Test files (`*.test.js`) | 99 |
 | Android home-screen widgets | 22 |
 | GitHub Actions workflows | 5 |
@@ -509,7 +509,7 @@ More detail in [`tests/README.md`](tests/README.md).
 ## Known limitations
 
 **Main PWA**
-- **Sign-in is Google only, with no bypass.** The app opens only after a verified Google sign-in (Google id_token accepted by Supabase) for an allowed email. A saved session alone never opens it: it must match a live Supabase session for the same email, otherwise it is discarded. The old sign-in-free `#pos` kiosk entry was removed. This gate is client-side; real protection of data is Row Level Security. Emergency Billing now uses the signed-in Google session. Phase 1 (`bt_is_authorized_user()` + allow-listed `authenticated` policies, migration `20261024120000`) is **applied in production**. The public anon key can still reach those tables until the **pending lockdown** `supabase/pending/20261024130000_emergency_billing_lockdown.sql` is promoted into `supabase/migrations/` (do that only after one real sale and one real refund were done signed in; its header has the steps and the rollback). CI migrations: `SUPABASE_DB_URL` must be the Session-pooler string (runners are IPv4-only).
+- **Sign-in is Google only, with no bypass.** The app opens only after a verified Google sign-in (Google id_token accepted by Supabase) for an allowed email. A saved session alone never opens it: it must match a live Supabase session for the same email, otherwise it is discarded. The old sign-in-free `#pos` kiosk entry was removed. This gate is client-side; real protection of data is Row Level Security. Emergency Billing now uses the signed-in Google session and is **locked down in production**: the public anon key can no longer read, write or call its RPCs. Only an active `bt_authorized_users` email can (`bt_is_authorized_user()`; migrations `20261024120000` and `20261024130000`, both applied 2026-10-24 and verified with a real sale and refund). Rollback steps are in the lockdown migration's header. Other tables still have known open items; see the security audit notes. CI migrations: `SUPABASE_DB_URL` must be the Session-pooler string (runners are IPv4-only).
 - Single pharmacy, not multi-tenant.
 - Some `window.*` bridges remain on purpose (see [ES-module migration](#es-module-migration)).
 - Petty Cash keeps a separate legacy implementation.
