@@ -23,7 +23,8 @@ export const Actions = (function () {
   function editDailyEntry(date, monthYear, changes) {
     const existing = Repository.getDailyEntry(date, monthYear);
     if (!existing) throw new Error('Actions.editDailyEntry: no entry found for ' + date + '/' + monthYear);
-    if (!changes || typeof changes !== 'object' || Array.isArray(changes)) {
+    if (!changes || typeof changes !== 'object' || Array.isArray(changes) ||
+        (Object.getPrototypeOf(changes) !== Object.prototype && Object.getPrototypeOf(changes) !== null)) {
       throw new TypeError('Actions.editDailyEntry: changes must be a plain object');
     }
 
