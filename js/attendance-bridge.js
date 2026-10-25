@@ -24,8 +24,9 @@
 // SB_KEY) — NOT the separate Pharmacy Audit Hub project inventory-
 // bridge.js/audit-bridge.js use. Attendance is coupled to STAFF
 // records, which belong to this project's world.
-const ATT_SUPABASE_URL = 'https://wetbugzzchkghpzmowod.supabase.co';
-const ATT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndldGJ1Z3p6Y2hrZ2hwem1vd29kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzMDg4OTIsImV4cCI6MjA5Nzg4NDg5Mn0.LXFrvQTOfI3ph4aA8xWYIUo-z1yxdX0znnN5f-KsOPM';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './shared/backend-config.js';
+const ATT_SUPABASE_URL = SUPABASE_URL;
+const ATT_SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
 
 // The manager/admin side uses the app's SIGNED-IN Supabase client (the verified
 // Google session from auth.js), not the public anon key. The attendance policies

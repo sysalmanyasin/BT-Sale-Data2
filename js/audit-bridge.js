@@ -25,8 +25,9 @@
 // bridged to `window` at the bottom, same pattern as closing-bridge.js.
 // ══════════════════════════════════════════════════════════════════════
 
-const AUDIT_SUPABASE_URL = 'https://vtcrdkqhuvxatclobsby.supabase.co';
-const AUDIT_SUPABASE_ANON_KEY = 'sb_publishable_h-Z3ldRXyb18HEjF68cJ0g_tmRgbrAy';
+import { AUDIT_HUB_URL, AUDIT_HUB_PUBLISHABLE_KEY } from './shared/backend-config.js';
+const AUDIT_SUPABASE_URL = AUDIT_HUB_URL;
+const AUDIT_SUPABASE_ANON_KEY = AUDIT_HUB_PUBLISHABLE_KEY;
 const CACHE_KEY = 'bt_audit_cache_v1'; // local-only summary cache
 const MIN_REFRESH_MS = 5 * 60 * 1000;  // don't hit Supabase more than once per 5 min, same rate limit as Closing
 

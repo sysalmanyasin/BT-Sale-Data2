@@ -3,8 +3,9 @@
 import { AgentError } from './agent-client.js';
 import { emit as telEmit } from './telemetry.js';
 import { parseSSE } from '../../shared/agent-shared.js';
+import { functionUrl } from '../../shared/backend-config.js';
 
-const FN_URL = 'https://wetbugzzchkghpzmowod.supabase.co/functions/v1/bt-agent';
+const FN_URL = functionUrl('bt-agent');
 
 export async function getAccessToken() {
   const sb = typeof window.btGetSupabaseClient === 'function' ? window.btGetSupabaseClient() : null;

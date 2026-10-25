@@ -10,6 +10,7 @@
 // Supabase session for the same allowed email (see _gauthCheckSession).
 // Other scripts that need "the app just unlocked" listen for the
 // 'bt:app-unlocked' event instead of patching a function.
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './shared/backend-config.js';
 function unlockApp() {
   document.getElementById('pin-gate').style.display='none';
   document.getElementById('nav').style.display='flex';
@@ -124,8 +125,8 @@ const GAUTH_MAIL_FALLBACK = 'sy.salmanyasin@gmail.com,sy.salmanmughal@gmail.com,
 // On failure (offline, Supabase unreachable) it silently keeps whatever
 // is already cached in localStorage — last successful sync, or the
 // fallback seed above — so sign-in still works offline.
-const GAUTH_SB_URL  = 'https://wetbugzzchkghpzmowod.supabase.co';
-const GAUTH_SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndldGJ1Z3p6Y2hrZ2hwem1vd29kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzMDg4OTIsImV4cCI6MjA5Nzg4NDg5Mn0.LXFrvQTOfI3ph4aA8xWYIUo-z1yxdX0znnN5f-KsOPM';
+const GAUTH_SB_URL  = SUPABASE_URL;
+const GAUTH_SB_ANON = SUPABASE_ANON_KEY;
 async function _gauthSyncFromSupabase() {
   const headers = { apikey: GAUTH_SB_ANON, Authorization: 'Bearer ' + GAUTH_SB_ANON };
   try {

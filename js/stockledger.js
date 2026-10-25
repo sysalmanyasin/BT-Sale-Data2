@@ -1,3 +1,4 @@
+import { AUDIT_HUB_URL, AUDIT_HUB_PUBLISHABLE_KEY } from './shared/backend-config.js';
 window.StockLedgerApp = (function(){
   "use strict";
   let initialized = false;
@@ -9,8 +10,8 @@ window.StockLedgerApp = (function(){
   // resort in the resolution order below, so an explicit options.supabaseClient
   // or window.supabaseClient (e.g. a differently-scoped client some other
   // integration already set up) still wins if present.
-  const STOCKLEDGER_SUPABASE_URL = 'https://vtcrdkqhuvxatclobsby.supabase.co';
-  const STOCKLEDGER_SUPABASE_ANON_KEY = 'sb_publishable_h-Z3ldRXyb18HEjF68cJ0g_tmRgbrAy';
+  const STOCKLEDGER_SUPABASE_URL = AUDIT_HUB_URL;
+  const STOCKLEDGER_SUPABASE_ANON_KEY = AUDIT_HUB_PUBLISHABLE_KEY;
 
   function init(options){
     if(initialized){ console.warn('StockLedgerApp.init() called again — skipping (already initialized).'); return; }

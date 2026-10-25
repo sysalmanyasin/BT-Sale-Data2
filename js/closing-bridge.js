@@ -40,8 +40,9 @@
 // bridged to `window` at the bottom, same pattern as audit-bridge.js.
 // ══════════════════════════════════════════════════════════════════════
 
-const CLOSING_SUPABASE_URL      = 'https://wetbugzzchkghpzmowod.supabase.co';
-const CLOSING_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndldGJ1Z3p6Y2hrZ2hwem1vd29kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzMDg4OTIsImV4cCI6MjA5Nzg4NDg5Mn0.LXFrvQTOfI3ph4aA8xWYIUo-z1yxdX0znnN5f-KsOPM';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './shared/backend-config.js';
+const CLOSING_SUPABASE_URL      = SUPABASE_URL;
+const CLOSING_SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
 
 const CACHE_KEY      = 'bt_closing_cache_v1';     // local-only summary cache
 const FULLDB_CACHE_KEY = 'bt_closing_fulldb_v1';  // local-only, best-effort persistence across reloads

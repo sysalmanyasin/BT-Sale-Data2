@@ -14,10 +14,6 @@ verify_jwt = false
 [functions.medicine-ai-info]
 verify_jwt = false
 
-# LEGACY (WhatsApp era): not deployed in production any more, kept only for reference.
-[functions.send-daily-whatsapp-briefing]
-verify_jwt = false
-
 # Daily briefing (pg_cron 11:00 + 23:00 PKT, x-cron-secret header) and closing alerts (DB triggers, Bearer secret).
 [functions.send-daily-ntfy-briefing]
 verify_jwt = false

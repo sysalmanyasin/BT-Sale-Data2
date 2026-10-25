@@ -24,8 +24,9 @@
 // Same Supabase project as inventory-bridge.js/audit-bridge.js —
 // sales_payment_summary and sales_credit_by_customer live in the one
 // Pharmacy Audit Hub project, just different tables.
-const SP_SUPABASE_URL = 'https://vtcrdkqhuvxatclobsby.supabase.co';
-const SP_SUPABASE_ANON_KEY = 'sb_publishable_h-Z3ldRXyb18HEjF68cJ0g_tmRgbrAy';
+import { AUDIT_HUB_URL, AUDIT_HUB_PUBLISHABLE_KEY } from './shared/backend-config.js';
+const SP_SUPABASE_URL = AUDIT_HUB_URL;
+const SP_SUPABASE_ANON_KEY = AUDIT_HUB_PUBLISHABLE_KEY;
 const SP_FULLDATA_CACHE_KEY = 'bt_salepayments_fulldata_v1';
 const SP_FULLDATA_MIN_REFRESH_MS = 60 * 1000; // 1 min — same as inventory-bridge.js's full data
 

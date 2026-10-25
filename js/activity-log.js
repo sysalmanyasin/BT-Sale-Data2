@@ -40,12 +40,13 @@
 // ══════════════════════════════════════════════════════════════════════
 
 import { EventBus } from './event-bus.js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './shared/backend-config.js';
 
 export const ActivityLog = (function () {
   'use strict';
 
-  const SB_URL = 'https://wetbugzzchkghpzmowod.supabase.co';
-  const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndldGJ1Z3p6Y2hrZ2hwem1vd29kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzMDg4OTIsImV4cCI6MjA5Nzg4NDg5Mn0.LXFrvQTOfI3ph4aA8xWYIUo-z1yxdX0znnN5f-KsOPM';
+  const SB_URL = SUPABASE_URL;
+  const SB_KEY = SUPABASE_ANON_KEY;
   const TABLE     = 'bt_activity_log';
   const LOCAL_KEY = 'bt_activity_log_cache_v1';
   const MAX_LOCAL = 500;

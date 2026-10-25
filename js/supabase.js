@@ -9,9 +9,10 @@
 import { MONTHLY, DAILY, STAFF } from './config.js';
 import { Repository } from './repository.js';
 import { Actions } from './actions.js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from './shared/backend-config.js';
 
-const SB_URL     = 'https://wetbugzzchkghpzmowod.supabase.co';
-const SB_KEY     = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndldGJ1Z3p6Y2hrZ2hwem1vd29kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzMDg4OTIsImV4cCI6MjA5Nzg4NDg5Mn0.LXFrvQTOfI3ph4aA8xWYIUo-z1yxdX0znnN5f-KsOPM';
+const SB_URL     = SUPABASE_URL;
+const SB_KEY     = SUPABASE_ANON_KEY;
 const SB_TABLE   = 'bt_salesdata';
 const SB_ID      = 'main';
 const SB_PENDING = 'bt_sb_pending';    // dirty flag for offline queue
