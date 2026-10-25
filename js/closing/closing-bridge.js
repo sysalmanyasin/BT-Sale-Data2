@@ -40,7 +40,7 @@
 // bridged to `window` at the bottom, same pattern as audit-bridge.js.
 // ══════════════════════════════════════════════════════════════════════
 
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './shared/backend-config.js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../shared/backend-config.js';
 const CLOSING_SUPABASE_URL      = SUPABASE_URL;
 const CLOSING_SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
 
@@ -77,7 +77,7 @@ function _getClient() {
 }
 
 // Always "connected" — baked-in key, no manual pairing step needed
-// anymore. Kept as a function so cover-dashboard.js/closing-native.js
+// anymore. Kept as a function so cover-dashboard.js/closing/closing-native.js
 // don't need to change how they call it.
 export function isConnected() { return true; }
 

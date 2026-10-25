@@ -25,7 +25,7 @@
 
 import { LedgerActions } from './ledger-actions.js';
 import { getAllLedgerTypes, getCategoryList, ledgerUsesShift } from './ledger-store.js';
-import { saveMark } from './closing-ledger-marks.js';
+import { saveMark } from './closing/closing-ledger-marks.js';
 // Staff Credit predates the generalized Ledger and still lives in its own
 // data.credit[monthKey] structure (see manager-credit.js's header) — it is
 // NOT one of getAllLedgerTypes()'s entries, so it needs its own branch

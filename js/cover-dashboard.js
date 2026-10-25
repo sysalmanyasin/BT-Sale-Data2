@@ -3,7 +3,7 @@
 import { MONTHLY, DAILY, STAFF, n, fc, ff, negR, mBanks, creditSales } from './config.js';
 import { Repository } from './repository.js';
 import * as LedgerStore from './ledger-store.js';
-import * as ClosingBridge from './closing-bridge.js';
+import * as ClosingBridge from './closing/closing-bridge.js';
 import * as AuditBridge from './audit-bridge.js';
 import * as InventoryBridge from './inventory/inventory-bridge.js';
 import * as SalePaymentsBridge from './sale-payments-bridge.js';

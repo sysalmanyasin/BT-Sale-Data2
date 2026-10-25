@@ -34,7 +34,7 @@ import { MONTHLY, DAILY, n, negR, creditSales, cashSales } from '../config.js';
 import { Repository } from '../repository.js';
 import { Actions } from '../actions.js';
 import { computeInventoryBuckets } from '../shared/summary-calc.js';
-import * as ClosingBridge from '../closing-bridge.js';
+import * as ClosingBridge from '../closing/closing-bridge.js';
 import * as AuditBridge from '../audit-bridge.js';
 import * as InventoryBridge from '../inventory/inventory-bridge.js';
 import { aimRulesCheckAll } from '../rules-engine.js';
