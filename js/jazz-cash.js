@@ -31,7 +31,7 @@
 import { Repository } from './repository.js';
 import { Actions } from './actions.js';
 import * as LedgerStore from './ledger-store.js';
-import { mgrAutosave } from './manager-shared.js';
+import { mgrAutosave } from './manager/manager-shared.js';
 import * as Tombstones from './sync-tombstones.js';
 
 // ─── LEDGER constant — the one-time migration into the unified Ledger

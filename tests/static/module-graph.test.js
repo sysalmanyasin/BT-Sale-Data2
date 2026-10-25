@@ -72,3 +72,17 @@ test('shared/html.js is a leaf and escapes quotes (safe for attributes)', async 
 test('shared/html.js is precached by the service worker', () => {
   assert.ok(readFileSync(join(ROOT, 'sw.js'), 'utf8').includes('js/shared/html.js'));
 });
+
+test('every relative import/export/import() specifier under js/ resolves to a real file', () => {
+  const SPEC = /(?:^|[^\w$.])(?:import|export)\s*(?:[^'";]*?\sfrom\s*)?['"](\.{1,2}\/[^'"]+)['"]|import\(\s*['"](\.{1,2}\/[^'"]+)['"]\s*\)/gm;
+  const broken = [];
+  for (const f of files) {
+    const src = readFileSync(join(ROOT, f), 'utf8').split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');   // ignore comment lines
+    for (const m of src.matchAll(SPEC)) {
+      const spec = (m[1] || m[2]).split('?')[0];
+      const target = normalize(join(dirname(f), spec)).replace(/\\/g, '/');
+      try { if (!statSync(join(ROOT, target)).isFile()) throw 0; } catch { broken.push(`${f} -> ${spec}`); }
+    }
+  }
+  assert.deepEqual(broken, []);
+});

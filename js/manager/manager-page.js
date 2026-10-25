@@ -34,7 +34,7 @@
 // outside callers (checked via grep) so it's left unbridged.
 // ══════════════════════════════════════════════════════════════════════
 
-import { Repository } from './repository.js';
+import { Repository } from '../repository.js';
 
 function switchMgrTab(tab) {
   document.querySelectorAll('.mgr-tab').forEach(b => b.classList.toggle('active', b.dataset.mtab === tab));

@@ -6,7 +6,7 @@ const read = (p) => readFileSync(new URL(`../../${p}`, import.meta.url), 'utf8')
 const sql = (s) => s.split('\n').filter((l) => !/^\s*--/.test(l)).join('\n');
 
 test('attendance-bridge uses the signed-in client, never an anon-key client', () => {
-  const js = read('js/attendance-bridge.js');
+  const js = read('js/manager/attendance-bridge.js');
   assert.match(js, /window\.btGetSupabaseClient/);
   assert.doesNotMatch(js, /createClient\(/);
   assert.doesNotMatch(js, /persistSession/);

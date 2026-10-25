@@ -16,8 +16,8 @@
 // any month was loaded — same class of bug the credit ledger's
 // `_crdData_cur` bridge already avoided by re-syncing on every load).
 // ══════════════════════════════════════════════════════════════════════
-import { Repository } from './repository.js';
-import { STAFF } from './config.js';
+import { Repository } from '../repository.js';
+import { STAFF } from '../config.js';
 import { _ni, _fc2, _mgrEsc, mgrLoad, mgrSave, mgrAutosave, reconcileStaffRows, _salExtrasNet, activeStaff, mgrOn } from './manager-shared.js';
 import { _crdData, _crdData_cur } from './manager-credit.js';
 import { _genRows, _genRows_cur, _genFinal } from './manager-generic.js';

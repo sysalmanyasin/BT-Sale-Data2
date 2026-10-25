@@ -2681,14 +2681,14 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/ledger-actions.js?v=e3f43a1e"></script>
 <script type="module" src="js/ledger-page.js?v=c209a565"></script>
 <script type="module" src="js/cover-dashboard.js?v=313ad232"></script>
-<script type="module" src="js/herald/herald-engine.js?v=8d9d1d0c"></script>
+<script type="module" src="js/herald/herald-engine.js?v=092cabe3"></script>
 <script type="module" src="js/herald/herald-page.js?v=0212dd3c"></script>
 <script type="module" src="js/status-bar.js?v=8654ed27"></script>
 <script type="module" src="js/record-day.js?v=241024f4"></script>
-<script type="module" src="js/staff-notes.js?v=6800bc24"></script>
+<script type="module" src="js/manager/staff-notes.js?v=d856b41e"></script>
 <script type="module" src="js/closing-bridge.js?v=97d45453"></script>
 <script type="module" src="js/closing-ledger-marks.js?v=dba22d5b"></script>
-<script type="module" src="js/ledger-quick-add.js?v=151da825"></script>
+<script type="module" src="js/ledger-quick-add.js?v=ddb08105"></script>
 <script type="module" src="js/closing-native.js?v=0f5be453"></script>
 <script type="module" src="js/audit-bridge.js?v=24330eae"></script>
 <script type="module" src="js/audit-native.js?v=4dfd517f"></script>
@@ -2774,7 +2774,7 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/reports-print.js?v=bb502220"></script>
 
 <!-- 11c. Manager Summary Export (Phase 5) -->
-<script type="module" src="js/manager-export.js?v=e65a2913"></script>
+<script type="module" src="js/manager/manager-export.js?v=e65a2913"></script>
 
 <!-- 11e-pre. Real Google Sheets integration (replaces the old custom grid
      in notes-sheets.js's Sheets panel — see js/sheets-api.js / sheets-sync.js
@@ -2786,7 +2786,7 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/sheets-app.js?v=0301fd6e"></script>
 
 <!-- 11e. Notes & Sheets workspace (Phase 6) -->
-<script type="module" src="js/notes-sheets.js?v=bac5c4a2"></script>
+<script type="module" src="js/notes-sheets.js?v=1f815f96"></script>
 
 <!-- 11e-patch. Sheets enhancements: copy/paste, File menu, Supabase sync -->
 <script type="module" src="js/sheets-patch.js?v=8109bf83"></script>
@@ -2795,18 +2795,18 @@ if ('serviceWorker' in navigator) {
      Split from one 1906-line manager.js monolith into focused modules
      (see each file's own header comment for why it's shaped the way
      it is). manager-shared.js first — everything else depends on it. -->
-<script type="module" src="js/manager-shared.js?v=317ac794"></script>
-<script type="module" src="js/attendance-bridge.js?v=0f3f8591"></script>
-<script type="module" src="js/manager-attendance.js?v=dd4f34b9"></script>
-<script type="module" src="js/manager-staff.js?v=0dc92a8d"></script>
-<script type="module" src="js/manager-salary.js?v=a89481c7"></script>
-<script type="module" src="js/manager-generic.js?v=cd1fc2d5"></script>
-<script type="module" src="js/manager-credit.js?v=d2116ee0"></script>
-<script type="module" src="js/manager-payslip.js?v=6ebc4c51"></script>
-<script type="module" src="js/manager-unmatched.js?v=f7c0b8df"></script>
-<script type="module" src="js/manager-reports.js?v=83cd6093"></script>
-<script type="module" src="js/manager-petty.js?v=4ecb1d07"></script>
-<script type="module" src="js/manager-incentive.js?v=4a1630ac"></script>
+<script type="module" src="js/manager/manager-shared.js?v=0f1c173d"></script>
+<script type="module" src="js/manager/attendance-bridge.js?v=201ff6b8"></script>
+<script type="module" src="js/manager/manager-attendance.js?v=0fe802f9"></script>
+<script type="module" src="js/manager/manager-staff.js?v=7dc2fe98"></script>
+<script type="module" src="js/manager/manager-salary.js?v=3b576b71"></script>
+<script type="module" src="js/manager/manager-generic.js?v=5d68629e"></script>
+<script type="module" src="js/manager/manager-credit.js?v=6cae5aa7"></script>
+<script type="module" src="js/manager/manager-payslip.js?v=a71f382a"></script>
+<script type="module" src="js/manager/manager-unmatched.js?v=53bab963"></script>
+<script type="module" src="js/manager/manager-reports.js?v=4529615f"></script>
+<script type="module" src="js/manager/manager-petty.js?v=edcac31e"></script>
+<script type="module" src="js/manager/manager-incentive.js?v=a67633ed"></script>
 <!-- app-init.js: the actual whole-app bootstrap (was misplaced at the
      bottom of manager.js despite having nothing to do with Manager —
      see its header comment). Needs everything above (renderStaffRegistry
@@ -2820,13 +2820,13 @@ if ('serviceWorker' in navigator) {
      renderNotesSheets() directly now; custom-sections.js never actually
      patched it either, per that same changelog's correction). See the
      file's own header comment for the historical detail. -->
-<script type="module" src="js/manager-page.js?v=e8bf2fa6"></script>
+<script type="module" src="js/manager/manager-page.js?v=660017b0"></script>
 
 <!-- 13. Custom spreadsheet sections (manager add-on) -->
-<script type="module" src="js/custom-sections.js?v=45a2aa6f"></script>
+<script type="module" src="js/custom-sections.js?v=38f34c13"></script>
 
 <!-- 13b. Jazz Cash — Balance Tally (Daily Ledger now runs on the generalized Ledger, see ledger-page.js) -->
-<script type="module" src="js/jazz-cash.js?v=65fdf505"></script>
+<script type="module" src="js/jazz-cash.js?v=6f3574de"></script>
 
 <script type="module" src="js/quick-add.js?v=25d79799"></script>
 

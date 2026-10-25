@@ -6,8 +6,8 @@
 // ══════════════════════════════════════════════════════════════════
 import { Repository } from './repository.js';
 import { Actions } from './actions.js';
-import { loadSalaryMonth } from './manager-salary.js';
-import { _pettyMonth, _pettyData, _pettyKey, loadPettyMonth } from './manager-petty.js';
+import { loadSalaryMonth } from './manager/manager-salary.js';
+import { _pettyMonth, _pettyData, _pettyKey, loadPettyMonth } from './manager/manager-petty.js';
 
 function salaryNextMonth() {
   const sel = document.getElementById('sal-month-sel');

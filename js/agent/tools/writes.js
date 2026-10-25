@@ -11,7 +11,7 @@ import { Repository } from '../../repository.js';
 import { Actions } from '../../actions.js';
 import { LedgerActions } from '../../ledger-actions.js';
 import * as LedgerStore from '../../ledger-store.js';
-import { addNote, deleteNote, keyForStaff } from '../../staff-notes.js';
+import { addNote, deleteNote, keyForStaff } from '../../manager/staff-notes.js';
 import { DAILY, MONTHLY, DAILY_ADD_KEYS, DAILY_SUB_KEYS, RETURN_FIELDS, computeDailyTotals, negR } from '../../config.js';
 import { num, normDay, normMonth, sameMonth, MON, FULL } from './_util.js';
 import { resolveStaff as oneStaff } from './_names.js';

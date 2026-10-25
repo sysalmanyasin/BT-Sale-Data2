@@ -9,9 +9,9 @@
 // CRUD must always go through Repository.addStaffMember/updateStaffMember/
 // removeStaffMember (Floor 1) — never raw STAFF[i] mutation. See README.
 // ══════════════════════════════════════════════════════════════════════
-import { Repository } from './repository.js';
-import { Actions } from './actions.js';
-import { STAFF } from './config.js';
+import { Repository } from '../repository.js';
+import { Actions } from '../actions.js';
+import { STAFF } from '../config.js';
 import { _ni, _fc2, mgrAutosave, activeStaff } from './manager-shared.js';
 import { _salRows_cur, renderSalaryTable } from './manager-salary.js';
 import { _genRows_cur, renderGenericTable } from './manager-generic.js';

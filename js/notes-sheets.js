@@ -47,12 +47,12 @@ import { STAFF, MONTHLY, DAILY } from './config.js';
 // none of these six modules — nor inventory-bridge.js below — import
 // notes-sheets.js, directly or transitively (verified via grep before
 // adding this). ──────────────────────────────────────────────────────
-import { _salRows_cur, _salNet } from './manager-salary.js';
-import { _genRows_cur, _genIncentive, _genFinal } from './manager-generic.js';
-import { _crdData_cur, _crdNet } from './manager-credit.js';
-import { _pettyData } from './manager-petty.js';
-import { _incData, _incMonth } from './manager-incentive.js';
-import { unmatchedLoad } from './manager-unmatched.js';
+import { _salRows_cur, _salNet } from './manager/manager-salary.js';
+import { _genRows_cur, _genIncentive, _genFinal } from './manager/manager-generic.js';
+import { _crdData_cur, _crdNet } from './manager/manager-credit.js';
+import { _pettyData } from './manager/manager-petty.js';
+import { _incData, _incMonth } from './manager/manager-incentive.js';
+import { unmatchedLoad } from './manager/manager-unmatched.js';
 // ── Inventory domain source — inventory-bridge.js is a standalone
 // module (no imports of its own), getFullData() reads its own local
 // cache synchronously (null until Inventory's own page has fetched at

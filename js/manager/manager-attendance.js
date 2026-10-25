@@ -9,7 +9,7 @@
 // truth for who staff members are; this file only owns *when they were
 // here*.
 // ══════════════════════════════════════════════════════════════════════
-import { Repository } from './repository.js';
+import { Repository } from '../repository.js';
 import { _mgrEsc } from './manager-shared.js';
 import * as AttendanceBridge from './attendance-bridge.js';
 

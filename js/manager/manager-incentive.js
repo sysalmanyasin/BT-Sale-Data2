@@ -5,8 +5,8 @@
 // panel/tax splits) plus a printable report. Independent of the other
 // Manager sub-tabs — no cross-module state needed.
 // ══════════════════════════════════════════════════════════════════════
-import { Repository } from './repository.js';
-import { Actions } from './actions.js';
+import { Repository } from '../repository.js';
+import { Actions } from '../actions.js';
 import { _ni, _fc2, mgrAutosave } from './manager-shared.js';
 import { _mgrPrint } from './manager-reports.js';
 

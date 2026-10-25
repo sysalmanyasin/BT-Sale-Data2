@@ -12,7 +12,7 @@ import { Repository } from '../../repository.js';
 import { Actions } from '../../actions.js';
 import { LedgerActions } from '../../ledger-actions.js';
 import * as LedgerStore from '../../ledger-store.js';
-import { getNotes, keyForStaff } from '../../staff-notes.js';
+import { getNotes, keyForStaff } from '../../manager/staff-notes.js';
 import { DAILY, MONTHLY } from '../../config.js';
 import { num, normDay, sameMonth, normMonth } from './_util.js';
 import { staffCandidates, findCreditRow, normName } from './_names.js';

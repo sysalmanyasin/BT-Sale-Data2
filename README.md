@@ -321,7 +321,7 @@ A break-glass counter-billing system, separate from Daily Sale Entry. It is a su
 
 #### Attendance
 
-Web management (`js/manager-attendance.js`) plus a native Android app.
+Web management (`js/manager/manager-attendance.js`) plus a native Android app.
 
 - **Tabs:** Today (including visible absences), Monthly (present/absent/late), Raw Log, Manual Entry, Location (geofence), Notifications, iPhone Setup.
 - **Late detection** is optional and only applies to staff with an explicit `shiftStart`, with a 5-minute grace period. Schedules are never guessed.

@@ -55,7 +55,7 @@ describe('add_staff_note', () => {
     assert.equal(r.ok, false); assert.equal(asked, false); assert.match(r.text, /several staff/);
   });
   test('adds the note for the right person, and undo removes it', async () => {
-    const { getNotes, keyForStaff } = await import('../../js/staff-notes.js');
+    const { getNotes, keyForStaff } = await import('../../js/manager/staff-notes.js');
     const r = await call('add_staff_note', { staff: 'EMP-003', text: 'Spoke about punctuality' });
     assert.equal(r.ok, true);
     const key = keyForStaff(Repository.getStaff().find(e => e.staffId === 'EMP-003'));

@@ -38,10 +38,10 @@ import * as ClosingBridge from '../closing-bridge.js';
 import * as AuditBridge from '../audit-bridge.js';
 import * as InventoryBridge from '../inventory-bridge.js';
 import { aimRulesCheckAll } from '../rules-engine.js';
-import { mgrMonths } from '../manager-shared.js';
-import { _crdData, _crdNet } from '../manager-credit.js';
-import { _salRows, _salNet } from '../manager-salary.js';
-import { _pettyTotalForMonth } from '../manager-petty.js';
+import { mgrMonths } from '../manager/manager-shared.js';
+import { _crdData, _crdNet } from '../manager/manager-credit.js';
+import { _salRows, _salNet } from '../manager/manager-salary.js';
+import { _pettyTotalForMonth } from '../manager/manager-petty.js';
 
 const MN = ['January','February','March','April','May','June','July',
             'August','September','October','November','December'];

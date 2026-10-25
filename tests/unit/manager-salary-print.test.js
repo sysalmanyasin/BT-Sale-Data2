@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════════════════
-// REGRESSION TEST — js/manager-reports.js: printSalaryReport()
+// REGRESSION TEST — js/manager/manager-reports.js: printSalaryReport()
 //
 // Covers a real reported bug: a printed FDPP Salary Detail PDF showed
 // every HO Salary/Advance/Generic/Net figure as ₨0 for every employee,
@@ -34,8 +34,8 @@ window.confirm = globalThis.confirm;
 const { Repository } = await import('../../js/repository.js');
 const { Actions } = await import('../../js/actions.js');
 const PrintMod = await import('../../js/print.js');
-const salaryMod = await import('../../js/manager-salary.js');
-const reportsMod = await import('../../js/manager-reports.js');
+const salaryMod = await import('../../js/manager/manager-salary.js');
+const reportsMod = await import('../../js/manager/manager-reports.js');
 
 function selectMonth(my) {
   document.getElementById('sal-month-sel').value = my;

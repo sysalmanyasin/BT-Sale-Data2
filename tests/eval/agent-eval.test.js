@@ -18,7 +18,7 @@ const { Repository } = await import('../../js/repository.js');
 globalThis.Repository = Repository;
 const LedgerStore = await import('../../js/ledger-store.js');
 const { LedgerActions } = await import('../../js/ledger-actions.js');
-const notes = await import('../../js/staff-notes.js');
+const notes = await import('../../js/manager/staff-notes.js');
 const reg = await import('../../js/agent/core/tool-registry.js');
 const { pickSpecialist } = await import('../../js/agent/core/specialists.js');
 for (const f of ['app', 'sales', 'manager', 'inventory', 'writes', 'credit', 'deletes', 'briefing', 'str', 'closing', 'billing', 'documents', 'memory-tool']) await import('../../js/agent/tools/' + f + '.js');

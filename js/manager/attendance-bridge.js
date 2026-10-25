@@ -24,7 +24,7 @@
 // SB_KEY) — NOT the separate Pharmacy Audit Hub project inventory-
 // bridge.js/audit-bridge.js use. Attendance is coupled to STAFF
 // records, which belong to this project's world.
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './shared/backend-config.js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../shared/backend-config.js';
 const ATT_SUPABASE_URL = SUPABASE_URL;
 const ATT_SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
 

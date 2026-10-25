@@ -30,9 +30,9 @@ import { saveMark } from './closing-ledger-marks.js';
 // data.credit[monthKey] structure (see manager-credit.js's header) — it is
 // NOT one of getAllLedgerTypes()'s entries, so it needs its own branch
 // throughout this file rather than just another ledgerType value.
-import { _crdData } from './manager-credit.js';
-import { mgrLoad, mgrSave } from './manager-shared.js';
-import { activeStaff } from './manager-staff.js';
+import { _crdData } from './manager/manager-credit.js';
+import { mgrLoad, mgrSave } from './manager/manager-shared.js';
+import { activeStaff } from './manager/manager-staff.js';
 import { escapeHtml as esc } from './shared/html.js';
 
 const STAFF_CREDIT_VALUE = 'staff_credit';

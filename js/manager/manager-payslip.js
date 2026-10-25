@@ -17,8 +17,8 @@
 // can be opened for ANY past month, independent of whatever month the
 // Salary/Generic/Credit tabs currently have loaded.
 // ══════════════════════════════════════════════════════════════════════
-import { Print } from './print.js';
-import { STAFF } from './config.js';
+import { Print } from '../print.js';
+import { STAFF } from '../config.js';
 import { _ni, _fc2, _mgrEsc, mgrLoad, _mgrPopSel, mgrMonths } from './manager-shared.js';
 import { _crdNet } from './manager-credit.js';
 import { _genIncentive } from './manager-generic.js';

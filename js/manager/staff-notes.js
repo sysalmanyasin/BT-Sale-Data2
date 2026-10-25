@@ -14,9 +14,9 @@
 // by ledger-page.js's renderLedgerView.
 // ══════════════════════════════════════════════════════════════════════
 
-import { Repository } from './repository.js';
-import { Actions } from './actions.js';
-import { escapeHtml as _esc } from './shared/html.js';
+import { Repository } from '../repository.js';
+import { Actions } from '../actions.js';
+import { escapeHtml as _esc } from '../shared/html.js';
 
 const STAFF_NOTES_KEY = 'bt_staff_notes_v1';
 

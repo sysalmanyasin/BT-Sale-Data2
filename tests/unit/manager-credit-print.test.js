@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════════════════
-// REGRESSION TEST — js/manager-reports.js: printCreditReport() /
+// REGRESSION TEST — js/manager/manager-reports.js: printCreditReport() /
 // printCreditSummaryReport()
 //
 // Covers a real reported bug: clicking "Print Detailed" on the Staff
@@ -28,8 +28,8 @@ installDomEnv(`<!doctype html><html><body>
 const { Repository } = await import('../../js/repository.js');
 const { Actions } = await import('../../js/actions.js');
 const PrintMod = await import('../../js/print.js');
-const creditMod = await import('../../js/manager-credit.js');
-const reportsMod = await import('../../js/manager-reports.js');
+const creditMod = await import('../../js/manager/manager-credit.js');
+const reportsMod = await import('../../js/manager/manager-reports.js');
 
 // manager-credit.js's on-screen renderer (renderCreditLedger → entryRowsFor)
 // calls a couple of manager-shared.js helpers (_inp, etc.) as bare globals,

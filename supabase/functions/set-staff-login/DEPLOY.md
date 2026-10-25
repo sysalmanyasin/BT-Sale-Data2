@@ -1,7 +1,7 @@
 # set-staff-login
 
 Creates or resets a staff member's **Closing App** login (phone + 4-digit PIN). Called by the Staff Registry
-("Set/Reset PIN", `js/manager-staff.js`) through `supabase.functions.invoke`, which sends the signed-in user's token.
+("Set/Reset PIN", `js/manager/manager-staff.js`) through `supabase.functions.invoke`, which sends the signed-in user's token.
 
 ## Security (changed 2026-10-05, v21)
 Before v21 this function had `verify_jwt` off and **no check inside**: anyone who knew an internal staff id could set that

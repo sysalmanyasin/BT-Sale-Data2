@@ -14,10 +14,10 @@
 // Same temporary-bridge pattern as config.js/repository.js — remove the
 // bridge once every consumer is itself a module that imports directly.
 // ══════════════════════════════════════════════════════════════════════
-import { Repository } from './repository.js';
-import { Actions } from './actions.js';
-import { MONTHLY, months, STAFF } from './config.js';
-import { escapeHtml as _mgrEsc } from './shared/html.js';
+import { Repository } from '../repository.js';
+import { Actions } from '../actions.js';
+import { MONTHLY, months, STAFF } from '../config.js';
+import { escapeHtml as _mgrEsc } from '../shared/html.js';
 
 const MGR_KEY = 'BT_ManagerWork_v1';
 
