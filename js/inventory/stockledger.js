@@ -1,5 +1,5 @@
-import { AUDIT_HUB_URL, AUDIT_HUB_PUBLISHABLE_KEY } from './shared/backend-config.js';
-import { escapeHtml as esc } from './shared/html.js';
+import { AUDIT_HUB_URL, AUDIT_HUB_PUBLISHABLE_KEY } from '../shared/backend-config.js';
+import { escapeHtml as esc } from '../shared/html.js';
 window.StockLedgerApp = (function(){
   "use strict";
   let initialized = false;

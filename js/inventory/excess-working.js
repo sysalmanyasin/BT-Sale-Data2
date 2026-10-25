@@ -4,7 +4,7 @@
 // uploaded spreadsheet export.
 //
 // Source of the raw rows: Stock Ledger's own "100-Day Excess" tab
-// (js/stockledger.js, computeAll() section 3 — excessQty/excessValue per
+// (js/inventory/stockledger.js, computeAll() section 3 — excessQty/excessValue per
 // SKU, no pack rounding). This page does NOT re-fetch or re-derive that —
 // it reads it live through window.StockLedgerApp.getExcessRows(), so
 // there is exactly one inventory load per session, one source of truth.
@@ -20,7 +20,7 @@
 // instead — same fallback-to-1 behaviour when it's missing/invalid.
 // ══════════════════════════════════════════════════════════════════════
 
-import { escapeHtml as esc } from './shared/html.js';
+import { escapeHtml as esc } from '../shared/html.js';
 window.ExcessWorkingApp = (function () {
   "use strict";
   let initialized = false;

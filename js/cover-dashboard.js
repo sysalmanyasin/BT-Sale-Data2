@@ -5,7 +5,7 @@ import { Repository } from './repository.js';
 import * as LedgerStore from './ledger-store.js';
 import * as ClosingBridge from './closing-bridge.js';
 import * as AuditBridge from './audit-bridge.js';
-import * as InventoryBridge from './inventory-bridge.js';
+import * as InventoryBridge from './inventory/inventory-bridge.js';
 import * as SalePaymentsBridge from './sale-payments-bridge.js';
 import * as StrBridge from './str/str-bridge.js';
 import * as StrShared from './str/str-shared.js';
@@ -690,7 +690,7 @@ function _renderWeekdayChart() {
 // Reorder Report apps, same "read the one existing computation, don't
 // re-derive it" rule as AuditBridge/ClosingBridge above. Each bridge call
 // is itself cheap (pure re-read of already-computed in-memory state) —
-// see stockledger.js/excess-working.js/reorder-report.js's own comments
+// see stockledger.js/inventory/excess-working.js/inventory/reorder-report.js's own comments
 // on their getCoverStats()/getSummary()/getSummaryFor() functions.
 function _inventoryHeroStats() {
   let slStats = null, ewSummary = null, rrSummary = null;

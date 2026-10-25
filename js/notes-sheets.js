@@ -57,7 +57,7 @@ import { unmatchedLoad } from './manager/manager-unmatched.js';
 // module (no imports of its own), getFullData() reads its own local
 // cache synchronously (null until Inventory's own page has fetched at
 // least once this browser). ─────────────────────────────────────────
-import { getFullData as _invGetFullData } from './inventory-bridge.js';
+import { getFullData as _invGetFullData } from './inventory/inventory-bridge.js';
 
 /* ══════════════════════════════════════════════════════════════════════
    STYLES

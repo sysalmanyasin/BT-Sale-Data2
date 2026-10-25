@@ -23,7 +23,7 @@ export function fmtMoney(v) { return 'Rs ' + (Number(v) || 0).toLocaleString('en
 
 // ── Pack qty — STR Qty/Dispatch Qty/Receive Qty are synced in loose
 // units; the source system's own conversion_factor ("units per pack",
-// same column excess-working.js/stockledger.js already read off
+// same column excess-working.js/inventory/stockledger.js already read off
 // inventory_products) turns that into whole packs: floor(loose /
 // factor). A code with no reliable factor (missing, zero, non-finite)
 // falls back to 1 — i.e. its "pack qty" is just its loose qty, same

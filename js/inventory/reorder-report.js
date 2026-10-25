@@ -5,7 +5,7 @@
 // value, and tells you how much to buy.
 //
 // Source of the raw rows: Stock Ledger's own loaded inventory
-// (js/stockledger.js exposes it live via window.StockLedgerApp.getRawRows()) —
+// (js/inventory/stockledger.js exposes it live via window.StockLedgerApp.getRawRows()) —
 // same one-load, one-source-of-truth pattern as Excess Working, just
 // reading every row instead of only the pre-filtered excess ones, since
 // "low cover" needs the full item list to judge.
@@ -114,7 +114,7 @@
 // contains whatever's checked in the Columns dropdown at the time.
 // ══════════════════════════════════════════════════════════════════════
 
-import { escapeHtml as esc } from './shared/html.js';
+import { escapeHtml as esc } from '../shared/html.js';
 window.ReorderReportApp = (function () {
   "use strict";
   let initialized = false;

@@ -1085,7 +1085,7 @@ import { escapeHtml as esc } from './shared/html.js';
   // it answers "how much of X did we actually move" rather than just
   // listing raw invoice rows. Uses the same window.XLSX (SheetJS) global
   // already loaded for every other export in this app (see e.g.
-  // js/excess-working.js's exportExcelSheet()).
+  // js/inventory/excess-working.js's exportExcelSheet()).
   async function exportHistoryProductsXLSX() {
     if (!historyResults.length) { say('Search Billing History first — nothing to export.', true); return; }
     if (!window.XLSX) { say('Excel library not loaded', true); return; }

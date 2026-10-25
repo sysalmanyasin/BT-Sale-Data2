@@ -98,11 +98,11 @@ function showPage(id) {
     // so it's safe to call on every visit rather than tracking state here.
     if (id === 'stockledger' && window.StockLedgerApp && typeof window.StockLedgerApp.init === 'function') window.StockLedgerApp.init();
     // Excess Working is downstream of Stock Ledger's own data (see
-    // js/excess-working.js) — same "safe to call every visit" pattern,
+    // js/inventory/excess-working.js) — same "safe to call every visit" pattern,
     // it just re-pulls and re-renders from whatever Stock Ledger currently has.
     if (id === 'excess' && window.ExcessWorkingApp && typeof window.ExcessWorkingApp.init === 'function') window.ExcessWorkingApp.init();
     // Reorder Report is downstream of Stock Ledger's raw inventory rows
-    // (see js/reorder-report.js) — same "safe to call every visit" pattern.
+    // (see js/inventory/reorder-report.js) — same "safe to call every visit" pattern.
     if (id === 'reorder' && window.ReorderReportApp && typeof window.ReorderReportApp.init === 'function') window.ReorderReportApp.init();
     if (id === 'inv-health' && window.InventoryHealthDashboard && typeof window.InventoryHealthDashboard.init === 'function') window.InventoryHealthDashboard.init();
     // BT AI Center — control room over the existing assistant (js/ai-center/*). Safe on every visit.

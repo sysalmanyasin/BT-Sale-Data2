@@ -204,7 +204,7 @@ function _buildPayload() {
     // Staff Card Notes tab (V2 plan §4) — same id-merge convention as
     // the Notes & Sheets `notes` key above.
     staffNotes: JSON.parse(Repository.getItem('bt_staff_notes_v1') || '[]'),
-    // Excess Working's Retain Stock List (js/excess-working.js) — plain
+    // Excess Working's Retain Stock List (js/inventory/excess-working.js) — plain
     // list of SKU names, no per-item id. Was local-only (localStorage/
     // Repository, no Supabase leg) until now, so a name retained on one
     // device silently reverted to "Excess" on every other device on

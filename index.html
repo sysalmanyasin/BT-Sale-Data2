@@ -926,7 +926,7 @@ if ('serviceWorker' in navigator) {
      table (inventory-bridge.js), since that table's schema
      (qty/price/company/supplier) has none of the fields this tool
      needs (lastReceiveDate, lastSaleDate, netQty100Days) to do its
-     never-sold/dead-stock/excess analysis. See js/stockledger.js. -->
+     never-sold/dead-stock/excess analysis. See js/inventory/stockledger.js. -->
 <section class="page stockledger-app app-page" id="page-stockledger">
 <header>
   <p class="eyebrow">Inventory Movement Audit</p>
@@ -1125,10 +1125,10 @@ if ('serviceWorker' in navigator) {
 <!-- EXCESS WORKING — native port of the standalone "Excess Stock Control"
      tool's calculation engine (pack-correction, Retain/Loose/Excess
      classification, misc buffer, corrected excess value). Reads its raw
-     rows straight from Stock Ledger's "100-Day Excess" tab (js/excess-working.js
+     rows straight from Stock Ledger's "100-Day Excess" tab (js/inventory/excess-working.js
      pulls them from window.StockLedgerApp.getExcessRows()) — load your
      inventory file on Stock Ledger first, then this page's numbers follow
-     automatically. See js/excess-working.js. -->
+     automatically. See js/inventory/excess-working.js. -->
 <section class="page excessworking-app app-page" id="page-excess">
 <header>
   <p class="eyebrow">Excess Stock Working</p>
@@ -1157,9 +1157,9 @@ if ('serviceWorker' in navigator) {
      stock cover (stock ÷ daily sale rate) is running under a chosen
      threshold, ranks the shortfall by sale value, and shows how much to
      buy. Reads straight from Stock Ledger's loaded inventory
-     (js/reorder-report.js pulls it from window.StockLedgerApp.getRawRows())
+     (js/inventory/reorder-report.js pulls it from window.StockLedgerApp.getRawRows())
      — load your inventory file on Stock Ledger first, then this page's
-     numbers follow automatically. See js/reorder-report.js. -->
+     numbers follow automatically. See js/inventory/reorder-report.js. -->
 <section class="page reorder-app app-page" id="page-reorder">
 <header>
   <p class="eyebrow">Replenishment</p>
@@ -1188,7 +1188,7 @@ if ('serviceWorker' in navigator) {
      table where any product's status (stock, cover days, 30/60/90d
      velocity, reorder/excess/dead flag, supplier, last received date)
      shows up. Same shared source as Stock Ledger/Excess/Reorder — see
-     js/inventory-health-dashboard.js. -->
+     js/inventory/inventory-health-dashboard.js. -->
 <section class="page ihd-app app-page" id="page-inv-health">
 <header>
   <p class="eyebrow">Inventory</p>
@@ -2680,8 +2680,8 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/ledger-store.js?v=1be8785c"></script>
 <script type="module" src="js/ledger-actions.js?v=e3f43a1e"></script>
 <script type="module" src="js/ledger-page.js?v=c209a565"></script>
-<script type="module" src="js/cover-dashboard.js?v=9ad2c409"></script>
-<script type="module" src="js/herald/herald-engine.js?v=092cabe3"></script>
+<script type="module" src="js/cover-dashboard.js?v=4840977d"></script>
+<script type="module" src="js/herald/herald-engine.js?v=a805c003"></script>
 <script type="module" src="js/herald/herald-page.js?v=0212dd3c"></script>
 <script type="module" src="js/status-bar.js?v=8654ed27"></script>
 <script type="module" src="js/record-day.js?v=241024f4"></script>
@@ -2692,8 +2692,8 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/closing-native.js?v=0f5be453"></script>
 <script type="module" src="js/audit-bridge.js?v=24330eae"></script>
 <script type="module" src="js/audit-native.js?v=4dfd517f"></script>
-<script type="module" src="js/inventory-bridge.js?v=c71d7ecc"></script>
-<script type="module" src="js/inventory-native.js?v=26ab5b94"></script>
+<script type="module" src="js/inventory/inventory-bridge.js?v=a65abaf9"></script>
+<script type="module" src="js/inventory/inventory-native.js?v=384da849"></script>
 <!-- Emergency Billing: bridge (reads inventory-bridge's cache, writes to
      its own emergency_* tables) + native UI (Phase 3 — cart/checkout/
      hold/F9-edit/receipt, ported from POS's billing.js; see
@@ -2701,17 +2701,17 @@ if ('serviceWorker' in navigator) {
      signal card are a later phase — open directly via #emergency-billing
      for now. -->
 <script type="module" src="js/emergency-billing-bridge.js?v=a809d82b"></script>
-<script type="module" src="js/emergency-billing-native.js?v=e9a7eb6f"></script>
+<script type="module" src="js/emergency-billing-native.js?v=fc23947a"></script>
 <script type="module" src="js/str/str-bridge.js?v=ea392301"></script>
 <script type="module" src="js/str/str-native.js?v=69dc163b"></script>
 <script type="module" src="js/str/str-report-native.js?v=5ccf75c3"></script>
 <script type="module" src="js/str/str-zero-dispatch.js?v=d2a6ae47"></script>
 <script type="module" src="js/sale-payments-bridge.js?v=a8dd0fb5"></script>
 <script type="module" src="js/sale-payments-native.js?v=2b08dd91"></script>
-<script type="module" src="js/stockledger.js?v=9976388a"></script>
-<script type="module" src="js/excess-working.js?v=3bc5505f"></script>
-<script type="module" src="js/reorder-report.js?v=9354651a"></script>
-<script type="module" src="js/inventory-health-dashboard.js?v=5359de54"></script>
+<script type="module" src="js/inventory/stockledger.js?v=86e0f406"></script>
+<script type="module" src="js/inventory/excess-working.js?v=1ce4e6f3"></script>
+<script type="module" src="js/inventory/reorder-report.js?v=1c5f7f79"></script>
+<script type="module" src="js/inventory/inventory-health-dashboard.js?v=1badcdd8"></script>
 
 <!-- 3. Auth: Google Sign-In -->
 <script type="module" src="js/auth.js?v=2c2fbf6c"></script>
@@ -2720,7 +2720,7 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/storage.js?v=fba4d2c2"></script>
 
 <!-- 5. UI: showPage, toast, clock, rebuild, dropdowns -->
-<script type="module" src="js/ui.js?v=bf371f84"></script>
+<script type="module" src="js/ui.js?v=f373e674"></script>
 
 <!-- 6b. Sync center (needs EventBus). Supabase client lib itself now
      loads much earlier above — see comment there. -->
@@ -2730,7 +2730,7 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/conflict-ui.js?v=620aa04a"></script>
 
 <!-- 6d. Supabase sync (Floor 1 extension — needs Repository + Actions) -->
-<script type="module" src="js/supabase.js?v=447a2cee"></script>
+<script type="module" src="js/supabase.js?v=82d67259"></script>
 <script type="module" src="js/pdf-library.js?v=0a8f4a39"></script>
 <script type="module" src="js/mail-briefing.js?v=44ffc9aa"></script>
 <script type="module" src="js/cover-mail-strip.js?v=7faf246c"></script>
@@ -2786,7 +2786,7 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/sheets-app.js?v=0301fd6e"></script>
 
 <!-- 11e. Notes & Sheets workspace (Phase 6) -->
-<script type="module" src="js/notes-sheets.js?v=1f815f96"></script>
+<script type="module" src="js/notes-sheets.js?v=0c9c35a3"></script>
 
 <!-- 11e-patch. Sheets enhancements: copy/paste, File menu, Supabase sync -->
 <script type="module" src="js/sheets-patch.js?v=8109bf83"></script>
@@ -2813,7 +2813,7 @@ if ('serviceWorker' in navigator) {
      etc.) available on window before it can safely run, and everything
      below (rebuildAll, showPage, renderEntryList, etc.) too — same
      reasoning as boot-guard.js placement. -->
-<script type="module" src="js/app-init.js?v=ac8e9cd4"></script>
+<script type="module" src="js/app-init.js?v=5be97bb5"></script>
 <!-- manager-page.js: tab switching + page-load orchestration. Real ES
      module (jazz-cash.js/notes-sheets.js's old monkey-patches of its
      functions were removed in v10.9 — it calls renderJazzCash()/

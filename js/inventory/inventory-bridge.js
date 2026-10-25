@@ -23,7 +23,7 @@
 // Same Supabase project as audit-bridge.js — inventory_products and
 // audit engagements/rounds/etc all live in the one Pharmacy Audit Hub
 // project, just different tables.
-import { AUDIT_HUB_URL, AUDIT_HUB_PUBLISHABLE_KEY } from './shared/backend-config.js';
+import { AUDIT_HUB_URL, AUDIT_HUB_PUBLISHABLE_KEY } from '../shared/backend-config.js';
 const INV_SUPABASE_URL = AUDIT_HUB_URL;
 const INV_SUPABASE_ANON_KEY = AUDIT_HUB_PUBLISHABLE_KEY;
 const FULLDATA_CACHE_KEY = 'bt_inventory_fulldata_v1';

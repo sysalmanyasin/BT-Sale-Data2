@@ -226,7 +226,7 @@ export function categorySpikes(cur, prev, { ratio = 1.5, minDelta = 5000, fullMo
 
 /**
  * Packs on their way to Bahria Town per product code: inbound STRs that are dispatched but not yet received.
- * Same rule as the Reorder Report's In Transit column (js/reorder-report.js buildInTransitMap).
+ * Same rule as the Reorder Report's In Transit column (js/inventory/reorder-report.js buildInTransitMap).
  */
 export function inTransitByCode(data) {
   const map = {};

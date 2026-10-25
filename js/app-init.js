@@ -56,7 +56,7 @@ function initApp() {
   // Stock Ledger (Audit domain: BT Inventory / Stock Ledger / Excess Working /
   // Reorder Report) used to only pull its inventory data the first time its
   // own tab was opened. Now that its Supabase source is baked-in (see
-  // js/stockledger.js's STOCKLEDGER_SUPABASE_URL/ANON_KEY), start that pull
+  // js/inventory/stockledger.js's STOCKLEDGER_SUPABASE_URL/ANON_KEY), start that pull
   // here at real boot instead, same "auto, no clicks needed" treatment
   // AuditBridge/ClosingBridge/InventoryBridge already get via Cover
   // Dashboard's renderCoverDashboard(). init() is idempotent (see its own

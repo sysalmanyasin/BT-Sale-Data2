@@ -7,7 +7,7 @@
 // stockledger.js's normalizeSupabaseRow()). Nothing here re-fetches from
 // Supabase or re-derives field meaning — it calls
 // window.StockLedgerApp.init() (safe/idempotent, same "call on every
-// visit" pattern as excess-working.js/reorder-report.js) to make sure a
+// visit" pattern as excess-working.js/inventory/reorder-report.js) to make sure a
 // load has been kicked off, then polls briefly for hasData() before
 // rendering. This page is a pure read/aggregate layer: one row's worth
 // of health classification + reorder/velocity math, a handful of
@@ -21,8 +21,8 @@
 // best-effort trend logs elsewhere in this app.
 // ══════════════════════════════════════════════════════════════════════
 
-import { chartTheme, applyChartDefaults } from './shared/chart-theme.js';
-import { escapeHtml as esc } from './shared/html.js';
+import { chartTheme, applyChartDefaults } from '../shared/chart-theme.js';
+import { escapeHtml as esc } from '../shared/html.js';
 
 window.InventoryHealthDashboard = (function () {
   "use strict";

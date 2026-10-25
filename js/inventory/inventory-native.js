@@ -14,7 +14,7 @@
 // ══════════════════════════════════════════════════════════════════════
 
 import * as InventoryBridge from './inventory-bridge.js';
-import { escapeHtml as esc } from './shared/html.js';
+import { escapeHtml as esc } from '../shared/html.js';
 
 const PAGE_SIZE = 100;
 

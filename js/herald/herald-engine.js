@@ -36,7 +36,7 @@ import { Actions } from '../actions.js';
 import { computeInventoryBuckets } from '../shared/summary-calc.js';
 import * as ClosingBridge from '../closing-bridge.js';
 import * as AuditBridge from '../audit-bridge.js';
-import * as InventoryBridge from '../inventory-bridge.js';
+import * as InventoryBridge from '../inventory/inventory-bridge.js';
 import { aimRulesCheckAll } from '../rules-engine.js';
 import { mgrMonths } from '../manager/manager-shared.js';
 import { _crdData, _crdNet } from '../manager/manager-credit.js';
