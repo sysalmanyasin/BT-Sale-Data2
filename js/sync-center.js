@@ -1,5 +1,6 @@
 import { Repository } from './repository.js';
 import { Actions } from './actions.js';
+import { act, registerActions } from './shared/dom-actions.js';
 
 // ══════════════════════════════════════════════════════════════════════════
 // SYNC CENTER  v1.1  (audited & fixed)
@@ -296,7 +297,7 @@ function _sc_showInactivityWarning(graceSec) {
   ].join(';');
   banner.innerHTML = `
     <span style="flex:1">⚠ Inactive — losing write access in <strong><span id="sc-warn-countdown">${graceSec}</span>s</strong></span>
-    <button onclick="scStayActive()" style="background:#000;color:#fff;border:none;border-radius:8px;padding:5px 12px;cursor:pointer;font-size:11px;font-weight:800">Stay Active</button>
+    <button${act('click', 'scStayActive')} style="background:#000;color:#fff;border:none;border-radius:8px;padding:5px 12px;cursor:pointer;font-size:11px;font-weight:800">Stay Active</button>
   `;
   document.body.appendChild(banner);
 
@@ -780,10 +781,10 @@ function _sc_renderHealth() {
     row('✏', 'Write Access',       _sc_status === STATUS_ACTIVE, _sc_status),
   ].join('') + `
     <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn btn-s" onclick="scForceSync()" style="font-size:11px">🔄 Force Sync</button>
-      <button class="btn btn-s" onclick="scPullNow()" style="font-size:11px;background:var(--s3);border:1px solid var(--border)">⬇ Pull Now</button>
-      <button class="btn" onclick="scClearOfflineQueue()" style="font-size:11px;background:var(--s3);border:1px solid var(--border)">🗑 Clear Queue</button>
-      <button class="btn" onclick="scConflictRecovery()" style="font-size:11px;background:var(--red);color:#fff">🔧 Conflict Recovery</button>
+      <button class="btn btn-s"${act('click', 'scForceSync')} style="font-size:11px">🔄 Force Sync</button>
+      <button class="btn btn-s"${act('click', 'scPullNow')} style="font-size:11px;background:var(--s3);border:1px solid var(--border)">⬇ Pull Now</button>
+      <button class="btn"${act('click', 'scClearOfflineQueue')} style="font-size:11px;background:var(--s3);border:1px solid var(--border)">🗑 Clear Queue</button>
+      <button class="btn"${act('click', 'scConflictRecovery')} style="font-size:11px;background:var(--red);color:#fff">🔧 Conflict Recovery</button>
     </div>${pending ? `
     <div style="margin-top:8px;padding:8px 10px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:8px;font-size:11px;color:var(--amber,#f59e0b)">
       ⚠ Offline changes are queued. ${_sc_status === STATUS_ACTIVE
@@ -823,12 +824,12 @@ function _sc_renderControls() {
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button id="sc-take-ctrl-btn" class="btn btn-p"
-          onclick="scTakeControl()"
+         ${act('click', 'scTakeControl')}
           ${isActive ? 'disabled' : ''}
           style="opacity:${isActive ? '.4' : '1'};font-weight:700">
           ⚔ Take Control
         </button>
-        <button class="btn" onclick="_sc_becomePassive('Manual release')"
+        <button class="btn"${act('click', '_sc_becomePassive', 'Manual release')}
           ${!isActive ? 'disabled' : ''}
           style="background:var(--s3);border:1px solid var(--border);opacity:${isActive ? '1' : '.4'}">
           🔒 Release Control
@@ -852,7 +853,7 @@ function _sc_renderControls() {
           </select>
         </div>
         <button id="sc-lock-btn" class="btn"
-          onclick="scTogglePriorityLock()"
+         ${act('click', 'scTogglePriorityLock')}
           style="background:${lockBg};color:#fff;font-weight:700">
           ${lockLabel}
         </button>
@@ -894,7 +895,7 @@ function _sc_renderSettings() {
           <option value="180" ${currentTimeout===180 ?'selected':''}>3 minutes</option>
           <option value="300" ${currentTimeout===300 ?'selected':''}>5 minutes</option>
         </select>
-        <button class="btn btn-g" onclick="scSaveTimeout()" style="font-size:12px">Save Timeout</button>
+        <button class="btn btn-g"${act('click', 'scSaveTimeout')} style="font-size:12px">Save Timeout</button>
       </div>
     </div>
 
@@ -926,10 +927,10 @@ function _sc_renderSettings() {
 ALTER TABLE bt_sessions DISABLE ROW LEVEL SECURITY;
 ALTER PUBLICATION supabase_realtime ADD TABLE bt_sessions;</pre>
       <button class="btn btn-s" style="margin-top:10px;font-size:11px"
-        onclick="navigator.clipboard.writeText(document.querySelector('#sc-settings-panel pre').textContent).then(()=>toast('✓ SQL copied'))">
+${act('click', 'scCopySettingsSql')}>
         📋 Copy SQL
       </button>
-      <button class="btn" onclick="scCheckTable()" style="margin-top:10px;font-size:11px;background:var(--s3);border:1px solid var(--border);margin-left:8px">
+      <button class="btn"${act('click', 'scCheckTable')} style="margin-top:10px;font-size:11px;background:var(--s3);border:1px solid var(--border);margin-left:8px">
         🔍 Check Table
       </button>
       <div id="sc-table-check-result" style="font-size:11px;margin-top:8px;color:var(--muted)"></div>
@@ -1133,6 +1134,11 @@ const SyncCenter = Object.freeze({
   updateSyncCenterStatusBar, navTakeControl
 });
 Object.assign(window, SyncCenter);
+registerActions({
+  scCopySettingsSql() {
+    navigator.clipboard.writeText(document.querySelector('#sc-settings-panel pre').textContent).then(() => window.toast('\u2713 SQL copied'));
+  },
+});
 
 export {
   initSyncCenter, scCanWrite, scStayActive, scTakeControl, scForceSync,

@@ -17,6 +17,7 @@
 // paginated Letter-size document like every other report in this app.
 // ══════════════════════════════════════════════════════════════════════
 
+import { act, arg } from '../shared/dom-actions.js';
 (function () {
   'use strict';
 
@@ -75,7 +76,7 @@
     const rows = _cdrFiltered();
     tbody.innerHTML = rows.map(r => `
       <tr class="${_cdrSelected.has(r.Date) ? 'cdr-row-sel' : ''}">
-        <td><input type="checkbox" ${_cdrSelected.has(r.Date) ? 'checked' : ''} onchange="cdrToggleRow('${r.Date}',this.checked)" style="width:16px;height:16px;accent-color:var(--accent)"></td>
+        <td><input type="checkbox" ${_cdrSelected.has(r.Date) ? 'checked' : ''}${act('change', 'cdrToggleRow', String(r.Date), arg.checked)} style="width:16px;height:16px;accent-color:var(--accent)"></td>
         <td style="text-align:left">${r.Date}</td>
         <td style="text-align:left;color:var(--muted);font-size:11px">${r.Month_Year}</td>
         <td style="font-family:var(--mono)">${fv(r.cashSale)}</td>

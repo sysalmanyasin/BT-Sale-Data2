@@ -12,8 +12,8 @@ Baseline audit: 71/100. Each phase is independently shippable and must keep `npm
 
 Scale rules for new modules: new feature = new folder under its domain; no new `window.*` globals; no URLs/keys outside `backend-config.js`; data writes via Action -> Repository -> EventBus.
 
-## Phase 4 progress: inline handlers
-- `js/shared/dom-actions.js` is the delegated dispatcher (`data-on-click="action" data-args='[...]'`, with `data-self-only`, `data-key`, `data-confirm`, `data-stop`). Legacy `window.*` names keep working through it; new code uses `registerActions()` / `act()`.
-- **index.html: 267 -> 0 inline handlers** (round-trip verified against git: 265/265 identical calls; 2 focus/blur rings became CSS).
-- JS-generated templates: 221 left, enforced as a ratchet in `tests/static/no-inline-handlers.test.js`. Convert one domain at a time (`sales/`, `manager/`, `sheets/` are the largest), lowering the baseline each time.
-- When both are at 0, ship a strict CSP (no `'unsafe-inline'` scripts) and start removing `window.*` bridges module by module.
+## Phase 4 progress: inline handlers — DONE (0 left)
+- `js/shared/dom-actions.js` is the delegated dispatcher (`data-on-click="action" data-args='[...]'`, plus `data-self-only`, `data-key`, `data-confirm`, `data-stop`, `data-then` for `a(); b()` chains). Legacy `window.*` names still resolve through it; new code uses `registerActions()` and builds attributes with `act()` (values are JSON + HTML escaped).
+- **index.html: 267 -> 0** and **js/ templates: 221 -> 0** inline handlers. `tests/static/no-inline-handlers.test.js` enforces zero in both, that every action name resolves to a real function, and that files importing/using the helpers do so correctly.
+- Classic (non-module) scripts (`drive.js`, `sales/dashboard-heatmap.js`) cannot `import`; they use `window.BTDomActions`.
+- Next: ship a strict CSP (drop `'unsafe-inline'` for scripts; the 3 inline `<script>` blocks in index.html need moving or hashing first), then retire `window.*` bridges module by module (actions registered via `registerActions()` instead).

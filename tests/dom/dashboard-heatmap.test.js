@@ -5,7 +5,7 @@
 // the real classic script into a jsdom window via loadClassicScript
 // (same helper tests/dom/navigation.test.js uses for ui.js), then
 // exercises the actual render: year auto-select, quartile shading
-// (via the click-to-drill onclick it attaches per filled day), the
+// (via the click-to-drill data-on-click it attaches per filled day), the
 // year-chip toggle, and both "no data" guards.
 // ══════════════════════════════════════════════════════════════════════
 import { test, describe, beforeEach } from 'node:test';
@@ -23,6 +23,8 @@ const { DAILY } = await import('../../js/config.js');
 // import/export) — load it the same way navigation.test.js loads ui.js,
 // into the SAME window config.js's own module-footer already bridged
 // DAILY/n/ff/fc onto.
+// Production loads shared/dom-actions.js first; it publishes window.BTDomActions for classic scripts.
+await import('../../js/shared/dom-actions.js');
 loadClassicScript('js/sales/dashboard-heatmap.js', window);
 
 function seedDaily(records) {
@@ -70,7 +72,7 @@ describe('buildSalesHeatmap (smoke)', () => {
     const html = window.document.getElementById('dash-heatmap').innerHTML;
 
     assert.match(html, /Sales Calendar — 2026/, 'should auto-select 2026, the latest year with a real sale day');
-    const drillCalls = html.match(/onclick="openDayModal\(/g) || [];
+    const drillCalls = html.match(/data-on-click="openDayModal"/g) || [];
     assert.equal(drillCalls.length, 2, 'exactly the two >0-total 2026 days should be clickable (the 0-total day should not be)');
     assert.match(html, /10 March 2026/, 'a real sale day\'s tooltip should show its full human-readable date');
     assert.match(html, /₨55,000/, 'the year total in the footer line should sum only that year\'s days');
@@ -87,7 +89,7 @@ describe('buildSalesHeatmap (smoke)', () => {
     window._dashSetHeatmapYear(2025);
     const html = window.document.getElementById('dash-heatmap').innerHTML;
     assert.match(html, /Sales Calendar — 2025/);
-    assert.equal((html.match(/onclick="openDayModal\(/g) || []).length, 1, 'only 2025\'s one sale day should be clickable after switching years');
+    assert.equal((html.match(/data-on-click="openDayModal"/g) || []).length, 1, 'only 2025\'s one sale day should be clickable after switching years');
   });
 
   test('a leap-year February 29th sale day renders without error', () => {

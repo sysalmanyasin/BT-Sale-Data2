@@ -2,6 +2,7 @@ import { MONTHLY, n, ff, pct } from '../config.js';
 import { Analytics } from './analytics.js';
 import { Repository } from '../repository.js';
 import { Actions } from '../actions.js';
+import { act } from '../shared/dom-actions.js';
 
 /**
  * ╔══════════════════════════════════════════════════════════════════════╗
@@ -235,7 +236,7 @@ function _dbiBuildBriefing() {
 
   return `
     <div class="dbi-briefing-card" id="dbi-briefing-card">
-      <button class="dbi-briefing-dismiss" onclick="_dbiDismissBriefing()" title="Dismiss for today">✕</button>
+      <button class="dbi-briefing-dismiss"${act('click', '_dbiDismissBriefing')} title="Dismiss for today">✕</button>
       <div class="dbi-briefing-label">☀️ Daily Briefing</div>
       <div class="dbi-briefing-text">${briefText}</div>
     </div>`;
@@ -401,7 +402,7 @@ function _dbiBuildInsightStrip() {
   const ins = insights[_dbiInsightIdx];
 
   const dots = insights.map((_, i) =>
-    `<div class="dbi-dot${i === _dbiInsightIdx ? ' active' : ''}" onclick="_dbiGoInsight(${i})" title="Insight ${i+1}"></div>`
+    `<div class="dbi-dot${i === _dbiInsightIdx ? ' active' : ''}"${act('click', '_dbiGoInsight', i)} title="Insight ${i+1}"></div>`
   ).join('');
 
   return `
@@ -410,7 +411,7 @@ function _dbiBuildInsightStrip() {
       <div class="dbi-insight-body">
         <div class="dbi-insight-title">💡 ${ins.title}</div>
         <div class="dbi-insight-text" id="dbi-insight-text">${ins.text}</div>
-        ${ins.cta ? `<button class="dbi-insight-cta" onclick="${ins.cta.fn}">${ins.cta.label} →</button>` : ''}
+        ${ins.cta ? `<button class="dbi-insight-cta"${act('click', ins.cta.action, ...(ins.cta.args || []))}>${ins.cta.label} →</button>` : ''}
         <div class="dbi-insight-dots" id="dbi-insight-dots">${dots}</div>
       </div>
     </div>`;
@@ -428,7 +429,7 @@ function _dbiGoInsight(idx) {
   if (textEl) { textEl.style.opacity = '0'; setTimeout(() => { textEl.innerHTML = ins.text; textEl.style.opacity = '1'; }, 150); }
   if (iconEl) iconEl.textContent = ins.icon;
   if (dotsEl) dotsEl.innerHTML = insights.map((_,i) =>
-    `<div class="dbi-dot${i===_dbiInsightIdx?' active':''}" onclick="_dbiGoInsight(${i})"></div>`
+    `<div class="dbi-dot${i===_dbiInsightIdx?' active':''}"${act('click', '_dbiGoInsight', i)}></div>`
   ).join('');
   if (textEl) textEl.style.transition = 'opacity .15s ease';
 }

@@ -21,6 +21,7 @@ import { STAFF } from '../config.js';
 import { _ni, _fc2, _mgrEsc, mgrLoad, mgrSave, mgrAutosave, reconcileStaffRows, _salExtrasNet, activeStaff, mgrOn } from './manager-shared.js';
 import { _crdData, _crdData_cur } from './manager-credit.js';
 import { _genRows, _genRows_cur, _genFinal } from './manager-generic.js';
+import { act, arg, registerActions } from '../shared/dom-actions.js';
 
 function _salRows(my) {
   const data = mgrLoad();
@@ -84,7 +85,7 @@ function renderSalaryTable(rows) {
     const _sDesig = _sEmp ? _sEmp.designation : r.desig;
     const _sNameCell = '<div style="display:flex;align-items:center;gap:5px">'
       + (_sSid
-          ? '<button onclick="openStaffCard('+_sIdx+')" title="Open '+_mgrEsc(_sName||'Staff')+' Card"'
+          ? '<button'+act('click','openStaffCard',_sIdx)+' title="Open '+_mgrEsc(_sName||'Staff')+' Card"'
             + ' style="background:var(--accent);color:#fff;border:none;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:11px;font-weight:700;font-family:monospace;flex-shrink:0">'+_sSid+'</button>'
           : '')
       + '<span style="font-weight:600">'+(_mgrEsc(_sName) || '<em style="color:var(--muted)">(unnamed)</em>')+'</span></div>';
@@ -98,14 +99,14 @@ function renderSalaryTable(rows) {
       <td class="mgr-td sal-c" style="font-size:11px;color:var(--muted);font-weight:700">${_sSrNum}</td>
       <td class="mgr-td">${_sNameCell}${skipped ? '<span class="crd-skip-badge" title="Excluded from print">Hidden from print</span>' : ''}</td>
       <td class="mgr-td" style="color:var(--t2)">${_mgrEsc(_sDesig) || '<span style="color:var(--muted)">—</span>'}</td>
-      <td class="mgr-td sal-c" style="width:88px"><input type="number" value="${r.days ?? 31}" class="mgr-inp sal-num" placeholder="31" oninput="salRowChange(${i},'days',this.value)"></td>
-      <td class="mgr-td"><input type="number" value="${r.hoSal||0}" class="mgr-inp sal-num" placeholder="0" oninput="salRowChange(${i},'hoSal',this.value);recalcSalNet(${i})"></td>
-      <td class="mgr-td" ${_advTitle ? 'title="'+_advTitle+'" style="position:relative"' : ''}><input type="number" value="${r.advance||0}" class="mgr-inp sal-num${_advTitle?' sal-adv-linked':''}" placeholder="0" oninput="salRowChange(${i},'advance',this.value);recalcSalNet(${i})">${_advTitle ? '<span style="position:absolute;top:2px;right:3px;font-size:11px;color:var(--accent);pointer-events:none" title="'+_advTitle+'">💳</span>' : ''}</td>
-      <td class="mgr-td"><input type="number" value="${r.generic||0}" class="mgr-inp sal-num" placeholder="0" oninput="salRowChange(${i},'generic',this.value);recalcSalNet(${i})"></td>
-      ${_cols.map(c => `<td class="mgr-td"><input type="number" value="${_ni(r.extras.find(e => e.id === c.id)?.amount) || 0}" class="mgr-inp sal-num" placeholder="0" oninput="salExtraChange(${i},'${c.id}',this.value);recalcSalNet(${i})"></td>`).join('')}
+      <td class="mgr-td sal-c" style="width:88px"><input type="number" value="${r.days ?? 31}" class="mgr-inp sal-num" placeholder="31"${act('input', 'salRowChange', i, 'days', arg.value)}></td>
+      <td class="mgr-td"><input type="number" value="${r.hoSal||0}" class="mgr-inp sal-num" placeholder="0"${act('input', { then: [['recalcSalNet', i]] }, 'salRowChange', i, 'hoSal', arg.value)}></td>
+      <td class="mgr-td" ${_advTitle ? 'title="'+_advTitle+'" style="position:relative"' : ''}><input type="number" value="${r.advance||0}" class="mgr-inp sal-num${_advTitle?' sal-adv-linked':''}" placeholder="0"${act('input', { then: [['recalcSalNet', i]] }, 'salRowChange', i, 'advance', arg.value)}>${_advTitle ? '<span style="position:absolute;top:2px;right:3px;font-size:11px;color:var(--accent);pointer-events:none" title="'+_advTitle+'">💳</span>' : ''}</td>
+      <td class="mgr-td"><input type="number" value="${r.generic||0}" class="mgr-inp sal-num" placeholder="0"${act('input', { then: [['recalcSalNet', i]] }, 'salRowChange', i, 'generic', arg.value)}></td>
+      ${_cols.map(c => `<td class="mgr-td"><input type="number" value="${_ni(r.extras.find(e => e.id === c.id)?.amount) || 0}" class="mgr-inp sal-num" placeholder="0"${act('input', { then: [['recalcSalNet', i]] }, 'salExtraChange', i, String(c.id), arg.value)}></td>`).join('')}
       <td class="mgr-td"><input type="number" id="sal-net-${i}" class="mgr-inp calc sal-num" value="${_salNet(r)}" readonly></td>
-      <td class="mgr-td sal-c"><button class="crd-print-toggle${skipped ? ' is-off' : ''}" onclick="toggleSalPrintSkip(${i})" title="${skipped ? 'Excluded from print — click to include' : 'Included in print — click to exclude'}">${skipped ? '🖨🚫' : '🖨'}</button></td>
-      <td class="mgr-td sal-c"><button class="mgr-del" onclick="deleteSalRow(${i})">🗑</button></td>
+      <td class="mgr-td sal-c"><button class="crd-print-toggle${skipped ? ' is-off' : ''}"${act('click', 'toggleSalPrintSkip', i)} title="${skipped ? 'Excluded from print — click to include' : 'Included in print — click to exclude'}">${skipped ? '🖨🚫' : '🖨'}</button></td>
+      <td class="mgr-td sal-c"><button class="mgr-del"${act('click', 'deleteSalRow', i)}>🗑</button></td>
     </tr>`;
   }).join('');
   _salUpdateFooter(rows);
@@ -123,10 +124,10 @@ function _salRenderHeader(cols) {
     th.className = 'sal-extra-th';
     th.setAttribute('style', base);
     th.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;gap:4px">'
-      + '<span style="cursor:pointer" title="Rename column" onclick="salRenameColumn(\'' + c.id + '\')">' + _mgrEsc(c.name) + '</span>'
-      + '<button title="' + (c.sign === '-' ? 'Subtracts from Net — click to make it Add' : 'Adds to Net — click to make it Subtract') + '" onclick="salToggleColSign(\'' + c.id + '\')"'
+      + '<span style="cursor:pointer" title="Rename column"' + act('click', 'salRenameColumn', c.id) + '>' + _mgrEsc(c.name) + '</span>'
+      + '<button title="' + (c.sign === '-' ? 'Subtracts from Net — click to make it Add' : 'Adds to Net — click to make it Subtract') + '"' + act('click', 'salToggleColSign', c.id) + ''
       + ' style="border:none;border-radius:4px;padding:0 6px;font-weight:800;font-size:12px;cursor:pointer;color:#fff;background:' + (c.sign === '-' ? '#dc2626' : '#16a34a') + '">' + (c.sign === '-' ? '−' : '+') + '</button>'
-      + '<button title="Remove column" onclick="salRemoveColumn(\'' + c.id + '\')" style="border:none;background:none;cursor:pointer;color:var(--muted);font-size:11px">✕</button></div>';
+      + '<button title="Remove column"' + act('click', 'salRemoveColumn', c.id) + ' style="border:none;background:none;cursor:pointer;color:var(--muted);font-size:11px">✕</button></div>';
     tr.insertBefore(th, net);
   });
 }
@@ -234,6 +235,9 @@ function recalcSalNet(i) {
   if (el) el.value = _salNet(_salRows_cur[i]);
   _salUpdateFooter(_salRows_cur);
 }
+// Reachable from the inline-handler replacement (data-then). It was never exposed on window before,
+// so the live net-total refresh on typing silently threw a ReferenceError.
+registerActions({ recalcSalNet });
 function _salUpdateFooter(rows) {
   const totalHO = rows.reduce((s,r) => s + _ni(r.hoSal), 0);
   const totalAdv = rows.reduce((s,r) => s + _ni(r.advance), 0);

@@ -49,6 +49,7 @@
 // ══════════════════════════════════════════════════════════════════════
 
 import { escapeHtml as _esc } from './shared/html.js';
+import { act, arg, registerActions } from './shared/dom-actions.js';
 (function () {
   'use strict';
 
@@ -396,13 +397,11 @@ import { escapeHtml as _esc } from './shared/html.js';
     const labelSpan = depth === 0
       ? `<span class="recents-label">${_esc(node.label)}</span>`
       : `<span class="sections-sub-label">${_esc(node.label)}</span>`;
-    const hitClick = isGroup
-      ? `BTNavSections._tap(this);`
+    const hitAttrs = isGroup
+      ? act('click', 'BTNavSections._tap', arg.self)
       : node.href
-      ? (node.external
-          ? `window.open('${_esc(node.href)}','_blank');closeSectionsDrawer();`
-          : `location.hash='${_esc(node.href)}';closeSectionsDrawer();`)
-      : `BTNavSections._toggle(this);`;
+      ? act('click', node.external ? 'navSectionsOpenExternal' : 'navSectionsGoHash', node.href)
+      : act('click', 'BTNavSections._toggle', arg.self);
     const svg = node.svgKey && window.BT_ICONS && window.BT_ICONS[node.svgKey];
     const iconSpan = svg
       ? `<span class="recents-icon${depth > 0 ? ' recents-icon-sub' : ''} recents-icon-svg">${svg}</span>`
@@ -410,11 +409,11 @@ import { escapeHtml as _esc } from './shared/html.js';
     return `
       <div class="sections-group" data-label="${_esc(node.label)}" data-domain="${_esc(node._domainGroup || '')}">
         <div class="sections-row ${rowClass}" style="padding-left:${_indent(depth)}px">
-          <span class="sections-nav-hit" onclick="${hitClick}">
+          <span class="sections-nav-hit"${hitAttrs}>
             ${iconSpan}
             ${labelSpan}
           </span>
-          ${isGroup ? `<button type="button" class="sections-toggle" aria-label="Expand ${_esc(node.label)}" onclick="event.stopPropagation();BTNavSections._tap(this);">▸</button>` : ''}
+          ${isGroup ? `<button type="button" class="sections-toggle" aria-label="Expand ${_esc(node.label)}"${act('click', { stop: true }, 'BTNavSections._tap', arg.self)}>▸</button>` : ''}
         </div>
         ${isGroup ? `<div class="sections-subs">${kids.map(k => _renderNode(k, depth + 1)).join('')}</div>` : ''}
       </div>`;
@@ -485,6 +484,10 @@ import { escapeHtml as _esc } from './shared/html.js';
 
   window.openSectionsDrawer = openSectionsDrawer;
   window.closeSectionsDrawer = closeSectionsDrawer;
+  registerActions({
+    navSectionsOpenExternal(href) { window.open(href, '_blank'); closeSectionsDrawer(); },
+    navSectionsGoHash(href) { location.hash = href; closeSectionsDrawer(); },
+  });
   // getTree: exposed so js/subtab-strip.js can render the same
   // domain->kids tree into its sub-tab strip, instead of re-deriving
   // (and risking drift from) its own copy of this mapping. Returns a

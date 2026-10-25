@@ -9,6 +9,7 @@ import { Repository } from '../repository.js';
 import { Actions } from '../actions.js';
 import { _ni, _fc2, mgrAutosave } from './manager-shared.js';
 import { _mgrPrint } from './manager-reports.js';
+import { act, arg } from '../shared/dom-actions.js';
 
 const PETTY_PFX = 'mw_petty_';
 let _pettyData = { groups: [] };  // current working copy
@@ -126,19 +127,19 @@ function renderPettyGroups() {
       <tr class="mgr-tr">
         <td class="mgr-td" style="color:var(--muted);font-size:11px">${ri + 1}</td>
         <td class="mgr-td"><input class="mgr-inp" type="text" value="${(r.desc||'').replace(/"/g,'&quot;')}" placeholder="Description / item"
-          oninput="pettyRowChange(${gi},${ri},'desc',this.value)"></td>
+         ${act('input', 'pettyRowChange', gi, ri, 'desc', arg.value)}></td>
         <td class="mgr-td" style="width:130px"><input class="mgr-inp" type="number" value="${r.amount||''}" placeholder="0"
-          oninput="pettyRowChange(${gi},${ri},'amount',this.value)" style="text-align:right"></td>
-        <td class="mgr-td" style="text-align:center"><button class="mgr-del" onclick="deletePettyRow(${gi},${ri})">🗑</button></td>
+         ${act('input', 'pettyRowChange', gi, ri, 'amount', arg.value)} style="text-align:right"></td>
+        <td class="mgr-td" style="text-align:center"><button class="mgr-del"${act('click', 'deletePettyRow', gi, ri)}>🗑</button></td>
       </tr>`).join('');
     return `
     <div class="petty-group" id="petty-grp-${gi}">
       <div class="petty-group-hd">
         <span style="font-size:11px;font-weight:700;color:var(--accent);letter-spacing:.05em">GROUP ${gi + 1}</span>
         <input class="mgr-inp" type="text" value="${(g.period||'').replace(/"/g,'&quot;')}" placeholder="Period / Date range (e.g. 1–7 June 2026)"
-          oninput="pettyRowChange_period(${gi},this.value)"
+         ${act('input', 'pettyRowChange_period', gi, arg.value)}
           style="flex:1;max-width:320px">
-        <button class="mgr-del" onclick="deletePettyGroup(${gi})" title="Delete group" style="margin-left:auto">🗑 Group</button>
+        <button class="mgr-del"${act('click', 'deletePettyGroup', gi)} title="Delete group" style="margin-left:auto">🗑 Group</button>
       </div>
       <div class="petty-group-body">
         <table style="width:100%;border-collapse:collapse;font-size:12px">
@@ -152,8 +153,8 @@ function renderPettyGroups() {
         </table>
       </div>
       <div class="petty-group-foot">
-        <button class="btn btn-p" style="font-size:11px;padding:5px 12px" onclick="addPettyRow(${gi})">＋ Add Item</button>
-        <button class="btn" style="font-size:11px;padding:5px 12px;background:var(--accent);color:#fff" onclick="printPettyGroup(${gi})">🖨 Print Group</button>
+        <button class="btn btn-p" style="font-size:11px;padding:5px 12px"${act('click', 'addPettyRow', gi)}>＋ Add Item</button>
+        <button class="btn" style="font-size:11px;padding:5px 12px;background:var(--accent);color:#fff"${act('click', 'printPettyGroup', gi)}>🖨 Print Group</button>
         <div style="font-family:var(--mono);font-weight:700;font-size:13px">
           Total: <span id="petty-sub-${gi}" style="color:var(--accent)">₨${_fc2(sub)}</span>
         </div>

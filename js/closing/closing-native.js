@@ -40,6 +40,7 @@ import * as ClosingBridge from './closing-bridge.js';
 import { openLedgerQuickAdd } from '../ledger/ledger-quick-add.js';
 import { fetchMarks, getMark } from './closing-ledger-marks.js';
 import { escapeHtml as esc } from '../shared/html.js';
+import { act, arg } from '../shared/dom-actions.js';
 
 function n(v) { return parseFloat(v) || 0; }
 
@@ -945,7 +946,7 @@ function clBuildShiftBlock(snap, activeFilter) {
     const mark = getMark(l._rowKey);
     const rightSide = mark
       ? `<span class="cl-added-badge" title="Added to ${esc(mark.ledgerType)} · ${mark.addedAt ? new Date(mark.addedAt).toLocaleDateString() : ''}">✓ Added</span>`
-      : `<button type="button" class="cl-qa-btn" title="Add to BT Ledger" onclick="clnQuickAdd('${l._rowKey}','${esc(snap.date)}','${esc(snap.shift)}',${l.val},'${esc(descStr).replace(/'/g, "&#39;")}')">+ Ledger</button>`;
+      : `<button type="button" class="cl-qa-btn" title="Add to BT Ledger"${act('click', 'clnQuickAdd', String(l._rowKey), snap.date, snap.shift, l.val, descStr)}>+ Ledger</button>`;
     return `<div class="cl-line${mark ? ' cl-line-added' : ''}"><span class="cl-lbl">${esc(l.lbl)}${l.desc ? ` <span class="cl-lbl-desc">(${esc(l.desc)})</span>` : ''}</span><span class="cl-line-right"><span class="cl-val">${clFmt(l.val)}</span>${rightSide}</span></div>`;
   }).join('');
   linesHtml += renderGroup(named, 'Named Accounts') + renderGroup(tier, 'Staff / Tier Credits') + renderGroup(aux, 'Free Entries');
@@ -965,7 +966,7 @@ function clBuildDateCard(cdb, group, activeFilter) {
   const shiftLabels = group.snaps.map(s => s.shift).join(' · ');
   const key = `credit:${group.date}`;
   return `<div class="cl-date-card${clState.expanded.has(key) ? ' open' : ''}" data-key="${esc(key)}">
-    <div class="cl-date-head" onclick="clnToggleDateCard(this)">
+    <div class="cl-date-head"${act('click', 'clnToggleDateCard', arg.self)}>
       <span class="cl-date-icon">📅</span>
       <div style="flex:1"><div class="cl-date-label">${clFmtDate(group.date)}</div><div class="cl-date-sub">${esc(shiftLabels)}</div></div>
       <span class="cl-date-total">${clFmt(latestTotal)}</span>
@@ -980,7 +981,7 @@ function mlBuildDateCard(group) {
   const shiftLabels = group.snaps.map(s => s.shift).join(' · ');
   const key = `misc:${group.date}`;
   return `<div class="cl-date-card${clState.expanded.has(key) ? ' open' : ''}" data-key="${esc(key)}">
-    <div class="cl-date-head" onclick="clnToggleDateCard(this)">
+    <div class="cl-date-head"${act('click', 'clnToggleDateCard', arg.self)}>
       <span class="cl-date-icon">📅</span>
       <div style="flex:1"><div class="cl-date-label">${clFmtDate(group.date)}</div><div class="cl-date-sub">${esc(shiftLabels)}</div></div>
       <span class="cl-date-total">${clFmt(total)}</span>
@@ -1068,7 +1069,7 @@ function clQuickAddFromRow(rowKey, date, shift, amount, desc) {
   });
 }
 
-// Bridged for onclick="" handlers in the generated HTML above.
+// Bridged for the data-on-* action handlers in the generated HTML above.
 window.clnSetShortcutDays = (d) => cbSetShortcutDays(d);
 window.clnSetShortcutClosings = (c) => { const cdb = ClosingBridge.getFullDb(); if (cdb) cbSetShortcutClosings(cdb, c); };
 window.clnGenerateBook = cbAssembleBook;

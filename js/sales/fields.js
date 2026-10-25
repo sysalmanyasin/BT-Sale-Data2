@@ -4,6 +4,7 @@
 // reassignment in fmLoad()/fmResetAll(); it is not a stale snapshot.
 import { Repository } from '../repository.js';
 import { Actions } from '../actions.js';
+import { act, arg } from '../shared/dom-actions.js';
 
 let _fmCustom = [];   // [{id, label, section, calcType}]
 
@@ -100,7 +101,7 @@ function fmApply() {
     div.className = 'fg fm-custom-field';
     div.dataset.fieldId = f.id;
     div.innerHTML = `<label>${f.label}</label>`
-      + `<input type="number" id="e-${f.id}" placeholder="0" oninput="calcTotal()">`;
+      + `<input type="number" id="e-${f.id}" placeholder="0"${act('input', 'calcTotal')}>`;
     grid.appendChild(div);
   });
   // Re-run calcTotal so hidden fields don't break the sum
@@ -208,7 +209,7 @@ function fmRenderBody() {
       </div>
       <label class="fm-toggle">
         <input type="checkbox" ${vis ? 'checked' : ''}
-          onchange="fmToggleField('${f.id}', this.checked)">
+         ${act('change', 'fmToggleField', String(f.id), arg.checked)}>
         <span class="fm-slider"></span>
       </label>
     </div>`;
@@ -238,7 +239,7 @@ function _renderCustomTab() {
           </div>
           <div class="fm-custom-item-meta">${badge} · id: ${f.id}</div>
         </div>
-        <button class="fm-del-btn" onclick="fmDeleteCustom(${i})" title="Remove">✕</button>
+        <button class="fm-del-btn"${act('click', 'fmDeleteCustom', i)} title="Remove">✕</button>
       </div>`;
     });
   }
@@ -269,7 +270,7 @@ function _renderCustomTab() {
           </select>
         </div>
       </div>
-      <button class="btn btn-p" onclick="fmAddCustom()">+ Add Column</button>
+      <button class="btn btn-p"${act('click', 'fmAddCustom')}>+ Add Column</button>
     </div>
   </div>`;
 }

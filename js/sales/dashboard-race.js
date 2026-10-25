@@ -2,6 +2,7 @@ import { ff, fc } from '../config.js';
 import { Analytics } from './analytics.js';
 import { Repository } from '../repository.js';
 import { Actions } from '../actions.js';
+import { act, arg, registerActions } from '../shared/dom-actions.js';
 
 // ══════════════════════════════════════════════════════════════════════
 // BT GAME PLAY  —  BT Sales App
@@ -152,7 +153,7 @@ function buildRaceForecast() {
     <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:8px">
       <span>🏁 Race the Forecast — ${lat.Month_Year}</span>
       <span style="flex:1;height:1px;background:var(--border);opacity:.4;display:inline-block"></span>
-      <button type="button" onclick="_raceReplay()" style="font-size:11px;padding:2px 9px;border-radius:99px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer">↻ Replay</button>
+      <button type="button"${act('click', '_raceReplay')} style="font-size:11px;padding:2px 9px;border-radius:99px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer">↻ Replay</button>
     </div>
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">
       <div style="position:relative;height:26px;background:var(--s2,#f8fafc);border-radius:99px;overflow:visible;margin-top:6px">
@@ -175,10 +176,10 @@ function buildRaceForecast() {
         <div style="display:flex;gap:8px">
           <input id="race-fc-manual-input" type="number" inputmode="numeric" placeholder="e.g. 55000"
             value="${manualRate != null ? manualRate : ''}"
-            oninput="_racePreviewManualRate(this.value)"
-            onchange="_raceSetManualRate(this.value)"
+           ${act('input', '_racePreviewManualRate', arg.value)}
+           ${act('change', '_raceSetManualRate', arg.value)}
             style="flex:1;min-width:0;padding:7px 10px;border-radius:8px;border:1px solid var(--border);background:var(--s2,#f8fafc);color:var(--text);font-family:var(--mono);font-size:12px">
-          ${manualRate != null ? `<button type="button" onclick="document.getElementById('race-fc-manual-input').value='';_raceSetManualRate('')" style="font-size:11px;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer">Clear</button>` : ''}
+          ${manualRate != null ? `<button type="button"${act('click', 'raceClearManualRate')} style="font-size:11px;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer">Clear</button>` : ''}
         </div>
         <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center">
           <span style="font-size:11px;color:var(--muted)">Your forecast</span>
@@ -244,7 +245,7 @@ function buildBarRace() {
   }
 
   const tabBtn = (tab, label) => `
-    <button type="button" onclick="_raceSetTab('${tab}')"
+    <button type="button"${act('click', '_raceSetTab', String(tab))}
       style="flex:1;padding:6px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;
              border:1px solid ${_raceTab === tab ? 'var(--accent)' : 'var(--border)'};
              background:${_raceTab === tab ? 'var(--accent)' : 'var(--surface)'};
@@ -253,16 +254,16 @@ function buildBarRace() {
   const controlsHtml = _raceTab === 'samemonth'
     ? `
       <div style="display:flex;gap:8px;margin-bottom:12px">
-        <select onchange="_raceSetSameMonthName(this.value)" style="flex:1;min-width:0;padding:6px 8px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:11px">
+        <select${act('change', '_raceSetSameMonthName', arg.value)} style="flex:1;min-width:0;padding:6px 8px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:11px">
           ${_RACE_MN_FULL.map(m => `<option value="${m}" ${m === _raceSameMonth ? 'selected' : ''}>${m}</option>`).join('')}
         </select>
-        <select onchange="_raceSetSameMonthYears(this.value)" style="width:112px;flex-shrink:0;padding:6px 8px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:11px">
+        <select${act('change', '_raceSetSameMonthYears', arg.value)} style="width:112px;flex-shrink:0;padding:6px 8px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:11px">
           ${_RACE_YEAR_COUNTS.map(y => `<option value="${y}" ${y === _raceSameMonthYears ? 'selected' : ''}>${y === 999 ? 'All years' : 'Last ' + y + ' yrs'}</option>`).join('')}
         </select>
       </div>`
     : `
       <div style="margin-bottom:12px">
-        <select onchange="_raceSetWeekdayCount(this.value)" style="width:100%;padding:6px 8px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:11px">
+        <select${act('change', '_raceSetWeekdayCount', arg.value)} style="width:100%;padding:6px 8px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:11px">
           ${_RACE_WD_COUNTS.map(c => `<option value="${c}" ${c === _raceWeekdayCount ? 'selected' : ''}>Last ${c} of each weekday</option>`).join('')}
         </select>
       </div>`;
@@ -297,7 +298,7 @@ function buildBarRace() {
     <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:8px">
       <span>🏆 Bar Race</span>
       <span style="flex:1;height:1px;background:var(--border);opacity:.4;display:inline-block"></span>
-      <button type="button" onclick="_raceReplay()" style="font-size:11px;padding:2px 9px;border-radius:99px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer">↻ Replay</button>
+      <button type="button"${act('click', '_raceReplay')} style="font-size:11px;padding:2px 9px;border-radius:99px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer">↻ Replay</button>
     </div>
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px">
       <div style="display:flex;gap:6px;margin-bottom:12px">
@@ -349,6 +350,7 @@ window._raceSetWeekdayCount   = _raceSetWeekdayCount;
 window._raceSetSameMonthName  = _raceSetSameMonthName;
 window._raceSetSameMonthYears = _raceSetSameMonthYears;
 window._raceSetManualRate     = _raceSetManualRate;
+registerActions({ raceClearManualRate() { const el = document.getElementById('race-fc-manual-input'); if (el) el.value = ''; _raceSetManualRate(''); } });
 window._racePreviewManualRate = _racePreviewManualRate;
 
 })();

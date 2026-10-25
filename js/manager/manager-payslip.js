@@ -23,6 +23,7 @@ import { _ni, _fc2, _mgrEsc, mgrLoad, _mgrPopSel, mgrMonths } from './manager-sh
 import { _crdNet } from './manager-credit.js';
 import { _genIncentive } from './manager-generic.js';
 import { _salNet } from './manager-salary.js';
+import { act } from '../shared/dom-actions.js';
 
 const _norm = s => (s || '').trim().toLowerCase();
 
@@ -125,8 +126,8 @@ function renderStaffPayslip(name) {
       </div>
     </div>
     <div style="display:flex;gap:8px;margin-top:12px">
-      <button class="btn btn-p" style="flex:1;font-size:12px;padding:8px" onclick="printStaffPayslip()">🖨 Print Slip</button>
-      <button class="btn" style="flex:1;font-size:12px;padding:8px;background:#25D366;color:#fff;border:none" onclick="sendPayslipWhatsApp()">📱 Send via WhatsApp</button>
+      <button class="btn btn-p" style="flex:1;font-size:12px;padding:8px"${act('click', 'printStaffPayslip')}>🖨 Print Slip</button>
+      <button class="btn" style="flex:1;font-size:12px;padding:8px;background:#25D366;color:#fff;border:none"${act('click', 'sendPayslipWhatsApp')}>📱 Send via WhatsApp</button>
     </div>
     ${!emp.phone ? '<div style="font-size:11px;color:var(--muted);margin-top:6px">⚠ No phone number on file — add one in the Details tab to enable WhatsApp send.</div>' : ''}
   `;

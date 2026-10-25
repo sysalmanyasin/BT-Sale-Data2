@@ -12,6 +12,7 @@
 import { Repository } from '../repository.js';
 import { _mgrEsc } from './manager-shared.js';
 import * as AttendanceBridge from './attendance-bridge.js';
+import { act, arg } from '../shared/dom-actions.js';
 
 let _attToday = [];
 let _attMonth = [];
@@ -67,13 +68,13 @@ export async function renderAttendanceTab() {
   if (!cont) return;
   cont.innerHTML = `
     <div class="att-subtabs">
-      <button class="btn att-subtab active" data-atab="today" onclick="AttendanceUI.switchSub('today')">📅 Today</button>
-      <button class="btn att-subtab" data-atab="month" onclick="AttendanceUI.switchSub('month')">🗓️ Monthly</button>
-      <button class="btn att-subtab" data-atab="log" onclick="AttendanceUI.switchSub('log')">📜 Raw Log</button>
-      <button class="btn att-subtab" data-atab="manual" onclick="AttendanceUI.switchSub('manual')">✏️ Manual Entry</button>
-      <button class="btn att-subtab" data-atab="location" onclick="AttendanceUI.switchSub('location')">📍 Location</button>
-      <button class="btn att-subtab" data-atab="notify" onclick="AttendanceUI.switchSub('notify')">🔔 Notifications</button>
-      <button class="btn att-subtab" data-atab="iphone" onclick="AttendanceUI.switchSub('iphone')">🍎 iPhone Setup</button>
+      <button class="btn att-subtab active" data-atab="today"${act('click', 'AttendanceUI.switchSub', 'today')}>📅 Today</button>
+      <button class="btn att-subtab" data-atab="month"${act('click', 'AttendanceUI.switchSub', 'month')}>🗓️ Monthly</button>
+      <button class="btn att-subtab" data-atab="log"${act('click', 'AttendanceUI.switchSub', 'log')}>📜 Raw Log</button>
+      <button class="btn att-subtab" data-atab="manual"${act('click', 'AttendanceUI.switchSub', 'manual')}>✏️ Manual Entry</button>
+      <button class="btn att-subtab" data-atab="location"${act('click', 'AttendanceUI.switchSub', 'location')}>📍 Location</button>
+      <button class="btn att-subtab" data-atab="notify"${act('click', 'AttendanceUI.switchSub', 'notify')}>🔔 Notifications</button>
+      <button class="btn att-subtab" data-atab="iphone"${act('click', 'AttendanceUI.switchSub', 'iphone')}>🍎 iPhone Setup</button>
     </div>
     <div id="att-sub-today" class="att-sub"></div>
     <div id="att-sub-month" class="att-sub" style="display:none"></div>
@@ -130,7 +131,7 @@ async function renderTodayView() {
 
   cont.innerHTML = `
     <div class="att-toolbar">
-      <input type="date" id="att-today-date" value="${_attCurDate}" onchange="AttendanceUI.changeDate(this.value)">
+      <input type="date" id="att-today-date" value="${_attCurDate}"${act('change', 'AttendanceUI.changeDate', arg.value)}>
       <span class="att-count">${rows.filter(r => r.in).length}/${rows.length} checked in</span>
     </div>
     <div class="mgr-table-scroll">
@@ -186,7 +187,7 @@ async function renderMonthView() {
 
   cont.innerHTML = `
     <div class="att-toolbar">
-      <input type="month" id="att-month-picker" value="${_attCurMonth}" onchange="AttendanceUI.changeMonth(this.value)">
+      <input type="month" id="att-month-picker" value="${_attCurMonth}"${act('change', 'AttendanceUI.changeMonth', arg.value)}>
     </div>
     <div class="mgr-table-scroll">
       <table class="att-table">
@@ -259,7 +260,7 @@ function renderManualView() {
       <label>Reason / note
         <input type="text" id="att-manual-note" placeholder="e.g. phone battery died">
       </label>
-      <button class="btn" onclick="AttendanceUI.submitManual()">Add entry</button>
+      <button class="btn"${act('click', 'AttendanceUI.submitManual')}>Add entry</button>
     </div>
   `;
 }
@@ -303,8 +304,8 @@ async function renderLocationView() {
       <p class="att-note">Stand inside or right outside the pharmacy, then tap Capture. This sets the center point the staff app's geofence checks against.</p>
       ${existing ? `<p class="att-note">Current: ${_mgrEsc(existing.name)} (${existing.lat.toFixed(6)}, ${existing.lng.toFixed(6)}), radius ${existing.radius_meters}m</p>` : `<p class="att-note">No location saved yet.</p>`}
       <div class="att-loc-btn-row">
-        <button class="btn" onclick="AttendanceUI.captureLocation()">📍 Capture my current location</button>
-        <button class="btn" onclick="AttendanceUI.openMapPicker()">🗺️ Pick on map</button>
+        <button class="btn"${act('click', 'AttendanceUI.captureLocation')}>📍 Capture my current location</button>
+        <button class="btn"${act('click', 'AttendanceUI.openMapPicker')}>🗺️ Pick on map</button>
       </div>
       <div id="att-loc-captured"></div>
       <label>Name
@@ -313,7 +314,7 @@ async function renderLocationView() {
       <label>Radius (meters)
         <input type="number" id="att-loc-radius" value="${existing?.radius_meters ?? 100}" min="20" max="500">
       </label>
-      <button class="btn" id="att-loc-save" onclick="AttendanceUI.saveLocation('${existing?.id || ''}')" disabled>Save location</button>
+      <button class="btn" id="att-loc-save"${act('click', 'AttendanceUI.saveLocation', String(existing?.id || ''))} disabled>Save location</button>
     </div>
 
     <div class="att-manual-form" style="margin-top:16px;">
@@ -328,13 +329,13 @@ async function renderLocationView() {
           ? `
             <div id="att-qr-canvas" style="text-align:center; padding:16px; background:#fff; display:inline-block;"></div>
             <div>
-              <button class="btn" onclick="AttendanceUI.printQr()">🖨️ Print</button>
-              <button class="btn" onclick="AttendanceUI.rotateQr('${existing.id}')">🔄 Generate a new code (invalidates the old printout)</button>
+              <button class="btn"${act('click', 'AttendanceUI.printQr')}>🖨️ Print</button>
+              <button class="btn"${act('click', 'AttendanceUI.rotateQr', String(existing.id))}>🔄 Generate a new code (invalidates the old printout)</button>
             </div>
           `
           : `
             <p class="att-note">No QR code set up for this location yet.</p>
-            <button class="btn" onclick="AttendanceUI.rotateQr('${existing.id}')">➕ Generate a QR code</button>
+            <button class="btn"${act('click', 'AttendanceUI.rotateQr', String(existing.id))}>➕ Generate a QR code</button>
           `
       }
     </div>
@@ -457,18 +458,18 @@ function _ensureMapModal() {
     <div class="modal att-map-modal">
       <div class="mhdr">
         <h2>Pick pharmacy location</h2>
-        <button class="mclose" onclick="AttendanceUI.closeMapPicker()">✕</button>
+        <button class="mclose"${act('click', 'AttendanceUI.closeMapPicker')}>✕</button>
       </div>
       <div class="mbody">
         <p class="att-note">Search an address, or drag the pin (or tap the map) to the exact spot, then tap Use this location.</p>
         <div class="att-map-search-row">
           <input type="text" id="att-map-search" placeholder="Search an address or place…">
-          <button class="btn" id="att-map-search-btn" onclick="AttendanceUI._mapSearch()">Search</button>
+          <button class="btn" id="att-map-search-btn"${act('click', 'AttendanceUI._mapSearch')}>Search</button>
         </div>
         <div id="att-map-search-results"></div>
         <div id="att-map-container"></div>
         <div id="att-map-coords" class="att-note"></div>
-        <button class="btn" id="att-map-confirm" onclick="AttendanceUI.confirmMapPick()">📍 Use this location</button>
+        <button class="btn" id="att-map-confirm"${act('click', 'AttendanceUI.confirmMapPick')}>📍 Use this location</button>
       </div>
     </div>
   `;
@@ -612,7 +613,7 @@ function renderNotifyView() {
       <label>Your pharmacy's notification channel
         <input type="text" id="att-ntfy-topic" value="${_mgrEsc(NTFY_TOPIC)}" readonly>
       </label>
-      <button class="btn" onclick="AttendanceUI.copyNtfyTopic()">📋 Copy channel name</button>
+      <button class="btn"${act('click', 'AttendanceUI.copyNtfyTopic')}>📋 Copy channel name</button>
 
       <div class="att-note" style="margin-top:16px;">
         <strong>Setup — do this once per phone:</strong>
@@ -701,7 +702,7 @@ async function renderIphoneView() {
         the check-in/out directly, the same as the Android app's geofence does.
       </p>
       <label>Generate instructions for
-        <select id="att-ios-staff" onchange="AttendanceUI.changeIosStaff(this.value)">
+        <select id="att-ios-staff"${act('change', 'AttendanceUI.changeIosStaff', arg.value)}>
           ${active.map(s => `<option value="${s.id}" ${s.id === staff.id ? 'selected' : ''}>${_mgrEsc(s.name)} (${_mgrEsc(s.staffId || s.id)})</option>`).join('')}
         </select>
       </label>
@@ -776,7 +777,7 @@ function _iosCopyRow(id, label, value) {
     <div class="att-ios-row" style="display:flex; align-items:center; gap:8px; margin:4px 0;">
       <span style="min-width:110px; font-size:13px; color:#666;">${_mgrEsc(label)}</span>
       <input type="text" id="${id}" value="${_mgrEsc(value)}" readonly style="flex:1;">
-      <button class="btn" onclick="AttendanceUI.copyIosField('${id}')">📋</button>
+      <button class="btn"${act('click', 'AttendanceUI.copyIosField', String(id))}>📋</button>
     </div>
   `;
 }

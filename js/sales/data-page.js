@@ -10,12 +10,13 @@
 // month view vs. grouped-by-month view) — any field change had to be
 // made in both places by hand, and they could silently drift apart.
 // ══════════════════════════════════════════
+import { act } from '../shared/dom-actions.js';
 (function() {
 'use strict';
 
 function DailyRowComponent(d, extraCol) {
   const ev = extraCol ? '<td>' + (n(d[extraCol]) ? '&#8360;' + fc(n(d[extraCol])) : '&#8212;') + '</td>' : '';
-  return `<td>${d.Date||''}</td>${ev}<td>${n(d.TOTAL)?'&#8360;'+fc(n(d.TOTAL)):'&#8212;'}</td><td>${n(d.Customers)?fc(n(d.Customers)):'&#8212;'}</td><td class="no-print" style="display:flex;gap:4px"><button onclick="event.stopPropagation();printDayDirectly('${d.Date}','${d.Month_Year}')" title="Print ${d.Date}" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(37,99,235,.25);background:var(--alt);color:var(--accent);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">🖨</button><button onclick="event.stopPropagation();openEditModal('${d.Date}','${d.Month_Year}')" title="Edit ${d.Date}" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(217,119,6,.3);background:var(--alt);color:#d97706;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">✏️</button></td>`;
+  return `<td>${d.Date||''}</td>${ev}<td>${n(d.TOTAL)?'&#8360;'+fc(n(d.TOTAL)):'&#8212;'}</td><td>${n(d.Customers)?fc(n(d.Customers)):'&#8212;'}</td><td class="no-print" style="display:flex;gap:4px"><button${act('click', { stop: true }, 'printDayDirectly', String(d.Date), String(d.Month_Year))} title="Print ${d.Date}" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(37,99,235,.25);background:var(--alt);color:var(--accent);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">🖨</button><button${act('click', { stop: true }, 'openEditModal', String(d.Date), String(d.Month_Year))} title="Edit ${d.Date}" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(217,119,6,.3);background:var(--alt);color:#d97706;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">✏️</button></td>`;
 }
 
 // ══════════════════════════════════════════
@@ -301,7 +302,7 @@ function renderEntryList() {
       <span style="font-size:12px">${e.Month_Year}</span>
       <span style="font-family:var(--mono);font-size:12px">₨${fc(n(e.TOTAL))}</span>
       <span style="color:var(--muted);font-size:12px">👥${fc(n(e.Customers))}</span>
-      <button class="btn btn-d" style="padding:2px 8px;font-size:11px;margin-left:auto" onclick="delEntry(${i})">✕</button>
+      <button class="btn btn-d" style="padding:2px 8px;font-size:11px;margin-left:auto"${act('click', 'delEntry', i)}>✕</button>
     </div>`).join('');
 }
 
@@ -442,7 +443,7 @@ function openEditModal(date, my) {
       } else {
         html+=`<div><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:3px">${f.label}${hint}</label>
           <input type="${inputType}" inputmode="${inputMode}" id="em-${f.key.replace(/[^a-z0-9]/gi,'_')}" value="${raw}"
-            oninput="editCalcTotal()"
+           ${act('input', 'editCalcTotal')}
             style="width:100%;padding:8px 10px;border:1px solid ${f.ret?'rgba(220,38,38,.35)':'var(--border)'};border-radius:8px;font-size:14px;background:var(--s2);color:var(--text);box-sizing:border-box;${f.ret?'color:#dc2626':''}"></div>`;
       }
     });
@@ -461,7 +462,7 @@ function openEditModal(date, my) {
       const hint = f.calcType==='add'?' (+ adds)':f.calcType==='sub'?' (− subtracts)':'';
       html+=`<div><label style="font-size:12px;color:var(--muted);display:block;margin-bottom:3px">${f.label}${hint}</label>
         <input type="number" inputmode="decimal" id="em-${f.id.replace(/[^a-z0-9]/gi,'_')}" value="${raw}"
-          oninput="editCalcTotal()"
+         ${act('input', 'editCalcTotal')}
           style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:var(--s2);color:var(--text);box-sizing:border-box"></div>`;
     });
     html+=`</div>`;

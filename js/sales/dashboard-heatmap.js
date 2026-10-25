@@ -22,6 +22,8 @@
 // ══════════════════════════════════════════════════════════════════════
 (function () {
 'use strict';
+// Classic script (no imports): the dispatcher helpers are published on window.BTDomActions.
+const act = (...a) => window.BTDomActions.act(...a);
 
 let _dashHeatmapYear = ''; // '' = auto (latest year that actually has data)
 
@@ -117,7 +119,7 @@ function buildSalesHeatmap() {
         const humanDate = `${String(cursor.getDate()).padStart(2, '0')} ${_HM_MON_FULL[cursor.getMonth()]} ${year}`;
         const title = total > 0 ? `${humanDate} — ₨${fc(total)}` : `${humanDate} — no entry`;
         const clickable = !!rec && total > 0;
-        const onclickAttr = clickable ? ` onclick="openDayModal('${rec.Date}','${rec.Month_Year}')"` : '';
+        const onclickAttr = clickable ? `${act('click', 'openDayModal', String(rec.Date), String(rec.Month_Year))}` : '';
         cellsHtml.push(`<div title="${title}" style="width:11px;height:11px;border-radius:3px;background:${LEVEL_BG[lvl]};${clickable ? 'cursor:pointer' : ''}"${onclickAttr}></div>`);
       } else {
         cellsHtml.push(`<div style="width:11px;height:11px"></div>`);
@@ -139,7 +141,7 @@ function buildSalesHeatmap() {
   const yearTotal = Object.values(byDate).reduce((s, d) => s + n(d.TOTAL), 0);
 
   const yearChips = yearsWithData.map(y => `
-    <button type="button" onclick="_dashSetHeatmapYear(${y})"
+    <button type="button"${act('click', '_dashSetHeatmapYear', y)}
       style="padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer;
              border:1px solid ${y === year ? 'var(--accent)' : 'var(--border)'};
              background:${y === year ? 'var(--accent)' : 'var(--surface)'};

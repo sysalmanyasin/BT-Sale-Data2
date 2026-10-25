@@ -16,6 +16,7 @@ import { _ni, _fc2, mgrAutosave, activeStaff } from './manager-shared.js';
 import { _salRows_cur, renderSalaryTable } from './manager-salary.js';
 import { _genRows_cur, renderGenericTable } from './manager-generic.js';
 import { _crdData_cur, _crdNet, renderCreditLedger, thisMonthNetFor, renderStaffCreditCurrent } from './manager-credit.js';
+import { act, arg } from '../shared/dom-actions.js';
 
 function staffSave() {
   Repository.saveStaff();
@@ -79,22 +80,22 @@ function renderStaffRegistry() {
           <input type="number" value="${srNum}" min="1" max="999"
             class="mgr-inp sal-num" style="width:42px;text-align:center;font-weight:700;font-size:12px;padding:2px 4px"
             title="Change Sr# to reorder in Salary/Generic/Credit sheets"
-            oninput="staffSrNumChange(${i},this.value)">
+           ${act('input', 'staffSrNumChange', i, arg.value)}>
         </td>
         <td style="padding:7px 10px;border:1px solid var(--border);text-align:center">
-          <button onclick="openStaffCard(${i})" title="Open Staff Card"
+          <button${act('click', 'openStaffCard', i)} title="Open Staff Card"
             style="background:var(--accent);color:#fff;border:none;border-radius:5px;padding:3px 10px;cursor:pointer;font-size:11px;font-weight:700;font-family:monospace;letter-spacing:.02em">
             ${sid}
           </button>
         </td>
         <td style="padding:7px 10px;border:1px solid var(--border)">
-          <span onclick="openStaffCard(${i})" style="cursor:pointer;font-weight:600;color:var(--accent);text-decoration:underline dotted;text-underline-offset:3px" title="Open Staff Card">
+          <span${act('click', 'openStaffCard', i)} style="cursor:pointer;font-weight:600;color:var(--accent);text-decoration:underline dotted;text-underline-offset:3px" title="Open Staff Card">
             ${emp.name||'<em style="color:var(--muted)">(unnamed)</em>'}
           </span>
         </td>
         <td style="padding:7px 10px;border:1px solid var(--border)">
           <input type="text" value="${(emp.designation||'').replace(/"/g,'&quot;')}" placeholder="Designation"
-            class="mgr-inp" oninput="staffFieldChange(${i},'designation',this.value)">
+            class="mgr-inp"${act('input', 'staffFieldChange', i, 'designation', arg.value)}>
         </td>
         <td style="padding:7px 10px;border:1px solid var(--border);color:var(--t2)">
           ${emp.fatherName||'<span style="color:var(--muted)">—</span>'}
@@ -109,16 +110,16 @@ function renderStaffRegistry() {
           ${emp.phone||'<span style="color:var(--muted)">—</span>'}
         </td>
         <td style="padding:7px 10px;border:1px solid var(--border);text-align:center">
-          <button onclick="openStaffCard(${i})" style="border:none;background:none;cursor:pointer;font-weight:700;font-family:var(--mono);font-size:12px;color:${(() => { const nv = thisMonthNetFor(emp.name); return nv > 0 ? 'var(--green)' : nv < 0 ? 'var(--red)' : 'var(--muted)'; })()}" title="Tap to add/edit this month's credit">
+          <button${act('click', 'openStaffCard', i)} style="border:none;background:none;cursor:pointer;font-weight:700;font-family:var(--mono);font-size:12px;color:${(() => { const nv = thisMonthNetFor(emp.name); return nv > 0 ? 'var(--green)' : nv < 0 ? 'var(--red)' : 'var(--muted)'; })()}" title="Tap to add/edit this month's credit">
             ₨${_fc2(thisMonthNetFor(emp.name))}
           </button>
         </td>
         <td style="padding:7px 10px;border:1px solid var(--border);text-align:center">
-          <input type="checkbox" ${emp.active!==false?'checked':''} onchange="staffToggleActive(${i},this.checked)" title="Active/Inactive">
+          <input type="checkbox" ${emp.active!==false?'checked':''}${act('change', 'staffToggleActive', i, arg.checked)} title="Active/Inactive">
         </td>
         <td style="padding:7px 10px;border:1px solid var(--border);text-align:center;white-space:nowrap">
-          <button class="btn btn-p" style="font-size:11px;padding:3px 10px;margin-right:4px" onclick="openStaffCard(${i})">✏ Edit</button>
-          <button class="mgr-del" onclick="staffDelete(${i})" title="Remove">🗑</button>
+          <button class="btn btn-p" style="font-size:11px;padding:3px 10px;margin-right:4px"${act('click', 'openStaffCard', i)}>✏ Edit</button>
+          <button class="mgr-del"${act('click', 'staffDelete', i)} title="Remove">🗑</button>
         </td>
       </tr>`;
     }).join('')}

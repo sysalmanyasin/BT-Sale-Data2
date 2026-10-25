@@ -13,6 +13,7 @@
 //    inside a mobile iframe, but typing does not, so editing happens
 //    in the real Sheets app/browser tab, not in-app.
 // ══════════════════════════════════════════════════════════════════
+import { act, registerActions } from '../shared/dom-actions.js';
 (function () {
 'use strict';
 
@@ -81,9 +82,9 @@ async function sheetsAppBuild(host) {
   host.innerHTML = `
     <div class="sa-list-wrap">
       <div class="sa-list-hd">
-        <button class="ns-btn primary" onclick="_saCreate()">➕ New sheet</button>
-        <button class="ns-btn" onclick="_saLinkExisting()">🔗 Link existing</button>
-        <button class="ns-btn" onclick="sheetsAppBuild(document.getElementById('ns-panel-host'))">↻ Refresh list</button>
+        <button class="ns-btn primary"${act('click', '_saCreate')}>➕ New sheet</button>
+        <button class="ns-btn"${act('click', '_saLinkExisting')}>🔗 Link existing</button>
+        <button class="ns-btn"${act('click', 'sheetsAppRefreshList')}>↻ Refresh list</button>
       </div>
       <div id="sa-list-body"><div style="padding:24px;text-align:center;color:var(--muted);font-size:12px">Loading sheets…</div></div>
       <div id="sa-sync-log" style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.8;max-height:90px;overflow-y:auto"></div>
@@ -119,30 +120,30 @@ function _saRenderList(rows) {
     const badges = (r.pinned ? '📌 ' : '') + (r.can_edit === false ? '👁 ' : '') + (r.is_template ? '🌟 ' : '');
     if (r.orphaned) {
       return `
-      <div class="sa-card sa-card-orphaned" onclick="_saRelink('${r.spreadsheet_id}','${titleEsc}')">
+      <div class="sa-card sa-card-orphaned"${act('click', '_saRelink', String(r.spreadsheet_id), String(titleEsc))}>
         <div class="sa-card-main">
           <div class="sa-card-title">${badges}${_saEsc(r.title)}</div>
           <div class="sa-card-sub" style="color:var(--red)">⚠ Lost access — unshared or deleted upstream</div>
         </div>
-        <div class="sa-card-actions" onclick="event.stopPropagation()">
-          <button class="sa-icon-btn" title="Re-link via picker" onclick="_saRelink('${r.spreadsheet_id}','${titleEsc}')">🔗</button>
-          <button class="sa-icon-btn" title="Remove from list" onclick="_saDelete('${r.spreadsheet_id}','${titleEsc}')">🗑</button>
+        <div class="sa-card-actions"${act('click', { stop: true }, 'noop')}>
+          <button class="sa-icon-btn" title="Re-link via picker"${act('click', '_saRelink', String(r.spreadsheet_id), String(titleEsc))}>🔗</button>
+          <button class="sa-icon-btn" title="Remove from list"${act('click', '_saDelete', String(r.spreadsheet_id), String(titleEsc))}>🗑</button>
         </div>
       </div>`;
     }
     const templateBtn = r.origin !== 'linked'
-      ? `<button class="sa-icon-btn" title="${r.is_template ? 'Unset as template' : 'Set as template for new sheets'}" onclick="_saToggleTemplate('${r.spreadsheet_id}', ${!r.is_template})">${r.is_template ? '⭐' : '☆'}</button>`
+      ? `<button class="sa-icon-btn" title="${r.is_template ? 'Unset as template' : 'Set as template for new sheets'}"${act('click', '_saToggleTemplate', String(r.spreadsheet_id), !r.is_template)}>${r.is_template ? '⭐' : '☆'}</button>`
       : '';
     return `
-    <div class="sa-card" onclick="_saOpen('${r.spreadsheet_id}','${titleEsc}')">
+    <div class="sa-card"${act('click', '_saOpen', String(r.spreadsheet_id), String(titleEsc))}>
       <div class="sa-card-main">
         <div class="sa-card-title">${badges}${_saEsc(r.title)}</div>
         <div class="sa-card-sub">${_saAgo(r.last_synced_at)}</div>
       </div>
-      <div class="sa-card-actions" onclick="event.stopPropagation()">
-        <button class="sa-icon-btn" title="${r.pinned ? 'Unpin' : 'Pin'}" onclick="_saTogglePin('${r.spreadsheet_id}', ${!r.pinned})">${r.pinned ? '📌' : '📍'}</button>
+      <div class="sa-card-actions"${act('click', { stop: true }, 'noop')}>
+        <button class="sa-icon-btn" title="${r.pinned ? 'Unpin' : 'Pin'}"${act('click', '_saTogglePin', String(r.spreadsheet_id), !r.pinned)}>${r.pinned ? '📌' : '📍'}</button>
         ${templateBtn}
-        <button class="sa-icon-btn" title="Delete (moves to Drive trash)" onclick="_saDelete('${r.spreadsheet_id}','${titleEsc}')">🗑</button>
+        <button class="sa-icon-btn" title="Delete (moves to Drive trash)"${act('click', '_saDelete', String(r.spreadsheet_id), String(titleEsc))}>🗑</button>
       </div>
     </div>`;
   }).join('');
@@ -252,10 +253,10 @@ function _saOpenDesktopModal(id, title) {
   modal.id = 'sa-modal';
   modal.innerHTML = `
     <div class="sa-modal-hd">
-      <button class="sa-icon-btn" onclick="_saCloseDesktopModal()">← Back</button>
+      <button class="sa-icon-btn"${act('click', '_saCloseDesktopModal')}>← Back</button>
       <div class="sa-modal-title">${_saEsc(title)}</div>
       <div class="sa-modal-status" id="sa-sync-status">syncing…</div>
-      <button class="ns-btn" onclick="_saManualSync()">↻ Sync now</button>
+      <button class="ns-btn"${act('click', '_saManualSync')}>↻ Sync now</button>
     </div>
     <iframe class="sa-iframe" src="https://docs.google.com/spreadsheets/d/${id}/edit?rm=minimal&embedded=true"></iframe>`;
   document.body.appendChild(modal);
@@ -316,9 +317,9 @@ async function _saOpenMobileView(id, title) {
   _saHost.innerHTML = `
     <div class="sa-mob-wrap">
       <div class="sa-mob-hd">
-        <button class="sa-icon-btn" onclick="_saCloseMobileView()">← Back</button>
+        <button class="sa-icon-btn"${act('click', '_saCloseMobileView')}>← Back</button>
         <div class="sa-modal-title">${_saEsc(title)}</div>
-        <button class="ns-btn primary" onclick="_saOpenToEdit('${id}')">✎ Open to edit</button>
+        <button class="ns-btn primary"${act('click', '_saOpenToEdit', String(id))}>✎ Open to edit</button>
       </div>
       <div class="sa-mob-tabs" id="sa-mob-tabs"></div>
       <div id="sa-mob-table"><div style="padding:24px;text-align:center;color:var(--muted);font-size:12px">Loading cached view…</div></div>
@@ -342,7 +343,7 @@ async function _saOpenMobileView(id, title) {
 function _saRenderMobileTabs() {
   const el = document.getElementById('sa-mob-tabs');
   if (!el) return;
-  el.innerHTML = _saMobTabs.map((t, i) => `<button class="sa-tab-pill ${i === _saMobActiveTab ? 'active' : ''}" onclick="_saSwitchMobileTab(${i})">${_saEsc(t.tab_name)}</button>`).join('');
+  el.innerHTML = _saMobTabs.map((t, i) => `<button class="sa-tab-pill ${i === _saMobActiveTab ? 'active' : ''}"${act('click', '_saSwitchMobileTab', i)}>${_saEsc(t.tab_name)}</button>`).join('');
 }
 
 function _saSwitchMobileTab(i) { _saMobActiveTab = i; _saRenderMobileTabs(); _saRenderMobileTable(); }
@@ -444,6 +445,7 @@ async function _saPrunePushTabs(spreadsheetId, sourceLabel) {
 
 window.sheetsPushRows    = sheetsPushRows;
 window.sheetsAppBuild    = sheetsAppBuild;
+registerActions({ sheetsAppRefreshList() { sheetsAppBuild(document.getElementById('ns-panel-host')); } });
 window._saCreate         = _saCreate;
 window._saOpen           = _saOpen;
 window._saTogglePin      = _saTogglePin;

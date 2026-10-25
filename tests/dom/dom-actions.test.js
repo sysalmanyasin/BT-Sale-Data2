@@ -149,3 +149,22 @@ test('act() options: stop / selfOnly / key / confirm and arg tokens', () => {
   assert.match(a, /data-key="Enter"/); assert.match(a, /data-stop/); assert.match(a, /data-self-only/);
   assert.match(a, /data-confirm="ok\?"/); assert.match(a, /&quot;\$&quot;:&quot;value&quot;/);
 });
+
+test('data-then runs follow-up calls in order, with their own args (a(x); b(y))', () => {
+  html(`<input id="i" value="7" data-on-input="rec" data-args='["first",{"$":"value"}]' data-then='[["rec",["second",3]]]'>`);
+  doc.getElementById('i').dispatchEvent(new win.Event('input', { bubbles: true }));
+  assert.deepEqual(calls, [['first', '7'], ['second', 3]]);
+});
+
+test('data-then is skipped when the first call throws', () => {
+  mod.registerActions({ boom2: () => { throw new Error('x'); } });
+  html(`<button id="b" data-on-click="boom2" data-then='[["rec",[]]]'></button>`);
+  click(doc.getElementById('b'));
+  assert.deepEqual(calls, []);
+});
+
+test('act() then option emits data-then and round-trips', () => {
+  html(`<input id="i" value="9"${mod.act('input', { then: [['rec', 'after', 5]] }, 'rec', 'main', mod.arg.value)}>`);
+  doc.getElementById('i').dispatchEvent(new win.Event('input', { bubbles: true }));
+  assert.deepEqual(calls, [['main', '9'], ['after', 5]]);
+});

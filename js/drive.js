@@ -10,6 +10,8 @@ if (typeof window._driveAccessToken === 'undefined') window._driveAccessToken = 
 
 (function() {
 'use strict';
+// Classic script (no imports): the dispatcher helpers are published on window.BTDomActions.
+const act = (...a) => window.BTDomActions.act(...a);
 
 const DRIVE_LAST_K = 'bt_drive_last_backup';
 const DRIVE_FOLDER_ID = '1qDSFSlrcUA7EoaMx43bG3mxkpS1ESHGn'; // your existing Drive folder
@@ -469,7 +471,7 @@ async function _driveListBackups() {
           <div style="font-size:11px;color:var(--muted);margin-top:2px">${_driveEsc(mod)}${kb?' · '+kb:''}</div>
         </div>
         <button class="btn btn-p" style="flex-shrink:0;font-size:12px;padding:6px 14px"
-          onclick="_drivePreviewFile('${_driveEsc(f.id)}','${_driveEsc(date)}')">Preview</button>
+         ${act('click', '_drivePreviewFile', String(f.id), String(date))}>Preview</button>
       </div>`;
     }).join('');
   } catch(e) {
@@ -508,12 +510,12 @@ async function _drivePreviewFile(fileId, label) {
         ${row('Notes', b.notes, l.notes, p.notes)}
       </table>
       <div style="display:flex;gap:8px;margin-top:14px">
-        <button class="btn" style="background:var(--s3);border-color:var(--border);flex:1" onclick="_driveListBackups()">← Back</button>
-        <button class="btn btn-p" style="flex:1" ${problems.length?'disabled':''} onclick="_driveRestoreFile('${_driveEsc(fileId)}','${_driveEsc(label)}')">Restore (merge)</button>
+        <button class="btn" style="background:var(--s3);border-color:var(--border);flex:1"${act('click', '_driveListBackups')}>← Back</button>
+        <button class="btn btn-p" style="flex:1" ${problems.length?'disabled':''}${act('click', '_driveRestoreFile', String(fileId), String(label))}>Restore (merge)</button>
       </div>`;
   } catch (e) {
     statusEl.textContent = '✕ Could not read this backup: ' + e.message;
-    listEl.innerHTML = `<button class="btn" style="margin-top:10px" onclick="_driveListBackups()">← Back</button>`;
+    listEl.innerHTML = `<button class="btn" style="margin-top:10px"${act('click', '_driveListBackups')}>← Back</button>`;
   }
 }
 async function _driveRestoreFile(fileId, label) {

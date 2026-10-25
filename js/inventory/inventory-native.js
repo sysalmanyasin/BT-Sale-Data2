@@ -15,6 +15,7 @@
 
 import * as InventoryBridge from './inventory-bridge.js';
 import { escapeHtml as esc } from '../shared/html.js';
+import { act, arg } from '../shared/dom-actions.js';
 
 const PAGE_SIZE = 100;
 
@@ -169,7 +170,7 @@ function _columnsPanelHtml() {
       <div class="bti-col-group-title">${esc(g.name)}</div>
       ${g.cols.map(c => `
         <label class="bti-col-check">
-          <input type="checkbox" ${biState.columns.has(c.key) ? 'checked' : ''} onchange="biToggleColumn('${c.key}', this.checked)">
+          <input type="checkbox" ${biState.columns.has(c.key) ? 'checked' : ''}${act('change', 'biToggleColumn', String(c.key), arg.checked)}>
           ${esc(c.label)}
         </label>`).join('')}
     </div>`).join('');
@@ -215,9 +216,9 @@ function _paginationHtml(totalRows, totalPages) {
   const start = (biState.page - 1) * PAGE_SIZE + 1;
   const end = Math.min(biState.page * PAGE_SIZE, totalRows);
   return `<div class="bti-pagination">
-    <button class="bti-page-btn" ${biState.page <= 1 ? 'disabled' : ''} onclick="biGoToPage(${biState.page - 1})">‹ Prev</button>
+    <button class="bti-page-btn" ${biState.page <= 1 ? 'disabled' : ''}${act('click', 'biGoToPage', biState.page - 1)}>‹ Prev</button>
     <span class="bti-page-info">${start.toLocaleString()}–${end.toLocaleString()} of ${totalRows.toLocaleString()} · Page ${biState.page} of ${totalPages}</span>
-    <button class="bti-page-btn" ${biState.page >= totalPages ? 'disabled' : ''} onclick="biGoToPage(${biState.page + 1})">Next ›</button>
+    <button class="bti-page-btn" ${biState.page >= totalPages ? 'disabled' : ''}${act('click', 'biGoToPage', biState.page + 1)}>Next ›</button>
   </div>`;
 }
 

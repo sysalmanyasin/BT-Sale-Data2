@@ -4,6 +4,7 @@
 import { Repository } from '../repository.js';
 import { Actions } from '../actions.js';
 import { MONTHLY, n, fc } from '../config.js';
+import { act } from '../shared/dom-actions.js';
 
 const TGT_K = 'bt_targets';
 function getTgts() { try{return JSON.parse(Repository.getItem(TGT_K)||'{}')}catch{return{}} }
@@ -45,12 +46,12 @@ function renderTargetList() {
       <span style="font-family:var(--mono);font-size:11px;color:var(--muted)">₨${fc(t[mon])}</span>
       <div style="flex:1;background:var(--border);border-radius:99px;height:5px;overflow:hidden"><div style="height:100%;width:${p}%;background:${c};border-radius:99px"></div></div>
       <span style="font-size:11px;font-weight:600;color:${c}">${p}%</span>
-      <button class="btn btn-d" style="padding:2px 7px;font-size:11px" onclick="delTarget('${mon}')">✕</button>
+      <button class="btn btn-d" style="padding:2px 7px;font-size:11px"${act('click', 'delTarget', String(mon))}>✕</button>
     </div>`;
   }).join('');
 }
 
-// saveTarget/delTarget are called via inline onclick="" attributes
+// saveTarget/delTarget are called via data-on-click attributes
 // (index.html's Save button, and this file's own generated ✕ button),
 // which always resolve against the global scope — must stay bridged.
 // renderTargetList is called as a bare global by ui.js (still classic).

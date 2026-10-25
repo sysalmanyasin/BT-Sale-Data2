@@ -22,6 +22,7 @@
 
 import * as StrBridge from './str-bridge.js';
 import * as S from './str-shared.js';
+import { act, arg } from '../shared/dom-actions.js';
 
 const COLS_KEY = 'bt_str_zd_cols_v1';
 // Dispatch Qty is always 0 on this page by definition, but it's kept
@@ -122,10 +123,10 @@ function _strBlockHtml(h, groups) {
   return `
     <div class="str-rpt-str-block">
       <div class="str-zd-str-head-row">
-        <label class="str-zd-checkbox-wrap" onclick="event.stopPropagation()">
-          <input type="checkbox" class="str-zd-checkbox" ${checked ? 'checked' : ''} onchange="strZdToggleSelect(${h.strId}, this.checked)">
+        <label class="str-zd-checkbox-wrap"${act('click', { stop: true }, 'noop')}>
+          <input type="checkbox" class="str-zd-checkbox" ${checked ? 'checked' : ''}${act('change', 'strZdToggleSelect', h.strId, arg.checked)}>
         </label>
-        <div class="str-rpt-str-head" style="flex:1" onclick="strZdOpenDetail(${h.strId})">
+        <div class="str-rpt-str-head" style="flex:1"${act('click', 'strZdOpenDetail', h.strId)}>
           <div class="str-rpt-str-head-main">
             <span class="str-rpt-str-num">STR #${S.esc(h.strNumber || h.strId)}</span>
             <span class="str-badge ${S.STAGE_BADGE_CLASS[stage]}">${S.STAGE_LABEL[stage]}</span>
@@ -257,7 +258,7 @@ function _renderColsPanel() {
   panel.style.display = zdState.colsOpen ? 'block' : 'none';
   panel.innerHTML = COLUMN_DEFS.map(c => `
     <label class="str-rpt-col-toggle">
-      <input type="checkbox" ${zdState.cols[c.key] ? 'checked' : ''} onchange="strZdToggleCol('${c.key}', this.checked)">
+      <input type="checkbox" ${zdState.cols[c.key] ? 'checked' : ''}${act('change', 'strZdToggleCol', String(c.key), arg.checked)}>
       ${c.label}
     </label>`).join('');
 }

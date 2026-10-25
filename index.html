@@ -2624,7 +2624,7 @@ if ('serviceWorker' in navigator) {
 -->
 
 <!-- 1b. Shared service layer -->
-<script type="module" src="js/shared/dom-actions.js?v=9af5cf3c"></script>
+<script type="module" src="js/shared/dom-actions.js?v=00d736ef"></script>
 <script type="module" src="js/bt-format.js?v=47e80cb3"></script>
 <script type="module" src="js/print.js?v=2f8ee8d6"></script>
 <script type="module" src="js/bt-date.js?v=3a70aae9"></script>
@@ -2681,7 +2681,7 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/ledger/ledger-store.js?v=58a33cf0"></script>
 <script type="module" src="js/ledger/ledger-actions.js?v=e3f43a1e"></script>
 <script type="module" src="js/ledger/ledger-page.js?v=90f73c81"></script>
-<script type="module" src="js/cover/cover-dashboard.js?v=b84c380c"></script>
+<script type="module" src="js/cover/cover-dashboard.js?v=fdddf398"></script>
 <script type="module" src="js/herald/herald-engine.js?v=79bebc52"></script>
 <script type="module" src="js/herald/herald-page.js?v=0212dd3c"></script>
 <script type="module" src="js/status-bar.js?v=8654ed27"></script>
@@ -2690,11 +2690,11 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/closing/closing-bridge.js?v=1e22c51e"></script>
 <script type="module" src="js/closing/closing-ledger-marks.js?v=dba22d5b"></script>
 <script type="module" src="js/ledger/ledger-quick-add.js?v=64f5e93c"></script>
-<script type="module" src="js/closing/closing-native.js?v=d5092a22"></script>
+<script type="module" src="js/closing/closing-native.js?v=ffc794fa"></script>
 <script type="module" src="js/audit/audit-bridge.js?v=fc09658a"></script>
-<script type="module" src="js/audit/audit-native.js?v=d9a5e64a"></script>
+<script type="module" src="js/audit/audit-native.js?v=8317f51c"></script>
 <script type="module" src="js/inventory/inventory-bridge.js?v=a65abaf9"></script>
-<script type="module" src="js/inventory/inventory-native.js?v=384da849"></script>
+<script type="module" src="js/inventory/inventory-native.js?v=f292a8e1"></script>
 <!-- Emergency Billing: bridge (reads inventory-bridge's cache, writes to
      its own emergency_* tables) + native UI (Phase 3 — cart/checkout/
      hold/F9-edit/receipt, ported from POS's billing.js; see
@@ -2704,9 +2704,9 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/emergency-billing/emergency-billing-bridge.js?v=a9724161"></script>
 <script type="module" src="js/emergency-billing/emergency-billing-native.js?v=7e653756"></script>
 <script type="module" src="js/str/str-bridge.js?v=3530abc2"></script>
-<script type="module" src="js/str/str-native.js?v=69dc163b"></script>
-<script type="module" src="js/str/str-report-native.js?v=5ccf75c3"></script>
-<script type="module" src="js/str/str-zero-dispatch.js?v=d2a6ae47"></script>
+<script type="module" src="js/str/str-native.js?v=fc236730"></script>
+<script type="module" src="js/str/str-report-native.js?v=5bc69ef9"></script>
+<script type="module" src="js/str/str-zero-dispatch.js?v=dee995ac"></script>
 <script type="module" src="js/sales/sale-payments-bridge.js?v=75cf71ef"></script>
 <script type="module" src="js/sales/sale-payments-native.js?v=57f4bce4"></script>
 <script type="module" src="js/inventory/stockledger.js?v=26bd74ee"></script>
@@ -2725,10 +2725,10 @@ if ('serviceWorker' in navigator) {
 
 <!-- 6b. Sync center (needs EventBus). Supabase client lib itself now
      loads much earlier above — see comment there. -->
-<script type="module" src="js/sync-center.js?v=1cfb7462"></script>
+<script type="module" src="js/sync-center.js?v=98cf88cc"></script>
 
 <!-- 6c2. Conflict UI (Floor 4/5) — DOM code that reacts to Repository/Actions -->
-<script type="module" src="js/conflict-ui.js?v=620aa04a"></script>
+<script type="module" src="js/conflict-ui.js?v=14ba44fd"></script>
 
 <!-- 6d. Supabase sync (Floor 1 extension — needs Repository + Actions) -->
 <script type="module" src="js/supabase.js?v=82d67259"></script>
@@ -2738,41 +2738,41 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/activity-log.js?v=c3a44801"></script>
 
 <!-- 7. Targets: monthly target management -->
-<script type="module" src="js/sales/targets.js?v=27b87a1e"></script>
+<script type="module" src="js/sales/targets.js?v=b40f71be"></script>
 
 <!-- 8. Analytics: Floor 3 KPI computation — must load before dashboard.js -->
 <script type="module" src="js/sales/analytics.js?v=2d756041"></script>
 
 <!-- 8b. Dashboard: Floor 5 pure renderer -->
-<script type="module" src="js/sales/dashboard-controls.js?v=c3b65901"></script>
-<script type="module" src="js/sales/dashboard.js?v=251d70bd"></script>
-<script type="module" src="js/sales/dashboard-heatmap.js?v=82e03d89"></script>
-<script type="module" src="js/sales/dashboard-race.js?v=e132fd58"></script>
+<script type="module" src="js/sales/dashboard-controls.js?v=463d41f1"></script>
+<script type="module" src="js/sales/dashboard.js?v=c6e16c98"></script>
+<script type="module" src="js/sales/dashboard-heatmap.js?v=88e7e9f8"></script>
+<script type="module" src="js/sales/dashboard-race.js?v=b80fc40b"></script>
 
 <!-- 8b. Dashboard Insights: briefing card, target pace, rotating insight strip, diff badge (Phase 3) -->
 <script type="module" src="js/rules-engine.js?v=26c6acb8"></script>
 <script type="module" src="js/rules-registrations.js?v=56a4d93d"></script>
-<script type="module" src="js/sales/dashboard-insights.js?v=49a6b5ce"></script>
+<script type="module" src="js/sales/dashboard-insights.js?v=6dc467cc"></script>
 
 <!-- 9. Index page: year/month grid rendering -->
-<script type="module" src="js/sales/index-page.js?v=c9060800"></script>
+<script type="module" src="js/sales/index-page.js?v=f7c59c4b"></script>
 
 <!-- 10. Reports: day modal, month modal, all print helpers -->
-<script type="module" src="js/sales/reports.js?v=ba4df77b"></script>
-<script type="module" src="js/sales/cash-deposit-report.js?v=4064132c"></script>
+<script type="module" src="js/sales/reports.js?v=2f0b5b6b"></script>
+<script type="module" src="js/sales/cash-deposit-report.js?v=29bcb3af"></script>
 <script type="module" src="js/sales/daily-checklist.js?v=9942067b"></script>
 <script type="module" src="js/icons.js?v=b583b55a"></script>
-<script type="module" src="js/nav-sections.js?v=75cb326e"></script>
-<script type="module" src="js/global-search.js?v=0bcef047"></script>
+<script type="module" src="js/nav-sections.js?v=1c094ed7"></script>
+<script type="module" src="js/global-search.js?v=6ca57c30"></script>
 <script type="module" src="js/subtab-strip.js?v=b3b0d8f7"></script>
 
 <!-- 11. Data page: daily table + entry form -->
-<script type="module" src="js/sales/data-page.js?v=455c56fd"></script>
+<script type="module" src="js/sales/data-page.js?v=61054e01"></script>
 <script type="module" src="js/sales/entry-prefill.js?v=1ae84678"></script>
 <script type="module" src="js/sales/diff-report.js?v=11791709"></script>
 
 <!-- 11b. Reports print helpers (extracted from manager.js — Step 8) -->
-<script type="module" src="js/sales/reports-print.js?v=ff723d86"></script>
+<script type="module" src="js/sales/reports-print.js?v=12a035f4"></script>
 
 <!-- 11c. Manager Summary Export (Phase 5) -->
 <script type="module" src="js/manager/manager-export.js?v=e65a2913"></script>
@@ -2784,29 +2784,29 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/sheets/sheets-api.js?v=dc5da8a7"></script>
 <script type="module" src="js/sheets/sheets-sync.js?v=0955dfc7"></script>
 <script type="module" src="js/sheets/sheets-picker.js?v=0a4b6ba1"></script>
-<script type="module" src="js/sheets/sheets-app.js?v=0301fd6e"></script>
+<script type="module" src="js/sheets/sheets-app.js?v=b7271850"></script>
 
 <!-- 11e. Notes & Sheets workspace (Phase 6) -->
-<script type="module" src="js/sheets/notes-sheets.js?v=28210118"></script>
+<script type="module" src="js/sheets/notes-sheets.js?v=3bb54417"></script>
 
 <!-- 11e-patch. Sheets enhancements: copy/paste, File menu, Supabase sync -->
-<script type="module" src="js/sheets/sheets-patch.js?v=8109bf83"></script>
+<script type="module" src="js/sheets/sheets-patch.js?v=7cf4ce0c"></script>
 
 <!-- 12. Manager: salary, generic, expense, credit, petty, incentive.
      Split from one 1906-line manager.js monolith into focused modules
      (see each file's own header comment for why it's shaped the way
      it is). manager-shared.js first — everything else depends on it. -->
-<script type="module" src="js/manager/manager-shared.js?v=0f1c173d"></script>
+<script type="module" src="js/manager/manager-shared.js?v=aedee324"></script>
 <script type="module" src="js/manager/attendance-bridge.js?v=97ed8176"></script>
-<script type="module" src="js/manager/manager-attendance.js?v=0fe802f9"></script>
-<script type="module" src="js/manager/manager-staff.js?v=7dc2fe98"></script>
-<script type="module" src="js/manager/manager-salary.js?v=93431bf1"></script>
-<script type="module" src="js/manager/manager-generic.js?v=5d68629e"></script>
-<script type="module" src="js/manager/manager-credit.js?v=6ba6ddf0"></script>
-<script type="module" src="js/manager/manager-payslip.js?v=a71f382a"></script>
-<script type="module" src="js/manager/manager-unmatched.js?v=53bab963"></script>
+<script type="module" src="js/manager/manager-attendance.js?v=898b7079"></script>
+<script type="module" src="js/manager/manager-staff.js?v=bb418ee7"></script>
+<script type="module" src="js/manager/manager-salary.js?v=1e8189f6"></script>
+<script type="module" src="js/manager/manager-generic.js?v=866d59d7"></script>
+<script type="module" src="js/manager/manager-credit.js?v=730c694d"></script>
+<script type="module" src="js/manager/manager-payslip.js?v=a7174bd9"></script>
+<script type="module" src="js/manager/manager-unmatched.js?v=4959c130"></script>
 <script type="module" src="js/manager/manager-reports.js?v=4529615f"></script>
-<script type="module" src="js/manager/manager-petty.js?v=888ce73a"></script>
+<script type="module" src="js/manager/manager-petty.js?v=de86c210"></script>
 <script type="module" src="js/manager/manager-incentive.js?v=719e10b3"></script>
 <!-- app-init.js: the actual whole-app bootstrap (was misplaced at the
      bottom of manager.js despite having nothing to do with Manager —
@@ -2827,7 +2827,7 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/manager/custom-sections.js?v=c0259821"></script>
 
 <!-- 13b. Jazz Cash — Balance Tally (Daily Ledger now runs on the generalized Ledger, see ledger-page.js) -->
-<script type="module" src="js/ledger/jazz-cash.js?v=44ec4115"></script>
+<script type="module" src="js/ledger/jazz-cash.js?v=b5c78143"></script>
 
 <script type="module" src="js/ledger/quick-add.js?v=25d79799"></script>
 
@@ -2839,10 +2839,10 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/ai-center/index.js?v=378a2115"></script>
 
 <!-- 14. Field manager modal -->
-<script type="module" src="js/sales/fields.js?v=77051a94"></script>
+<script type="module" src="js/sales/fields.js?v=89ed17c5"></script>
 
 <!-- 15. Google Drive backup / restore -->
-<script type="module" src="js/drive.js?v=2cfab9d8"></script>
+<script type="module" src="js/drive.js?v=e349c209"></script>
 
 <!-- Staff Card Popup Modal -->
 <div class="sc-bg" id="sc-bg" data-on-click="closeStaffCard" data-self-only>

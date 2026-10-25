@@ -24,6 +24,7 @@
 
 import * as StrBridge from './str-bridge.js';
 import * as S from './str-shared.js';
+import { act, arg } from '../shared/dom-actions.js';
 
 const COLS_KEY = 'bt_str_report_cols_v1';
 // Product is always shown (it's the row identity); these five are
@@ -136,7 +137,7 @@ function _strBlockHtml(h, groups) {
 
   return `
     <div class="str-rpt-str-block">
-      <div class="str-rpt-str-head" onclick="strReportOpenDetail(${h.strId})">
+      <div class="str-rpt-str-head"${act('click', 'strReportOpenDetail', h.strId)}>
         <div class="str-rpt-str-head-main">
           <span class="str-rpt-str-num">STR #${S.esc(h.strNumber || h.strId)}</span>
           <span class="str-badge ${S.STAGE_BADGE_CLASS[stage]}">${S.STAGE_LABEL[stage]}</span>
@@ -280,7 +281,7 @@ function _renderColsPanel() {
   panel.style.display = rptState.colsOpen ? 'block' : 'none';
   panel.innerHTML = COLUMN_DEFS.map(c => `
     <label class="str-rpt-col-toggle">
-      <input type="checkbox" ${rptState.cols[c.key] ? 'checked' : ''} onchange="strReportToggleCol('${c.key}', this.checked)">
+      <input type="checkbox" ${rptState.cols[c.key] ? 'checked' : ''}${act('change', 'strReportToggleCol', String(c.key), arg.checked)}>
       ${c.label}
     </label>`).join('');
 }

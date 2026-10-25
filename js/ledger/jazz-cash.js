@@ -33,6 +33,7 @@ import { Actions } from '../actions.js';
 import * as LedgerStore from './ledger-store.js';
 import { mgrAutosave } from '../manager/manager-shared.js';
 import * as Tombstones from '../sync-tombstones.js';
+import { act, arg } from '../shared/dom-actions.js';
 
 // ─── LEDGER constant — the one-time migration into the unified Ledger
 // has already been run for this app's data. Nothing in this file
@@ -130,11 +131,11 @@ function renderJazzCash() {
   if (!document.getElementById('jc-panel-tally')) {
     cont.innerHTML = `
     <div style="display:flex;gap:0;margin-bottom:16px;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;background:var(--s2)">
-      <button id="jc-tab-ledger" onclick="jcSwitchTab('ledger')"
+      <button id="jc-tab-ledger"${act('click', 'jcSwitchTab', 'ledger')}
         style="flex:1;padding:10px;border:none;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;background:${_jcActiveTab==='ledger'?'var(--accent)':'transparent'};color:${_jcActiveTab==='ledger'?'#fff':'var(--muted)'}">
         📒 Daily Ledger
       </button>
-      <button id="jc-tab-tally" onclick="jcSwitchTab('tally')"
+      <button id="jc-tab-tally"${act('click', 'jcSwitchTab', 'tally')}
         style="flex:1;padding:10px;border:none;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;background:${_jcActiveTab==='tally'?'#16a34a':'transparent'};color:${_jcActiveTab==='tally'?'#fff':'var(--muted)'}">
         ⚖ Balance Tally
       </button>
@@ -254,13 +255,13 @@ function _renderTally() {
       <div>
         <label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">TALLY DATE</label>
         <input type="date" id="tally-date" value="${_jcTallyDate}"
-          onchange="_jcSelectTallyDate(this.value)"
+         ${act('change', '_jcSelectTallyDate', arg.value)}
           style="width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text);outline:none">
       </div>
       <div>
         <label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">📱 EXPENSE APP TOTAL (₨)</label>
         <input type="number" id="tally-app-target" value="${appTarget||''}" placeholder="Enter app's total"
-          oninput="_tallyLiveCalc()"
+         ${act('input', '_tallyLiveCalc')}
           style="width:100%;padding:9px 10px;border:1.5px solid #bfdbfe;border-radius:8px;font-size:14px;font-weight:700;font-family:var(--mono);background:#eff6ff;color:var(--accent);outline:none;text-align:right">
       </div>
     </div>
@@ -269,7 +270,7 @@ function _renderTally() {
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:14px;overflow:hidden">
       <div style="background:var(--s2);padding:11px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
         <span style="font-weight:700;font-size:13px;flex:1">💰 Account Balances</span>
-        <button onclick="_tallyAddAccount()" style="background:var(--accent);color:#fff;border:none;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">＋ Add</button>
+        <button${act('click', '_tallyAddAccount')} style="background:var(--accent);color:#fff;border:none;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer">＋ Add</button>
       </div>
       <div id="tally-accounts-body" style="padding:0">
         ${_tallyAccountsHtml(accounts,jcBal)}
@@ -299,7 +300,7 @@ function _renderTally() {
     </div>
 
     <!-- Save Snapshot -->
-    <button id="mgr-save-jazzcash-tally" onclick="_tallySaveSnapshot()" style="width:100%;background:#1e40af;color:#fff;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:16px;display:flex;align-items:center;justify-content:center;gap:8px">
+    <button id="mgr-save-jazzcash-tally"${act('click', '_tallySaveSnapshot')} style="width:100%;background:#1e40af;color:#fff;border:none;border-radius:10px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:16px;display:flex;align-items:center;justify-content:center;gap:8px">
       📸 Save Today's Snapshot
     </button>
 
@@ -309,7 +310,7 @@ function _renderTally() {
       <div style="background:var(--s2);padding:11px 16px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px">🕐 Snapshot History</div>
       ${snaps.map(s=>{
         const sd=s.total-s.appTarget;
-        return `<div onclick="_jcSelectTallyDate('${s.date}')" style="padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:12px;transition:background .1s" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">
+        return `<div${act('click', '_jcSelectTallyDate', String(s.date))} style="padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;align-items:center;gap:12px;transition:background .1s" onmouseover="this.style.background='var(--s2)'" onmouseout="this.style.background=''">
           <div style="flex:1">
             <div style="font-weight:700;font-size:13px">${_jcFmtDate(s.date)}</div>
             <div style="font-size:11px;color:var(--muted);margin-top:2px">${s.accounts?.length||0} accounts</div>
@@ -318,7 +319,7 @@ function _renderTally() {
             <div style="font-family:var(--mono);font-weight:700;font-size:13px">₨${_jcFmt(s.total)}</div>
             <div style="font-size:11px;font-weight:700;color:${sd===0?'var(--green)':sd>0?'var(--amber)':'var(--red)'}">Diff: ${sd>=0?'+':'−'}₨${_jcFmt(Math.abs(sd))}</div>
           </div>
-          <button onclick="event.stopPropagation();_tallyDeleteSnap('${s.date}')" style="background:var(--rlt);border:none;border-radius:5px;padding:4px 8px;font-size:11px;cursor:pointer;color:var(--red);font-weight:600;flex-shrink:0">✕</button>
+          <button${act('click', { stop: true }, '_tallyDeleteSnap', String(s.date))} style="background:var(--rlt);border:none;border-radius:5px;padding:4px 8px;font-size:11px;cursor:pointer;color:var(--red);font-weight:600;flex-shrink:0">✕</button>
         </div>`;
       }).join('')}
     </div>`:''
@@ -336,14 +337,14 @@ function _tallyAccountsHtml(accounts,jcBal) {
       </div>
       <input type="number" value="${a.id==='jc_balance'?jcBal:(a.amount||'')}"
         ${a.id==='jc_balance'?'readonly':''} placeholder="0"
-        oninput="_tallyLiveCalc()"
+       ${act('input', '_tallyLiveCalc')}
         data-acid="${a.id}"
         class="tally-amt-inp"
         style="width:130px;padding:7px 10px;border:${a.id==='jc_balance'?'1px solid #bbf7d0;background:#f0fdf4':'1px solid var(--border);background:var(--s2)'};border-radius:7px;font-size:13px;font-weight:700;font-family:var(--mono);text-align:right;outline:none;color:${a.id==='jc_balance'?(jcBal<0?'var(--red)':'var(--green)'):'var(--text)'}">
       <div style="width:70px;display:flex;gap:4px;justify-content:flex-end">
         ${a.locked?'<span style="font-size:18px">🔒</span>':`
-          <button onclick="_tallyRenameAcc('${a.id}')" style="background:var(--alt);border:none;border-radius:5px;padding:4px 7px;font-size:11px;cursor:pointer;color:var(--accent);font-weight:600">✏</button>
-          <button onclick="_tallyRemoveAcc('${a.id}')" style="background:var(--rlt);border:none;border-radius:5px;padding:4px 7px;font-size:11px;cursor:pointer;color:var(--red);font-weight:600">✕</button>`}
+          <button${act('click', '_tallyRenameAcc', String(a.id))} style="background:var(--alt);border:none;border-radius:5px;padding:4px 7px;font-size:11px;cursor:pointer;color:var(--accent);font-weight:600">✏</button>
+          <button${act('click', '_tallyRemoveAcc', String(a.id))} style="background:var(--rlt);border:none;border-radius:5px;padding:4px 7px;font-size:11px;cursor:pointer;color:var(--red);font-weight:600">✕</button>`}
       </div>
     </div>`).join('');
 }

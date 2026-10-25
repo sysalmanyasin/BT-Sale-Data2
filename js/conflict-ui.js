@@ -104,7 +104,7 @@ function _conflictChoose(choice) {
   }
 }
 
-// _conflictChoose is called via inline onclick="" attributes on the
+// _conflictChoose is called via data-on-click attributes on the
 // modal's Keep This Device / Keep Cloud Version buttons (index.html) —
 // those always resolve against the global scope. reviewConflicts is a
 // manual entry point meant for a future "Review Conflicts" button;

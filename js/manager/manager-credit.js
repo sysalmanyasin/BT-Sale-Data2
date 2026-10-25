@@ -9,6 +9,7 @@
 import { Repository } from '../repository.js';
 import { STAFF } from '../config.js';
 import { _ni, _fc2, _mgrPopSel, mgrLoad, mgrSave, mgrAutosave, reconcileStaffRows, activeStaff } from './manager-shared.js';
+import { act, arg } from '../shared/dom-actions.js';
 
 // ══════════════════════════════
 // STAFF CREDIT LEDGER
@@ -52,8 +53,8 @@ function renderCreditLedger(emps) {
       <tr class="mgr-tr">
         <td class="mgr-td">${_inp('text', en.date||'', '', `crdEntryChange(${ei},${eni},'date',this.value)`, 'Date')}</td>
         <td class="mgr-td">${_inp('text', en.desc||'', '', `crdEntryChange(${ei},${eni},'desc',this.value)`, 'Description (credit/deduction/…)')}${en.source==='closing_app' ? ' <span title="From Closing App" style="font-size:11px;background:var(--blue,#2563eb);color:#fff;padding:1px 6px;border-radius:10px;">📱</span>' : ''}</td>
-        <td class="mgr-td"><input type="number" value="${en.amount||0}" class="mgr-inp sal-num" style="font-weight:700;${_ni(en.amount)<0?'color:var(--red)':'color:var(--green)'}" placeholder="0 (negative=deduction)" oninput="crdEntryChange(${ei},${eni},'amount',this.value);recalcCrdEmp(${ei})"></td>
-        <td class="mgr-td" style="text-align:center"><button class="mgr-del" onclick="deleteCrdEntry(${ei},${eni})">🗑</button></td>
+        <td class="mgr-td"><input type="number" value="${en.amount||0}" class="mgr-inp sal-num" style="font-weight:700;${_ni(en.amount)<0?'color:var(--red)':'color:var(--green)'}" placeholder="0 (negative=deduction)"${act('input', { then: [['recalcCrdEmp', ei]] }, 'crdEntryChange', ei, eni, 'amount', arg.value)}></td>
+        <td class="mgr-td" style="text-align:center"><button class="mgr-del"${act('click', 'deleteCrdEntry', ei, eni)}>🗑</button></td>
       </tr>`).join('');
 
   container.innerHTML = `<div class="crd-table-wrap"><table class="crd-table">
@@ -65,14 +66,14 @@ function renderCreditLedger(emps) {
     ${rows.map(({ emp, ei, cIdx, sid, srNum }) => {
       const net = _crdNet(emp);
       const netColor = net > 0 ? 'var(--green)' : net < 0 ? 'var(--red)' : 'var(--muted)';
-      const nameClick = cIdx >= 0 ? `openStaffCard(${cIdx})` : `_toggleCrdEmpBody(${ei})`;
+      const nameAttrs = cIdx >= 0 ? act('click', 'openStaffCard', cIdx) : act('click', '_toggleCrdEmpBody', ei);
       const skipped = !!emp.printSkip;
       return `
       <tr class="crd-row${skipped ? ' crd-row-skip' : ''}">
         <td class="crd-td-sr">${srNum !== 999 ? srNum : '—'}</td>
         <td class="crd-td-name">
-          ${sid ? `<button class="crd-sid-pill" onclick="event.stopPropagation();openStaffCard(${cIdx})" title="Open Staff Card">${sid}</button>` : ''}
-          <span class="crd-name-link" onclick="${nameClick}">${_crdEsc(emp.name || '(unnamed)')}</span>
+          ${sid ? `<button class="crd-sid-pill"${act('click', { stop: true }, 'openStaffCard', cIdx)} title="Open Staff Card">${sid}</button>` : ''}
+          <span class="crd-name-link"${nameAttrs}>${_crdEsc(emp.name || '(unnamed)')}</span>
           ${emp.entries.length ? `<span class="crd-entry-badge">${emp.entries.length}</span>` : ''}
           ${skipped ? '<span class="crd-skip-badge" title="Excluded from print">Hidden from print</span>' : ''}
         </td>
@@ -81,18 +82,18 @@ function renderCreditLedger(emps) {
         <td class="crd-td-num">₨${_fc2(emp.lessGeneric)}</td>
         <td class="crd-td-num crd-td-net" style="color:${netColor}" id="crd-net-${ei}">₨${_fc2(net)}</td>
         <td class="crd-td-action">
-          <button class="crd-print-toggle${skipped ? ' is-off' : ''}" id="crd-print-${ei}" onclick="event.stopPropagation();toggleCrdPrintSkip(${ei})" title="${skipped ? 'Excluded from print — click to include' : 'Included in print — click to exclude'}">${skipped ? '🖨🚫' : '🖨'}</button>
+          <button class="crd-print-toggle${skipped ? ' is-off' : ''}" id="crd-print-${ei}"${act('click', { stop: true }, 'toggleCrdPrintSkip', ei)} title="${skipped ? 'Excluded from print — click to include' : 'Included in print — click to exclude'}">${skipped ? '🖨🚫' : '🖨'}</button>
         </td>
         <td class="crd-td-action">
-          <button class="crd-expand-btn" id="crd-chev-${ei}" onclick="_toggleCrdEmpBody(${ei})" title="Quick-edit this month right here">▶</button>
+          <button class="crd-expand-btn" id="crd-chev-${ei}"${act('click', '_toggleCrdEmpBody', ei)} title="Quick-edit this month right here">▶</button>
         </td>
       </tr>
       <tr class="crd-body-row" id="crd-body-${ei}" style="display:none">
         <td colspan="8">
           <div class="crd-emp-fields">
-            <div class="fg"><label>Previous Balance (₨)</label><input type="number" value="${emp.prevBal||0}" class="mgr-inp" oninput="crdEmpField(${ei},'prevBal',this.value);recalcCrdEmp(${ei})"></div>
-            <div class="fg"><label>Salary Paid (₨)</label><input type="number" value="${emp.salary||0}" class="mgr-inp" oninput="crdEmpField(${ei},'salary',this.value);recalcCrdEmp(${ei})"></div>
-            <div class="fg"><label>Less Generic (₨)</label><input type="number" value="${emp.lessGeneric||0}" class="mgr-inp" oninput="crdEmpField(${ei},'lessGeneric',this.value);recalcCrdEmp(${ei})"></div>
+            <div class="fg"><label>Previous Balance (₨)</label><input type="number" value="${emp.prevBal||0}" class="mgr-inp"${act('input', { then: [['recalcCrdEmp', ei]] }, 'crdEmpField', ei, 'prevBal', arg.value)}></div>
+            <div class="fg"><label>Salary Paid (₨)</label><input type="number" value="${emp.salary||0}" class="mgr-inp"${act('input', { then: [['recalcCrdEmp', ei]] }, 'crdEmpField', ei, 'salary', arg.value)}></div>
+            <div class="fg"><label>Less Generic (₨)</label><input type="number" value="${emp.lessGeneric||0}" class="mgr-inp"${act('input', { then: [['recalcCrdEmp', ei]] }, 'crdEmpField', ei, 'lessGeneric', arg.value)}></div>
           </div>
           <div style="padding:0 14px 14px">
           <table style="width:100%;border-collapse:collapse;min-width:420px;border:1px solid var(--border)">
@@ -106,8 +107,8 @@ function renderCreditLedger(emps) {
           </table>
           ${emp.entries.length === 0 ? '<p style="text-align:center;color:var(--muted);font-size:12px;padding:14px">No entries yet — tap "＋ Entry" below to add.</p>' : ''}
           <div style="display:flex;gap:8px;margin-top:10px">
-            <button class="btn btn-p" style="font-size:11px;padding:5px 12px" onclick="addCrdEntryFocused(${ei})">💳 ＋ Entry</button>
-            <button class="mgr-del" style="margin-left:auto" onclick="deleteCrdEmp(${ei})" title="Remove employee from this month">🗑 Remove</button>
+            <button class="btn btn-p" style="font-size:11px;padding:5px 12px"${act('click', 'addCrdEntryFocused', ei)}>💳 ＋ Entry</button>
+            <button class="mgr-del" style="margin-left:auto"${act('click', 'deleteCrdEmp', ei)} title="Remove employee from this month">🗑 Remove</button>
           </div>
           </div>
         </td>
@@ -420,10 +421,10 @@ function renderStaffCreditCurrent(name) {
   const netColor = net > 0 ? 'var(--green)' : net < 0 ? 'var(--red)' : 'var(--muted)';
   const rows = (emp.entries || []).map((en, eni) => `
     <div class="sccc-entry-row">
-      <input type="text" class="mgr-inp" value="${_crdEsc(en.date||'')}" placeholder="Date" oninput="scCreditEntryChange(${eni},'date',this.value)">
-      <input type="text" class="mgr-inp" value="${_crdEsc(en.desc||'')}" placeholder="Description" oninput="scCreditEntryChange(${eni},'desc',this.value)">
-      <input type="number" class="mgr-inp sal-num" value="${en.amount||0}" style="font-weight:700;${_ni(en.amount)<0?'color:var(--red)':'color:var(--green)'}" oninput="scCreditEntryChange(${eni},'amount',this.value)">
-      <button class="mgr-del" onclick="scDeleteCreditEntry(${eni})">🗑</button>
+      <input type="text" class="mgr-inp" value="${_crdEsc(en.date||'')}" placeholder="Date"${act('input', 'scCreditEntryChange', eni, 'date', arg.value)}>
+      <input type="text" class="mgr-inp" value="${_crdEsc(en.desc||'')}" placeholder="Description"${act('input', 'scCreditEntryChange', eni, 'desc', arg.value)}>
+      <input type="number" class="mgr-inp sal-num" value="${en.amount||0}" style="font-weight:700;${_ni(en.amount)<0?'color:var(--red)':'color:var(--green)'}"${act('input', 'scCreditEntryChange', eni, 'amount', arg.value)}>
+      <button class="mgr-del"${act('click', 'scDeleteCreditEntry', eni)}>🗑</button>
     </div>`).join('');
   cont.innerHTML = `
     <div class="sccc-card">
@@ -432,14 +433,14 @@ function renderStaffCreditCurrent(name) {
         <span class="sccc-net" id="sccc-net" style="color:${netColor}">Net: ₨${_fc2(net)}</span>
       </div>
       <div class="sccc-fields">
-        <div class="fg"><label>Previous Balance (₨)</label><input type="number" class="mgr-inp" value="${emp.prevBal||0}" oninput="scCreditFieldChange('prevBal',this.value)"></div>
-        <div class="fg"><label>Salary Paid (₨)</label><input type="number" class="mgr-inp" value="${emp.salary||0}" oninput="scCreditFieldChange('salary',this.value)"></div>
-        <div class="fg"><label>Less Generic (₨)</label><input type="number" class="mgr-inp" value="${emp.lessGeneric||0}" oninput="scCreditFieldChange('lessGeneric',this.value)"></div>
+        <div class="fg"><label>Previous Balance (₨)</label><input type="number" class="mgr-inp" value="${emp.prevBal||0}"${act('input', 'scCreditFieldChange', 'prevBal', arg.value)}></div>
+        <div class="fg"><label>Salary Paid (₨)</label><input type="number" class="mgr-inp" value="${emp.salary||0}"${act('input', 'scCreditFieldChange', 'salary', arg.value)}></div>
+        <div class="fg"><label>Less Generic (₨)</label><input type="number" class="mgr-inp" value="${emp.lessGeneric||0}"${act('input', 'scCreditFieldChange', 'lessGeneric', arg.value)}></div>
       </div>
       <div class="sccc-entries">
         ${rows || '<p class="sccc-empty">No entries yet this month.</p>'}
       </div>
-      <button class="btn btn-p" style="font-size:12px;padding:7px 14px" onclick="scAddCreditEntry()">💳 ＋ Add Entry</button>
+      <button class="btn btn-p" style="font-size:12px;padding:7px 14px"${act('click', 'scAddCreditEntry')}>💳 ＋ Add Entry</button>
     </div>`;
 }
 

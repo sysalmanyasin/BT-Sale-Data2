@@ -10,6 +10,7 @@
 //   <input  data-on-keydown="salAddColumnFromBar" data-key="Enter">  (only for the Enter key)
 //   <button data-on-click="gauthSignOutAllDevices" data-confirm="Sign out everywhere?">
 //   <button data-on-click="saveRow" data-stop>                       (stopPropagation before running)
+//   <input  data-on-input="setCell" data-args='[3,{"$":"value"}]' data-then='[["recalc",[3]]]'>   (a(); b())
 //
 // Special argument tokens (JSON objects):  {"$":"this"} the element,  {"$":"value"} el.value,
 //   {"$":"checked"} el.checked,  {"$":"event"} the DOM event.
@@ -81,19 +82,35 @@ function parseArgs(el) {
   }
 }
 
-function run(el, ev, name) {
+function call(el, ev, name, rawArgs) {
   const hit = resolve(name);
   if (!hit) {
     if (!warned.has(name)) { warned.add(name); console.error('[dom-actions] no action named "' + name + '"'); }
-    return;
+    return false;
   }
-  const args = parseArgs(el).map((a) => decode(a, el, ev));
+  const args = rawArgs.map((a) => decode(a, el, ev));
   try {
     const out = hit.fn.apply(hit.ctx || el, args);
     if (out && typeof out.catch === 'function') out.catch((e) => console.error('[dom-actions] ' + name + ' rejected', e));
+    return true;
   } catch (e) {
     console.error('[dom-actions] ' + name + ' threw', e);
+    return false;
   }
+}
+
+// data-then='[["recalc",[3]],["save",[]]]' — further calls run in order after the main action,
+// and are skipped if an earlier one failed (same as `a(); b()` in an inline handler).
+function parseThen(el) {
+  const raw = el.getAttribute('data-then');
+  if (!raw) return [];
+  try { const v = JSON.parse(raw); return Array.isArray(v) ? v : []; }
+  catch (e) { console.error('[dom-actions] bad data-then on', el, e); return []; }
+}
+
+function run(el, ev, name) {
+  if (!call(el, ev, name, parseArgs(el))) return;
+  for (const [n, a] of parseThen(el)) if (!call(el, ev, n, Array.isArray(a) ? a : [])) return;
 }
 
 // Non-bubbling events are handled with a capture listener and fire only for the element itself,
@@ -141,7 +158,8 @@ export const arg = Object.freeze({
 /**
  * Attribute string for template literals:
  *   `<button ${act('click', 'openDay', id)}>`  ->  data-on-click="openDay" data-args="[&quot;2026-10-25&quot;]"
- * Options object as the first arg after the event: act('click', {stop:true, selfOnly:true, key:'Enter', confirm:'Sure?'}, 'fn', ...args)
+ * Options object as the first arg after the event:
+ *   act('click', {stop:true, selfOnly:true, key:'Enter', confirm:'Sure?', then:[['recalc', 3]]}, 'fn', ...args)
  */
 export function act(event, ...rest) {
   let opts = {};
@@ -149,6 +167,7 @@ export function act(event, ...rest) {
   const [name, ...args] = rest;
   let s = ' data-on-' + event + '="' + esc(name) + '"';
   if (args.length) s += ' data-args="' + esc(JSON.stringify(args)) + '"';
+  if (opts.then && opts.then.length) s += ' data-then="' + esc(JSON.stringify(opts.then.map(([n, ...a]) => [n, a]))) + '"';
   if (opts.stop) s += ' data-stop';
   if (opts.selfOnly) s += ' data-self-only';
   if (opts.key) s += ' data-key="' + esc(opts.key) + '"';
@@ -158,8 +177,14 @@ export function act(event, ...rest) {
 
 // Built-in action: click another element (replaces onclick="document.getElementById('x').click()").
 registerActions({
+  // for `onclick="event.stopPropagation()"`-only elements: act('click', { stop: true }, 'noop')
+  noop() {},
   clickElement(id) { const el = document.getElementById(id); if (el) el.click(); },
 });
+
+// Classic (non-module) scripts such as drive.js and dashboard-heatmap.js cannot `import`; they use
+// window.BTDomActions.act(...) instead. Module code should always import from this file.
+if (typeof window !== 'undefined') window.BTDomActions = Object.freeze({ act, arg, registerActions });
 
 // Install as soon as the DOM can take listeners (document always exists for module scripts).
 if (typeof document !== 'undefined') installDomActions(document);

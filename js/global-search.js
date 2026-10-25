@@ -25,6 +25,7 @@
 // ══════════════════════════════════════════════════════════════════════
 
 import { escapeHtml as _esc } from './shared/html.js';
+import { act } from './shared/dom-actions.js';
 (function () {
   'use strict';
 
@@ -50,7 +51,7 @@ import { escapeHtml as _esc } from './shared/html.js';
     box.innerHTML =
       '<div class="gs-group-label">Staff</div>' +
       matches.map(m =>
-        '<div class="recents-row" onclick="GlobalSearch._openStaff(' + m.idx + ')">' +
+        '<div class="recents-row" ' + act('click', 'GlobalSearch._openStaff', m.idx) + '>' +
         '<span class="recents-icon">🧑\u200D💼</span>' +
         '<span class="recents-label">' + _esc(m.label) + '<span class="gs-sub">' + _esc(m.sub) + '</span></span>' +
         '</div>'

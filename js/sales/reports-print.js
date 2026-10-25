@@ -339,7 +339,7 @@ function _populatePrintSelectors() {
 
 // Bridge what's used externally or from index.html.
 window.printMonthReport = printMonthReport;
-// Replaces the inline onclick="printMonthReport(_curMon)" (the open month lives on window._curMon).
+// Replaces the old inline printMonthReport(_curMon) handler (the open month lives on window._curMon).
 registerActions({ printCurrentMonthReport: () => printMonthReport(window._curMon) });
 window.printYearlyReport = printYearlyReport;
 window.printDailyFromTools = printDailyFromTools;

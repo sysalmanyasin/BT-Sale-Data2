@@ -22,6 +22,7 @@
 
 import * as AuditBridge from './audit-bridge.js';
 import { escapeHtml as esc } from '../shared/html.js';
+import { act } from '../shared/dom-actions.js';
 
 
 // ── Ported from dashboard-actions.js's mainAuditorDashboard() (pure) ──
@@ -146,7 +147,7 @@ function renderAssignmentsPage() {
 
     const section = (key, title, summary, bodyHtml) => `
       <div class="an-history-item${isSectionOpen(key) ? ' an-open' : ''}">
-        <div class="an-history-header" onclick="anToggleSection('${esc(e.id)}','${key}')">
+        <div class="an-history-header"${act('click', 'anToggleSection', String(e.id), String(key))}>
           <div style="display:flex;align-items:center;gap:8px;overflow:hidden"><span class="an-arrow">▶</span><strong style="color:var(--text);font-size:12.5px">${title}</strong></div>
           <span style="font-size:11px;color:var(--muted);flex-shrink:0;margin-left:8px">${summary}</span>
         </div>
@@ -154,7 +155,7 @@ function renderAssignmentsPage() {
       </div>`;
 
     return `<div class="an-engagement-card" data-eid="${esc(e.id)}">
-      <div class="an-engagement-head" onclick="anToggleEngagement('${esc(e.id)}')">
+      <div class="an-engagement-head"${act('click', 'anToggleEngagement', String(e.id))}>
         <div style="flex:1;min-width:0">
           <div style="font-weight:700;color:var(--text);font-size:14px">${esc(e.name)}</div>
           <div style="font-size:11px;color:var(--muted);margin-top:2px">${dash.roundStatus ? `Round ${dash.roundStatus.number}${esc(dash.roundStatus.suffix || '')} · ${esc(dash.roundStatus.state)}` : 'No rounds yet'}</div>
@@ -240,7 +241,7 @@ function renderSnapshotModal() {
     </div>`;
   }).join('');
 
-  const chip = (mode, label) => `<button class="an-filter-btn${anState.snapshotFilter === mode ? ' an-filter-btn-active' : ''}" onclick="anSetSnapshotFilter('${mode}')">${label}</button>`;
+  const chip = (mode, label) => `<button class="an-filter-btn${anState.snapshotFilter === mode ? ' an-filter-btn-active' : ''}"${act('click', 'anSetSnapshotFilter', String(mode))}>${label}</button>`;
   const sortLabel = anState.snapshotSort === 'name-desc' ? 'Z-A' : anState.snapshotSort === 'variance-desc' ? 'Variance ▼' : anState.snapshotSort === 'variance-asc' ? 'Variance ▲' : 'A-Z';
 
   document.getElementById('an-snapshot-title').textContent = `${assignment.auditor_name}'s live counts`;
@@ -257,13 +258,13 @@ function renderSnapshotModal() {
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
       ${chip('all', 'All')}${chip('shorts', 'Shorts ▼')}${chip('overs', 'Overs ▲')}${chip('unverified', 'Unverified')}
-      <button class="an-sort-btn" style="margin-left:auto" onclick="anCycleSnapshotSort()">↕️ ${sortLabel}</button>
+      <button class="an-sort-btn" style="margin-left:auto"${act('click', 'anCycleSnapshotSort')}>↕️ ${sortLabel}</button>
     </div>
     ${snap.extraNote ? `<div style="background:#FFFBEB;border:1px solid #F59E0B;border-radius:8px;padding:8px 10px;margin-bottom:10px">
       <div style="font-size:11px;font-weight:800;color:#B45309;text-transform:uppercase;margin-bottom:3px">Items found — not in system</div>
       <div style="font-size:12px;color:var(--text);white-space:pre-wrap">${esc(snap.extraNote)}</div></div>` : ''}
     <div style="max-height:42vh;overflow:auto;margin-bottom:10px">${rowsHtml || `<div style="font-size:12px;color:var(--muted);padding:10px 0">No items match this filter.</div>`}</div>
-    <button class="an-btn-primary" style="width:100%" onclick="anRefreshSnapshot()">🔄 Refresh</button>`;
+    <button class="an-btn-primary" style="width:100%"${act('click', 'anRefreshSnapshot')}>🔄 Refresh</button>`;
 }
 
 // ── Page-show hook — called from ui.js's showPage() ─────────────────

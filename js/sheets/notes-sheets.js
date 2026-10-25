@@ -58,6 +58,7 @@ import { unmatchedLoad } from '../manager/manager-unmatched.js';
 // cache synchronously (null until Inventory's own page has fetched at
 // least once this browser). ─────────────────────────────────────────
 import { getFullData as _invGetFullData } from '../inventory/inventory-bridge.js';
+import { act, arg } from '../shared/dom-actions.js';
 
 /* ══════════════════════════════════════════════════════════════════════
    STYLES
@@ -258,7 +259,7 @@ function _nsRenderNotes(host) {
     const tagHtml = (n.tags||'').split(',').map(t=>t.trim()).filter(Boolean).slice(0,3)
       .map(t=>`<span class="ns-tag ${tagColors[t]||''}">${_nsEsc(t)}</span>`).join(' ');
     const d = n.updatedAt ? new Date(n.updatedAt).toLocaleDateString('en-PK',{day:'2-digit',month:'short'}) : '';
-    return `<div class="ns-note-card${n.pinned?' pinned':''}" onclick="_nsOpenNote('${n.id}')">
+    return `<div class="ns-note-card${n.pinned?' pinned':''}"${act('click', '_nsOpenNote', String(n.id))}>
       <div class="ns-note-title">${_nsEsc(n.title || 'Untitled')}</div>
       <div class="ns-note-preview">${_nsEsc(preview) || '<em style="color:#cbd5e1">Empty note</em>'}</div>
       <div class="ns-note-meta">${tagHtml}<span style="margin-left:auto">${d}</span></div>
@@ -272,8 +273,8 @@ function _nsRenderNotes(host) {
     <div style="display:flex;flex-direction:column;height:100%">
       <div class="ns-notes-toolbar">
         <input class="ns-search-box" placeholder="Search notes…" value="${_nsEsc(_nsNoteSearch)}"
-          oninput="_nsSetNoteSearch(this.value)">
-        <button class="ns-btn primary" onclick="_nsNewNote()">+ New Note</button>
+         ${act('input', '_nsSetNoteSearch', arg.value)}>
+        <button class="ns-btn primary"${act('click', '_nsNewNote')}>+ New Note</button>
       </div>
       <div class="ns-notes-list">${cards}</div>
     </div>`;
@@ -291,8 +292,8 @@ function _nsOpenNote(id) {
     <div class="ns-editor-inner">
       <div class="ns-editor-header">
         <input class="ns-editor-title-input" id="nse-title" placeholder="Note title…" value="${_nsEsc(note ? note.title : '')}">
-        <button class="ns-btn" onclick="_nsTogglePin('${note?note.id:''}')" title="${note&&note.pinned?'Unpin':'Pin'}">${note&&note.pinned?'📌 Pinned':'📌 Pin'}</button>
-        <button class="ns-btn" onclick="_nsCloseEditor()">✕</button>
+        <button class="ns-btn"${act('click', '_nsTogglePin', String(note?note.id:''))} title="${note&&note.pinned?'Unpin':'Pin'}">${note&&note.pinned?'📌 Pinned':'📌 Pin'}</button>
+        <button class="ns-btn"${act('click', '_nsCloseEditor')}>✕</button>
       </div>
       <textarea class="ns-editor-body" id="nse-body" placeholder="Write anything here…">${_nsEsc(note ? note.body : '')}</textarea>
       <div>
@@ -300,9 +301,9 @@ function _nsOpenNote(id) {
         <input class="ns-tag-input" id="nse-tags" placeholder="e.g. sale, urgent, staff" value="${_nsEsc(note ? note.tags : '')}">
       </div>
       <div class="ns-editor-footer">
-        <button class="ns-btn primary" onclick="_nsSaveNote('${id||''}')">💾 Save</button>
-        ${!isNew ? `<button class="ns-btn danger" onclick="_nsDeleteNote('${id}')">🗑 Delete</button>` : ''}
-        <button class="ns-btn" onclick="_nsCloseEditor()" style="margin-left:auto">Cancel</button>
+        <button class="ns-btn primary"${act('click', '_nsSaveNote', String(id||''))}>💾 Save</button>
+        ${!isNew ? `<button class="ns-btn danger"${act('click', '_nsDeleteNote', String(id))}>🗑 Delete</button>` : ''}
+        <button class="ns-btn"${act('click', '_nsCloseEditor')} style="margin-left:auto">Cancel</button>
       </div>
     </div>`;
   document.body.appendChild(sheet);
@@ -493,13 +494,13 @@ function _nsRenderData(host) {
   host.innerHTML = `
     <div style="display:flex;flex-direction:column;height:100%">
       <div class="ns-data-toolbar">
-        <select class="ns-data-select" onchange="_nsSetDataDomain(this.value)">${domainOpts}</select>
-        <select class="ns-data-select" onchange="_nsSetDataSource(this.value)">${sourceOpts}</select>
+        <select class="ns-data-select"${act('change', '_nsSetDataDomain', arg.value)}>${domainOpts}</select>
+        <select class="ns-data-select"${act('change', '_nsSetDataSource', arg.value)}>${sourceOpts}</select>
         <input class="ns-search-box" style="flex:1;min-width:100px" placeholder="Filter…"
           value="${_nsEsc(_nsDataSearch)}"
-          oninput="_nsSetDataSearch(this.value)">
-        <button class="ns-btn" onclick="_nsSendToSheets()">📥 Send to Sheets</button>
-        <button class="ns-btn" onclick="_nsExportDataXLSX()">⬇ XLSX</button>
+         ${act('input', '_nsSetDataSearch', arg.value)}>
+        <button class="ns-btn"${act('click', '_nsSendToSheets')}>📥 Send to Sheets</button>
+        <button class="ns-btn"${act('click', '_nsExportDataXLSX')}>⬇ XLSX</button>
       </div>
       ${meta.hint ? `<div class="ns-data-hint">ℹ️ ${_nsEsc(meta.hint)}</div>` : ''}
       <div class="ns-data-table-wrap" id="ns-data-table-host"></div>

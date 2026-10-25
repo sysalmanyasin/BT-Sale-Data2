@@ -1,6 +1,7 @@
 import { MONTHLY, DAILY, STAFF, n, ff, fc, pct, cashSales, creditSales } from '../config.js';
 import { Analytics } from './analytics.js';
 import { escapeHtml as _esc } from '../shared/html.js';
+import { act, arg, registerActions } from '../shared/dom-actions.js';
 
 // ══════════════════════════════════════════
 // FLOOR 5 — buildDashboard (pure renderer)
@@ -285,7 +286,7 @@ function buildCreditSection(lat) {
   // onto window by manager-staff.js), exactly like clicking a name in
   // Staff Registry does. `STAFF` is likewise a window bridge from
   // config.js — this file is still a classic script, not a module, so
-  // both are read as bare globals, same as every onclick="" string
+  // both are read as bare globals, same as every handler string
   // elsewhere in this function (navigateTo, switchMgrTab, ...).
   // Staff Credit rows only carry `name` (Analytics.getCreditSectionData),
   // so we resolve back to a STAFF index by name here — the same key
@@ -295,7 +296,7 @@ function buildCreditSection(lat) {
     const idx = (typeof STAFF !== 'undefined') ? STAFF.findIndex(e => e.name === r.name) : -1;
     const clickable = idx > -1;
     return `
-    <div class="mgr-card-row"${clickable ? ` style="cursor:pointer" onclick="openStaffCard(${idx})" title="Open Staff Card"` : ''}>
+    <div class="mgr-card-row"${clickable ? ` style="cursor:pointer"${act('click', 'openStaffCard', idx)} title="Open Staff Card"` : ''}>
       <span style="font-size:11px;color:var(--t2)${clickable ? ';font-weight:600;text-decoration:underline dotted;text-underline-offset:2px' : ''}">${_esc(r.name)}</span>
       <span style="font-size:11px;font-family:var(--mono);font-weight:600;color:${amtColor(r.net)}">${fmtAmt(r.net)}</span>
     </div>`;
@@ -309,7 +310,7 @@ function buildCreditSection(lat) {
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <div style="font-size:12px;font-weight:700;color:var(--t2)">
           <span class="mgr-card-icon">${icon}</span>${title}
-          ${navTab ? `<span onclick="navigateTo('manager');setTimeout(()=>{switchMgrTab('${navTab}');},200)" class="mgr-card-open">OPEN ↗</span>` : ''}
+          ${navTab ? `<span${act('click', 'dashOpenManagerTab', navTab)} class="mgr-card-open">OPEN ↗</span>` : ''}
         </div>
         <div class="mgr-card-total" style="color:${amtColor(total)}">${fmtAmt(total)}</div>
       </div>
@@ -348,17 +349,17 @@ function buildCreditSection(lat) {
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px">
         <div style="font-size:12px;font-weight:700;color:var(--t2)">
           <span class="mgr-card-icon">🧾</span>Patty / Expenses ${d.pattyIsFiltered ? '(filtered)' : '(all-time)'}
-          <span onclick="navigateTo('manager');setTimeout(()=>{switchMgrTab('expense');},200)" class="mgr-card-open">OPEN ↗</span>
+          <span${act('click', 'dashOpenManagerTab', 'expense')} class="mgr-card-open">OPEN ↗</span>
         </div>
         <div class="mgr-card-total" style="color:${amtColor(d.pattyTotal)}">${fmtAmt(d.pattyTotal)}</div>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
-        <input type="date" value="${_esc(_dashPattyDateFrom)}" onchange="dashSetPattyDateFrom(this.value)"
+        <input type="date" value="${_esc(_dashPattyDateFrom)}"${act('change', 'dashSetPattyDateFrom', arg.value)}
           style="font-size:11px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;background:var(--s2);color:var(--text)">
         <span style="font-size:11px;color:var(--muted)">to</span>
-        <input type="date" value="${_esc(_dashPattyDateTo)}" onchange="dashSetPattyDateTo(this.value)"
+        <input type="date" value="${_esc(_dashPattyDateTo)}"${act('change', 'dashSetPattyDateTo', arg.value)}
           style="font-size:11px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;background:var(--s2);color:var(--text)">
-        ${(_dashPattyDateFrom || _dashPattyDateTo) ? `<span onclick="dashClearPattyDates()" style="font-size:11px;color:var(--red,#dc2626);cursor:pointer;text-decoration:underline">✕ Clear</span>` : ''}
+        ${(_dashPattyDateFrom || _dashPattyDateTo) ? `<span${act('click', 'dashClearPattyDates')} style="font-size:11px;color:var(--red,#dc2626);cursor:pointer;text-decoration:underline">✕ Clear</span>` : ''}
       </div>
       <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
         ${[
@@ -368,12 +369,12 @@ function buildCreditSection(lat) {
           ['w3', 'Wk3 (15-22)'],
           ['w4', 'Wk4 (23-End)'],
         ].map(([key, label]) => `
-        <span onclick="dashSetPattyPreset('${key}')"
+        <span${act('click', 'dashSetPattyPreset', String(key))}
           style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;cursor:pointer;white-space:nowrap;
             ${_dashPattyActivePreset === key
               ? 'background:' + pattyTint.accent + ';color:#fff;border:1px solid ' + pattyTint.accent
               : 'background:var(--s2);color:var(--t2);border:1px solid var(--border)'}">${label}</span>`).join('')}
-        <span onclick="dashClearPattyDates()"
+        <span${act('click', 'dashClearPattyDates')}
           style="font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px;cursor:pointer;white-space:nowrap;
             background:var(--s2);color:var(--red,#dc2626);border:1px solid var(--border)">↺ Reset</span>
       </div>
@@ -389,7 +390,7 @@ function buildCreditSection(lat) {
   el.innerHTML = `
     <div style="margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">💳 Credit Details</span>
-      <select onchange="dashSetCreditMonth(this.value)"
+      <select${act('change', 'dashSetCreditMonth', arg.value)}
         style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--s2);color:var(--text);outline:none;cursor:pointer"
         title="Staff Credit is by month — pick which month to view">
         ${monthPickerOpts}
@@ -566,7 +567,7 @@ function buildTop10Days() {
     const avgBill = customers ? Math.round(total / customers) : 0;
 
     return `
-      <div onclick="openDayModal('${d.Date}','${d.Month_Year}')"
+      <div${act('click', 'openDayModal', String(d.Date), String(d.Month_Year))}
         style="display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:10px;
                background:var(--surface);border:1px solid var(--border);cursor:pointer;
                transition:box-shadow .15s,border-color .15s;active:opacity:.8"
@@ -731,7 +732,7 @@ function buildBestWorstPerYear() {
         <div style="display:flex;flex-direction:column;gap:8px">
           <!-- Best -->
           <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:rgba(5,150,105,.08);border:1px solid rgba(5,150,105,.2);border-radius:8px;cursor:pointer"
-               onclick="openMonthModal('${best.Month_Year}')" title="Open ${best.Month_Year}">
+              ${act('click', 'openMonthModal', String(best.Month_Year))} title="Open ${best.Month_Year}">
             <div>
               <div style="font-size:11px;font-weight:700;color:#059669;letter-spacing:.06em;text-transform:uppercase">🏆 Best</div>
               <div style="font-size:13px;font-weight:700;color:var(--text);margin-top:2px">${bestMonth}</div>
@@ -744,7 +745,7 @@ function buildBestWorstPerYear() {
 
           <!-- Worst -->
           <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.15);border-radius:8px;cursor:pointer"
-               onclick="openMonthModal('${worst.Month_Year}')" title="Open ${worst.Month_Year}">
+              ${act('click', 'openMonthModal', String(worst.Month_Year))} title="Open ${worst.Month_Year}">
             <div>
               <div style="font-size:11px;font-weight:700;color:#dc2626;letter-spacing:.06em;text-transform:uppercase">📉 Slowest</div>
               <div style="font-size:13px;font-weight:700;color:var(--text);margin-top:2px">${worstMonth}</div>
@@ -844,3 +845,5 @@ window.dashTogglePattyCat = dashTogglePattyCat;
 window.printDashboardReport = printDashboardReport;
 
 })();
+
+registerActions({ dashOpenManagerTab(tab) { window.navigateTo('manager'); setTimeout(() => { window.switchMgrTab(tab); }, 200); } });

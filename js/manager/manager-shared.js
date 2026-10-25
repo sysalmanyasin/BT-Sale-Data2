@@ -7,7 +7,7 @@
 //
 // Every export here is also bridged onto `window` — not because this
 // file needs it, but because index.html's generated HTML still uses
-// inline oninput="..."/onclick="..." attributes (looked up as bare
+// inline handler attributes (looked up as bare
 // globals at click-time, never through an import), and several sibling
 // files (ai-bridge.js, custom-sections.js, jazz-cash.js, notes-sheets.js)
 // are still classic scripts that reference these as bare globals too.

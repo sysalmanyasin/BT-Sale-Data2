@@ -445,7 +445,7 @@
   }
 
   // ─────────────────────────────────────────────────────────────────────
-  // 7. FILE MENU ACTION HANDLERS (global so onclick="" works in HTML)
+  // 7. FILE MENU ACTION HANDLERS (global so data-on-* actions resolve)
   // ─────────────────────────────────────────────────────────────────────
 
   function _closeFilePanel() {

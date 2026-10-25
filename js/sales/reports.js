@@ -2,6 +2,7 @@ import { MONTHLY, DAILY, n, fc, fv } from '../config.js';
 import { Repository } from '../repository.js';
 import { Print } from '../print.js';
 import { getTgts } from './targets.js';
+import { act, registerActions } from '../shared/dom-actions.js';
 
 // ══════════════════════════════════════════
 // DAY DETAIL MODAL
@@ -179,11 +180,11 @@ function openMonthModal(my) {
     <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Daily Breakdown — click any row for full detail</div>
     <div class="twrap tscroll" style="max-height:320px">
       <table><thead><tr><th style="text-align:left">Date</th><th>Total</th><th>Customers</th><th>F/Issue</th><th style="text-align:left">Note</th><th class="no-print" style="width:32px"></th></tr></thead>
-      <tbody>${days.map(d=>`<tr class="cl" onclick="openDayFromMonth('${d.Date}','${my}')">
+      <tbody>${days.map(d=>`<tr class="cl"${act('click', 'openDayFromMonth', String(d.Date), String(my))}>
         <td>${d.Date}</td><td>₨${fc(n(d.TOTAL))}</td><td>${fc(n(d.Customers))}</td>
         <td>${n(d['F/Issue'])?'₨'+fc(n(d['F/Issue'])):'—'}</td>
         <td style="text-align:left;font-size:11px;color:var(--muted)">${d['Low Sale Reason']||''}</td>
-        <td class="no-print"><button onclick="event.stopPropagation();closeMon();setTimeout(()=>openEditModal('${d.Date}','${my}'),220)" title="Edit ${d.Date}" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(217,119,6,.3);background:var(--alt);color:#d97706;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">✏️</button></td>
+        <td class="no-print"><button${act('click', { stop: true }, 'reportEditDay', d.Date, my)} title="Edit ${d.Date}" style="width:28px;height:28px;border-radius:6px;border:1px solid rgba(217,119,6,.3);background:var(--alt);color:#d97706;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center">✏️</button></td>
       </tr>`).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:18px">No daily data</td></tr>'}
       </tbody></table>
     </div>`;
@@ -346,7 +347,7 @@ function renderRowManager() {
       ${rows.map(([id, label]) => `
         <label style="display:flex;align-items:center;justify-content:space-between;padding:7px 2px;border-bottom:1px solid var(--border);font-size:13px;cursor:pointer">
           <span>${label}</span>
-          <input type="checkbox" ${hidden.has(id) ? '' : 'checked'} onchange="toggleReportRow('${id}')">
+          <input type="checkbox" ${hidden.has(id) ? '' : 'checked'}${act('change', 'toggleReportRow', String(id))}>
         </label>`).join('')}
     </div>` : '';
   body.innerHTML = `
@@ -587,6 +588,7 @@ window.closeDay = closeDay;
 window.openMonthModal = openMonthModal;
 window.printDayDirectly = printDayDirectly;
 window.closeMon = closeMon;
+registerActions({ openDayFromMonth, reportEditDay(date, my) { closeMon(); setTimeout(() => { window.openEditModal(date, my); }, 220); } });
 window._dateVal = _dateVal;
 window.buildDateList = buildDateList;
 window.dsInit = dsInit;

@@ -29,6 +29,7 @@
 
 import * as StrBridge from './str-bridge.js';
 import * as S from './str-shared.js';
+import { act } from '../shared/dom-actions.js';
 
 // ── Page state ────────────────────────────────────────────────────────
 const strState = {
@@ -42,7 +43,7 @@ function _visibleHeaders(data) {
 
 function _rowHtml(h, itemCount) {
   const stage = S.strStage(h);
-  return `<tr class="str-row" onclick="strOpenDetail(${h.strId})">
+  return `<tr class="str-row"${act('click', 'strOpenDetail', h.strId)}>
     <td>
       <div style="font-size:13px;font-weight:700;color:var(--text)">${S.esc(h.strNumber || '—')}</div>
       <div style="font-size:11px;color:var(--muted);margin-top:2px">Master ${S.esc(h.masterStrId || '—')}</div>

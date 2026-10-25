@@ -20,6 +20,7 @@
 // Public API: window.DashboardControls = { resolvePreset, sliceMonthly,
 //   getComparePeriod, renderRangeBar, attachDrilldown, monthSortVal }
 // ══════════════════════════════════════════════════════════════════════
+import { act, arg } from '../shared/dom-actions.js';
 (function () {
   'use strict';
 
@@ -165,12 +166,12 @@
 
     const btns = presets.map(p => `
       <button type="button" class="dc-preset-btn${p === active ? ' active' : ''}"
-        onclick="window._dcOnChange_${uid}('${p}')">${p}</button>`).join('');
+       ${act('click', `_dcOnChange_${uid}`, String(p))}>${p}</button>`).join('');
 
     const compareHtml = opts.compareEnabled ? `
       <label class="dc-compare-toggle">
         <input type="checkbox" ${opts.compareOn ? 'checked' : ''}
-          onchange="window._dcOnCompare_${uid}(this.checked)">
+         ${act('change', `_dcOnCompare_${uid}`, arg.checked)}>
         Compare vs previous period
       </label>` : '';
 

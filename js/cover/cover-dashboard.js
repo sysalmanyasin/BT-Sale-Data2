@@ -12,6 +12,7 @@ import * as StrShared from '../str/str-shared.js';
 import { computeInventoryHealth } from '../shared/summary-calc.js';
 import { chartTheme, applyChartDefaults } from '../shared/chart-theme.js';
 import { escapeHtml as _esc } from '../shared/html.js';
+import { act, registerActions } from '../shared/dom-actions.js';
 
 const TGT_KEY = 'bt_targets';
 let _closingRefreshInFlight = false;
@@ -369,7 +370,7 @@ function _managerCreditRankedHtml() {
   const rows = _managerCreditRanked().slice(0, 8);
   if (!rows.length) return `<div style="font-size:11px;color:var(--muted);padding:8px 0">No outstanding credit this month.</div>`;
   return rows.map(r => `
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="showPage('manager')">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer"${act('click', 'showPage', 'manager')}>
       <span style="font-size:11.5px;color:var(--text);font-weight:600">${_esc(r.name)}</span>
       <span style="font-size:11.5px;font-weight:700;font-family:var(--mono);color:${r.net > 0 ? 'var(--red)' : 'var(--green)'}">₨${fc(Math.abs(r.net))}</span>
     </div>`).join('');
@@ -795,7 +796,7 @@ function _inventoryMiniTableHtml(rows, kind) {
     if (kind === 'reorder') {
       const cover = r.daysCoverP != null ? r.daysCoverP.toFixed(1) + 'd' : '—';
       return `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="showPage('reorder')">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer"${act('click', 'showPage', 'reorder')}>
           <div style="min-width:0">
             <div style="font-size:11.5px;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px">${_esc(r.name || r.code)}</div>
             <div style="font-size:11px;color:var(--muted)">${cover} cover · reorder ${fc(r.demandQtyP)} units</div>
@@ -805,7 +806,7 @@ function _inventoryMiniTableHtml(rows, kind) {
         </div>`;
     }
     return `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="showPage('excess')">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);cursor:pointer"${act('click', 'showPage', 'excess')}>
         <div style="min-width:0">
           <div style="font-size:11.5px;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px">${_esc(r.name)}</div>
           <div style="font-size:11px;color:var(--muted)">${_esc(r.company || 'Unspecified')}${r.daysOld != null ? ' · ' + r.daysOld + 'd old' : ''}</div>
@@ -860,18 +861,28 @@ window._coverSetTopRunCount = function (n) { _setTopRunCount(n); _renderTopRunni
 window._coverSetReorderThreshold = function (d) { _setReorderThreshold(d); _renderReorderNowCard(); };
 window._coverSetReorderWindow = function (w) { _setReorderWindow(w); _renderReorderNowCard(); };
 
+// Actions for the cover page's STR links (replace multi-statement inline handlers).
+registerActions({
+  coverOpenStrDetail(id) { window.showPage('str'); setTimeout(() => { window.strOpenDetail && window.strOpenDetail(id); }, 30); },
+  coverOpenStrStage(stage) {
+    window.showPage('str');
+    window.strClearFilters && window.strClearFilters();
+    window.strSetStage && window.strSetStage(stage);
+  },
+});
+
 function _reorderNowCardInnerHtml() {
   const th = _getReorderThreshold();
   const win = _getReorderWindow();
   const rows = _reorderNowRows();
   const totalFlagged = _reorderTotalFlagged();
-  const pill = (active, label, onclick) => `<button type="button" class="cover-pill cover-pill--red${active ? ' is-on' : ''}" aria-pressed="${active}" onclick="${onclick}">${label}</button>`;
+  const pill = (active, label, fn, fnArg) => `<button type="button" class="cover-pill cover-pill--red${active ? ' is-on' : ''}" aria-pressed="${active}"${act('click', fn, fnArg)}>${label}</button>`;
   return `
     <div class="ctitle" style="flex-wrap:wrap;row-gap:6px">
       <span class="cdot" style="background:var(--red)"></span>Reorder Now — most urgent (${rows.length} of ${totalFlagged} flagged)
-      <span style="margin-left:auto;display:flex;align-items:center">${pill(win === 30, '30D', '_coverSetReorderWindow(30)')}${pill(win === 60, '60D', '_coverSetReorderWindow(60)')}${pill(win === 90, '90D', '_coverSetReorderWindow(90)')}</span>
-      <span style="display:flex;align-items:center">${pill(th === 7, '<7D', '_coverSetReorderThreshold(7)')}${pill(th === 14, '<14D', '_coverSetReorderThreshold(14)')}${pill(th === 30, '<30D', '_coverSetReorderThreshold(30)')}</span>
-      <button type="button" class="cover-chip-link" onclick="showPage('reorder')">FULL REPORT ↗</button>
+      <span style="margin-left:auto;display:flex;align-items:center">${pill(win === 30, '30D', '_coverSetReorderWindow', 30)}${pill(win === 60, '60D', '_coverSetReorderWindow', 60)}${pill(win === 90, '90D', '_coverSetReorderWindow', 90)}</span>
+      <span style="display:flex;align-items:center">${pill(th === 7, '<7D', '_coverSetReorderThreshold', 7)}${pill(th === 14, '<14D', '_coverSetReorderThreshold', 14)}${pill(th === 30, '<30D', '_coverSetReorderThreshold', 30)}</span>
+      <button type="button" class="cover-chip-link"${act('click', 'showPage', 'reorder')}>FULL REPORT ↗</button>
     </div>
     <div id="cover-reorder-now-table">${_inventoryMiniTableHtml(rows, 'reorder')}</div>`;
 }
@@ -884,12 +895,12 @@ function _renderReorderNowCard() {
 function _topRunningCardInnerHtml() {
   const win = _getTopRunWindow();
   const cnt = _getTopRunCount();
-  const pill = (active, label, onclick) => `<button type="button" class="cover-pill cover-pill--accent${active ? ' is-on' : ''}" aria-pressed="${active}" onclick="${onclick}">${label}</button>`;
+  const pill = (active, label, fn, fnArg) => `<button type="button" class="cover-pill cover-pill--accent${active ? ' is-on' : ''}" aria-pressed="${active}"${act('click', fn, fnArg)}>${label}</button>`;
   return `
     <div class="ctitle" style="flex-wrap:wrap;row-gap:6px">
       <span class="cdot" style="background:var(--accent)"></span>Top Running Items — value-wise
-      <span style="margin-left:auto;display:flex;align-items:center">${pill(cnt === 10, 'Top 10', '_coverSetTopRunCount(10)')}${pill(cnt === 20, 'Top 20', '_coverSetTopRunCount(20)')}</span>
-      <span style="display:flex;align-items:center">${pill(win === 30, '30D', '_coverSetTopRunWindow(30)')}${pill(win === 60, '60D', '_coverSetTopRunWindow(60)')}${pill(win === 90, '90D', '_coverSetTopRunWindow(90)')}</span>
+      <span style="margin-left:auto;display:flex;align-items:center">${pill(cnt === 10, 'Top 10', '_coverSetTopRunCount', 10)}${pill(cnt === 20, 'Top 20', '_coverSetTopRunCount', 20)}</span>
+      <span style="display:flex;align-items:center">${pill(win === 30, '30D', '_coverSetTopRunWindow', 30)}${pill(win === 60, '60D', '_coverSetTopRunWindow', 60)}${pill(win === 90, '90D', '_coverSetTopRunWindow', 90)}</span>
     </div>
     <div id="cover-top-running-table">${_topRunningTableHtml(_topRunningRows())}</div>`;
 }
@@ -1059,7 +1070,7 @@ function _strRowsListHtml(rows, opts) {
   opts = opts || {};
   if (!rows.length) return `<div style="font-size:11px;color:var(--muted);padding:8px 0">Nothing here right now.</div>`;
   return `<div style="max-height:230px;overflow-y:auto">${rows.map(h => `
-    <div style="padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="showPage('str');setTimeout(function(){window.strOpenDetail&&window.strOpenDetail(${h.strId})},30)">
+    <div style="padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer"${act('click', 'coverOpenStrDetail', h.strId)}>
       <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
         <span style="font-size:12px;font-weight:700;color:var(--text)">${_esc(h.strNumber || ('STR-' + h.strId))}</span>
         <span style="font-size:11px;color:var(--muted);flex-shrink:0">${_esc(StrShared.fmtDate(h.strDate))}</span>
@@ -1116,14 +1127,14 @@ function _strHeroHtml() {
     <div class="cover-hero-row">
       <div class="card">
         <div class="ctitle"><span class="cdot" style="background:var(--amber)"></span>Awaited — not dispatched (${awaited.length})
-          <button type="button" class="cover-chip-link" onclick="event.stopPropagation();showPage('str');window.strClearFilters&&window.strClearFilters();window.strSetStage&&window.strSetStage('awaited')">FULL LIST ↗</button>
+          <button type="button" class="cover-chip-link"${act('click', { stop: true }, 'coverOpenStrStage', 'awaited')}>FULL LIST ↗</button>
         </div>
         <div style="font-size:11px;color:var(--muted);margin:-4px 0 6px">Dispatch from Bahria Town</div>
         ${_strRowsListHtml(awaited)}
       </div>
       <div class="card">
         <div class="ctitle"><span class="cdot" style="background:var(--accent)"></span>Dispatched — not received (${dispatchedBT.length})
-          <button type="button" class="cover-chip-link" onclick="event.stopPropagation();showPage('str');window.strClearFilters&&window.strClearFilters();window.strSetStage&&window.strSetStage('dispatched')">FULL LIST ↗</button>
+          <button type="button" class="cover-chip-link"${act('click', { stop: true }, 'coverOpenStrStage', 'dispatched')}>FULL LIST ↗</button>
         </div>
         <div style="font-size:11px;color:var(--muted);margin:-4px 0 6px">Dispatch from Bahria Town</div>
         ${_strRowsListHtml(dispatchedBT)}
@@ -1132,7 +1143,7 @@ function _strHeroHtml() {
     <div class="cover-hero-row cover-hero-row-single">
       <div class="card">
         <div class="ctitle"><span class="cdot" style="background:var(--pink)"></span>Inbound — dispatched, not received at BT (${inboundPending.length})
-          <button type="button" class="cover-chip-link" onclick="event.stopPropagation();showPage('str');window.strClearFilters&&window.strClearFilters();window.strSetStage&&window.strSetStage('dispatched')">FULL LIST ↗</button>
+          <button type="button" class="cover-chip-link"${act('click', { stop: true }, 'coverOpenStrStage', 'dispatched')}>FULL LIST ↗</button>
         </div>
         <div style="font-size:11px;color:var(--muted);margin:-4px 0 6px">Dispatch from warehouse / Warehouse 2 / other branches</div>
         ${_strRowsListHtml(inboundPending, { showBranch: true })}
@@ -1654,7 +1665,7 @@ export function renderCoverDashboard() {
   const todaySale = _todaySaleBreakdown();
   const todaySaleCard = h => `
     <div class="cover-hero-card cover-closing-summary-card cover-today-sale-card">
-      <div class="cover-hero-label">${_esc(h.label)} <button type="button" class="cover-chip-link" onclick="showPage('sale-payments')">OPEN ↗</button></div>
+      <div class="cover-hero-label">${_esc(h.label)} <button type="button" class="cover-chip-link"${act('click', 'showPage', 'sale-payments')}>OPEN ↗</button></div>
       <div class="cover-hero-value">${_esc(h.value)}</div>
       <div class="ccs-stat-grid">
         <div class="ccs-stat ccs-cash">
@@ -1694,7 +1705,7 @@ export function renderCoverDashboard() {
     <div class="cover-hero-row-single">
       <div class="card">
         <div class="ctitle"><span class="cdot" style="background:var(--red)"></span>Staff Credit — ranked, who owes the most
-          <button type="button" class="cover-chip-link" onclick="showPage('manager')">OPEN ↗</button>
+          <button type="button" class="cover-chip-link"${act('click', 'showPage', 'manager')}>OPEN ↗</button>
         </div>
         <div id="cover-credit-ranked-table">${_managerCreditRankedHtml()}</div>
       </div>
@@ -1764,7 +1775,7 @@ export function renderCoverDashboard() {
       </div>
       <div class="card">
         <div class="ctitle"><span class="cdot" style="background:var(--amber)"></span>Excess Stock — highest value
-          <button type="button" class="cover-chip-link" onclick="showPage('excess')">FULL REPORT ↗</button>
+          <button type="button" class="cover-chip-link"${act('click', 'showPage', 'excess')}>FULL REPORT ↗</button>
         </div>
         <div id="cover-excess-stock-table">${_inventoryMiniTableHtml(_excessStockRows(), 'excess')}</div>
       </div>
@@ -1833,13 +1844,13 @@ export function renderCoverDashboard() {
     return `
       <div class="cover-group${isCollapsed ? ' collapsed' : ''}" data-group="${meta.slug}">
         <div class="cover-group-header" data-group-toggle="${meta.slug}">
-          <div class="cover-group-drag" data-drag-handle="${meta.slug}" title="Drag to reorder" onclick="event.stopPropagation()">⠿</div>
+          <div class="cover-group-drag" data-drag-handle="${meta.slug}" title="Drag to reorder"${act('click', { stop: true }, 'noop')}>⠿</div>
           <div class="cover-group-icon">${meta.icon}</div>
           <div class="cover-group-head-text">
             <div class="cover-group-title">${_esc(groupName)}</div>
             ${subtitle ? `<div class="cover-group-subtitle">${_esc(subtitle)}</div>` : ''}
           </div>
-          ${refreshFn ? `<button type="button" class="cover-group-refresh" data-bridge-refresh="${_esc(groupName)}" title="Refresh ${_esc(groupName)} data now" onclick="event.stopPropagation()">↻</button>` : ''}
+          ${refreshFn ? `<button type="button" class="cover-group-refresh" data-bridge-refresh="${_esc(groupName)}" title="Refresh ${_esc(groupName)} data now"${act('click', { stop: true }, 'noop')}>↻</button>` : ''}
           <div class="cover-group-line"></div>
           <div class="cover-group-chevron">▾</div>
           <button type="button" class="cover-sheet-close" data-sheet-close aria-label="Close ${_esc(groupName)}">✕</button>

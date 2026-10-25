@@ -13,6 +13,7 @@ import { STAFF } from '../config.js';
 import { activeStaff } from './manager-staff.js';
 import { _crdData } from './manager-credit.js';
 import { _mgrEsc } from './manager-shared.js';
+import { act } from '../shared/dom-actions.js';
 
 // UNMATCHED — entries Closing App couldn't confidently match to a
 // real staff member or expense category. Landed here (via
@@ -64,14 +65,14 @@ function renderUnmatchedTab() {
       ${e.kind === 'staffCredit' ? `
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           <select id="unm-staff-${e.id}" style="flex:1;min-width:140px">${staffOptions}</select>
-          <button class="btn btn-p btn-sm" onclick="resolveUnmatchedToStaff('${e.id}')">Assign to staff</button>
+          <button class="btn btn-p btn-sm"${act('click', 'resolveUnmatchedToStaff', String(e.id))}>Assign to staff</button>
         </div>` : `
         <div style="display:flex;gap:6px;flex-wrap:wrap">
           <select id="unm-cat-${e.id}" style="flex:1;min-width:140px">${catOptions}</select>
-          <button class="btn btn-p btn-sm" onclick="resolveUnmatchedToCategory('${e.id}')">Assign to category</button>
+          <button class="btn btn-p btn-sm"${act('click', 'resolveUnmatchedToCategory', String(e.id))}>Assign to category</button>
         </div>`}
       <div style="text-align:right;margin-top:6px">
-        <button class="btn btn-sm" style="color:var(--red)" onclick="dismissUnmatched('${e.id}')">Dismiss (no ledger entry)</button>
+        <button class="btn btn-sm" style="color:var(--red)"${act('click', 'dismissUnmatched', String(e.id))}>Dismiss (no ledger entry)</button>
       </div>
     </div>
   `).join('');
