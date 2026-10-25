@@ -103,7 +103,7 @@
 <link rel="stylesheet" href="css/attendance.css?v=8463e920">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,400,0,0">
 <link rel="stylesheet" href="css/components.css?v=26b274dc">
-<link rel="stylesheet" href="css/modals.css?v=efd38885">
+<link rel="stylesheet" href="css/modals.css?v=4d52c192">
 <link rel="stylesheet" href="css/pages.css?v=cc67a863">
 <link rel="stylesheet" href="css/cover-dashboard.css?v=f9e81b34">
 <link rel="stylesheet" href="css/herald.css?v=fbbb1802">
@@ -183,12 +183,12 @@ if ('serviceWorker' in navigator) {
         <img id="gauth-avatar" class="gauth-avatar" src="" alt="">
         <div><div class="gauth-uname" id="gauth-uname"></div><div class="gauth-uemail" id="gauth-uemail"></div></div>
       </div>
-      <button class="btn btn-p" style="width:100%;height:44px;font-size:14px" onclick="gauthConfirmUser()">✓ Continue as this account</button>
-      <button class="gauth-link" style="margin-top:10px;display:block;text-align:center;width:100%" onclick="gauthSignOut()">Sign in with a different account</button>
+      <button class="btn btn-p" style="width:100%;height:44px;font-size:14px" data-on-click="gauthConfirmUser">✓ Continue as this account</button>
+      <button class="gauth-link" style="margin-top:10px;display:block;text-align:center;width:100%" data-on-click="gauthSignOut">Sign in with a different account</button>
     </div>
     <div id="gauth-btn-wrap" style="display:flex;justify-content:center">
       <button id="google-signin-btn"
-        onclick="_gauthOAuthSignIn()"
+        data-on-click="_gauthOAuthSignIn"
         style="display:flex;align-items:center;gap:10px;background:#fff;color:#3c4043;border:1px solid #dadce0;border-radius:4px;padding:0 16px;height:44px;font-size:14px;font-weight:500;font-family:'Google Sans',Roboto,sans-serif;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.12);min-width:220px;justify-content:center;transition:box-shadow .2s">
         <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
         Sign in with Google
@@ -245,25 +245,25 @@ if ('serviceWorker' in navigator) {
          js/nav-sections.js), opened from here on desktop and from the
          bottom tab bar's own ☰ Menu button on mobile — one nav system,
          two entry points into the same tree. -->
-    <button type="button" class="navmenubtn" onclick="openSectionsDrawer()" title="Search &amp; All Sections" aria-label="Open Search and All Sections"><span class="navmenu-ic">☰</span></button>
+    <button type="button" class="navmenubtn" data-on-click="openSectionsDrawer" title="Search &amp; All Sections" aria-label="Open Search and All Sections"><span class="navmenu-ic">☰</span></button>
     <div class="nlogo"><img src="icons/icon.svg" alt="Bahria Town Sales IC" width="32" height="32"></div>
     <div><div class="nbrand-text">Bahria Town Sales IC</div><div class="nbrand-sub" id="nbrand-sub-label">Intelligence Centre</div></div>
   </div>
   <div class="nright">
-    <div class="syncbadge" id="synci" onclick="handleSyncBadgeClick()" title="Push all data to Supabase now (auto-pushes every 30s)">
+    <div class="syncbadge" id="synci" data-on-click="handleSyncBadgeClick" title="Push all data to Supabase now (auto-pushes every 30s)">
       <span id="sync-icon">☁</span><span id="sync-text">Push All Data</span>
     </div>
-    <button class="takectrlbtn" id="nav-take-ctrl-btn" onclick="navTakeControl()" title="Take control — claim write access &amp; sync now">
+    <button class="takectrlbtn" id="nav-take-ctrl-btn" data-on-click="navTakeControl" title="Take control — claim write access &amp; sync now">
       <span id="nav-tc-icon">⚔</span><span id="nav-tc-text">Take Control</span>
     </button>
     <div class="nclock" id="clock"></div>
-    <button class="lockbtn" onclick="lockApp()" title="Sign Out" style="width:auto;padding:0 10px;font-size:12px;font-weight:600;letter-spacing:.3px;color:var(--muted);">Sign Out</button>
+    <button class="lockbtn" data-on-click="lockApp" title="Sign Out" style="width:auto;padding:0 10px;font-size:12px;font-weight:600;letter-spacing:.3px;color:var(--muted);">Sign Out</button>
   </div>
 </nav>
 
 <!-- ══ BOTTOM TAB BAR (mobile) ══ -->
 <div class="bnav no-print" id="bnav" role="navigation" aria-label="Page navigation">
-  <button type="button" class="bnav-item side-menu-btn" onclick="openSectionsDrawer()" title="Search &amp; All Sections" aria-label="Open Search and All Sections menu"><span class="bicon">☰</span><span class="blabel">Menu</span></button>
+  <button type="button" class="bnav-item side-menu-btn" data-on-click="openSectionsDrawer" title="Search &amp; All Sections" aria-label="Open Search and All Sections menu"><span class="bicon">☰</span><span class="blabel">Menu</span></button>
   <a class="bnav-item" href="#cover" data-page="cover" data-group="cover"><span class="bicon">🏠</span><span class="blabel">Cover</span></a>
   <a class="bnav-item" href="#index" data-page="index" data-group="saledata" data-domain-group="sales"><span class="bicon">🗂️</span><span class="blabel">Sales</span></a>
   <a class="bnav-item" href="#manager" data-page="manager" data-group="manager" data-domain-group="manager"><span class="bicon">👔</span><span class="blabel">Manager</span></a>
@@ -343,7 +343,7 @@ if ('serviceWorker' in navigator) {
       </div>
       <div class="cover-page-hero-date" id="cover-hero-date"></div>
     </div>
-    <div id="cover-online-pill" class="cover-online-pill" onclick="showOnlineStaffDetail()" style="display:none;"></div>
+    <div id="cover-online-pill" class="cover-online-pill" data-on-click="showOnlineStaffDetail" style="display:none;"></div>
     <div class="cover-page-hero-domainstrip" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
   </div>
 
@@ -378,14 +378,14 @@ if ('serviceWorker' in navigator) {
   <div class="krow" id="krow"></div>
   <div class="frow no-print" style="margin-bottom:14px">
     <span style="font-size:11px;font-weight:600;color:var(--muted)">YEAR</span>
-    <select id="dash-year" onchange="buildDashboard()"></select>
-    <select id="dash-metric" onchange="buildDashboard()">
+    <select id="dash-year" data-on-change="buildDashboard"></select>
+    <select id="dash-metric" data-on-change="buildDashboard">
       <option value="TOTAL">Total Sales</option>
       <option value="Cash Sale">Cash Sales</option>
       <option value="Customers">Customers</option>
     </select>
-    <button class="btn btn-s" style="padding:5px 10px;font-size:11px" onclick="manualSync()">↻ Sync</button>
-    <button class="btn btn-s" style="padding:5px 10px;font-size:11px" onclick="printDashboardReport()">🖨 Print</button>
+    <button class="btn btn-s" style="padding:5px 10px;font-size:11px" data-on-click="manualSync">↻ Sync</button>
+    <button class="btn btn-s" style="padding:5px 10px;font-size:11px" data-on-click="printDashboardReport">🖨 Print</button>
   </div>
   <div id="dash-top10" style="margin-bottom:14px"></div>
   <div id="dash-dow" style="margin-bottom:14px"></div>
@@ -415,9 +415,9 @@ if ('serviceWorker' in navigator) {
     <p class="hsub">Staff Credit · Jazz Cash · Patty/Expenses · Other ledgers · Working Summary — all in one view</p>
   </div>
   <div class="frow no-print" style="margin-bottom:14px">
-    <button class="btn btn-s" style="padding:5px 10px;font-size:11px" onclick="manualSync()">↻ Sync</button>
-    <button class="btn btn-s" style="padding:5px 10px;font-size:11px" onclick="printManagerDashboard()">🖨 Print</button>
-    <button class="btn btn-s" style="padding:5px 10px;font-size:11px;background:var(--accent,#2563eb);color:#fff;border-color:var(--accent,#2563eb)" onclick="exportManagerSummary()">📋 Export Summary</button>
+    <button class="btn btn-s" style="padding:5px 10px;font-size:11px" data-on-click="manualSync">↻ Sync</button>
+    <button class="btn btn-s" style="padding:5px 10px;font-size:11px" data-on-click="printManagerDashboard">🖨 Print</button>
+    <button class="btn btn-s" style="padding:5px 10px;font-size:11px;background:var(--accent,#2563eb);color:#fff;border-color:var(--accent,#2563eb)" data-on-click="exportManagerSummary">📋 Export Summary</button>
   </div>
   <div id="dash-credit-section" style="margin-bottom:14px"></div>
   <div id="dash-working-section" style="margin-bottom:14px;display:none">
@@ -450,9 +450,9 @@ if ('serviceWorker' in navigator) {
 <div class="page" id="page-index">
   <div class="hero"><div class="hlabel">Month Index</div><div class="htitle">All Months</div><div class="hsub">Click any card to see daily breakdown &amp; full detail</div></div>
   <div class="frow no-print">
-    <input type="text" id="idx-search" placeholder="Search month…" oninput="renderIndex()">
-    <select id="idx-year" onchange="renderIndex()"><option value="">All Years</option></select>
-    <select id="idx-sort" onchange="renderIndex()">
+    <input type="text" id="idx-search" placeholder="Search month…" data-on-input="renderIndex">
+    <select id="idx-year" data-on-change="renderIndex"><option value="">All Years</option></select>
+    <select id="idx-sort" data-on-change="renderIndex">
       <option value="date">Date ↓</option><option value="total-d">Total ↓</option><option value="total-a">Total ↑</option>
     </select>
   </div>
@@ -463,9 +463,9 @@ if ('serviceWorker' in navigator) {
 <div class="page" id="page-data">
   <div class="hero"><div class="hlabel">Daily Records</div><div class="htitle" id="data-htitle">All Entries</div><div class="hsub" id="data-hsub"></div></div>
   <div class="frow no-print">
-    <input type="text" id="data-search" placeholder="Search date, month…" oninput="renderDataTable()">
-    <select id="data-month" onchange="renderDataTable()"><option value="">All Months</option></select>
-    <select id="data-col" onchange="renderDataTable()">
+    <input type="text" id="data-search" placeholder="Search date, month…" data-on-input="renderDataTable">
+    <select id="data-month" data-on-change="renderDataTable"><option value="">All Months</option></select>
+    <select id="data-col" data-on-change="renderDataTable">
       <optgroup label="── Summary ──">
         <option value="TOTAL">Total</option>
         <option value="Customers">Customers</option>
@@ -524,57 +524,57 @@ if ('serviceWorker' in navigator) {
         <div class="htitle">Add Daily Record</div>
         <div class="hsub">Total auto-calculates. Saved locally &amp; synced to Supabase automatically.</div>
       </div>
-      <button class="fm-mgr-btn" onclick="openFieldManager()" title="Show/hide fields, add custom columns">⚙ Manage Fields</button>
+      <button class="fm-mgr-btn" data-on-click="openFieldManager" title="Show/hide fields, add custom columns">⚙ Manage Fields</button>
     </div>
   </div>
   <div class="card">
     <div class="fsec"><div class="fsec-title">Period</div>
       <div class="fgrid">
         <div class="fg"><label>Month</label><select id="e-month"><option value="">Select…</option></select></div>
-        <div class="fg"><label>Date</label><input type="date" id="e-date" onchange="syncEntryMonthFromDate()"></div>
+        <div class="fg"><label>Date</label><input type="date" id="e-date" data-on-change="syncEntryMonthFromDate"></div>
       </div>
     </div>
     <div class="fsec" id="fsec-Cash"><div class="fsec-title">Cash</div>
       <div class="fgrid" id="fgrid-Cash">
-        <div class="fg" data-field-id="Cash_Sale"><label>Cash Sale</label><input type="number" id="e-Cash_Sale" placeholder="0" oninput="calcTotal()"></div>
-        <div class="fg" data-field-id="Cash_Returns"><label>Cash Returns</label><input type="number" id="e-Cash_Returns" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="Cash_Sale"><label>Cash Sale</label><input type="number" id="e-Cash_Sale" placeholder="0" data-on-input="calcTotal"></div>
+        <div class="fg" data-field-id="Cash_Returns"><label>Cash Returns</label><input type="number" id="e-Cash_Returns" placeholder="0" data-on-input="calcTotal"></div>
       </div>
     </div>
     <div class="fsec" id="fsec-Banks"><div class="fsec-title">Banks</div>
       <div class="fgrid" id="fgrid-Banks">
-        <div class="fg" data-field-id="HBL"><label>HBL</label><input type="number" id="e-HBL" placeholder="0" oninput="calcTotal()"></div>
-        <div class="fg" data-field-id="MCB"><label>MCB</label><input type="number" id="e-MCB" placeholder="0" oninput="calcTotal()"></div>
-        <div class="fg" data-field-id="Alfala_Bank"><label>Bank Alfalah</label><input type="number" id="e-Alfala_Bank" placeholder="0" oninput="calcTotal()"></div>
-        <div class="fg" data-field-id="Bank_Al_Habib"><label>Bank Al Habib</label><input type="number" id="e-Bank_Al_Habib" placeholder="0" oninput="calcTotal()"></div>
-        <div class="fg" data-field-id="Meezan_Bank"><label>Meezan Bank</label><input type="number" id="e-Meezan_Bank" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="HBL"><label>HBL</label><input type="number" id="e-HBL" placeholder="0" data-on-input="calcTotal"></div>
+        <div class="fg" data-field-id="MCB"><label>MCB</label><input type="number" id="e-MCB" placeholder="0" data-on-input="calcTotal"></div>
+        <div class="fg" data-field-id="Alfala_Bank"><label>Bank Alfalah</label><input type="number" id="e-Alfala_Bank" placeholder="0" data-on-input="calcTotal"></div>
+        <div class="fg" data-field-id="Bank_Al_Habib"><label>Bank Al Habib</label><input type="number" id="e-Bank_Al_Habib" placeholder="0" data-on-input="calcTotal"></div>
+        <div class="fg" data-field-id="Meezan_Bank"><label>Meezan Bank</label><input type="number" id="e-Meezan_Bank" placeholder="0" data-on-input="calcTotal"></div>
       </div>
     </div>
     <div class="fsec" id="fsec-Credit-Clients"><div class="fsec-title">Credit Clients</div>
       <div class="fgrid" id="fgrid-Credit-Clients">
-        <div class="fg" data-field-id="Askari_Bank"><label>Askari</label><input type="number" id="e-Askari_Bank" placeholder="0" oninput="calcTotal()"></div>
-        <div class="fg" data-field-id="Askari_Bank_Returns"><label>Askari Returns</label><input type="number" id="e-Askari_Bank_Returns" placeholder="0" oninput="calcTotal()"></div>
-        <div class="fg" data-field-id="PSO"><label>PSO</label><input type="number" id="e-PSO" placeholder="0" oninput="calcTotal()"></div>
-        <div class="fg" data-field-id="PSO_Returns"><label>PSO Returns</label><input type="number" id="e-PSO_Returns" placeholder="0" oninput="calcTotal()"></div>
-        <div class="fg" data-field-id="NESPAK"><label>NESPAK</label><input type="number" id="e-NESPAK" placeholder="0" oninput="calcTotal()"></div>
-        <div class="fg" data-field-id="NESPAK_Returns"><label>NESPAK Returns</label><input type="number" id="e-NESPAK_Returns" placeholder="0" oninput="calcTotal()"></div>
-        <div class="fg" data-field-id="PARCO"><label>PARCO</label><input type="number" id="e-PARCO" placeholder="0" oninput="calcTotal()"></div>
-        <div class="fg" data-field-id="PARCO_Returns"><label>PARCO Returns</label><input type="number" id="e-PARCO_Returns" placeholder="0" oninput="calcTotal()"></div>
-        <div class="fg" data-field-id="TEPA"><label>TEPA</label><input type="number" id="e-TEPA" placeholder="0" oninput="calcTotal()"></div>
-        <div class="fg" data-field-id="TEPA_Returns"><label>TEPA Returns</label><input type="number" id="e-TEPA_Returns" placeholder="0" oninput="calcTotal()"></div>
-        <div class="fg" data-field-id="LDA"><label>LDA</label><input type="number" id="e-LDA" placeholder="0" oninput="calcTotal()"></div>
-        <div class="fg" data-field-id="LDA_Returns"><label>LDA Returns</label><input type="number" id="e-LDA_Returns" placeholder="0" oninput="calcTotal()"></div>
-        <div class="fg" data-field-id="Gourmet"><label>Gourmet</label><input type="number" id="e-Gourmet" placeholder="0" oninput="calcTotal()"></div>
-        <div class="fg" data-field-id="Wapda_Hospital"><label>Wapda Hospital</label><input type="number" id="e-Wapda_Hospital" placeholder="0" oninput="calcTotal()"></div>
-        <div class="fg" data-field-id="BTH"><label>BTH</label><input type="number" id="e-BTH" placeholder="0" oninput="calcTotal()"></div>
-        <div class="fg" data-field-id="Berger_Paints"><label>Berger Paints</label><input type="number" id="e-Berger_Paints" placeholder="0" oninput="calcTotal()"></div>
-        <div class="fg" data-field-id="Ecolean_PK"><label>Ecolean PK</label><input type="number" id="e-Ecolean_PK" placeholder="0" oninput="calcTotal()"></div>
-        <div class="fg" data-field-id="Style_Textile"><label>Style Textile</label><input type="number" id="e-Style_Textile" placeholder="0" oninput="calcTotal()"></div>
-        <div class="fg" data-field-id="Syed_Babar_Ali"><label>Syed Babar Ali Fdn</label><input type="number" id="e-Syed_Babar_Ali" placeholder="0" oninput="calcTotal()"></div>
-        <div class="fg" data-field-id="Rahnuma_NGO"><label>Rahnuma NGO</label><input type="number" id="e-Rahnuma_NGO" placeholder="0" oninput="calcTotal()"></div>
-        <div class="fg" data-field-id="Health_Pass"><label>Health Pass</label><input type="number" id="e-Health_Pass" placeholder="0" oninput="calcTotal()"></div>
-        <div class="fg" data-field-id="Nisar_Spinning"><label>Nisar Spinning</label><input type="number" id="e-Nisar_Spinning" placeholder="0" oninput="calcTotal()"></div>
-        <div class="fg" data-field-id="Food_Panda"><label>Food Panda</label><input type="number" id="e-Food_Panda" placeholder="0" oninput="calcTotal()"></div>
-        <div class="fg" data-field-id="F_Issue"><label>F/Issue</label><input type="number" id="e-F_Issue" placeholder="0" oninput="calcTotal()"></div>
+        <div class="fg" data-field-id="Askari_Bank"><label>Askari</label><input type="number" id="e-Askari_Bank" placeholder="0" data-on-input="calcTotal"></div>
+        <div class="fg" data-field-id="Askari_Bank_Returns"><label>Askari Returns</label><input type="number" id="e-Askari_Bank_Returns" placeholder="0" data-on-input="calcTotal"></div>
+        <div class="fg" data-field-id="PSO"><label>PSO</label><input type="number" id="e-PSO" placeholder="0" data-on-input="calcTotal"></div>
+        <div class="fg" data-field-id="PSO_Returns"><label>PSO Returns</label><input type="number" id="e-PSO_Returns" placeholder="0" data-on-input="calcTotal"></div>
+        <div class="fg" data-field-id="NESPAK"><label>NESPAK</label><input type="number" id="e-NESPAK" placeholder="0" data-on-input="calcTotal"></div>
+        <div class="fg" data-field-id="NESPAK_Returns"><label>NESPAK Returns</label><input type="number" id="e-NESPAK_Returns" placeholder="0" data-on-input="calcTotal"></div>
+        <div class="fg" data-field-id="PARCO"><label>PARCO</label><input type="number" id="e-PARCO" placeholder="0" data-on-input="calcTotal"></div>
+        <div class="fg" data-field-id="PARCO_Returns"><label>PARCO Returns</label><input type="number" id="e-PARCO_Returns" placeholder="0" data-on-input="calcTotal"></div>
+        <div class="fg" data-field-id="TEPA"><label>TEPA</label><input type="number" id="e-TEPA" placeholder="0" data-on-input="calcTotal"></div>
+        <div class="fg" data-field-id="TEPA_Returns"><label>TEPA Returns</label><input type="number" id="e-TEPA_Returns" placeholder="0" data-on-input="calcTotal"></div>
+        <div class="fg" data-field-id="LDA"><label>LDA</label><input type="number" id="e-LDA" placeholder="0" data-on-input="calcTotal"></div>
+        <div class="fg" data-field-id="LDA_Returns"><label>LDA Returns</label><input type="number" id="e-LDA_Returns" placeholder="0" data-on-input="calcTotal"></div>
+        <div class="fg" data-field-id="Gourmet"><label>Gourmet</label><input type="number" id="e-Gourmet" placeholder="0" data-on-input="calcTotal"></div>
+        <div class="fg" data-field-id="Wapda_Hospital"><label>Wapda Hospital</label><input type="number" id="e-Wapda_Hospital" placeholder="0" data-on-input="calcTotal"></div>
+        <div class="fg" data-field-id="BTH"><label>BTH</label><input type="number" id="e-BTH" placeholder="0" data-on-input="calcTotal"></div>
+        <div class="fg" data-field-id="Berger_Paints"><label>Berger Paints</label><input type="number" id="e-Berger_Paints" placeholder="0" data-on-input="calcTotal"></div>
+        <div class="fg" data-field-id="Ecolean_PK"><label>Ecolean PK</label><input type="number" id="e-Ecolean_PK" placeholder="0" data-on-input="calcTotal"></div>
+        <div class="fg" data-field-id="Style_Textile"><label>Style Textile</label><input type="number" id="e-Style_Textile" placeholder="0" data-on-input="calcTotal"></div>
+        <div class="fg" data-field-id="Syed_Babar_Ali"><label>Syed Babar Ali Fdn</label><input type="number" id="e-Syed_Babar_Ali" placeholder="0" data-on-input="calcTotal"></div>
+        <div class="fg" data-field-id="Rahnuma_NGO"><label>Rahnuma NGO</label><input type="number" id="e-Rahnuma_NGO" placeholder="0" data-on-input="calcTotal"></div>
+        <div class="fg" data-field-id="Health_Pass"><label>Health Pass</label><input type="number" id="e-Health_Pass" placeholder="0" data-on-input="calcTotal"></div>
+        <div class="fg" data-field-id="Nisar_Spinning"><label>Nisar Spinning</label><input type="number" id="e-Nisar_Spinning" placeholder="0" data-on-input="calcTotal"></div>
+        <div class="fg" data-field-id="Food_Panda"><label>Food Panda</label><input type="number" id="e-Food_Panda" placeholder="0" data-on-input="calcTotal"></div>
+        <div class="fg" data-field-id="F_Issue"><label>F/Issue</label><input type="number" id="e-F_Issue" placeholder="0" data-on-input="calcTotal"></div>
       </div>
     </div>
     <div class="fsec" id="fsec-Summary"><div class="fsec-title">Summary &amp; Other</div>
@@ -591,8 +591,8 @@ if ('serviceWorker' in navigator) {
       </div>
     </div>
     <div class="brow">
-      <button class="btn btn-p" onclick="saveEntry()">💾 Save &amp; Sync</button>
-      <button class="btn btn-s" onclick="clearEntryForm()">✕ Clear</button>
+      <button class="btn btn-p" data-on-click="saveEntry">💾 Save &amp; Sync</button>
+      <button class="btn btn-s" data-on-click="clearEntryForm">✕ Clear</button>
     </div>
     <hr>
     <div style="font-size:12px;font-weight:600;margin-bottom:8px">Session Entries</div>
@@ -611,25 +611,25 @@ if ('serviceWorker' in navigator) {
           <label>Select Date (Apr 2020 – present)</label>
           <input type="date" id="ds-input"
             min="2020-04-01"
-            onchange="dsDateChange(this.value)"
+            data-on-change="dsDateChange" data-args='[{"$":"value"}]'
             style="width:100%;padding:10px 12px;background:var(--s2);border:1px solid var(--border);border-radius:7px;font-size:16px;font-family:var(--sans);color:var(--text);outline:none;cursor:pointer;"
-            onfocus="this.style.borderColor='var(--accent)';this.style.boxShadow='0 0 0 3px rgba(37,99,235,.1)'"
-            onblur="this.style.borderColor='';this.style.boxShadow=''">
+           
+           >
         </div>
         <div class="fg" style="margin-bottom:10px">
           <label>Till Short (manual entry)</label>
-          <input type="number" id="rpt-till" placeholder="0" value="0" oninput="renderReport()">
+          <input type="number" id="rpt-till" placeholder="0" value="0" data-on-input="renderReport">
         </div>
         <div class="fg" style="margin-bottom:14px">
           <label>Patty Cash (manual entry)</label>
-          <input type="number" id="rpt-patty" placeholder="0" value="0" oninput="renderReport()">
+          <input type="number" id="rpt-patty" placeholder="0" value="0" data-on-input="renderReport">
         </div>
         <div class="brow" style="margin-top:0">
-          <button class="btn btn-p" onclick="printDayReport()">🖨 Print Report</button>
-          <button class="btn btn-s" onclick="copyReportRich()">📋 Copy</button>
+          <button class="btn btn-p" data-on-click="printDayReport">🖨 Print Report</button>
+          <button class="btn btn-s" data-on-click="copyReportRich">📋 Copy</button>
         </div>
         <div class="brow" style="margin-top:8px">
-          <button class="btn btn-s" onclick="openRowManager()" style="width:100%">⚙ Customize Rows</button>
+          <button class="btn btn-s" data-on-click="openRowManager" style="width:100%">⚙ Customize Rows</button>
         </div>
       </div>
       <div class="card" id="rpt-tgt-card">
@@ -653,19 +653,19 @@ if ('serviceWorker' in navigator) {
 <div class="page" id="page-cashdeposit">
   <div class="hero"><div class="hlabel">Sale Data</div><div class="htitle">💰 Cash to be Deposited</div><div class="hsub">Cash Sale − Cash Returns + FDPP POS + FDPP Consumer, for every day on record. Tick the days you need, then view the combined report.</div></div>
   <div class="frow no-print">
-    <input type="text" id="cdr-search" placeholder="Search date, month…" oninput="cdrRender()">
-    <select id="cdr-month" onchange="cdrRender()"><option value="">All Months</option></select>
+    <input type="text" id="cdr-search" placeholder="Search date, month…" data-on-input="cdrRender">
+    <select id="cdr-month" data-on-change="cdrRender"><option value="">All Months</option></select>
   </div>
   <div class="cdr-selbar no-print" id="cdr-selbar" style="display:none">
     <span id="cdr-sel-label">0 days selected</span>
     <span id="cdr-sel-total" style="font-family:var(--mono);font-weight:700"></span>
-    <button class="btn btn-p" onclick="cdrOpenPopup()">🧾 Generate Report</button>
+    <button class="btn btn-p" data-on-click="cdrOpenPopup">🧾 Generate Report</button>
   </div>
   <div class="card">
     <div class="twrap tscroll" style="max-height:480px">
       <table id="tbl-cdr">
         <thead><tr>
-          <th style="width:34px"><input type="checkbox" id="cdr-check-all" onchange="cdrToggleAll(this.checked)" style="width:16px;height:16px;accent-color:var(--accent)"></th>
+          <th style="width:34px"><input type="checkbox" id="cdr-check-all" data-on-change="cdrToggleAll" data-args='[{"$":"checked"}]' style="width:16px;height:16px;accent-color:var(--accent)"></th>
           <th style="text-align:left">Date</th>
           <th style="text-align:left">Month</th>
           <th>Cash Sale</th>
@@ -682,14 +682,14 @@ if ('serviceWorker' in navigator) {
 
 <!-- CASH DEPOSIT POPUP — totals + per-day detail, with a 72mm thermal
      print button. Same .mbg/.modal shell as every other modal. -->
-<div class="mbg" id="cdrbg" onclick="if(event.target===this)closeCdrPopup()">
+<div class="mbg" id="cdrbg" data-on-click="closeCdrPopup" data-self-only>
   <div class="modal" style="width:min(96vw,480px)">
     <div class="sheet-handle"></div>
-    <div class="mhdr"><h2 id="cdr-modal-title">Cash to be Deposited</h2><button class="mclose" onclick="closeCdrPopup()">✕</button></div>
+    <div class="mhdr"><h2 id="cdr-modal-title">Cash to be Deposited</h2><button class="mclose" data-on-click="closeCdrPopup">✕</button></div>
     <div class="mbody" id="cdr-modal-body"></div>
     <div class="dmprint-btn no-print">
-      <button class="btn btn-p" style="flex:1" onclick="cdrPrintPopup()">🖨 Print (72mm Thermal)</button>
-      <button class="btn btn-s" onclick="closeCdrPopup()">Close</button>
+      <button class="btn btn-p" style="flex:1" data-on-click="cdrPrintPopup">🖨 Print (72mm Thermal)</button>
+      <button class="btn btn-s" data-on-click="closeCdrPopup">Close</button>
     </div>
   </div>
 </div>
@@ -704,7 +704,7 @@ if ('serviceWorker' in navigator) {
   <div class="hero"><div class="hlabel">Sale Data</div><div class="htitle">💳 Sale Payments</div><div class="hsub">Cash / Card / Credit split for today + last 3 days, plus a per-customer credit breakdown. Synced from Candela POS via Dropbox → Supabase.</div></div>
   <div class="sp-toolbar">
     <span id="sp-status">⏳ Loading…</span>
-    <button onclick="spRefresh()">🔄 Refresh</button>
+    <button data-on-click="spRefresh">🔄 Refresh</button>
   </div>
 
   <div class="sp-section-title">Daily Split</div>
@@ -726,7 +726,7 @@ if ('serviceWorker' in navigator) {
 
   <div class="sp-section-title">Credit Sales by Customer</div>
   <div class="sp-search-row">
-    <input type="text" id="sp-credit-search" placeholder="Search customer name…" oninput="spSetCustomerSearch(this.value)">
+    <input type="text" id="sp-credit-search" placeholder="Search customer name…" data-on-input="spSetCustomerSearch" data-args='[{"$":"value"}]'>
   </div>
   <div class="card">
     <div class="twrap tscroll" style="max-height:480px">
@@ -749,10 +749,10 @@ if ('serviceWorker' in navigator) {
      .mbg/.modal shell. Tree populated by js/nav-sections.js; the search
      box on top of it (fuzzy-filters the tree + ranks Staff matches) is
      js/global-search.js, reviving the previously-dead js/bt-search.js. -->
-<div class="mbg" id="sectionsbg" onclick="if(event.target===this)closeSectionsDrawer()">
+<div class="mbg" id="sectionsbg" data-on-click="closeSectionsDrawer" data-self-only>
   <div class="modal">
     <div class="sheet-handle"></div>
-    <div class="mhdr"><h2>BT Navigation Panel</h2><button class="mclose" onclick="closeSectionsDrawer()">✕</button></div>
+    <div class="mhdr"><h2>BT Navigation Panel</h2><button class="mclose" data-on-click="closeSectionsDrawer">✕</button></div>
     <!-- Moved out of .mbody (Aug 2026) — sticky positioning inside a
          padded, backdrop-blurred scroll container was producing a
          repaint/ghosting artifact on some Android Chrome builds (a
@@ -764,7 +764,7 @@ if ('serviceWorker' in navigator) {
     <div class="gs-search-row">
       <div class="gs-search-wrap">
         <span class="gs-search-icon" aria-hidden="true">🔍</span>
-        <input type="search" id="gs-input" class="gs-input" placeholder="Search sections, staff…" autocomplete="off" oninput="GlobalSearch.onInput(this.value)">
+        <input type="search" id="gs-input" class="gs-input" placeholder="Search sections, staff…" autocomplete="off" data-on-input="GlobalSearch.onInput" data-args='[{"$":"value"}]'>
       </div>
     </div>
     <div class="mbody">
@@ -795,32 +795,32 @@ if ('serviceWorker' in navigator) {
       <div class="cb-range-field"><label>Shift</label><select id="cln-cb-to-shift"><option>Night</option><option>Morning</option><option selected>Evening</option></select></div>
     </div>
     <div class="cb-shortcut-row">
-      <button onclick="clnSetShortcutClosings(10)">Last 10 Closings</button>
-      <button onclick="clnSetShortcutDays(3)">Last 3 Days</button>
-      <button onclick="clnSetShortcutDays(7)">Last 7 Days</button>
-      <button onclick="clnSetShortcutDays(30)">Last 1 Month</button>
+      <button data-on-click="clnSetShortcutClosings" data-args='[10]'>Last 10 Closings</button>
+      <button data-on-click="clnSetShortcutDays" data-args='[3]'>Last 3 Days</button>
+      <button data-on-click="clnSetShortcutDays" data-args='[7]'>Last 7 Days</button>
+      <button data-on-click="clnSetShortcutDays" data-args='[30]'>Last 1 Month</button>
     </div>
-    <button class="cb-generate-btn" id="cln-cb-generate-btn" onclick="clnGenerateBook()">📖 Generate Book</button>
+    <button class="cb-generate-btn" id="cln-cb-generate-btn" data-on-click="clnGenerateBook">📖 Generate Book</button>
     <div class="cb-generate-status" id="cln-cb-status"></div>
   </div>
 
   <!-- READER — paginated, print-accurate register replica -->
   <div id="cln-cb-reader" class="cb-reader hidden">
     <div class="cb-reader-toolbar">
-      <button class="cb-reader-btn" onclick="clnCbCloseReader()">← Back</button>
+      <button class="cb-reader-btn" data-on-click="clnCbCloseReader">← Back</button>
       <div class="cb-page-counter" id="cln-cb-page-counter">1 / 1</div>
     </div>
     <div class="cb-reader-toolbar cb-reader-toolbar2">
-      <button class="cb-reader-btn" onclick="clnCbPrev()" id="cln-cb-btn-prev">‹ Prev</button>
-      <select id="cln-cb-jump-select" onchange="clnCbJump(this.value)" style="flex:1;min-width:0;"></select>
-      <button class="cb-reader-btn" onclick="clnCbNext()" id="cln-cb-btn-next">Next ›</button>
+      <button class="cb-reader-btn" data-on-click="clnCbPrev" id="cln-cb-btn-prev">‹ Prev</button>
+      <select id="cln-cb-jump-select" data-on-change="clnCbJump" data-args='[{"$":"value"}]' style="flex:1;min-width:0;"></select>
+      <button class="cb-reader-btn" data-on-click="clnCbNext" id="cln-cb-btn-next">Next ›</button>
     </div>
     <div class="cb-reader-toolbar cb-reader-toolbar2" style="justify-content:center;">
       <div class="cb-zoom-group">
-        <button class="cb-reader-btn" onclick="clnCbZoom(1)">1x</button>
-        <button class="cb-reader-btn" onclick="clnCbZoom(2)">2x</button>
-        <button class="cb-reader-btn" onclick="clnCbZoom(4)">4x</button>
-        <button class="cb-reader-btn" onclick="clnCbZoom(8)">8x</button>
+        <button class="cb-reader-btn" data-on-click="clnCbZoom" data-args='[1]'>1x</button>
+        <button class="cb-reader-btn" data-on-click="clnCbZoom" data-args='[2]'>2x</button>
+        <button class="cb-reader-btn" data-on-click="clnCbZoom" data-args='[4]'>4x</button>
+        <button class="cb-reader-btn" data-on-click="clnCbZoom" data-args='[8]'>8x</button>
       </div>
     </div>
     <div class="cb-viewport" id="cln-cb-viewport">
@@ -828,7 +828,7 @@ if ('serviceWorker' in navigator) {
         <div class="cb-page-stage ps-sheet-scope" id="cln-cb-page-stage"></div>
       </div>
     </div>
-    <button class="cb-generate-btn" style="margin-top:12px;" onclick="clnCbExportPdf()" id="cln-cb-btn-export">⬇ Export Book as PDF</button>
+    <button class="cb-generate-btn" style="margin-top:12px;" data-on-click="clnCbExportPdf" id="cln-cb-btn-export">⬇ Export Book as PDF</button>
   </div>
 </div>
 
@@ -843,16 +843,16 @@ if ('serviceWorker' in navigator) {
     <a class="cl-mode-tab" href="#credit-ledger/misc" id="cln-cl-tab-misc">🧮 Misc / Ongoing</a>
   </div>
   <div class="cln-toolbar-row">
-    <button onclick="clnToggleAll(true)">Expand All</button>
-    <button onclick="clnToggleAll(false)">Collapse All</button>
+    <button data-on-click="clnToggleAll" data-args='[true]'>Expand All</button>
+    <button data-on-click="clnToggleAll" data-args='[false]'>Collapse All</button>
   </div>
   <div class="cln-filter-row" id="cln-cl-filter-row">
     <span style="font-size:12px;color:var(--muted)">Filter account:</span>
-    <select id="cln-cl-filter-select" onchange="clnSetFilter(this.value)"><option value="">All Accounts</option></select>
+    <select id="cln-cl-filter-select" data-on-change="clnSetFilter" data-args='[{"$":"value"}]'><option value="">All Accounts</option></select>
     <span class="cln-count-badge" id="cln-cl-count"></span>
   </div>
   <div id="cln-cl-cards"><div class="cln-empty">⏳ Waiting for the first sync from Closing…</div></div>
-  <button class="cl-show-more hidden" id="cln-cl-more-btn" onclick="clnShowMore()"></button>
+  <button class="cl-show-more hidden" id="cln-cl-more-btn" data-on-click="clnShowMore"></button>
 </div>
 
 <!-- AUDIT ASSIGNMENTS — native port of Pharmacy Audit Hub's own Main
@@ -868,9 +868,9 @@ if ('serviceWorker' in navigator) {
 </div>
 
 <!-- Live Snapshot popup — see audit-native.js's renderSnapshotModal() -->
-<div class="an-snapshot-overlay" id="an-snapshot-overlay" onclick="if(event.target===this) anCloseSnapshot()">
+<div class="an-snapshot-overlay" id="an-snapshot-overlay" data-on-click="anCloseSnapshot" data-self-only>
   <div class="an-snapshot-sheet">
-    <div class="an-snapshot-head"><h3 id="an-snapshot-title">Live counts</h3><button class="an-snapshot-close" onclick="anCloseSnapshot()">✕</button></div>
+    <div class="an-snapshot-head"><h3 id="an-snapshot-title">Live counts</h3><button class="an-snapshot-close" data-on-click="anCloseSnapshot">✕</button></div>
     <div id="an-snapshot-body"></div>
   </div>
 </div>
@@ -887,19 +887,19 @@ if ('serviceWorker' in navigator) {
   <div class="bti-toolbar">
     <span id="bti-status">⏳ Loading…</span>
     <div style="display:flex;gap:8px;position:relative">
-      <button class="bti-refresh-btn" id="bti-columns-btn" onclick="biToggleColumnsPanel()">☰ Columns</button>
-      <button class="bti-refresh-btn" onclick="biRefresh()">🔄 Refresh</button>
+      <button class="bti-refresh-btn" id="bti-columns-btn" data-on-click="biToggleColumnsPanel">☰ Columns</button>
+      <button class="bti-refresh-btn" data-on-click="biRefresh">🔄 Refresh</button>
       <div class="bti-columns-panel" id="bti-columns-panel" style="display:none"></div>
     </div>
   </div>
   <div class="bti-search-row">
-    <input type="text" class="bti-search-input" id="bti-search-input" placeholder="Search code, name, generic, manufacturer, supplier…" oninput="biSetSearch(this.value)">
+    <input type="text" class="bti-search-input" id="bti-search-input" placeholder="Search code, name, generic, manufacturer, supplier…" data-on-input="biSetSearch" data-args='[{"$":"value"}]'>
   </div>
   <div class="bti-group-row">
-    <button class="bti-group-btn bti-group-btn-active" data-group="none" onclick="biSetGroupBy('none')">No Grouping</button>
-    <button class="bti-group-btn" data-group="company" onclick="biSetGroupBy('company')">By Manufacturer</button>
-    <button class="bti-group-btn" data-group="supplier" onclick="biSetGroupBy('supplier')">By Supplier</button>
-    <button class="bti-group-btn" id="bti-negative-toggle" onclick="biToggleNegativeOnly()">⚠️ Negative Stock Only</button>
+    <button class="bti-group-btn bti-group-btn-active" data-group="none" data-on-click="biSetGroupBy" data-args='["none"]'>No Grouping</button>
+    <button class="bti-group-btn" data-group="company" data-on-click="biSetGroupBy" data-args='["company"]'>By Manufacturer</button>
+    <button class="bti-group-btn" data-group="supplier" data-on-click="biSetGroupBy" data-args='["supplier"]'>By Supplier</button>
+    <button class="bti-group-btn" id="bti-negative-toggle" data-on-click="biToggleNegativeOnly">⚠️ Negative Stock Only</button>
   </div>
   <div class="bti-empty" id="bti-empty-state">⏳ Loading inventory from Random…</div>
   <div id="bti-pagination-top"></div>
@@ -1265,11 +1265,11 @@ if ('serviceWorker' in navigator) {
 </header>
 
 <div class="str-chip-row">
-  <button class="str-chip" id="str-chip-dispatched" type="button" onclick="strSetBranchFilter('dispatched')">
+  <button class="str-chip" id="str-chip-dispatched" type="button" data-on-click="strSetBranchFilter" data-args='["dispatched"]'>
     <div><span class="str-chip-label">Dispatched</span><span class="str-chip-sub">Dispatch branch: Bahria Town</span></div>
     <span class="str-chip-count">0</span>
   </button>
-  <button class="str-chip" id="str-chip-received" type="button" onclick="strSetBranchFilter('received')">
+  <button class="str-chip" id="str-chip-received" type="button" data-on-click="strSetBranchFilter" data-args='["received"]'>
     <div><span class="str-chip-label">Received</span><span class="str-chip-sub">Receive branch: Bahria Town</span></div>
     <span class="str-chip-count">0</span>
   </button>
@@ -1277,22 +1277,22 @@ if ('serviceWorker' in navigator) {
 
 <div class="str-toolbar">
   <span id="str-status">Loading…</span>
-  <button class="str-refresh-btn" type="button" onclick="strRefresh()">↻ Refresh</button>
+  <button class="str-refresh-btn" type="button" data-on-click="strRefresh">↻ Refresh</button>
 </div>
 
 <div class="str-search-row">
-  <input type="search" class="str-search-input" id="str-search-input" placeholder="Search STR #, ref #, comments, branch…" autocomplete="off" oninput="strSetSearch(this.value)">
+  <input type="search" class="str-search-input" id="str-search-input" placeholder="Search STR #, ref #, comments, branch…" autocomplete="off" data-on-input="strSetSearch" data-args='[{"$":"value"}]'>
 </div>
 
 <div class="str-filter-row">
-  <button class="str-stage-btn str-stage-btn-active" data-stage="all" type="button" onclick="strSetStage('all')">All</button>
-  <button class="str-stage-btn" data-stage="awaited" type="button" onclick="strSetStage('awaited')">Awaited</button>
-  <button class="str-stage-btn" data-stage="dispatched" type="button" onclick="strSetStage('dispatched')">Dispatched</button>
-  <button class="str-stage-btn" data-stage="received" type="button" onclick="strSetStage('received')">Received</button>
-  <input type="date" class="str-date-input" id="str-date-from" aria-label="From date" onchange="strSetDateFrom(this.value)">
+  <button class="str-stage-btn str-stage-btn-active" data-stage="all" type="button" data-on-click="strSetStage" data-args='["all"]'>All</button>
+  <button class="str-stage-btn" data-stage="awaited" type="button" data-on-click="strSetStage" data-args='["awaited"]'>Awaited</button>
+  <button class="str-stage-btn" data-stage="dispatched" type="button" data-on-click="strSetStage" data-args='["dispatched"]'>Dispatched</button>
+  <button class="str-stage-btn" data-stage="received" type="button" data-on-click="strSetStage" data-args='["received"]'>Received</button>
+  <input type="date" class="str-date-input" id="str-date-from" aria-label="From date" data-on-change="strSetDateFrom" data-args='[{"$":"value"}]'>
   <span style="font-size:11px;color:var(--muted)">to</span>
-  <input type="date" class="str-date-input" id="str-date-to" aria-label="To date" onchange="strSetDateTo(this.value)">
-  <button class="str-clear-btn" type="button" onclick="strClearFilters()">Clear</button>
+  <input type="date" class="str-date-input" id="str-date-to" aria-label="To date" data-on-change="strSetDateTo" data-args='[{"$":"value"}]'>
+  <button class="str-clear-btn" type="button" data-on-click="strClearFilters">Clear</button>
 </div>
 
 <div class="str-empty" id="str-empty-state" style="display:none"></div>
@@ -1328,10 +1328,10 @@ if ('serviceWorker' in navigator) {
 </header>
 
 <div class="str-chip-row">
-  <button class="str-chip" id="str-report-chip-dispatched" type="button" onclick="strReportSetBranchFilter('dispatched')">
+  <button class="str-chip" id="str-report-chip-dispatched" type="button" data-on-click="strReportSetBranchFilter" data-args='["dispatched"]'>
     <div><span class="str-chip-label">Dispatched</span><span class="str-chip-sub">Dispatch branch: Bahria Town</span></div>
   </button>
-  <button class="str-chip" id="str-report-chip-received" type="button" onclick="strReportSetBranchFilter('received')">
+  <button class="str-chip" id="str-report-chip-received" type="button" data-on-click="strReportSetBranchFilter" data-args='["received"]'>
     <div><span class="str-chip-label">Received</span><span class="str-chip-sub">Receive branch: Bahria Town</span></div>
   </button>
 </div>
@@ -1339,29 +1339,29 @@ if ('serviceWorker' in navigator) {
 <div class="str-rpt-toolbar">
   <span id="str-report-status">Loading…</span>
   <div class="str-rpt-toolbar-btns">
-    <button class="str-rpt-btn" id="str-report-hidezero-btn" type="button" onclick="strReportToggleHideZero()">🚫 Hide 0-Dispatch</button>
-    <button class="str-rpt-btn" type="button" onclick="strReportRefresh()">↻ Refresh</button>
+    <button class="str-rpt-btn" id="str-report-hidezero-btn" type="button" data-on-click="strReportToggleHideZero">🚫 Hide 0-Dispatch</button>
+    <button class="str-rpt-btn" type="button" data-on-click="strReportRefresh">↻ Refresh</button>
     <div class="str-rpt-cols-wrap">
-      <button class="str-rpt-btn" type="button" onclick="strReportToggleColsPanel()">☰ Columns</button>
+      <button class="str-rpt-btn" type="button" data-on-click="strReportToggleColsPanel">☰ Columns</button>
       <div class="str-rpt-cols-panel" id="str-report-cols-panel"></div>
     </div>
-    <button class="str-rpt-btn str-rpt-btn-primary" type="button" onclick="strReportPrint()">🖨 Print</button>
+    <button class="str-rpt-btn str-rpt-btn-primary" type="button" data-on-click="strReportPrint">🖨 Print</button>
   </div>
 </div>
 
 <div class="str-search-row">
-  <input type="search" class="str-search-input" id="str-report-search-input" placeholder="Search STR #, ref #, comments, branch…" autocomplete="off" oninput="strReportSetSearch(this.value)">
+  <input type="search" class="str-search-input" id="str-report-search-input" placeholder="Search STR #, ref #, comments, branch…" autocomplete="off" data-on-input="strReportSetSearch" data-args='[{"$":"value"}]'>
 </div>
 
 <div class="str-filter-row">
-  <button class="str-stage-btn str-stage-btn-active" data-stage="all" type="button" onclick="strReportSetStage('all')">All</button>
-  <button class="str-stage-btn" data-stage="awaited" type="button" onclick="strReportSetStage('awaited')">Awaited</button>
-  <button class="str-stage-btn" data-stage="dispatched" type="button" onclick="strReportSetStage('dispatched')">Dispatched</button>
-  <button class="str-stage-btn" data-stage="received" type="button" onclick="strReportSetStage('received')">Received</button>
-  <input type="date" class="str-date-input" id="str-report-date-from" aria-label="From date" onchange="strReportSetDateFrom(this.value)">
+  <button class="str-stage-btn str-stage-btn-active" data-stage="all" type="button" data-on-click="strReportSetStage" data-args='["all"]'>All</button>
+  <button class="str-stage-btn" data-stage="awaited" type="button" data-on-click="strReportSetStage" data-args='["awaited"]'>Awaited</button>
+  <button class="str-stage-btn" data-stage="dispatched" type="button" data-on-click="strReportSetStage" data-args='["dispatched"]'>Dispatched</button>
+  <button class="str-stage-btn" data-stage="received" type="button" data-on-click="strReportSetStage" data-args='["received"]'>Received</button>
+  <input type="date" class="str-date-input" id="str-report-date-from" aria-label="From date" data-on-change="strReportSetDateFrom" data-args='[{"$":"value"}]'>
   <span style="font-size:11px;color:var(--muted)">to</span>
-  <input type="date" class="str-date-input" id="str-report-date-to" aria-label="To date" onchange="strReportSetDateTo(this.value)">
-  <button class="str-clear-btn" type="button" onclick="strReportClearFilters()">Clear</button>
+  <input type="date" class="str-date-input" id="str-report-date-to" aria-label="To date" data-on-change="strReportSetDateTo" data-args='[{"$":"value"}]'>
+  <button class="str-clear-btn" type="button" data-on-click="strReportClearFilters">Clear</button>
 </div>
 
 <div class="str-empty" id="str-report-empty" style="display:none"></div>
@@ -1384,10 +1384,10 @@ if ('serviceWorker' in navigator) {
 </header>
 
 <div class="str-chip-row">
-  <button class="str-chip" id="str-zd-chip-dispatched" type="button" onclick="strZdSetBranchFilter('dispatched')">
+  <button class="str-chip" id="str-zd-chip-dispatched" type="button" data-on-click="strZdSetBranchFilter" data-args='["dispatched"]'>
     <div><span class="str-chip-label">Dispatched</span><span class="str-chip-sub">Dispatch branch: Bahria Town</span></div>
   </button>
-  <button class="str-chip" id="str-zd-chip-received" type="button" onclick="strZdSetBranchFilter('received')">
+  <button class="str-chip" id="str-zd-chip-received" type="button" data-on-click="strZdSetBranchFilter" data-args='["received"]'>
     <div><span class="str-chip-label">Received</span><span class="str-chip-sub">Receive branch: Bahria Town</span></div>
   </button>
 </div>
@@ -1395,35 +1395,35 @@ if ('serviceWorker' in navigator) {
 <div class="str-rpt-toolbar">
   <span id="str-zd-status">Loading…</span>
   <div class="str-rpt-toolbar-btns">
-    <button class="str-rpt-btn" type="button" onclick="strZdRefresh()">↻ Refresh</button>
+    <button class="str-rpt-btn" type="button" data-on-click="strZdRefresh">↻ Refresh</button>
     <div class="str-rpt-cols-wrap">
-      <button class="str-rpt-btn" type="button" onclick="strZdToggleColsPanel()">☰ Columns</button>
+      <button class="str-rpt-btn" type="button" data-on-click="strZdToggleColsPanel">☰ Columns</button>
       <div class="str-rpt-cols-panel" id="str-zd-cols-panel"></div>
     </div>
-    <button class="str-rpt-btn str-rpt-btn-primary" type="button" onclick="strZdPrint()">🖨 Print Selected</button>
+    <button class="str-rpt-btn str-rpt-btn-primary" type="button" data-on-click="strZdPrint">🖨 Print Selected</button>
   </div>
 </div>
 
 <div class="str-search-row">
-  <input type="search" class="str-search-input" id="str-zd-search-input" placeholder="Search STR #, ref #, comments, branch…" autocomplete="off" oninput="strZdSetSearch(this.value)">
+  <input type="search" class="str-search-input" id="str-zd-search-input" placeholder="Search STR #, ref #, comments, branch…" autocomplete="off" data-on-input="strZdSetSearch" data-args='[{"$":"value"}]'>
 </div>
 
 <div class="str-filter-row">
-  <button class="str-stage-btn str-stage-btn-active" data-stage="all" type="button" onclick="strZdSetStage('all')">All</button>
-  <button class="str-stage-btn" data-stage="awaited" type="button" onclick="strZdSetStage('awaited')">Awaited</button>
-  <button class="str-stage-btn" data-stage="dispatched" type="button" onclick="strZdSetStage('dispatched')">Dispatched</button>
-  <button class="str-stage-btn" data-stage="received" type="button" onclick="strZdSetStage('received')">Received</button>
-  <input type="date" class="str-date-input" id="str-zd-date-from" aria-label="From date" onchange="strZdSetDateFrom(this.value)">
+  <button class="str-stage-btn str-stage-btn-active" data-stage="all" type="button" data-on-click="strZdSetStage" data-args='["all"]'>All</button>
+  <button class="str-stage-btn" data-stage="awaited" type="button" data-on-click="strZdSetStage" data-args='["awaited"]'>Awaited</button>
+  <button class="str-stage-btn" data-stage="dispatched" type="button" data-on-click="strZdSetStage" data-args='["dispatched"]'>Dispatched</button>
+  <button class="str-stage-btn" data-stage="received" type="button" data-on-click="strZdSetStage" data-args='["received"]'>Received</button>
+  <input type="date" class="str-date-input" id="str-zd-date-from" aria-label="From date" data-on-change="strZdSetDateFrom" data-args='[{"$":"value"}]'>
   <span style="font-size:11px;color:var(--muted)">to</span>
-  <input type="date" class="str-date-input" id="str-zd-date-to" aria-label="To date" onchange="strZdSetDateTo(this.value)">
-  <button class="str-clear-btn" type="button" onclick="strZdClearFilters()">Clear</button>
+  <input type="date" class="str-date-input" id="str-zd-date-to" aria-label="To date" data-on-change="strZdSetDateTo" data-args='[{"$":"value"}]'>
+  <button class="str-clear-btn" type="button" data-on-click="strZdClearFilters">Clear</button>
 </div>
 
 <div class="str-zd-select-row">
   <span id="str-zd-select-status">0 selected for print</span>
   <div class="str-rpt-toolbar-btns">
-    <button class="str-rpt-btn" type="button" onclick="strZdSelectAll()">☑ Select All</button>
-    <button class="str-rpt-btn" type="button" onclick="strZdSelectNone()">☐ Select None</button>
+    <button class="str-rpt-btn" type="button" data-on-click="strZdSelectAll">☑ Select All</button>
+    <button class="str-rpt-btn" type="button" data-on-click="strZdSelectNone">☐ Select None</button>
   </div>
 </div>
 
@@ -1441,15 +1441,15 @@ if ('serviceWorker' in navigator) {
     <div class="str-detail-head">
       <h3 id="str-detail-title">STR</h3>
       <div class="str-detail-head-actions">
-        <button class="str-detail-nav-btn" id="str-detail-prev" type="button" onclick="strPrevDetail()" aria-label="Previous STR" title="Previous STR">‹ Prev</button>
-        <button class="str-detail-nav-btn" id="str-detail-next" type="button" onclick="strNextDetail()" aria-label="Next STR" title="Next STR">Next ›</button>
-        <button class="str-detail-close" type="button" onclick="strCloseDetail()">✕</button>
+        <button class="str-detail-nav-btn" id="str-detail-prev" type="button" data-on-click="strPrevDetail" aria-label="Previous STR" title="Previous STR">‹ Prev</button>
+        <button class="str-detail-nav-btn" id="str-detail-next" type="button" data-on-click="strNextDetail" aria-label="Next STR" title="Next STR">Next ›</button>
+        <button class="str-detail-close" type="button" data-on-click="strCloseDetail">✕</button>
       </div>
     </div>
     <div id="str-detail-body"></div>
     <div class="str-detail-actions">
-      <button class="str-detail-btn" type="button" onclick="strCloseDetail()">Close</button>
-      <button class="str-detail-btn str-detail-btn-primary" type="button" onclick="strPrintDetail()">🖨 Print</button>
+      <button class="str-detail-btn" type="button" data-on-click="strCloseDetail">Close</button>
+      <button class="str-detail-btn str-detail-btn-primary" type="button" data-on-click="strPrintDetail">🖨 Print</button>
     </div>
   </div>
 </div>
@@ -1761,7 +1761,7 @@ if ('serviceWorker' in navigator) {
   <!-- SYNC CENTER — Device Session Management                           -->
   <!-- ══════════════════════════════════════════════════════════════════ -->
   <div class="tcard" id="tc-sync-center" style="border:1.5px solid rgba(99,102,241,.35)">
-    <div class="tcard-hdr" onclick="toggleTcard('tc-sync-center')">
+    <div class="tcard-hdr" data-on-click="toggleTcard" data-args='["tc-sync-center"]'>
       <div class="ttitle" style="display:flex;align-items:center;gap:8px">
         🖥 Sync Center
         <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:rgba(99,102,241,.15);color:var(--accent)">v1.1</span>
@@ -1847,7 +1847,7 @@ if ('serviceWorker' in navigator) {
       <div class="sc-panel" data-panel="logs" style="display:none">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <div style="font-size:11px;font-weight:700;color:var(--text)">Sync Center Logs <span style="color:var(--muted);font-weight:400">(last 100 events)</span></div>
-          <button class="btn" onclick="scClearLogs()" style="font-size:10px;padding:3px 8px;background:var(--s3);border:1px solid var(--border)">Clear</button>
+          <button class="btn" data-on-click="scClearLogs" style="font-size:10px;padding:3px 8px;background:var(--s3);border:1px solid var(--border)">Clear</button>
         </div>
         <div id="sc-logs-panel" style="max-height:280px;overflow-y:auto;padding:4px 0">
           <div style="color:var(--muted);font-size:11px">No logs yet.</div>
@@ -1865,7 +1865,7 @@ if ('serviceWorker' in navigator) {
   </div>
 
   <div class="tcard" id="tc-github">
-    <div class="tcard-hdr" onclick="toggleTcard('tc-github')">
+    <div class="tcard-hdr" data-on-click="toggleTcard" data-args='["tc-github"]'>
       <div class="ttitle">☁ Supabase Sync <span id="gh-badge" class="badge bg-green">Connected ✓</span></div>
       <span class="tcard-chevron">▶</span>
     </div>
@@ -1874,9 +1874,9 @@ if ('serviceWorker' in navigator) {
 
       <!-- Quick sync buttons -->
       <div class="brow" style="margin-top:0;margin-bottom:14px">
-        <button class="btn btn-s" onclick="pullFromSupabase()">↓ Pull from Supabase</button>
-        <button class="btn btn-g" onclick="pushToSupabase()">↑ Push All Data</button>
-        <button id="test-conn-btn" class="btn" style="background:var(--s3);border:1px solid var(--border);white-space:nowrap" onclick="testSupabaseConnection()">🔍 Test Connection</button>
+        <button class="btn btn-s" data-on-click="pullFromSupabase">↓ Pull from Supabase</button>
+        <button class="btn btn-g" data-on-click="pushToSupabase">↑ Push All Data</button>
+        <button id="test-conn-btn" class="btn" style="background:var(--s3);border:1px solid var(--border);white-space:nowrap" data-on-click="testSupabaseConnection">🔍 Test Connection</button>
       </div>
       <!-- Test Connection results -->
       <div id="test-conn-result" style="margin-bottom:10px"></div>
@@ -1905,33 +1905,33 @@ if ('serviceWorker' in navigator) {
   </div>
 
   <div class="tcard" id="tc-appearance">
-    <div class="tcard-hdr" onclick="toggleTcard('tc-appearance')">
+    <div class="tcard-hdr" data-on-click="toggleTcard" data-args='["tc-appearance"]'>
       <div class="ttitle">🌙 Appearance</div>
       <span class="tcard-chevron">▶</span>
     </div>
     <div class="tcard-body">
       <div class="tdesc">Choose a light or dark theme, or follow your device's setting automatically.</div>
       <div class="theme-opts">
-        <button type="button" class="theme-opt" data-theme="light" onclick="setThemePref('light')">☀️ Light</button>
-        <button type="button" class="theme-opt" data-theme="dark" onclick="setThemePref('dark')">🌙 Dark</button>
-        <button type="button" class="theme-opt" data-theme="system" onclick="setThemePref('system')">🖥 System</button>
+        <button type="button" class="theme-opt" data-theme="light" data-on-click="setThemePref" data-args='["light"]'>☀️ Light</button>
+        <button type="button" class="theme-opt" data-theme="dark" data-on-click="setThemePref" data-args='["dark"]'>🌙 Dark</button>
+        <button type="button" class="theme-opt" data-theme="system" data-on-click="setThemePref" data-args='["system"]'>🖥 System</button>
       </div>
     </div>
   </div>
 
   <div class="tcard" id="tc-autosync">
-    <div class="tcard-hdr" onclick="toggleTcard('tc-autosync')">
+    <div class="tcard-hdr" data-on-click="toggleTcard" data-args='["tc-autosync"]'>
       <div class="ttitle">⚡ Auto-Sync</div>
       <span class="tcard-chevron">▶</span>
     </div>
     <div class="tcard-body">
       <div style="display:flex;flex-direction:column;gap:10px;font-size:13px">
         <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
-          <input type="checkbox" id="auto-load" onchange="saveAutoSettings()" style="width:15px;height:15px;accent-color:var(--accent)">
+          <input type="checkbox" id="auto-load" data-on-change="saveAutoSettings" style="width:15px;height:15px;accent-color:var(--accent)">
           <span><strong>Auto-load on unlock</strong> — pull latest from Supabase each time you sign in</span>
         </label>
         <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
-          <input type="checkbox" id="auto-save" onchange="saveAutoSettings()" style="width:15px;height:15px;accent-color:var(--accent)">
+          <input type="checkbox" id="auto-save" data-on-change="saveAutoSettings" style="width:15px;height:15px;accent-color:var(--accent)">
           <span><strong>Auto-save on entry</strong> — push to Supabase when a daily entry is saved</span>
         </label>
         <div style="font-size:11px;color:var(--muted);padding:6px 0">⚡ <strong>Real-time sync is always on</strong> — data from other devices arrives instantly. No 30-min polling needed.</div>
@@ -1940,7 +1940,7 @@ if ('serviceWorker' in navigator) {
   </div>
 
   <div class="tcard" id="tc-drive">
-    <div class="tcard-hdr" onclick="toggleTcard('tc-drive')">
+    <div class="tcard-hdr" data-on-click="toggleTcard" data-args='["tc-drive"]'>
       <div class="ttitle">☁ Google Drive Backup <span id="drive-badge" class="badge bg-amber">Not set up</span></div>
       <span class="tcard-chevron">▶</span>
     </div>
@@ -1953,10 +1953,10 @@ if ('serviceWorker' in navigator) {
         automatically every day when you open the app.
       </div>
       <div class="brow">
-        <button class="btn btn-p" onclick="driveAuthorize()">🔑 Authorize Drive</button>
-        <button class="btn btn-g" onclick="driveBackupNow()">☁ Backup Now</button>
-        <button class="btn" style="background:var(--s3);border-color:var(--border)" onclick="driveOpenRestoreModal()">🔄 Restore Backup</button>
-        <button class="btn" style="background:var(--s3);border-color:var(--border)" onclick="driveRunDrill(true)">🧪 Verify Backup</button>
+        <button class="btn btn-p" data-on-click="driveAuthorize">🔑 Authorize Drive</button>
+        <button class="btn btn-g" data-on-click="driveBackupNow">☁ Backup Now</button>
+        <button class="btn" style="background:var(--s3);border-color:var(--border)" data-on-click="driveOpenRestoreModal">🔄 Restore Backup</button>
+        <button class="btn" style="background:var(--s3);border-color:var(--border)" data-on-click="driveRunDrill" data-args='[true]'>🧪 Verify Backup</button>
       </div>
       <div id="drive-health" style="font-size:12px;margin-top:10px;line-height:1.6"></div>
       <div id="drive-log" style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.8"></div>
@@ -1964,20 +1964,20 @@ if ('serviceWorker' in navigator) {
   </div>
 
   <div class="tcard" id="tc-security">
-    <div class="tcard-hdr" onclick="toggleTcard('tc-security')">
+    <div class="tcard-hdr" data-on-click="toggleTcard" data-args='["tc-security"]'>
       <div class="ttitle">🔒 Security</div>
       <span class="tcard-chevron">▶</span>
     </div>
     <div class="tcard-body">
       <div class="tdesc">Ends every active session for your account — every phone, browser, or tab it's currently signed into. Use this if a device was lost, shared, or you're unsure who still has access.</div>
       <div class="brow">
-        <button id="logout-all-btn" class="btn" style="background:var(--red);border-color:var(--red);color:#fff" onclick="if(confirm('Sign out on ALL devices where this account is logged in? You will need to sign in again here too.')) gauthSignOutAllDevices()">🚪 Log out of all devices</button>
+        <button id="logout-all-btn" class="btn" style="background:var(--red);border-color:var(--red);color:#fff" data-on-click="gauthSignOutAllDevices" data-confirm="Sign out on ALL devices where this account is logged in? You will need to sign in again here too.">🚪 Log out of all devices</button>
       </div>
     </div>
   </div>
 
   <div class="tcard" id="tc-targets">
-    <div class="tcard-hdr" onclick="toggleTcard('tc-targets')">
+    <div class="tcard-hdr" data-on-click="toggleTcard" data-args='["tc-targets"]'>
       <div class="ttitle">🎯 Monthly Targets</div>
       <span class="tcard-chevron">▶</span>
     </div>
@@ -1987,13 +1987,13 @@ if ('serviceWorker' in navigator) {
         <div class="fg"><label>Month</label><select id="tgt-sel"><option value="">Select month…</option></select></div>
         <div class="fg"><label>Target Amount (₨)</label><input type="number" id="tgt-amount" placeholder="e.g. 16000000"></div>
       </div>
-      <button class="btn btn-g" onclick="saveTarget()">Save Target</button>
+      <button class="btn btn-g" data-on-click="saveTarget">Save Target</button>
       <div id="tgt-list" style="margin-top:14px"></div>
     </div>
   </div>
 
   <div class="tcard" id="tc-pin">
-    <div class="tcard-hdr" onclick="toggleTcard('tc-pin')">
+    <div class="tcard-hdr" data-on-click="toggleTcard" data-args='["tc-pin"]'>
       <div class="ttitle">🔐 Google Auth &amp; PIN Settings</div>
       <span class="tcard-chevron">▶</span>
     </div>
@@ -2015,9 +2015,9 @@ if ('serviceWorker' in navigator) {
         <div style="font-size:10px;color:var(--muted);margin-top:4px">Managed in Supabase (<code>bt_authorized_users</code>) — add or remove rows in the Table Editor to change who can sign in, no redeploy needed.</div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
-        <button class="btn btn-p" onclick="tcSaveGAuthSettings()">💾 Save Client ID</button>
-        <button class="btn btn-s" onclick="tcClearGAuthSession()">🔓 Sign Out Google Session</button>
-        <button class="btn" style="background:var(--rlt,#fee2e2);color:var(--red);border:1px solid var(--red)" onclick="tcClearGAuthAll()">↺ Reset Google Settings</button>
+        <button class="btn btn-p" data-on-click="tcSaveGAuthSettings">💾 Save Client ID</button>
+        <button class="btn btn-s" data-on-click="tcClearGAuthSession">🔓 Sign Out Google Session</button>
+        <button class="btn" style="background:var(--rlt,#fee2e2);color:var(--red);border:1px solid var(--red)" data-on-click="tcClearGAuthAll">↺ Reset Google Settings</button>
       </div>
       <div style="font-size:11px;color:var(--muted);border-top:1px solid var(--border);padding-top:16px">
         🔒 Offline password sign-in has been disabled. Access is restricted to the three authorised Google accounts above — no other sign-in method is available.
@@ -2026,23 +2026,23 @@ if ('serviceWorker' in navigator) {
   </div>
 
   <div class="tcard" id="tc-export">
-    <div class="tcard-hdr" onclick="toggleTcard('tc-export')">
+    <div class="tcard-hdr" data-on-click="toggleTcard" data-args='["tc-export"]'>
       <div class="ttitle">📊 Export / Import</div>
       <span class="tcard-chevron">▶</span>
     </div>
     <div class="tcard-body">
       <div class="brow" style="margin-top:0">
-        <button class="btn btn-s" onclick="exportCSV('daily')">⬇ Daily CSV</button>
-        <button class="btn btn-s" onclick="exportCSV('monthly')">⬇ Monthly CSV</button>
-        <button class="btn btn-s" onclick="exportJSON()">⬇ Full JSON Backup</button>
-        <button class="btn btn-s" onclick="document.getElementById('import-file').click()">⬆ Import JSON</button>
-        <input type="file" id="import-file" accept=".json" style="display:none" onchange="importJSON(event)">
+        <button class="btn btn-s" data-on-click="exportCSV" data-args='["daily"]'>⬇ Daily CSV</button>
+        <button class="btn btn-s" data-on-click="exportCSV" data-args='["monthly"]'>⬇ Monthly CSV</button>
+        <button class="btn btn-s" data-on-click="exportJSON">⬇ Full JSON Backup</button>
+        <button class="btn btn-s" data-on-click="clickElement" data-args='["import-file"]'>⬆ Import JSON</button>
+        <input type="file" id="import-file" accept=".json" style="display:none" data-on-change="importJSON" data-args='[{"$":"event"}]'>
       </div>
     </div>
   </div>
 
   <div class="tcard" id="tc-newmonth">
-    <div class="tcard-hdr" onclick="toggleTcard('tc-newmonth')">
+    <div class="tcard-hdr" data-on-click="toggleTcard" data-args='["tc-newmonth"]'>
       <div class="ttitle">📅 Add New Month</div>
       <span class="tcard-chevron">▶</span>
     </div>
@@ -2053,12 +2053,12 @@ if ('serviceWorker' in navigator) {
         </div>
         <div class="fg"><label>Year</label><input type="number" id="nm-year" value="2026" min="2020" max="2040"></div>
       </div>
-      <button class="btn btn-g" onclick="addNewMonth()">+ Create Month</button>
+      <button class="btn btn-g" data-on-click="addNewMonth">+ Create Month</button>
     </div>
   </div>
 
   <div class="tcard" id="tc-summary">
-    <div class="tcard-hdr" onclick="toggleTcard('tc-summary')">
+    <div class="tcard-hdr" data-on-click="toggleTcard" data-args='["tc-summary"]'>
       <div class="ttitle">📋 Data Summary</div>
       <span class="tcard-chevron">▶</span>
     </div>
@@ -2068,7 +2068,7 @@ if ('serviceWorker' in navigator) {
   </div>
 
   <div class="tcard" id="tc-print">
-    <div class="tcard-hdr" onclick="toggleTcard('tc-print')">
+    <div class="tcard-hdr" data-on-click="toggleTcard" data-args='["tc-print"]'>
       <div class="ttitle">🖨 Print PDF Reports</div>
       <span class="tcard-chevron">▶</span>
     </div>
@@ -2082,21 +2082,21 @@ if ('serviceWorker' in navigator) {
           <div class="fg" style="margin-bottom:8px"><label>Select Date</label><input type="date" id="pr-daily-date" style="font-size:13px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;background:var(--surface);width:100%;font-family:var(--sans);color:var(--text);outline:none"></div>
           <div class="fg" style="margin-bottom:8px"><label>Till Short</label><input type="number" id="pr-daily-till" placeholder="0" value="0" style="font-size:13px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;background:var(--surface);width:100%;font-family:var(--sans);color:var(--text);outline:none"></div>
           <div class="fg" style="margin-bottom:10px"><label>Patty Cash</label><input type="number" id="pr-daily-patty" placeholder="0" value="0" style="font-size:13px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;background:var(--surface);width:100%;font-family:var(--sans);color:var(--text);outline:none"></div>
-          <button class="btn btn-p" style="width:100%" onclick="printDailyFromTools()">🖨 Print Daily</button>
+          <button class="btn btn-p" style="width:100%" data-on-click="printDailyFromTools">🖨 Print Daily</button>
         </div>
 
         <!-- Monthly -->
         <div style="background:var(--s2);border:1px solid var(--border);border-radius:9px;padding:14px">
           <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--purple);margin-bottom:10px">📆 Monthly Report</div>
           <div class="fg" style="margin-bottom:10px"><label>Select Month</label><select id="pr-month-sel" style="font-size:13px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;background:var(--surface);width:100%;font-family:var(--sans);color:var(--text);outline:none"><option value="">Select…</option></select></div>
-          <button class="btn" style="width:100%;background:var(--purple);color:#fff" onclick="printMonthFromTools()">🖨 Print Monthly</button>
+          <button class="btn" style="width:100%;background:var(--purple);color:#fff" data-on-click="printMonthFromTools">🖨 Print Monthly</button>
         </div>
 
         <!-- Yearly -->
         <div style="background:var(--s2);border:1px solid var(--border);border-radius:9px;padding:14px">
           <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--green);margin-bottom:10px">📊 Yearly Report</div>
           <div class="fg" style="margin-bottom:10px"><label>Select Year</label><select id="pr-year-sel" style="font-size:13px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;background:var(--surface);width:100%;font-family:var(--sans);color:var(--text);outline:none"><option value="">Select…</option></select></div>
-          <button class="btn btn-g" style="width:100%" onclick="printYearFromTools()">🖨 Print Yearly</button>
+          <button class="btn btn-g" style="width:100%" data-on-click="printYearFromTools">🖨 Print Yearly</button>
         </div>
       </div>
       <div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.7">
@@ -2156,37 +2156,37 @@ if ('serviceWorker' in navigator) {
 </div>
 
 <!-- FIELD MANAGER MODAL -->
-<div class="fmbg" id="fmbg" onclick="if(event.target===this)closeFieldManager()">
+<div class="fmbg" id="fmbg" data-on-click="closeFieldManager" data-self-only>
   <div class="fmbox">
     <div class="sheet-handle"></div>
     <div class="fmhdr">
       <h3>Manage Fields <small>Show/hide columns · Add custom fields</small></h3>
-      <button class="fmclose" onclick="closeFieldManager()">✕</button>
+      <button class="fmclose" data-on-click="closeFieldManager">✕</button>
     </div>
     <div class="fm-tabs" id="fm-tabs">
-      <button class="fm-tab active" data-sec="Cash" onclick="fmSwitchTab(this)">Cash</button>
-      <button class="fm-tab" data-sec="Banks" onclick="fmSwitchTab(this)">Banks</button>
-      <button class="fm-tab" data-sec="Credit Clients" onclick="fmSwitchTab(this)">Credit Clients</button>
-      <button class="fm-tab" data-sec="Summary" onclick="fmSwitchTab(this)">Summary</button>
-      <button class="fm-tab" data-sec="Custom" onclick="fmSwitchTab(this)">+ Custom</button>
+      <button class="fm-tab active" data-sec="Cash" data-on-click="fmSwitchTab" data-args='[{"$":"this"}]'>Cash</button>
+      <button class="fm-tab" data-sec="Banks" data-on-click="fmSwitchTab" data-args='[{"$":"this"}]'>Banks</button>
+      <button class="fm-tab" data-sec="Credit Clients" data-on-click="fmSwitchTab" data-args='[{"$":"this"}]'>Credit Clients</button>
+      <button class="fm-tab" data-sec="Summary" data-on-click="fmSwitchTab" data-args='[{"$":"this"}]'>Summary</button>
+      <button class="fm-tab" data-sec="Custom" data-on-click="fmSwitchTab" data-args='[{"$":"this"}]'>+ Custom</button>
     </div>
     <div class="fmbody" id="fm-body"></div>
     <div class="fm-footer">
-      <button class="btn btn-p" style="flex:1" onclick="fmApplyAndClose()">✓ Apply &amp; Close</button>
-      <button class="btn btn-s" onclick="fmResetAll()">Reset All</button>
+      <button class="btn btn-p" style="flex:1" data-on-click="fmApplyAndClose">✓ Apply &amp; Close</button>
+      <button class="btn btn-s" data-on-click="fmResetAll">Reset All</button>
     </div>
   </div>
 </div>
 
 <!-- MONTH MODAL -->
-<div class="mbg" id="mbg" onclick="if(event.target===this)closeMon()">
+<div class="mbg" id="mbg" data-on-click="closeMon" data-self-only>
   <div class="modal">
     <div class="sheet-handle"></div>
-    <div class="mhdr"><h2 id="mon-title">Month Detail</h2><button class="mclose" onclick="closeMon()">✕</button></div>
+    <div class="mhdr"><h2 id="mon-title">Month Detail</h2><button class="mclose" data-on-click="closeMon">✕</button></div>
     <div class="mbody" id="mon-body"></div>
     <div class="dmprint-btn no-print" id="mon-print-footer">
-      <button class="btn btn-p" style="flex:1" onclick="printMonthReport(_curMon)">🖨 Print Monthly Report</button>
-      <button class="btn btn-s" onclick="closeMon()">Close</button>
+      <button class="btn btn-p" style="flex:1" data-on-click="printCurrentMonthReport">🖨 Print Monthly Report</button>
+      <button class="btn btn-s" data-on-click="closeMon">Close</button>
     </div>
   </div>
 </div>
@@ -2195,46 +2195,46 @@ if ('serviceWorker' in navigator) {
      on-screen preview, Print, and Copy (rich + plain), all at once.
      Same .mbg/.modal shell as the Month modal above; separate overlay
      id so opening one never fights the other. -->
-<div class="mbg" id="rowmgr-bg" onclick="if(event.target===this)closeRowManager()">
+<div class="mbg" id="rowmgr-bg" data-on-click="closeRowManager" data-self-only>
   <div class="modal" style="width:min(96vw,480px)">
     <div class="sheet-handle"></div>
-    <div class="mhdr"><h2>Customize Rows</h2><button class="mclose" onclick="closeRowManager()">✕</button></div>
+    <div class="mhdr"><h2>Customize Rows</h2><button class="mclose" data-on-click="closeRowManager">✕</button></div>
     <div class="mbody" id="rowmgr-body"></div>
     <div class="dmprint-btn no-print">
-      <button class="btn btn-s" style="flex:1" onclick="resetReportRows()">↺ Show All Rows</button>
-      <button class="btn btn-p" onclick="closeRowManager()">Done</button>
+      <button class="btn btn-s" style="flex:1" data-on-click="resetReportRows">↺ Show All Rows</button>
+      <button class="btn btn-p" data-on-click="closeRowManager">Done</button>
     </div>
   </div>
 </div>
 
 <!-- DAY MODAL -->
-<div class="dmbg" id="dmbg" onclick="if(event.target===this)closeDay()">
+<div class="dmbg" id="dmbg" data-on-click="closeDay" data-self-only>
   <div class="dmbox">
     <div class="sheet-handle"></div>
     <div class="dmhdr">
       <h3 id="dm-title">Day Detail <small id="dm-sub"></small></h3>
-      <button class="dmclose" onclick="closeDay()">✕</button>
+      <button class="dmclose" data-on-click="closeDay">✕</button>
     </div>
     <div class="dmbody" id="dm-body"></div>
     <div class="dmprint-btn no-print">
-      <button class="btn btn-p" style="flex:1" onclick="printCurrentDay()">🖨 Print This Report</button>
-      <button class="btn" style="flex:1;background:#d97706;color:#fff" onclick="openEditFromDay()">✏️ Edit</button>
-      <button class="btn btn-s" onclick="closeDay()">Close</button>
+      <button class="btn btn-p" style="flex:1" data-on-click="printCurrentDay">🖨 Print This Report</button>
+      <button class="btn" style="flex:1;background:#d97706;color:#fff" data-on-click="openEditFromDay">✏️ Edit</button>
+      <button class="btn btn-s" data-on-click="closeDay">Close</button>
     </div>
   </div>
 </div>
 
 <!-- EDIT ENTRY MODAL -->
-<div id="edit-modal-bg" onclick="if(event.target===this)closeEditModal()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.65);align-items:flex-end;justify-content:center">
+<div id="edit-modal-bg" data-on-click="closeEditModal" data-self-only style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.65);align-items:flex-end;justify-content:center">
   <div id="edit-modal-box" style="background:var(--s1,#fff);border-radius:16px 16px 0 0;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--s1,#fff);z-index:1">
       <h3 style="margin:0;font-size:16px" id="edit-modal-title">Edit Entry</h3>
-      <button onclick="closeEditModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">✕</button>
+      <button data-on-click="closeEditModal" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">✕</button>
     </div>
     <div id="edit-modal-body" style="padding:14px 16px"></div>
     <div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;position:sticky;bottom:0;background:var(--s1,#fff)">
-      <button class="btn btn-p" style="flex:1" onclick="saveEditModal()">💾 Save &amp; Sync</button>
-      <button class="btn btn-s" onclick="closeEditModal()">Cancel</button>
+      <button class="btn btn-p" style="flex:1" data-on-click="saveEditModal">💾 Save &amp; Sync</button>
+      <button class="btn btn-s" data-on-click="closeEditModal">Cancel</button>
     </div>
   </div>
 </div>
@@ -2255,7 +2255,7 @@ if ('serviceWorker' in navigator) {
 
   <!-- sub-tabs -->
   <div style="margin-bottom:10px">
-    <button class="btn mgr-btn-primary" onclick="saveAllManagerSections()" style="width:100%;justify-content:center;font-weight:700;font-size:13px;padding:10px 20px;gap:7px">💾 Save All &amp; Sync</button>
+    <button class="btn mgr-btn-primary" data-on-click="saveAllManagerSections" style="width:100%;justify-content:center;font-weight:700;font-size:13px;padding:10px 20px;gap:7px">💾 Save All &amp; Sync</button>
   </div>
 
   <!-- ═══ QUICK ADD ═══ Add an entry to Jazz Cash / Staff Credit / Expenses /
@@ -2297,8 +2297,8 @@ if ('serviceWorker' in navigator) {
         <div style="font-size:15px;font-weight:700">👤 Employee Registry</div>
         <div style="font-size:12px;color:var(--muted);margin-top:3px">Add employees here once — they auto-appear in Salary, Generic Working and Staff Credits every month.</div>
       </div>
-      <button class="btn btn-p" onclick="addStaffEmployee()">＋ Add Employee</button>
-      <button id="mgr-save-staff" class="btn mgr-btn-primary" onclick="saveStaffRegistry()">💾 Save Staff List</button>
+      <button class="btn btn-p" data-on-click="addStaffEmployee">＋ Add Employee</button>
+      <button id="mgr-save-staff" class="btn mgr-btn-primary" data-on-click="saveStaffRegistry">💾 Save Staff List</button>
       <span style="font-size:11px;color:var(--muted);margin-left:8px">Edits auto-save as you type — this button is only for a manual sync-now / list cleanup.</span>
     </div>
     <!-- KPI strip -->
@@ -2309,7 +2309,7 @@ if ('serviceWorker' in navigator) {
     </div>
     <div id="staff-list"></div>
     <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12px;color:var(--muted);cursor:pointer;user-select:none">
-      <input type="checkbox" id="staff-show-inactive" onchange="staffToggleShowInactive(this.checked)" style="width:auto;margin:0">
+      <input type="checkbox" id="staff-show-inactive" data-on-change="staffToggleShowInactive" data-args='[{"$":"checked"}]' style="width:auto;margin:0">
       Show inactive employees too
     </label>
     <div style="margin-top:14px;padding:12px 16px;background:var(--s2);border-radius:8px;font-size:11px;color:var(--muted);line-height:1.7">
@@ -2340,22 +2340,22 @@ if ('serviceWorker' in navigator) {
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
       <div class="fg" style="flex:1;min-width:140px">
         <label>Month</label>
-        <select id="sal-month-sel" onchange="loadSalaryMonth(this.value)" style="font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s2);width:100%;color:var(--text);outline:none"></select>
+        <select id="sal-month-sel" data-on-change="loadSalaryMonth" data-args='[{"$":"value"}]' style="font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s2);width:100%;color:var(--text);outline:none"></select>
       </div>
-      <button class="btn mgr-btn-secondary" style="margin-top:16px" onclick="autoFillSalaryFromSheets()" title="Pull Advance from Credit sheet & Generic from Generic Working for this month">⚡ Auto-Fill</button>
-      <button id="mgr-save-salary" class="btn mgr-btn-primary" style="margin-top:16px" onclick="saveSalaryData()">💾 Save</button>
+      <button class="btn mgr-btn-secondary" style="margin-top:16px" data-on-click="autoFillSalaryFromSheets" title="Pull Advance from Credit sheet & Generic from Generic Working for this month">⚡ Auto-Fill</button>
+      <button id="mgr-save-salary" class="btn mgr-btn-primary" style="margin-top:16px" data-on-click="saveSalaryData">💾 Save</button>
       <span style="font-size:11px;color:var(--muted);margin-left:8px">Auto-saves as you type.</span>
-      <button class="btn mgr-btn-secondary" style="margin-top:16px" onclick="salaryNextMonth()" title="Carry employee names, HO Salary & extra columns to next month (Days, Advance, Generic, extra amounts reset to 0)">📋 Copy → Next Month</button>
-      <button class="btn mgr-btn-secondary" style="margin-top:16px" onclick="printSalaryReport()">🖨 Print</button>
+      <button class="btn mgr-btn-secondary" style="margin-top:16px" data-on-click="salaryNextMonth" title="Carry employee names, HO Salary & extra columns to next month (Days, Advance, Generic, extra amounts reset to 0)">📋 Copy → Next Month</button>
+      <button class="btn mgr-btn-secondary" style="margin-top:16px" data-on-click="printSalaryReport">🖨 Print</button>
     </div>
     <div id="sal-col-bar" style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;font-size:12px">
       <span style="color:var(--muted);font-weight:600">➕ Extra column:</span>
-      <input id="sal-newcol-name" type="text" placeholder="Name (e.g. Fine, Bonus)" maxlength="30" onkeydown="if(event.key==='Enter')salAddColumnFromBar()" style="font-size:12px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s2);color:var(--text);outline:none;min-width:170px">
+      <input id="sal-newcol-name" type="text" placeholder="Name (e.g. Fine, Bonus)" maxlength="30" data-on-keydown="salAddColumnFromBar" data-key="Enter" style="font-size:12px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s2);color:var(--text);outline:none;min-width:170px">
       <select id="sal-newcol-sign" style="font-size:12px;padding:7px 8px;border:1px solid var(--border);border-radius:7px;background:var(--s2);color:var(--text)">
         <option value="+">+ Add to Net</option>
         <option value="-">− Subtract from Net</option>
       </select>
-      <button class="btn mgr-btn-secondary" onclick="salAddColumnFromBar()">Add Column</button>
+      <button class="btn mgr-btn-secondary" data-on-click="salAddColumnFromBar">Add Column</button>
     </div>
     <div class="mgr-table-scroll">
       <table id="sal-table" style="width:100%;border-collapse:collapse;font-size:12px;min-width:780px">
@@ -2384,11 +2384,11 @@ if ('serviceWorker' in navigator) {
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
       <div class="fg" style="flex:1;min-width:140px">
         <label>Month</label>
-        <select id="gen-month-sel" onchange="loadGenericMonth(this.value)" style="font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s2);width:100%;color:var(--text);outline:none"></select>
+        <select id="gen-month-sel" data-on-change="loadGenericMonth" data-args='[{"$":"value"}]' style="font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s2);width:100%;color:var(--text);outline:none"></select>
       </div>
-      <button id="mgr-save-generic" class="btn mgr-btn-primary" style="margin-top:16px" onclick="saveGenericData()">💾 Save</button>
+      <button id="mgr-save-generic" class="btn mgr-btn-primary" style="margin-top:16px" data-on-click="saveGenericData">💾 Save</button>
       <span style="font-size:11px;color:var(--muted);margin-left:8px">Auto-saves as you type.</span>
-      <button class="btn mgr-btn-secondary" style="margin-top:16px" onclick="printGenericReport()">🖨 Print</button>
+      <button class="btn mgr-btn-secondary" style="margin-top:16px" data-on-click="printGenericReport">🖨 Print</button>
     </div>
     <div style="overflow-x:auto">
       <table id="gen-table" style="width:100%;border-collapse:collapse;font-size:12px;min-width:660px">
@@ -2424,14 +2424,14 @@ if ('serviceWorker' in navigator) {
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
       <div class="fg" style="flex:1;min-width:140px">
         <label>Month</label>
-        <select id="crd-month-sel" onchange="loadCreditMonth(this.value)" style="font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s2);width:100%;color:var(--text);outline:none"></select>
+        <select id="crd-month-sel" data-on-change="loadCreditMonth" data-args='[{"$":"value"}]' style="font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s2);width:100%;color:var(--text);outline:none"></select>
       </div>
-      <button class="btn btn-p" style="margin-top:16px" onclick="addCreditEmployee()">+ Add Employee</button>
-      <button id="mgr-save-credit" class="btn mgr-btn-primary" style="margin-top:16px" onclick="saveCreditData()">💾 Save</button>
+      <button class="btn btn-p" style="margin-top:16px" data-on-click="addCreditEmployee">+ Add Employee</button>
+      <button id="mgr-save-credit" class="btn mgr-btn-primary" style="margin-top:16px" data-on-click="saveCreditData">💾 Save</button>
       <span style="font-size:11px;color:var(--muted);margin-left:8px">Auto-saves as you type.</span>
-      <button class="btn mgr-btn-secondary" style="margin-top:16px" onclick="copyToNextMonth()" title="Save this month, then open next month with each employee's net as their new opening balance">📋 Copy → Next Month</button>
-      <button class="btn mgr-btn-secondary" style="margin-top:16px" onclick="printCreditSummaryReport()">🖨 Print Summary</button>
-      <button class="btn mgr-btn-secondary" style="margin-top:16px" onclick="printCreditReport()">🖨 Print Detailed</button>
+      <button class="btn mgr-btn-secondary" style="margin-top:16px" data-on-click="copyToNextMonth" title="Save this month, then open next month with each employee's net as their new opening balance">📋 Copy → Next Month</button>
+      <button class="btn mgr-btn-secondary" style="margin-top:16px" data-on-click="printCreditSummaryReport">🖨 Print Summary</button>
+      <button class="btn mgr-btn-secondary" style="margin-top:16px" data-on-click="printCreditReport">🖨 Print Detailed</button>
     </div>
     <div style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.7">
       💡 Each employee row shows their previous balance, daily credits/deductions, and the net carried to next month. Positive = money owed to employee, Negative = deducted next month. When the month ends, click <strong>📋 Copy → Next Month</strong> — it saves current data and opens the next month with each person's net as their new opening balance.
@@ -2444,13 +2444,13 @@ if ('serviceWorker' in navigator) {
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
       <div class="fg" style="flex:1;min-width:140px">
         <label>Month</label>
-        <select id="petty-month-sel" onchange="loadPettyMonth(this.value)" style="font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s2);width:100%;color:var(--text);outline:none"></select>
+        <select id="petty-month-sel" data-on-change="loadPettyMonth" data-args='[{"$":"value"}]' style="font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s2);width:100%;color:var(--text);outline:none"></select>
       </div>
-      <button class="btn btn-p" style="margin-top:16px" onclick="addPettyGroup()">＋ Add New Group</button>
-      <button id="mgr-save-petty" class="btn mgr-btn-primary" style="margin-top:16px" onclick="savePettyData()">💾 Save</button>
+      <button class="btn btn-p" style="margin-top:16px" data-on-click="addPettyGroup">＋ Add New Group</button>
+      <button id="mgr-save-petty" class="btn mgr-btn-primary" style="margin-top:16px" data-on-click="savePettyData">💾 Save</button>
       <span style="font-size:11px;color:var(--muted);margin-left:8px">Auto-saves as you type.</span>
-      <button class="btn mgr-btn-secondary" style="margin-top:16px" onclick="pettyNextMonth()" title="Save this month and carry all groups/amounts into the next month">📋 Copy → Next Month</button>
-      <button class="btn mgr-btn-secondary" style="margin-top:16px" onclick="printPettyReport()">🖨 Print</button>
+      <button class="btn mgr-btn-secondary" style="margin-top:16px" data-on-click="pettyNextMonth" title="Save this month and carry all groups/amounts into the next month">📋 Copy → Next Month</button>
+      <button class="btn mgr-btn-secondary" style="margin-top:16px" data-on-click="printPettyReport">🖨 Print</button>
     </div>
     <!-- KPI strip -->
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px">
@@ -2475,32 +2475,32 @@ if ('serviceWorker' in navigator) {
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap">
       <div class="fg" style="flex:1;min-width:140px">
         <label>Month</label>
-        <select id="inc-month-sel" onchange="loadIncentiveMonth(this.value)" style="font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s2);width:100%;color:var(--text);outline:none"></select>
+        <select id="inc-month-sel" data-on-change="loadIncentiveMonth" data-args='[{"$":"value"}]' style="font-size:13px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--s2);width:100%;color:var(--text);outline:none"></select>
       </div>
-      <button id="mgr-save-incentive" class="btn mgr-btn-primary" style="margin-top:16px" onclick="saveIncentiveData()">💾 Save</button>
+      <button id="mgr-save-incentive" class="btn mgr-btn-primary" style="margin-top:16px" data-on-click="saveIncentiveData">💾 Save</button>
       <span style="font-size:11px;color:var(--muted);margin-left:8px">Auto-saves as you type.</span>
-      <button class="btn" style="margin-top:16px;background:var(--accent);color:#fff" onclick="printIncentiveReport()">🖨 Print</button>
+      <button class="btn" style="margin-top:16px;background:var(--accent);color:#fff" data-on-click="printIncentiveReport">🖨 Print</button>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:860px" id="inc-form">
 
       <!-- LEFT: Inputs -->
       <div>
         <div class="inc-sec-hd">📊 Base Figures</div>
-        <div class="inc-row"><span>Sale Value</span><input type="number" id="inc-saleVal" class="mgr-inp" placeholder="0" oninput="recalcIncentive()"></div>
-        <div class="inc-row"><span>Generic Sale</span><input type="number" id="inc-genSale" class="mgr-inp" placeholder="0" oninput="recalcIncentive()"></div>
-        <div class="inc-row"><span>Less Pilferage</span><input type="number" id="inc-pilferage" class="mgr-inp" placeholder="0" oninput="recalcIncentive()"></div>
-        <div class="inc-row"><span>Unapproved Discount</span><input type="number" id="inc-unapproved" class="mgr-inp" placeholder="0" oninput="recalcIncentive()"></div>
-        <div class="inc-row"><span>Till Short</span><input type="number" id="inc-tillShort" class="mgr-inp" placeholder="0" oninput="recalcIncentive()"></div>
+        <div class="inc-row"><span>Sale Value</span><input type="number" id="inc-saleVal" class="mgr-inp" placeholder="0" data-on-input="recalcIncentive"></div>
+        <div class="inc-row"><span>Generic Sale</span><input type="number" id="inc-genSale" class="mgr-inp" placeholder="0" data-on-input="recalcIncentive"></div>
+        <div class="inc-row"><span>Less Pilferage</span><input type="number" id="inc-pilferage" class="mgr-inp" placeholder="0" data-on-input="recalcIncentive"></div>
+        <div class="inc-row"><span>Unapproved Discount</span><input type="number" id="inc-unapproved" class="mgr-inp" placeholder="0" data-on-input="recalcIncentive"></div>
+        <div class="inc-row"><span>Till Short</span><input type="number" id="inc-tillShort" class="mgr-inp" placeholder="0" data-on-input="recalcIncentive"></div>
 
         <div class="inc-sec-hd" style="margin-top:14px">💰 Bonus &amp; Fines</div>
-        <div class="inc-row"><span>Cash Target Bonus</span><input type="number" id="inc-cashTarget" class="mgr-inp" placeholder="0" oninput="recalcIncentive()"></div>
-        <div class="inc-row"><span>Less Excess Fine (Generic)</span><input type="number" id="inc-excessFine" class="mgr-inp" placeholder="0" oninput="recalcIncentive()"></div>
-        <div class="inc-row"><span>Less Plus % Fine</span><input type="number" id="inc-plusFine" class="mgr-inp" placeholder="0" oninput="recalcIncentive()"></div>
-        <div class="inc-row"><span>Less Paper Fine</span><input type="number" id="inc-paperFine" class="mgr-inp" placeholder="0" oninput="recalcIncentive()"></div>
-        <div class="inc-row"><span>Less Panel Fine</span><input type="number" id="inc-panelFine" class="mgr-inp" placeholder="0" oninput="recalcIncentive()"></div>
+        <div class="inc-row"><span>Cash Target Bonus</span><input type="number" id="inc-cashTarget" class="mgr-inp" placeholder="0" data-on-input="recalcIncentive"></div>
+        <div class="inc-row"><span>Less Excess Fine (Generic)</span><input type="number" id="inc-excessFine" class="mgr-inp" placeholder="0" data-on-input="recalcIncentive"></div>
+        <div class="inc-row"><span>Less Plus % Fine</span><input type="number" id="inc-plusFine" class="mgr-inp" placeholder="0" data-on-input="recalcIncentive"></div>
+        <div class="inc-row"><span>Less Paper Fine</span><input type="number" id="inc-paperFine" class="mgr-inp" placeholder="0" data-on-input="recalcIncentive"></div>
+        <div class="inc-row"><span>Less Panel Fine</span><input type="number" id="inc-panelFine" class="mgr-inp" placeholder="0" data-on-input="recalcIncentive"></div>
 
         <div class="inc-sec-hd" style="margin-top:14px">🧾 Distribution</div>
-        <div class="inc-row"><span>Tax (Salman)</span><input type="number" id="inc-tax" class="mgr-inp" placeholder="0" oninput="recalcIncentive()"></div>
+        <div class="inc-row"><span>Tax (Salman)</span><input type="number" id="inc-tax" class="mgr-inp" placeholder="0" data-on-input="recalcIncentive"></div>
       </div>
 
       <!-- RIGHT: Calculated results -->
@@ -2579,11 +2579,11 @@ if ('serviceWorker' in navigator) {
     </div>
     <div id="conflict-remaining" style="font-size:11px;color:var(--muted,#64748b);margin-bottom:14px;text-align:center"></div>
     <div style="display:flex;gap:10px;justify-content:flex-end">
-      <button onclick="_conflictChoose('local')"
+      <button data-on-click="_conflictChoose" data-args='["local"]'
         style="background:var(--accent,#2563eb);color:#fff;border:none;border-radius:8px;padding:8px 20px;font-size:13px;font-weight:600;cursor:pointer">
         Keep This Device
       </button>
-      <button onclick="_conflictChoose('incoming')"
+      <button data-on-click="_conflictChoose" data-args='["incoming"]'
         style="background:var(--s2,#f1f5f9);color:var(--text,#1e293b);border:1px solid var(--border,#e2e8f0);border-radius:8px;padding:8px 20px;font-size:13px;font-weight:600;cursor:pointer">
         Keep Cloud Version
       </button>
@@ -2599,7 +2599,7 @@ if ('serviceWorker' in navigator) {
   <div style="background:var(--s1,#fff);border:1px solid var(--border);border-radius:16px;width:100%;max-width:480px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid var(--border)">
       <div style="font-weight:700;font-size:15px">🔄 Restore from Drive Backup</div>
-      <button onclick="driveCloseRestoreModal()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1">×</button>
+      <button data-on-click="driveCloseRestoreModal" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1">×</button>
     </div>
     <div id="drm-list-wrap" style="flex:1;overflow-y:auto;padding:14px 20px">
       <div id="drm-status" style="font-size:13px;color:var(--muted);text-align:center;padding:20px 0">Loading backups…</div>
@@ -2624,6 +2624,7 @@ if ('serviceWorker' in navigator) {
 -->
 
 <!-- 1b. Shared service layer -->
+<script type="module" src="js/shared/dom-actions.js?v=9af5cf3c"></script>
 <script type="module" src="js/bt-format.js?v=47e80cb3"></script>
 <script type="module" src="js/print.js?v=2f8ee8d6"></script>
 <script type="module" src="js/bt-date.js?v=3a70aae9"></script>
@@ -2771,7 +2772,7 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/sales/diff-report.js?v=11791709"></script>
 
 <!-- 11b. Reports print helpers (extracted from manager.js — Step 8) -->
-<script type="module" src="js/sales/reports-print.js?v=bb502220"></script>
+<script type="module" src="js/sales/reports-print.js?v=ff723d86"></script>
 
 <!-- 11c. Manager Summary Export (Phase 5) -->
 <script type="module" src="js/manager/manager-export.js?v=e65a2913"></script>
@@ -2844,20 +2845,20 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/drive.js?v=2cfab9d8"></script>
 
 <!-- Staff Card Popup Modal -->
-<div class="sc-bg" id="sc-bg" onclick="if(event.target===this)closeStaffCard()">
+<div class="sc-bg" id="sc-bg" data-on-click="closeStaffCard" data-self-only>
   <div class="sc-box">
     <div class="sc-hdr">
       <div class="sc-hdr-info">
         <div class="sc-hdr-id" id="sc-title-id">EMP-001</div>
         <div class="sc-hdr-name" id="sc-title-name">Employee</div>
       </div>
-      <button onclick="closeStaffCard()" style="background:rgba(255,255,255,.2);border:none;color:#fff;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
+      <button data-on-click="closeStaffCard" style="background:rgba(255,255,255,.2);border:none;color:#fff;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
     </div>
     <div class="sc-tabs">
-      <button class="sc-tab active" data-sctab="details" onclick="switchStaffCardTab('details')">👤 Details</button>
-      <button class="sc-tab" data-sctab="credit" onclick="switchStaffCardTab('credit')">💳 Credit Ledger</button>
-      <button class="sc-tab" data-sctab="payslip" onclick="switchStaffCardTab('payslip')">🧾 Payslip</button>
-      <button class="sc-tab" data-sctab="notes" onclick="switchStaffCardTab('notes')">🗒 Notes</button>
+      <button class="sc-tab active" data-sctab="details" data-on-click="switchStaffCardTab" data-args='["details"]'>👤 Details</button>
+      <button class="sc-tab" data-sctab="credit" data-on-click="switchStaffCardTab" data-args='["credit"]'>💳 Credit Ledger</button>
+      <button class="sc-tab" data-sctab="payslip" data-on-click="switchStaffCardTab" data-args='["payslip"]'>🧾 Payslip</button>
+      <button class="sc-tab" data-sctab="notes" data-on-click="switchStaffCardTab" data-args='["notes"]'>🗒 Notes</button>
     </div>
     <div class="sc-body">
       <input type="hidden" id="sc-idx" value="">
@@ -2921,7 +2922,7 @@ if ('serviceWorker' in navigator) {
           <div class="sc-fg" style="grid-column:1/-1;border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
             <label>Closing App Login</label>
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-              <button class="btn btn-p" style="font-size:12px;padding:6px 14px" onclick="setStaffLogin()">🔑 Set/Reset PIN</button>
+              <button class="btn btn-p" style="font-size:12px;padding:6px 14px" data-on-click="setStaffLogin">🔑 Set/Reset PIN</button>
               <span style="font-size:11px;color:var(--muted)">Uses the phone number above — save it first if you haven't.</span>
             </div>
           </div>
@@ -2941,7 +2942,7 @@ if ('serviceWorker' in navigator) {
       <div id="sc-panel-payslip" style="display:none">
         <div class="sc-fg" style="margin-bottom:10px">
           <label>Month</label>
-          <select id="sc-slip-month-sel" class="mgr-inp" onchange="loadStaffPayslipMonth()"></select>
+          <select id="sc-slip-month-sel" class="mgr-inp" data-on-change="loadStaffPayslipMonth"></select>
         </div>
         <div id="sc-slip-body">
           <p style="text-align:center;color:var(--muted);padding:32px">Select an employee to view their payslip.</p>
@@ -2954,8 +2955,8 @@ if ('serviceWorker' in navigator) {
       </div>
     </div>
     <div class="sc-foot">
-      <button class="btn" onclick="closeStaffCard()" style="border:1px solid var(--border)">Cancel</button>
-      <button class="btn btn-p" onclick="saveStaffCard()">💾 Save Details</button>
+      <button class="btn" data-on-click="closeStaffCard" style="border:1px solid var(--border)">Cancel</button>
+      <button class="btn btn-p" data-on-click="saveStaffCard">💾 Save Details</button>
     </div>
   </div>
 </div>

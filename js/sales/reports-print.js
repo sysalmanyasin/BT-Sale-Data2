@@ -1,6 +1,7 @@
 // PRINT REPORTS — Monthly & Yearly
 // ══════════════════════════════════════════
 
+import { registerActions } from '../shared/dom-actions.js';
 (function() {
 'use strict';
 
@@ -338,6 +339,8 @@ function _populatePrintSelectors() {
 
 // Bridge what's used externally or from index.html.
 window.printMonthReport = printMonthReport;
+// Replaces the inline onclick="printMonthReport(_curMon)" (the open month lives on window._curMon).
+registerActions({ printCurrentMonthReport: () => printMonthReport(window._curMon) });
 window.printYearlyReport = printYearlyReport;
 window.printDailyFromTools = printDailyFromTools;
 window.printMonthFromTools = printMonthFromTools;

@@ -97,3 +97,6 @@
   .fm-add-grid{grid-template-columns:1fr;}
   .fm-add-full{grid-column:span 1;}
 }
+
+/* Day-select date input focus ring (replaces inline onfocus/onblur handlers) */
+#ds-input:focus{border-color:var(--accent)!important;box-shadow:0 0 0 3px rgba(37,99,235,.1)!important;outline:none}
