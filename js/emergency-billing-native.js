@@ -6,7 +6,7 @@
 // receipt print are the same *ideas*; none of POS's own infrastructure
 // (StorageModule/IndexedDB, sync queue, devices, BYOS) is used here.
 //
-// Same "native.js" convention as inventory-native.js/audit-native.js:
+// Same "native.js" convention as inventory-native.js/audit/audit-native.js:
 // a real ES module, imported functions from the bridge rather than the
 // window.emergencyBilling* globals (those exist for classic-script
 // consumers; this file doesn't need them). Never touches Repository/

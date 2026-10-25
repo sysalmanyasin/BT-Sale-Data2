@@ -2,7 +2,7 @@
 // ATTENDANCE BRIDGE  —  reads/writes attendance_events + attendance_devices
 // + attendance_locations from the main Supabase project.
 //
-// Same shape as inventory-bridge.js/audit-bridge.js: a small, isolated
+// Same shape as inventory-bridge.js/audit/audit-bridge.js: a small, isolated
 // read (mostly) bridge that never touches Repository/STAFF state
 // directly. Unlike those two, this ISN'T fully read-only — the
 // Manager > Attendance page needs to write 'manual' correction events
@@ -22,7 +22,7 @@
 
 // Same project as the main app's own data (js/supabase.js's SB_URL/
 // SB_KEY) — NOT the separate Pharmacy Audit Hub project inventory-
-// bridge.js/audit-bridge.js use. Attendance is coupled to STAFF
+// bridge.js/audit/audit-bridge.js use. Attendance is coupled to STAFF
 // records, which belong to this project's world.
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../shared/backend-config.js';
 const ATT_SUPABASE_URL = SUPABASE_URL;

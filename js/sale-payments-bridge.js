@@ -11,7 +11,7 @@
 // so they land in two new tables, sales_payment_summary and
 // sales_credit_by_customer, instead of new columns on
 // inventory_products. Same Supabase project, same anon/publishable
-// key as inventory-bridge.js/audit-bridge.js (RLS, not key secrecy, is
+// key as inventory-bridge.js/audit/audit-bridge.js (RLS, not key secrecy, is
 // what scopes access — see audit-bridge.js's header note for the full
 // reasoning, not repeated here).
 //
@@ -21,7 +21,7 @@
 // here (same "never triggers a new pull" rule as inventory-bridge.js).
 // ══════════════════════════════════════════════════════════════════════
 
-// Same Supabase project as inventory-bridge.js/audit-bridge.js —
+// Same Supabase project as inventory-bridge.js/audit/audit-bridge.js —
 // sales_payment_summary and sales_credit_by_customer live in the one
 // Pharmacy Audit Hub project, just different tables.
 import { AUDIT_HUB_URL, AUDIT_HUB_PUBLISHABLE_KEY } from './shared/backend-config.js';

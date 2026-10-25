@@ -34,7 +34,7 @@ The AI Center is a **control room over the existing assistant**. It has no chat 
 | Observability | `observability`, `specialistStats` | telemetry (session + 7-day history) | n/a | n/a | n/a | n/a |
 | Tool intelligence | `listTools`, `toolStatus`, `toolStats` | tool registry + telemetry | n/a | all | shown per tool | n/a |
 | Repository intelligence | `searchRepoIndex` | `repo-index.json` | none | none | none | none |
-| Audit tab (Audit & Variance, Near Expiry, Payments) | `js/audit-bridge.js` | Audit Hub `ai_audit_overview()` (`supabase/audit-project/`) | Assistant | `audit_overview`, `audit_expiry`, `payment_breakdown` | none (read) | telemetry |
+| Audit tab (Audit & Variance, Near Expiry, Payments) | `js/audit/audit-bridge.js` | Audit Hub `ai_audit_overview()` (`supabase/audit-project/`) | Assistant | `audit_overview`, `audit_expiry`, `payment_breakdown` | none (read) | telemetry |
 | Forecast Game | `forecast-game.js` | live POS total + weekday history | Sales | `todays_forecast` | none (device-local state) | none |
 | Global Dua panel | `agent-panel.js` (floating button on every page, hidden on Emergency Billing), `core/page-suggestions.js` | existing assistant | router-chosen | per question | per change (a waiting approval stays waiting when the panel is closed) | `agent_audit` |
 

@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════════════════════════════
 // STR BRIDGE  —  STR Report tab (Stock Transfer Records, August 2026)
 //
-// Same one-way, read-only pattern as inventory-bridge.js/audit-bridge.js:
+// Same one-way, read-only pattern as inventory-bridge.js/audit/audit-bridge.js:
 // the Supabase Edge Function sync-inventory-from-dropbox owns the one
 // Dropbox token and full-refreshes str_headers / str_line_items on every
 // run from inventory.json's strLast7Days / strLineItemsLast7Days sections

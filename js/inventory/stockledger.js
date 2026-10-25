@@ -4,7 +4,7 @@ window.StockLedgerApp = (function(){
   "use strict";
   let initialized = false;
 
-  // Same project + anon/publishable key already baked into js/audit-bridge.js
+  // Same project + anon/publishable key already baked into js/audit/audit-bridge.js
   // (itself sourced from js/actions/auth-actions.js's DEFAULT_SUPABASE_ANON_KEY
   // in the standalone "Random"/BT Sale IC app) — safe to ship, RLS is what
   // actually protects the data, not key secrecy. Used only as the last

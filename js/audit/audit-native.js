@@ -21,7 +21,7 @@
 // ══════════════════════════════════════════════════════════════════════
 
 import * as AuditBridge from './audit-bridge.js';
-import { escapeHtml as esc } from './shared/html.js';
+import { escapeHtml as esc } from '../shared/html.js';
 
 
 // ── Ported from dashboard-actions.js's mainAuditorDashboard() (pure) ──
