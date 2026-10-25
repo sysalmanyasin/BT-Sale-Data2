@@ -36,6 +36,7 @@
 // ══════════════════════════════════════════════════════════════════════
 
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './shared/backend-config.js';
+import { escapeHtml as _esc } from './shared/html.js';
 window.PdfLibrary = (function () {
   'use strict';
 
@@ -335,9 +336,6 @@ window.PdfLibrary = (function () {
   // ══════════════════════════════════════════════════════════════════
   // LIBRARY PAGE  (#page-pdf-library)
   // ══════════════════════════════════════════════════════════════════
-  function _esc(s) {
-    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  }
 
   function _fmtDate(iso) {
     if (!iso) return '';

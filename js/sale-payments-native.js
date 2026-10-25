@@ -9,10 +9,8 @@
 // ══════════════════════════════════════════════════════════════════════
 
 import * as SalePaymentsBridge from './sale-payments-bridge.js';
+import { escapeHtml as esc } from './shared/html.js';
 
-function esc(str) {
-  return String(str ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
-}
 function fmtMoney(v) { return 'Rs ' + (Number(v) || 0).toLocaleString('en-PK', { maximumFractionDigits: 0 }); }
 function fmtDate(v) {
   if (!v) return '—';

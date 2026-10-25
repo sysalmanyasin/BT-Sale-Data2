@@ -114,6 +114,7 @@
 // contains whatever's checked in the Columns dropdown at the time.
 // ══════════════════════════════════════════════════════════════════════
 
+import { escapeHtml as esc } from './shared/html.js';
 window.ReorderReportApp = (function () {
   "use strict";
   let initialized = false;
@@ -161,7 +162,6 @@ window.ReorderReportApp = (function () {
   // ---------- helpers ----------
   function $(sel, ctx) { return (ctx || document).querySelector(sel); }
   function $$(sel, ctx) { return Array.from((ctx || document).querySelectorAll(sel)); }
-  function esc(s) { const d = document.createElement('div'); d.textContent = (s == null ? '' : String(s)); return d.innerHTML; }
   function fmt(n) { return (Number(n) || 0).toLocaleString('en-PK', { maximumFractionDigits: 0 }); }
   function fmtDays(v) { if (v == null) return '—'; if (!isFinite(v)) return '∞'; return (Math.round(v * 10) / 10).toLocaleString('en-PK'); }
   function todayStamp() { return new Date().toISOString().slice(0, 10); }

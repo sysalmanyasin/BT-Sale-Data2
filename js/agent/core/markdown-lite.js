@@ -1,7 +1,7 @@
 // Tiny, safe markdown renderer for chat bubbles: escapes everything first,
 // then supports **bold**, `code`, - / 1. lists, and pipe tables. No raw HTML
 // from the model ever reaches the DOM.
-const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+import { escapeHtml as esc } from '../../shared/html.js';
 const inline = s => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
 
 export function renderMarkdown(src) {

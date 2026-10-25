@@ -11,9 +11,7 @@
 // as js/shared/summary-calc.js.
 // ══════════════════════════════════════════════════════════════════════
 
-export function esc(str) {
-  return String(str ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
-}
+import { escapeHtml } from './shared/html.js';
 export function fmtDate(v, opts) {
   if (!v) return '—';
   const d = new Date(v);
@@ -123,3 +121,5 @@ export function diffQty(li) {
   if (li.packDispatchQty === null || li.packReceiveQty === null) return null;
   return li.packDispatchQty - li.packReceiveQty;
 }
+
+export const esc = escapeHtml;

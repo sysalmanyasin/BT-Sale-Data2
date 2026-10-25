@@ -48,6 +48,7 @@
 // here a real, back-able history entry for free.
 // ══════════════════════════════════════════════════════════════════════
 
+import { escapeHtml as _esc } from './shared/html.js';
 (function () {
   'use strict';
 
@@ -83,9 +84,6 @@
   // key) -> Cover dashboard's GROUP_META slug (js/cover-dashboard.js).
   const _DOMAIN_TO_COVER_SLUG = { sales: 'sales', manager: 'manager', notesheets: 'notes', closing: 'closing', audit: 'audit', inventory: 'inventory', reports: 'reports' };
 
-  function _esc(s) {
-    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  }
 
   // Indent snapped onto the app's --sp-* spacing grid (4px base unit) —
   // was 8 / 42+20n, an off-grid mix that didn't line up with any other

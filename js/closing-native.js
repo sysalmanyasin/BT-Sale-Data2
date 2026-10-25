@@ -39,11 +39,9 @@
 import * as ClosingBridge from './closing-bridge.js';
 import { openLedgerQuickAdd } from './ledger-quick-add.js';
 import { fetchMarks, getMark } from './closing-ledger-marks.js';
+import { escapeHtml as esc } from './shared/html.js';
 
 function n(v) { return parseFloat(v) || 0; }
-function esc(str) {
-  return String(str ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
-}
 
 // ── Ported from Closing's state.js (pure, no DOM) ───────────────────
 const SHIFT_SR = { Night: 1, Morning: 2, Evening: 3 };

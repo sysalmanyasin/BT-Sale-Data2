@@ -16,7 +16,8 @@
 // ══════════════════════════════════════════════════════════════════════
 import { Repository } from './repository.js';
 import { Actions } from './actions.js';
-import { MONTHLY, months } from './config.js';
+import { MONTHLY, months, STAFF } from './config.js';
+import { escapeHtml as _mgrEsc } from './shared/html.js';
 
 const MGR_KEY = 'BT_ManagerWork_v1';
 
@@ -135,9 +136,6 @@ function _inp(type, val, cls, oninput, ph) {
   // caller-controlled constants, never raw user text, so they're left as-is.
   return `<input type="${type}" value="${_mgrEsc(val)}" class="mgr-inp${cls ? ' ' + cls : ''}" placeholder="${_mgrEsc(ph||'')}" ${oninput ? 'oninput="' + oninput + '"' : ''}>`;
 }
-function _mgrEsc(s) {
-  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
 
 // ─── staff-row reconciliation ─────────────────────────────────────
 // Every per-staff month sheet (Salary / Generic / Credit) stores its own
@@ -194,4 +192,17 @@ function reconcileStaffRows(activeList, storedRows, blankFactory) {
 
 Object.assign(window, { MGR_KEY, mgrLoad, mgrSave, mgrAutosave, mgrMonths, _mgrPopSel, _ni, _fc2, _inp, _mgrEsc, reconcileStaffRows, _salExtrasNet });
 
-export { MGR_KEY, mgrLoad, mgrSave, mgrAutosave, mgrMonths, _mgrPopSel, _ni, _fc2, _inp, _mgrEsc, reconcileStaffRows, _salExtrasNet };
+// Active staff, ordered by serial number. Lives here (a leaf of the manager cluster) so
+// salary/generic/credit don't have to import manager-staff.js (which imports them back).
+function activeStaff() {
+  return STAFF.filter(e => e.active !== false)
+    .sort((a, b) => (Number(a.srNum)||999) - (Number(b.srNum)||999));
+}
+
+// Minimal intra-manager hook bus. Lets a lower-level module (generic) notify a higher-level
+// one (salary) WITHOUT importing it, which is what created the generic <-> salary cycle.
+const _mgrHooks = Object.create(null);
+function mgrOn(evt, fn) { (_mgrHooks[evt] = _mgrHooks[evt] || []).push(fn); }
+function mgrEmit(evt, ...args) { (_mgrHooks[evt] || []).forEach(fn => { try { fn(...args); } catch (e) { console.error('[manager hook ' + evt + ']', e); } }); }
+
+export { activeStaff, mgrOn, mgrEmit, MGR_KEY, mgrLoad, mgrSave, mgrAutosave, mgrMonths, _mgrPopSel, _ni, _fc2, _inp, _mgrEsc, reconcileStaffRows, _salExtrasNet };

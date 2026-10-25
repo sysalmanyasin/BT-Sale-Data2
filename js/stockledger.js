@@ -1,4 +1,5 @@
 import { AUDIT_HUB_URL, AUDIT_HUB_PUBLISHABLE_KEY } from './shared/backend-config.js';
+import { escapeHtml as esc } from './shared/html.js';
 window.StockLedgerApp = (function(){
   "use strict";
   let initialized = false;
@@ -63,9 +64,6 @@ window.StockLedgerApp = (function(){
       const $ = (sel,ctx)=> (ctx||document).querySelector(sel);
       const $$ = (sel,ctx)=> Array.from((ctx||document).querySelectorAll(sel));
     
-      function esc(s){
-        return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-      }
       function fmtMoney(n){
         if(n==null||isNaN(n)) return '—';
         return 'Rs ' + Math.round(n).toLocaleString('en-PK');

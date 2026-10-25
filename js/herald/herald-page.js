@@ -17,12 +17,10 @@
 
 import { buildTodaysEdition, refreshEdition } from './herald-engine.js';
 import { Repository } from '../repository.js';
+import { escapeHtml as _esc } from '../shared/html.js';
 
 const COLLAPSE_KEY = 'bt_herald_collapsed';
 
-function _esc(s) {
-  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
 function _isCollapsed() {
   const raw = Repository.getItem(COLLAPSE_KEY);
   return raw == null ? true : raw === '1'; // default collapsed on first-ever load

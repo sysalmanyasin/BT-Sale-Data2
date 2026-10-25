@@ -20,6 +20,7 @@
 // instead — same fallback-to-1 behaviour when it's missing/invalid.
 // ══════════════════════════════════════════════════════════════════════
 
+import { escapeHtml as esc } from './shared/html.js';
 window.ExcessWorkingApp = (function () {
   "use strict";
   let initialized = false;
@@ -59,7 +60,6 @@ window.ExcessWorkingApp = (function () {
   // ---------- helpers ----------
   function $(sel, ctx) { return (ctx || document).querySelector(sel); }
   function $$(sel, ctx) { return Array.from((ctx || document).querySelectorAll(sel)); }
-  function esc(s) { const d = document.createElement('div'); d.textContent = (s == null ? '' : String(s)); return d.innerHTML; }
   function fmt(n) { return (Number(n) || 0).toLocaleString('en-PK', { maximumFractionDigits: 0 }); }
   function todayStamp() { return new Date().toISOString().slice(0, 10); }
   function say(msg, type) { if (typeof window.toast === 'function') window.toast(msg, type); }

@@ -9,9 +9,7 @@
 // ══════════════════════════════════════════════════════════════════════
 import { Repository } from './repository.js';
 import { STAFF } from './config.js';
-import { _ni, _fc2, _inp, _mgrEsc, mgrLoad, mgrSave, mgrAutosave, reconcileStaffRows } from './manager-shared.js';
-import { activeStaff } from './manager-staff.js';
-import { _salRows_cur, _salNet, _salUpdateFooter } from './manager-salary.js';
+import { _ni, _fc2, _inp, _mgrEsc, mgrLoad, mgrSave, mgrAutosave, reconcileStaffRows, activeStaff, mgrEmit } from './manager-shared.js';
 
 let _genRows_cur = [];
 
@@ -105,16 +103,7 @@ function recalcGenRow(i) {
 
 function _syncGenericToSalary(genIdx) {
   const genRow = _genRows_cur[genIdx];
-  if (!genRow) return;
-  const norm = s => (s||'').trim().toLowerCase();
-  const salIdx = _salRows_cur.findIndex(r => norm(r.name) === norm(genRow.name));
-  if (salIdx === -1) return;
-  const finalVal = _genFinal(genRow);
-  _salRows_cur[salIdx].generic = finalVal;
-  // Update the salary net cell live (no full re-render needed)
-  const netEl = document.getElementById('sal-net-' + salIdx);
-  if (netEl) netEl.value = _salNet(_salRows_cur[salIdx]);
-  _salUpdateFooter(_salRows_cur);
+  if (genRow) mgrEmit('generic-changed', genRow);   // manager-salary.js listens
 }
 function _genUpdateFooter(rows) {
   const totSale = rows.reduce((s,r) => s + _ni(r.genericSale), 0);

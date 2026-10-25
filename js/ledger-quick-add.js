@@ -33,6 +33,7 @@ import { saveMark } from './closing-ledger-marks.js';
 import { _crdData } from './manager-credit.js';
 import { mgrLoad, mgrSave } from './manager-shared.js';
 import { activeStaff } from './manager-staff.js';
+import { escapeHtml as esc } from './shared/html.js';
 
 const STAFF_CREDIT_VALUE = 'staff_credit';
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -61,9 +62,6 @@ function ddMonYyyy(iso) {
 // "Misc Sections") already carries a real human label from LedgerStore.
 const BUILTIN_DISPLAY_NAMES = { jazzcash: 'Jazz Cash', petty: 'Patty / Expenses', expense: 'Expense' };
 
-function esc(s) {
-  return String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
-}
 
 let _onSaved = null;
 

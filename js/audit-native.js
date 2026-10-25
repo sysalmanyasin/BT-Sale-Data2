@@ -21,10 +21,8 @@
 // ══════════════════════════════════════════════════════════════════════
 
 import * as AuditBridge from './audit-bridge.js';
+import { escapeHtml as esc } from './shared/html.js';
 
-function esc(str) {
-  return String(str ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
-}
 
 // ── Ported from dashboard-actions.js's mainAuditorDashboard() (pure) ──
 function buildEngagementDashboard(data, engagement, focusRoundId) {

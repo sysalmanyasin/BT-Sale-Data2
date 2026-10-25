@@ -24,12 +24,10 @@
 // note on that). nav-sections.js itself is untouched.
 // ══════════════════════════════════════════════════════════════════════
 
+import { escapeHtml as _esc } from './shared/html.js';
 (function () {
   'use strict';
 
-  function _esc(s) {
-    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  }
 
   // ── Staff results ─────────────────────────────────────────────────
   function _staffItems() {

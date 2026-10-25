@@ -22,6 +22,7 @@
 // ══════════════════════════════════════════════════════════════════════
 
 import { chartTheme, applyChartDefaults } from './shared/chart-theme.js';
+import { escapeHtml as esc } from './shared/html.js';
 
 window.InventoryHealthDashboard = (function () {
   "use strict";
@@ -51,9 +52,6 @@ window.InventoryHealthDashboard = (function () {
   function $(sel, ctx) { return (ctx || document).querySelector(sel); }
   function $$(sel, ctx) { return Array.from((ctx || document).querySelectorAll(sel)); }
 
-  function esc(s) {
-    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  }
   function fmtMoney(n) {
     if (n == null || isNaN(n)) return '—';
     return 'Rs ' + Math.round(n).toLocaleString('en-PK');

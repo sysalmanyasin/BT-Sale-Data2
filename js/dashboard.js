@@ -1,5 +1,6 @@
 import { MONTHLY, DAILY, STAFF, n, ff, fc, pct, cashSales, creditSales } from './config.js';
 import { Analytics } from './analytics.js';
+import { escapeHtml as _esc } from './shared/html.js';
 
 // ══════════════════════════════════════════
 // FLOOR 5 — buildDashboard (pure renderer)
@@ -272,7 +273,6 @@ function buildCreditSection(lat) {
   // ── Pure render helpers ────────────────────────────────────────
   const fmtAmt  = v => (v < 0 ? '−' : '') + '₨' + _fc2(Math.abs(v));
   const amtColor = v => v > 0 ? 'var(--green)' : v < 0 ? 'var(--red)' : 'var(--muted)';
-  const _esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
   const detailRows = rows => rows.map(r => `
     <div class="mgr-card-row">

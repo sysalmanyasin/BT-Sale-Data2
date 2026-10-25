@@ -10,10 +10,8 @@
 
 import * as LedgerStore from './ledger-store.js';
 import { LedgerActions } from './ledger-actions.js';
+import { escapeHtml as _esc } from './shared/html.js';
 
-function _esc(s) {
-  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
 
 function _fmt(n) {
   return Math.round(Math.abs(n)).toLocaleString('en-PK');

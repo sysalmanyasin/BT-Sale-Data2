@@ -29,6 +29,7 @@
 
 import * as EBBridge from './emergency-billing-bridge.js';
 import { BTDate } from './bt-date.js';
+import { escapeHtml as esc } from './shared/html.js';
 
 (function () {
   "use strict";
@@ -83,9 +84,6 @@ import { BTDate } from './bt-date.js';
   function cur() {
     if (settings && settings.currencySymbol) return settings.currencySymbol;
     return (typeof window._getCurrency === 'function') ? window._getCurrency() : 'Rs. ';
-  }
-  function esc(s) {
-    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   }
   function say(msg, isError) {
     if (typeof window.toast === 'function') window.toast(msg, isError ? 'e' : '');

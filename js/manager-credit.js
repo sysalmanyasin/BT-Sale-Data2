@@ -8,8 +8,7 @@
 // ══════════════════════════════════════════════════════════════════════
 import { Repository } from './repository.js';
 import { STAFF } from './config.js';
-import { _ni, _fc2, _mgrPopSel, mgrLoad, mgrSave, mgrAutosave, reconcileStaffRows } from './manager-shared.js';
-import { activeStaff } from './manager-staff.js';
+import { _ni, _fc2, _mgrPopSel, mgrLoad, mgrSave, mgrAutosave, reconcileStaffRows, activeStaff } from './manager-shared.js';
 
 // ══════════════════════════════
 // STAFF CREDIT LEDGER

@@ -12,18 +12,13 @@
 import { Repository } from './repository.js';
 import { Actions } from './actions.js';
 import { STAFF } from './config.js';
-import { _ni, _fc2, mgrAutosave } from './manager-shared.js';
+import { _ni, _fc2, mgrAutosave, activeStaff } from './manager-shared.js';
 import { _salRows_cur, renderSalaryTable } from './manager-salary.js';
 import { _genRows_cur, renderGenericTable } from './manager-generic.js';
 import { _crdData_cur, _crdNet, renderCreditLedger, thisMonthNetFor, renderStaffCreditCurrent } from './manager-credit.js';
 
 function staffSave() {
   Repository.saveStaff();
-}
-
-function activeStaff() {
-  return STAFF.filter(e => e.active !== false)
-    .sort((a, b) => (Number(a.srNum)||999) - (Number(b.srNum)||999));
 }
 
 let _staffShowInactive = false;

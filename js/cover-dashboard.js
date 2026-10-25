@@ -11,6 +11,7 @@ import * as StrBridge from './str-bridge.js';
 import * as StrShared from './str-shared.js';
 import { computeInventoryHealth } from './shared/summary-calc.js';
 import { chartTheme, applyChartDefaults } from './shared/chart-theme.js';
+import { escapeHtml as _esc } from './shared/html.js';
 
 const TGT_KEY = 'bt_targets';
 let _closingRefreshInFlight = false;
@@ -33,9 +34,6 @@ const MONTH_NAMES = ['January','February','March','April','May','June',
                       'July','August','September','October','November','December'];
 const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-function _esc(s) {
-  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
 
 function _currentMonthYear() {
   const d = new Date();

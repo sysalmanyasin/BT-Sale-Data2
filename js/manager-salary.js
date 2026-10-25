@@ -18,8 +18,7 @@
 // ══════════════════════════════════════════════════════════════════════
 import { Repository } from './repository.js';
 import { STAFF } from './config.js';
-import { _ni, _fc2, _mgrEsc, mgrLoad, mgrSave, mgrAutosave, reconcileStaffRows, _salExtrasNet } from './manager-shared.js';
-import { activeStaff } from './manager-staff.js';
+import { _ni, _fc2, _mgrEsc, mgrLoad, mgrSave, mgrAutosave, reconcileStaffRows, _salExtrasNet, activeStaff, mgrOn } from './manager-shared.js';
 import { _crdData, _crdData_cur } from './manager-credit.js';
 import { _genRows, _genRows_cur, _genFinal } from './manager-generic.js';
 
@@ -334,6 +333,19 @@ Object.assign(window, {
   _salRows, _salRows_cur, renderSalaryTable, loadSalaryMonth, salRowChange, addSalaryRow,
   deleteSalRow, saveSalaryData, autoFillSalaryFromSheets, _salNet, _salUpdateFooter, toggleSalPrintSkip,
   _salCols, salExtraChange, salAddColumn, salAddColumnFromBar, salToggleColSign, salRenameColumn, salRemoveColumn,
+});
+
+// Live sync from the Generic sheet: when a generic row changes, update the matching employee's
+// 'generic' column and net cell (no full re-render). Registered here so manager-generic.js
+// never has to import this module.
+mgrOn('generic-changed', (genRow) => {
+  const norm = s => (s||'').trim().toLowerCase();
+  const salIdx = _salRows_cur.findIndex(r => norm(r.name) === norm(genRow.name));
+  if (salIdx === -1) return;
+  _salRows_cur[salIdx].generic = _genFinal(genRow);
+  const netEl = document.getElementById('sal-net-' + salIdx);
+  if (netEl) netEl.value = _salNet(_salRows_cur[salIdx]);
+  _salUpdateFooter(_salRows_cur);
 });
 
 export {

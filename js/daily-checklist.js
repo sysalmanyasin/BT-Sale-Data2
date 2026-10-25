@@ -19,6 +19,7 @@
      5. Sale figures come from window.dayData (reports.js) when present, so they match the Sale Report.
    ════════════════════════════════════════════════════════════════════ */
 import { DAILY } from './config.js';
+import { escapeHtml } from './shared/html.js';
 
 (function () {
 'use strict';
@@ -109,7 +110,7 @@ var META_DEF = { branch: 'Bahria Town', preparedby: 'Salman Yasin', designation:
 
 /* ── helpers ────────────────────────────────────────────────────── */
 var root = null, built = false, saveTimer = null, railBound = false, spyRaf = 0;
-var esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+var esc = escapeHtml;
 var $ = function (id) { return document.getElementById('dcl-' + id); };
 var val = function (id) { var e = $(id); return e ? e.value : ''; };
 var num = function (id) { var v = parseFloat(val(id)); return isNaN(v) ? 0 : v; };

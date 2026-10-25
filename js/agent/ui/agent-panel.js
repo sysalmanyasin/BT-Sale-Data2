@@ -26,6 +26,7 @@ import { emit as emitTelemetry, subscribe as subscribeTelemetry } from '../core/
 import * as V from './voice.js';
 import { areaOf, viewingLabel, suggestionsFor, hidesButton } from '../core/page-suggestions.js';
 import { summarizeUsage, summarizeAudit, fetchUsage, fetchAudit } from '../core/usage-stats.js';
+import { escapeHtml as escHtml } from '../../shared/html.js';
 
 const getSb = () => (typeof window.btGetSupabaseClient === 'function' ? window.btGetSupabaseClient() : null);
 
@@ -578,7 +579,6 @@ export function mountAgentPanel() {
   text.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(text.value); } });
 }
 
-function escHtml(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
 function el(tag, attrs = {}, content) {
   const e = document.createElement(tag);

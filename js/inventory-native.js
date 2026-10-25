@@ -14,12 +14,10 @@
 // ══════════════════════════════════════════════════════════════════════
 
 import * as InventoryBridge from './inventory-bridge.js';
+import { escapeHtml as esc } from './shared/html.js';
 
 const PAGE_SIZE = 100;
 
-function esc(str) {
-  return String(str ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
-}
 
 function fmtDate(v) {
   if (!v) return '—';

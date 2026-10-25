@@ -16,12 +16,10 @@
 
 import { Repository } from './repository.js';
 import { Actions } from './actions.js';
+import { escapeHtml as _esc } from './shared/html.js';
 
 const STAFF_NOTES_KEY = 'bt_staff_notes_v1';
 
-function _esc(s) {
-  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
 
 function _load() {
   try { return JSON.parse(Repository.getItem(STAFF_NOTES_KEY) || '[]'); } catch (e) { return []; }

@@ -41,6 +41,7 @@
 
 import { EventBus } from './event-bus.js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './shared/backend-config.js';
+import { escapeHtml as _esc } from './shared/html.js';
 
 export const ActivityLog = (function () {
   'use strict';
@@ -226,9 +227,6 @@ export const ActivityLog = (function () {
   });
 
   // ── Page (Utility → Activity Log) ────────────────────────────────
-  function _esc(s) {
-    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  }
   function _fmtWhen(iso) {
     const d = new Date(iso);
     if (isNaN(d.getTime())) return iso || '';

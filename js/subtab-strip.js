@@ -25,14 +25,12 @@
 // again).
 // ══════════════════════════════════════════════════════════════════════
 
+import { escapeHtml as _esc } from './shared/html.js';
 (function () {
   'use strict';
 
   const _WANTED_DOMAINS = { sales: 1, manager: 1, inventory: 1, closing: 1, str: 1 };
 
-  function _esc(s) {
-    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  }
 
   // Closing's own top-level kids are just [Closing Book, Credit Ledger]
   // — but Credit Ledger has its own nested kids (Credit / Misc-Ongoing
