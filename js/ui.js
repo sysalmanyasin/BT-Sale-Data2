@@ -52,7 +52,7 @@ function showPage(id) {
     // was nested under Inventory, now a peer top-level group with its
     // own two sub-tabs: the existing list+detail page ('str') and the
     // new flattened all-STRs page ('str-report' — see
-    // js/str-report-native.js).
+    // js/str/str-report-native.js).
     const _strDomainPages = ['str', 'str-report', 'str-zero-dispatch'];
     const _domain = _salesDomainPages.indexOf(id) !== -1 ? 'sales'
                   : _managerDomainPages.indexOf(id) !== -1 ? 'manager'

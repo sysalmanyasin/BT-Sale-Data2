@@ -49,7 +49,7 @@ function _saveCols() {
   try { localStorage.setItem(COLS_KEY, JSON.stringify(zdState.cols)); } catch (e) { /* best-effort */ }
 }
 
-// ── Page state — same filter shape as str-native.js/str-report-native.js
+// ── Page state — same filter shape as str-native.js/str/str-report-native.js
 // (handed straight to str-shared.js's filterHeaders), plus this page's
 // own column-visibility state and the print-selection Set (strIds the
 // user has checked). Selection intentionally does NOT persist across a

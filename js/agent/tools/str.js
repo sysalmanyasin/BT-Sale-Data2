@@ -2,7 +2,7 @@
 // Stage logic is reused from str-shared.js (pure) so "awaited/dispatched/received" can never drift
 // from what the STR pages show.
 import { registerTool } from '../core/tool-registry.js';
-import { strStage, isDispatchedFromBT, groupedLineItems, diffQty } from '../../str-shared.js';
+import { strStage, isDispatchedFromBT, groupedLineItems, diffQty } from '../../str/str-shared.js';
 import { clampInt, rs } from './_util.js';
 
 async function data() {

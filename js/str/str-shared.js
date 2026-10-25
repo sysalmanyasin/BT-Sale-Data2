@@ -11,7 +11,7 @@
 // as js/shared/summary-calc.js.
 // ══════════════════════════════════════════════════════════════════════
 
-import { escapeHtml } from './shared/html.js';
+import { escapeHtml } from '../shared/html.js';
 export function fmtDate(v, opts) {
   if (!v) return '—';
   const d = new Date(v);

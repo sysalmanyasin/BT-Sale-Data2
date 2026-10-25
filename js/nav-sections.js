@@ -255,7 +255,7 @@ import { escapeHtml as _esc } from './shared/html.js';
     // New: STR Report — standalone under Data (no longer nested inside
     // Inventory), with its own two sub-tabs: the list+detail page
     // ('str') and the flattened, all-STRs "Report" page ('str-report'
-    // — see js/str-report-native.js).
+    // — see js/str/str-report-native.js).
     const strKids = [_leaf(flat.str), _leaf(flat['str-report']), _leaf(flat['str-zero-dispatch'])].filter(Boolean);
     _pushGroup(groups, _customGroup('str', 'STR Report', '📋', strKids, 'group-str'), 'data');
 

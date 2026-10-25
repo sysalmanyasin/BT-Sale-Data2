@@ -8,7 +8,7 @@ import { registerTool } from '../core/tool-registry.js';
 import { Repository } from '../../repository.js';
 import * as LedgerStore from '../../ledger-store.js';
 import { DAILY } from '../../config.js';
-import { groupedLineItems } from '../../str-shared.js';
+import { groupedLineItems } from '../../str/str-shared.js';
 import { creditNet } from '../../shared/credit-alerts.js';
 import { weekdayForecast, reorderDraft, strFillRate, categorySpikes, inTransitByCode } from '../../shared/planning-metrics.js';
 import { num, rs, clampInt, FULL } from './_util.js';

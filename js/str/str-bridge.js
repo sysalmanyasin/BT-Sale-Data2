@@ -28,7 +28,7 @@
 // ══════════════════════════════════════════════════════════════════════
 
 // Same Supabase project as inventory-bridge.js.
-import { AUDIT_HUB_URL, AUDIT_HUB_PUBLISHABLE_KEY } from './shared/backend-config.js';
+import { AUDIT_HUB_URL, AUDIT_HUB_PUBLISHABLE_KEY } from '../shared/backend-config.js';
 const STR_SUPABASE_URL = AUDIT_HUB_URL;
 const STR_SUPABASE_ANON_KEY = AUDIT_HUB_PUBLISHABLE_KEY;
 const FULLDATA_CACHE_KEY = 'bt_str_fulldata_v1';

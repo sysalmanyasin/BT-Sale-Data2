@@ -7,8 +7,8 @@ import * as ClosingBridge from './closing-bridge.js';
 import * as AuditBridge from './audit-bridge.js';
 import * as InventoryBridge from './inventory-bridge.js';
 import * as SalePaymentsBridge from './sale-payments-bridge.js';
-import * as StrBridge from './str-bridge.js';
-import * as StrShared from './str-shared.js';
+import * as StrBridge from './str/str-bridge.js';
+import * as StrShared from './str/str-shared.js';
 import { computeInventoryHealth } from './shared/summary-calc.js';
 import { chartTheme, applyChartDefaults } from './shared/chart-theme.js';
 import { escapeHtml as _esc } from './shared/html.js';
@@ -976,7 +976,7 @@ function _groupSubtitle(groupName) {
 
 // ── STR Report hero (Cover, Aug 2026) — four glance cards built on the
 // exact same read-only StrBridge.getFullData() + str-shared.js stage/
-// direction helpers that str-native.js/str-report-native.js/
+// direction helpers that str-native.js/str/str-report-native.js/
 // str-zero-dispatch.js already use, so "awaited"/"dispatched" and which
 // side of a transfer Bahria Town is on can never drift from what those
 // pages show for the same STR. StrBridge only ever holds a rolling
