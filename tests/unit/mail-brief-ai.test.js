@@ -58,7 +58,7 @@ const setup = (pages, replies) => { calls = []; agent = { pages, replies, reques
 const refs = (a, b) => '{' + Array.from({ length: b - a + 1 }, (_, k) => 'T' + (a + k)).join(',') + '}';
 const ids = (a, b) => Array.from({ length: b - a }, (_, k) => ({ id: 't' + (a + k) }));
 
-const { MailBriefing } = await import('../../js/mail-briefing.js');
+const { MailBriefing } = await import('../../js/mail/mail-briefing.js');
 const brief = async () => { document.getElementById('mail-ai').click(); await waitFor(() => document.querySelector('.mail-ai, .mail-err')); return document.getElementById('mail-aiout'); };
 
 test('reads every page of threads (archived mail included) and keeps counting', async () => {

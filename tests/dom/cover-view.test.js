@@ -19,7 +19,7 @@ describe('Cover Summary / Detailed view', () => {
     // closing-bridge.js starts real setIntervals at import time (polling); unref them so the test process can exit.
     const realSetInterval = globalThis.setInterval;
     globalThis.setInterval = (...a) => { const t = realSetInterval(...a); if (t && t.unref) t.unref(); return t; };
-    try { mod = await import('../../js/cover-dashboard.js'); } finally { globalThis.setInterval = realSetInterval; }
+    try { mod = await import('../../js/cover/cover-dashboard.js'); } finally { globalThis.setInterval = realSetInterval; }
   });
   after(() => { window.close(); });
 

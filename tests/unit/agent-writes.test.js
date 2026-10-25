@@ -10,7 +10,7 @@ const cfg = await import('../../js/config.js');
 globalThis.recomputeMonthly = cfg.recomputeMonthly; // browser globals the real app has (classic-script scope)
 const { Repository } = await import('../../js/repository.js');
 globalThis.Repository = Repository;
-const LedgerStore = await import('../../js/ledger-store.js');
+const LedgerStore = await import('../../js/ledger/ledger-store.js');
 const reg = await import('../../js/agent/core/tool-registry.js');
 await import('../../js/agent/tools/writes.js');
 const guard = await import('../../js/agent/core/guard.js');

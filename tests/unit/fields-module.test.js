@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { installDomEnv, resetStorage } from '../helpers/dom-env.js';
 
 installDomEnv();
-const fields = await import('../../js/fields.js');
+const fields = await import('../../js/sales/fields.js');
 
 describe('Field Manager module conversion', () => {
   test('exports its live state and preserves the legacy window API', () => {

@@ -5,7 +5,7 @@ import { DAILY } from '../../config.js';
 import { Repository } from '../../repository.js';
 import { num, rs, FULL, MON, sameMonth, parseAppDate, monthSortVal } from './_util.js';
 import { creditAlertMessages, findUnrolledCredit, creditNet } from '../../shared/credit-alerts.js';
-import * as LedgerStore from '../../ledger-store.js';
+import * as LedgerStore from '../../ledger/ledger-store.js';
 import { notSoldStock } from '../../shared/inventory-metrics.js';
 
 const dayStr = d => String(d.getDate()).padStart(2, '0') + '/' + MON[d.getMonth()] + '/' + d.getFullYear();

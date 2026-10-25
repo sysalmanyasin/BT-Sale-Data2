@@ -327,7 +327,7 @@ function _reservePreviewTab() {
 }
 
 // ── Vector (no html2canvas) thermal table renderer ────────────────────
-// js/cash-deposit-report.js's html2canvas-captured receipt was patched
+// js/sales/cash-deposit-report.js's html2canvas-captured receipt was patched
 // four separate times (v10.21-v10.24, see sw.js's own changelog) for a
 // clipped/missing value column and, on the latest report, clipped title
 // text too — each patch was a real, verified html2canvas/CSS interaction

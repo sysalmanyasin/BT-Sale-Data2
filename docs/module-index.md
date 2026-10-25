@@ -22,9 +22,9 @@ These modules keep calculations consistent across the web app and assistant inte
 | [`nav-sections.js`](../js/nav-sections.js) | Navigation tree and All Sections drawer | Treat it as the main source for section navigation. |
 | [`global-search.js`](../js/global-search.js) | Fuzzy search for navigation sections and Staff Registry records | ES module loaded with `type="module"`; imports and compatibility bridges should be reviewed when changing navigation/search APIs. |
 | [`boot-guard.js`](../js/boot-guard.js) | Reports missing dependencies caused by incorrect script load order | Keep it positioned after the dependency/module block it checks. |
-| [`daily-checklist.js`](../js/daily-checklist.js) | Daily Check List page and date-specific UI drafts | Drafts are stored locally; do not describe them as synced business records unless the implementation changes. |
-| [`mail-briefing.js`](../js/mail-briefing.js) | Utility > Mail: read-only Gmail briefing, thread triage, and follow-up tracking | Uses the `gmail.readonly` scope; the access token is held in memory. Email bodies are redacted before AI briefing and sent through `bt-agent` with high sensitivity. The app cannot send, label, archive or delete mail. Follow-ups are device-local. See the security notes below. |
-| [`record-day.js`](../js/record-day.js) | Celebrates a new all-time daily-sales record after daily-sales events | Uses the saved `TOTAL` value and the app's EventBus/write path instead of reimplementing sales calculations. |
+| [`daily-checklist.js`](../js/sales/daily-checklist.js) | Daily Check List page and date-specific UI drafts | Drafts are stored locally; do not describe them as synced business records unless the implementation changes. |
+| [`mail-briefing.js`](../js/mail/mail-briefing.js) | Utility > Mail: read-only Gmail briefing, thread triage, and follow-up tracking | Uses the `gmail.readonly` scope; the access token is held in memory. Email bodies are redacted before AI briefing and sent through `bt-agent` with high sensitivity. The app cannot send, label, archive or delete mail. Follow-ups are device-local. See the security notes below. |
+| [`record-day.js`](../js/sales/record-day.js) | Celebrates a new all-time daily-sales record after daily-sales events | Uses the saved `TOTAL` value and the app's EventBus/write path instead of reimplementing sales calculations. |
 
 ## AI assistant layout
 

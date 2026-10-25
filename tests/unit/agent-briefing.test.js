@@ -11,7 +11,7 @@ const { buildBriefing } = await import('../../js/agent/tools/briefing.js');
 const reg = await import('../../js/agent/core/tool-registry.js');
 await import('../../js/agent/tools/sales.js');
 // The briefing's target pace is delegated to Analytics (one implementation), so load the real one.
-await import('../../js/analytics.js');
+await import('../../js/sales/analytics.js');
 
 const day = (d, total, comp = total) => ({ Date: String(d).padStart(2, '0') + '/Oct/2026', Month_Year: 'October 2026', TOTAL: String(total), 'COMP SALE': String(comp), Customers: '10' });
 const NOW = new Date(2026, 9, 8, 9, 0); // 08 Oct 2026

@@ -13,7 +13,7 @@ describe('secret filtering', () => {
   });
   test('secret-bearing files and noisy dirs are never read', () => {
     for (const f of ['.env', '.env.local', 'keys/server.pem', 'a/b/credentials.json', 'x/service-account.json', 'js/secrets.js', 'node_modules/x/y.js', 'icons/a.js']) assert.ok(skipFile(f), f);
-    for (const f of ['js/analytics.js', 'supabase/functions/bt-agent/index.ts']) assert.ok(!skipFile(f), f);
+    for (const f of ['js/sales/analytics.js', 'supabase/functions/bt-agent/index.ts']) assert.ok(!skipFile(f), f);
   });
   test('a secret line never yields a symbol, and no source text is stored', () => {
     const src = ['// Demo file for tests', "export const apiKey = { api_key: 'abcdef1234567890ABCDEFGH' };", 'export function realOne(a) {', '  return a + 1; // SECRET_BODY_TEXT', '}'].join('\n');
@@ -40,7 +40,7 @@ describe('the committed index', () => {
   });
   test('answers the questions it exists for', () => {
     const a = M.searchRepoIndex(idx, 'target pace');
-    assert.ok(a.some(x => x.name === 'getTargetPaceForMonth' && x.file === 'js/analytics.js'), 'KPI location found');
+    assert.ok(a.some(x => x.name === 'getTargetPaceForMonth' && x.file === 'js/sales/analytics.js'), 'KPI location found');
     const t = M.searchRepoIndex(idx, 'daily_briefing');
     assert.equal(t[0].kind, 'tool'); assert.equal(t[0].risk, 'read');
     assert.ok(M.searchRepoIndex(idx, 'verify').some(x => x.file === 'js/agent/tools/verify.js'));
@@ -56,11 +56,11 @@ describe('the committed index', () => {
 
 describe('searchRepoIndex', () => {
   const idx = { version: 1, generated_at: '2026-10-01T00:00:00Z', commit: 'abc', files: 2, symbols: 3, index: [
-    { f: 'js/analytics.js', s: 'KPI engine', sym: [{ n: 'getTargetPaceForMonth', k: 'function', l: 10 }], tools: [] },
+    { f: 'js/sales/analytics.js', s: 'KPI engine', sym: [{ n: 'getTargetPaceForMonth', k: 'function', l: 10 }], tools: [] },
     { f: 'tests/unit/a.test.js', s: '', sym: [{ n: 'getTargetPaceHelper', k: 'function', l: 3 }], tools: [{ n: 'get_target_pace', k: 'tool', l: 5, d: 'sales', r: 'read' }] }] };
   test('all terms must match; tools rank above tests; empty/garbage queries return nothing', () => {
     const r = M.searchRepoIndex(idx, 'target pace');
-    assert.equal(r[0].kind === 'function' ? r[0].file : r[0].name, r[0].kind === 'function' ? 'js/analytics.js' : 'get_target_pace');
+    assert.equal(r[0].kind === 'function' ? r[0].file : r[0].name, r[0].kind === 'function' ? 'js/sales/analytics.js' : 'get_target_pace');
     assert.ok(r.every(x => /pace/i.test(x.name + x.file + x.summary)));
     assert.deepEqual(M.searchRepoIndex(idx, ''), []); assert.deepEqual(M.searchRepoIndex(idx, 'zzzz'), []); assert.deepEqual(M.searchRepoIndex(null, 'x'), []);
   });

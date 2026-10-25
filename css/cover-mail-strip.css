@@ -1,4 +1,4 @@
-/* COVER MAIL STRIP (js/cover-mail-strip.js) — tokens from variables.css only */
+/* COVER MAIL STRIP (js/mail/cover-mail-strip.js) — tokens from variables.css only */
 #cover-mail-strip{margin:0 0 14px;}
 .cms{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--sh);overflow:hidden;}
 .cms-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;cursor:pointer;-webkit-tap-highlight-color:transparent;}

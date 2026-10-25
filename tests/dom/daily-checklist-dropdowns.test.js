@@ -1,12 +1,12 @@
 // Daily Check List — items 25, 29A, 29B, 29C are dropdowns whose option lists are stored in localStorage.
-// Renders the REAL page (js/daily-checklist.js) in jsdom.
+// Renders the REAL page (js/sales/daily-checklist.js) in jsdom.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { installDomEnv, resetStorage } from '../helpers/dom-env.js';
 
 const dom = installDomEnv('<!doctype html><html><body><div id="page-dailychecklist"></div></body></html>');
 const w = globalThis.window;
-await import('../../js/daily-checklist.js');
+await import('../../js/sales/daily-checklist.js');
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const $ = (id) => document.getElementById('dcl-' + id);
 const click = (el) => el.dispatchEvent(new w.Event('click', { bubbles: true }));

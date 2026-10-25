@@ -15,7 +15,7 @@
 // gone now — this file calls renderJazzCash()/renderNotesSheets()
 // directly instead (guarded with `typeof X === 'function'`, same
 // pattern already used below for renderLedgerView/
-// renderMiscSectionsManager, since jazz-cash.js/notes-sheets.js don't
+// renderMiscSectionsManager, since jazz-cash.js/sheets/notes-sheets.js don't
 // export real ES bindings yet).
 //
 // Module-migration: with the untangling above done, this file — and

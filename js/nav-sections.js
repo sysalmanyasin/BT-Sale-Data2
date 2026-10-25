@@ -33,7 +33,7 @@
 // with no bnav/hash entry) — those are hardcoded in _VIRTUAL below.
 //
 // Top-level ordering mirrors whatever order the user last dragged
-// Cover's own dashboard groups into (js/cover-dashboard.js's ⠿ handles),
+// Cover's own dashboard groups into (js/cover/cover-dashboard.js's ⠿ handles),
 // via each group's _domainGroup mapped onto Cover's group slugs — see
 // _DOMAIN_TO_COVER_SLUG. "Cover" itself always stays pinned first (it's
 // the hub the drawer opens from, not a domain). Tools and PDF Library
@@ -81,7 +81,7 @@ import { escapeHtml as _esc } from './shared/html.js';
   };
 
   // bnav-item's data-domain-group value (or this file's synthetic group
-  // key) -> Cover dashboard's GROUP_META slug (js/cover-dashboard.js).
+  // key) -> Cover dashboard's GROUP_META slug (js/cover/cover-dashboard.js).
   const _DOMAIN_TO_COVER_SLUG = { sales: 'sales', manager: 'manager', notesheets: 'notes', closing: 'closing', audit: 'audit', inventory: 'inventory', reports: 'reports' };
 
 

@@ -152,7 +152,7 @@ let _crdLoadedMonth = null;
 function loadCreditMonth(my) {
   // Preserve any typed-but-unsaved prevBal/salary/lessGeneric/entries
   // edits before reloading from storage — same class of bug already
-  // fixed in jazz-cash.js/ledger-page.js: a background Supabase pull
+  // fixed in jazz-cash.js/ledger/ledger-page.js: a background Supabase pull
   // re-triggering this for the SAME month via refreshManagerPage() used
   // to silently discard them.
   const _prevCrd = (my === _crdLoadedMonth) ? _crdData_cur : null;

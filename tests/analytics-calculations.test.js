@@ -13,7 +13,7 @@ globalThis.invalidateRenderCache = () => {};
 
 const config = await import('../js/config.js');
 const { Repository } = await import('../js/repository.js');
-const { Analytics } = await import('../js/analytics.js');
+const { Analytics } = await import('../js/sales/analytics.js');
 
 const MONTHS = [
   'January','February','March','April','May','June',

@@ -112,7 +112,7 @@ export const CONCEPTS = Object.freeze([
   { id: 'forecast', title: 'Forecast and target pace', keys: ['forecast', 'forecasting', 'projection', 'projected', 'target pace', 'pace', 'prediction'],
     explanation: 'No second formula exists. The target-pace tool reads the app\'s own Analytics module; the AI Center\'s buildForecast only shows that pace next to the briefing\'s month-end projection and flags it when they disagree.',
     pointers: [
-      { file: 'js/analytics.js', symbol: 'getTargetPaceForMonth', role: 'authoritative target-pace calculation' },
+      { file: 'js/sales/analytics.js', symbol: 'getTargetPaceForMonth', role: 'authoritative target-pace calculation' },
       { file: 'js/agent/tools/sales.js', symbol: 'get_target_pace', role: 'the tool that exposes it to BT' },
       { file: 'js/ai-center/model.js', symbol: 'buildForecast', role: 'shows pace and projection side by side' },
     ] },

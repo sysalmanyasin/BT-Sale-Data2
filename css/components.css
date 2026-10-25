@@ -52,7 +52,7 @@
    just a left accent) so the four ledger types are distinguishable at a
    glance; content/markup is unchanged, only presentation. Tint is set
    once per card via --card-accent/--card-bg custom properties (see
-   js/dashboard.js's sectionCard()/pattyCardHtml) — everything inside
+   js/sales/dashboard.js's sectionCard()/pattyCardHtml) — everything inside
    (icon badge, total chip) just reads var(--card-accent) so there's a
    single source of truth per card instead of repeating the color in
    three places. ── */
@@ -292,7 +292,7 @@ tfoot td{font-weight:700;color:var(--text);background:var(--s2);border-top:2px s
    states use — spread across css/inventory-native.css (.bti-empty),
    css/str-report.css (.str-empty), css/inventory-health-dashboard.css
    (.ihd-empty), and css/excess-working.css / css/reorder-report.css /
-   css/stockledger.css (.empty) — plus js/notes-sheets.js's .ns-empty,
+   css/stockledger.css (.empty) — plus js/sheets/notes-sheets.js's .ns-empty,
    which had no dedicated styling at all before this. Every current "No
    data"/"No records" message picks this up for free, no JS changes. */
 .excessworking-app .empty,
@@ -322,7 +322,7 @@ tfoot td{font-weight:700;color:var(--text);background:var(--s2);border-top:2px s
   -webkit-mask-position:center; mask-position:center;
   pointer-events:none;
 }
-/* .ns-empty (js/notes-sheets.js) had zero CSS before this pass — same
+/* .ns-empty (js/sheets/notes-sheets.js) had zero CSS before this pass — same
    baseline look as its five siblings above, so the watermark has
    something styled to sit behind instead of bare unstyled text. */
 .ns-empty { text-align:center; padding:40px 20px; color:var(--muted); font-size:13px; }

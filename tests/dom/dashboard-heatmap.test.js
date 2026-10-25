@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════════════════
-// SMOKE TEST — js/dashboard-heatmap.js's buildSalesHeatmap(). Seeds real
+// SMOKE TEST — js/sales/dashboard-heatmap.js's buildSalesHeatmap(). Seeds real
 // DAILY records (via Repository's internal-write bypass, same as the
 // Staff Registry test does for STAFF) across two different years, loads
 // the real classic script into a jsdom window via loadClassicScript
@@ -23,7 +23,7 @@ const { DAILY } = await import('../../js/config.js');
 // import/export) — load it the same way navigation.test.js loads ui.js,
 // into the SAME window config.js's own module-footer already bridged
 // DAILY/n/ff/fc onto.
-loadClassicScript('js/dashboard-heatmap.js', window);
+loadClassicScript('js/sales/dashboard-heatmap.js', window);
 
 function seedDaily(records) {
   Repository._beginInternalWrite();

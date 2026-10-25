@@ -38,7 +38,7 @@ test('lockdown removes anon access and guards both RPCs with the allow-list', ()
 });
 // Phase 1 is applied in production (2026-10-24), so the bridge uses the signed-in client.
 test('emergency-billing-bridge uses the signed-in client, not an anon-key client', () => {
-  const js = read('js/emergency-billing-bridge.js');
+  const js = read('js/emergency-billing/emergency-billing-bridge.js');
   assert.match(js, /window\.btGetSupabaseClient/);
   assert.doesNotMatch(js, /createClient|EB_SUPABASE_ANON_KEY|persistSession/);
 });

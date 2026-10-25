@@ -137,7 +137,7 @@ let _salLoadedMonth = null;
 function loadSalaryMonth(my) {
   // Preserve any typed-but-unsaved days/hoSal edits already applied
   // in-memory by salRowChange() before this reloads from storage — same
-  // class of bug already fixed in jazz-cash.js/ledger-page.js: a
+  // class of bug already fixed in jazz-cash.js/ledger/ledger-page.js: a
   // background Supabase pull re-triggering this for the SAME month via
   // refreshManagerPage() used to silently discard them. advance/generic
   // are intentionally left to the auto-pull logic below, unaffected.

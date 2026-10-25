@@ -72,7 +72,7 @@ answer = (req) => {
   return (neg ? '## Needs your action\nSalman Yasin — Explain reason for Shalimar’s negative stock value of -24252 {' + neg + '}\n' : '') + (rest.length ? '## Other\nStatus (' + rest[0] + ') noted {' + rest.join(',') + '}' : '');
 };
 
-const { MailBriefing } = await import('../../js/mail-briefing.js');
+const { MailBriefing } = await import('../../js/mail/mail-briefing.js');
 const brief = async () => { document.getElementById('mail-ai').click(); await waitFor(() => document.querySelector('.mail-ai, .mail-err')); return document.getElementById('mail-aiout'); };
 const subjectsOf = (arr) => arr.map((x) => x.subject);
 

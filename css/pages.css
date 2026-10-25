@@ -194,7 +194,7 @@
 .mgr-del:hover{background:var(--rlt,#fee2e2);}
 .mgr-tfoot td{font-weight:700;color:var(--accent);font-family:var(--mono);padding:7px 10px;border-top:2px solid var(--border);background:var(--s2);}
 /* ── Generalized Ledger view (Jazz Cash / Expense / custom sections) ──
-   Rendered by js/ledger-page.js's renderLedgerView(); the markup only
+   Rendered by js/ledger/ledger-page.js's renderLedgerView(); the markup only
    carries stable classnames (.ledger-header, .ledger-add-form, etc.),
    so all the visual work happens here — no JS changes needed. */
 .ledger-header{background:linear-gradient(135deg,#141b3d,#2543c9 65%,#3a61f7);color:#fff;border-radius:var(--r-md);padding:16px 20px!important;margin-bottom:14px!important;box-shadow:var(--sh-md);}

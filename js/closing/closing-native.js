@@ -37,7 +37,7 @@
 // ══════════════════════════════════════════════════════════════════════
 
 import * as ClosingBridge from './closing-bridge.js';
-import { openLedgerQuickAdd } from '../ledger-quick-add.js';
+import { openLedgerQuickAdd } from '../ledger/ledger-quick-add.js';
 import { fetchMarks, getMark } from './closing-ledger-marks.js';
 import { escapeHtml as esc } from '../shared/html.js';
 

@@ -159,7 +159,7 @@ export const ActivityLog = (function () {
     _rows.filter(r => !r._synced).forEach(_push);
   }
 
-  // ── Ledger diff — 'ledger:changed' (js/ledger-store.js) fires with
+  // ── Ledger diff — 'ledger:changed' (js/ledger/ledger-store.js) fires with
   // the FULL current entries array on every write, not a verb. Diffing
   // by id against the previous snapshot recovers add/edit/delete the
   // same way ledger-actions.js's addEntry/updateEntry/removeEntry

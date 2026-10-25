@@ -6,7 +6,7 @@
 // All maths lives in js/shared/planning-metrics.js (pure, unit-tested). Nothing here writes anything.
 import { registerTool } from '../core/tool-registry.js';
 import { Repository } from '../../repository.js';
-import * as LedgerStore from '../../ledger-store.js';
+import * as LedgerStore from '../../ledger/ledger-store.js';
 import { DAILY } from '../../config.js';
 import { groupedLineItems } from '../../str/str-shared.js';
 import { creditNet } from '../../shared/credit-alerts.js';

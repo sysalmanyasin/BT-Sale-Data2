@@ -13,7 +13,7 @@
 -- account, so "authenticated" alone does not mean "one of our people".
 --
 -- Phase 2 (supabase/pending/20261024130000_emergency_billing_lockdown.sql) then
--- removes the anon access. Do NOT promote phase 2 until js/emergency-billing-bridge.js
+-- removes the anon access. Do NOT promote phase 2 until js/emergency-billing/emergency-billing-bridge.js
 -- (now using the signed-in client) is live and billing has been tested.
 --
 -- Note: until phase 2, the two record_* RPCs are executable by any authenticated

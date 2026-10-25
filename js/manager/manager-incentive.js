@@ -25,7 +25,7 @@ function loadIncentiveMonth(my) {
   // only in the DOM until Save is clicked (_incData is only updated at
   // save time) — reloading from storage and overwriting every input's
   // .value would silently wipe them (same class of bug already fixed in
-  // jazz-cash.js/ledger-page.js). Only reload when actually switching
+  // jazz-cash.js/ledger/ledger-page.js). Only reload when actually switching
   // months; a same-month call just recalculates off whatever's on screen.
   if (my === _incMonth) { recalcIncentive(); return; }
   _incMonth = my;

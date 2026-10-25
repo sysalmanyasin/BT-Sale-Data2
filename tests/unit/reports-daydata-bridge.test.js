@@ -1,5 +1,5 @@
-// REGRESSION TEST — js/reports.js must expose dayData() on window.
-// js/daily-checklist.js (an ES module) pulls its Cash/Credit figures from window.dayData so the
+// REGRESSION TEST — js/sales/reports.js must expose dayData() on window.
+// js/sales/daily-checklist.js (an ES module) pulls its Cash/Credit figures from window.dayData so the
 // Daily Check List always equals the Sale Report. dayData lives inside reports.js's IIFE, and when it was
 // not bridged to window the checklist silently fell back to a hardcoded column list that ignored custom
 // fields (e.g. "Bank Alfalah 2"), leaving the checklist 16,321 short of the report on 16 Oct 2026.
@@ -13,7 +13,7 @@ async function load(custom) {
   w.n = (v) => { const x = parseFloat(String(v == null ? 0 : v).replace(/,/g, '')); return isNaN(x) ? 0 : x; };
   w._fmCustom = custom;
   w.toast = () => {};
-  await import('../../js/reports.js?test=' + Date.now() + Math.random());
+  await import('../../js/sales/reports.js?test=' + Date.now() + Math.random());
   return w;
 }
 

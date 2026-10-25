@@ -5,7 +5,7 @@ import { installDomEnv, resetStorage } from '../helpers/dom-env.js';
 
 installDomEnv('<!doctype html><html><body><div id="page-dailychecklist"></div></body></html>');
 const w = globalThis.window;
-await import('../../js/daily-checklist.js');
+await import('../../js/sales/daily-checklist.js');
 
 test('rail lists every section in a labelled nav', () => {
   resetStorage(); w.loadDailyChecklistPage();

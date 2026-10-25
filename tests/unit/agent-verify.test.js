@@ -11,7 +11,7 @@ const cfg = await import('../../js/config.js');
 globalThis.recomputeMonthly = cfg.recomputeMonthly;
 const { Repository } = await import('../../js/repository.js');
 globalThis.Repository = Repository;
-const LedgerStore = await import('../../js/ledger-store.js');
+const LedgerStore = await import('../../js/ledger/ledger-store.js');
 const reg = await import('../../js/agent/core/tool-registry.js');
 await import('../../js/agent/tools/verify.js'); // registers every change tool, then attaches the verifiers
 const { runAgent } = await import('../../js/agent/core/agent-client.js');
@@ -59,7 +59,7 @@ describe('verification after a real write', () => {
     const r = await call('add_ledger_entry', { ledger_type: 'jazzcash', category_id: 'credit', amount: 450, date: '2026-10-03', desc: 'tamper' });
     // Re-run the verifier after someone removes the entry from the store.
     const id = body(r).entry_id;
-    const { LedgerActions } = await import('../../js/ledger-actions.js');
+    const { LedgerActions } = await import('../../js/ledger/ledger-actions.js');
     LedgerActions.removeEntry(id);
     const v = await reg.getTool('add_ledger_entry').verify({ ledger_type: 'jazzcash', category_id: 'credit', amount: 450 }, body(r));
     assert.equal(v.ok, false);

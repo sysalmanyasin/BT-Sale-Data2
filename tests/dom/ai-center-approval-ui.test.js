@@ -76,8 +76,8 @@ describe('AI Center approval view', () => {
   });
 
   test('a delete shows the typed-word gate and a wrong word grants nothing', async () => {
-    const { LedgerActions } = await import('../../js/ledger-actions.js');
-    const LS = await import('../../js/ledger-store.js');
+    const { LedgerActions } = await import('../../js/ledger/ledger-actions.js');
+    const LS = await import('../../js/ledger/ledger-store.js');
     const entry = LedgerActions.addEntry('jazzcash', { date: '2026-10-03', categoryId: 'credit', amount: 321, desc: 'center delete test' });
     T.clear(); script = [toolCall('delete_ledger_entry', { entry_id: entry.id }), final];
     const done = A().ask('delete that entry');
@@ -149,7 +149,7 @@ describe('repository intelligence in the Center', () => {
     await show('investigate'); await wait(60);
     assert.match(q('#aic-repo').textContent, /INDEX READY/); assert.doesNotMatch(q('#aic-repo').textContent, /NOT CONNECTED/);
     const inp = q('#aic-rq'); inp.value = 'target pace'; inp.dispatchEvent(new window.Event('input'));
-    assert.match(q('.aic-rres').textContent, /getTargetPaceForMonth/); assert.match(q('.aic-rres').textContent, /js\/analytics\.js:\d+/);
+    assert.match(q('.aic-rres').textContent, /getTargetPaceForMonth/); assert.match(q('.aic-rres').textContent, /js\/sales\/analytics\.js:\d+/);
     assert.match(q('#aic-repo').textContent, /no source code/i);
     globalThis.fetch = prev;
   });

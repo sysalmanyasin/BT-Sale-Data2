@@ -127,7 +127,7 @@ describe('service worker precaches every agent file', () => {
   const sw = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
   const walk = d => fs.readdirSync(d, { withFileTypes: true }).flatMap(e => e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]);
   test('each js/agent/** file and the shared credit-alerts module is in APP_SHELL', () => {
-    const files = [...walk(path.join(root, 'js/agent')), path.join(root, 'js/shared/credit-alerts.js'), path.join(root, 'js/shared/agent-shared.js')].map(f => './' + path.relative(root, f).split(path.sep).join('/'));
+    const files = [...walk(path.join(root, 'js/agent')).filter(f => f.endsWith('.js')), path.join(root, 'js/shared/credit-alerts.js'), path.join(root, 'js/shared/agent-shared.js')].map(f => './' + path.relative(root, f).split(path.sep).join('/'));
     const missing = files.filter(f => !sw.includes("'" + f + "'"));
     assert.deepEqual(missing, []);
   });

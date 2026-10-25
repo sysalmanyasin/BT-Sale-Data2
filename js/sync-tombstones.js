@@ -28,7 +28,7 @@
 // Classic-script bridge: supabase.js is a non-module `<script defer>`
 // (see index.html), so this also hangs itself off `window.SyncTombstones`
 // — same established pattern as LEDGER_KEY/JC_KEY elsewhere in this app.
-// Load this BEFORE ledger-store.js/jazz-cash.js/supabase.js in index.html.
+// Load this BEFORE ledger-store.js/ledger/jazz-cash.js/supabase.js in index.html.
 // ══════════════════════════════════════════════════════════════════════
 
 import { Repository } from './repository.js';

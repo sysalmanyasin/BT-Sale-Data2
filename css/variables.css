@@ -98,7 +98,7 @@ body{
 
 /* ── Consistent form controls app-wide ──────────────────────────────
    Bare <input>/<select>/<textarea> elements (e.g. the ledger add-form
-   and filter bar in js/ledger-page.js) previously fell back to raw
+   and filter bar in js/ledger/ledger-page.js) previously fell back to raw
    browser chrome with no shared styling. Kept at low specificity so
    any existing more-specific rule (.fg input, .mgr-inp, etc.) still
    wins where a component wants its own treatment. */

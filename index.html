@@ -79,7 +79,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/variables.css?v=ffd8fd7a">
+<link rel="stylesheet" href="css/variables.css?v=7d3c05cd">
 <link rel="stylesheet" href="css/auth.css?v=323700fc">
 <link rel="stylesheet" href="css/nav.css?v=3eda704f">
 <link rel="stylesheet" href="css/closing-native.css?v=2655981b">
@@ -93,18 +93,18 @@
 <link rel="stylesheet" href="css/reorder-report.css?v=9d57ee33">
 <link rel="stylesheet" href="css/inventory-health-dashboard.css?v=4517ebab">
 <link rel="stylesheet" href="css/pdf-library.css?v=f6cc76b5">
-<link rel="stylesheet" href="css/mail-briefing.css?v=0c904be7">
-<link rel="stylesheet" href="css/cover-mail-strip.css?v=f594c912">
+<link rel="stylesheet" href="css/mail-briefing.css?v=f124ad25">
+<link rel="stylesheet" href="css/cover-mail-strip.css?v=9f525569">
 <link rel="stylesheet" href="css/activity-log.css?v=2e5bd5de">
 <link rel="stylesheet" href="css/cash-deposit-report.css?v=a725c219">
-<link rel="stylesheet" href="css/daily-checklist.css?v=6075491e">
+<link rel="stylesheet" href="css/daily-checklist.css?v=c11d3d38">
 <link rel="stylesheet" href="css/sale-payments.css?v=4fcd958d">
 <link rel="stylesheet" href="css/sheets-app.css?v=6171a00c">
 <link rel="stylesheet" href="css/attendance.css?v=8463e920">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,400,0,0">
-<link rel="stylesheet" href="css/components.css?v=87a462ce">
+<link rel="stylesheet" href="css/components.css?v=26b274dc">
 <link rel="stylesheet" href="css/modals.css?v=efd38885">
-<link rel="stylesheet" href="css/pages.css?v=8e255dd4">
+<link rel="stylesheet" href="css/pages.css?v=cc67a863">
 <link rel="stylesheet" href="css/cover-dashboard.css?v=f9e81b34">
 <link rel="stylesheet" href="css/herald.css?v=fbbb1802">
 <link rel="stylesheet" href="css/agent.css?v=887c7226">
@@ -643,13 +643,13 @@ if ('serviceWorker' in navigator) {
   </div>
 </div>
 
-<!-- DAILY CHECK LIST — native port of the branch checklist; built by js/daily-checklist.js into this container. -->
+<!-- DAILY CHECK LIST — native port of the branch checklist; built by js/sales/daily-checklist.js into this container. -->
 <div class="page" id="page-dailychecklist"></div>
 
 <!-- CASH TO BE DEPOSITED — derived report (Cash Sale − Cash Returns +
      FDPP POS + FDPP Consumer) for every day on record. Tick any set of
      days to get a combined total + day-by-day popup, printable to a
-     72mm thermal receipt. See js/cash-deposit-report.js. -->
+     72mm thermal receipt. See js/sales/cash-deposit-report.js. -->
 <div class="page" id="page-cashdeposit">
   <div class="hero"><div class="hlabel">Sale Data</div><div class="htitle">💰 Cash to be Deposited</div><div class="hsub">Cash Sale − Cash Returns + FDPP POS + FDPP Consumer, for every day on record. Tick the days you need, then view the combined report.</div></div>
   <div class="frow no-print">
@@ -1456,7 +1456,7 @@ if ('serviceWorker' in navigator) {
 
 <!-- EMERGENCY BILLING — counter-billing tool for when the real POS
      (Candela) is down. Billing UX ported from the standalone POS app's
-     billing.js; writes go through js/emergency-billing-bridge.js to
+     billing.js; writes go through js/emergency-billing/emergency-billing-bridge.js to
      this app's OWN Supabase project (emergency_invoices/_items/
      _stock_deltas), never to inventory_products (see architecture doc
      "Emergency Billing Domain" §1/§3/§4). Not yet wired into nav —
@@ -1476,7 +1476,7 @@ if ('serviceWorker' in navigator) {
 
     <!-- Tab bar — Billing (the till, default) / History (browse + reprint
          past invoices) / Settings (branch identity, receipt customization,
-         billing behavior). Plain JS show/hide (js/emergency-billing-native.js's
+         billing behavior). Plain JS show/hide (js/emergency-billing/emergency-billing-native.js's
          ebSwitchTab()), not a hash sub-route — this page is still a single
          #emergency-billing entry point (see the "Not yet wired into nav"
          note below), so a sub-route would have nothing to deep-link from. -->
@@ -1605,7 +1605,7 @@ if ('serviceWorker' in navigator) {
 
     <!-- ══════════ HISTORY TAB — browse/search past invoices (both sales
          and refunds), read-only, click a row to open the full saved bill.
-         Filters run against js/emergency-billing-bridge.js's fetchInvoices()
+         Filters run against js/emergency-billing/emergency-billing-bridge.js's fetchInvoices()
          (date range, invoice #, payment method, unreconciled-only) plus the
          new searchInvoiceNumbersByProduct() for the product filter — see
          that file's header note on why the product filter is a two-step
@@ -1723,7 +1723,7 @@ if ('serviceWorker' in navigator) {
   </div>
 
   <!-- Refund — reachable only from Billing History now: open a saved
-       bill (js/emergency-billing-native.js's openHistoryDetail()) and use
+       bill (js/emergency-billing/emergency-billing-native.js's openHistoryDetail()) and use
        "Refund This" inline (refundFromHistory()/renderRefundFormInline()
        below), instead of a separate modal reachable from the Billing tab.
        Pulls the original invoice's own line items (js/emergency-billing-
@@ -2128,7 +2128,7 @@ if ('serviceWorker' in navigator) {
   </div>
 </div>
 
-<!-- ══ MAIL BRIEFING ══ (see js/mail-briefing.js) — read-only Gmail briefing -->
+<!-- ══ MAIL BRIEFING ══ (see js/mail/mail-briefing.js) — read-only Gmail briefing -->
 <div class="page" id="page-mail">
   <div class="hero"><div class="hlabel">Mail</div><div class="htitle">✉️ Mail Briefing</div><div class="hsub">Read-only Gmail briefing — what needs action, what is waiting on others, and your follow-ups. Nothing is sent, labelled or deleted.</div></div>
   <div id="mail-root"></div>
@@ -2261,7 +2261,7 @@ if ('serviceWorker' in navigator) {
   <!-- ═══ QUICK ADD ═══ Add an entry to Jazz Cash / Staff Credit / Expenses /
        a New Section without switching tabs. Writes straight to the same data
        each tab uses — this is just a faster front door, not a separate store.
-       Built by renderQuickAdd() in js/quick-add.js. -->
+       Built by renderQuickAdd() in js/ledger/quick-add.js. -->
   <div id="qa-panel-mgr"></div>
 
   <div id="mgr-tabs">
@@ -2625,7 +2625,7 @@ if ('serviceWorker' in navigator) {
 
 <!-- 1b. Shared service layer -->
 <script type="module" src="js/bt-format.js?v=47e80cb3"></script>
-<script type="module" src="js/print.js?v=8042b13a"></script>
+<script type="module" src="js/print.js?v=2f8ee8d6"></script>
 <script type="module" src="js/bt-date.js?v=3a70aae9"></script>
 <script type="module" src="js/bt-search.js?v=cd0c4663"></script>
 
@@ -2641,12 +2641,12 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/repository.js?v=e76826d9"></script>
 <script type="module" src="js/actions.js?v=8c04c4ac"></script>
 
-<!-- Sync tombstones — must load before ledger-store.js/jazz-cash.js
+<!-- Sync tombstones — must load before ledger-store.js/ledger/jazz-cash.js
      (which record deletions into it) and before supabase.js (a classic
      defer script further down, which reads/merges it on every
      push/pull). Fixes deleted ledger rows/sections/tally entries
      reappearing after refresh or sync — see js/sync-tombstones.js. -->
-<script type="module" src="js/sync-tombstones.js?v=11e0a35d"></script>
+<script type="module" src="js/sync-tombstones.js?v=21e5dc74"></script>
 
 <!-- Boot guard — classic defer script placed right here on purpose: it
      runs after the module block above (module + defer scripts share one
@@ -2677,19 +2677,19 @@ if ('serviceWorker' in navigator) {
   integrity="sha384-qafw21c/iciq0VXsi9FzkfoQv5I/V0iqE4lSNcKXPnW9/UTJLnv5CcN4FHxVLnKg"
   crossorigin="anonymous"></script>
 
-<script type="module" src="js/ledger-store.js?v=1be8785c"></script>
-<script type="module" src="js/ledger-actions.js?v=e3f43a1e"></script>
-<script type="module" src="js/ledger-page.js?v=c209a565"></script>
-<script type="module" src="js/cover-dashboard.js?v=380dba38"></script>
+<script type="module" src="js/ledger/ledger-store.js?v=58a33cf0"></script>
+<script type="module" src="js/ledger/ledger-actions.js?v=e3f43a1e"></script>
+<script type="module" src="js/ledger/ledger-page.js?v=90f73c81"></script>
+<script type="module" src="js/cover/cover-dashboard.js?v=b84c380c"></script>
 <script type="module" src="js/herald/herald-engine.js?v=79bebc52"></script>
 <script type="module" src="js/herald/herald-page.js?v=0212dd3c"></script>
 <script type="module" src="js/status-bar.js?v=8654ed27"></script>
-<script type="module" src="js/record-day.js?v=241024f4"></script>
+<script type="module" src="js/sales/record-day.js?v=1909ca6e"></script>
 <script type="module" src="js/manager/staff-notes.js?v=d856b41e"></script>
 <script type="module" src="js/closing/closing-bridge.js?v=1e22c51e"></script>
 <script type="module" src="js/closing/closing-ledger-marks.js?v=dba22d5b"></script>
-<script type="module" src="js/ledger-quick-add.js?v=31809fb7"></script>
-<script type="module" src="js/closing/closing-native.js?v=4e42b506"></script>
+<script type="module" src="js/ledger/ledger-quick-add.js?v=64f5e93c"></script>
+<script type="module" src="js/closing/closing-native.js?v=d5092a22"></script>
 <script type="module" src="js/audit/audit-bridge.js?v=fc09658a"></script>
 <script type="module" src="js/audit/audit-native.js?v=d9a5e64a"></script>
 <script type="module" src="js/inventory/inventory-bridge.js?v=a65abaf9"></script>
@@ -2700,14 +2700,14 @@ if ('serviceWorker' in navigator) {
      emergency-billing-native.js's own header note). Nav entry + Cover
      signal card are a later phase — open directly via #emergency-billing
      for now. -->
-<script type="module" src="js/emergency-billing-bridge.js?v=a809d82b"></script>
-<script type="module" src="js/emergency-billing-native.js?v=788d4501"></script>
+<script type="module" src="js/emergency-billing/emergency-billing-bridge.js?v=a9724161"></script>
+<script type="module" src="js/emergency-billing/emergency-billing-native.js?v=7e653756"></script>
 <script type="module" src="js/str/str-bridge.js?v=3530abc2"></script>
 <script type="module" src="js/str/str-native.js?v=69dc163b"></script>
 <script type="module" src="js/str/str-report-native.js?v=5ccf75c3"></script>
 <script type="module" src="js/str/str-zero-dispatch.js?v=d2a6ae47"></script>
-<script type="module" src="js/sale-payments-bridge.js?v=ba1cba12"></script>
-<script type="module" src="js/sale-payments-native.js?v=2b08dd91"></script>
+<script type="module" src="js/sales/sale-payments-bridge.js?v=75cf71ef"></script>
+<script type="module" src="js/sales/sale-payments-native.js?v=57f4bce4"></script>
 <script type="module" src="js/inventory/stockledger.js?v=26bd74ee"></script>
 <script type="module" src="js/inventory/excess-working.js?v=1ce4e6f3"></script>
 <script type="module" src="js/inventory/reorder-report.js?v=1c5f7f79"></script>
@@ -2720,7 +2720,7 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/storage.js?v=fba4d2c2"></script>
 
 <!-- 5. UI: showPage, toast, clock, rebuild, dropdowns -->
-<script type="module" src="js/ui.js?v=f373e674"></script>
+<script type="module" src="js/ui.js?v=b978f51e"></script>
 
 <!-- 6b. Sync center (needs EventBus). Supabase client lib itself now
      loads much earlier above — see comment there. -->
@@ -2732,64 +2732,64 @@ if ('serviceWorker' in navigator) {
 <!-- 6d. Supabase sync (Floor 1 extension — needs Repository + Actions) -->
 <script type="module" src="js/supabase.js?v=82d67259"></script>
 <script type="module" src="js/pdf-library.js?v=0a8f4a39"></script>
-<script type="module" src="js/mail-briefing.js?v=44ffc9aa"></script>
-<script type="module" src="js/cover-mail-strip.js?v=7faf246c"></script>
-<script type="module" src="js/activity-log.js?v=1b05a5d6"></script>
+<script type="module" src="js/mail/mail-briefing.js?v=e4473213"></script>
+<script type="module" src="js/mail/cover-mail-strip.js?v=ba66c576"></script>
+<script type="module" src="js/activity-log.js?v=c3a44801"></script>
 
 <!-- 7. Targets: monthly target management -->
-<script type="module" src="js/targets.js?v=0c18568f"></script>
+<script type="module" src="js/sales/targets.js?v=27b87a1e"></script>
 
 <!-- 8. Analytics: Floor 3 KPI computation — must load before dashboard.js -->
-<script type="module" src="js/analytics.js?v=a519abdf"></script>
+<script type="module" src="js/sales/analytics.js?v=2d756041"></script>
 
 <!-- 8b. Dashboard: Floor 5 pure renderer -->
-<script type="module" src="js/dashboard-controls.js?v=c3b65901"></script>
-<script type="module" src="js/dashboard.js?v=53a44ba1"></script>
-<script type="module" src="js/dashboard-heatmap.js?v=82e03d89"></script>
-<script type="module" src="js/dashboard-race.js?v=05a41dc5"></script>
+<script type="module" src="js/sales/dashboard-controls.js?v=c3b65901"></script>
+<script type="module" src="js/sales/dashboard.js?v=251d70bd"></script>
+<script type="module" src="js/sales/dashboard-heatmap.js?v=82e03d89"></script>
+<script type="module" src="js/sales/dashboard-race.js?v=e132fd58"></script>
 
 <!-- 8b. Dashboard Insights: briefing card, target pace, rotating insight strip, diff badge (Phase 3) -->
 <script type="module" src="js/rules-engine.js?v=26c6acb8"></script>
 <script type="module" src="js/rules-registrations.js?v=56a4d93d"></script>
-<script type="module" src="js/dashboard-insights.js?v=bfb65c97"></script>
+<script type="module" src="js/sales/dashboard-insights.js?v=49a6b5ce"></script>
 
 <!-- 9. Index page: year/month grid rendering -->
-<script type="module" src="js/index-page.js?v=3c9d462a"></script>
+<script type="module" src="js/sales/index-page.js?v=c9060800"></script>
 
 <!-- 10. Reports: day modal, month modal, all print helpers -->
-<script type="module" src="js/reports.js?v=bb18d014"></script>
-<script type="module" src="js/cash-deposit-report.js?v=0a87caf2"></script>
-<script type="module" src="js/daily-checklist.js?v=0a8b4a79"></script>
+<script type="module" src="js/sales/reports.js?v=ba4df77b"></script>
+<script type="module" src="js/sales/cash-deposit-report.js?v=4064132c"></script>
+<script type="module" src="js/sales/daily-checklist.js?v=9942067b"></script>
 <script type="module" src="js/icons.js?v=b583b55a"></script>
-<script type="module" src="js/nav-sections.js?v=d195a5a2"></script>
+<script type="module" src="js/nav-sections.js?v=75cb326e"></script>
 <script type="module" src="js/global-search.js?v=0bcef047"></script>
 <script type="module" src="js/subtab-strip.js?v=b3b0d8f7"></script>
 
 <!-- 11. Data page: daily table + entry form -->
-<script type="module" src="js/data-page.js?v=6437fe50"></script>
-<script type="module" src="js/entry-prefill.js?v=4890a824"></script>
-<script type="module" src="js/diff-report.js?v=1bc6582e"></script>
+<script type="module" src="js/sales/data-page.js?v=455c56fd"></script>
+<script type="module" src="js/sales/entry-prefill.js?v=1ae84678"></script>
+<script type="module" src="js/sales/diff-report.js?v=11791709"></script>
 
 <!-- 11b. Reports print helpers (extracted from manager.js — Step 8) -->
-<script type="module" src="js/reports-print.js?v=bb502220"></script>
+<script type="module" src="js/sales/reports-print.js?v=bb502220"></script>
 
 <!-- 11c. Manager Summary Export (Phase 5) -->
 <script type="module" src="js/manager/manager-export.js?v=e65a2913"></script>
 
 <!-- 11e-pre. Real Google Sheets integration (replaces the old custom grid
-     in notes-sheets.js's Sheets panel — see js/sheets-api.js / sheets-sync.js
+     in notes-sheets.js's Sheets panel — see js/sheets/sheets-api.js / sheets-sync.js
      / sheets-app.js header comments). Must load before notes-sheets.js since
      _nsRenderPanel() calls sheetsAppBuild() directly. -->
-<script type="module" src="js/sheets-api.js?v=dc5da8a7"></script>
-<script type="module" src="js/sheets-sync.js?v=0955dfc7"></script>
-<script type="module" src="js/sheets-picker.js?v=0a4b6ba1"></script>
-<script type="module" src="js/sheets-app.js?v=0301fd6e"></script>
+<script type="module" src="js/sheets/sheets-api.js?v=dc5da8a7"></script>
+<script type="module" src="js/sheets/sheets-sync.js?v=0955dfc7"></script>
+<script type="module" src="js/sheets/sheets-picker.js?v=0a4b6ba1"></script>
+<script type="module" src="js/sheets/sheets-app.js?v=0301fd6e"></script>
 
 <!-- 11e. Notes & Sheets workspace (Phase 6) -->
-<script type="module" src="js/notes-sheets.js?v=0c9c35a3"></script>
+<script type="module" src="js/sheets/notes-sheets.js?v=28210118"></script>
 
 <!-- 11e-patch. Sheets enhancements: copy/paste, File menu, Supabase sync -->
-<script type="module" src="js/sheets-patch.js?v=8109bf83"></script>
+<script type="module" src="js/sheets/sheets-patch.js?v=8109bf83"></script>
 
 <!-- 12. Manager: salary, generic, expense, credit, petty, incentive.
      Split from one 1906-line manager.js monolith into focused modules
@@ -2799,14 +2799,14 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/manager/attendance-bridge.js?v=97ed8176"></script>
 <script type="module" src="js/manager/manager-attendance.js?v=0fe802f9"></script>
 <script type="module" src="js/manager/manager-staff.js?v=7dc2fe98"></script>
-<script type="module" src="js/manager/manager-salary.js?v=3b576b71"></script>
+<script type="module" src="js/manager/manager-salary.js?v=93431bf1"></script>
 <script type="module" src="js/manager/manager-generic.js?v=5d68629e"></script>
-<script type="module" src="js/manager/manager-credit.js?v=6cae5aa7"></script>
+<script type="module" src="js/manager/manager-credit.js?v=6ba6ddf0"></script>
 <script type="module" src="js/manager/manager-payslip.js?v=a71f382a"></script>
 <script type="module" src="js/manager/manager-unmatched.js?v=53bab963"></script>
 <script type="module" src="js/manager/manager-reports.js?v=4529615f"></script>
-<script type="module" src="js/manager/manager-petty.js?v=edcac31e"></script>
-<script type="module" src="js/manager/manager-incentive.js?v=a67633ed"></script>
+<script type="module" src="js/manager/manager-petty.js?v=888ce73a"></script>
+<script type="module" src="js/manager/manager-incentive.js?v=719e10b3"></script>
 <!-- app-init.js: the actual whole-app bootstrap (was misplaced at the
      bottom of manager.js despite having nothing to do with Manager —
      see its header comment). Needs everything above (renderStaffRegistry
@@ -2815,20 +2815,20 @@ if ('serviceWorker' in navigator) {
      reasoning as boot-guard.js placement. -->
 <script type="module" src="js/app-init.js?v=5be97bb5"></script>
 <!-- manager-page.js: tab switching + page-load orchestration. Real ES
-     module (jazz-cash.js/notes-sheets.js's old monkey-patches of its
+     module (jazz-cash.js/sheets/notes-sheets.js's old monkey-patches of its
      functions were removed in v10.9 — it calls renderJazzCash()/
      renderNotesSheets() directly now; custom-sections.js never actually
      patched it either, per that same changelog's correction). See the
      file's own header comment for the historical detail. -->
-<script type="module" src="js/manager/manager-page.js?v=660017b0"></script>
+<script type="module" src="js/manager/manager-page.js?v=e823944f"></script>
 
 <!-- 13. Custom spreadsheet sections (manager add-on) -->
-<script type="module" src="js/custom-sections.js?v=38f34c13"></script>
+<script type="module" src="js/manager/custom-sections.js?v=c0259821"></script>
 
 <!-- 13b. Jazz Cash — Balance Tally (Daily Ledger now runs on the generalized Ledger, see ledger-page.js) -->
-<script type="module" src="js/jazz-cash.js?v=6f3574de"></script>
+<script type="module" src="js/ledger/jazz-cash.js?v=44ec4115"></script>
 
-<script type="module" src="js/quick-add.js?v=25d79799"></script>
+<script type="module" src="js/ledger/quick-add.js?v=25d79799"></script>
 
 <!-- UI extras: left-edge tab strip, floating Dashboard FAB, month→target patch -->
 <script type="module" src="js/ui-extras.js?v=ddb51ca7"></script>
@@ -2838,7 +2838,7 @@ if ('serviceWorker' in navigator) {
 <script type="module" src="js/ai-center/index.js?v=378a2115"></script>
 
 <!-- 14. Field manager modal -->
-<script type="module" src="js/fields.js?v=acc3c247"></script>
+<script type="module" src="js/sales/fields.js?v=77051a94"></script>
 
 <!-- 15. Google Drive backup / restore -->
 <script type="module" src="js/drive.js?v=2cfab9d8"></script>

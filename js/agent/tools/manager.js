@@ -2,7 +2,7 @@
 // CNIC, phone, address, blood group and father's name are NEVER returned.
 import { registerTool } from '../core/tool-registry.js';
 import { Repository } from '../../repository.js';
-import * as LedgerStore from '../../ledger-store.js';
+import * as LedgerStore from '../../ledger/ledger-store.js';
 import { num, rs, clampInt, normDay, normMonth, monthIndex, MON } from './_util.js';
 import { staffCandidates } from './_names.js';
 
