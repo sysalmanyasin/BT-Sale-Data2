@@ -10,7 +10,6 @@ import { MONTHLY, DAILY, STAFF, recomputeAllMonths } from './config.js';
 import { Repository } from './repository.js';
 import { Actions } from './actions.js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../shared/backend-config.js';
-import { initSyncCenter, scCanWrite } from './sync-center.js';
 
 const SB_URL     = SUPABASE_URL;
 const SB_KEY     = SUPABASE_ANON_KEY;

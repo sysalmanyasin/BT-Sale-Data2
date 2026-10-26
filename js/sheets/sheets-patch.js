@@ -157,7 +157,7 @@
       }
       const btn = document.createElement('button');
       btn.className = 'sfm-row';
-      btn.setAttribute('onclick', r.fn + '()');
+      btn.addEventListener('click', () => { const f = window[r.fn]; if (typeof f === 'function') f(); }); // no inline handler: CSP forbids it
       btn.innerHTML = `<span class="sfm-icon">${r.icon}</span><span class="sfm-label">${r.label}</span>${r.kb ? `<span class="sfm-shortcut">${r.kb}</span>` : ''}`;
       panel.appendChild(btn);
     });

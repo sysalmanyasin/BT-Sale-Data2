@@ -1,6 +1,5 @@
 import { LedgerActions } from './ledger-actions.js';
 import { mgrMonths, mgrSave } from '../manager/manager-shared.js';
-import { renderLedgerView, renderMiscSectionsManager } from './ledger-page.js';
 import { _scCreditRow, _scCreditSync } from '../manager/manager-credit.js';
 import { renderStaffRegistry } from '../manager/manager-staff.js';
 

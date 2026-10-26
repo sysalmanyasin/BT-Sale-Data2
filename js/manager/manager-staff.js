@@ -18,7 +18,6 @@ import { _genRows_cur, renderGenericTable } from './manager-generic.js';
 import { _crdData_cur, _crdNet, renderCreditLedger, thisMonthNetFor, renderStaffCreditCurrent } from './manager-credit.js';
 import { act, arg } from '../shared/dom-actions.js';
 import { renderStaffNotesPanel } from './staff-notes.js';
-import { initStaffPayslipTab } from './manager-payslip.js';
 
 function staffSave() {
   Repository.saveStaff();

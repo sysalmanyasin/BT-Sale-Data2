@@ -83,7 +83,7 @@
 | JS modules under `js/` | 171 |
 | Supabase Edge Functions | 7 |
 | Dated SQL migrations | 28 |
-| Test files (`*.test.js`) | 112 |
+| Test files (`*.test.js`) | 114 |
 | Android home-screen widgets | 22 |
 | GitHub Actions workflows | 5 |
 <!-- repo-facts:end -->

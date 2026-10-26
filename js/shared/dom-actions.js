@@ -31,8 +31,13 @@
 
 import { escapeHtml as esc } from './html.js';
 
-const registry = Object.create(null);
-const warned = new Set();
+// Shared across module copies: index.html loads this file as `dom-actions.js?v=<hash>` while other modules import it
+// bare, and a browser treats those as two different modules. Per-copy state meant two click listeners (every
+// window-path action fired twice, so toggles opened and closed in the same tap) and two separate action registries.
+const _G = typeof window !== 'undefined' ? window : globalThis;
+const _state = (_G.__btDomActions ||= { registry: Object.create(null), warned: new Set(), installed: false });
+const registry = _state.registry;
+const warned = _state.warned;
 
 /** Register named actions: registerActions({ closeDay, openDay, ... }). Later calls override earlier ones. */
 export function registerActions(map) {
@@ -141,10 +146,9 @@ function handler(ev) {
   }
 }
 
-let installed = false;
 export function installDomActions(doc = document) {
-  if (installed) return;
-  installed = true;
+  if (_state.installed) return;
+  _state.installed = true;
   BUBBLING.forEach((t) => doc.addEventListener(t, handler));
   TARGET_ONLY.forEach((t) => doc.addEventListener(t, handler, true));
 }

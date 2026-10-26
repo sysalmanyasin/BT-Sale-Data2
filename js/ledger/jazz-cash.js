@@ -34,7 +34,6 @@ import * as LedgerStore from './ledger-store.js';
 import { mgrAutosave } from '../manager/manager-shared.js';
 import * as Tombstones from '../platform/sync-tombstones.js';
 import { act, arg } from '../shared/dom-actions.js';
-import { renderLedgerView } from './ledger-page.js';
 
 // ─── LEDGER constant — the one-time migration into the unified Ledger
 // has already been run for this app's data. Nothing in this file

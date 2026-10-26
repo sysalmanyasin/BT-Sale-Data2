@@ -47,3 +47,9 @@ test('edge functions never answer with Access-Control-Allow-Origin: *', () => {
     .filter((f) => /Access-Control-Allow-Origin['"]?\s*:\s*['"]\*['"]/.test(readFileSync(join(ROOT, f), 'utf8')));
   assert.deepEqual(bad, [], 'use the origin allowlist (see supabase/functions/bt-agent) instead of *');
 });
+
+test('no JS sets an inline event-handler attribute string (the CSP blocks it silently)', () => {
+  const bad = walk('js').filter((f) => f.endsWith('.js'))
+    .filter((f) => /setAttribute\(\s*['"]on[a-z]+['"]/.test(readFileSync(join(ROOT, f), 'utf8')));
+  assert.deepEqual(bad, [], 'use addEventListener or data-on-* actions');
+});

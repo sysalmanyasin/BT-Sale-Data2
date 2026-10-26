@@ -44,6 +44,8 @@ export const LEGACY_GROUPS = {
     'sheetSetCell',
   ],
   "module-defined, exposed through window bridges (core->domain coupling; invert via event-bus or shared/)": [
+    // Not importable: each of these files is also an index.html entry, so an import would load it twice.
+    'initStaffPayslipTab', 'initSyncCenter', 'scCanWrite',
     '_fmCustom',
     'Actions', 'Analytics', 'AttendanceUI', 'CSEC_KEY', 'DAILY', 'EventBus',
     'JC_KEY', 'JC_TALLY_KEY', 'L', 'LEDGER_CUSTOM_TYPES_KEY', 'LEDGER_KEY', 'LedgerStore',

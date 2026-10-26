@@ -20,7 +20,6 @@
    ════════════════════════════════════════════════════════════════════ */
 import { DAILY } from '../platform/config.js';
 import { escapeHtml } from '../shared/html.js';
-import { _fmCustom } from './fields.js';
 
 (function () {
 'use strict';
