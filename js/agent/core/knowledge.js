@@ -2,6 +2,7 @@
 // small redacted chunks, and sends ONLY what changed to the bt-agent function, which embeds and stores them.
 // Nothing is sent until the owner taps "Index now" in the 🧠 Memory card (or turned on automatic updates).
 import { chunkText, chunkSheetRows, redactSensitive, hashText, MAX_CHUNKS_PER_CALL } from '../../shared/agent-shared.js';
+import { Repository } from '../../platform/repository.js';
 
 export const MAX_ITEM_CHUNKS = 30;       // per note / sheet tab
 export const MANIFEST_KEY = 'bt_agent_knowledge_manifest_v1';

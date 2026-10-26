@@ -14,6 +14,8 @@
 //    in the real Sheets app/browser tab, not in-app.
 // ══════════════════════════════════════════════════════════════════
 import { act, registerActions } from '../shared/dom-actions.js';
+import { Repository } from '../platform/repository.js';
+import { Actions } from '../platform/actions.js';
 (function () {
 'use strict';
 
@@ -39,7 +41,7 @@ function _saAgo(iso) {
   return `synced ${Math.floor(h / 24)}d ago`;
 }
 
-// ── Fail-loud logging (mirrors js/drive.js's driveLog pattern) ─────────
+// ── Fail-loud logging (mirrors js/platform/drive.js's driveLog pattern) ─────────
 // Background poll failures used to be console.warn-only, i.e. silently
 // stale with no explanation. This surfaces them the same way Drive
 // backup failures already are.

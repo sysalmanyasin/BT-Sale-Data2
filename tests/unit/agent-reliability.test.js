@@ -6,7 +6,7 @@ import { installDomEnv } from '../helpers/dom-env.js';
 
 installDomEnv();
 globalThis.invalidateRenderCache = () => {};
-const cfg = await import('../../js/config.js');
+const cfg = await import('../../js/platform/config.js');
 const reg = await import('../../js/agent/core/tool-registry.js');
 const { selectDomains, ALL_DOMAINS } = await import('../../js/agent/core/router.js');
 const { runAgent, compactHistory } = await import('../../js/agent/core/agent-client.js');

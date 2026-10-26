@@ -4,8 +4,8 @@
 // month. Clears Advance and Generic (they vary each month) so the
 // user fills them fresh. Days is reset to 0 as well.
 // ══════════════════════════════════════════════════════════════════
-import { Repository } from '../repository.js';
-import { Actions } from '../actions.js';
+import { Repository } from '../platform/repository.js';
+import { Actions } from '../platform/actions.js';
 import { loadSalaryMonth } from './manager-salary.js';
 import { _pettyMonth, _pettyData, _pettyKey, loadPettyMonth } from './manager-petty.js';
 
@@ -68,7 +68,7 @@ function salaryNextMonth() {
 // ══════════════════════════════════════════════════════════════════
 // PETTY — Copy to Next Month
 // ══════════════════════════════════════════════════════════════════
-// Kept only for drive.js/supabase.js, which still directly back up and
+// Kept only for drive.js/platform/supabase.js, which still directly back up and
 // sync whatever old data may exist under this key — the feature that
 // used to write to it (Custom Sections) is retired in favor of the
 // Ledger's "Misc Sections" (see ledger-page.js), but the key itself

@@ -7,13 +7,13 @@
 //
 // Covers Sales, Manager, Inventory, Closing — the 4 domains with more
 // than one sub-section — reusing the exact same domain->kids tree
-// js/nav-sections.js already builds for the Search & All Sections
+// js/ui/nav-sections.js already builds for the Search & All Sections
 // drawer, so there's exactly one source of truth for "what are this
 // domain's sub-sections," not a second hand-maintained list.
 //
 // Replaces the Manager page's old inline CREDIT DETAIL / WORKING pill-
 // button clusters (#mgr-tabs, now display:none in css/manager.css but
-// still in the DOM — js/nav-sections.js's '.mgr-tab[href]' scraper, and
+// still in the DOM — js/ui/nav-sections.js's '.mgr-tab[href]' scraper, and
 // therefore this strip too, both still read them there).
 //
 // Renders on document.body.dataset.domain (set by showPage() in ui.js)
@@ -25,7 +25,7 @@
 // again).
 // ══════════════════════════════════════════════════════════════════════
 
-import { escapeHtml as _esc } from './shared/html.js';
+import { escapeHtml as _esc } from '../shared/html.js';
 (function () {
   'use strict';
 

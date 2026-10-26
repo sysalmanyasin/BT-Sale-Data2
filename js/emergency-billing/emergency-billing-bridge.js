@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════════════════════════════
 // EMERGENCY BILLING BRIDGE — reads/writes emergency_invoices,
 // emergency_invoice_items, emergency_stock_deltas on the main Supabase
-// project (wetbugzzchkghpzmowod) — the SAME project as js/supabase.js's
+// project (wetbugzzchkghpzmowod) — the SAME project as js/platform/supabase.js's
 // bt_salesdata, NOT the separate Pharmacy Audit Hub project
 // inventory-bridge.js / audit-bridge.js read from.
 //
@@ -44,7 +44,7 @@ function _getClient() {
 export function isConnected() { return true; }
 
 // Reuses sync-center.js's existing permanent per-device UDID
-// (window._sc_getUDID, see js/sync-center.js) rather than minting a
+// (window._sc_getUDID, see js/platform/sync-center.js) rather than minting a
 // second device-identity scheme — this app already has one.
 function _deviceUuid() {
   try { return (typeof window._sc_getUDID === 'function') ? window._sc_getUDID() : 'unknown-device'; }

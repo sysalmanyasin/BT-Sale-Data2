@@ -391,7 +391,7 @@ table.eb-refund-table td { padding: 6px 4px; border-bottom: 1px solid var(--bord
 /* ── Print — only the receipt shows, everything else on the page is
    hidden. Same pattern POS's own print.css uses for its receipt slip:
    a dedicated print-only block rather than routing through this app's
-   shared Print.render() engine (js/print.js), which targets full-page
+   shared Print.render() engine (js/lib/print.js), which targets full-page
    KPI/table reports, not a narrow thermal-style slip. ─────────────── */
 @media print {
   body * { visibility: hidden; }

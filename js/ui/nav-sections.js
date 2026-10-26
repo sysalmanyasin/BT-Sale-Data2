@@ -48,8 +48,8 @@
 // here a real, back-able history entry for free.
 // ══════════════════════════════════════════════════════════════════════
 
-import { escapeHtml as _esc } from './shared/html.js';
-import { act, arg, registerActions } from './shared/dom-actions.js';
+import { escapeHtml as _esc } from '../shared/html.js';
+import { act, arg, registerActions } from '../shared/dom-actions.js';
 (function () {
   'use strict';
 
@@ -114,7 +114,7 @@ import { act, arg, registerActions } from './shared/dom-actions.js';
         map[id] = {
           label: (el.querySelector(src.labelSel) || {}).textContent || id,
           // .bicon/.rail-ic's emoji got swapped for an inline <svg> by
-          // js/icons.js on load, so its textContent is empty now —
+          // js/ui/icons.js on load, so its textContent is empty now —
           // carry the page id through as svgKey instead and let
           // _renderNode look it up in BT_ICONS, with the old '📄' only
           // as a last-resort fallback for any id that (deliberately)
@@ -369,7 +369,7 @@ import { act, arg, registerActions } from './shared/dom-actions.js';
   // User tap on a group row (label, icon or chevron): expand/collapse it.
   // Opening a top-level group also closes any other open top-level group
   // (accordion) so the list stays short on a phone. Kept separate from
-  // _toggleGroup, which js/global-search.js calls to auto-expand matches
+  // _toggleGroup, which js/ui/global-search.js calls to auto-expand matches
   // and must not collapse siblings.
   function _tapGroup(el) {
     const group = el.closest('.sections-group');
@@ -389,7 +389,7 @@ import { act, arg, registerActions } from './shared/dom-actions.js';
     // A group that has its own page (Sales, Manager, Tools...) now expands
     // on tap instead of navigating, so its page stays reachable through an
     // explicit first row. Built here at render time only; _buildTree()
-    // (also used by js/subtab-strip.js) is unchanged.
+    // (also used by js/ui/subtab-strip.js) is unchanged.
     const kids = (isGroup && node.href)
       ? [{ label: 'Open ' + node.label, icon: '↗️', href: node.href, external: node.external, kids: [] }].concat(node.kids)
       : (node.kids || []);
@@ -462,7 +462,7 @@ import { act, arg, registerActions } from './shared/dom-actions.js';
       clearTimeout(timer);
       timer = setTimeout(() => {
         fired = true;
-        if (navigator.vibrate) { try { navigator.vibrate(15); } catch (_) {} }
+        if (navigator.vibrate) { try { navigator.vibrate(15); } catch (_) { /* vibration unsupported: cosmetic only */ } }
         openSectionsDrawer();
       }, LONG_PRESS_MS);
     };
@@ -488,7 +488,7 @@ import { act, arg, registerActions } from './shared/dom-actions.js';
     navSectionsOpenExternal(href) { window.open(href, '_blank'); closeSectionsDrawer(); },
     navSectionsGoHash(href) { location.hash = href; closeSectionsDrawer(); },
   });
-  // getTree: exposed so js/subtab-strip.js can render the same
+  // getTree: exposed so js/ui/subtab-strip.js can render the same
   // domain->kids tree into its sub-tab strip, instead of re-deriving
   // (and risking drift from) its own copy of this mapping. Returns a
   // fresh build every call — cheap (small DOM, runs on open/nav-change

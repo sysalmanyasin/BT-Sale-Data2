@@ -30,14 +30,14 @@
 // repeating the exact wording used last time for the same insight id.
 // ══════════════════════════════════════════════════════════════════════
 
-import { MONTHLY, DAILY, n, negR, creditSales, cashSales } from '../config.js';
-import { Repository } from '../repository.js';
-import { Actions } from '../actions.js';
+import { MONTHLY, DAILY, n, negR, creditSales, cashSales } from '../platform/config.js';
+import { Repository } from '../platform/repository.js';
+import { Actions } from '../platform/actions.js';
 import { computeInventoryBuckets } from '../shared/summary-calc.js';
 import * as ClosingBridge from '../closing/closing-bridge.js';
 import * as AuditBridge from '../audit/audit-bridge.js';
 import * as InventoryBridge from '../inventory/inventory-bridge.js';
-import { aimRulesCheckAll } from '../rules-engine.js';
+import { aimRulesCheckAll } from '../lib/rules-engine.js';
 import { mgrMonths } from '../manager/manager-shared.js';
 import { _crdData, _crdNet } from '../manager/manager-credit.js';
 import { _salRows, _salNet } from '../manager/manager-salary.js';

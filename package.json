@@ -15,8 +15,10 @@
     "build:check": "node scripts/build.mjs --check",
     "readme:sync": "node scripts/readme-facts.mjs --write",
     "readme:check": "node scripts/readme-facts.mjs --check",
-    "lint": "eslint . --max-warnings 1094",
-    "lint:fix-report": "eslint . --format stylish"
+    "lint": "eslint . --max-warnings 0",
+    "lint:fix-report": "eslint . --format stylish",
+    "bundle:check": "node scripts/bundle-check.mjs",
+    "test:coverage": "c8 --check-coverage --lines 68 --branches 72 --functions 65 --reporter=text-summary --include=\"js/**\" node --test \"tests/**/*.test.js\""
   },
   "repository": {
     "type": "git",
@@ -25,6 +27,8 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "c8": "^10.1.3",
+    "esbuild": "^0.25.12",
     "eslint": "^9.39.5",
     "globals": "^17.13.0",
     "jsdom": "^30.0.1"

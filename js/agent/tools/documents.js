@@ -4,6 +4,7 @@
 import { registerTool } from '../core/tool-registry.js';
 import { clampInt } from './_util.js';
 import { callAction } from '../core/server.js';
+import { Repository } from '../../platform/repository.js';
 
 const NOTES_KEY = 'bt_notes_v1';
 const readNotes = () => { try { const v = JSON.parse(Repository.getItem(NOTES_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (_) { return []; } };

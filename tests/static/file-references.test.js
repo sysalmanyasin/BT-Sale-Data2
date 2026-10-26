@@ -18,7 +18,7 @@ const REPO_ROOT = path.resolve(import.meta.dirname, '..', '..');
 const indexHtml = fs.readFileSync(path.join(REPO_ROOT, 'index.html'), 'utf8');
 const swJs = fs.readFileSync(path.join(REPO_ROOT, 'sw.js'), 'utf8');
 
-// Strip a trailing cache-busting query string, e.g. "js/print.js?v=20260806a".
+// Strip a trailing cache-busting query string, e.g. "js/lib/print.js?v=20260806a".
 const stripQuery = (url) => url.split('?')[0];
 const isLocal = (url) => !/^https?:\/\//i.test(url) && !url.startsWith('//');
 

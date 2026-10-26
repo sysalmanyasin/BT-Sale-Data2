@@ -11,6 +11,9 @@
 // made in both places by hand, and they could silently drift apart.
 // ══════════════════════════════════════════
 import { act } from '../shared/dom-actions.js';
+import { DAILY_ADD_KEYS, DAILY_SUB_KEYS, RETURN_FIELDS, _printDay, fc, ff, n, negR } from '../platform/config.js';
+import { Repository } from '../platform/repository.js';
+import { Actions } from '../platform/actions.js';
 (function() {
 'use strict';
 

@@ -6,10 +6,11 @@
 // Sync History (last 10 events stored in localStorage)
 // ══════════════════════════════════════════════════════════════════
 
-import { MONTHLY, DAILY, STAFF } from './config.js';
+import { MONTHLY, DAILY, STAFF, recomputeAllMonths } from './config.js';
 import { Repository } from './repository.js';
 import { Actions } from './actions.js';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './shared/backend-config.js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../shared/backend-config.js';
+import { initSyncCenter, scCanWrite } from './sync-center.js';
 
 const SB_URL     = SUPABASE_URL;
 const SB_KEY     = SUPABASE_ANON_KEY;
@@ -679,7 +680,7 @@ async function pullFromSupabase(silent = false) {
 // ══════════════════════════════════════════════════════════════════
 function _startRealtime() {
   const db = _sb();
-  if (_sbChannel) { try { db.removeChannel(_sbChannel); } catch(_) {} }
+  if (_sbChannel) { try { db.removeChannel(_sbChannel); } catch(_) { /* best-effort: failure is intentionally non-fatal here */ } }
   _sbChannel = db
     .channel('bt-sync')
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: SB_TABLE }, (payload) => {

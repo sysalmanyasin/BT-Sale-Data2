@@ -1,8 +1,8 @@
 // Sales domain — READ tools over DAILY / MONTHLY / targets.
 // All maths is done here (deterministic); the model only explains.
 import { registerTool } from '../core/tool-registry.js';
-import { Repository } from '../../repository.js';
-import { DAILY, MONTHLY, mBanks, creditSales } from '../../config.js';
+import { Repository } from '../../platform/repository.js';
+import { DAILY, MONTHLY, mBanks, creditSales } from '../../platform/config.js';
 import { num, rs, normMonth, normDay, monthSortVal, currentMonthYear, clampInt, pctChange, dayOfMonth, sameMonth, parseAppDate } from './_util.js';
 
 const targets = () => {

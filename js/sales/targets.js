@@ -1,9 +1,9 @@
 // ══════════════════════════════════════════
 // TARGETS
 // ══════════════════════════════════════════
-import { Repository } from '../repository.js';
-import { Actions } from '../actions.js';
-import { MONTHLY, n, fc } from '../config.js';
+import { Repository } from '../platform/repository.js';
+import { Actions } from '../platform/actions.js';
+import { MONTHLY, n, fc } from '../platform/config.js';
 import { act } from '../shared/dom-actions.js';
 
 const TGT_K = 'bt_targets';

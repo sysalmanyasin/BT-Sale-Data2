@@ -58,8 +58,8 @@
 /* ── Credit / Misc Ledger ─────────────────────────────────────── */
 /* .cl-mode-tabs retired from view (Aug 2026), same as Manager's
    #mgr-tabs — its 2 destinations are covered by the rail/drawer
-   (desktop) and the sub-tab strip (mobile, js/subtab-strip.js), both
-   already reading js/nav-sections.js's '.cl-mode-tab[href]' scraper.
+   (desktop) and the sub-tab strip (mobile, js/ui/subtab-strip.js), both
+   already reading js/ui/nav-sections.js's '.cl-mode-tab[href]' scraper.
    Kept in the DOM, not deleted — still the one real source of those 2
    rows, and clnSwitchMode()'s own logic is untouched either way. The
    page's own hero title (#cln-cl-title) still shows which mode you're

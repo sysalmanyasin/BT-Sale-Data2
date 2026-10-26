@@ -20,7 +20,7 @@
 // from this file.
 // ══════════════════════════════════════════════════════════════════════
 
-// Same project as the main app's own data (js/supabase.js's SB_URL/
+// Same project as the main app's own data (js/platform/supabase.js's SB_URL/
 // SB_KEY) — NOT the separate Pharmacy Audit Hub project inventory-
 // bridge.js/audit/audit-bridge.js use. Attendance is coupled to STAFF
 // records, which belong to this project's world.

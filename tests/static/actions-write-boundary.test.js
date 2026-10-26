@@ -2,10 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const actions = readFileSync(new URL('../../js/actions.js', import.meta.url), 'utf8');
+const actions = readFileSync(new URL('../../js/platform/actions.js', import.meta.url), 'utf8');
 const index = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
 const moduleIndex = readFileSync(new URL('../../docs/module-index.md', import.meta.url), 'utf8');
-const repository = readFileSync(new URL('../../js/repository.js', import.meta.url), 'utf8');
+const repository = readFileSync(new URL('../../js/platform/repository.js', import.meta.url), 'utf8');
 
 test('daily edit calculates a candidate before committing through Repository', () => {
   const start = actions.indexOf('function editDailyEntry(');

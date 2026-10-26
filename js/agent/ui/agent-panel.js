@@ -24,7 +24,7 @@ import { getKillState, setKillState } from '../core/kill-switch.js';
 import { loadPendingUndos, markUndone } from '../core/undo-store.js';
 import { emit as emitTelemetry, subscribe as subscribeTelemetry } from '../core/telemetry.js';
 import * as V from './voice.js';
-import { areaOf, viewingLabel, suggestionsFor, hidesButton } from '../core/page-suggestions.js';
+import { viewingLabel, suggestionsFor, hidesButton } from '../core/page-suggestions.js';
 import { summarizeUsage, summarizeAudit, fetchUsage, fetchAudit } from '../core/usage-stats.js';
 import { escapeHtml as escHtml } from '../../shared/html.js';
 

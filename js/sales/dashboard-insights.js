@@ -1,8 +1,9 @@
-import { MONTHLY, n, ff, pct } from '../config.js';
+import { MONTHLY, n } from '../platform/config.js';
 import { Analytics } from './analytics.js';
-import { Repository } from '../repository.js';
-import { Actions } from '../actions.js';
+import { Repository } from '../platform/repository.js';
+import { Actions } from '../platform/actions.js';
 import { act } from '../shared/dom-actions.js';
+import { aimRulesCheckAll } from '../lib/rules-engine.js';
 
 /**
  * ╔══════════════════════════════════════════════════════════════════════╗
@@ -421,7 +422,7 @@ function _dbiGoInsight(idx) {
   const insights = _dbiComputeInsights();
   if (!insights.length) return;
   _dbiInsightIdx = idx % insights.length;
-  try { Actions.saveFeatureData(_DBI_INSIGHT_IDX, JSON.stringify({ date: _dbiToday(), idx: _dbiInsightIdx })); } catch(_) {}
+  try { Actions.saveFeatureData(_DBI_INSIGHT_IDX, JSON.stringify({ date: _dbiToday(), idx: _dbiInsightIdx })); } catch(_) { /* best-effort: failure is intentionally non-fatal here */ }
   const ins = insights[_dbiInsightIdx];
   const textEl = document.getElementById('dbi-insight-text');
   const dotsEl = document.getElementById('dbi-insight-dots');
@@ -448,7 +449,7 @@ function _dbiBuildDiffBadge() {
   const now = Date.now();
   let html = '';
   let prev = null;
-  try { prev = JSON.parse(Repository.getItem(_DBI_LAST_KEY) || 'null'); } catch(_) {}
+  try { prev = JSON.parse(Repository.getItem(_DBI_LAST_KEY) || 'null'); } catch(_) { /* storage unavailable (private mode or quota): best-effort */ }
 
   const result = Analytics.getSalesDiffSinceLastLook(prev);
 
@@ -469,7 +470,7 @@ function _dbiBuildDiffBadge() {
     Actions.saveFeatureData(_DBI_LAST_KEY, JSON.stringify({
       ts: now, totalSales: result.lastTotal, totalMonths: result.lastMonths
     }));
-  } catch(_) {}
+  } catch(_) { /* best-effort: failure is intentionally non-fatal here */ }
 
   return html;
 }
@@ -491,7 +492,7 @@ function _dbiTimeAgo(ts) {
 function _dbiBuildRuleAlerts() {
   if (typeof aimRulesCheckAll !== 'function') return '';
   let fired = [];
-  try { fired = aimRulesCheckAll(); } catch(_) {}
+  try { fired = aimRulesCheckAll(); } catch(_) { /* best-effort: failure is intentionally non-fatal here */ }
   if (!fired.length) return '';
 
   const items = fired.map(f => {

@@ -15,5 +15,14 @@ Scale rules for new modules: new feature = new folder under its domain; no new `
 ## Phase 4 progress: inline handlers — DONE (0 left)
 - `js/shared/dom-actions.js` is the delegated dispatcher (`data-on-click="action" data-args='[...]'`, plus `data-self-only`, `data-key`, `data-confirm`, `data-stop`, `data-then` for `a(); b()` chains). Legacy `window.*` names still resolve through it; new code uses `registerActions()` and builds attributes with `act()` (values are JSON + HTML escaped).
 - **index.html: 267 -> 0** and **js/ templates: 221 -> 0** inline handlers. `tests/static/no-inline-handlers.test.js` enforces zero in both, that every action name resolves to a real function, and that files importing/using the helpers do so correctly.
-- Classic (non-module) scripts (`drive.js`, `sales/dashboard-heatmap.js`) cannot `import`; they use `window.BTDomActions`.
+- Classic (non-module) scripts (`platform/drive.js`, `sales/dashboard-heatmap.js`) cannot `import`; they use `window.BTDomActions`.
 - Next: ship a strict CSP (drop `'unsafe-inline'` for scripts; the 3 inline `<script>` blocks in index.html need moving or hashing first), then retire `window.*` bridges module by module (actions registered via `registerActions()` instead).
+
+## Phase 5 progress: layers, globals, CSP, CORS, size
+- **Layers:** `js/` has no loose files. Core is three folders: `platform/` (state, sync, auth, boot), `ui/` (shell, nav, search, icons), `lib/` (date, format, print, rules). `tests/static/domain-boundaries.test.js` treats all three as the core layer; `file-size-budget.test.js` fails if a loose file reappears.
+- **Globals:** 86 implicit globals became real `import`s. `no-undef` is an **error**; the remaining 166 names are the explicit registry in `config/legacy-globals.mjs` (ratcheted by `tests/static/legacy-globals.test.js`). 19 of them are dead `typeof`-guarded hooks defined nowhere: delete the call sites. The rest are core->domain couplings and `window` bridges.
+- **Lint:** 0 errors, 0 warnings (`--max-warnings 0`), edge-function `.js` helpers included.
+- **CSP:** no inline scripts remain (`platform/early-prefs.js`, `sw-register.js`, `gauth-preload.js`); `index.html` carries a `script-src` CSP; `csp-and-cors.test.js` keeps every script host covered. Smoke-test sign-in, the Sheets picker and the attendance map after deploy.
+- **CORS:** `set-staff-login`, `medicine-ai-info`, `google-drive` allow only `https://bt.duapharma.com` (env `ALLOWED_ORIGINS` overrides). Redeploy the three functions.
+- **Build safety:** `npm run bundle:check` bundles every module entry with esbuild (also a test). `npm run test:coverage` enforces a coverage floor in CI. `sw.js` history moved to `CHANGELOG.md`.
+- **Still open:** split the 7 files over 1,000 lines (caps in `file-size-budget.test.js`), retire the registry names (convert/expose via imports, then lower the budget), and ship a production bundle (esbuild is verification-only today).

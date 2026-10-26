@@ -7,12 +7,12 @@
 import { registerTool } from '../core/tool-registry.js';
 import { amountChecks, dateChecks, isoToday, isoToApp, rsFmt } from '../core/guard.js';
 import { afterWrite } from '../core/after-write.js';
-import { Repository } from '../../repository.js';
-import { Actions } from '../../actions.js';
+import { Repository } from '../../platform/repository.js';
+import { Actions } from '../../platform/actions.js';
 import { LedgerActions } from '../../ledger/ledger-actions.js';
 import * as LedgerStore from '../../ledger/ledger-store.js';
 import { addNote, deleteNote, keyForStaff } from '../../manager/staff-notes.js';
-import { DAILY, MONTHLY, DAILY_ADD_KEYS, DAILY_SUB_KEYS, RETURN_FIELDS, computeDailyTotals, negR } from '../../config.js';
+import { DAILY, MONTHLY, DAILY_ADD_KEYS, DAILY_SUB_KEYS, RETURN_FIELDS, computeDailyTotals, negR } from '../../platform/config.js';
 import { num, normDay, normMonth, sameMonth, MON, FULL } from './_util.js';
 import { resolveStaff as oneStaff } from './_names.js';
 

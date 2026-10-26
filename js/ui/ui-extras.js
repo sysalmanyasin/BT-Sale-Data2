@@ -3,7 +3,7 @@
 //
 //  1. (Left-edge coloured tab strip REMOVED per request — it duplicated
 //     the permanent ☰ button + "All Sections" sidebar drawer added in
-//     js/nav-sections.js/index.html, which covers every page, not just
+//     js/ui/nav-sections.js/index.html, which covers every page, not just
 //     the 4 this strip knew about, and doesn't cost 8px of every page's
 //     left edge permanently. TABS/PAGE_GROUP, _buildEdgeStrip(),
 //     _updateStrip(), and #uex-strip's injected CSS all removed together
@@ -20,7 +20,7 @@
   // 3a. SELF-HEAL: auto-create targets for every month that's missing one
   // ─────────────────────────────────────────────────────────────────────
   // Called on load (and again when Tools tab opens).  Reads window.MONTHLY
-  // (the global sales data array, populated by config.js/repository.js —
+  // (the global sales data array, populated by config.js/platform/repository.js —
   // NOT data-base.js, which was unused dead code and has been removed)
   // and compares every Month_Year entry against bt_targets.  Any month
   // that exists in

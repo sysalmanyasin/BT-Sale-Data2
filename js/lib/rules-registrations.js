@@ -22,7 +22,9 @@
 // schema change (e.g. a saved-at timestamp) before this can be a real
 // rule rather than a guess.
 // ══════════════════════════════════════════════════════════════════════
-import { notSoldStock } from './shared/inventory-metrics.js';
+import { notSoldStock } from '../shared/inventory-metrics.js';
+import { MONTHLY } from '../platform/config.js';
+import { Repository } from '../platform/repository.js';
 function n(v) { return Number(v) || 0; }
   function fmt(v) { return Math.round(n(v)).toLocaleString('en-PK'); }
 

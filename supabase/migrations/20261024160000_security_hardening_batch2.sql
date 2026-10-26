@@ -8,7 +8,7 @@
 --    active location (incl. qr_secret) with it. Closing that needs a new APK.
 -- 2. pdf-library storage bucket: was PUBLIC with list/upload/delete open to everyone.
 --    Now private; only an allow-listed signed-in user can list/upload/delete, and the app
---    opens files through 5-minute signed URLs (js/pdf-library.js).
+--    opens files through 5-minute signed URLs (js/lib/pdf-library.js).
 --
 -- ROLLBACK:
 --   create policy attendance_locations_insert on public.attendance_locations for insert to anon, authenticated with check (true);

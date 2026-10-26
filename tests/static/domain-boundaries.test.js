@@ -2,7 +2,7 @@
 //
 // Layers (low -> high):   shared/  <  core (js/*.js)  <  domains (js/<domain>/)
 //   1. shared/ imports only shared/.
-//   2. core imports only core + shared/ — never a feature domain.
+//   2. core (js/platform, js/ui, js/lib) imports only core + shared/ — never a feature domain.
 //   3. Domain -> domain imports are a deliberate, reviewed list (ALLOWED_DOMAIN_LINKS).
 //      A NEW link fails this test: either route the dependency through shared/ or core, or add the
 //      pair below in the same PR so the coupling is visible in review.
@@ -22,7 +22,10 @@ function walk(dir, out = []) {
 }
 const files = walk('js');
 const known = new Set(files);
-const domainOf = (f) => { const p = f.split('/'); return p.length === 2 ? 'core' : p[1]; };
+// The core layer is the three infrastructure folders (platform/ = state, sync, auth, boot; ui/ = shell,
+// nav, search, icons; lib/ = date/format/print/rules helpers). Everything else under js/ is a feature domain.
+const CORE_DIRS = new Set(['platform', 'ui', 'lib']);
+const domainOf = (f) => { const p = f.split('/'); return p.length === 2 || CORE_DIRS.has(p[1]) ? 'core' : p[1]; };
 const EDGE = /^\s*(?:import|export)[^'";]*?from\s*['"](\.[^'"]+)['"]|^\s*import\s*['"](\.[^'"]+)['"]/gm;
 
 const edges = []; // { from, to, a, b }

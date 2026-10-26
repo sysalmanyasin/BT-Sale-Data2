@@ -9,7 +9,7 @@
 // ══════════════════════════════════════════════════════════════════════
 
 import { Repository } from './repository.js';
-import { computeDailyTotals } from './config.js';
+import { computeDailyTotals, recomputeMonthly } from './config.js';
 import { EventBus } from './event-bus.js';
 
 export const Actions = (function () {

@@ -2,7 +2,7 @@
 // SYNC TOMBSTONES
 //
 // ROOT CAUSE of "deleted row comes back after refresh/sync": every ledger
-// merge in supabase.js (js/supabase.js's mergeIncomingData) works by
+// merge in supabase.js (js/platform/supabase.js's mergeIncomingData) works by
 // unioning local entries with remote entries by id — "remote wins on
 // pull", "local wins on push but fill gaps from remote". That union has
 // no concept of a delete: removing an id from the LOCAL array just looks
@@ -28,7 +28,7 @@
 // Classic-script bridge: supabase.js is a non-module `<script defer>`
 // (see index.html), so this also hangs itself off `window.SyncTombstones`
 // — same established pattern as LEDGER_KEY/JC_KEY elsewhere in this app.
-// Load this BEFORE ledger-store.js/ledger/jazz-cash.js/supabase.js in index.html.
+// Load this BEFORE ledger-store.js/ledger/jazz-cash.js/platform/supabase.js in index.html.
 // ══════════════════════════════════════════════════════════════════════
 
 import { Repository } from './repository.js';

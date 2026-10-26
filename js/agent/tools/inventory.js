@@ -1,7 +1,7 @@
 // Inventory domain — READ tools over the synced product list (read-only
 // bridge from the Pharmacy Audit Hub). Cover days etc. are computed here.
 import { registerTool } from '../core/tool-registry.js';
-import { BTSearch } from '../../bt-search.js';
+import { BTSearch } from '../../lib/bt-search.js';
 import { num, rs, clampInt } from './_util.js';
 import { notSoldStock, qtyOf, priceOf } from '../../shared/inventory-metrics.js';
 

@@ -6,9 +6,9 @@
 // "Copy to Next Month" (rolls each employee's net into next month's
 // opening balance).
 // ══════════════════════════════════════════════════════════════════════
-import { Repository } from '../repository.js';
-import { STAFF } from '../config.js';
-import { _ni, _fc2, _mgrPopSel, mgrLoad, mgrSave, mgrAutosave, reconcileStaffRows, activeStaff } from './manager-shared.js';
+import { Repository } from '../platform/repository.js';
+import { STAFF } from '../platform/config.js';
+import { _ni, _fc2, _mgrPopSel, mgrLoad, mgrSave, mgrAutosave, reconcileStaffRows, activeStaff, _inp } from './manager-shared.js';
 import { act, arg } from '../shared/dom-actions.js';
 
 // ══════════════════════════════

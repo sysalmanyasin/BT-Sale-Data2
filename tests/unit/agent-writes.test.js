@@ -6,9 +6,9 @@ import { installDomEnv } from '../helpers/dom-env.js';
 
 installDomEnv();
 globalThis.invalidateRenderCache = () => {}; // classic-script global the real app defines
-const cfg = await import('../../js/config.js');
+const cfg = await import('../../js/platform/config.js');
 globalThis.recomputeMonthly = cfg.recomputeMonthly; // browser globals the real app has (classic-script scope)
-const { Repository } = await import('../../js/repository.js');
+const { Repository } = await import('../../js/platform/repository.js');
 globalThis.Repository = Repository;
 const LedgerStore = await import('../../js/ledger/ledger-store.js');
 const reg = await import('../../js/agent/core/tool-registry.js');

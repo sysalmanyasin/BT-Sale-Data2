@@ -29,7 +29,7 @@ const DRIVE_TOKEN_K = 'bt_drive_token_cache';
 function _driveSaveToken(token, expiresInSec) {
   if (!token) return;
   const exp = Date.now() + (Math.max(60, (expiresInSec||3300)) * 1000) - 60000; // 1min safety margin
-  try { localStorage.setItem(DRIVE_TOKEN_K, JSON.stringify({ token, exp })); } catch(e) {}
+  try { localStorage.setItem(DRIVE_TOKEN_K, JSON.stringify({ token, exp })); } catch(e) { /* storage unavailable (private mode or quota): best-effort */ }
 }
 function _driveLoadCachedToken() {
   try {
@@ -38,7 +38,7 @@ function _driveLoadCachedToken() {
     const { token, exp } = JSON.parse(raw);
     if (token && exp > Date.now()) return token;
     localStorage.removeItem(DRIVE_TOKEN_K);
-  } catch(e) {}
+  } catch(e) { /* best-effort: failure is intentionally non-fatal here */ }
   return null;
 }
 // Restore a still-valid token immediately on script load, before any
@@ -290,7 +290,7 @@ async function _driveListFiles(pageSize) {
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return (await r.json()).files || [];
 }
-function _driveSaveRec(key, rec) { try { Actions.saveFeatureData(key, JSON.stringify(rec)); } catch (e) {} }
+function _driveSaveRec(key, rec) { try { Actions.saveFeatureData(key, JSON.stringify(rec)); } catch (e) { /* best-effort: failure is intentionally non-fatal here */ } }
 
 // ── health line in Tools ──────────────────────────────────────────────────
 function driveRefreshHealth() {

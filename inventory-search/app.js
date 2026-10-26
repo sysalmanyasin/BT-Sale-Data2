@@ -8,13 +8,13 @@
 // scopes access, exactly as that file's header explains).
 //
 // Reuses two existing modules from the main app rather than
-// reimplementing them: BTFormat (js/bt-format.js) for currency, and
-// BTSearch (js/bt-search.js) for fuzzy ranking — same engine that
+// reimplementing them: BTFormat (js/lib/bt-format.js) for currency, and
+// BTSearch (js/lib/bt-search.js) for fuzzy ranking — same engine that
 // powers the All Sections drawer.
 // ══════════════════════════════════════════════════════════════════════
 
-import { BTFormat } from '../js/bt-format.js';
-import { BTSearch } from '../js/bt-search.js';
+import { BTFormat } from '../js/lib/bt-format.js';
+import { BTSearch } from '../js/lib/bt-search.js';
 
 const INV_SUPABASE_URL = 'https://vtcrdkqhuvxatclobsby.supabase.co';
 const INV_SUPABASE_ANON_KEY = 'sb_publishable_h-Z3ldRXyb18HEjF68cJ0g_tmRgbrAy';

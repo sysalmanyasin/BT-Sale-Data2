@@ -2,7 +2,7 @@
 // Every ~90 s while the app is open it: reads the live POS total, records an intraday sample, locks the AI's call for
 // today (once), projects the close, settles earlier days against their final POS total, and celebrates when the live
 // sale reaches the call or a finished day was called within 5%. Nothing is written to the business data.
-import { DAILY } from '../config.js';
+import { DAILY } from '../platform/config.js';
 import { weekdayForecast } from '../shared/planning-metrics.js';
 import * as F from '../shared/today-forecast.js';
 import * as V from '../agent/ui/voice.js';

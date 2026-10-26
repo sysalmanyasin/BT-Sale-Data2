@@ -5,9 +5,9 @@
 //   money_overview    (manager)    staff credit + ledger/petty-cash categories vs the same period of earlier months
 // All maths lives in js/shared/planning-metrics.js (pure, unit-tested). Nothing here writes anything.
 import { registerTool } from '../core/tool-registry.js';
-import { Repository } from '../../repository.js';
+import { Repository } from '../../platform/repository.js';
 import * as LedgerStore from '../../ledger/ledger-store.js';
-import { DAILY } from '../../config.js';
+import { DAILY } from '../../platform/config.js';
 import { groupedLineItems } from '../../str/str-shared.js';
 import { creditNet } from '../../shared/credit-alerts.js';
 import { weekdayForecast, reorderDraft, strFillRate, categorySpikes, inTransitByCode } from '../../shared/planning-metrics.js';

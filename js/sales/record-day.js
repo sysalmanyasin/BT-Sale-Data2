@@ -24,10 +24,10 @@
 // cleared on tab close, not persisted across sessions).
 // ══════════════════════════════════════════════════════════════════════
 
-import { EventBus } from '../event-bus.js';
-import { Repository } from '../repository.js';
-import { BTFormat } from '../bt-format.js';
-import { n } from '../config.js';
+import { EventBus } from '../platform/event-bus.js';
+import { Repository } from '../platform/repository.js';
+import { BTFormat } from '../lib/bt-format.js';
+import { n } from '../platform/config.js';
 
 const MIN_HISTORY_DAYS = 5;
 const SHOWN_KEY = 'bt_record_day_shown';
@@ -62,7 +62,7 @@ function _celebrate(today, prevBest, prevDate) {
   const msg = '🎉 New Daily Sales Record! ' + BTFormat.currency(today) +
     ' — beats ' + BTFormat.currency(prevBest) + ' (' + prevDate + ')';
   // toast() (ui.js) is a bare global read here the same way every other
-  // classic-script consumer already reads it (see auth.js/conflict-ui.js
+  // classic-script consumer already reads it (see auth.js/platform/conflict-ui.js
   // etc for the identical typeof-guard convention).
   if (typeof toast === 'function') toast(msg, 'record');
 }

@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════════════════
-// SMOKE TEST — js/event-bus.js: Floor 3's single notification channel.
+// SMOKE TEST — js/platform/event-bus.js: Floor 3's single notification channel.
 // Every Repository write announces itself here; every Page subscribes
 // here to know when to re-render. If this is broken, the whole app's
 // reactivity silently stops working without throwing anywhere obvious
@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { installDomEnv } from '../helpers/dom-env.js';
 
 installDomEnv();
-const { EventBus } = await import('../../js/event-bus.js');
+const { EventBus } = await import('../../js/platform/event-bus.js');
 
 describe('EventBus (smoke)', () => {
   test('module loads and bridges onto window (classic-script consumers depend on this)', () => {

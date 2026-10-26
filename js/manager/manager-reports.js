@@ -7,12 +7,13 @@
 // same "single door" pattern as the rest of the app's print flow
 // (see print.js's own header comment).
 // ══════════════════════════════════════════════════════════════════════
-import { Print } from '../print.js';
-import { STAFF } from '../config.js';
+import { Print } from '../lib/print.js';
+import { STAFF } from '../platform/config.js';
 import { _ni, _fc2, _mgrEsc } from './manager-shared.js';
 import { _crdData, _crdData_cur, _crdNet, loadCreditMonth } from './manager-credit.js';
 import { _genRows_cur, _genFinal, _genIncentive } from './manager-generic.js';
 import { _salRows_cur, _salNet, _salCols, loadSalaryMonth } from './manager-salary.js';
+import { BTDate } from '../lib/bt-date.js';
 
 // MANAGER PRINT FUNCTIONS
 // ══════════════════════════════

@@ -2,7 +2,7 @@ import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { installDomEnv } from '../helpers/dom-env.js';
 installDomEnv();
-const { Repository } = await import('../../js/repository.js'); globalThis.Repository = Repository;
+const { Repository } = await import('../../js/platform/repository.js'); globalThis.Repository = Repository;
 const H = await import('../../js/agent/core/history.js');
 const K = await import('../../js/agent/core/knowledge.js');
 

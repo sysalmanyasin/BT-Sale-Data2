@@ -4,3 +4,6 @@ node_modules/
 # time — must never be committed (unlike shared-debug.keystore, which
 # is intentionally checked in as a low-stakes shared dev/sideload key).
 release.keystore
+
+.bundle-check/
+coverage/

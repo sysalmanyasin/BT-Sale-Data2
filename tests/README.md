@@ -29,11 +29,11 @@ Beyond the table below, the suite also contains: `tests/unit/agent-*.test.js` (a
 | **Static integrity** | `tests/static/file-references.test.js` | Every `<script>`/`<link>` in `index.html` points at a real file; every entry in `sw.js`'s `APP_SHELL` exists; every script/stylesheet `index.html` loads is actually precached (the exact "silently fails offline" drift the app's own README calls out as a real, previously-seen failure mode) |
 | | `tests/static/manifest.test.js` | `manifest.json` is valid JSON, has the required PWA fields, and every icon/shortcut file it points at exists |
 | | `tests/static/syntax-check.test.js` | Every JS file under `js/` (162 at last count) and `sw.js` parses cleanly (`node --check`) — the cheapest possible net against a stray bracket or leftover merge marker |
-| **Unit (pure modules)** | `tests/unit/config-formatters.test.js` | `js/config.js`'s number/currency formatters (`n`, `ff`, `fc`, `fv`, `pct`) that every report and dashboard tile depends on |
-| | `tests/unit/event-bus.test.js` | `js/event-bus.js`: the single pub/sub channel every Repository write announces itself on and every Page listens to — subscribe, notify, unsubscribe, and "one bad listener can't break the others" |
-| | `tests/unit/print-engine.test.js` | `js/print.js` loads and still exposes the exact API (`render`/`renderNewTab`/`renderThermal`/`renderThermalTable`) every report page calls into. Actually invoking a render is out of scope (needs a real canvas for jsPDF/html2canvas) |
+| **Unit (pure modules)** | `tests/unit/config-formatters.test.js` | `js/platform/config.js`'s number/currency formatters (`n`, `ff`, `fc`, `fv`, `pct`) that every report and dashboard tile depends on |
+| | `tests/unit/event-bus.test.js` | `js/platform/event-bus.js`: the single pub/sub channel every Repository write announces itself on and every Page listens to — subscribe, notify, unsubscribe, and "one bad listener can't break the others" |
+| | `tests/unit/print-engine.test.js` | `js/lib/print.js` loads and still exposes the exact API (`render`/`renderNewTab`/`renderThermal`/`renderThermalTable`) every report page calls into. Actually invoking a render is out of scope (needs a real canvas for jsPDF/html2canvas) |
 | **Integration (Repository + Actions)** | `tests/unit/repository-staff.test.js` | The Staff Registry vertical slice (`config.js` → `event-bus.js` → `repository.js` → `actions.js`): add/update/reactivate/remove, the Sr# uniqueness rules, `localStorage` persistence, and `EventBus` notifications. Chosen deliberately — it's the one core-data-layer slice that doesn't reach out to unrelated classic-script globals the way the DAILY/MONTHLY helpers do (see `tests/helpers/README` note below) |
-| **DOM / navigation** | `tests/dom/navigation.test.js` | Loads the **real** `index.html` into jsdom and runs the **real** `js/ui.js` against it (not a hand-rolled stub), then drives `showPage()` the way a nav-tab click would — checks the domain-classification table (`body[data-domain]`) matches the README for every domain, page activation/deactivation, and the Sale Data sub-nav toggle |
+| **DOM / navigation** | `tests/dom/navigation.test.js` | Loads the **real** `index.html` into jsdom and runs the **real** `js/ui/ui.js` against it (not a hand-rolled stub), then drives `showPage()` the way a nav-tab click would — checks the domain-classification table (`body[data-domain]`) matches the README for every domain, page activation/deactivation, and the Sale Data sub-nav toggle |
 
 ## Helpers
 
@@ -86,6 +86,6 @@ Beyond the table below, the suite also contains: `tests/unit/agent-*.test.js` (a
    when two employees were added inside the same millisecond, which
    then corrupted `_nextSrNum`'s "exclude the record itself" logic
    (it matches by id) into wrongly excluding *both* records. Fixed in
-   `js/actions.js` by suffixing the id with a random component;
+   `js/platform/actions.js` by suffixing the id with a random component;
    locked in by a dedicated regression test in
    `repository-staff.test.js`.

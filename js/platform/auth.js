@@ -10,7 +10,7 @@
 // Supabase session for the same allowed email (see _gauthCheckSession).
 // Other scripts that need "the app just unlocked" listen for the
 // 'bt:app-unlocked' event instead of patching a function.
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './shared/backend-config.js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../shared/backend-config.js';
 function unlockApp() {
   document.getElementById('pin-gate').style.display='none';
   document.getElementById('nav').style.display='flex';
@@ -21,7 +21,7 @@ function unlockApp() {
   initApp();
   if (typeof startSupabaseSync === 'function') startSupabaseSync();
   if (window.PdfLibrary && typeof window.PdfLibrary.runExpirySweep === 'function') {
-    window.PdfLibrary.runExpirySweep(); // silent — no UI, best-effort, see js/pdf-library.js
+    window.PdfLibrary.runExpirySweep(); // silent — no UI, best-effort, see js/lib/pdf-library.js
   }
   idbLoadData().then(loaded => {
     if (loaded) { rebuildAll(); }
@@ -151,7 +151,7 @@ _gauthSyncFromSupabase();
 
 // ── Google Auth helpers ───────────────────────────────────────────
 function gauthGetSession() {
-  try { const s=JSON.parse(Repository.getItem(GAUTH_SESS_K)); if(s&&s.exp>Date.now()) return s; } catch(e){}
+  try { const s=JSON.parse(Repository.getItem(GAUTH_SESS_K)); if(s&&s.exp>Date.now()) return s; } catch(e){ /* storage unavailable (private mode or quota): best-effort */ }
   return null;
 }
 function gauthSetSession(payload) {
@@ -162,7 +162,7 @@ function gauthSetSession(payload) {
 function gauthClearSession() {
   Actions.clearFeatureData(GAUTH_SESS_K);
   _driveAccessToken = '';
-  try { localStorage.removeItem('bt_drive_token_cache'); } catch(e) {}
+  try { localStorage.removeItem('bt_drive_token_cache'); } catch(e) { /* storage unavailable (private mode or quota): best-effort */ }
 }
 
 function gauthAllowedEmails() {
@@ -517,14 +517,14 @@ function _tcLoadGAuthStatus() {
 // NOTE: this file is now `defer`, which is guaranteed by spec to execute
 // BEFORE DOMContentLoaded fires — so document.readyState is never
 // 'loading' here anymore, and the old immediate-call fallback would
-// always run too early (before actions.js/repository.js have executed).
+// always run too early (before actions.js/platform/repository.js have executed).
 // Always registering the listener is now unconditionally correct.
 document.addEventListener('DOMContentLoaded', initAuthGate);
 
 function lockApp() {
   gauthClearSession();
-  try { if (typeof window.btGetSupabaseClient === 'function') window.btGetSupabaseClient().auth.signOut({ scope: 'local' }); } catch (e) {}
-  try { if (typeof window.inventoryBridgeGetClient === 'function') window.inventoryBridgeGetClient().auth.signOut({ scope: 'local' }); } catch (e) {}
+  try { if (typeof window.btGetSupabaseClient === 'function') window.btGetSupabaseClient().auth.signOut({ scope: 'local' }); } catch (e) { /* best-effort: failure is intentionally non-fatal here */ }
+  try { if (typeof window.inventoryBridgeGetClient === 'function') window.inventoryBridgeGetClient().auth.signOut({ scope: 'local' }); } catch (e) { /* best-effort: failure is intentionally non-fatal here */ }
   window._appInited = false;
   if (typeof resetSupabaseSync === 'function') resetSupabaseSync();
   document.getElementById('pin-gate').style.display='flex';

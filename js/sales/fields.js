@@ -2,8 +2,8 @@
 // window accessor because config.js, data-page.js, reports-print.js, and
 // legacy classic callers all read the current array. The accessor follows
 // reassignment in fmLoad()/fmResetAll(); it is not a stale snapshot.
-import { Repository } from '../repository.js';
-import { Actions } from '../actions.js';
+import { Repository } from '../platform/repository.js';
+import { Actions } from '../platform/actions.js';
 import { act, arg } from '../shared/dom-actions.js';
 
 let _fmCustom = [];   // [{id, label, section, calcType}]
@@ -81,7 +81,7 @@ function fmSave() {
     const autoSave = Repository.getItem('bt_auto_save') === '1'
                   || document.getElementById('auto-save')?.checked;
     if (autoSave && typeof window.pushToSupabase === 'function') window.pushToSupabase();
-  } catch(e) {}
+  } catch(e) { /* best-effort: failure is intentionally non-fatal here */ }
 }
 
 // ── Apply visibility to the Entry form ───────────────────────────────────────

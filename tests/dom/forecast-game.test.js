@@ -11,7 +11,7 @@ describe('Forecast Game controller', () => {
   before(async () => {
     store = {}; const mem = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
     Object.defineProperty(globalThis, 'localStorage', { value: mem, configurable: true }); Object.defineProperty(window, 'localStorage', { value: mem, configurable: true });
-    CFG = await import('../../js/config.js'); FG = await import('../../js/ai-center/forecast-game.js');
+    CFG = await import('../../js/platform/config.js'); FG = await import('../../js/ai-center/forecast-game.js');
     // 8 earlier Sundays-in-October-style history: every Sunday sold 500,000 (Mon..Sat filler irrelevant)
     for (const d of ['04/Oct/2026', '27/Sep/2026', '20/Sep/2026', '13/Sep/2026']) CFG.DAILY.push({ Date: d, TOTAL: 500000, Month_Year: 'x' });
   });

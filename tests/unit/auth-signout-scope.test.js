@@ -2,7 +2,7 @@
 // supabase-js signOut() defaults to scope 'global'; the app's header Sign Out must ask for 'local'.
 import { test } from 'node:test'; import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-const src = readFileSync(new URL('../../js/auth.js', import.meta.url), 'utf8');
+const src = readFileSync(new URL('../../js/platform/auth.js', import.meta.url), 'utf8');
 const body = /function gauthSignOut\(\) \{([\s\S]*?)\n\}/.exec(src)[1];
 test('gauthSignOut signs out locally on both Supabase clients', () => {
   const calls = body.match(/\.auth\.signOut\([^)]*\)/g) || [];

@@ -20,11 +20,20 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+// CORS: browser calls are limited to the production site. Override with ALLOWED_ORIGINS (comma list) for local dev.
+// Applied to EVERY response by the wrapper at the bottom of this file, so error paths are covered too.
+const DEFAULT_ORIGIN = 'https://bt.duapharma.com';
+const allowedOrigins = (Deno.env.get('ALLOWED_ORIGINS') || DEFAULT_ORIGIN).split(',').map((s) => s.trim()).filter(Boolean);
+function cors(req: Request): Record<string, string> {
+  const origin = req.headers.get('origin') || '';
+  const allow = allowedOrigins.includes('*') ? '*' : (allowedOrigins.includes(origin) ? origin : allowedOrigins[0] || DEFAULT_ORIGIN);
+  return {
+    'Access-Control-Allow-Origin': allow,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary': 'Origin',
+  };
+}
 
 function normalizePhone(p: string): string {
   return String(p || '').replace(/\D/g, '');
@@ -33,16 +42,16 @@ function normalizePhone(p: string): string {
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json', ...corsHeaders },
+    headers: { 'Content-Type': 'application/json' },
   });
 }
 
-Deno.serve(async (req: Request) => {
+async function handle(req: Request): Promise<Response> {
   // Browsers send an OPTIONS preflight before the real POST for any cross-origin call.
   // Without this the preflight fails and supabase-js reports a generic
   // "Failed to send a request to the Edge Function" even though the function is healthy.
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response('ok');
   }
 
   if (req.method !== 'POST') return json({ error: 'POST only' }, 405);
@@ -139,4 +148,11 @@ Deno.serve(async (req: Request) => {
   }
 
   return json({ ok: true, staffId, phone });
+}
+
+Deno.serve(async (req: Request): Promise<Response> => {
+  let res: Response;
+  try { res = await handle(req); } catch (e) { if (e instanceof Response) res = e; else throw e; }
+  for (const [k, v] of Object.entries(cors(req))) res.headers.set(k, v);
+  return res;
 });

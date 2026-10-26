@@ -27,7 +27,7 @@
 //  - Email text is only ever inserted with textContent, never innerHTML.
 // ══════════════════════════════════════════════════════════════════════
 
-import { Repository } from '../repository.js';
+import { Repository } from '../platform/repository.js';
 import { callServer, getAccessToken, retry } from '../agent/core/server.js';
 
 export const MailBriefing = (function () {

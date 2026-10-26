@@ -61,8 +61,8 @@ describe('in-app briefing raises the credit alerts', () => {
   test('duplicate + carried-over credit show up as warnings', async () => {
     installDomEnv();
     globalThis.invalidateRenderCache = () => {};
-    const cfg = await import('../../js/config.js'); globalThis.recomputeMonthly = cfg.recomputeMonthly;
-    const { Repository } = await import('../../js/repository.js'); globalThis.Repository = Repository;
+    const cfg = await import('../../js/platform/config.js'); globalThis.recomputeMonthly = cfg.recomputeMonthly;
+    const { Repository } = await import('../../js/platform/repository.js'); globalThis.Repository = Repository;
     const { buildBriefing } = await import('../../js/agent/tools/briefing.js');
     Repository.setItem('BT_ManagerWork_v1', JSON.stringify({ credit: {
       'September 2026': [{ name: 'Old', prevBal: 1, entries: [], salary: 0, lessGeneric: 0 }],
@@ -106,8 +106,8 @@ describe('rollover gap: last month closed owing, this month carries nothing', ()
   test('the app briefing warns and exposes the figures', async () => {
     installDomEnv();
     globalThis.invalidateRenderCache = () => {};
-    const cfg = await import('../../js/config.js'); globalThis.recomputeMonthly = cfg.recomputeMonthly;
-    const { Repository } = await import('../../js/repository.js'); globalThis.Repository = Repository;
+    const cfg = await import('../../js/platform/config.js'); globalThis.recomputeMonthly = cfg.recomputeMonthly;
+    const { Repository } = await import('../../js/platform/repository.js'); globalThis.Repository = Repository;
     const { buildBriefing } = await import('../../js/agent/tools/briefing.js');
     Repository.setItem('BT_ManagerWork_v1', JSON.stringify({ credit: { 'September 2026': sep, 'October 2026': [{ name: 'A', prevBal: 0, entries: [], salary: 0, lessGeneric: 0 }] } }));
     const b = buildBriefing(new Date(2026, 9, 9));

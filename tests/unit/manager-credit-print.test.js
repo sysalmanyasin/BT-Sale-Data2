@@ -25,9 +25,9 @@ installDomEnv(`<!doctype html><html><body>
   <div id="crd-employees"></div>
 </body></html>`);
 
-const { Repository } = await import('../../js/repository.js');
-const { Actions } = await import('../../js/actions.js');
-const PrintMod = await import('../../js/print.js');
+const { Repository } = await import('../../js/platform/repository.js');
+const { Actions } = await import('../../js/platform/actions.js');
+const PrintMod = await import('../../js/lib/print.js');
 const creditMod = await import('../../js/manager/manager-credit.js');
 const reportsMod = await import('../../js/manager/manager-reports.js');
 

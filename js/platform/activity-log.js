@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════════════════
-// ACTIVITY LOG  —  Utility → Activity Log (js/activity-log.js)
+// ACTIVITY LOG  —  Utility → Activity Log (js/platform/activity-log.js)
 //
 // A cross-device, Supabase-synced feed of "what changed, where, and
 // when" across the whole app: Date/time, section, and add/edit/delete.
@@ -8,12 +8,12 @@
 // per-account audit trail.
 //
 // Source of truth for WHAT changed: this file subscribes to the
-// EventBus (js/event-bus.js) — the one channel every real data
-// mutation already announces itself on (see js/repository.js's
+// EventBus (js/platform/event-bus.js) — the one channel every real data
+// mutation already announces itself on (see js/platform/repository.js's
 // `_notify()` calls for DAILY/MONTHLY/STAFF/generic item writes, and
-// js/actions.js's staff:added/updated/removed). No page or Action had
+// js/platform/actions.js's staff:added/updated/removed). No page or Action had
 // to be touched to wire this up; it just listens, the same way
-// js/conflict-ui.js already listens for 'conflict:queued'.
+// js/platform/conflict-ui.js already listens for 'conflict:queued'.
 //
 // Deliberately NOT logged (see the switch in the EventBus listener
 // below for the full reasoning): daily:pulled/monthly:pulled/
@@ -25,7 +25,7 @@
 // clearer verb, so listening to both would double-log every edit).
 //
 // Same Supabase project + anon key this app already uses everywhere
-// else (js/supabase.js) — table is `bt_activity_log`, schema in
+// else (js/platform/supabase.js) — table is `bt_activity_log`, schema in
 // supabase/activity_log/schema.sql. Same lazy-client / prefer-the-
 // authenticated-client trust model as pdf-library.js and the
 // closing/audit/inventory bridges: RLS scopes access, not key secrecy.
@@ -40,8 +40,8 @@
 // ══════════════════════════════════════════════════════════════════════
 
 import { EventBus } from './event-bus.js';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './shared/backend-config.js';
-import { escapeHtml as _esc } from './shared/html.js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../shared/backend-config.js';
+import { escapeHtml as _esc } from '../shared/html.js';
 
 export const ActivityLog = (function () {
   'use strict';

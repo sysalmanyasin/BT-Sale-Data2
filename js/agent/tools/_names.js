@@ -6,7 +6,7 @@
 //   4 = staff id, 3 = identical name, 2 = all words of one name appear in the other,
 //   1 = substring (3+ letters). Only the best tier is returned; identical names
 //   (after cleaning) count once.
-import { Repository } from '../../repository.js';
+import { Repository } from '../../platform/repository.js';
 
 export const normName = s => String(s == null ? '' : s).replace(/\s+/g, ' ').trim().toLowerCase();
 const words = s => normName(s).split(' ').filter(Boolean);

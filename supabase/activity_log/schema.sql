@@ -1,9 +1,9 @@
 -- ══════════════════════════════════════════════════════════════════════
 -- ACTIVITY LOG  —  table for the in-app, cross-device "who changed what,
--- when" feed (Utility → Activity Log, js/activity-log.js).
+-- when" feed (Utility → Activity Log, js/platform/activity-log.js).
 --
 -- Every meaningful write this app already announces on the EventBus
--- (js/event-bus.js — daily/monthly/staff/ledger records, plus a known
+-- (js/platform/event-bus.js — daily/monthly/staff/ledger records, plus a known
 -- set of feature-data blobs saved via Actions.saveXxx) gets mirrored
 -- here as one short, human-readable row: when, which section, what kind
 -- of change (add/edit/delete), and a one-line summary. This is a NEW,
@@ -16,7 +16,7 @@
 -- collide in the same Supabase project.
 --
 -- Same Supabase project this whole app already syncs everything else to
--- (see SB_URL/SB_KEY in js/supabase.js) — no new project needed.
+-- (see SB_URL/SB_KEY in js/platform/supabase.js) — no new project needed.
 --
 -- Run this once, by hand, in the Supabase SQL editor for this project.
 --
@@ -43,7 +43,7 @@ create table if not exists public.bt_activity_log (
   summary      text not null,                         -- one-line human-readable description
   details      jsonb,                                 -- optional structured extra (record id, before/after, etc.)
   device       text,                                   -- friendly device label, e.g. 'Windows PC', 'Samsung A52'
-  device_id    text                                    -- this app's per-device UDID (js/sync-center.js _sc_getUDID)
+  device_id    text                                    -- this app's per-device UDID (js/platform/sync-center.js _sc_getUDID)
 );
 
 create index if not exists bt_activity_log_occurred_idx on public.bt_activity_log (occurred_at desc);

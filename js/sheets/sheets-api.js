@@ -3,7 +3,7 @@
 // ══════════════════════════════════════════════════════════════════
 // Reuses the SAME access token drive.js already holds (_driveAccessToken).
 // drive.file scope covers Sheets API calls on files this app creates —
-// see js/auth.js line 372 for the granted scope. No new consent screen.
+// see js/platform/auth.js line 372 for the granted scope. No new consent screen.
 //
 // This file is pure API plumbing — no DOM, no Supabase. sheets-sync.js
 // and sheets-app.js build on top of it.

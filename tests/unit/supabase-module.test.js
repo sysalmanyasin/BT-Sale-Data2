@@ -15,9 +15,9 @@ installDomEnv();
 const realSetInterval = globalThis.setInterval;
 globalThis.setInterval = () => 0;
 
-const { MONTHLY, DAILY, STAFF } = await import('../../js/config.js');
-await import('../../js/repository.js');
-await import('../../js/actions.js');
+const { MONTHLY, DAILY, STAFF } = await import('../../js/platform/config.js');
+await import('../../js/platform/repository.js');
+await import('../../js/platform/actions.js');
 
 const keys = {
   MGR_KEY: 'BT_ManagerWork_v1',
@@ -42,7 +42,7 @@ globalThis.supabase = {
 };
 window.supabase = globalThis.supabase;
 
-await import('../../js/supabase.js');
+await import('../../js/platform/supabase.js');
 globalThis.setInterval = realSetInterval;
 
 describe('Supabase module conversion', () => {

@@ -5,8 +5,8 @@
 // with its own rows) plus a printable report. Independent of the
 // Staff/Salary/Generic/Credit sheets — no cross-module state needed.
 // ══════════════════════════════════════════════════════════════════════
-import { Repository } from '../repository.js';
-import { Actions } from '../actions.js';
+import { Repository } from '../platform/repository.js';
+import { Actions } from '../platform/actions.js';
 import { _ni, _fc2, mgrAutosave } from './manager-shared.js';
 import { _mgrPrint } from './manager-reports.js';
 import { act, arg } from '../shared/dom-actions.js';

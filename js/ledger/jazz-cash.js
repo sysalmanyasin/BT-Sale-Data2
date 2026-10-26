@@ -28,12 +28,13 @@
 // from. See the bridge list at the bottom.
 // ══════════════════════════════════════════════════════════════════
 
-import { Repository } from '../repository.js';
-import { Actions } from '../actions.js';
+import { Repository } from '../platform/repository.js';
+import { Actions } from '../platform/actions.js';
 import * as LedgerStore from './ledger-store.js';
 import { mgrAutosave } from '../manager/manager-shared.js';
-import * as Tombstones from '../sync-tombstones.js';
+import * as Tombstones from '../platform/sync-tombstones.js';
 import { act, arg } from '../shared/dom-actions.js';
+import { renderLedgerView } from './ledger-page.js';
 
 // ─── LEDGER constant — the one-time migration into the unified Ledger
 // has already been run for this app's data. Nothing in this file
@@ -102,7 +103,7 @@ function _jcCurrentBalance() {
 // TALLY — Persistence
 // ══════════════════════════════════════════════════════════════════
 function _tallyLoad() {
-  try { const r=Repository.getItem(JC_TALLY_KEY); if(r) return JSON.parse(r); } catch(e){}
+  try { const r=Repository.getItem(JC_TALLY_KEY); if(r) return JSON.parse(r); } catch(e){ /* storage unavailable (private mode or quota): best-effort */ }
   return { accounts: JSON.parse(JSON.stringify(JC_TALLY_DEFAULTS)), snapshots:[] };
 }
 function _tallySave(data) {

@@ -39,7 +39,7 @@ function _readPending() {
   try { return JSON.parse(localStorage.getItem(PENDING_KEY) || '{}'); } catch (_) { return {}; }
 }
 function _writePending(map) {
-  try { localStorage.setItem(PENDING_KEY, JSON.stringify(map)); } catch (_) {}
+  try { localStorage.setItem(PENDING_KEY, JSON.stringify(map)); } catch (_) { /* storage unavailable (private mode or quota): best-effort */ }
 }
 function _stashPending(rowKey, row) {
   const pending = _readPending();

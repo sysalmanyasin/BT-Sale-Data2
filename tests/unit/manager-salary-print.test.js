@@ -31,9 +31,9 @@ let _confirmReturn = true;
 globalThis.confirm = () => _confirmReturn;
 window.confirm = globalThis.confirm;
 
-const { Repository } = await import('../../js/repository.js');
-const { Actions } = await import('../../js/actions.js');
-const PrintMod = await import('../../js/print.js');
+const { Repository } = await import('../../js/platform/repository.js');
+const { Actions } = await import('../../js/platform/actions.js');
+const PrintMod = await import('../../js/lib/print.js');
 const salaryMod = await import('../../js/manager/manager-salary.js');
 const reportsMod = await import('../../js/manager/manager-reports.js');
 

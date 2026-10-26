@@ -31,7 +31,7 @@ nav::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;backg
 .ntab-menu{background:var(--s2);color:var(--t2);font-weight:700;border:1px solid var(--border);margin-right:6px;border-radius:var(--r-xs,7px);}
 .ntab-menu:hover{background:var(--accent);color:#fff;border-color:var(--accent);}
 /* ── Menu button (nav) — the app's one nav-system trigger: opens the
-   Search & All Sections drawer (#sectionsbg, js/nav-sections.js) on
+   Search & All Sections drawer (#sectionsbg, js/ui/nav-sections.js) on
    desktop, same as the ☰ Menu button in .bnav does on mobile. Leads
    the brand group at the far left of the bar. ── */
 .navmenubtn{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.6);cursor:pointer;color:var(--muted);transition:all .15s;flex-shrink:0;}
@@ -277,7 +277,7 @@ body[data-domain="str"] {
   width: var(--sp-5); height: var(--sp-5); font-size: 13px; border-radius: var(--r-xs);
   background: var(--alt, var(--s2)); border-color: transparent;
 }
-/* SVG variant (top-level All Sections drawer rows, js/icons.js) — the
+/* SVG variant (top-level All Sections drawer rows, js/ui/icons.js) — the
    emoji sizing above (font-size) does nothing for an <svg> child, so
    size/color it directly; chip sizing (width/height/bg/border) is
    shared with .recents-icon above. */
@@ -332,7 +332,7 @@ body[data-domain="str"] {
 .sections-group-open > .sections-row-main .sections-toggle { color: var(--accent); }
 
 /* Permanent trigger for the All Sections drawer — same drawer long-press
-   on the Cover nav item has always opened (js/nav-sections.js); this
+   on the Cover nav item has always opened (js/ui/nav-sections.js); this
    now lives as the left-most item in the bottom nav bar (#bnav) instead
    of a floating edge button, so it shares .bnav-item's layout/sizing
    and only needs a couple of accent tweaks to stand out as the "menu"
@@ -522,7 +522,7 @@ body[data-domain="str"] {
 #sections-list > .sections-group > .sections-row .sections-nav-hit:hover { background: var(--g-bg, var(--s2)); }
 #sections-list > .sections-group.sections-group-open > .sections-row-main .sections-toggle { color: var(--g-accent, var(--accent)); }
 
-/* ── Global search (js/global-search.js) — search box pinned atop the
+/* ── Global search (js/ui/global-search.js) — search box pinned atop the
    All Sections drawer, plus its Staff-match result rows. Hidden
    sections/sub-sections during an active filter use .gs-hidden rather
    than touching .sections-group-open, so the collapsed/expanded state
@@ -549,7 +549,7 @@ body[data-domain="str"] {
   box-shadow: var(--focus-ring);
 }
 /* Drawer-only glass treatment (2026-08-23): #sectionsbg is the only
-   place .gs-input renders (js/global-search.js / index.html's single
+   place .gs-input renders (js/ui/global-search.js / index.html's single
    #gs-input) — scoped here rather than changed above so a translucent
    input only ever shows on the new colored wash behind it, never on a
    plain var(--surface) background elsewhere this class might land in

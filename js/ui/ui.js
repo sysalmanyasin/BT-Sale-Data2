@@ -131,7 +131,7 @@ function showPage(id) {
     try {
       const _newHash = '#' + id;
       if (window.location.hash !== _newHash) history.pushState(null, '', _newHash);
-    } catch(_) {}
+    } catch(_) { /* best-effort: failure is intentionally non-fatal here */ }
     if(id==='cover') { if(typeof renderCoverDashboard==='function') renderCoverDashboard(); }
     if(id==='notesheets') { if(typeof renderNotesSheets==='function') renderNotesSheets(); }
     if(id==='tools') { loadToolsPage(); }
@@ -161,7 +161,7 @@ function showPage(id) {
       }
     }
     // Sales/Manager/Inventory/Closing's persistent sub-tab strip (mobile,
-    // pinned above .bnav — see js/subtab-strip.js). Also re-run on every
+    // pinned above .bnav — see js/ui/subtab-strip.js). Also re-run on every
     // hashchange from there directly, since switching Manager's own
     // in-page tabs (#manager/xxx) or Credit Ledger's mode tabs doesn't
     // call showPage() again — only a hash change.
@@ -312,7 +312,7 @@ window.addEventListener('hashchange', () => _routeFromHash(window.location.hash)
 (function() {
   const p = new URLSearchParams(window.location.search).get('page');
   if (!p) return;
-  try { sessionStorage.setItem('bt_nav_target', p); } catch (_) {}
+  try { sessionStorage.setItem('bt_nav_target', p); } catch (_) { /* storage unavailable (private mode or quota): best-effort */ }
   history.replaceState(null, '', window.location.pathname);
 })();
 
@@ -424,7 +424,7 @@ function exportCSV(type) {
   a.click(); toast('✓ CSV downloaded');
 }
 
-// Mirrors driveBackupNow()'s payload (js/drive.js) so a manual "Full JSON
+// Mirrors driveBackupNow()'s payload (js/platform/drive.js) so a manual "Full JSON
 // Backup" download actually is full — previously this only held
 // monthly/daily and silently dropped Manager/Petty/Custom/JazzCash/Ledger/
 // Column config despite the button's label.
@@ -452,7 +452,7 @@ function exportJSON() {
   a.click(); toast('✓ Full JSON exported');
 }
 
-// Mirrors _driveRestoreFile()'s merge logic (js/drive.js) so manual
+// Mirrors _driveRestoreFile()'s merge logic (js/platform/drive.js) so manual
 // Import matches Drive Restore — same "fill gaps only, never overwrite
 // or drop local data" behavior, extended to Manager/Petty/Custom/
 // JazzCash/Ledger/Column config instead of just monthly/daily.

@@ -12,7 +12,7 @@
 //   2. It's paginated onto Letter pages — landscape for any block marked
 //      .pr-landscape (the wide daily-breakdown tables), portrait for the
 //      rest, sliced across extra pages automatically if content is tall.
-//   3. The whole thing lives inside ONE popup owned by js/pdf-library.js:
+//   3. The whole thing lives inside ONE popup owned by js/lib/pdf-library.js:
 //      shown immediately (beginPrint) with a "Generating…" state so there's
 //      no dead time while html2canvas/jsPDF do their (CPU-bound) work, then
 //      swapped (finishPrint) to View / Download / Save-to-Library buttons
@@ -270,7 +270,7 @@ async function _buildThermalPdf(html, opts) {
 }
 
 // ── Shared finish step for both public entry points. Normally the
-// ENTIRE user-facing experience lives in js/pdf-library.js's single
+// ENTIRE user-facing experience lives in js/lib/pdf-library.js's single
 // popup (beginPrint → finishPrint, with View/Download/Save-to-Library
 // buttons on it) — no forced new tab, no silent auto-download. If that
 // module somehow isn't loaded, falls back to the old behavior (blank

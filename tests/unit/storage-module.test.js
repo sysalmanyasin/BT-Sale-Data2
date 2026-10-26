@@ -13,12 +13,12 @@ async function load() {
   for (const k of ['window', 'document']) Object.defineProperty(globalThis, k, { value: k === 'window' ? w : w.document, configurable: true, writable: true });
   w.MONTHLY = []; w.DAILY = [];
   globalThis.MONTHLY = w.MONTHLY; globalThis.DAILY = w.DAILY; // bare names in the module resolve on Node's global here
-  await import(`../../js/storage.js?case=${++n}`);
+  await import(`../../js/platform/storage.js?case=${++n}`);
   return w;
 }
 
 test('index.html loads storage.js as an ES module', () => {
-  assert.match(read('index.html'), /<script type="module" src="js\/storage\.js\?v=[0-9a-f]{8}"><\/script>/);
+  assert.match(read('index.html'), /<script type="module" src="js\/platform\/storage\.js\?v=[0-9a-f]{8}"><\/script>/);
 });
 test('getCurrentPage follows a classic-script style bare assignment to _curPage', async () => {
   const w = await load();
@@ -32,7 +32,7 @@ test('does not clobber an already-set _curPage', async () => {
   dom.window._curPage = 'cover';
   for (const k of ['window', 'document']) Object.defineProperty(globalThis, k, { value: k === 'window' ? dom.window : dom.window.document, configurable: true, writable: true });
   dom.window.MONTHLY = []; dom.window.DAILY = [];
-  await import(`../../js/storage.js?case=${++n}`);
+  await import(`../../js/platform/storage.js?case=${++n}`);
   assert.equal(dom.window.getCurrentPage(), 'cover');
 });
 test('IDB + render-cache bridges are still exposed', async () => {

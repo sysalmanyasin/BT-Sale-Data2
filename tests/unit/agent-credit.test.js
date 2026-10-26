@@ -5,7 +5,7 @@ import { installDomEnv } from '../helpers/dom-env.js';
 
 installDomEnv();
 globalThis.invalidateRenderCache = () => {};
-const { Repository } = await import('../../js/repository.js');
+const { Repository } = await import('../../js/platform/repository.js');
 globalThis.Repository = Repository;
 const reg = await import('../../js/agent/core/tool-registry.js');
 await import('../../js/agent/tools/credit.js');

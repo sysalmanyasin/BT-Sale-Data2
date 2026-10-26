@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════════════════
-// SMOKE TEST — js/ui.js's showPage(), the core of the "Cover is the hub"
+// SMOKE TEST — js/ui/ui.js's showPage(), the core of the "Cover is the hub"
 // navigation model. This loads the REAL index.html markup into jsdom
 // (not a hand-rolled stub) and runs the REAL ui.js as a classic script
 // against it, then drives showPage() the same way a nav-tab click would.
@@ -20,7 +20,7 @@ const indexHtml = fs.readFileSync(path.join(REPO_ROOT, 'index.html'), 'utf8');
 
 function freshAppWindow(t) {
   const dom = new JSDOM(indexHtml, { url: 'https://bt.duapharma.com/index.html' });
-  loadClassicScript('js/ui.js', dom.window);
+  loadClassicScript('js/ui/ui.js', dom.window);
   // ui.js starts a real setInterval(tickClock, 30000) at load time (a
   // classic-script side effect, same as it would in a browser tab) —
   // without closing the window afterwards, each test's timer keeps the

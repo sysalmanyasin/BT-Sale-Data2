@@ -37,11 +37,20 @@
 
 const CACHE_DAYS = 30;
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+// CORS: browser calls are limited to the production site. Override with ALLOWED_ORIGINS (comma list) for local dev.
+// Applied to EVERY response by the wrapper at the bottom of this file, so error paths are covered too.
+const DEFAULT_ORIGIN = 'https://bt.duapharma.com';
+const allowedOrigins = (Deno.env.get('ALLOWED_ORIGINS') || DEFAULT_ORIGIN).split(',').map((s) => s.trim()).filter(Boolean);
+function cors(req: Request): Record<string, string> {
+  const origin = req.headers.get('origin') || '';
+  const allow = allowedOrigins.includes('*') ? '*' : (allowedOrigins.includes(origin) ? origin : allowedOrigins[0] || DEFAULT_ORIGIN);
+  return {
+    'Access-Control-Allow-Origin': allow,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary': 'Origin',
+  };
+}
 
 // This endpoint is intentionally public for the Inventory Search PWA, but
 // each cache miss can spend a third-party AI API call. Bound input and add
@@ -74,7 +83,7 @@ function boundedText(value: unknown): string {
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+    headers: { 'Content-Type': 'application/json' },
   });
 }
 
@@ -196,8 +205,8 @@ async function callGemini(prompt: string): Promise<string | null> {
   return content;
 }
 
-Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS });
+async function handle(req: Request): Promise<Response> {
+  if (req.method === 'OPTIONS') return new Response('ok');
   if (req.method !== 'POST') return jsonResponse({ error: 'POST only' }, 405);
 
   const ip = (req.headers.get('cf-connecting-ip') || req.headers.get('x-forwarded-for') || 'unknown').split(',')[0].trim();
@@ -237,4 +246,11 @@ Deno.serve(async (req: Request) => {
 
   await writeCache(name, generic, info);
   return jsonResponse({ info, cached: false });
+}
+
+Deno.serve(async (req: Request): Promise<Response> => {
+  let res: Response;
+  try { res = await handle(req); } catch (e) { if (e instanceof Response) res = e; else throw e; }
+  for (const [k, v] of Object.entries(cors(req))) res.headers.set(k, v);
+  return res;
 });

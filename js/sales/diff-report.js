@@ -2,8 +2,8 @@
 /* Cumulative Difference (Total Sale − COMP SALE) by month + running  */
 /* Each month row expands into a day-wise sub-report (same 4 metric   */
 /* columns), running total reset to 0 at the start of each month.    */
-import { MONTHLY, DAILY, n, fc } from '../config.js';
-import { BTDate } from '../bt-date.js';
+import { MONTHLY, DAILY, n, fc } from '../platform/config.js';
+import { BTDate } from '../lib/bt-date.js';
 
 // Remembers which months are expanded across a rebuild (mirrors the
 // data-page.js openMonths pattern) so a background sync event doesn't

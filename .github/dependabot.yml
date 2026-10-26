@@ -1,0 +1,18 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+    groups:
+      dev-tooling:
+        patterns: ["eslint", "globals", "jsdom", "esbuild", "c8"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }
+  - package-ecosystem: gradle
+    directory: /android-widget
+    schedule: { interval: monthly }
+  - package-ecosystem: gradle
+    directory: /android-attendance
+    schedule: { interval: monthly }

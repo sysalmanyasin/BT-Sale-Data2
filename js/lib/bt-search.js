@@ -4,7 +4,7 @@
 //
 // commandhub.js (its original consumer) was removed along with the AI
 // layer (see README v10.32) and this went dead for a while. Revived as
-// of this commit by js/global-search.js — a classic (non-module) script
+// of this commit by js/ui/global-search.js — a classic (non-module) script
 // that filters the All-Sections drawer + Staff registry. Window bridge
 // below is load-bearing for that: global-search.js reads window.BTSearch
 // directly, so it must stay, and global-search.js's <script> tag must
@@ -55,7 +55,7 @@ export const BTSearch = Object.freeze({
   },
 });
 
-// WINDOW BRIDGE — required by js/global-search.js (a classic script, not
+// WINDOW BRIDGE — required by js/ui/global-search.js (a classic script, not
 // a module). Keep this even after any future module-migration of that
 // file's other dependencies, unless global-search.js is also converted
 // to `import { BTSearch } from './bt-search.js'`.

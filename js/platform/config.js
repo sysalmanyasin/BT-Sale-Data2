@@ -22,7 +22,7 @@ export function _protectArray(arr, label) {
           const site = (new Error()).stack.split('\n').slice(2, 4).join(' ').trim();
           console.error('[Architecture] RAW MUTATION on ' + label + '[' + prop + ']. Bypassed Repository. Site: ' + site);
           Repository._noteRawMutation(label);
-          try { if (typeof toast === 'function') toast('⚠ Architecture violation: direct ' + label + ' write — check console', 'e'); } catch(e) {}
+          try { if (typeof toast === 'function') toast('⚠ Architecture violation: direct ' + label + ' write — check console', 'e'); } catch(e) { /* best-effort: failure is intentionally non-fatal here */ }
         }
       }
       return ok;

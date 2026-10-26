@@ -9,7 +9,7 @@
 // Usage:
 //   import { installDomEnv } from '../helpers/dom-env.js';
 //   installDomEnv();                 // call once, before importing app modules
-//   const { Repository } = await import('../../js/repository.js');
+//   const { Repository } = await import('../../js/platform/repository.js');
 // ══════════════════════════════════════════════════════════════════════
 import { JSDOM } from 'jsdom';
 

@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════
-   ACTIVITY LOG — Utility page (js/activity-log.js)
+   ACTIVITY LOG — Utility page (js/platform/activity-log.js)
    ══════════════════════════════════════════ */
 
 .al-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px;}

@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════════════════
-// SMOKE TEST — js/print.js: "the one and only print engine" per its own
+// SMOKE TEST — js/lib/print.js: "the one and only print engine" per its own
 // header comment. Every report in the app funnels through Print.render()
 // or Print.renderNewTab(). Actually invoking a render is out of scope
 // for a smoke test (it drives jsPDF/html2canvas against a live DOM
@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 import { installDomEnv } from '../helpers/dom-env.js';
 
 installDomEnv();
-const { Print } = await import('../../js/print.js');
+const { Print } = await import('../../js/lib/print.js');
 
 describe('Print engine (smoke)', () => {
   test('module loads without throwing and exports Print', () => {

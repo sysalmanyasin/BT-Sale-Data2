@@ -2,7 +2,7 @@
 -- ATTENDANCE — schema for the staff attendance app
 --
 -- Lives in the SAME Supabase project as the main app (the one
--- js/supabase.js points at — SB_URL in that file), NOT the separate
+-- js/platform/supabase.js points at — SB_URL in that file), NOT the separate
 -- Pharmacy Audit Hub project that inventory-bridge.js/audit-bridge.js
 -- read from. Reason: attendance_events.staff_id references the
 -- STAFF records that already live in *this* project's world (even
@@ -14,7 +14,7 @@
 --
 -- staff_id is TEXT, not a uuid/FK, because STAFF records use a
 -- generated string id ('emp_' + timestamp + random suffix — see
--- js/actions.js addEmployee) with no corresponding Postgres "staff"
+-- js/platform/actions.js addEmployee) with no corresponding Postgres "staff"
 -- table to foreign-key against. Integrity is enforced app-side, same
 -- as the rest of this app's localStorage-first, eventually-synced
 -- model — not by a DB constraint.
@@ -81,7 +81,7 @@ create index if not exists idx_attendance_events_time on attendance_events (occu
 -- The original version of this section keyed policies off
 -- auth.jwt() ->> 'role'/'staff_id' claims, assuming the staff app and
 -- the main PWA each held a real Supabase Auth session. Neither does:
--- confirmed via js/supabase.js (never calls signIn*/setSession) that
+-- confirmed via js/platform/supabase.js (never calls signIn*/setSession) that
 -- this app runs entirely on the anon publishable key everywhere,
 -- including bt_sessions per the 2026-08-05 security-audit migration —
 -- access control here is enforced client-side (auth.js's Google-email

@@ -51,7 +51,7 @@ function setup({ liveDays = 40, token = true } = {}) {
       .sort((a, b) => b.name.localeCompare(a.name));
     return res({ files: list.map(f => ({ id: f.id, name: f.name, size: f.text.length, modifiedTime: f.modifiedTime })) });
   };
-  loadClassicScript('js/drive.js', w);
+  loadClassicScript('js/platform/drive.js', w);
   const origLog = w.driveLog; w.driveLog = (m, c) => { logs.push([c || '', m]); origLog(m, c); };
   return w;
 }

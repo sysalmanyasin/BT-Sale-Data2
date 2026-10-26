@@ -5,7 +5,7 @@ import { installDomEnv } from '../helpers/dom-env.js';
 
 installDomEnv();
 document.body.innerHTML = '<div id="mail-root"></div>';
-const { Repository } = await import('../../js/repository.js');
+const { Repository } = await import('../../js/platform/repository.js');
 const { MailBriefing } = await import('../../js/mail/mail-briefing.js');
 
 const hdrs = (from, subject) => [{ name: 'From', value: from }, { name: 'To', value: 'me@x.com' }, { name: 'Cc', value: '' }, { name: 'Subject', value: subject }];

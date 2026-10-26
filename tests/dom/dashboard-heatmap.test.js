@@ -16,8 +16,8 @@ import { loadClassicScript } from '../helpers/load-classic-script.js';
 const dom = installDomEnv('<!doctype html><body><div id="dash-heatmap"></div></body>');
 const { window } = dom;
 
-const { Repository } = await import('../../js/repository.js');
-const { DAILY } = await import('../../js/config.js');
+const { Repository } = await import('../../js/platform/repository.js');
+const { DAILY } = await import('../../js/platform/config.js');
 
 // dashboard-heatmap.js is a classic script (IIFE + window bridge, no
 // import/export) — load it the same way navigation.test.js loads ui.js,

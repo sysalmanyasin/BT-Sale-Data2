@@ -8,17 +8,16 @@
 import { registerTool } from '../core/tool-registry.js';
 import { rsFmt, isoToApp } from '../core/guard.js';
 import { afterWrite } from '../core/after-write.js';
-import { Repository } from '../../repository.js';
-import { Actions } from '../../actions.js';
+import { Repository } from '../../platform/repository.js';
+import { Actions } from '../../platform/actions.js';
 import { LedgerActions } from '../../ledger/ledger-actions.js';
 import * as LedgerStore from '../../ledger/ledger-store.js';
 import { getNotes, keyForStaff } from '../../manager/staff-notes.js';
-import { DAILY, MONTHLY } from '../../config.js';
+import { DAILY, MONTHLY } from '../../platform/config.js';
 import { num, normDay, sameMonth, normMonth } from './_util.js';
 import { staffCandidates, findCreditRow, normName } from './_names.js';
 
 const CONFIRM = 'DELETE';
-const lc = s => String(s || '').trim().toLowerCase();
 const ni = v => Math.round(Number(v) || 0);
 const clone = o => JSON.parse(JSON.stringify(o));
 const NOTES_KEY = 'bt_staff_notes_v1';

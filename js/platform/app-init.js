@@ -17,6 +17,7 @@
 // ══════════════════════════════════════════════════════════════════════
 import { Repository } from './repository.js';
 import { EventBus } from './event-bus.js';
+import { years } from './config.js';
 
 function initApp() {
   // Restore session entries — this device's own unsynced local additions,
@@ -33,7 +34,7 @@ function initApp() {
     if (pending.length) Repository.gapFillDaily(pending);
     const sm = Repository.getItem('bt_new_months');
     if (sm) Repository.gapFillMonthly(JSON.parse(sm));
-  } catch(e){}
+  } catch(e){ /* best-effort: failure is intentionally non-fatal here */ }
   rebuildDropdowns();
   // Default dashboard to latest year
   const dashYrSel = document.getElementById('dash-year');
@@ -83,7 +84,7 @@ function initApp() {
       if (saved && document.getElementById('page-' + saved)) target = saved;
     }
     sessionStorage.removeItem('bt_nav_target');
-  } catch (_) {}
+  } catch (_) { /* best-effort: failure is intentionally non-fatal here */ }
   if (!_routed) showPage(target);
   renderEntryList();
   updateGhBadge();

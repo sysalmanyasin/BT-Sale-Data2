@@ -7,8 +7,8 @@
 // `_syncGenericToSalary`, if that employee's Salary row is currently
 // loaded in the DOM.
 // ══════════════════════════════════════════════════════════════════════
-import { Repository } from '../repository.js';
-import { STAFF } from '../config.js';
+import { Repository } from '../platform/repository.js';
+import { STAFF } from '../platform/config.js';
 import { _ni, _fc2, _inp, _mgrEsc, mgrLoad, mgrSave, mgrAutosave, reconcileStaffRows, activeStaff, mgrEmit } from './manager-shared.js';
 import { act } from '../shared/dom-actions.js';
 

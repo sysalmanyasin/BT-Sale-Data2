@@ -4,8 +4,8 @@ import assert from 'node:assert/strict';
 import { installDomEnv } from '../helpers/dom-env.js';
 
 installDomEnv();
-const cfg = await import('../../js/config.js');
-const { Repository } = await import('../../js/repository.js');
+const cfg = await import('../../js/platform/config.js');
+const { Repository } = await import('../../js/platform/repository.js');
 const reg = await import('../../js/agent/core/tool-registry.js');
 await import('../../js/agent/tools/app.js');
 await import('../../js/agent/tools/sales.js');

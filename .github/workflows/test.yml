@@ -10,6 +10,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci
-      - run: npm run lint   # 0 errors required; warning count is a ratchet
-      - run: npm test
-      - run: npm run build:check
+      - run: npm run lint            # zero errors AND zero warnings
+      - run: npm run build:check     # stamps + cache version up to date
+      - run: npm run bundle:check    # every module entry resolves under a real bundler
+      - run: npm run test:coverage   # full suite + coverage floor (lines 68 / branches 72 / functions 65)

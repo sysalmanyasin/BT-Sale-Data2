@@ -33,9 +33,9 @@
  * `_jcSelectTallyDate`.
  */
 
-import { Repository } from '../repository.js';
-import { Actions } from '../actions.js';
-import { STAFF, MONTHLY, DAILY } from '../config.js';
+import { Repository } from '../platform/repository.js';
+import { Actions } from '../platform/actions.js';
+import { STAFF, MONTHLY, DAILY } from '../platform/config.js';
 // ── Manager domain sources (Data tab / Send to Sheets) — all real ES
 // imports, so these are live bindings, not one-time snapshots. Salary/
 // Generic/Petty/Incentive reflect whichever month is currently loaded
@@ -75,7 +75,7 @@ import { act, arg } from '../shared/dom-actions.js';
 /* ── Pill nav ── */
 /* .ns-nav retired from view (Aug 2026), same as Manager's #mgr-tabs and
    Credit Ledger's .cl-mode-tabs — its 4 destinations are covered by the
-   rail/drawer (js/nav-sections.js's '.ns-pill[href]' scraper is still
+   rail/drawer (js/ui/nav-sections.js's '.ns-pill[href]' scraper is still
    the one real source of those rows). Not in the mobile sub-tab strip's
    scope (that covers Sales/Manager/Inventory/Closing only), so on
    mobile this is reachable via the Menu drawer's Notes & Sheets group. */
@@ -188,7 +188,7 @@ const NS_NOTES_KEY      = 'bt_notes_v1';
 
 function _nsNotesLoad()  { try { return JSON.parse(Repository.getItem(NS_NOTES_KEY) || '[]'); } catch(_){ return []; } }
 function _nsNotesSave(a) {
-  try { Actions.saveNotes(JSON.stringify(a)); } catch(_){}
+  try { Actions.saveNotes(JSON.stringify(a)); } catch(_){ /* best-effort: failure is intentionally non-fatal here */ }
   if (Repository.getItem('bt_auto_save') === '1' && typeof pushToSupabase === 'function') pushToSupabase();
 }
 function _nsUid()        { return 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }

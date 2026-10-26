@@ -1,7 +1,7 @@
 // Manager domain — READ tools: staff registry (safe fields only) and ledgers.
 // CNIC, phone, address, blood group and father's name are NEVER returned.
 import { registerTool } from '../core/tool-registry.js';
-import { Repository } from '../../repository.js';
+import { Repository } from '../../platform/repository.js';
 import * as LedgerStore from '../../ledger/ledger-store.js';
 import { num, rs, clampInt, normDay, normMonth, monthIndex, MON } from './_util.js';
 import { staffCandidates } from './_names.js';

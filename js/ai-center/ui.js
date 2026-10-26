@@ -245,7 +245,6 @@ function secHeaderBar(core) {
 
 // Personal avatar: the person's own photo is kept ON THIS DEVICE only (localStorage) and never committed to the repo.
 // Storage + preferences live in avatar.js; the avatar settings sheet (openAvatarSettings) is opened by tapping the avatar.
-const avatarPhoto = () => AV.getPrefs().photo;
 function setAvatarPhoto(file) {
   if (!file || !/^image\//.test(file.type)) return;
   const rd = new FileReader();
@@ -739,13 +738,6 @@ function ringGauge(pct, tn) {
     h2svg('circle', { class: 'rg-val', cx: 24, cy: 24, r: 20, 'stroke-dasharray': (p / 100 * RING_C).toFixed(1) + ' ' + RING_C.toFixed(1), transform: 'rotate(-90 24 24)' }));
   return svg;
 }
-function instTile({ label, value, sub, tn = 'mu', pct = null, onclick = null }) { // kept for diagnostics tiles
-  const body = [pct != null ? ringGauge(pct, tn) : null,
-    h('span', { class: 'aic-it-b' }, h('span', { class: 'aic-it-l', text: label }), h('b', { class: 'aic-it-v aic-' + tn, text: value }), h('small', { text: sub }))];
-  const aria = label + ': ' + value + '. ' + sub;
-  return onclick ? h('button', { class: 'aic-it', 'aria-label': aria, onclick }, body) : h('div', { class: 'aic-it', role: 'group', 'aria-label': aria }, body);
-}
-
 
 function secFleet(info) {
   const act = activeAgentIds(info.live);
@@ -862,7 +854,7 @@ function secActivity() {
 
 // ── action center ──
 function secActions(info) {
-  const live = info.live, pending = live.pendingApproval, A = S.actions;
+  const A = S.actions;
   const A_ok = window.BTAgent ? window.BTAgent.writesAllowed() : false, killed = window.BTAgent ? window.BTAgent.killed() : true;
   const body = [];
   body.push(h('div', { class: 'aic-gate aic-' + (killed ? 'cr' : A_ok ? 'ok' : 'wn') }, killed ? '⛔ AI changes are stopped on all devices (kill switch).' : A_ok ? '🔓 Changes allowed on this device. You approve every one.' : '🔒 Read-only on this device. BT can recommend but not change anything. Unlock from the assistant header.'));
@@ -1060,22 +1052,6 @@ function secRepo() {
 
 
 // ── AI Business Copilot: status, latest answer (merged here), structured result, investigation history ──
-function responseNode() {
-  const e = T.recent(400, x => x.type === 'answer' || x.type === 'instant')[0];
-  const err = T.recent(400, x => x.type === 'error')[0];
-  if (err && (!e || err.timestamp > e.timestamp)) return failureNode((err.metadata && err.metadata.message) || 'unknown error', null);
-  if (e && e.metadata && e.metadata.text) {
-    const last = Object.entries(S.assess).sort((a, b) => b[1].at - a[1].at)[0];
-    const f = last && S.snap && S.snap.findings.find(x => x.id === last[0]);
-    return h('div', { class: 'aic-resp' },
-      h('div', { class: 'aic-k', text: 'LATEST ANSWER · ' + M.ageLabel(e.timestamp) + (e.type === 'instant' ? ' · instant, no AI used' : '') }),
-      mdNode(e.metadata.text),
-      h('div', { class: 'aic-row' },
-        f ? h('button', { class: 'aic-p', text: 'Open structured result', onclick: () => openFinding(f) }) : null,
-        h('button', { text: 'Open full conversation', onclick: () => window.BTAgent && window.BTAgent.open() })));
-  }
-  return empty('Ask BT below, or tap Investigate on an issue. Answers appear here with their evidence.');
-}
 function histNode() {
   const runs = allRuns(), hist = C.buildInvestigationHistory(runs, 5);
   if (!hist.length) return empty('No investigations yet. Ask a question or tap Investigate on an issue.');

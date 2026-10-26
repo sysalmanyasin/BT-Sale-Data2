@@ -8,9 +8,9 @@ installDomEnv('<!doctype html><html><body><div class="page on" id="page-ai-cente
 globalThis.requestAnimationFrame = cb => setTimeout(cb, 0); window.requestAnimationFrame = globalThis.requestAnimationFrame;
 globalThis.invalidateRenderCache = () => {};
 window.scrollTo = () => {}; window.HTMLElement.prototype.scrollIntoView = () => {};
-const cfg = await import('../../js/config.js');
+const cfg = await import('../../js/platform/config.js');
 globalThis.recomputeMonthly = cfg.recomputeMonthly;
-const { Repository } = await import('../../js/repository.js');
+const { Repository } = await import('../../js/platform/repository.js');
 globalThis.Repository = Repository;
 await import('../../js/agent/tools/app.js');
 await import('../../js/agent/tools/verify.js');

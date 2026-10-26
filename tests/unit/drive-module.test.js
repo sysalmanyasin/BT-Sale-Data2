@@ -18,13 +18,13 @@ async function load() {
   const realST = globalThis.setTimeout, realSI = globalThis.setInterval;
   globalThis.setTimeout = (fn, ms) => { timers.push(ms); return 0; };
   globalThis.setInterval = () => 0; // drive.js starts a 5-min health interval on 'load'; don't leak it
-  await import(`../../js/drive.js?case=${++n}`);
+  await import(`../../js/platform/drive.js?case=${++n}`);
   return { w, timers, restore: () => { globalThis.setTimeout = realST; globalThis.setInterval = realSI; w.close(); } };
 }
 
 test('index.html: no classic <script defer> app scripts remain; drive.js is a module', () => {
   const html = read('index.html');
-  assert.match(html, /<script type="module" src="js\/drive\.js\?v=[0-9a-f]{8}"><\/script>/);
+  assert.match(html, /<script type="module" src="js\/platform\/drive\.js\?v=[0-9a-f]{8}"><\/script>/);
   assert.doesNotMatch(html, /<script defer src="js\//);
 });
 
@@ -45,7 +45,7 @@ test('does not clobber a token already present when the module loads', async () 
   for (const k of ['window', 'document', 'localStorage'])
     Object.defineProperty(globalThis, k, { value: k === 'window' ? dom.window : dom.window[k] ?? dom.window.document, configurable: true, writable: true });
   globalThis.addEventListener = dom.window.addEventListener.bind(dom.window);
-  await import(`../../js/drive.js?case=${++n}`);
+  await import(`../../js/platform/drive.js?case=${++n}`);
   assert.equal(dom.window._driveAccessToken, 'existing');
   globalThis.setInterval = realSI; dom.window.close();
 });

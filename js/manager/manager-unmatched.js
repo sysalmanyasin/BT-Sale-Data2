@@ -7,12 +7,12 @@
 // moves it into the real Staff Credit or Expense ledger through the
 // same functions a manual entry would use, then removes it from here.
 // ══════════════════════════════════════════════════════════════════════
-import { Repository } from '../repository.js';
-import { Actions } from '../actions.js';
-import { STAFF } from '../config.js';
+import { Repository } from '../platform/repository.js';
+import { Actions } from '../platform/actions.js';
+import { STAFF } from '../platform/config.js';
 import { activeStaff } from './manager-staff.js';
-import { _crdData } from './manager-credit.js';
-import { _mgrEsc } from './manager-shared.js';
+import { _crdData, loadCreditMonth } from './manager-credit.js';
+import { _mgrEsc, mgrLoad, mgrSave } from './manager-shared.js';
 import { act } from '../shared/dom-actions.js';
 
 // UNMATCHED — entries Closing App couldn't confidently match to a

@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════════════════
-// SMOKE TEST — js/config.js: the pure number/formatting helpers that
+// SMOKE TEST — js/platform/config.js: the pure number/formatting helpers that
 // every report, dashboard tile, and print engine downstream depends on.
 // Not exhaustive unit coverage — just enough to catch "the module
 // doesn't even load" and "a formatter silently returns garbage" classes
@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { installDomEnv } from '../helpers/dom-env.js';
 
 installDomEnv();
-const config = await import('../../js/config.js');
+const config = await import('../../js/platform/config.js');
 
 describe('config.js module (smoke)', () => {
   test('module loads and exposes the expected helper exports', () => {

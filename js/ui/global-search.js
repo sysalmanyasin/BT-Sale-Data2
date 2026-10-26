@@ -1,9 +1,9 @@
 // ══════════════════════════════════════════════════════════════════════
-// GLOBAL SEARCH — revives js/bt-search.js (dead code since commandhub.js
+// GLOBAL SEARCH — revives js/lib/bt-search.js (dead code since commandhub.js
 // was removed with the AI layer — see README "Known gaps").
 //
 // Adds a live search box to the top of the existing "All Sections"
-// drawer (js/nav-sections.js). Typing:
+// drawer (js/ui/nav-sections.js). Typing:
 //   1. Fuzzy-filters the section/sub-section tree that drawer already
 //      renders (via BTSearch.score against each row's own label),
 //      auto-expanding any branch that contains a match so a hit nested
@@ -24,8 +24,9 @@
 // note on that). nav-sections.js itself is untouched.
 // ══════════════════════════════════════════════════════════════════════
 
-import { escapeHtml as _esc } from './shared/html.js';
-import { act } from './shared/dom-actions.js';
+import { escapeHtml as _esc } from '../shared/html.js';
+import { act } from '../shared/dom-actions.js';
+import { Repository } from '../platform/repository.js';
 (function () {
   'use strict';
 

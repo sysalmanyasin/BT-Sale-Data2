@@ -6,8 +6,8 @@ import { installDomEnv } from '../helpers/dom-env.js';
 
 installDomEnv();
 globalThis.invalidateRenderCache = () => {};
-const cfg = await import('../../js/config.js'); globalThis.recomputeMonthly = cfg.recomputeMonthly;
-const { Repository } = await import('../../js/repository.js'); globalThis.Repository = Repository;
+const cfg = await import('../../js/platform/config.js'); globalThis.recomputeMonthly = cfg.recomputeMonthly;
+const { Repository } = await import('../../js/platform/repository.js'); globalThis.Repository = Repository;
 const reg = await import('../../js/agent/core/tool-registry.js');
 const M = await import('../../js/ai-center/model.js');
 const { categorySpikes, reorderDraft } = await import('../../js/shared/planning-metrics.js');

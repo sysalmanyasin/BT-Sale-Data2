@@ -1,7 +1,7 @@
 // Read-only BT Agent tool helpers. The tool itself is registered by the installer
 // so it participates in the existing registry, allow-list and telemetry.
 import { registerTool } from '../core/tool-registry.js';
-import { Repository } from '../../repository.js';
+import { Repository } from '../../platform/repository.js';
 
 function num(v) { const n = Number(String(v ?? '').replace(/,/g, '')); return Number.isFinite(n) ? n : 0; }
 function inventory() {

@@ -12,9 +12,9 @@ import { seedEvalData } from './seed.js';
 
 installDomEnv();
 globalThis.invalidateRenderCache = () => {};
-const cfg = await import('../../js/config.js');
+const cfg = await import('../../js/platform/config.js');
 globalThis.recomputeMonthly = cfg.recomputeMonthly;
-const { Repository } = await import('../../js/repository.js');
+const { Repository } = await import('../../js/platform/repository.js');
 globalThis.Repository = Repository;
 const LedgerStore = await import('../../js/ledger/ledger-store.js');
 const { LedgerActions } = await import('../../js/ledger/ledger-actions.js');

@@ -1,7 +1,7 @@
 // COVER DASHBOARD — Floor 5
 
-import { MONTHLY, DAILY, STAFF, n, fc, ff, negR, mBanks, creditSales } from '../config.js';
-import { Repository } from '../repository.js';
+import { MONTHLY, DAILY, STAFF, n, fc, ff, negR, mBanks, creditSales } from '../platform/config.js';
+import { Repository } from '../platform/repository.js';
 import * as LedgerStore from '../ledger/ledger-store.js';
 import * as ClosingBridge from '../closing/closing-bridge.js';
 import * as AuditBridge from '../audit/audit-bridge.js';
@@ -504,7 +504,7 @@ function _latestRealSheet(cdb) {
 }
 
 function _closingBookBillsAndReturnsSince(cdb, uptoKey) {
-  // Mirrors Closing app's own aggregateSinceLastFinal (js/pages.js / js/actions.js):
+  // Mirrors Closing app's own aggregateSinceLastFinal (js/pages.js / js/platform/actions.js):
   // Book Bills & Manual Returns accumulate across shift closings until the
   // most recent "Final" closing, whose own totals are included, then stop.
   // Only counting rec.inBook1+inBook2 on 'final'-mode records (the old bug
@@ -1419,7 +1419,7 @@ function _wireGroupDragReorder() {
       const groupEl = handle.closest('.cover-group');
       if (!groupEl) return;
       groupEl.classList.add('dragging');
-      if (navigator.vibrate) { try { navigator.vibrate(10); } catch (_) {} }
+      if (navigator.vibrate) { try { navigator.vibrate(10); } catch (_) { /* vibration unsupported: cosmetic only */ } }
 
       const onMove = (ev) => {
         const y = ev.clientY;

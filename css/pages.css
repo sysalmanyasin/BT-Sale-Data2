@@ -141,9 +141,9 @@
    without breaking the row's visual rhythm. */
 /* #mgr-tabs (the CREDIT DETAIL / WORKING pill-button clusters) is
    retired from view (Aug 2026) — its 9 destinations now live in the
-   persistent sub-tab strip instead (js/subtab-strip.js, pinned above
+   persistent sub-tab strip instead (js/ui/subtab-strip.js, pinned above
    .bnav on mobile / already in the rail's own accordion on desktop).
-   Kept in the DOM, not deleted: js/nav-sections.js's '.mgr-tab[href]'
+   Kept in the DOM, not deleted: js/ui/nav-sections.js's '.mgr-tab[href]'
    scraper (_SUB_GROUPS.manager) is what the strip's data ultimately
    comes from, so this is still the one real source of those 9 rows. */
 #mgr-tabs{display:none;}

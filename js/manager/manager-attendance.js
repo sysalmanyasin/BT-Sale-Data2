@@ -9,7 +9,7 @@
 // truth for who staff members are; this file only owns *when they were
 // here*.
 // ══════════════════════════════════════════════════════════════════════
-import { Repository } from '../repository.js';
+import { Repository } from '../platform/repository.js';
 import { _mgrEsc } from './manager-shared.js';
 import * as AttendanceBridge from './attendance-bridge.js';
 import { act, arg } from '../shared/dom-actions.js';
@@ -688,10 +688,6 @@ async function renderIphoneView() {
 
   const location = (await AttendanceBridge.fetchLocations())[0] || null;
   const { eventsUrl, anonKey } = AttendanceBridge.getRestConfig();
-
-  const body = (eventType) => JSON.stringify({
-    staff_id: staffNumber, staff_number: staffNumber, event_type: eventType, source: 'ios_shortcut',
-  }, null, 2);
 
   cont.innerHTML = `
     <div class="att-manual-form">

@@ -12,12 +12,13 @@
 // Every day is listed with a checkbox. Ticking one or more opens a
 // popup showing the combined total plus a day-by-day breakdown, with a
 // Print button that renders straight to a 72mm thermal receipt via
-// Print.renderThermalTable() (js/print.js) — jsPDF/autoTable vector
+// Print.renderThermalTable() (js/lib/print.js) — jsPDF/autoTable vector
 // text, not an html2canvas-captured image, sized to the content, not a
 // paginated Letter-size document like every other report in this app.
 // ══════════════════════════════════════════════════════════════════════
 
 import { act, arg } from '../shared/dom-actions.js';
+import { DAILY, fv, n, negR } from '../platform/config.js';
 (function () {
   'use strict';
 

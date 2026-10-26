@@ -13,7 +13,7 @@ test('attendance-bridge uses the signed-in client, never an anon-key client', ()
 });
 
 test('pdf-library opens files via short-lived signed URLs, never public URLs', () => {
-  const js = read('js/pdf-library.js');
+  const js = read('js/lib/pdf-library.js');
   assert.match(js, /createSignedUrl\(/);
   assert.doesNotMatch(js, /getPublicUrl\(/);
   assert.doesNotMatch(js, /_publicUrl/);

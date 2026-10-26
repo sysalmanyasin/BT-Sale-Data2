@@ -11,12 +11,12 @@
 // globals at click-time, never through an import), and several sibling
 // files (ai-bridge.js, custom-sections.js, jazz-cash.js, notes-sheets.js)
 // are still classic scripts that reference these as bare globals too.
-// Same temporary-bridge pattern as config.js/repository.js — remove the
+// Same temporary-bridge pattern as config.js/platform/repository.js — remove the
 // bridge once every consumer is itself a module that imports directly.
 // ══════════════════════════════════════════════════════════════════════
-import { Repository } from '../repository.js';
-import { Actions } from '../actions.js';
-import { MONTHLY, months, STAFF } from '../config.js';
+import { Repository } from '../platform/repository.js';
+import { Actions } from '../platform/actions.js';
+import { MONTHLY, months, STAFF } from '../platform/config.js';
 import { escapeHtml as _mgrEsc } from '../shared/html.js';
 
 const MGR_KEY = 'BT_ManagerWork_v1';
@@ -91,15 +91,15 @@ function mgrMonths() {
   try {
     const mgr = mgrLoad();
     ['salary','generic','expense','credit'].forEach(k => Object.keys(mgr[k] || {}).forEach(m => seen.add(m)));
-  } catch(e) {}
+  } catch(e) { /* best-effort: failure is intentionally non-fatal here */ }
   try {
     Repository.getKeysByPrefix('mw_petty_').forEach(k => seen.add(k.slice('mw_petty_'.length)));
     Repository.getKeysByPrefix('mw_incentive_').forEach(k => seen.add(k.slice('mw_incentive_'.length)));
-  } catch(e) {}
+  } catch(e) { /* best-effort: failure is intentionally non-fatal here */ }
   try {
     const all = typeof _csecLoad === 'function' ? _csecLoad() : JSON.parse(Repository.getItem('mw_custom_sections_v1') || '{}');
     Object.values(all || {}).forEach(sec => Object.keys((sec && sec.months) || {}).forEach(m => seen.add(m)));
-  } catch(e) {}
+  } catch(e) { /* best-effort: failure is intentionally non-fatal here */ }
 
   const now = new Date();
   const currentVal = now.getFullYear() * 12 + now.getMonth();

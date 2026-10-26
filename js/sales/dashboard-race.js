@@ -1,7 +1,7 @@
-import { ff, fc } from '../config.js';
+import { ff, fc } from '../platform/config.js';
 import { Analytics } from './analytics.js';
-import { Repository } from '../repository.js';
-import { Actions } from '../actions.js';
+import { Repository } from '../platform/repository.js';
+import { Actions } from '../platform/actions.js';
 import { act, arg, registerActions } from '../shared/dom-actions.js';
 
 // ══════════════════════════════════════════════════════════════════════
@@ -44,7 +44,7 @@ import { act, arg, registerActions } from '../shared/dom-actions.js';
 // are Floor 3, added alongside getTargetPaceForMonth/computeInsightCandidates
 // in analytics.js. Reads DAILY/MONTHLY/n/ff/fc as bare globals — same
 // window bridge every other classic-script dashboard file already
-// relies on (see js/config.js's own bridge block).
+// relies on (see js/platform/config.js's own bridge block).
 //
 // Wired into buildDashboard()'s existing render sequence (js/sales/dashboard.js)
 // behind a typeof guard, same convention as buildSalesHeatmap/
@@ -96,7 +96,7 @@ function _raceSetManualRate(value) {
       all[my] = Number(value);
     }
     Actions.saveFeatureData(_RACE_MANUAL_KEY, JSON.stringify(all));
-  } catch (_) {}
+  } catch (_) { /* best-effort: failure is intentionally non-fatal here */ }
   buildRaceForecast();
 }
 

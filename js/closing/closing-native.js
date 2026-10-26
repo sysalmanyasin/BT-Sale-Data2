@@ -896,7 +896,7 @@ function clSwitchMode(mode) {
   try {
     const _newHash = '#credit-ledger/' + mode;
     if (window.location.hash !== _newHash) history.replaceState(null, '', _newHash);
-  } catch(_) {}
+  } catch(_) { /* best-effort: failure is intentionally non-fatal here */ }
   renderCreditLedgerPage();
 }
 

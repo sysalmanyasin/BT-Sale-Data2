@@ -6,8 +6,9 @@
 // Analytics.buildIndexViewModel() (Floor 3). This function only maps
 // the resulting view-model to HTML (closes the last CF-03-style gap).
 // ══════════════════════════════════════════
-import { n, fc, ff } from '../config.js';
+import { n, fc, ff } from '../platform/config.js';
 import { act, arg } from '../shared/dom-actions.js';
+import { Analytics } from './analytics.js';
 
 function renderIndex() {
   const q=(document.getElementById('idx-search')?.value||'');

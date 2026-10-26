@@ -4,7 +4,7 @@
 // new ones. Coding-boss feature list addition.
 // ══════════════════════════════════════════════════════════════════
 // Why Picker instead of widening the OAuth scope:
-// The app only holds the narrow `drive.file` scope (js/auth.js line 372
+// The app only holds the narrow `drive.file` scope (js/platform/auth.js line 372
 // — no new consent screen, no Google verification review). `drive.file`
 // normally only sees files the app itself created. Google's Picker is
 // the sanctioned bridge: the user explicitly *picks* a file through
@@ -13,13 +13,13 @@
 //
 // Picker also needs either a developer API key or an app ID. We use
 // setAppId() with the OAuth client's project number (same one from
-// js/auth.js's GAUTH_CID_FALLBACK, 36704237826) — the documented
+// js/platform/auth.js's GAUTH_CID_FALLBACK, 36704237826) — the documented
 // no-API-key path when the caller already holds a valid OAuth token.
 // ══════════════════════════════════════════════════════════════════
 (function () {
 'use strict';
 
-const PICKER_APP_ID = '36704237826'; // project number — see js/auth.js GAUTH_CID_FALLBACK
+const PICKER_APP_ID = '36704237826'; // project number — see js/platform/auth.js GAUTH_CID_FALLBACK
 let _pickerApiLoaded = false;
 let _pickerApiLoading = null;
 

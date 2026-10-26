@@ -5,8 +5,8 @@ import { installDomEnv } from '../helpers/dom-env.js';
 installDomEnv();
 globalThis.invalidateRenderCache = () => {};
 
-const { Repository } = await import('../../js/repository.js');
-const { Actions } = await import('../../js/actions.js');
+const { Repository } = await import('../../js/platform/repository.js');
+const { Actions } = await import('../../js/platform/actions.js');
 
 const date = '01/Jan/2099';
 const monthYear = 'January 2099';

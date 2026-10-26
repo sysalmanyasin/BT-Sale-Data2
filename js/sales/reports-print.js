@@ -2,6 +2,10 @@
 // ══════════════════════════════════════════
 
 import { registerActions } from '../shared/dom-actions.js';
+import { DAILY, MONTHLY, RETURN_FIELDS, n, negR, years } from '../platform/config.js';
+import { getTgts } from './targets.js';
+import { Print } from '../lib/print.js';
+import { Repository } from '../platform/repository.js';
 (function() {
 'use strict';
 

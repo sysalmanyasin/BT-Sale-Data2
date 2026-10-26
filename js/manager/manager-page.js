@@ -34,7 +34,15 @@
 // outside callers (checked via grep) so it's left unbridged.
 // ══════════════════════════════════════════════════════════════════════
 
-import { Repository } from '../repository.js';
+import { Repository } from '../platform/repository.js';
+import { renderStaffRegistry, staffSave } from './manager-staff.js';
+import { renderUnmatchedTab } from './manager-unmatched.js';
+import { _fc2, _mgrPopSel, _ni, mgrMonths } from './manager-shared.js';
+import { loadSalaryMonth, saveSalaryData } from './manager-salary.js';
+import { loadGenericMonth, saveGenericData } from './manager-generic.js';
+import { loadCreditMonth, saveCreditData } from './manager-credit.js';
+import { _pettyTotalForMonth, loadPettyMonth, savePettyData } from './manager-petty.js';
+import { loadIncentiveMonth, saveIncentiveData } from './manager-incentive.js';
 
 function switchMgrTab(tab) {
   document.querySelectorAll('.mgr-tab').forEach(b => b.classList.toggle('active', b.dataset.mtab === tab));
@@ -46,7 +54,7 @@ function switchMgrTab(tab) {
   try {
     const _newHash = '#manager/' + tab;
     if (window.location.hash !== _newHash) history.replaceState(null, '', _newHash);
-  } catch(_) {}
+  } catch(_) { /* best-effort: failure is intentionally non-fatal here */ }
   if (tab === 'staff') renderStaffRegistry();
   if (tab === 'attendance' && typeof AttendanceUI !== 'undefined') AttendanceUI.renderAttendanceTab();
   if (tab === 'jazzcash' && typeof renderJazzCash === 'function') renderJazzCash();
@@ -148,7 +156,7 @@ function saveAllManagerSections() {
   const anyMonth = monthSels.map(id => (document.getElementById(id)||{}).value || '').find(v => v);
   if (!anyMonth) { toast('⚠ No month selected — open a tab and pick a month first','w'); return; }
   let saved = 0;
-  function tryCall(fn) { try { if (typeof fn === 'function') { fn(); saved++; } } catch(e) {} }
+  function tryCall(fn) { try { if (typeof fn === 'function') { fn(); saved++; } } catch(e) { /* best-effort: failure is intentionally non-fatal here */ } }
   staffSave(); saved++; // always save staff registry
   tryCall(saveSalaryData);
   tryCall(saveGenericData);

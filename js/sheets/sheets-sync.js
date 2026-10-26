@@ -4,7 +4,7 @@
 // bt_sheets / bt_sheets_cache / bt_sheets_pushes — see the migration
 // applied directly via Supabase MCP (create_bt_sheets_tables).
 // Uses window.btGetSupabaseClient(), the same door closing-ledger-marks.js
-// uses, rather than duplicating SB_URL/SB_KEY here (see js/supabase.js).
+// uses, rather than duplicating SB_URL/SB_KEY here (see js/platform/supabase.js).
 //
 // These three tables are plain normalized tables (not the single-blob
 // bt_salesdata pattern) because each sheet/tab/push is its own row —

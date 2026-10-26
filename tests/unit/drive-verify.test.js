@@ -1,4 +1,4 @@
-// Drive backup verification: pure helpers exposed on window.DriveVerify by js/drive.js.
+// Drive backup verification: pure helpers exposed on window.DriveVerify by js/platform/drive.js.
 // Covers: sale-date parsing, summaries, backup validation, shrink guard, read-back comparison,
 // restore dry-run plan, and the health traffic light used by the Tools card.
 import { test, before, after } from 'node:test'; import assert from 'node:assert/strict';
@@ -8,7 +8,7 @@ import { loadClassicScript } from '../helpers/load-classic-script.js';
 let V;
 before(() => {
   installDomEnv();
-  loadClassicScript('js/drive.js', window);
+  loadClassicScript('js/platform/drive.js', window);
   V = window.DriveVerify;
 });
 

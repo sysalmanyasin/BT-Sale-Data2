@@ -38,7 +38,7 @@ async function boot({ hash = '', session = null, sbSession = null, emails = 'own
   w.btGetSupabaseClient = () => ({ auth: {
     getSession: async () => ({ data: { session: sbSession }, error: null }),
     signOut: async () => ({}) } });
-  await import(`../../js/auth.js?case=${++n}`);
+  await import(`../../js/platform/auth.js?case=${++n}`);
   w.document.dispatchEvent(new w.Event('DOMContentLoaded'));
   await new Promise((r) => setTimeout(r, 30));
 }
@@ -46,7 +46,7 @@ const unlocked = () => w.document.getElementById('nav').style.display === 'flex'
 beforeEach(() => { w?.close?.(); });
 
 test('auth.js is loaded as an ES module', () => {
-  assert.match(read('index.html'), /<script type="module" src="js\/auth\.js\?v=[0-9a-f]{8}"><\/script>/);
+  assert.match(read('index.html'), /<script type="module" src="js\/platform\/auth\.js\?v=[0-9a-f]{8}"><\/script>/);
 });
 
 test('unlockApp / initAutoRefresh are private: not on window, not patchable', async () => {
@@ -104,17 +104,17 @@ test('"Continue as this account" cannot open the app without a verified session'
 });
 
 test('source: no kiosk code, no unlockApp on window, drive.js listens instead of patching', () => {
-  const auth = stripComments(read('js/auth.js'));
+  const auth = stripComments(read('js/platform/auth.js'));
   assert.doesNotMatch(auth, /kiosk|_isKioskHash|_enterKioskMode/i);
   assert.doesNotMatch(auth, /window\.unlockApp|window\.initAutoRefresh/);
-  const drive = stripComments(read('js/drive.js'));
+  const drive = stripComments(read('js/platform/drive.js'));
   assert.doesNotMatch(drive, /unlockApp\s*=/);
   assert.match(drive, /addEventListener\('bt:app-unlocked'/);
   assert.doesNotMatch(read('css/emergency-billing.css') + read('css/agent.css'), /bt-kiosk-mode/);
 });
 
 test('every previously-bridged sign-in/out global still exposed', () => {
-  const auth = stripComments(read('js/auth.js'));
+  const auth = stripComments(read('js/platform/auth.js'));
   for (const g of ['gauthShowMain', '_gauthOAuthSignIn', '_driveSilentReauth', 'gauthConfirmUser', 'gauthSignOut',
     'gauthSignOutAllDevices', 'tcSaveGAuthSettings', 'tcClearGAuthSession', 'tcClearGAuthAll', '_tcLoadGAuthStatus', 'lockApp', 'btEstablishSupabaseSessions'])
     assert.match(auth, new RegExp(`window\\.${g}\\s*=`), g);

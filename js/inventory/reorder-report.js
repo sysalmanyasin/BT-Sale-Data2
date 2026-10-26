@@ -109,7 +109,7 @@
 // itself rather than leaving an empty table. Excel/PDF export are
 // unaffected by this and always include every column, same as before;
 // added a new "Print" button that funnels through the app's one shared
-// Print engine (js/print.js, same one every other report uses) and
+// Print engine (js/lib/print.js, same one every other report uses) and
 // DOES respect the current column selection — the printed table only
 // contains whatever's checked in the Columns dropdown at the time.
 // ══════════════════════════════════════════════════════════════════════
@@ -657,7 +657,7 @@ window.ReorderReportApp = (function () {
 
   // ---------- RENDER ----------
   // ---------- PRINT (visible columns only) ----------
-  // Uses the shared Print engine (js/print.js) — same as every other
+  // Uses the shared Print engine (js/lib/print.js) — same as every other
   // report in the app — instead of window.print(), so it gets the
   // standard Generating…/View/Download/Save-to-Library popup. Unlike
   // Excel/PDF export (which always include every column), this respects

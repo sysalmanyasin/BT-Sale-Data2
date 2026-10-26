@@ -11,9 +11,9 @@ installDomEnv('<!doctype html><html><body>'
   + '</body></html>');
 globalThis.invalidateRenderCache = () => {};
 window.scrollTo = () => {}; window.HTMLElement.prototype.scrollIntoView = () => {};
-const cfg = await import('../../js/config.js');
+const cfg = await import('../../js/platform/config.js');
 globalThis.recomputeMonthly = cfg.recomputeMonthly;
-const { Repository } = await import('../../js/repository.js');
+const { Repository } = await import('../../js/platform/repository.js');
 globalThis.Repository = Repository;
 await import('../../js/agent/tools/app.js');
 await import('../../js/agent/tools/writes.js');

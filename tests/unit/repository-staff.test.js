@@ -13,9 +13,9 @@ import assert from 'node:assert/strict';
 import { installDomEnv, resetStorage } from '../helpers/dom-env.js';
 
 installDomEnv();
-const { Repository } = await import('../../js/repository.js');
-const { Actions } = await import('../../js/actions.js');
-const { EventBus } = await import('../../js/event-bus.js');
+const { Repository } = await import('../../js/platform/repository.js');
+const { Actions } = await import('../../js/platform/actions.js');
+const { EventBus } = await import('../../js/platform/event-bus.js');
 
 beforeEach(() => {
   resetStorage();

@@ -43,7 +43,7 @@
    var(--text)/etc. picks this up automatically — no component CSS
    needs to change. Toggled by setting data-theme="dark" on <html>
    (see the early inline script in index.html's <head>, and the
-   Appearance card in Tools / js/ui-extras.js's setThemePref()).
+   Appearance card in Tools / js/ui/ui-extras.js's setThemePref()).
    Semantic accents (accent/teal/green/amber/red/etc.) are bumped a
    shade lighter than their light-mode values so they keep enough
    contrast against the dark surfaces; -lt "tint" backgrounds go dark

@@ -150,7 +150,7 @@ function _msBuildManagerSummary(mon) {
   let jcBalance = null;
   try {
     if (typeof _jcCurrentBalance === 'function') jcBalance = _jcCurrentBalance();
-  } catch(_) {}
+  } catch(_) { /* best-effort: failure is intentionally non-fatal here */ }
 
   // Incentive
   let incNet = null;
@@ -165,7 +165,7 @@ function _msBuildManagerSummary(mon) {
       const totalGen  = genInc - _msN(inc.excessFine);
       incNet = totalComm + _msN(inc.cashTarget) + totalGen - _msN(inc.plusFine) - _msN(inc.paperFine) - _msN(inc.panelFine);
     }
-  } catch(_) {}
+  } catch(_) { /* best-effort: failure is intentionally non-fatal here */ }
 
   // Credit outstanding (top 3)
   let creditRows = [];
@@ -182,7 +182,7 @@ function _msBuildManagerSummary(mon) {
         })).filter(e => e.bal > 0).sort((a, b) => b.bal - a.bal).slice(0, 5);
       }
     }
-  } catch(_) {}
+  } catch(_) { /* best-effort: failure is intentionally non-fatal here */ }
 
   const hasData = salaryTotal || genericTotal || pettyTotal || jcBalance || incNet != null || creditRows.length;
   if (!hasData) return '';
@@ -226,12 +226,12 @@ function _msBuildAlerts() {
     if (typeof aimRulesCheckAll === 'function') {
       aimRulesCheckAll().forEach(f => alerts.push(f.msg));
     }
-  } catch(_) {}
+  } catch(_) { /* best-effort: failure is intentionally non-fatal here */ }
   try {
     if (typeof aimSectionZeroAlerts === 'function') {
       aimSectionZeroAlerts().forEach(a => alerts.push(a));
     }
-  } catch(_) {}
+  } catch(_) { /* best-effort: failure is intentionally non-fatal here */ }
   if (!alerts.length) return '';
   return `
     <div class="ms-section">

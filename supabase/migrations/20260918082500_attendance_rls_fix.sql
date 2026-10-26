@@ -1,7 +1,7 @@
 -- ══════════════════════════════════════════════════════════════════════
 -- Fix: the original attendance RLS policies keyed off auth.jwt() ->>
 -- 'role'/'staff_id' custom claims. This app has no real Supabase Auth
--- session anywhere (confirmed: js/supabase.js never calls signIn*/
+-- session anywhere (confirmed: js/platform/supabase.js never calls signIn*/
 -- setSession — every table, including bt_sessions per the 2026-08-05
 -- security-audit migration, runs on the plain anon key with USING
 -- (true) policies; access control is enforced client-side via

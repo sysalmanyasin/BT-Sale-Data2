@@ -16,7 +16,7 @@
 //
 // Pure DOM renderer — no computation lives anywhere else, nothing here
 // mutates DAILY/MONTHLY. Reads DAILY / n / ff / fc as bare globals (the
-// same window bridge js/config.js's own file-footer sets up for every
+// same window bridge js/platform/config.js's own file-footer sets up for every
 // other classic-script consumer — see that file's "TEMPORARY WINDOW
 // BRIDGE" block).
 // ══════════════════════════════════════════════════════════════════════

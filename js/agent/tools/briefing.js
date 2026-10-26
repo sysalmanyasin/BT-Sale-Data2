@@ -1,8 +1,8 @@
 // Cross-domain "what needs my attention today?" — deterministic checks
 // (read-only). The model only turns the findings into a short summary.
 import { registerTool } from '../core/tool-registry.js';
-import { DAILY } from '../../config.js';
-import { Repository } from '../../repository.js';
+import { DAILY } from '../../platform/config.js';
+import { Repository } from '../../platform/repository.js';
 import { num, rs, FULL, MON, sameMonth, parseAppDate, monthSortVal } from './_util.js';
 import { creditAlertMessages, findUnrolledCredit, creditNet } from '../../shared/credit-alerts.js';
 import * as LedgerStore from '../../ledger/ledger-store.js';

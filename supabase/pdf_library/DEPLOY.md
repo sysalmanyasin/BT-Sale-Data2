@@ -2,7 +2,7 @@
 
 I can't run this from here — this sandbox has no network access to
 supabase.com. Steps to set it up yourself, once, against the same
-Supabase project this app already syncs to (URL/key in `js/supabase.js`):
+Supabase project this app already syncs to (URL/key in `js/platform/supabase.js`):
 
 ## 1. Create the table + policies
 Supabase Dashboard → SQL Editor → paste in `schema.sql` from this folder
@@ -16,7 +16,7 @@ Dashboard → Storage → New bucket:
   URL for viewing/downloading — no signed-URL step needed)
 
 If you'd rather keep it private, flip `public` to `false` on the bucket
-and in `schema.sql`, and change `js/pdf-library.js`'s `_publicUrl()` to
+and in `schema.sql`, and change `js/lib/pdf-library.js`'s `_publicUrl()` to
 call `createSignedUrl()` instead — it's the one place that assumes a
 public bucket.
 

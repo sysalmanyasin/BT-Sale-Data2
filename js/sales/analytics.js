@@ -1,8 +1,8 @@
 import {
-  MONTHLY, DAILY, n, ff, fc, pct, CLIENT_COLS, BANK_COLS, DAILY_SUB_KEYS,
-  cashSales, creditSales, clamp, pctNum, yearlyCAGR, branchScore, recomputeMonthly
-} from '../config.js';
-import { Repository } from '../repository.js';
+  MONTHLY, DAILY, n, CLIENT_COLS, BANK_COLS, DAILY_SUB_KEYS,
+  cashSales, creditSales, yearlyCAGR, branchScore, recomputeMonthly
+} from '../platform/config.js';
+import { Repository } from '../platform/repository.js';
 import { getTgts } from './targets.js';
 
 // ══════════════════════════════════════════════════════════════════════
@@ -144,20 +144,20 @@ const Analytics = (function () {
         || credit.some(emp =>
             _ni(emp.prevBal) || _ni(emp.salary) || _ni(emp.lessGeneric)
             || (emp.entries || []).some(e => _ni(e.amount) || e.desc || e.date));
-    } catch(e) {}
+    } catch(e) { /* best-effort: failure is intentionally non-fatal here */ }
     try {
       hasData = hasData || (typeof _pettyTotalForMonth === 'function' && _pettyTotalForMonth(my) !== 0);
-    } catch(e) {}
+    } catch(e) { /* best-effort: failure is intentionally non-fatal here */ }
     try {
       const csecAll = typeof _csecLoad === 'function' ? _csecLoad() : {};
       hasData = hasData || Object.values(csecAll).some(sec =>
         ((sec && sec.months && sec.months[my]) || []).some(r =>
           (parseFloat(r.amount) || 0) !== 0 || r.desc || r.notes));
-    } catch(e) {}
+    } catch(e) { /* best-effort: failure is intentionally non-fatal here */ }
     try {
       const inc = JSON.parse(Repository.getItem('mw_incentive_' + my) || '{}');
       hasData = hasData || Object.values(inc).some(v => (Math.round(Number(v) || 0)) !== 0);
-    } catch(e) {}
+    } catch(e) { /* best-effort: failure is intentionally non-fatal here */ }
     return hasData;
   }
 
@@ -169,15 +169,15 @@ const Analytics = (function () {
       ['salary', 'generic', 'expense', 'credit'].forEach(k => {
         Object.keys(mgr[k] || {}).forEach(m => found.add(m));
       });
-    } catch(e) {}
+    } catch(e) { /* best-effort: failure is intentionally non-fatal here */ }
     try {
       Repository.getKeysByPrefix('mw_petty_').forEach(k => found.add(k.slice('mw_petty_'.length)));
-    } catch(e) {}
+    } catch(e) { /* best-effort: failure is intentionally non-fatal here */ }
     try {
       const csecAll = typeof _csecLoad === 'function' ? _csecLoad() : {};
       Object.values(csecAll).forEach(sec =>
         Object.keys((sec && sec.months) || {}).forEach(m => found.add(m)));
-    } catch(e) {}
+    } catch(e) { /* best-effort: failure is intentionally non-fatal here */ }
     const current = _currentMonthVal();
     return Array.from(found)
       .filter(m => _monthSortVal(m) <= current && managerMonthHasData(m))
@@ -207,7 +207,7 @@ const Analytics = (function () {
     try {
       const mgr = typeof mgrLoad === 'function' ? mgrLoad() : {};
       Object.keys(mgr.credit || {}).forEach(m => found.add(m));
-    } catch(e) {}
+    } catch(e) { /* best-effort: failure is intentionally non-fatal here */ }
     const _ni = v => Math.round(Number(v) || 0);
     const hasCreditData = my => {
       try {

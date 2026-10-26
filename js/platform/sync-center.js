@@ -1,6 +1,6 @@
 import { Repository } from './repository.js';
 import { Actions } from './actions.js';
-import { act, registerActions } from './shared/dom-actions.js';
+import { act, registerActions } from '../shared/dom-actions.js';
 
 // ══════════════════════════════════════════════════════════════════════════
 // SYNC CENTER  v1.1  (audited & fixed)
@@ -139,7 +139,7 @@ function _sc_detectDeviceName() {
         const ntVer = ua.match(/Windows NT ([\d.]+)/);
         if (ntVer && parseFloat(ntVer[1]) >= 10) return 'Windows PC'; // could be 10 or 11
       }
-    } catch (_) {}
+    } catch (_) { /* best-effort: failure is intentionally non-fatal here */ }
     const ntVer = ua.match(/Windows NT ([\d.]+)/);
     if (ntVer && parseFloat(ntVer[1]) >= 10) return 'Windows PC';
     return 'Windows PC';
@@ -517,7 +517,7 @@ function scClearLogs() {
 function _sc_startSessionRealtime() {
   if (!_sc_tableExists) return;
   const db = _scDb();
-  if (_sc_channel) { try { db.removeChannel(_sc_channel); } catch (_) {} }
+  if (_sc_channel) { try { db.removeChannel(_sc_channel); } catch (_) { /* best-effort: failure is intentionally non-fatal here */ } }
   _sc_channel = db
     .channel('bt-sessions-rt')
     .on('postgres_changes', { event: '*', schema: 'public', table: SC_TABLE }, async payload => {
@@ -627,7 +627,7 @@ function scSwitchTab(tab) {
   try {
     const _newHash = '#tools/synccenter/' + tab;
     if (window.location.hash !== _newHash) history.replaceState(null, '', _newHash);
-  } catch(_) {}
+  } catch(_) { /* best-effort: failure is intentionally non-fatal here */ }
   // F12: always re-render settings when that tab is opened.
   if (tab === 'settings') _sc_renderSettings();
 }

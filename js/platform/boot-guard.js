@@ -14,7 +14,7 @@
 // or blank sections with no error pointing at the actual cause.
 //
 // This file is an ES module, placed immediately after the
-// module block (js/actions.js) in index.html — so by the time it runs,
+// module block (js/platform/actions.js) in index.html — so by the time it runs,
 // every dependency below MUST already exist, or the load order broke.
 // Same "fail loud, name the exact cause" instinct as config.js's
 // _protectArray Proxy and ui-extras.js's _assertActionsAvailable.
@@ -34,7 +34,7 @@
   if (missing.length) {
     const msg = '[Architecture] BOOT ORDER BROKEN — missing on window: ' +
       missing.join(', ') + '. This means a script ran before ' +
-      'config.js/repository.js/actions.js finished loading. Check ' +
+      'config.js/platform/repository.js/platform/actions.js finished loading. Check ' +
       '<script> order in index.html — the module block (bt-format, ' +
       'print, bt-date, bt-search, config, event-bus, ' +
       'repository, actions) must stay above every classic <script defer> ' +

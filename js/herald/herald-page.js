@@ -16,7 +16,7 @@
 // ══════════════════════════════════════════════════════════════════════
 
 import { buildTodaysEdition, refreshEdition } from './herald-engine.js';
-import { Repository } from '../repository.js';
+import { Repository } from '../platform/repository.js';
 import { escapeHtml as _esc } from '../shared/html.js';
 
 const COLLAPSE_KEY = 'bt_herald_collapsed';

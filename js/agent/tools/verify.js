@@ -14,9 +14,9 @@ import './writes.js';
 import './credit.js';
 import './deletes.js';
 import './memory-tool.js'; // registers remember_fact (its verifier lives in that file)
-import { Repository } from '../../repository.js';
+import { Repository } from '../../platform/repository.js';
 import * as LedgerStore from '../../ledger/ledger-store.js';
-import { DAILY, MONTHLY } from '../../config.js';
+import { DAILY, MONTHLY } from '../../platform/config.js';
 import { num, sameMonth } from './_util.js';
 import { normName } from './_names.js';
 

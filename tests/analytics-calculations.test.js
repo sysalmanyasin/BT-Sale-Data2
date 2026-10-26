@@ -11,8 +11,8 @@ globalThis.localStorage = {
 };
 globalThis.invalidateRenderCache = () => {};
 
-const config = await import('../js/config.js');
-const { Repository } = await import('../js/repository.js');
+const config = await import('../js/platform/config.js');
+const { Repository } = await import('../js/platform/repository.js');
 const { Analytics } = await import('../js/sales/analytics.js');
 
 const MONTHS = [

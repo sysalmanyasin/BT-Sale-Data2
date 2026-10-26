@@ -22,13 +22,13 @@ function strictWindow(t) {
   w._curPage = ''; // storage.js (loaded before ui.js in the real page) defines this window property
   // Wrap in a function scope so declarations are PRIVATE like a real ES module (a bare classic script
   // would leak them to the global object and hide exactly the bug these tests are for).
-  vm.runInContext('(function(){"use strict";\n' + read('js/ui.js') + '\n})();', w, { filename: 'ui.js' });
+  vm.runInContext('(function(){"use strict";\n' + read('js/ui/ui.js') + '\n})();', w, { filename: 'ui.js' });
   t.after(() => w.close());
   return { w, errors };
 }
 
 test('index.html loads ui.js as an ES module', () => {
-  assert.match(html, /<script type="module" src="js\/ui\.js\?v=[0-9a-f]{8}"><\/script>/);
+  assert.match(html, /<script type="module" src="js\/ui\/ui\.js\?v=[0-9a-f]{8}"><\/script>/);
 });
 
 test('ui.js loads and routes pages under strict mode with no strict-only failures', (t) => {
@@ -70,7 +70,7 @@ test('every previously-global ui.js name used elsewhere is still on window', (t)
 });
 
 test('source: ui.js never calls the module-local showPage directly', () => {
-  const code = stripComments(read('js/ui.js'));
+  const code = stripComments(read('js/ui/ui.js'));
   const calls = [...code.matchAll(/(?<![\w$.])showPage\s*\(/g)];
   assert.equal(calls.length, 1, 'only the function declaration may mention bare showPage(');
   assert.match(code, /function showPage\(/);

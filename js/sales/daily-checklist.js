@@ -18,8 +18,9 @@
      4. Print.renderNewTab(html,opts) exists; otherwise a Blob-tab fallback is used.
      5. Sale figures come from window.dayData (reports.js) when present, so they match the Sale Report.
    ════════════════════════════════════════════════════════════════════ */
-import { DAILY } from '../config.js';
+import { DAILY } from '../platform/config.js';
 import { escapeHtml } from '../shared/html.js';
+import { _fmCustom } from './fields.js';
 
 (function () {
 'use strict';
@@ -559,7 +560,6 @@ function resetDay() {
 }
 
 /* ── lifecycle ──────────────────────────────────────────────────── */
-function onMeta() { syncSig(); queueSave(); }
 function build() {
   root = document.getElementById(ROOT_ID); if (!root) return false;
   root.classList.add('dcl-root'); root.innerHTML = pageHtml(); buildRail();

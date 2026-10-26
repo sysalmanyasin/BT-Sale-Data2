@@ -7,9 +7,9 @@
 import { registerTool } from '../core/tool-registry.js';
 import { amountChecks, dateChecks, isoToday, rsFmt } from '../core/guard.js';
 import { afterWrite } from '../core/after-write.js';
-import { Repository } from '../../repository.js';
-import { Actions } from '../../actions.js';
-import { num, rs, normDay, normMonth, currentMonthYear, FULL, MON, clampInt, monthSortVal } from './_util.js';
+import { Repository } from '../../platform/repository.js';
+import { Actions } from '../../platform/actions.js';
+import { num, normDay, normMonth, currentMonthYear, FULL, MON, monthSortVal } from './_util.js';
 import { findUnrolledCredit } from '../../shared/credit-alerts.js';
 import { resolveStaff, findCreditRow, normName } from './_names.js';
 

@@ -57,10 +57,25 @@ async function getAdminPin(): Promise<string | null> {
   return data?.data?.adminPin || null;
 }
 
+// CORS: browser calls are limited to the production site. Override with ALLOWED_ORIGINS (comma list) for local dev.
+// Applied to EVERY response by the wrapper at the bottom of this file, so error paths are covered too.
+const DEFAULT_ORIGIN = 'https://bt.duapharma.com';
+const allowedOrigins = (Deno.env.get('ALLOWED_ORIGINS') || DEFAULT_ORIGIN).split(',').map((s) => s.trim()).filter(Boolean);
+function cors(req: Request): Record<string, string> {
+  const origin = req.headers.get('origin') || '';
+  const allow = allowedOrigins.includes('*') ? '*' : (allowedOrigins.includes(origin) ? origin : allowedOrigins[0] || DEFAULT_ORIGIN);
+  return {
+    'Access-Control-Allow-Origin': allow,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary': 'Origin',
+  };
+}
+
 function unauthorized(): never {
   throw new Response(JSON.stringify({ error: 'Unauthorized' }), {
     status: 403,
-    headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+    headers: { 'Content-Type': 'application/json' },
   });
 }
 
@@ -89,7 +104,7 @@ async function requireBackupAuth(pin: unknown, autoKey: unknown) {
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+    headers: { 'Content-Type': 'application/json' },
   });
 }
 
@@ -338,13 +353,9 @@ async function handleDisconnect() {
   return { connected: false };
 }
 
-Deno.serve(async (req) => {
+async function handle(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'content-type, authorization, apikey, x-client-info',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    }});
+    return new Response(null);
   }
   try {
     const { action, code, redirectUri, pin, autoKey, fileId } = await req.json();
@@ -381,4 +392,11 @@ Deno.serve(async (req) => {
         : String(err);
     return json({ error: message }, 500);
   }
+}
+
+Deno.serve(async (req: Request): Promise<Response> => {
+  let res: Response;
+  try { res = await handle(req); } catch (e) { if (e instanceof Response) res = e; else throw e; }
+  for (const [k, v] of Object.entries(cors(req))) res.headers.set(k, v);
+  return res;
 });

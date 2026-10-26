@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════════════════════════════
 // PDF LIBRARY  —  in-app, cross-device library of every PDF the app
 // generates, fed directly from the one central hook every report
-// already funnels through: js/print.js's _generateAndDeliver().
+// already funnels through: js/lib/print.js's _generateAndDeliver().
 //
 // Flow:
 //   1. The instant a print is requested, print.js calls
@@ -18,7 +18,7 @@
 //      own — the user picks what they want.
 //   3. "Save to Library" uploads the blob to the `pdf-library` Storage
 //      bucket and inserts one metadata row into `bt_pdf_library` (same
-//      Supabase project as everything else — see js/supabase.js for
+//      Supabase project as everything else — see js/platform/supabase.js for
 //      SB_URL/SB_KEY). Expiry: 3d default, or 7d/30d/Keep(pinned).
 //   4. If PDF generation itself throws, print.js calls
 //      window.PdfLibrary.failPrint(err) so the popup doesn't get stuck
@@ -35,8 +35,8 @@
 // only ever created once supabase-js's UMD global is actually present.
 // ══════════════════════════════════════════════════════════════════════
 
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './shared/backend-config.js';
-import { escapeHtml as _esc } from './shared/html.js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../shared/backend-config.js';
+import { escapeHtml as _esc } from '../shared/html.js';
 window.PdfLibrary = (function () {
   'use strict';
 

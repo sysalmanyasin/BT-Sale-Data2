@@ -28,7 +28,6 @@
 // ══════════════════════════════════════════════════════════════════════
 
 import * as EBBridge from './emergency-billing-bridge.js';
-import { BTDate } from '../bt-date.js';
 import { escapeHtml as esc } from '../shared/html.js';
 
 (function () {
@@ -63,7 +62,6 @@ import { escapeHtml as esc } from '../shared/html.js';
   let cart = [];            // [{ code, name, price, qty, total }]
   let heldBills = [];        // [{ tag, savedAt, items, discountAmount, customerName, customerPhone }]
   let settings = DEFAULT_SETTINGS; // real value assigned by loadSettings() in init()
-  let activeTab = 'billing';       // 'billing' | 'history' | 'settings'
   let paymentMethod = 'cash';
   let activeDropdownIndex = -1;
   let searchResults = [];
@@ -784,7 +782,7 @@ import { escapeHtml as esc } from '../shared/html.js';
 
   // ── Receipt build + print — a self-contained thermal-slip printout,
   // the same idea as POS's hidden #receipt-area + @media print (not
-  // this app's shared Print.render() engine in js/print.js, which is
+  // this app's shared Print.render() engine in js/lib/print.js, which is
   // built for full-page KPI/table reports, not narrow slips). See
   // css/emergency-billing.css for the print rules that hide everything
   // else on the page except #eb-receipt-print when printing.
@@ -965,7 +963,6 @@ import { escapeHtml as esc } from '../shared/html.js';
   let historyAutoLoaded = false;
   function ebSwitchTab(tab) {
     if (tab !== 'billing' && tab !== 'history' && tab !== 'settings') tab = 'billing';
-    activeTab = tab;
     ['billing', 'history', 'settings'].forEach(t => {
       const panel = $('eb-tab-panel-' + t);
       const btn = $('eb-tab-btn-' + t);

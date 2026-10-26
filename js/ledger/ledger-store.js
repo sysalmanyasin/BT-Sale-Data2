@@ -14,9 +14,9 @@
 // LedgerStore from './ledger-store.js'`.
 // ══════════════════════════════════════════════════════════════════════
 
-import { Repository } from '../repository.js';
-import { EventBus } from '../event-bus.js';
-import * as Tombstones from '../sync-tombstones.js';
+import { Repository } from '../platform/repository.js';
+import { EventBus } from '../platform/event-bus.js';
+import * as Tombstones from '../platform/sync-tombstones.js';
 
 export const LEDGER_KEY = 'bt_ledger_v1';
 
@@ -334,7 +334,7 @@ export function _removeEntry(id) {
 
 // ── Window bridge ────────────────────────────────────────────────────
 // Classic-script consumers need this: jazz-cash.js's Balance Tally panel
-// reads the live Jazz Cash ledger balance, and drive.js/supabase.js back
+// reads the live Jazz Cash ledger balance, and drive.js/platform/supabase.js back
 // up and sync the raw storage keys directly (same established pattern as
 // JC_KEY/CSEC_KEY elsewhere in this app — a bare `const` in a module
 // never reaches a classic script's global scope, only `window.X` does).
