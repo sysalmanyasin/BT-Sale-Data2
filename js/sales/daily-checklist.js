@@ -83,7 +83,9 @@ var SEC = [
 ];
 var TBL = [
   { id: 'mc', n: '25–27', t: 'Manual cash bill and Credit sales', it: [
-    ['25', 'Marketing:', 'Dr Saira Taj (Dermatologist)', 0, 'mkt'],
+    ['25 A', 'Marketing: Flyer distribution', ''],
+    ['25 B', 'Doctor Visits', 'Dr Saira Taj (Dermatologist)', 0, 'mkt'],
+    ['25 C', 'Doctor sales potential', ''],
     ['26', 'Manual cash memo entered in computer or not', 'Book Pending Value: 890'],
     ['27', 'Credit sales entered in the computer before handing medicine', 'Yes: All Bills entered at time of Handing Medicines']] },
   { id: 'rpo', n: '28–31', t: 'RPO and Short excess status', it: [
@@ -91,7 +93,7 @@ var TBL = [
     ['29 C', 'Any amendment in RPOs', '', 0, 'rpoa'], ['30', 'Short & Excess Values of Randoms', '-2211'],
     ['31', 'Number of customers discount given after approval.', '18']] }
 ];
-/* Dropdown items (25, 29A, 29B, 29C): option lists live in this device's localStorage and are editable via the ✎ button. */
+/* Dropdown items (25 B, 29A, 29B, 29C): option lists live in this device's localStorage and are editable via the ✎ button. */
 var DD_KEY = 'bt_daily_checklist_opts_v1';
 var DD_DEF = {
   mkt:  ['Dr Saira Taj (Dermatologist)', 'No marketing visit today', 'Company representative visited', 'Doctor visit / sample drop'],

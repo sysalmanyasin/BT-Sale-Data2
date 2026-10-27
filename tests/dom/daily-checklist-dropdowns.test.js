@@ -1,4 +1,4 @@
-// Daily Check List — items 25, 29A, 29B, 29C are dropdowns whose option lists are stored in localStorage.
+// Daily Check List — items 25 B, 29A, 29B, 29C are dropdowns whose option lists are stored in localStorage.
 // Renders the REAL page (js/sales/daily-checklist.js) in jsdom.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -11,12 +11,12 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const $ = (id) => document.getElementById('dcl-' + id);
 const click = (el) => el.dispatchEvent(new w.Event('click', { bubbles: true }));
 const change = (el) => el.dispatchEvent(new w.Event('change', { bubbles: true }));
-const KEYS = { mkt: '25', rpos: '29 A', rpor: '29 B', rpoa: '29 C' };
+const KEYS = { mkt: '25 B', rpos: '29 A', rpor: '29 B', rpoa: '29 C' };
 const OPT_KEY = 'bt_daily_checklist_opts_v1', DAY_KEY = 'bt_daily_checklist_v1';
 
 function fresh() { resetStorage(); w.loadDailyChecklistPage(); }
 
-test('25, 29A, 29B, 29C render as dropdowns with 3+ real options each', () => {
+test('25 B, 29A, 29B, 29C render as dropdowns with 3+ real options each', () => {
   fresh();
   for (const k of Object.keys(KEYS)) {
     const sel = $('dd_' + k);
@@ -44,7 +44,11 @@ test('the answer reaches the report model (copy / print / email)', () => {
   const rows = w.DailyChecklist.collectModel().extra.flatMap((s) => s.rows);
   assert.equal(rows.find((r) => r.no === '29 C').val, 'Yes - amended');
   assert.deepEqual(rows.map((r) => r.no).filter((n) => /^2[89]/.test(n)), ['28', '29 A', '29 B', '29 C']);   // renumbered: no 28 A / 28 B left
-  assert.equal(rows.find((r) => r.no === '25').val, 'Dr Saira Taj (Dermatologist)');
+  assert.equal(rows.find((r) => r.no === '25 B').val, 'Dr Saira Taj (Dermatologist)');
+  // item 25 is split into Marketing sub-items 25 A / 25 B / 25 C
+  assert.deepEqual(rows.map((r) => r.no).filter((n) => /^25/.test(n)), ['25 A', '25 B', '25 C']);
+  assert.deepEqual(rows.filter((r) => /^25/.test(r.no)).map((r) => r.label),
+    ['Marketing: Flyer distribution', 'Doctor Visits', 'Doctor sales potential']);
 });
 
 test('option list is editable, stored locally, min 3, and keeps an answer that was removed', () => {

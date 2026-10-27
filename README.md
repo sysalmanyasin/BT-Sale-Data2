@@ -285,7 +285,7 @@ Tile and group colours are the accents each section re-themes to once opened (`n
 The native **Daily Check List** page sits beside **Sale Report** in the Sales sub-navigation. It brings the branch's daily operational checklist into the PWA rather than relying on the former external page.
 
 - **Checklist workflow:** section-based checklist, completion progress, navigation to the next incomplete section, and per-day draft saving.
-- **Editable dropdowns:** items **25, 29A, 29B and 29C** use option lists that can be edited and reset to defaults. Custom option lists are saved on the current device.
+- **Editable dropdowns:** items **25 B (Doctor Visits), 29A, 29B and 29C** use option lists that can be edited and reset to defaults. Custom option lists are saved on the current device.
 - **Sales prefill:** pulls the selected date's sales figures from the app and uses the Sale Report's `dayData()` calculation when available, including custom fields such as **Bank Alfalah 2**. Prefill fills eligible fields without overwriting manual edits.
 - **Stock prefill:** yesterday's received-stock value is sourced from STR data; today's opening/closing stock and negative-value figures use available inventory totals where supported. Historical closing-stock values must be entered manually.
 - **Output:** copy, print and email-friendly report actions.
