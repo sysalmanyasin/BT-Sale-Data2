@@ -388,21 +388,8 @@ table.eb-refund-table td { padding: 6px 4px; border-bottom: 1px solid var(--bord
 .eb-rcpt-foot { margin-top: var(--sp-3); font-size:11px; color: #777; text-align: center; }
 .eb-receipt-modal-actions { display: flex; gap: var(--sp-2); justify-content: center; margin-top: var(--sp-4); }
 
-/* ── Print — only the receipt shows, everything else on the page is
-   hidden. Same pattern POS's own print.css uses for its receipt slip:
-   a dedicated print-only block rather than routing through this app's
-   shared Print.render() engine (js/lib/print.js), which targets full-page
-   KPI/table reports, not a narrow thermal-style slip. ─────────────── */
-@media print {
-  body * { visibility: hidden; }
-  #eb-receipt-print, #eb-receipt-print * { visibility: visible; }
-  #eb-receipt-print {
-    position: fixed; top: 0; left: 0; width: 80mm; padding: 4mm;
-    color: #000; font-family: 'IBM Plex Mono', monospace; font-size: 11px;
-  }
-  /* Settings tab's "Receipt Width: 58mm (narrow)" option — applied as a
-     class on #eb-receipt-print itself (see showReceipt() in
-     emergency-billing-native.js) rather than a second print stylesheet. */
-  #eb-receipt-print.eb-w58 { width: 58mm; font-size:11px; padding: 3mm; }
-  #eb-receipt-modal, .eb-receipt-modal-actions, #eb-history-detail-modal { display: none !important; }
-}
+/* ── Print — receipt printing now happens in a hidden iframe built by
+   printReceipt() in emergency-billing-native.js (self-contained @page
+   80mm/58mm styles). The old @media print block hid #eb-receipt-modal
+   with display:none, which also hid #eb-receipt-print (its child) and
+   produced a blank page — so it was removed. ───────────────────── */

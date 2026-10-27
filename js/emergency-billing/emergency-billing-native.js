@@ -844,8 +844,40 @@ import { escapeHtml as esc } from '../shared/html.js';
     const modal = $('eb-receipt-modal');
     if (modal) modal.classList.remove('visible');
   }
+  // Prints the receipt from a hidden, self-contained iframe instead of
+  // window.print() on the whole app page. The old @media print approach
+  // went blank: #eb-receipt-print lives INSIDE #eb-receipt-modal, and the
+  // print CSS set that modal to display:none, which hid the receipt with
+  // it. The iframe carries only the receipt markup + its own @page size,
+  // so no app CSS (or modal state) can blank it. srcdoc (no inline script)
+  // keeps this compatible with the page's script-src CSP.
   function printReceipt() {
-    setTimeout(() => window.print(), 50);
+    const box = $('eb-receipt-print');
+    if (!box || !box.innerHTML.trim()) { say('Nothing to print yet.', true); return; }
+    const narrow = settings.receiptWidth === '58';
+    const css = '@page{size:' + (narrow ? 58 : 80) + 'mm auto;margin:0}' +
+      'html,body{margin:0;padding:0;background:#fff}' +
+      'body{width:' + (narrow ? 58 : 80) + 'mm;padding:' + (narrow ? 3 : 4) + 'mm;box-sizing:border-box;' +
+      'color:#000;font:11px/1.35 \'IBM Plex Mono\',\'Courier New\',monospace}' +
+      '.eb-rcpt-head{text-align:center;margin-bottom:8px}.eb-rcpt-head h3{font-size:14px;margin:0 0 2px}' +
+      '.eb-rcpt-head p{margin:0;font-size:11px}.eb-rcpt-branch{font-weight:700}' +
+      '.eb-rcpt-row,.eb-rcpt-item-meta{display:flex;justify-content:space-between;gap:6px;padding:2px 0}' +
+      '.eb-rcpt-item{padding:3px 0}.eb-rcpt-sep{border-top:1px dashed #000;margin:6px 0}' +
+      '.eb-rcpt-net{font-weight:700;font-size:13px}.eb-rcpt-foot{margin-top:8px;font-size:10px;text-align:center}';
+    const old = document.getElementById('eb-print-frame');
+    if (old) old.remove();
+    const frame = document.createElement('iframe');
+    frame.id = 'eb-print-frame';
+    frame.setAttribute('aria-hidden', 'true');
+    frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+    frame.onload = () => {
+      try { frame.contentWindow.focus(); frame.contentWindow.print(); }
+      catch (err) { say('❌ Print failed: ' + (err && err.message ? err.message : String(err)), true); }
+      setTimeout(() => frame.remove(), 60000);
+    };
+    frame.srcdoc = '<!doctype html><html><head><meta charset="utf-8"><title>Receipt</title><style>' +
+      css + '</style></head><body>' + box.innerHTML + '</body></html>';
+    document.body.appendChild(frame);
   }
 
   // ── Refund / partial-refund — reachable only from Billing History now:
