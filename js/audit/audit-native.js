@@ -127,7 +127,7 @@ function renderAssignmentsPage() {
 
     const auditorRows = dash.auditorProgress.map(a => {
       const clickable = !a.submitted && a.status !== 'assigned';
-      return `<div class="an-movable-row" style="flex-direction:column;align-items:stretch;gap:4px;${clickable ? 'cursor:pointer' : ''}" ${clickable ? `onclick="anOpenSnapshot('${esc(a.assignmentId)}')"` : ''}>
+      return `<div class="an-movable-row" style="flex-direction:column;align-items:stretch;gap:4px;${clickable ? 'cursor:pointer' : ''}" ${clickable ? act('click', 'anOpenSnapshot', String(a.assignmentId)) : ''}>
         <div style="display:flex;justify-content:space-between">
           <span>${esc(a.auditorName)} · ${a.itemCount} lines</span>
           <span class="an-val-badge ${a.submitted ? 'an-val-green' : 'an-val-grey'}">${a.submitted ? 'Submitted' : esc(a.status)}</span>

@@ -10,7 +10,7 @@
 import { Repository } from '../platform/repository.js';
 import { STAFF } from '../platform/config.js';
 import { _ni, _fc2, _inp, _mgrEsc, mgrLoad, mgrSave, mgrAutosave, reconcileStaffRows, activeStaff, mgrEmit } from './manager-shared.js';
-import { act } from '../shared/dom-actions.js';
+import { act, arg } from '../shared/dom-actions.js';
 
 let _genRows_cur = [];
 
@@ -42,8 +42,8 @@ function renderGenericTable(rows) {
     const _gSrNum = _gEmp && _gEmp.srNum != null ? Number(_gEmp.srNum) : (i+1);
     const _gName = _gEmp ? _gEmp.name : (r.name || '');
     const _gDesig = _gEmp ? _gEmp.designation : r.desig;
-    const _gSaleInp  = _inp('number', r.genericSale||0,  'sal-num', "genRowChange("+i+",'genericSale',this.value);recalcGenRow("+i+")", '0');
-    const _gExtraInp = _inp('number', r.extra||0,        'sal-num', "genRowChange("+i+",'extra',this.value);recalcGenRow("+i+")", '0');
+    const _gSaleInp  = _inp('number', r.genericSale||0,  'sal-num', act('input', { then: [['recalcGenRow', i]] }, 'genRowChange', i, 'genericSale', arg.value), '0');
+    const _gExtraInp = _inp('number', r.extra||0,        'sal-num', act('input', { then: [['recalcGenRow', i]] }, 'genRowChange', i, 'extra', arg.value), '0');
     const _gNameCell = '<div style="display:flex;align-items:center;gap:5px">'
       + (_gSid
           ? '<button'+act('click','openStaffCard',_gIdx)+' title="Open '+_mgrEsc(_gName||'Staff')+' Card"'

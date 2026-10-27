@@ -51,8 +51,8 @@ function renderCreditLedger(emps) {
 
   const entryRowsFor = (emp, ei) => emp.entries.map((en, eni) => `
       <tr class="mgr-tr">
-        <td class="mgr-td">${_inp('text', en.date||'', '', `crdEntryChange(${ei},${eni},'date',this.value)`, 'Date')}</td>
-        <td class="mgr-td">${_inp('text', en.desc||'', '', `crdEntryChange(${ei},${eni},'desc',this.value)`, 'Description (credit/deduction/…)')}${en.source==='closing_app' ? ' <span title="From Closing App" style="font-size:11px;background:var(--blue,#2563eb);color:#fff;padding:1px 6px;border-radius:10px;">📱</span>' : ''}</td>
+        <td class="mgr-td">${_inp('text', en.date||'', '', act('input', 'crdEntryChange', ei, eni, 'date', arg.value), 'Date')}</td>
+        <td class="mgr-td">${_inp('text', en.desc||'', '', act('input', 'crdEntryChange', ei, eni, 'desc', arg.value), 'Description (credit/deduction/…)')}${en.source==='closing_app' ? ' <span title="From Closing App" style="font-size:11px;background:var(--blue,#2563eb);color:#fff;padding:1px 6px;border-radius:10px;">📱</span>' : ''}</td>
         <td class="mgr-td"><input type="number" value="${en.amount||0}" class="mgr-inp sal-num" style="font-weight:700;${_ni(en.amount)<0?'color:var(--red)':'color:var(--green)'}" placeholder="0 (negative=deduction)"${act('input', { then: [['recalcCrdEmp', ei]] }, 'crdEntryChange', ei, eni, 'amount', arg.value)}></td>
         <td class="mgr-td" style="text-align:center"><button class="mgr-del"${act('click', 'deleteCrdEntry', ei, eni)}>🗑</button></td>
       </tr>`).join('');

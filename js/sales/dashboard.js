@@ -337,7 +337,7 @@ function buildCreditSection(lat) {
     return `
     <div>
       <div class="mgr-card-row" style="${expandable ? 'cursor:pointer' : ''}"
-        ${expandable ? `onclick="dashTogglePattyCat('${r.catId}')"` : ''}>
+        ${expandable ? act('click', 'dashTogglePattyCat', String(r.catId)) : ''}>
         <span style="font-size:11px;color:var(--t2)">${expandable ? (isOpen ? '▾ ' : '▸ ') : ''}${r.name}${expandable ? ` <span style="color:var(--muted);font-weight:400">(${r.entries.length})</span>` : ''}</span>
         <span style="font-size:11px;font-family:var(--mono);font-weight:600;color:${amtColor(r.net)}">${fmtAmt(r.net)}</span>
       </div>

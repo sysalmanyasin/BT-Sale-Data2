@@ -11,7 +11,8 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 const ROOT = new URL('../../', import.meta.url).pathname;
-const INLINE = /\son(?:click|input|change|keydown|keyup|focus|blur|submit)=["'\\$]/g;
+// Preceding char may be whitespace OR a backtick/quote: `${cond ? `onclick="fn()"` : ''}` and 'oninput="' + x slipped past a whitespace-only check.
+const INLINE = /[\s`'"]on(?:click|input|change|keydown|keyup|focus|blur|submit)=["'\\$]/g;
 
 function walk(dir, out = []) {
   for (const name of readdirSync(join(ROOT, dir))) {

@@ -369,7 +369,7 @@ function rebuildAll() {
     if(_curPage==='data') renderDataTable();
     buildDateList();
     // If report tab is open and a date was already selected, re-render so fresh data shows
-    if(_curPage==='report' && _selDate && _selMy) renderReport();
+    if(_curPage==='report') renderReport(); // renderReport() no-ops itself until a date is picked (_selDate/_selMy are private to reports.js)
     if(_curPage==='diff') renderDiffReport();
     // Cover Dashboard and Manager tabs were previously only rendered on
     // navigateTo() — a background Supabase pull/push while sitting on

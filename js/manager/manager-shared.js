@@ -129,12 +129,14 @@ function _mgrPopSel(selId, current) {
 // ─── helpers ───────────────────────────────────────────────────────
 function _ni(v) { return Math.round(Number(v) || 0); }
 function _fc2(v) { return _ni(v).toLocaleString('en-PK'); }
-function _inp(type, val, cls, oninput, ph) {
+function _inp(type, val, cls, inputAttrs, ph) {
   // val/ph land inside an HTML attribute — escape both so a typed "
   // (or <, &, ') in e.g. a credit-entry description can't break out of
   // the attribute and inject markup/JS. type/cls/oninput stay
   // caller-controlled constants, never raw user text, so they're left as-is.
-  return `<input type="${type}" value="${_mgrEsc(val)}" class="mgr-inp${cls ? ' ' + cls : ''}" placeholder="${_mgrEsc(ph||'')}" ${oninput ? 'oninput="' + oninput + '"' : ''}>`;
+  // inputAttrs is an act('input', ...) attribute string, NOT inline JS — the page CSP has no
+  // 'unsafe-inline' for scripts, so an inline input handler attribute is silently ignored.
+  return `<input type="${type}" value="${_mgrEsc(val)}" class="mgr-inp${cls ? ' ' + cls : ''}" placeholder="${_mgrEsc(ph||'')}" ${inputAttrs || ''}>`;
 }
 
 // ─── staff-row reconciliation ─────────────────────────────────────
