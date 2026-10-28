@@ -85,7 +85,7 @@ fun EditorScreen(vm: EditorViewModel, nav: NavState, isNew: Boolean) {
             }
             if (f.kind == ScheduleKind.WEEKLY) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    DayOfWeek.entries.forEach { d ->
+                    DayOfWeek.values().forEach { d ->
                         FilterChip(
                             selected = d in f.days,
                             onClick = { vm.edit { it.copy(days = if (d in it.days) it.days - d else it.days + d) } },

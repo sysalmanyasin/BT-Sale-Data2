@@ -15,7 +15,7 @@ data class RenderedEmail(
 }
 
 object Placeholders {
-    private val PATTERN = Regex("\\{\\{\\s*([a-z][a-z0-9_]*)\\s*}}")
+    private val PATTERN = Regex("\\{\\{\\s*([a-z][a-z0-9_]*)\\s*\\}\\}") // braces escaped: Android's ICU regex rejects a bare }
 
     fun keysIn(text: String): List<String> = PATTERN.findAll(text).map { it.groupValues[1] }.toList()
 
