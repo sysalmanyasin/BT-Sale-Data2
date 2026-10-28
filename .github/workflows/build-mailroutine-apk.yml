@@ -61,10 +61,27 @@ jobs:
           "$SDKMANAGER" "platforms;android-34" "build-tools;34.0.0" > /dev/null
 
       - name: Unit tests
-        run: gradle --no-daemon --stacktrace testDebugUnitTest
+        shell: bash
+        run: gradle --no-daemon --console=plain --stacktrace testDebugUnitTest 2>&1 | tee "$RUNNER_TEMP/gradle-test.log"
 
       - name: Build debug APK
-        run: gradle --no-daemon --stacktrace assembleDebug -PappVersionCode=${{ github.run_number }}
+        shell: bash
+        run: gradle --no-daemon --console=plain --stacktrace assembleDebug -PappVersionCode=${{ github.run_number }} 2>&1 | tee "$RUNNER_TEMP/gradle-build.log"
+
+      - name: Summarise Gradle failure
+        if: failure()
+        shell: bash
+        run: |
+          # Surface the real compiler/test errors as a job annotation and in the step summary,
+          # so a failure can be diagnosed without downloading the full log.
+          for f in "$RUNNER_TEMP/gradle-test.log" "$RUNNER_TEMP/gradle-build.log"; do
+            [ -f "$f" ] || continue
+            MSG=$(grep -E -A4 '^e: |What went wrong|Execution failed|Could not |error:|Unresolved|Caused by:|FAILED$|AssertionError' "$f" | head -c 55000 || true)
+            [ -n "$MSG" ] || continue
+            { echo "### $(basename "$f")"; echo '```'; echo "$MSG"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+            ENC="${MSG//'%'/'%25'}"; ENC="${ENC//$'\r'/'%0D'}"; ENC="${ENC//$'\n'/'%0A'}"
+            echo "::error title=Gradle failure ($(basename "$f"))::$ENC"
+          done
 
       - name: Upload test reports
         if: always()
