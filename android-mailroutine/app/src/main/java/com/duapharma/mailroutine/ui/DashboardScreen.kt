@@ -110,7 +110,7 @@ private fun RoutinesTab(routines: List<Routine>, vm: DashboardViewModel, nav: Na
         }
         return
     }
-    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), contentPadding = PaddingValues(vertical = 8.dp, bottom = 96.dp)) {
+    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), contentPadding = PaddingValues(top = 8.dp, bottom = 96.dp)) {
         items(routines, key = { it.id }) { r ->
             Card(Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { nav.push(Screen.Editor(r.id)) }) {
                 Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
