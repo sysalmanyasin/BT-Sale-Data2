@@ -101,3 +101,12 @@ Room schema v1. `AppDatabase.VERSION` and `Migrations.ALL` must move together; `
 - Release builds are not minified; enabling R8 needs an on-device test pass first.
 - Single device, single Gmail account, plain-text bodies, no cloud sync.
 - UI strings are not yet localized.
+
+## Changes in 1.1.0
+
+- **Fix:** a blocked automatic send no longer re-triggers a full sweep (which re-enqueued the same send in a loop). The send worker now notifies for that one item directly.
+- **Fix:** attachment total capped at 17 MB (base64 growth plus Gmail's 25 MB message limit). Out-of-memory while preparing a message now fails cleanly as "not sent" instead of leaving an item stuck as SENDING / UNCERTAIN.
+- **Approval now also covers the schedule** (kind, days, time, time zone) in addition to template, fields, recipients and attachments. The late window and reminder lead still do not revoke approval.
+- **Rich (HTML) templates.** Body format can be Plain text or Rich (HTML). Rich bodies are sanitised to a small whitelist (no scripts, images or forms; links only http/https/mailto), field values are HTML-escaped on insertion, and the message is sent as multipart/alternative with an automatic plain-text version. A rich body is stored with a leading `<!--mr:html-->` marker, so there is no database migration and backups keep working unchanged.
+- **Design:** dark theme, bottom navigation, status pills and summary tiles on the dashboard, battery-optimisation shortcut in Settings.
+- **Privacy note** for AI drafting added to Settings (instruction and template text go to Anthropic's API with your key).

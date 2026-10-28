@@ -74,18 +74,23 @@ class SendCoordinator(
 
         val rendered = Placeholders.render(routine.template, first.values, routine.name, first.localDate)
         val files = mutableListOf<MimeAttachment>()
-        for (ref in routine.attachments) {
-            val bytes = attachments.read(ref)
-            if (bytes == null) {
-                if (ref.required) return withContext(NonCancellable) { block(first.copy(state = OccurrenceState.SENDING), listOf(BlockReason.ATTACHMENT_UNAVAILABLE), now) }
-                continue
-            }
-            files += MimeAttachment(ref.displayName, ref.mimeType, bytes)
-        }
+        // Reading attachments and building the message are the memory-heavy steps. Nothing has left the phone
+        // yet, so an out-of-memory failure here is a clean, definitive failure, never an UNCERTAIN send.
         val mime = try {
-            MimeBuilder.build(routine.recipients.to, routine.recipients.cc, routine.recipients.bcc, rendered.subject, rendered.body, files, first.id)
+            for (ref in routine.attachments) {
+                val bytes = attachments.read(ref)
+                if (bytes == null) {
+                    if (ref.required) return withContext(NonCancellable) { block(first.copy(state = OccurrenceState.SENDING), listOf(BlockReason.ATTACHMENT_UNAVAILABLE), now) }
+                    continue
+                }
+                files += MimeAttachment(ref.displayName, ref.mimeType, bytes)
+            }
+            MimeBuilder.build(routine.recipients.to, routine.recipients.cc, routine.recipients.bcc, rendered.subject, rendered.body, files, first.id, htmlBody = rendered.html)
         } catch (e: IllegalArgumentException) {
             return withContext(NonCancellable) { settle(first.copy(state = OccurrenceState.SENDING), SendFailure.Rejected("BAD_MESSAGE"), first.attempts + 1, now, rendered.subject) }
+        } catch (e: OutOfMemoryError) {
+            files.clear()
+            return withContext(NonCancellable) { settle(first.copy(state = OccurrenceState.SENDING), SendFailure.Rejected("OUT_OF_MEMORY"), first.attempts + 1, now, rendered.subject) }
         }
 
         val attempt = Attempt(newId(), first.id, now, outcome = AttemptOutcome.STARTED, subject = rendered.subject)

@@ -97,4 +97,18 @@ class ConsentAndGateTest {
         val g = SendGate.evaluate(Fx.routine(auto = true).copy(paused = true), Fx.occurrence(), SendMode.AUTO, AuthStatus.AUTHORIZED, emptySet(), now)
         assertTrue((g as GateResult.Blocked).reasons.contains(BlockReason.ROUTINE_PAUSED))
     }
+
+    @Test fun changingTheScheduleRevokesApprovalButTheLateWindowDoesNot() {
+        val r = Fx.routine(auto = true)
+        val moved = r.copy(schedule = r.schedule.copy(time = java.time.LocalTime.of(10, 0)))
+        assertFalse(Consent.isValid(moved))
+        assertFalse(Consent.afterEdit(moved, now).autoSendEnabled)
+        assertTrue(Consent.isValid(r.copy(maxLateMinutes = 15)))
+    }
+
+    @Test fun switchingToHtmlRevokesApproval() {
+        val r = Fx.routine(auto = true)
+        val html = r.copy(template = r.template.copy(body = HtmlTemplate.wrap("<p>Amount: {{amount}}</p>")))
+        assertFalse(Consent.isValid(html))
+    }
 }

@@ -21,6 +21,8 @@ object MimeBuilder {
         attachments: List<MimeAttachment>,
         occurrenceId: String,
         boundary: String = "mr_" + UUID.randomUUID().toString().replace("-", ""),
+        /** When set, the message is multipart/alternative: [body] is the text/plain part, this the text/html part. */
+        htmlBody: String? = null,
     ): ByteArray {
         require(to.isNotEmpty()) { "No recipients" }
         (to + cc + bcc).forEach { require(EmailValidator.isValid(it)) { "Invalid recipient" } }
@@ -33,7 +35,7 @@ object MimeBuilder {
         sb.append("Subject: ").append(encodeHeader(subject)).append(CRLF)
         sb.append("X-MailRoutine-Occurrence: ").append(headerSafe(occurrenceId)).append(CRLF)
 
-        val bodyPart = textPart(body)
+        val bodyPart = if (htmlBody == null) textPart(body) else alternativePart(body, htmlBody, boundary + "_alt")
         if (attachments.isEmpty()) {
             sb.append(bodyPart)
         } else {
@@ -53,6 +55,17 @@ object MimeBuilder {
         }
         return sb.toString().toByteArray(StandardCharsets.US_ASCII)
     }
+
+    private fun alternativePart(plain: String, html: String, altBoundary: String): String =
+        "Content-Type: multipart/alternative; boundary=\"$altBoundary\"$CRLF$CRLF" +
+            "--$altBoundary$CRLF" + textPart(plain) +
+            "--$altBoundary$CRLF" + htmlPart(html) +
+            "--$altBoundary--$CRLF"
+
+    private fun htmlPart(html: String): String =
+        "Content-Type: text/html; charset=UTF-8$CRLF" +
+            "Content-Transfer-Encoding: base64$CRLF$CRLF" +
+            wrap64(com.duapharma.mailroutine.domain.HtmlTemplate.document(html).toByteArray(StandardCharsets.UTF_8)) + CRLF
 
     private fun textPart(body: String): String {
         val normalized = body.replace("\r\n", "\n").replace('\r', '\n').replace("\n", CRLF)

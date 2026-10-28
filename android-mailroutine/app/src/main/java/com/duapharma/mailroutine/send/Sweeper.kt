@@ -38,6 +38,18 @@ class Sweeper(
         }
     }
 
+    /**
+     * Called by the send worker right after an attempt ended in a state that needs the user. Notifies for that one
+     * occurrence only. (It used to trigger a whole new sweep, which re-enqueued the same blocked send and looped.)
+     */
+    suspend fun notifyAttentionFor(occurrenceId: String) {
+        val o = store.occurrence(occurrenceId) ?: return
+        val r = store.routine(o.routineId) ?: return
+        val needsUser = o.state == OccurrenceState.FAILED || o.state == OccurrenceState.UNCERTAIN ||
+            (o.state == OccurrenceState.BLOCKED && !o.dueAt.isAfter(clock.now()))
+        if (needsUser) notifyAttention(r, o)
+    }
+
     private suspend fun materialise(r: Routine, now: Instant) {
         val from = maxOf(r.activeSince, now.minus(lookback))
         val to = now.plus(horizon)

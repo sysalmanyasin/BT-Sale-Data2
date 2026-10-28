@@ -79,6 +79,7 @@ fun SettingsScreen(vm: SettingsViewModel, nav: NavState) {
             if (!vm.aiStorageAvailable) Note("Secure storage isn't available on this device, so AI drafting stays disabled.", MrColors.Amber)
             else {
                 Note(if (vm.aiKeySet) "Enabled. Your key is stored encrypted on this device and is never included in backups." else "Disabled until you add an API key. Drafts are suggestions only and never change a routine by themselves.")
+                Note("Privacy: when you use Draft with AI, your instruction and the current subject and body template (field names only, never recipients or entered values) are sent to Anthropic's API using your key.", MrColors.Amber)
                 OutlinedTextField(value = aiKey, onValueChange = { aiKey = it }, label = { Text(if (vm.aiKeySet) "Replace API key" else "API key") }, singleLine = true,
                     visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(value = vm.aiModel, onValueChange = { vm.aiModel = it }, label = { Text("Model") }, singleLine = true, modifier = Modifier.fillMaxWidth())
@@ -87,6 +88,10 @@ fun SettingsScreen(vm: SettingsViewModel, nav: NavState) {
                     if (vm.aiKeySet) OutlinedButton(onClick = { vm.clearAi() }) { Text("Remove key") }
                 }
             }
+
+            SectionTitle("Reliability")
+            Note("Android may delay or stop background work to save battery. Exempting MailRoutine from battery optimization makes automatic sends much more punctual.")
+            OutlinedButton(onClick = { runCatching { ctx.startActivity(android.content.Intent(android.provider.Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) } }) { Text("Open battery settings") }
 
             SectionTitle("How scheduling works")
             Note("Scheduling is local to this phone. Android may delay background work to save battery, so automatic sends can arrive minutes late, and if the phone is off or the app is force-stopped nothing is sent until it runs again. " +

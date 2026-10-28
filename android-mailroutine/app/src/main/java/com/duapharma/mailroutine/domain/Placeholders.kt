@@ -10,6 +10,8 @@ data class RenderedEmail(
     /** Placeholders that had no usable value (left visibly as «key» in previews, never sent). */
     val missingKeys: Set<String>,
     val issues: List<ValidationIssue>,
+    /** Sanitised, fully substituted HTML for rich templates; null for plain-text templates. [body] is then the plain-text fallback. */
+    val html: String? = null,
 ) {
     val isComplete: Boolean get() = missingKeys.isEmpty() && issues.isEmpty()
 }
@@ -37,21 +39,31 @@ object Placeholders {
             "routine_name" to routineName,
         )
         val missing = linkedSetOf<String>()
-        fun sub(text: String): String = PATTERN.replace(text) { m ->
+        fun sub(text: String, esc: (String) -> String): String = PATTERN.replace(text) { m ->
             val key = m.groupValues[1]
             val field = byKey[key]
             when {
                 field != null -> {
                     val v = FieldValidator.effectiveValue(field, values)
-                    if (v == null) { missing += key; "«$key»" } else display(field, v)
+                    if (v == null) { missing += key; "«$key»" } else esc(display(field, v))
                 }
-                key in builtIns -> builtIns.getValue(key)
+                key in builtIns -> esc(builtIns.getValue(key))
                 else -> { missing += key; "«$key»" }
             }
         }
-        val subject = sub(template.subject).replace(Regex("[\\r\\n]+"), " ").trim()
-        val body = sub(template.body)
-        return RenderedEmail(subject, body, missing, FieldValidator.validateValues(template.fields, values))
+        val subject = sub(template.subject) { it }.replace(Regex("[\\r\\n]+"), " ").trim()
+        val html: String?
+        val body: String
+        if (template.isHtml) {
+            // Values are HTML-escaped on insertion, so user input can never add markup.
+            val rendered = sub(HtmlTemplate.sanitize(HtmlTemplate.content(template.body)), HtmlTemplate::escapeValue)
+            html = rendered
+            body = HtmlTemplate.toText(rendered)
+        } else {
+            html = null
+            body = sub(template.body) { it }
+        }
+        return RenderedEmail(subject, body, missing, FieldValidator.validateValues(template.fields, values), html)
     }
 
     private fun display(f: TemplateField, v: String): String = when (f.type) {

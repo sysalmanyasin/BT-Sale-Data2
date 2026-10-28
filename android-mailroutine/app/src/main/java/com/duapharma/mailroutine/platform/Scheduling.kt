@@ -74,7 +74,9 @@ class SendWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, 
                     Result.success()
                 }
                 RunResult.TryLater -> if (runAttemptCount < 5) Result.retry() else Result.success()
-                is RunResult.Blocked, is RunResult.Failed, is RunResult.Uncertain -> { c.scheduler.sweepNow(); Result.success() }
+                // Notify directly. Do NOT call sweepNow() here: the sweeper re-enqueues blocked auto-sends, which block
+                // again and would call sweepNow() again, an endless loop while the block reason persists.
+                is RunResult.Blocked, is RunResult.Failed, is RunResult.Uncertain -> { c.sweeper.notifyAttentionFor(id); Result.success() }
                 else -> Result.success()
             }
         } catch (e: kotlin.coroutines.cancellation.CancellationException) {

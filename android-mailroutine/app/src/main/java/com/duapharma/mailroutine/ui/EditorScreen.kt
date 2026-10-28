@@ -14,6 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.duapharma.mailroutine.domain.FieldType
+import com.duapharma.mailroutine.domain.FieldValidator
+import com.duapharma.mailroutine.domain.HtmlTemplate
 import com.duapharma.mailroutine.domain.ScheduleKind
 import java.time.DayOfWeek
 import java.time.ZoneId
@@ -100,7 +102,19 @@ fun EditorScreen(vm: EditorViewModel, nav: NavState, isNew: Boolean) {
 
             SectionTitle("Template")
             Txt("Subject", f.subject, { v -> vm.edit { it.copy(subject = v) } }, supporting = "Use {{field_key}}, {{date}}, {{weekday}}, {{routine_name}}")
-            Txt("Body", f.body, { v -> vm.edit { it.copy(body = v) } }, minLines = 6)
+            val rich = HtmlTemplate.isHtml(f.body)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("Body format", style = MaterialTheme.typography.labelLarge)
+                FilterChip(selected = !rich, onClick = { vm.setRichFormat(false) }, label = { Text("Plain text") })
+                FilterChip(selected = rich, onClick = { vm.setRichFormat(true) }, label = { Text("Rich (HTML)") })
+            }
+            if (rich) {
+                val keys = f.fields.map { it.key.trim() }.filter { it.isNotEmpty() } + FieldValidator.BUILT_IN_KEYS
+                HtmlBodyEditor(HtmlTemplate.content(f.body), vm.bodyVersion, keys) { v -> vm.edit { it.copy(body = HtmlTemplate.wrap(v)) } }
+                Note("Recipients get a formatted email with an automatic plain-text version. Field values are inserted as plain text, never as markup.")
+            } else {
+                Txt("Body", f.body, { v -> vm.edit { it.copy(body = v) } }, minLines = 6)
+            }
             if (vm.aiConfigured) OutlinedButton(onClick = { showAi = true }) { Text("Draft with AI…") }
             else Note("AI drafting is off. Add an API key in Settings to enable it.")
 
@@ -144,7 +158,7 @@ fun EditorScreen(vm: EditorViewModel, nav: NavState, isNew: Boolean) {
             if (f.wantsAuto) Txt("Only auto-send within this many minutes of the due time", f.maxLate, { v -> vm.edit { it.copy(maxLate = v) } }, keyboard = KeyboardType.Number)
             if (vm.willRevokeConsent) {
                 Card(colors = CardDefaults.cardColors(containerColor = MrColors.Amber.copy(alpha = 0.12f))) {
-                    Text("You changed the approved content (template, fields, recipients or attachments). Saving will switch automatic sending off until you approve the new version.", Modifier.padding(12.dp))
+                    Text("You changed the approved content (template, fields, recipients, attachments or schedule). Saving will switch automatic sending off until you approve the new version.", Modifier.padding(12.dp))
                 }
             }
 
@@ -153,7 +167,8 @@ fun EditorScreen(vm: EditorViewModel, nav: NavState, isNew: Boolean) {
                 Card {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(p.subject, style = MaterialTheme.typography.titleMedium)
-                        Text(p.body)
+                        val h = p.html
+                        if (h != null) HtmlPreview(h) else Text(p.body)
                         if (p.missingKeys.isNotEmpty()) Note("«…» marks fields you'll fill in for each email.")
                     }
                 }
@@ -172,7 +187,7 @@ fun EditorScreen(vm: EditorViewModel, nav: NavState, isNew: Boolean) {
         title = { Text("Allow automatic sending?") },
         text = {
             Text("When this routine is due, MailRoutine will send the email from your connected Gmail account without asking you — but only if every required field is filled in, the account is authorized, recipients are valid and required attachments exist. " +
-                "If you change the template, recipients or attachments later, automatic sending switches off until you approve again. You can turn it off any time.")
+                "If you change the template, recipients, attachments or schedule later, automatic sending switches off until you approve again. You can turn it off any time.")
         },
         confirmButton = { Button(onClick = { vm.confirmConsent(); showConsent = false }) { Text("I understand, allow") } },
         dismissButton = { TextButton(onClick = { showConsent = false }) { Text("Not now") } },

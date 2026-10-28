@@ -14,7 +14,8 @@ object Limits {
     const val MAX_NAME = 100
     const val MAX_ATTACHMENTS = 10
     const val MAX_ATTACHMENT_BYTES = 10L * 1024 * 1024
-    const val MAX_TOTAL_ATTACHMENT_BYTES = 20L * 1024 * 1024
+    /** Base64 inflates attachments by about a third and Gmail refuses messages over 25 MB, so keep raw attachments well under that. */
+    const val MAX_TOTAL_ATTACHMENT_BYTES = 17L * 1024 * 1024
     const val MAX_CHOICES = 50
 }
 

@@ -60,4 +60,21 @@ class MimeBuilderTest {
         val m = build(att = listOf(MimeAttachment("rapport é.pdf", "application/pdf", byteArrayOf(1))))
         assertTrue(m.contains("filename*=UTF-8''rapport%20%C3%A9.pdf"))
     }
+
+    @Test fun htmlBodyBuildsMultipartAlternativeWithPlainFallback() {
+        val m = String(MimeBuilder.build(listOf("a@example.com"), emptyList(), emptyList(), "S", "plain text", emptyList(), "r1:2026-03-02", boundary = "BND", htmlBody = "<p>Hi</p>"), Charsets.US_ASCII)
+        assertTrue(m.contains("Content-Type: multipart/alternative; boundary=\"BND_alt\""))
+        assertTrue(m.contains("Content-Type: text/plain; charset=UTF-8"))
+        assertTrue(m.contains("Content-Type: text/html; charset=UTF-8"))
+        val doc = com.duapharma.mailroutine.domain.HtmlTemplate.document("<p>Hi</p>")
+        val b64 = java.util.Base64.getMimeEncoder(76, "\r\n".toByteArray()).encodeToString(doc.toByteArray())
+        assertTrue(m.contains(b64))
+        assertTrue(m.trimEnd().endsWith("--BND_alt--"))
+    }
+
+    @Test fun htmlWithAttachmentsNestsAlternativeInsideMixed() {
+        val m = String(MimeBuilder.build(listOf("a@example.com"), emptyList(), emptyList(), "S", "plain", listOf(MimeAttachment("a.pdf", "application/pdf", byteArrayOf(1))), "r1:2026-03-02", boundary = "BND", htmlBody = "<p>Hi</p>"), Charsets.US_ASCII)
+        assertTrue(m.indexOf("multipart/mixed") in 0 until m.indexOf("multipart/alternative"))
+        assertTrue(m.trimEnd().endsWith("--BND--"))
+    }
 }

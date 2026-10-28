@@ -79,6 +79,8 @@ class EditorViewModel(private val c: AppContainer, private val routineId: String
     var consentActive by mutableStateOf(false); private set
     var consentConfirmed by mutableStateOf(false); private set
     var busy by mutableStateOf(false); private set
+    /** Bumped whenever the body text is replaced from outside the text field (format switch, AI draft). */
+    var bodyVersion by mutableStateOf(0); private set
 
     var aiBusy by mutableStateOf(false); private set
     var aiProposal by mutableStateOf<AiDraft?>(null); private set
@@ -99,6 +101,16 @@ class EditorViewModel(private val c: AppContainer, private val routineId: String
     }
 
     fun edit(f: (EditorForm) -> EditorForm) { form = f(form) }
+
+    /** Switches the body between plain text and rich (HTML), converting the current text. */
+    fun setRichFormat(rich: Boolean) {
+        val b = form.body
+        if (rich == HtmlTemplate.isHtml(b)) return
+        form = form.copy(body = if (rich) HtmlTemplate.wrap(HtmlTemplate.fromPlain(b)) else HtmlTemplate.toText(HtmlTemplate.content(b)))
+        bodyVersion += 1
+    }
+
+    private fun plainBody(): String = HtmlTemplate.toText(HtmlTemplate.content(form.body)).takeIf { HtmlTemplate.isHtml(form.body) } ?: form.body
 
     fun setWantsAuto(on: Boolean) {
         form = form.copy(wantsAuto = on)
@@ -212,7 +224,7 @@ class EditorViewModel(private val c: AppContainer, private val routineId: String
     fun requestAi(instruction: String) {
         viewModelScope.launch {
             aiBusy = true; aiError = null
-            when (val r = c.drafter.draft(instruction, form.subject, form.body, form.fields.map { it.key.trim() }.toSet())) {
+            when (val r = c.drafter.draft(instruction, form.subject, plainBody(), form.fields.map { it.key.trim() }.toSet())) {
                 is AiResult.Success -> aiProposal = r.draft
                 AiResult.NotConfigured -> aiError = "AI drafting isn't set up. Add a key in Settings."
                 is AiResult.Error -> aiError = r.message
@@ -221,7 +233,13 @@ class EditorViewModel(private val c: AppContainer, private val routineId: String
         }
     }
     /** Copies the proposal into the editor only. Nothing is saved, and approvals are re-checked on save. */
-    fun applyAi() { aiProposal?.let { form = form.copy(subject = it.subject, body = it.body) }; aiProposal = null }
+    fun applyAi() {
+        aiProposal?.let {
+            val body = if (HtmlTemplate.isHtml(form.body)) HtmlTemplate.wrap(HtmlTemplate.fromPlain(it.body)) else it.body
+            form = form.copy(subject = it.subject, body = body); bodyVersion += 1
+        }
+        aiProposal = null
+    }
     fun discardAi() { aiProposal = null; aiError = null }
 
     /** Removes files copied during this editing session that were never saved. */

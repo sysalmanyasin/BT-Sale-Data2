@@ -17,6 +17,9 @@ object Consent {
         r.template.fields.forEach { f ->
             line("field", listOf(f.key, f.label, f.type, f.required, f.defaultValue ?: "", f.choices.joinToString("\u0001"), f.maxLength).joinToString("\u0000"))
         }
+        // When it sends is as material as what it sends, so the schedule is part of the approval.
+        val sch = r.schedule
+        line("schedule", listOf(sch.kind.name, sch.days.sortedBy { it.value }.joinToString(",") { it.name }, sch.time.toString(), sch.zoneId).joinToString("|"))
         line("to", r.recipients.to.joinToString(",") { it.lowercase() })
         line("cc", r.recipients.cc.joinToString(",") { it.lowercase() })
         line("bcc", r.recipients.bcc.joinToString(",") { it.lowercase() })

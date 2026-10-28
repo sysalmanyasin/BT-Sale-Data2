@@ -9,6 +9,7 @@ object Explain {
         code == "AUTH_REQUIRED" || code == "TOKEN_REJECTED" -> "Gmail access needs to be re-authorized in Settings. Nothing was sent."
         code == "NOT_CONNECTED" -> "No Gmail account is connected. Nothing was sent."
         code == "FORBIDDEN" -> "Google refused the request. Your Workspace admin may restrict this app, or the permission was removed."
+        code == "OUT_OF_MEMORY" -> "The phone ran out of memory preparing this message. Nothing was sent. Use fewer or smaller attachments."
         code == "TOO_LARGE" -> "The message is too large for Gmail."
         code == "REJECTED" || code == "BAD_MESSAGE" || code.startsWith("HTTP_4") -> "Gmail rejected the message. Check recipients and attachments."
         code == "MISSING_INPUT" -> "Required fields are empty."

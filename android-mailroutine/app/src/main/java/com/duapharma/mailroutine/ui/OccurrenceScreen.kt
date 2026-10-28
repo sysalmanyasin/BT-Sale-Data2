@@ -77,7 +77,8 @@ fun OccurrenceScreen(vm: OccurrenceViewModel, nav: NavState) {
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(rendered.subject, style = MaterialTheme.typography.titleMedium)
-                    Text(rendered.body)
+                    val h = rendered.html
+                    if (h != null) HtmlPreview(h) else Text(rendered.body)
                     if (rendered.missingKeys.isNotEmpty()) Note("Missing: ${rendered.missingKeys.joinToString()}", MrColors.Amber)
                 }
             }

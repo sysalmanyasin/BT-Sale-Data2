@@ -106,4 +106,20 @@ class SweeperTest {
         sweeper().sweep()
         assertEquals(Duration.ofSeconds(120), enqueued.first { it.first == "r1:2026-03-02" }.third)
     }
+
+    @Test fun notifyAttentionForRaisesOncePerStateAndOnlyWhenTheUserIsNeeded() = runBlocking {
+        val failed = Fx.occurrence(state = FAILED)
+        store.occurrences[failed.id] = failed
+        sweeper().notifyAttentionFor(failed.id)
+        sweeper().notifyAttentionFor(failed.id)
+        assertEquals(listOf(failed.id + ":FAILED"), attention)
+
+        val scheduled = Fx.occurrence(date = java.time.LocalDate.parse("2026-03-03"), dueAt = Instant.parse("2026-03-03T09:00:00Z"))
+        store.occurrences[scheduled.id] = scheduled
+        val notDueBlocked = Fx.occurrence(date = java.time.LocalDate.parse("2026-03-04"), dueAt = Instant.parse("2026-03-04T09:00:00Z"), state = BLOCKED)
+        store.occurrences[notDueBlocked.id] = notDueBlocked
+        sweeper().notifyAttentionFor(scheduled.id)
+        sweeper().notifyAttentionFor(notDueBlocked.id)
+        assertEquals(1, attention.size)
+    }
 }
