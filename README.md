@@ -85,7 +85,7 @@
 | Dated SQL migrations | 28 |
 | Test files (`*.test.js`) | 114 |
 | Android home-screen widgets | 22 |
-| GitHub Actions workflows | 5 |
+| GitHub Actions workflows | 6 |
 <!-- repo-facts:end -->
 
 ---
@@ -187,6 +187,7 @@ Open the local URL printed by your server. Service workers require `localhost` o
 ├── inventory-search/           # Standalone Inventory Search PWA
 ├── android-widget/             # 22 home-screen widgets (Kotlin)
 ├── android-attendance/         # Native attendance / geofencing app (Kotlin)
+├── android-mailroutine/        # Recurring Gmail email routines app (Kotlin, Compose)
 │
 ├── supabase/
 │   ├── audit-project/          # ai_audit_overview.sql (runs on the Audit Hub project, NOT in migrations/)
@@ -367,7 +368,7 @@ Multiple files and sheets, editable grid, notes, sheet management, import/export
 
 ## Android apps
 
-Two native Kotlin projects, each with its own Gradle setup and GitHub Actions workflow.
+Three native Kotlin projects, each with its own Gradle setup and GitHub Actions workflow.
 
 ### `android-widget/`: 22 home-screen widgets
 
@@ -382,6 +383,10 @@ Widgets mirror key web calculations so they work without the PWA open. See [`and
 - **Location** comes from the active row in `attendance_locations`, cached for reboot/network resilience.
 
 See [`android-attendance/README.md`](android-attendance/README.md).
+
+### `android-mailroutine/`: recurring Gmail routines
+
+Separate app for template-driven recurring work emails sent through an authorized Gmail / Google Workspace account (send-only OAuth scope), with reminders, optional explicit auto-send, history and credential-free backup. It has no Supabase dependency. See [`android-mailroutine/README.md`](android-mailroutine/README.md) for OAuth setup, scheduling limits and release steps.
 
 > The former `android-app/` Trusted Web Activity wrapper has been removed.
 
