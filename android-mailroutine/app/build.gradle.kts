@@ -17,7 +17,7 @@ android {
         applicationId = "com.duapharma.mailroutine"
         minSdk = 26
         targetSdk = 36
-        versionCode = (project.findProperty("appVersionCode") as String?)?.toIntOrNull() ?: 2
+        versionCode = (project.findProperty("appVersionCode") as String?)?.toIntOrNull() ?: 1
         versionName = (project.findProperty("appVersionName") as String?) ?: "1.2.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
