@@ -85,7 +85,7 @@
 | Dated SQL migrations | 28 |
 | Test files (`*.test.js`) | 114 |
 | Android home-screen widgets | 22 |
-| GitHub Actions workflows | 6 |
+| GitHub Actions workflows | 5 |
 <!-- repo-facts:end -->
 
 ---
@@ -147,7 +147,7 @@ Open the local URL printed by your server. Service workers require `localhost` o
 | **Libraries** | Chart.js, jsPDF, jsPDF-AutoTable, html2canvas, XLSX, qrcode-generator |
 | **Android** | Kotlin, Gradle, native widgets, geofencing |
 | **Testing** | Node built-in test runner, jsdom |
-| **CI** | GitHub Actions: tests (`test.yml`), Supabase deploy (`supabase-deploy.yml`), advisory live agent eval (`agent-live-eval.yml`), APK builds (widget + attendance) |
+| **CI** | GitHub Actions: tests (`test.yml`), Supabase deploy (`supabase-deploy.yml`), APK builds (widget, attendance, MailRoutine) |
 
 ---
 
@@ -197,7 +197,7 @@ Open the local URL printed by your server. Service workers require `localhost` o
 │   └── activity_log/           # Schema
 │
 ├── tests/                      # static/, unit/, dom/, eval/, helpers/
-└── .github/workflows/          # test, supabase-deploy, agent-live-eval, build-widget-apk, build-attendance-apk
+└── .github/workflows/          # test, supabase-deploy, build-widget-apk, build-attendance-apk, build-mailroutine-apk
 ```
 
 ---

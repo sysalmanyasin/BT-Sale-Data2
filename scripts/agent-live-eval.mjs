@@ -10,7 +10,7 @@
 //   lenient  = it is one of the tools the case says must be offered
 //   strict   = it is exactly the case's canonical `call.tool` (cases that have one)
 // Free-tier limits apply: it paces itself. Exit code 1 if strict < 70%.
-// In CI it runs weekly and on demand (.github/workflows/agent-live-eval.yml); it is advisory, never a deploy gate.
+// Run it by hand (`npm run eval:live`); it is advisory, never a deploy gate. There is no CI workflow for it.
 import { installDomEnv } from '../tests/helpers/dom-env.js';
 installDomEnv();
 globalThis.invalidateRenderCache = () => {};

@@ -181,13 +181,9 @@ describe('bt-agent actions, streaming, knowledge', () => {
   });
 });
 
-describe('live eval is wired into CI (advisory)', () => {
-  const wf = fs.readFileSync(path.join(root, '.github/workflows/agent-live-eval.yml'), 'utf8');
+describe('live eval script (manual, advisory)', () => {
   const script = fs.readFileSync(path.join(root, 'scripts/agent-live-eval.mjs'), 'utf8');
-  test('weekly + manual, skips without a key, uploads the report, and is not part of the deploy workflow', () => {
-    assert.match(wf, /schedule:/); assert.match(wf, /workflow_dispatch:/);
-    assert.match(wf, /GROQ_API_KEY secret is not set; skipping/);
-    assert.match(wf, /upload-artifact/);
+  test('is not part of the deploy workflow', () => {
     assert.ok(!/live-eval/.test(fs.readFileSync(path.join(root, '.github/workflows/supabase-deploy.yml'), 'utf8')));
   });
   test('the script imports every tool domain', () => {

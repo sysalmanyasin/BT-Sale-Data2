@@ -81,4 +81,4 @@ CNICs, IBANs, emails and long digit runs are removed. **Staff notes are indexed 
 and the app says so. Nothing is sent until the owner taps *Index now* in 🧠 Memory. Vectors from different models are never compared (the model id is stored per row);
 changing `AGENT_EMBED_PROVIDER` means tapping *Delete index* then *Index now* again. If embedding is unavailable, `search` falls back to keyword matching.
 
-**Live eval in CI**: `.github/workflows/agent-live-eval.yml` runs weekly and on demand when the repository secret `GROQ_API_KEY` exists (skips otherwise). It is advisory and never gates a deploy.
+**Live eval (manual)**: run `GROQ_API_KEY=... npm run eval:live` locally to measure how often the real model picks the right tool first. It is advisory and never gates a deploy. (The scheduled CI workflow was removed.)

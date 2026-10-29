@@ -21,7 +21,7 @@ describe('README stays in sync with the repository (anti-drift guard)', () => {
   });
 
   test('every workflow and Edge Function named in the README exists', () => {
-    for (const w of ['test.yml', 'supabase-deploy.yml', 'agent-live-eval.yml']) {
+    for (const w of ['test.yml', 'supabase-deploy.yml']) {
       assert.ok(fs.existsSync(path.join(ROOT, '.github/workflows', w)), `missing workflow ${w}`);
     }
     for (const f of ['bt-agent', 'send-daily-ntfy-briefing', 'closing-ntfy-notify', 'set-staff-login', 'google-drive', 'inventory-chat', 'medicine-ai-info']) {
