@@ -92,7 +92,7 @@
  #page-dailychecklist .dcl-item:hover{background:none}
  #page-dailychecklist .dcl-g2,#page-dailychecklist .dcl-g3,#page-dailychecklist .dcl-sig{grid-template-columns:1fr}
  #page-dailychecklist .dcl-btn span{display:none}
- #page-dailychecklist .dcl-btn[data-act=next] span,#page-dailychecklist .dcl-btn[data-act=pull]{display:inline}
+ #page-dailychecklist .dcl-btn[data-act=next] span,#page-dailychecklist .dcl-btn[data-act=gmail] span,#page-dailychecklist .dcl-btn[data-act=pull]{display:inline}
 }
 /* dropdown items (25, 29A, 29B, 29C) */
 #page-dailychecklist select{width:100%;min-height:38px;border:1.5px solid var(--dc-line);border-radius:8px;padding:8px 10px;font-size:13.5px;color:var(--dc-ink);background:var(--dc-input);font-family:inherit}

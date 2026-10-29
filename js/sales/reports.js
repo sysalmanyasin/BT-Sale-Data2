@@ -3,6 +3,7 @@ import { Repository } from '../platform/repository.js';
 import { Print } from '../lib/print.js';
 import { getTgts } from './targets.js';
 import { act, registerActions } from '../shared/dom-actions.js';
+import { openGmailSend } from '../lib/gmail-send.js';
 
 // ══════════════════════════════════════════
 // DAY DETAIL MODAL
@@ -577,6 +578,21 @@ async function copyReportRich() {
   }
 }
 
+// Send via Gmail — same inline-styled HTML table as Copy (buildPrintHTML, hidden-rows-aware),
+// sent from the user's own Gmail through js/lib/gmail-send.js. To/Cc are saved and synced there.
+function sendReportViaGmail() {
+  if(!_selDate){ window.toast('⚠ Select a date first','w'); return; }
+  const till=n(document.getElementById('rpt-till')?.value);
+  const patty=n(document.getElementById('rpt-patty')?.value);
+  const html=buildPrintHTML(_selDate,_selMy,till,patty);
+  if(!html){ window.toast('⚠ Record not found','e'); return; }
+  openGmailSend({
+    kind:'salereport', dateKey:_selDate,
+    subject:'Bahria Town Sale Report — '+_selDate,
+    html, text:_reportPlainText(_selDate,_selMy,till,patty),
+  });
+}
+
 // ══════════════════════════════════════════
 
 // Bridge what's used externally or from index.html.
@@ -588,6 +604,7 @@ window.closeDay = closeDay;
 window.openMonthModal = openMonthModal;
 window.printDayDirectly = printDayDirectly;
 window.closeMon = closeMon;
+registerActions({ sendReportViaGmail });
 registerActions({ openDayFromMonth, reportEditDay(date, my) { closeMon(); setTimeout(() => { window.openEditModal(date, my); }, 220); } });
 window._dateVal = _dateVal;
 window.buildDateList = buildDateList;

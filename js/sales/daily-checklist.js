@@ -20,6 +20,7 @@
    ════════════════════════════════════════════════════════════════════ */
 import { DAILY } from '../platform/config.js';
 import { escapeHtml } from '../shared/html.js';
+import { openGmailSend } from '../lib/gmail-send.js';
 
 (function () {
 'use strict';
@@ -256,7 +257,8 @@ function pageHtml() {
   var h = '<div class="dcl-toolbar"><div class="dcl-tl"><span class="dcl-save" id="dcl-savepill"><i></i><span id="dcl-savetext">Saved</span></span></div><div class="dcl-tr">' +
     '<button class="dcl-btn" data-act="next">↓ <span>Next incomplete</span></button><button class="dcl-btn" data-act="reset">↺ <span>Reset day</span></button>' +
     '<button class="dcl-btn" data-act="copy">⧉ <span>Copy</span></button><button class="dcl-btn" data-act="print">🖶 <span>Print</span></button>' +
-    '<button class="dcl-btn dcl-primary" data-act="email">✉ <span>Email</span></button></div></div>' +
+    '<button class="dcl-btn" data-act="email">✉ <span>Email</span></button>' +
+    '<button class="dcl-btn dcl-primary" data-act="gmail">✉ <span>Send via Gmail</span></button></div></div>' +
     '<div class="dcl-progress"><div class="dcl-track"><div class="dcl-fill" id="dcl-fill"></div></div><div class="dcl-plabel" id="dcl-plabel"></div></div>' +
     '<div class="dcl-meta">' +
     [['branch', 'Branch', 'text'], ['preparedby', 'Prepared By', 'text'], ['designation', 'Designation', 'text'], ['date', 'Date', 'date'], ['time', 'Time', 'time'], ['contact', 'Contact', 'text']]
@@ -554,6 +556,14 @@ function printReport() {
 function emailReport() {
   location.href = 'mailto:?subject=' + encodeURIComponent('Daily Check List — ' + val('m_branch') + ' — ' + val('m_date')) + '&body=' + encodeURIComponent(buildPlainText());
 }
+function gmailReport() {
+  // Same HTML as the Copy button, so the email looks like a paste into Gmail.
+  openGmailSend({
+    kind: 'checklist', dateKey: val('m_date'),
+    subject: 'Daily Check List — ' + val('m_branch') + ' — ' + val('m_date'),
+    html: buildHtmlReport(), text: buildPlainText()
+  });
+}
 function resetDay() {
   if (!confirm('Clear this day\'s saved checklist and start from the defaults? This cannot be undone.')) return;
   var s = store(), iso = val('m_date'); if (s.days) delete s.days[iso]; put(s);
@@ -580,7 +590,7 @@ function build() {
   root.addEventListener('click', function (e) {
     var b = e.target.closest('[data-act]'); if (!b) return;
     if (/^dd/.test(b.dataset.act)) return ddAct(b.dataset.act, b.dataset.dd);
-    ({ next: jumpNext, reset: resetDay, copy: copyReport, print: printReport, email: emailReport,
+    ({ next: jumpNext, reset: resetDay, copy: copyReport, print: printReport, email: emailReport, gmail: gmailReport,
        pull: function () { prefill(true); }, addcomp: function () { addCompRow(); queueSave(); } })[b.dataset.act]();
   });
   built = true; return true;

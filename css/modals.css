@@ -100,3 +100,17 @@
 
 /* Day-select date input focus ring (replaces inline onfocus/onblur handlers) */
 #ds-input:focus{border-color:var(--accent)!important;box-shadow:0 0 0 3px rgba(37,99,235,.1)!important;outline:none}
+
+/* SEND VIA GMAIL dialog (js/lib/gmail-send.js) */
+.gms-modal{width:min(96vw,520px);}
+.gms-f{display:block;margin-bottom:12px;}
+.gms-f>span{display:block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+.gms-f input,.gms-f textarea{width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--border-strong);border-radius:var(--r-sm);background:var(--surface);color:var(--text);font:inherit;font-size:14px;}
+.gms-f textarea{resize:vertical;min-height:44px;}
+.gms-f input:focus,.gms-f textarea:focus{outline:none;box-shadow:var(--focus-ring);border-color:var(--accent);}
+.gms-f small{display:block;font-size:11px;color:var(--muted);margin-top:3px;}
+.gms-note{font-size:12px;color:var(--muted);margin:4px 0 8px;}
+.gms-warn{font-size:12px;color:var(--amber);background:var(--alt2);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 10px;margin-bottom:12px;}
+.gms-status{min-height:18px;font-size:13px;color:var(--t2);}
+.gms-status.gms-err{color:var(--red);}
+.gms-foot{display:flex;gap:8px;justify-content:flex-end;padding:12px 22px;border-top:1px solid var(--border);flex-shrink:0;}

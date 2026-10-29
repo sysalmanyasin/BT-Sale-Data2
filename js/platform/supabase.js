@@ -10,6 +10,7 @@ import { MONTHLY, DAILY, STAFF, recomputeAllMonths } from './config.js';
 import { Repository } from './repository.js';
 import { Actions } from './actions.js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../shared/backend-config.js';
+import { SEND_LISTS_KEY, mergeSendLists } from '../shared/mail-compose.js';
 
 const SB_URL     = SUPABASE_URL;
 const SB_KEY     = SUPABASE_ANON_KEY;
@@ -169,6 +170,9 @@ function _nextPayloadVersion() {
 // ══════════════════════════════════════════════════════════════════
 // BUILD PAYLOAD  (every section the app owns)
 // ══════════════════════════════════════════════════════════════════
+function _readMailSend() {
+  try { return JSON.parse(Repository.getItem(SEND_LISTS_KEY) || 'null'); } catch (_) { return null; }
+}
 function _buildPayload() {
   const petty = {}, incentive = {};
   // Route through Repository.getKeysByPrefix so we never touch localStorage directly
@@ -210,6 +214,9 @@ function _buildPayload() {
     // device silently reverted to "Excess" on every other device on
     // next pull. Union-merged below (never dropped, only added-to).
     excessRetain: JSON.parse(Repository.getItem('bt_excess_retain_v1') || '[]'),
+     // "Send via Gmail" To/Cc lists + signature (js/lib/gmail-send.js). One small object; the copy with
+     // the newer updatedAt wins (see mergeSendLists), so removing an address on one device sticks.
+     mailSend: _readMailSend(),
     colConfig: {
       hidden: JSON.parse(Repository.getItem('bt_col_config')  || '[]'),
       custom: JSON.parse(Repository.getItem('bt_custom_cols') || '[]')
@@ -523,6 +530,14 @@ function mergeIncomingData(data, isPull = false) {
     if (typeof window.ExcessWorkingApp !== 'undefined' && window.ExcessWorkingApp && typeof window.ExcessWorkingApp.reloadRetain === 'function') {
       window.ExcessWorkingApp.reloadRetain();
     }
+  }
+
+  // ── Send via Gmail lists (To/Cc per report + signature) — newest updatedAt wins, on push and pull,
+  // so an address removed on one device is not silently re-added by another. Nothing is written
+  // until someone has saved a list (merged.updatedAt is empty before that). ──
+  if (data.mailSend) {
+    const merged = mergeSendLists(_readMailSend(), data.mailSend);
+    if (merged.updatedAt) Actions.saveFeatureData(SEND_LISTS_KEY, JSON.stringify(merged));
   }
 
   return { mN, dN, mU, dU };

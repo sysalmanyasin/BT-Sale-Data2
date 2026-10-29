@@ -43,6 +43,7 @@ globalThis.supabase = {
 window.supabase = globalThis.supabase;
 
 await import('../../js/platform/supabase.js');
+const { SEND_LISTS_KEY } = await import('../../js/shared/mail-compose.js');
 globalThis.setInterval = realSetInterval;
 
 describe('Supabase module conversion', () => {
@@ -129,6 +130,28 @@ describe('Supabase module conversion', () => {
     assert.deepEqual(merged.credit['2026-10'], remoteMonth, 'pull merge takes the remote version of an existing month');
     assert.deepEqual(merged.credit['2026-07'], { note: 'pulled month' }, 'pull merge adds a remote-only month');
     assert.deepEqual(merged.credit['2026-08'], { note: 'remote-only month' }, 'pull merge keeps previously merged months');
+  });
+
+  test('syncs the Send via Gmail lists: in the payload, newest updatedAt wins on push and pull', () => {
+    resetStorage();
+    assert.equal(window._buildPayload().mailSend, null, 'nothing saved yet');
+    const mine = { checklist: { to: ['a@x.com', 'b@x.com'], cc: [] }, salereport: { to: [], cc: [] }, signature: '', updatedAt: '2026-10-02T10:00:00.000Z' };
+    localStorage.setItem(SEND_LISTS_KEY, JSON.stringify(mine));
+    assert.deepEqual(window._buildPayload().mailSend, mine);
+
+    const older = { ...mine, checklist: { to: ['old@x.com'], cc: [] }, updatedAt: '2026-10-01T10:00:00.000Z' };
+    window.mergeIncomingData({ mailSend: older }, true);
+    assert.deepEqual(JSON.parse(localStorage.getItem(SEND_LISTS_KEY)).checklist.to, ['a@x.com', 'b@x.com'], 'an older remote never overwrites newer local');
+
+    const newer = { ...mine, checklist: { to: ['a@x.com'], cc: [] }, updatedAt: '2026-10-03T10:00:00.000Z' };
+    window.mergeIncomingData({ mailSend: newer }, false);
+    assert.deepEqual(JSON.parse(localStorage.getItem(SEND_LISTS_KEY)).checklist.to, ['a@x.com'], 'a newer remote wins, so a removed address stays removed');
+  });
+
+  test('writes no Send via Gmail lists until someone has saved them', () => {
+    resetStorage();
+    window.mergeIncomingData({ mailSend: { checklist: { to: ['a@x.com'] } } }, true);   // remote has no updatedAt
+    assert.equal(localStorage.getItem(SEND_LISTS_KEY), null);
   });
 
 });

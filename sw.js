@@ -5,7 +5,7 @@
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v11.191'; // v11.191: auto-bumped by npm run build (content hash ad883e24d525). Previously v11.190: 
+const CACHE_NAME = 'bt-sales-v11.193'; // v11.193: auto-bumped by npm run build (content hash 2fd11b5533e9). Previously v11.192: 
 // Release history lives in CHANGELOG.md (keep this file small: every device downloads and parses it on each update).
 const APP_SHELL = [
   './',
@@ -52,6 +52,7 @@ const APP_SHELL = [
   /* ── JS — shared service layer ── */
   './js/lib/bt-format.js',
   './js/lib/print.js',
+  './js/lib/gmail-send.js',
   './js/lib/bt-date.js',
   './js/lib/bt-search.js',
 
@@ -87,6 +88,7 @@ const APP_SHELL = [
   './js/shared/backend-config.js', // statically imported by supabase/auth/bridges (single Supabase URL+anon key)
   './js/shared/dom-actions.js', // delegated event dispatcher (loaded first by index.html)
   './js/shared/html.js', // statically imported by many pages (single escapeHtml)
+  './js/shared/mail-compose.js', // pure helpers for Send via Gmail (MIME, To/Cc lists)
   './js/shared/summary-calc.js', // statically imported by cover-dashboard.js + herald-engine.js
   './js/shared/chart-theme.js', // statically imported by cover-dashboard.js + inventory-health-dashboard.js
   './js/shared/agent-shared.js',
