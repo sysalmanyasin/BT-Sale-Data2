@@ -82,7 +82,7 @@ fun SettingsScreen(vm: SettingsViewModel, nav: NavState) {
                 Picker("AI provider", vm.aiProvider, AiProvider.entries, { it.displayName }) { vm.selectAiProvider(it) }
                 Note(
                     if (vm.aiProvider == AiProvider.GROQ)
-                        "Groq offers a free developer tier with rate limits. The default is a production model; availability and free limits can change. You can edit the model ID if Groq retires a model."
+                        "Groq offers a free plan with rate limits. The default is a production model; availability and free limits can change. You can edit the model ID if Groq retires a model."
                     else
                         "Anthropic uses your own API key and may charge according to your account's pricing.",
                     MrColors.Amber,
