@@ -14,7 +14,7 @@ enum class AiProvider(
     internal val keyPreference: String,
     internal val modelPreference: String,
 ) {
-    GROQ("Groq (free tier)", "openai/gpt-oss-20b", "groq_api_key", "groq_model"),
+    GROQ("Groq (free plan)", "openai/gpt-oss-20b", "groq_api_key", "groq_model"),
     ANTHROPIC("Anthropic", "claude-sonnet-5-5", "anthropic_api_key", "anthropic_model"),
 }
 
