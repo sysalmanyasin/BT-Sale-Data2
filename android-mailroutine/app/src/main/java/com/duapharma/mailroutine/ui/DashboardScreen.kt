@@ -20,6 +20,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import java.time.Instant
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.duapharma.mailroutine.domain.Bucket
 import com.duapharma.mailroutine.domain.Consent
@@ -42,7 +44,14 @@ fun DashboardScreen(vm: DashboardViewModel, nav: NavState) {
     var tab by remember { mutableIntStateOf(0) }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text(if (tab == 0) "Work" else "Routines", fontWeight = FontWeight.SemiBold) }) },
+        topBar = {
+            TopAppBar(title = {
+                Column {
+                    Text(if (tab == 0) "Work" else "Routines", fontWeight = FontWeight.SemiBold)
+                    if (tab == 0) Note(LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE d MMMM")))
+                }
+            })
+        },
         bottomBar = {
             NavigationBar {
                 NavigationBarItem(selected = tab == 0, onClick = { tab = 0 }, icon = { Icon(Icons.Default.Home, contentDescription = null) }, label = { Text("Work") })
@@ -103,12 +112,19 @@ private fun WorkTab(groups: Map<Bucket, List<WorkItem>>, nav: NavState) {
                 StatTile("Upcoming", count(Bucket.UPCOMING), MrColors.Blue, Modifier.weight(1f), filter == 2) { toggle(2) }
             }
         }
+        // When nothing needs you, lead with the single next email so the answer to "what's next?" is one glance.
+        val calm = count(Bucket.ATTENTION) + count(Bucket.OVERDUE) + count(Bucket.DUE) == 0
+        val next = if (filter == null && calm) groups[Bucket.UPCOMING].orEmpty().firstOrNull() else null
+        if (next != null) {
+            item(key = "next") { NextUpCard(next, now) { nav.push(Screen.Occurrence(next.occurrence.id)) } }
+        }
         if (shown.isEmpty()) {
             item(key = "none") { Note("Nothing here right now. Tap the highlighted tile again to show everything.") }
         }
         shown.forEach { b ->
-            val rows = groups[b].orEmpty()
-            item(key = "h-$b") { SectionTitle("${bucketTitle(b)} (${rows.size})") }
+            val rows = groups[b].orEmpty().filter { it !== next }
+            if (rows.isEmpty()) return@forEach
+            item(key = "h-$b") { SectionTitle("${if (b == Bucket.UPCOMING && next != null) "Later" else bucketTitle(b)} (${rows.size})") }
             if (b == Bucket.UPCOMING) {
                 // Group by day so each card only needs to show the time.
                 rows.groupBy { dayLabel(it.occurrence.dueAt, now) }.forEach { (day, dayRows) ->
@@ -142,9 +158,40 @@ private fun OccurrenceCard(row: WorkItem, now: Instant, showDay: Boolean, onClic
                     if (state != OccurrenceState.SCHEDULED) StatusChip(state)
                 }
                 Text(whenText, style = MaterialTheme.typography.bodyMedium)
+                if (state == OccurrenceState.SCHEDULED) SendModeNote(row.routine)
                 if (zone != ZoneId.systemDefault()) Note("${fmt(due, zone)} in ${row.routine.schedule.zoneId}")
                 row.occurrence.lastErrorCode?.let { Note(Explain.errorCode(it), color = accent) }
             }
+        }
+    }
+}
+
+/** Says whether the phone will send this email by itself or waits for the user. */
+@Composable
+private fun SendModeNote(r: Routine) {
+    val auto = !r.paused && Consent.isValid(r)
+    Note(
+        if (r.paused) "Paused" else if (auto) "Sends automatically" else "You send this one",
+        color = if (auto) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+@Composable
+private fun NextUpCard(row: WorkItem, now: Instant, onClick: () -> Unit) {
+    val due = row.occurrence.dueAt
+    Card(
+        Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp).clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+    ) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("NEXT UP", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f))
+            Text(row.routine.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+            Text("${dayLabel(due, now)}, ${timeOfDay(due)} \u00B7 ${relativeTime(due, now)}", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+            val auto = !row.routine.paused && Consent.isValid(row.routine)
+            Text(
+                if (auto) "Sends automatically" else "You send this one: open it when it is due",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f),
+            )
         }
     }
 }
