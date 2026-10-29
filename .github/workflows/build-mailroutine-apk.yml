@@ -1,16 +1,20 @@
 name: Build MailRoutine APK
 
-# Debug build + unit tests run on every change under android-mailroutine/ and on demand.
+# Debug build + unit tests run on MailRoutine changes, including the API-36/Groq upgrade branch, and on demand.
 # The signed release job is separate, runs only after tests and the debug build pass, and is the
 # ONLY place signing secrets are available (via the protected "mailroutine-release" environment).
 on:
   push:
-    branches: [main]
+    branches: [main, feature/mailroutine-api36-groq-ai]
     paths:
       - "android-mailroutine/**"
       - ".github/workflows/build-mailroutine-apk.yml"
     tags:
       - "mailroutine-v*"
+  pull_request:
+    paths:
+      - "android-mailroutine/**"
+      - ".github/workflows/build-mailroutine-apk.yml"
   workflow_dispatch:
     inputs:
       publish_release:
@@ -48,17 +52,17 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Gradle 8.7
+      - name: Set up Gradle 8.13
         uses: gradle/actions/setup-gradle@v6
         with:
-          gradle-version: "8.7"
+          gradle-version: "8.13"
 
       - name: Ensure Android SDK packages
         run: |
           # GitHub-hosted runners ship an Android SDK; make sure the exact packages we compile against exist.
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           yes | "$SDKMANAGER" --licenses > /dev/null || true
-          "$SDKMANAGER" "platforms;android-34" "build-tools;34.0.0" > /dev/null
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" > /dev/null
 
       - name: Unit tests
         shell: bash
@@ -133,7 +137,7 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Gradle 8.7
+      - name: Set up Gradle 8.13
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: "8.7"
@@ -181,7 +185,7 @@ jobs:
       - name: Verify signature
         run: |
           APK=$(ls app/build/outputs/apk/release/*.apk | head -n1)
-          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose --print-certs "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$APK"
           echo "APK=$APK" >> "$GITHUB_ENV"
 
       - name: Remove keystore
