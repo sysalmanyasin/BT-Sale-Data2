@@ -14,6 +14,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.duapharma.mailroutine.AppContainer
 import com.duapharma.mailroutine.ai.AiDraft
+import com.duapharma.mailroutine.ai.AiProvider
 import com.duapharma.mailroutine.ai.AiResult
 import com.duapharma.mailroutine.backup.BackupCodec
 import com.duapharma.mailroutine.backup.BackupResult
@@ -288,9 +289,16 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
     val account = c.auth.state
     var message by mutableStateOf<String?>(null)
     var pendingImport by mutableStateOf<BackupResult.Success?>(null); private set
-    var aiKeySet by mutableStateOf(c.aiSettings.apiKey != null); private set
+    var aiProvider by mutableStateOf(c.aiSettings.provider); private set
+    var aiKeySet by mutableStateOf(c.aiSettings.apiKey(c.aiSettings.provider) != null); private set
     val aiStorageAvailable get() = c.aiSettings.storageAvailable
-    var aiModel by mutableStateOf(c.aiSettings.model)
+    var aiModel by mutableStateOf(c.aiSettings.modelFor(aiProvider))
+
+    fun selectAiProvider(provider: AiProvider) {
+        aiProvider = provider
+        aiModel = c.aiSettings.modelFor(provider)
+        aiKeySet = c.aiSettings.apiKey(provider) != null
+    }
 
     /** Starts (re)authorization. Calls [showConsent] when Google needs to show a consent screen. */
     fun connect(showConsent: (PendingIntent) -> Unit) {
@@ -345,6 +353,16 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
     }
     fun cancelImport() { pendingImport = null }
 
-    fun saveAi(key: String) { c.aiSettings.apiKey = key; c.aiSettings.model = aiModel; aiKeySet = c.aiSettings.apiKey != null; message = if (aiKeySet) "AI drafting enabled" else "AI drafting disabled" }
-    fun clearAi() { c.aiSettings.apiKey = null; aiKeySet = false; message = "AI key removed" }
+    fun saveAi(key: String) {
+        c.aiSettings.provider = aiProvider
+        if (key.isNotBlank()) c.aiSettings.setApiKey(aiProvider, key)
+        c.aiSettings.setModel(aiProvider, aiModel)
+        aiKeySet = c.aiSettings.apiKey(aiProvider) != null
+        message = if (aiKeySet) "${aiProvider.displayName} drafting enabled" else "AI drafting disabled"
+    }
+    fun clearAi() {
+        c.aiSettings.setApiKey(aiProvider, null)
+        aiKeySet = false
+        message = "${aiProvider.displayName} API key removed"
+    }
 }
