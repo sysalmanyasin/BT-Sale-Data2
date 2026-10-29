@@ -36,9 +36,12 @@ class AiSettings(context: Context) {
 
     fun setApiKey(provider: AiProvider, value: String?) {
         prefs?.edit()?.apply {
-            if (value.isNullOrBlank()) remove(provider.keyPreference)
-            else putString(provider.keyPreference, value.trim())
-            // Keep old Anthropic key data intact until the user explicitly removes that provider's key.
+            if (value.isNullOrBlank()) {
+                remove(provider.keyPreference)
+                if (provider == AiProvider.ANTHROPIC) remove("api_key")
+            } else {
+                putString(provider.keyPreference, value.trim())
+            }
         }?.apply()
     }
 
