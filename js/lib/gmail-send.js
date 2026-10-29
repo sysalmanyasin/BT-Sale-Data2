@@ -19,6 +19,9 @@ import { Actions } from '../platform/actions.js';
 import { SEND_LISTS_KEY, MAX_RECIPIENTS, normalizeLists, withKindLists, parseAddresses, buildMime, composeBodies, toBase64Url } from '../shared/mail-compose.js';
 
 const SCOPE = 'https://www.googleapis.com/auth/gmail.send';
+const EMAIL_SCOPE = 'https://www.googleapis.com/auth/userinfo.email';   // lets us confirm WHICH Google account signed in
+const USERINFO_URL = 'https://www.googleapis.com/oauth2/v3/userinfo';
+const SILENT_TIMEOUT_MS = 8000;
 const CID_KEY = 'bt_mail_cid';
 const EMAIL_KEY = 'bt_mail_email';
 const SENT_KEY = 'bt_mail_sent_v1';          // device-local: which reports were already sent (to warn before a repeat)
@@ -48,32 +51,58 @@ function recordSent(kind, dateKey, id) {
 }
 
 // ── Google token (in memory only) ──────────────────────────────────────
-let tokenCache = null;                         // { value, exp }
+// The send button must use the SAME Google account as the Email briefing (bt_mail_email, saved by Utility > Mail).
+// A login hint only suggests that account, so after sign-in we read the account's address (userinfo.email scope)
+// and refuse to go on if it is a different one.
+let tokenCache = null;                         // { value, exp, email }
 /** Forget the in-memory token (also used by tests). The next send asks Google again. */
 export function clearGmailToken() { tokenCache = null; }
+const expectedAccount = () => String(Repository.getItem(EMAIL_KEY) || '').trim().toLowerCase();
 
-/** Must be called synchronously from a tap/click handler (no await before it). */
-function requestToken() {
+/** The Google account behind a token, or '' when it cannot be read. */
+async function whoIs(token) {
+  try {
+    const res = await globalThis.fetch(USERINFO_URL, { headers: { Authorization: 'Bearer ' + token } });
+    if (!res.ok) return '';
+    const j = await res.json();
+    return String((j && j.email) || '').trim().toLowerCase();
+  } catch (_) { return ''; }
+}
+
+/**
+ * Get a token. silent:true asks Google quietly in the background (no pop-up; fails if Google needs a tap).
+ * The interactive form must be called synchronously from a tap/click handler (no await before it).
+ */
+function requestToken({ silent = false } = {}) {
+  let timer = 0;
   return new Promise((resolve, reject) => {
     if (tokenCache && tokenCache.exp - Date.now() > 60000) { resolve(tokenCache.value); return; }
     const cid = Repository.getItem(CID_KEY) || '';
-    if (!/\.apps\.googleusercontent\.com$/.test(cid)) { reject(new GmailError('no-client', 'Connect Gmail once in Utility › Mail first. That saves the Google client ID.')); return; }
+    if (!/\.apps\.googleusercontent\.com$/.test(cid)) { reject(new GmailError('no-client', 'Connect Gmail once in Utility \u203A Mail first. That saves the Google client ID.')); return; }
     const g = window.google;
     if (!g || !g.accounts || !g.accounts.oauth2) { reject(new GmailError('gis', 'Google sign-in is still loading. Try again in a moment.')); return; }
+    const expected = expectedAccount();
     const client = g.accounts.oauth2.initTokenClient({
-      client_id: cid, scope: SCOPE, login_hint: Repository.getItem(EMAIL_KEY) || undefined,
+      client_id: cid, scope: SCOPE + ' ' + EMAIL_SCOPE, hint: expected || undefined, login_hint: expected || undefined,
       callback: (r) => {
         if (!r || r.error || !r.access_token) { reject(new GmailError('auth', 'Google said: ' + ((r && r.error) || 'no token') + '. Try again.')); return; }
-        if (typeof g.accounts.oauth2.hasGrantedAllScopes === 'function' && !g.accounts.oauth2.hasGrantedAllScopes(r, SCOPE)) {
-          reject(new GmailError('scope', 'The permission to send email was not ticked. Tap Send again and allow it.')); return;
+        if (typeof g.accounts.oauth2.hasGrantedAllScopes === 'function' && !g.accounts.oauth2.hasGrantedAllScopes(r, SCOPE, EMAIL_SCOPE)) {
+          reject(new GmailError('scope', 'A permission was not ticked. Tap Send again and allow sending email and seeing your email address.')); return;
         }
-        tokenCache = { value: r.access_token, exp: Date.now() + (Number(r.expires_in) || 3600) * 1000 };
-        resolve(r.access_token);
+        whoIs(r.access_token).then((email) => {
+          if (expected && !email) { reject(new GmailError('identity', 'I could not confirm which Google account signed in. Tap Send again.')); return; }
+          if (expected && email !== expected) {
+            reject(new GmailError('wrong-account', 'You signed in as ' + email + ', but Email briefing uses ' + expected + '. Tap Send and choose ' + expected + '. Nothing was sent.')); return;
+          }
+          tokenCache = { value: r.access_token, exp: Date.now() + (Number(r.expires_in) || 3600) * 1000, email };
+          resolve(r.access_token);
+        });
       },
       error_callback: () => reject(new GmailError('popup', 'Google sign-in was closed or blocked. Allow pop-ups for this site and try again.')),
     });
-    client.requestAccessToken({ prompt: '' });
-  });
+    client.requestAccessToken({ prompt: silent ? 'none' : '' });
+    if (silent) timer = setTimeout(() => reject(new GmailError('silent', 'Quiet sign-in timed out.')), SILENT_TIMEOUT_MS);
+  }).finally(() => clearTimeout(timer));
 }
 
 // ── Gmail API ──────────────────────────────────────────────────────────
@@ -151,6 +180,9 @@ export function openGmailSend(opts) {
       field('To', fTo, 'Separate addresses with commas.'),
       field('Cc', fCc),
       field('Signature', fSig, 'Added under the report. Mail sent this way does not get your Gmail signature.'),
+      h('p', { class: 'gms-acct', text: expectedAccount()
+        ? 'Sends from ' + expectedAccount() + ' (your Email briefing account).'
+        : 'Sends from the Google account you choose. Connect Email briefing once to lock it to one account.' }),
       h('p', { class: 'gms-note', text: 'Sent from your own Gmail with the same formatting as Copy and paste. To, Cc and the signature are saved and synced.' }),
       status),
     h('div', { class: 'gms-foot' }, btnCancel, btnSend));
@@ -193,7 +225,8 @@ export function openGmailSend(opts) {
       .then((r) => {
         try { recordSent(kind, dateKey, r && r.id); } catch (_) { /* local log only */ }
         busy = false; overlay.remove(); document.removeEventListener('keydown', onKey);
-        toast('\u2713 Sent via Gmail to ' + (to.valid.length + ccOnly.length) + ' recipient' + (to.valid.length + ccOnly.length === 1 ? '' : 's'));
+        const n = to.valid.length + ccOnly.length, from = tokenCache && tokenCache.email;
+        toast('\u2713 Sent via Gmail' + (from ? ' from ' + from : '') + ' to ' + n + ' recipient' + (n === 1 ? '' : 's'));
       })
       .catch((e) => {
         uncertain = !!(e && e.code === 'uncertain');
@@ -209,5 +242,6 @@ export function openGmailSend(opts) {
   overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
   document.addEventListener('keydown', onKey);
   document.body.append(overlay);
+  requestToken({ silent: true }).catch(() => { /* fine: Google will ask on Send instead */ });   // so Send usually needs no pop-up
   (mine.to.length ? btnSend : fTo).focus();
 }

@@ -57,25 +57,39 @@ describe('sendGmailMessage', () => {
 describe('Send via Gmail dialog', () => {
   const $ = (id) => document.getElementById(id);
   const click = (el) => el.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
-  const settle = () => new Promise((r) => setTimeout(r, 20));
+  const settle = () => new Promise((r) => setTimeout(r, 25));
   const sendBtn = () => [...document.querySelectorAll('#gms-overlay .gms-foot button')].find((b) => /send|again/i.test(b.textContent));
+  const status = () => document.querySelector('.gms-status').textContent;
   const opts = { kind: 'checklist', subject: 'Daily Check List \u2014 Bahria Town \u2014 2026-10-25', html: '<div>R</div>', text: 'R', dateKey: '2026-10-25' };
-  let posts, tokenRequests, fetchImpl;
+  let posts, tokenRequests, prompts, lastCfg, fetchImpl, accountOf, toasts;
 
-  function mockGoogle({ granted = true } = {}) {
-    tokenRequests = 0;
+  function mockGoogle({ granted = true, silentFails = false } = {}) {
+    tokenRequests = 0; prompts = [];
     window.google = { accounts: { oauth2: {
-      initTokenClient: (cfg) => ({ requestAccessToken: () => { tokenRequests++; setTimeout(() => cfg.callback({ access_token: 'tok', expires_in: 3600 }), 0); } }),
-      hasGrantedAllScopes: () => granted,
+      initTokenClient: (cfg) => {
+        lastCfg = cfg;
+        return { requestAccessToken: (o) => {
+          tokenRequests++; prompts.push(o && o.prompt);
+          setTimeout(() => cfg.callback(o && o.prompt === 'none' && silentFails ? { error: 'interaction_required' } : { access_token: 'tok', expires_in: 3600 }), 0);
+        } };
+      },
+      hasGrantedAllScopes: (r, ...scopes) => granted && scopes.length === 2,
     } } };
   }
+  const openAndSettle = async (o = opts) => { openGmailSend(o); await settle(); };
+  const fillAndSend = async (to = 'a@x.com') => { $('gms-to').value = to; click(sendBtn()); await settle(); };
+
   beforeEach(() => {
     clearGmailToken();
     resetStorage();
     document.body.innerHTML = '';
     window.localStorage.setItem('bt_mail_cid', '123-abc.apps.googleusercontent.com');
-    posts = [];
-    fetchImpl = async (url, init) => { posts.push(JSON.parse(init.body)); return reply(200, { id: 'gm-1' })(); };
+    posts = []; toasts = []; accountOf = 'me@x.com';
+    window.toast = (m) => toasts.push(m);
+    fetchImpl = async (url, init) => {
+      if (/userinfo/.test(url)) return reply(200, { email: accountOf })();
+      posts.push(JSON.parse(init.body)); return reply(200, { id: 'gm-1' })();
+    };
     globalThis.fetch = (url, init) => fetchImpl(url, init);
     mockGoogle();
   });
@@ -90,25 +104,57 @@ describe('Send via Gmail dialog', () => {
     assert.equal($('gms-subject').value, opts.subject);
   });
 
-  test('refuses an invalid or empty To without contacting Google or Gmail', async () => {
+  test('says which account it sends from: the Email briefing account when known', () => {
     openGmailSend(opts);
+    assert.match(document.querySelector('.gms-acct').textContent, /Google account you choose/);
+    document.body.innerHTML = '';
+    window.localStorage.setItem('bt_mail_email', 'Bahria.Cat@fdpp.pk');
+    openGmailSend(opts);
+    assert.match(document.querySelector('.gms-acct').textContent, /Sends from bahria\.cat@fdpp\.pk \(your Email briefing account\)/);
+  });
+
+  test('asks Google for send + email-address permission, hinting the briefing account', async () => {
+    window.localStorage.setItem('bt_mail_email', 'bahria.cat@fdpp.pk');
+    await openAndSettle();
+    assert.match(lastCfg.scope, /gmail\.send/);
+    assert.match(lastCfg.scope, /userinfo\.email/);
+    assert.equal(lastCfg.hint, 'bahria.cat@fdpp.pk');
+    assert.equal(lastCfg.login_hint, 'bahria.cat@fdpp.pk');
+  });
+
+  test('asks Google quietly when the dialog opens, so Send needs no pop-up', async () => {
+    await openAndSettle();
+    assert.deepEqual(prompts, ['none']);
+    await fillAndSend();
+    assert.deepEqual(prompts, ['none'], 'Send reuses the quiet token');
+    assert.equal(posts.length, 1);
+  });
+
+  test('if the quiet request fails, Send asks with a normal prompt and nothing is shown at open', async () => {
+    mockGoogle({ silentFails: true });
+    await openAndSettle();
+    assert.equal(status(), '');
+    await fillAndSend();
+    assert.deepEqual(prompts, ['none', '']);
+    assert.equal(posts.length, 1);
+  });
+
+  test('refuses an invalid or empty To without any pop-up or Gmail call', async () => {
+    await openAndSettle();
     click(sendBtn());
-    assert.match(document.querySelector('.gms-status').textContent, /at least one To/);
+    assert.match(status(), /at least one To/);
     $('gms-to').value = 'ok@x.com, nope';
     click(sendBtn());
-    assert.match(document.querySelector('.gms-status').textContent, /Not a valid email address: nope/);
-    assert.equal(tokenRequests, 0);
+    assert.match(status(), /Not a valid email address: nope/);
+    assert.deepEqual(prompts, ['none'], 'only the quiet request, never a pop-up');
     assert.equal(posts.length, 0);
   });
 
-  test('a good send saves the lists, calls Gmail once, records it and closes', async () => {
-    openGmailSend(opts);
-    $('gms-to').value = 'a@x.com, b@x.com';
+  test('a good send saves the lists, calls Gmail once, records it, names the account and closes', async () => {
+    await openAndSettle();
     $('gms-cc').value = 'c@x.com, a@x.com';          // a@x.com is already in To, so it is dropped from Cc
     $('gms-sig').value = 'Salman';
-    click(sendBtn());
-    await settle();
-    assert.equal(tokenRequests, 1);
+    await fillAndSend('a@x.com, b@x.com');
     assert.equal(posts.length, 1);
     const mime = decodeRaw(posts[0].raw);
     assert.match(mime, /^To: a@x\.com,\r\n b@x\.com\r\n/m);
@@ -118,34 +164,63 @@ describe('Send via Gmail dialog', () => {
     assert.deepEqual(saved.checklist, { to: ['a@x.com', 'b@x.com'], cc: ['c@x.com'] });
     assert.equal(saved.signature, 'Salman');
     assert.ok(saved.updatedAt);
-    assert.ok(JSON.parse(window.localStorage.getItem('bt_mail_sent_v1'))['checklist:2026-10-25'].id === 'gm-1');
+    assert.equal(JSON.parse(window.localStorage.getItem('bt_mail_sent_v1'))['checklist:2026-10-25'].id, 'gm-1');
+    assert.match(toasts.join(' '), /Sent via Gmail from me@x\.com to 3 recipients/);
+  });
+
+  test('sends from the Email briefing account, ignoring letter case', async () => {
+    window.localStorage.setItem('bt_mail_email', 'bahria.cat@fdpp.pk');
+    accountOf = 'Bahria.Cat@fdpp.pk';
+    await openAndSettle();
+    await fillAndSend();
+    assert.equal(posts.length, 1);
+  });
+
+  test('refuses to send when a different Google account signed in', async () => {
+    window.localStorage.setItem('bt_mail_email', 'bahria.cat@fdpp.pk');
+    accountOf = 'other@gmail.com';
+    await openAndSettle();
+    await fillAndSend();
+    assert.match(status(), /signed in as other@gmail\.com, but Email briefing uses bahria\.cat@fdpp\.pk/);
+    assert.match(status(), /Nothing was sent/);
+    assert.equal(posts.length, 0);
+    assert.ok($('gms-overlay'), 'dialog stays open');
+    assert.equal(window.localStorage.getItem('bt_mail_sent_v1'), null);
+    accountOf = 'bahria.cat@fdpp.pk';          // choosing the right account on the next try works
+    click(sendBtn());
+    await settle();
+    assert.equal(posts.length, 1);
+  });
+
+  test('refuses when the briefing account is known but the signed-in account cannot be confirmed', async () => {
+    window.localStorage.setItem('bt_mail_email', 'bahria.cat@fdpp.pk');
+    fetchImpl = async (url, init) => (/userinfo/.test(url) ? reply(500, {})() : (posts.push(JSON.parse(init.body)), reply(200, { id: 'x' })()));
+    await openAndSettle();
+    await fillAndSend();
+    assert.match(status(), /could not confirm which Google account/);
+    assert.equal(posts.length, 0);
   });
 
   test('sending the same report again needs a second tap', async () => {
     window.localStorage.setItem('bt_mail_sent_v1', JSON.stringify({ 'checklist:2026-10-25': { at: new Date().toISOString(), id: 'old' } }));
-    openGmailSend(opts);
+    await openAndSettle();
     assert.ok(document.querySelector('.gms-warn'), 'shows the already-sent warning');
-    $('gms-to').value = 'a@x.com';
-    click(sendBtn());
-    await settle();
+    await fillAndSend();
     assert.equal(posts.length, 0, 'first tap only arms the button');
-    assert.match(document.querySelector('.gms-status').textContent, /Tap again/);
+    assert.match(status(), /Tap again/);
     click(sendBtn());
     await settle();
     assert.equal(posts.length, 1);
   });
 
   test('an uncertain failure keeps the dialog open and asks before a repeat send', async () => {
-    fetchImpl = async () => { throw new TypeError('offline'); };
-    openGmailSend(opts);
-    $('gms-to').value = 'a@x.com';
-    click(sendBtn());
-    await settle();
+    fetchImpl = async (url) => { if (/userinfo/.test(url)) return reply(200, { email: 'me@x.com' })(); throw new TypeError('offline'); };
+    await openAndSettle();
+    await fillAndSend();
     assert.ok($('gms-overlay'), 'stays open');
-    assert.match(document.querySelector('.gms-status').textContent, /Check Gmail/);
+    assert.match(status(), /Check Gmail/);
     assert.equal(window.localStorage.getItem('bt_mail_sent_v1'), null, 'not recorded as sent');
-    posts = [];
-    fetchImpl = async (url, init) => { posts.push(JSON.parse(init.body)); return reply(200, { id: 'gm-2' })(); };
+    fetchImpl = async (url, init) => { if (/userinfo/.test(url)) return reply(200, { email: 'me@x.com' })(); posts.push(JSON.parse(init.body)); return reply(200, { id: 'gm-2' })(); };
     click(sendBtn());
     await settle();
     assert.equal(posts.length, 0, 'asks first');
@@ -154,24 +229,20 @@ describe('Send via Gmail dialog', () => {
     assert.equal(posts.length, 1);
   });
 
-  test('missing Google client ID or sign-in script gives a clear message and sends nothing', async () => {
+  test('missing Google client ID gives a clear message and sends nothing', async () => {
     window.localStorage.removeItem('bt_mail_cid');
-    openGmailSend(opts);
-    $('gms-to').value = 'a@x.com';
-    click(sendBtn());
-    await settle();
-    assert.match(document.querySelector('.gms-status').textContent, /Connect Gmail once in Utility/);
+    await openAndSettle();
+    await fillAndSend();
+    assert.match(status(), /Connect Gmail once in Utility/);
     assert.equal(posts.length, 0);
     assert.equal(sendBtn().disabled, false, 'controls are usable again');
   });
 
-  test('refusing the send permission on the consent screen is reported', async () => {
+  test('a permission left unticked on the consent screen is reported', async () => {
     mockGoogle({ granted: false });
-    openGmailSend(opts);
-    $('gms-to').value = 'a@x.com';
-    click(sendBtn());
-    await settle();
-    assert.match(document.querySelector('.gms-status').textContent, /permission to send email was not ticked/);
+    await openAndSettle();
+    await fillAndSend();
+    assert.match(status(), /not ticked/);
     assert.equal(posts.length, 0);
   });
 
