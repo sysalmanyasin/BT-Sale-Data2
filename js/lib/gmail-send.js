@@ -6,6 +6,8 @@
 //    plain-text copy), so it looks like a paste into Gmail.
 //  - To / Cc (kept separately for each report) and the signature are saved under
 //    SEND_LISTS_KEY and travel in the Supabase sync payload (see js/platform/supabase.js).
+//  - One Google account for everything: the one Email briefing connected with (bt_mail_email). Send refuses to run until
+//    that is saved, hints that account to Google, then checks who actually signed in and refuses a different one.
 //  - Access: Google Identity Services with the send-only scope gmail.send. The token lives in
 //    memory only. The Google client ID is the one already saved by Utility > Mail (bt_mail_cid).
 //    The token request runs straight from the Send tap, because browsers block the Google
@@ -182,7 +184,7 @@ export function openGmailSend(opts) {
       field('Signature', fSig, 'Added under the report. Mail sent this way does not get your Gmail signature.'),
       h('p', { class: 'gms-acct', text: expectedAccount()
         ? 'Sends from ' + expectedAccount() + ' (your Email briefing account).'
-        : 'Sends from the Google account you choose. Connect Email briefing once to lock it to one account.' }),
+        : 'Connect Email briefing first (Utility \u203A Mail). Send uses that same Google account.' }),
       h('p', { class: 'gms-note', text: 'Sent from your own Gmail with the same formatting as Copy and paste. To, Cc and the signature are saved and synced.' }),
       status),
     h('div', { class: 'gms-foot' }, btnCancel, btnSend));
@@ -197,6 +199,7 @@ export function openGmailSend(opts) {
 
   function send() {
     if (busy) return;
+    if (!expectedAccount()) { say('Send uses the same Google account as Email briefing. Open Utility \u203A Mail, connect, and tap the brief button once. Nothing was sent.', true); return; }
     const to = parseAddresses(fTo.value), cc = parseAddresses(fCc.value);
     const bad = [...to.invalid, ...cc.invalid];
     if (bad.length) { say('Not a valid email address: ' + bad.slice(0, 3).join(', ') + (bad.length > 3 ? ' \u2026' : ''), true); return; }
@@ -242,6 +245,6 @@ export function openGmailSend(opts) {
   overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
   document.addEventListener('keydown', onKey);
   document.body.append(overlay);
-  requestToken({ silent: true }).catch(() => { /* fine: Google will ask on Send instead */ });   // so Send usually needs no pop-up
+  if (expectedAccount()) requestToken({ silent: true }).catch(() => { /* fine: Google will ask on Send instead */ });   // so Send usually needs no pop-up
   (mine.to.length ? btnSend : fTo).focus();
 }

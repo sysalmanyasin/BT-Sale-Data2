@@ -84,6 +84,7 @@ describe('Send via Gmail dialog', () => {
     resetStorage();
     document.body.innerHTML = '';
     window.localStorage.setItem('bt_mail_cid', '123-abc.apps.googleusercontent.com');
+    window.localStorage.setItem('bt_mail_email', 'me@x.com');      // the account Email briefing connected with
     posts = []; toasts = []; accountOf = 'me@x.com';
     window.toast = (m) => toasts.push(m);
     fetchImpl = async (url, init) => {
@@ -104,13 +105,24 @@ describe('Send via Gmail dialog', () => {
     assert.equal($('gms-subject').value, opts.subject);
   });
 
-  test('says which account it sends from: the Email briefing account when known', () => {
-    openGmailSend(opts);
-    assert.match(document.querySelector('.gms-acct').textContent, /Google account you choose/);
-    document.body.innerHTML = '';
+  test('says which account it sends from, and asks to connect Email briefing when none is saved', () => {
     window.localStorage.setItem('bt_mail_email', 'Bahria.Cat@fdpp.pk');
     openGmailSend(opts);
     assert.match(document.querySelector('.gms-acct').textContent, /Sends from bahria\.cat@fdpp\.pk \(your Email briefing account\)/);
+    document.body.innerHTML = '';
+    window.localStorage.removeItem('bt_mail_email');
+    openGmailSend(opts);
+    assert.match(document.querySelector('.gms-acct').textContent, /Connect Email briefing first/);
+  });
+
+  test('refuses to send until Email briefing has saved its account, with no Google request at all', async () => {
+    window.localStorage.removeItem('bt_mail_email');
+    await openAndSettle();
+    await fillAndSend();
+    assert.match(status(), /same Google account as Email briefing/);
+    assert.match(status(), /Nothing was sent/);
+    assert.equal(tokenRequests, 0);
+    assert.equal(posts.length, 0);
   });
 
   test('asks Google for send + email-address permission, hinting the briefing account', async () => {

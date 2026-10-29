@@ -66,7 +66,7 @@ export const MailBriefing = (function () {
     sent: /sale report|checklist|drive.?thru|attendance sheet|bio ?metric attendance|staff attendance/i,
   };
 
-  let token = null, busy = false, items = [], me = (Repository.getItem(K.email) || '');
+  let token = null, busy = false, items = [], me = (Repository.getItem(K.email) || ''), verifiedToken = null;
   // Cover strip (js/mail/cover-mail-strip.js) subscribes here; called after every refresh and AI brief.
   const listeners = [];
   const emit = () => listeners.forEach((f) => { try { f(); } catch (_) { /* a listener must never break mail */ } });
@@ -167,7 +167,18 @@ export const MailBriefing = (function () {
     busy = true; setGo((b) => { b.disabled = true; });
     try {
       status('Reading mail...');
-      if (!me) { const p = await gapi('profile'); me = p.emailAddress.toLowerCase(); Repository.setItem(K.email, me); }
+      // One Google account for the briefing AND the Send via Gmail button (js/lib/gmail-send.js reads K.email).
+      // The first connection saves it; a later connection with a different account is refused until Disconnect forgets it.
+      if (token !== verifiedToken) {
+        const p = await gapi('profile'), got = String((p && p.emailAddress) || '').toLowerCase();
+        if (!me && got) { me = got; Repository.setItem(K.email, me); }
+        else if (me && got && got !== me) {
+          if (window.google && google.accounts && google.accounts.oauth2) google.accounts.oauth2.revoke(token, () => {});
+          token = null; verifiedToken = null;
+          throw new Error('That is ' + got + ', but Email briefing and Send via Gmail use ' + me + '. Tap Disconnect, then connect again to switch accounts.');
+        }
+        verifiedToken = token;
+      }
       const days = Number(($('#mail-days') || {}).value || Repository.getItem(K.days) || 3); Repository.setItem(K.days, String(days));
       // Everything in the window (inbox, sent AND archived/labelled mail); spam and trash are excluded by Gmail itself.
       const q = 'newer_than:' + days + 'd -in:drafts -category:promotions -category:social';
@@ -793,7 +804,9 @@ export const MailBriefing = (function () {
   }
   function disconnect() {
     if (token && window.google) google.accounts.oauth2.revoke(token, () => {});
-    token = null; items = []; ui.filter = 'all'; Repository.removeItem(K.auto); $('#mail-aiout').replaceChildren(); $('#mail-out').hidden = true; setGo((b) => goLabel(b, false)); refreshUI();
+    token = null; verifiedToken = null; items = []; ui.filter = 'all'; Repository.removeItem(K.auto);
+    Repository.removeItem(K.email); me = '';   // forget the account too, so the next connection can choose a different one
+    $('#mail-aiout').replaceChildren(); $('#mail-out').hidden = true; setGo((b) => goLabel(b, false)); refreshUI();
     status('Disconnected. Gmail access revoked.');
   }
 
