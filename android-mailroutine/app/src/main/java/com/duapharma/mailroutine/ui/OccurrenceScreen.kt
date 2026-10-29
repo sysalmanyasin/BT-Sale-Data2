@@ -8,6 +8,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -147,6 +148,17 @@ private fun FieldInput(f: TemplateField, value: String, enabled: Boolean, onAi: 
             Switch(checked = value == "true" || (value.isBlank() && f.defaultValue == "true"), enabled = enabled, onCheckedChange = { onChange(it.toString()) })
             Spacer(Modifier.width(8.dp)); Text(label)
         }
+        FieldType.TIME -> Column {
+            val ctx = LocalContext.current
+            val shown = value.ifBlank { f.defaultValue.orEmpty() }
+            OutlinedTextField(
+                value = shown, onValueChange = {}, readOnly = true, enabled = enabled, label = { Text(label) },
+                placeholder = { Text("HH:mm") }, modifier = Modifier.fillMaxWidth(), isError = err != null, singleLine = true,
+                supportingText = { Text(err ?: "24-hour time") },
+                trailingIcon = { TextButton(enabled = enabled, onClick = { showTimeWheel(ctx, shown, onChange) }) { Text(if (shown.isBlank()) "Set" else "Change") } },
+            )
+            if (value.isNotBlank() && enabled) TextButton(onClick = { onChange("") }) { Text("Clear") }
+        }
         FieldType.CHOICE -> Column {
             Text(label, style = MaterialTheme.typography.labelMedium)
             Picker("Choice", value.ifBlank { f.defaultValue ?: "—" }, f.choices, { it }) { if (enabled) onChange(it) }
@@ -162,4 +174,14 @@ private fun FieldInput(f: TemplateField, value: String, enabled: Boolean, onAi: 
             if (onAi != null) TextButton(onClick = onAi) { Text(if (value.isBlank()) "Write with AI…" else "Improve with AI…") }
         }
     }
+}
+
+/** Native scrolling-number (spinner) 24-hour picker. Result is "HH:mm". */
+private fun showTimeWheel(ctx: android.content.Context, current: String, onPick: (String) -> Unit) {
+    val m = Regex("^(\\d{2}):(\\d{2})$").matchEntire(current.trim())
+    val now = java.time.LocalTime.now()
+    val h = m?.groupValues?.get(1)?.toIntOrNull()?.takeIf { it in 0..23 } ?: now.hour
+    val min = m?.groupValues?.get(2)?.toIntOrNull()?.takeIf { it in 0..59 } ?: now.minute
+    @Suppress("DEPRECATION")
+    android.app.TimePickerDialog(ctx, android.R.style.Theme_Holo_Light_Dialog_NoActionBar, { _, hh, mm -> onPick("%02d:%02d".format(hh, mm)) }, h, min, true).show()
 }

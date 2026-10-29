@@ -62,6 +62,8 @@ object FieldValidator {
         return out
     }
 
+    private val TIME_24H = Regex("^([01][0-9]|2[0-3]):[0-5][0-9]$")
+
     /** Returns an error message, or null when [raw] is acceptable for [f]. Blank handled by caller for required. */
     fun validateValue(f: TemplateField, raw: String, allowBlank: Boolean = false): String? {
         if (raw.isBlank()) return if (allowBlank || !f.required) null else "Required"
@@ -72,6 +74,7 @@ object FieldValidator {
             FieldType.TEXT, FieldType.MULTILINE -> null
             FieldType.NUMBER -> if (runCatching { BigDecimal(raw.trim()) }.isSuccess) null else "Not a number"
             FieldType.DATE -> if (runCatching { LocalDate.parse(raw.trim()) }.isSuccess) null else "Use YYYY-MM-DD"
+            FieldType.TIME -> if (TIME_24H.matches(raw.trim())) null else "Use 24-hour HH:mm, 00:00 to 23:59"
             FieldType.BOOLEAN -> if (raw.trim() == "true" || raw.trim() == "false") null else "Must be true or false"
             FieldType.CHOICE -> if (raw in f.choices) null else "Not one of the allowed choices"
         }

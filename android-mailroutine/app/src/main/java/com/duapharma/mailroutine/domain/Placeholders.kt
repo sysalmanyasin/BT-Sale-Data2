@@ -68,7 +68,7 @@ object Placeholders {
 
     private fun display(f: TemplateField, v: String): String = when (f.type) {
         FieldType.BOOLEAN -> if (v.trim() == "true") "Yes" else "No"
-        FieldType.NUMBER, FieldType.DATE -> v.trim()
+        FieldType.NUMBER, FieldType.DATE, FieldType.TIME -> v.trim()
         else -> v
     }
 }

@@ -5,7 +5,8 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 
-enum class FieldType { TEXT, MULTILINE, NUMBER, DATE, BOOLEAN, CHOICE }
+/** TIME is stored and sent as 24-hour "HH:mm" (00:00–23:59). */
+enum class FieldType { TEXT, MULTILINE, NUMBER, DATE, BOOLEAN, CHOICE, TIME }
 
 /** A typed input the user fills in per occurrence; referenced in the template as {{key}}. */
 data class TemplateField(

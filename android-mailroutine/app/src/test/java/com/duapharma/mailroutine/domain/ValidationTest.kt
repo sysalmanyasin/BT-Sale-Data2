@@ -75,4 +75,10 @@ class ValidationTest {
         assertNotNull(AttachmentRules.validatePick("a.pdf", Limits.MAX_ATTACHMENT_BYTES + 1))
         assertNull(AttachmentRules.validatePick("a.pdf", 1000))
     }
+
+    @Test fun timeFieldAccepts24HourOnly() {
+        val f = TemplateField("t", "T", FieldType.TIME, true)
+        listOf("00:00", "09:05", "16:22", "23:59").forEach { assertNull(it, FieldValidator.validateValue(f, it)) }
+        listOf("24:00", "9:05", "12:60", "4:22 PM", "noon", "12-30").forEach { assertNotNull(it, FieldValidator.validateValue(f, it)) }
+    }
 }
