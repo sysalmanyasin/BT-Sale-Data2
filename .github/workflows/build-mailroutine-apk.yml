@@ -24,7 +24,7 @@ on:
       version_name:
         description: "Release version name, e.g. 1.0.0 (ignored for tag pushes)"
         type: string
-        default: "1.0.0"
+        default: "1.2.0"
 
 permissions:
   contents: read
@@ -140,13 +140,13 @@ jobs:
       - name: Set up Gradle 8.13
         uses: gradle/actions/setup-gradle@v6
         with:
-          gradle-version: "8.7"
+          gradle-version: "8.13"
 
       - name: Ensure Android SDK packages
         run: |
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           yes | "$SDKMANAGER" --licenses > /dev/null || true
-          "$SDKMANAGER" "platforms;android-34" "build-tools;34.0.0" > /dev/null
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" > /dev/null
 
       - name: Resolve version
         id: ver
