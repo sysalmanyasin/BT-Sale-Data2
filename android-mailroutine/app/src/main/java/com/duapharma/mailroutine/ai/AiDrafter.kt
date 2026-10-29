@@ -49,7 +49,7 @@ object AiDraftParser {
         require(start in 0 until end) { "The assistant did not return a draft" }
         val j = JSONObject(text.substring(start, end + 1))
         val subject = j.optString("subject", "").replace(Regex("[\\r\\n]+"), " ").trim()
-        val body = j.optString("body", "").replace("\\r\\n", "\\n").trim()
+        val body = j.optString("body", "").replace("\r\n", "\n").trim()
         require(subject.isNotEmpty()) { "Draft has no subject" }
         require(subject.length <= Limits.MAX_SUBJECT && body.length <= Limits.MAX_BODY) { "Draft is too long" }
         val known = fieldKeys + FieldValidator.BUILT_IN_KEYS
