@@ -6,7 +6,7 @@ Use two addresses: the sending Workspace account (A) and a recipient you can rea
 
 ## 1. Authorization
 1. Settings -> Connect Gmail. Expect Google's consent screen listing only "Send email on your behalf". Approve. Expect "Connected as A".
-2. Deny/cancel once (disconnect first). Expect a "cancelled or blocked" message, still not connected.
+2. Deny/cancel once (disconnect first). Expect an "Authorization was cancelled" message, still not connected.
 3. If your Workspace admin restricts third-party apps, expect the blocked message; ask the admin to trust the client ID.
 
 ## 2. Create and fill

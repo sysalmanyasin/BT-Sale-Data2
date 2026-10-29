@@ -1,6 +1,7 @@
 package com.duapharma.mailroutine.ui
 
 import android.app.PendingIntent
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.runtime.getValue
@@ -25,6 +26,7 @@ import com.duapharma.mailroutine.data.SaveResult
 import com.duapharma.mailroutine.domain.*
 import com.duapharma.mailroutine.platform.AttachmentImport
 import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.common.api.CommonStatusCodes
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -355,17 +357,32 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
                 val pi = res.pendingIntent
                 if (res.hasResolution() && pi != null) showConsent(pi)
                 else { c.auth.completeConnection(res); message = "Gmail connected" }
-            } catch (e: ApiException) { message = authError() }
+            } catch (e: ApiException) { message = authError(e) }
             catch (e: Exception) { message = "Couldn't reach Google. Check your connection and try again." }
         }
     }
 
-    fun onAuthResult(data: Intent?) {
+    fun onAuthResult(resultCode: Int, data: Intent?) {
+        if (resultCode == Activity.RESULT_CANCELED && data == null) { message = "Authorization was cancelled."; return }
         try { c.auth.completeConnection(c.auth.resultFromIntent(data)); message = "Gmail connected"; c.scheduler.sweepNow() }
-        catch (e: Exception) { message = authError() }
+        catch (e: Exception) { message = authError(e) }
     }
 
-    private fun authError() = "Authorization was cancelled or blocked. With Google Workspace, an administrator may need to allow this app."
+    /** Maps the real failure to an actionable message instead of one generic text. Contains no tokens or addresses. */
+    private fun authError(e: Exception): String {
+        val code = (e as? ApiException)?.statusCode
+        return when (code) {
+            CommonStatusCodes.DEVELOPER_ERROR ->
+                "Google rejected this build (error 10). The Android OAuth client must match package com.duapharma.mailroutine " +
+                    "(or .debug) and the SHA-1 of the certificate this APK is signed with. See README > Google OAuth configuration."
+            CommonStatusCodes.NETWORK_ERROR, CommonStatusCodes.TIMEOUT ->
+                "Couldn't reach Google. Check your connection and try again."
+            CommonStatusCodes.CANCELED, CommonStatusCodes.INTERRUPTED -> "Authorization was cancelled."
+            else ->
+                "Authorization failed" + (code?.let { " (error $it)" } ?: "") +
+                    ". If the consent screen is in Testing, add your account as a test user; with Google Workspace, an administrator may need to allow this app."
+        }
+    }
 
     fun disconnect() = viewModelScope.launch { c.auth.disconnect(); message = "Disconnected. Automatic sending is paused until you reconnect." }
 
