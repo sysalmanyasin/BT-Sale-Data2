@@ -64,9 +64,44 @@ jobs:
         shell: bash
         run: gradle --no-daemon --console=plain --stacktrace testDebugUnitTest 2>&1 | tee "$RUNNER_TEMP/gradle-test.log"
 
+      - name: Decode stable debug keystore (optional)
+        id: dbgkey
+        env:
+          DBG_B64: ${{ secrets.MAILROUTINE_DEBUG_KEYSTORE_BASE64 }}
+        run: |
+          # Secrets are unavailable on fork PRs; the build then falls back to a random debug key.
+          if [ -n "$DBG_B64" ]; then
+            echo "$DBG_B64" | base64 -d > "$RUNNER_TEMP/mailroutine-debug.jks"
+            chmod 600 "$RUNNER_TEMP/mailroutine-debug.jks"
+            echo "stable=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::No MAILROUTINE_DEBUG_KEYSTORE_BASE64 secret; debug APK uses a random key and Gmail connect will fail."
+          fi
+
       - name: Build debug APK
         shell: bash
+        env:
+          MAILROUTINE_DEBUG_KEYSTORE_PATH: ${{ steps.dbgkey.outputs.stable == 'true' && format('{0}/mailroutine-debug.jks', runner.temp) || '' }}
+          MAILROUTINE_DEBUG_KEYSTORE_PASSWORD: ${{ secrets.MAILROUTINE_DEBUG_KEYSTORE_PASSWORD }}
+          MAILROUTINE_DEBUG_KEY_ALIAS: ${{ secrets.MAILROUTINE_DEBUG_KEY_ALIAS }}
         run: gradle --no-daemon --console=plain --stacktrace assembleDebug -PappVersionCode=${{ github.run_number }} 2>&1 | tee "$RUNNER_TEMP/gradle-build.log"
+
+      - name: Show debug APK signing certificate
+        shell: bash
+        run: |
+          APK=$(ls app/build/outputs/apk/debug/*.apk | head -n1)
+          OUT=$("$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --print-certs "$APK" | grep -E "SHA-(1|256) digest|Signer #1 certificate DN")
+          echo "$OUT"
+          {
+            echo "### Debug APK signing certificate"
+            echo "Package: \`com.duapharma.mailroutine.debug\`"
+            echo '```'; echo "$OUT"; echo '```'
+            echo "Register this SHA-1 in the Google Cloud Android OAuth client."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove debug keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/mailroutine-debug.jks"
 
       - name: Summarise Gradle failure
         if: failure()

@@ -9,6 +9,11 @@ plugins {
 // Nothing secret is read from, or written to, the repository.
 val releaseKeystorePath: String? = System.getenv("MAILROUTINE_KEYSTORE_PATH")
 
+// Optional stable key for DEBUG builds (CI decodes it from a repository secret). Without it, Android's
+// random per-machine debug key is used. A stable key keeps the signing SHA-1 constant so it can be
+// registered once in the Google Cloud Android OAuth client (package com.duapharma.mailroutine.debug).
+val debugKeystorePath: String? = System.getenv("MAILROUTINE_DEBUG_KEYSTORE_PATH")
+
 android {
     namespace = "com.duapharma.mailroutine"
     compileSdk = 34
@@ -23,6 +28,14 @@ android {
     }
 
     signingConfigs {
+        if (!debugKeystorePath.isNullOrBlank()) {
+            getByName("debug") {
+                storeFile = file(debugKeystorePath)
+                storePassword = System.getenv("MAILROUTINE_DEBUG_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("MAILROUTINE_DEBUG_KEY_ALIAS")
+                keyPassword = System.getenv("MAILROUTINE_DEBUG_KEYSTORE_PASSWORD")
+            }
+        }
         if (!releaseKeystorePath.isNullOrBlank()) {
             create("release") {
                 storeFile = file(releaseKeystorePath)
