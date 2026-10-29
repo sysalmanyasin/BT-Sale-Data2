@@ -12,7 +12,7 @@ A native Android app (Kotlin, Jetpack Compose, MVVM, Room, WorkManager) for **re
 - Attachments copied into private app storage, validated (size, blocked types), checked again at send time.
 - Per-attempt history with timestamps, outcome and Gmail message ID.
 - Versioned, credential-free JSON backup/restore.
-- Optional AI-assisted drafting with **Groq (free developer tier)** or Anthropic. Provider selection and separate API keys are configured in Settings; drafts only fill the editor and never save or send.
+- Optional AI-assisted drafting with **Groq (free plan)** or Anthropic. Provider selection and separate API keys are configured in Settings; drafts only fill the editor and never save or send.
 
 ## Delivery safety model
 
