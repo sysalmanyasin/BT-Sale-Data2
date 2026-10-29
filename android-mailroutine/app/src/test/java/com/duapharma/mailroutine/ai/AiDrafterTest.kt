@@ -48,4 +48,46 @@ class AiDrafterTest {
         val offline = AnthropicDrafter({ _, _, _ -> throw TransportException(false, null) }, { "k" }, { "m" })
         assertTrue(offline.draft("x", "", "", keys) is AiResult.Error)
     }
+
+    private fun groqReply(text: String) = HttpResult(
+        200,
+        JSONObject().put(
+            "choices",
+            org.json.JSONArray().put(JSONObject().put("message", JSONObject().put("content", text))),
+        ).toString(),
+    )
+
+    @Test fun groqUsesOpenAiCompatibleEndpointAndParsesDraft() = runBlocking {
+        var sentUrl = ""
+        var sentHeaders = emptyMap<String, String>()
+        var sentBody = ""
+        val drafter = GroqDrafter(
+            { url, headers, body ->
+                sentUrl = url
+                sentHeaders = headers
+                sentBody = String(body, Charsets.UTF_8)
+                groqReply("""{"subject":"Weekly report {{date}}","body":"Total {{amount}}"}""")
+            },
+            { "groq-test-key" },
+            { "openai/gpt-oss-20b" },
+        )
+        val result = drafter.draft("write a weekly report", "Old subject", "Old body", keys)
+        assertEquals("https://api.groq.com/openai/v1/chat/completions", sentUrl)
+        assertEquals("Bearer groq-test-key", sentHeaders["Authorization"])
+        assertTrue(sentBody.contains("openai/gpt-oss-20b"))
+        assertFalse(sentBody.contains("recipient@example.com"))
+        assertEquals(AiDraft("Weekly report {{date}}", "Total {{amount}}"), (result as AiResult.Success).draft)
+    }
+
+    @Test fun groqDoesNotCallNetworkWithoutKey() = runBlocking {
+        var called = false
+        val drafter = GroqDrafter({ _, _, _ -> called = true; groqReply("{}") }, { null }, { AiProvider.GROQ.defaultModel })
+        assertEquals(AiResult.NotConfigured, drafter.draft("draft", "", "", keys))
+        assertFalse(called)
+    }
+
+    @Test fun providerDefaultsToProductionGroqModel() {
+        assertEquals("openai/gpt-oss-20b", AiProvider.GROQ.defaultModel)
+        assertTrue(AiProvider.GROQ.defaultModel.startsWith("openai/"))
+    }
 }
