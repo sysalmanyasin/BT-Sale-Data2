@@ -12,12 +12,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.duapharma.mailroutine.ai.AiProvider
 import com.duapharma.mailroutine.platform.AccountStatus
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -75,14 +77,26 @@ fun SettingsScreen(vm: SettingsViewModel, nav: NavState) {
                 OutlinedButton(onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }) { Text("Import") }
             }
 
-            SectionTitle("AI drafting (optional)")
-            if (!vm.aiStorageAvailable) Note("Secure storage isn't available on this device, so AI drafting stays disabled.", MrColors.Amber)
+            SectionTitle("AI writing assistant (optional)")
+            if (!vm.aiStorageAvailable) Note("Secure storage isn't available on this device, so AI writing stays disabled.", MrColors.Amber)
             else {
-                Note(if (vm.aiKeySet) "Enabled. Your key is stored encrypted on this device and is never included in backups." else "Disabled until you add an API key. Drafts are suggestions only and never change a routine by themselves.")
-                Note("Privacy: when you use Draft with AI, your instruction and the current subject and body template (field names only, never recipients or entered values) are sent to Anthropic's API using your key.", MrColors.Amber)
-                OutlinedTextField(value = aiKey, onValueChange = { aiKey = it }, label = { Text(if (vm.aiKeySet) "Replace API key" else "API key") }, singleLine = true,
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Provider", style = MaterialTheme.typography.labelLarge)
+                    AiProvider.entries.forEach { p ->
+                        FilterChip(selected = vm.aiProvider == p, onClick = { vm.selectAiProvider(p); aiKey = "" }, label = { Text(p.label) })
+                    }
+                }
+                Note(
+                    if (vm.aiKeySet) "${vm.aiProvider.label} key saved. It is stored encrypted on this device and is never included in backups."
+                    else "Disabled until you add a ${vm.aiProvider.label} API key. Suggestions never change a routine or an email by themselves.",
+                )
+                if (vm.aiProvider != vm.aiActive) Note("${vm.aiActive.label} is still the active provider. Tap Save to switch to ${vm.aiProvider.label}.", MrColors.Amber)
+                Note(vm.aiProvider.keyHelp)
+                Note("Privacy: when you use Write with AI, your instruction and the text you are working on (the template in the editor, or one field of an email) are sent to ${vm.aiProvider.label} using your key. Recipients and other fields are never sent.", MrColors.Amber)
+                OutlinedTextField(value = aiKey, onValueChange = { aiKey = it }, label = { Text(if (vm.aiKeySet) "Replace ${vm.aiProvider.label} API key" else "${vm.aiProvider.label} API key") }, singleLine = true,
                     visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = vm.aiModel, onValueChange = { vm.aiModel = it }, label = { Text("Model") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = vm.aiModel, onValueChange = { vm.aiModel = it }, label = { Text("Model") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                    supportingText = { Text("Default: ${vm.aiProvider.defaultModel}") })
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = { vm.saveAi(aiKey); aiKey = "" }, enabled = aiKey.isNotBlank() || vm.aiKeySet) { Text("Save") }
                     if (vm.aiKeySet) OutlinedButton(onClick = { vm.clearAi() }) { Text("Remove key") }

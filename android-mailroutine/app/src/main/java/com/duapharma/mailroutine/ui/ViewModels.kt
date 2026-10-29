@@ -14,7 +14,10 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.duapharma.mailroutine.AppContainer
 import com.duapharma.mailroutine.ai.AiDraft
+import com.duapharma.mailroutine.ai.AiProvider
 import com.duapharma.mailroutine.ai.AiResult
+import com.duapharma.mailroutine.ai.AiTextRequest
+import com.duapharma.mailroutine.ai.AiTextResult
 import com.duapharma.mailroutine.backup.BackupCodec
 import com.duapharma.mailroutine.backup.BackupResult
 import com.duapharma.mailroutine.data.AttemptWithRoutine
@@ -86,6 +89,7 @@ class EditorViewModel(private val c: AppContainer, private val routineId: String
     var aiProposal by mutableStateOf<AiDraft?>(null); private set
     var aiError by mutableStateOf<String?>(null); private set
     val aiConfigured get() = c.drafter.isConfigured
+    val aiProviderLabel get() = c.aiSettings.provider.label
 
     private var existing: Routine? = null
     private val newAttachmentIds = mutableSetOf<String>()
@@ -221,10 +225,15 @@ class EditorViewModel(private val c: AppContainer, private val routineId: String
         form = form.copy(attachments = form.attachments.map { if (it.id == ref.id) it.copy(required = required) else it })
     }
 
+    /** The plain-text body that was sent with the last request, to tell whether the AI actually changed it. */
+    private var aiSentBody: String? = null
+
     fun requestAi(instruction: String) {
         viewModelScope.launch {
             aiBusy = true; aiError = null
-            when (val r = c.drafter.draft(instruction, form.subject, plainBody(), form.fields.map { it.key.trim() }.toSet())) {
+            val sent = plainBody()
+            aiSentBody = sent
+            when (val r = c.drafter.draft(instruction, form.subject, sent, form.fields.map { it.key.trim() }.toSet())) {
                 is AiResult.Success -> aiProposal = r.draft
                 AiResult.NotConfigured -> aiError = "AI drafting isn't set up. Add a key in Settings."
                 is AiResult.Error -> aiError = r.message
@@ -235,7 +244,13 @@ class EditorViewModel(private val c: AppContainer, private val routineId: String
     /** Copies the proposal into the editor only. Nothing is saved, and approvals are re-checked on save. */
     fun applyAi() {
         aiProposal?.let {
-            val body = if (HtmlTemplate.isHtml(form.body)) HtmlTemplate.wrap(HtmlTemplate.fromPlain(it.body)) else it.body
+            // A body the AI left as it was (e.g. "New subject") is not rewritten, so rich formatting survives.
+            val bodyUnchanged = it.body.trim() == aiSentBody?.trim()
+            val body = when {
+                bodyUnchanged -> form.body
+                HtmlTemplate.isHtml(form.body) -> HtmlTemplate.wrap(HtmlTemplate.fromPlain(it.body))
+                else -> it.body
+            }
             form = form.copy(subject = it.subject, body = body); bodyVersion += 1
         }
         aiProposal = null
@@ -256,11 +271,48 @@ class OccurrenceViewModel(private val c: AppContainer, private val id: String) :
     val values = mutableStateMapOf<String, String>()
     var message by mutableStateOf<String?>(null)
 
+    val aiConfigured get() = c.drafter.isConfigured
+    val aiProviderLabel get() = c.aiSettings.provider.label
+    var aiBusy by mutableStateOf(false); private set
+    var aiProposal by mutableStateOf<String?>(null); private set
+    var aiError by mutableStateOf<String?>(null); private set
+    /** Bumped when the assist dialog closes so a reply that arrives late is dropped instead of shown in the next one. */
+    private var aiRun = 0
+
     init {
         viewModelScope.launch { occurrence.filterNotNull().first().let { values.putAll(it.values) } }
     }
 
     fun attachmentAvailable(ref: AttachmentRef) = c.attachments.isAvailable(ref)
+
+    /** Asks the AI to write or rewrite one field of this email. Sends only that field's label and text plus the instruction. */
+    fun requestFieldAi(field: TemplateField, instruction: String) {
+        val run = ++aiRun
+        viewModelScope.launch {
+            aiBusy = true; aiError = null; aiProposal = null
+            val request = AiTextRequest(instruction, values[field.key].orEmpty(), field.label, field.type != FieldType.MULTILINE, field.maxLength)
+            val result = c.drafter.writeText(request)
+            if (run == aiRun) {
+                when (result) {
+                    is AiTextResult.Success -> aiProposal = result.text
+                    AiTextResult.NotConfigured -> aiError = "AI isn't set up. Add a key in Settings."
+                    is AiTextResult.Error -> aiError = result.message
+                }
+                aiBusy = false
+            }
+        }
+    }
+
+    /** Puts the proposal into the field (nothing is saved or sent). Returns false, keeping the dialog open, if the field wouldn't accept it. */
+    fun applyFieldAi(field: TemplateField): Boolean {
+        val text = aiProposal ?: return false
+        FieldValidator.validateValue(field, text)?.let { aiError = it; return false }
+        values[field.key] = text
+        discardFieldAi()
+        return true
+    }
+
+    fun discardFieldAi() { aiRun++; aiProposal = null; aiError = null; aiBusy = false }
 
     fun save() = viewModelScope.launch {
         message = if (c.repository.saveValues(id, values.toMap())) "Saved" else "This item can't be edited in its current state"
@@ -288,9 +340,12 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
     val account = c.auth.state
     var message by mutableStateOf<String?>(null)
     var pendingImport by mutableStateOf<BackupResult.Success?>(null); private set
-    var aiKeySet by mutableStateOf(c.aiSettings.apiKey != null); private set
+    /** Provider currently shown in Settings; [aiActive] is the one actually in use until Save is tapped. */
+    var aiProvider by mutableStateOf(c.aiSettings.provider); private set
+    var aiActive by mutableStateOf(c.aiSettings.provider); private set
+    var aiKeySet by mutableStateOf(c.aiSettings.keyFor(c.aiSettings.provider) != null); private set
     val aiStorageAvailable get() = c.aiSettings.storageAvailable
-    var aiModel by mutableStateOf(c.aiSettings.model)
+    var aiModel by mutableStateOf(c.aiSettings.modelFor(c.aiSettings.provider))
 
     /** Starts (re)authorization. Calls [showConsent] when Google needs to show a consent screen. */
     fun connect(showConsent: (PendingIntent) -> Unit) {
@@ -345,6 +400,23 @@ class SettingsViewModel(private val c: AppContainer) : ViewModel() {
     }
     fun cancelImport() { pendingImport = null }
 
-    fun saveAi(key: String) { c.aiSettings.apiKey = key; c.aiSettings.model = aiModel; aiKeySet = c.aiSettings.apiKey != null; message = if (aiKeySet) "AI drafting enabled" else "AI drafting disabled" }
-    fun clearAi() { c.aiSettings.apiKey = null; aiKeySet = false; message = "AI key removed" }
+    fun selectAiProvider(p: AiProvider) {
+        aiProvider = p
+        aiKeySet = c.aiSettings.keyFor(p) != null
+        aiModel = c.aiSettings.modelFor(p)
+    }
+
+    /** A blank [key] keeps the stored one, so the model or provider can be changed without retyping it. */
+    fun saveAi(key: String) {
+        val s = c.aiSettings
+        if (key.isNotBlank()) s.setKey(aiProvider, key)
+        s.setModel(aiProvider, aiModel)
+        s.provider = aiProvider
+        aiActive = aiProvider
+        aiKeySet = s.keyFor(aiProvider) != null
+        aiModel = s.modelFor(aiProvider)
+        message = if (aiKeySet) "${aiProvider.label} is now used for AI writing" else "Add an API key to turn AI writing on"
+    }
+
+    fun clearAi() { c.aiSettings.setKey(aiProvider, null); aiKeySet = false; message = "${aiProvider.label} key removed" }
 }

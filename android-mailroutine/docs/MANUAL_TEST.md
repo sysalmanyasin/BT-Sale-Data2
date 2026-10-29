@@ -47,6 +47,14 @@ This is hard to force on purpose. With a large (~8 MB) attachment, tap Send and 
 1. Power the phone off across a due time; power on. Expect the missed item under Overdue (and an attention/reminder notification), not silently sent if beyond its late window.
 2. Change the device time zone: routines keep firing at their own zone's wall-clock time.
 
-## 11. AI drafting (optional)
-1. Without a key, the Draft button is absent and Settings explains why.
-2. Add a key, draft a template: the proposal appears in a dialog and does nothing until "Use in editor". On an automatically-sending routine, saving the AI text switches automatic sending off.
+## 11. AI writing assistant (optional, Groq or Anthropic)
+Needs a free Groq key from https://console.groq.com/keys (or an Anthropic key). Use a routine with a Text field and a Multiline field.
+1. Without a key, the "Write with AI…" button is absent in the editor, there is no AI button on an email's fields, and Settings explains why.
+2. Settings -> AI writing assistant -> choose **Groq**, paste the key, Save. Expect "Groq is now used for AI writing". Switching the chip to Anthropic must show "Groq is still the active provider" until you Save, and each provider keeps its own key and model. Saving with the key box empty must **not** remove the stored key.
+3. Editor -> Write with AI…: type "weekly sales report for the team, ask for figures by Friday". Expect a subject and body using only your field placeholders; nothing changes until "Use in editor". On an automatically-sending routine, saving the AI text switches automatic sending off.
+4. With text in the template, tap **Improve**, **Fix grammar**, **Shorter**, **Expand**, **More formal**, **Friendlier**, **New subject**. Each shows a proposal and changes nothing until "Use in editor". "New subject" must leave the body untouched, including a rich (HTML) body's formatting.
+5. Type "translate to Urdu" in the instruction box: the suggestion is in Urdu and uses only your `{{placeholders}}` (anything else is rejected).
+6. Open an email from the dashboard. A Text/Multiline field shows "Write with AI…" (empty) or "Improve with AI…" (has text); Number, Date, Yes/No and Choice fields show nothing. Tap it, pick **Fix grammar** on a typo-filled note: the suggestion appears, the field is unchanged until "Use this text", and the preview then shows the new text. "Try again" produces a new suggestion; closing the dialog while it is loading must not show a stale suggestion next time.
+7. Ask for something far longer than a single-line field allows: expect a clear "longer than this field allows" error, never a silent cut-off.
+8. Wrong key: expect "The AI key was rejected. Check it in Settings." and never the key itself. Airplane mode: expect "Could not reach the AI service". A wrong model name: expect the "doesn't know that model" message.
+9. Check at https://console.groq.com that usage appears only when you tapped something, and that no request contains recipients or other fields' values.

@@ -28,6 +28,7 @@ fun OccurrenceScreen(vm: OccurrenceViewModel, nav: NavState) {
     LaunchedEffect(vm.message) { vm.message?.let { snackbar.showSnackbar(it); vm.message = null } }
     var confirmSend by remember { mutableStateOf(false) }
     var confirmResend by remember { mutableStateOf(false) }
+    var aiField by remember { mutableStateOf<TemplateField?>(null) }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
@@ -70,7 +71,8 @@ fun OccurrenceScreen(vm: OccurrenceViewModel, nav: NavState) {
 
             if (r.template.fields.isNotEmpty()) SectionTitle("Fill in")
             r.template.fields.forEach { fld ->
-                FieldInput(fld, vm.values[fld.key].orEmpty(), enabled = editable) { v -> vm.values[fld.key] = v }
+                val aiCapable = editable && vm.aiConfigured && (fld.type == FieldType.TEXT || fld.type == FieldType.MULTILINE)
+                FieldInput(fld, vm.values[fld.key].orEmpty(), enabled = editable, onAi = if (aiCapable) ({ vm.discardFieldAi(); aiField = fld }) else null) { v -> vm.values[fld.key] = v }
             }
 
             SectionTitle("Preview")
@@ -123,11 +125,20 @@ fun OccurrenceScreen(vm: OccurrenceViewModel, nav: NavState) {
             confirmButton = { Button(onClick = { confirmResend = false; vm.confirmNotSent() }) { Text("Yes, it was not sent") } },
             dismissButton = { TextButton(onClick = { confirmResend = false }) { Text("Cancel") } },
         )
+        aiField?.let { f ->
+            FieldAiDialog(
+                fieldLabel = f.label, providerLabel = vm.aiProviderLabel, hasText = vm.values[f.key].orEmpty().isNotBlank(),
+                busy = vm.aiBusy, error = vm.aiError, proposal = vm.aiProposal,
+                onRun = { instruction -> vm.requestFieldAi(f, instruction) },
+                onApply = { if (vm.applyFieldAi(f)) aiField = null },
+                onClose = { aiField = null; vm.discardFieldAi() },
+            )
+        }
     }
 }
 
 @Composable
-private fun FieldInput(f: TemplateField, value: String, enabled: Boolean, onChange: (String) -> Unit) {
+private fun FieldInput(f: TemplateField, value: String, enabled: Boolean, onAi: (() -> Unit)? = null, onChange: (String) -> Unit) {
     val label = f.label + if (f.required) " *" else ""
     val err = if (value.isBlank()) (if (f.required && f.defaultValue.isNullOrBlank()) "Required" else null) else FieldValidator.validateValue(f, value)
     val hint = f.defaultValue?.takeIf { it.isNotBlank() }?.let { "Default: $it" }
@@ -141,11 +152,14 @@ private fun FieldInput(f: TemplateField, value: String, enabled: Boolean, onChan
             Picker("Choice", value.ifBlank { f.defaultValue ?: "—" }, f.choices, { it }) { if (enabled) onChange(it) }
             if (err != null) Text(err, color = MrColors.Red, style = MaterialTheme.typography.bodySmall)
         }
-        else -> OutlinedTextField(
-            value = value, onValueChange = onChange, enabled = enabled, label = { Text(label) }, modifier = Modifier.fillMaxWidth(),
-            isError = err != null, singleLine = f.type != FieldType.MULTILINE, minLines = if (f.type == FieldType.MULTILINE) 3 else 1,
-            supportingText = { Text(err ?: hint ?: if (f.type == FieldType.DATE) "YYYY-MM-DD" else "") },
-            keyboardOptions = KeyboardOptions(keyboardType = if (f.type == FieldType.NUMBER) KeyboardType.Decimal else KeyboardType.Text),
-        )
+        else -> Column {
+            OutlinedTextField(
+                value = value, onValueChange = onChange, enabled = enabled, label = { Text(label) }, modifier = Modifier.fillMaxWidth(),
+                isError = err != null, singleLine = f.type != FieldType.MULTILINE, minLines = if (f.type == FieldType.MULTILINE) 3 else 1,
+                supportingText = { Text(err ?: hint ?: if (f.type == FieldType.DATE) "YYYY-MM-DD" else "") },
+                keyboardOptions = KeyboardOptions(keyboardType = if (f.type == FieldType.NUMBER) KeyboardType.Decimal else KeyboardType.Text),
+            )
+            if (onAi != null) TextButton(onClick = onAi) { Text(if (value.isBlank()) "Write with AI…" else "Improve with AI…") }
+        }
     }
 }

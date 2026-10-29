@@ -1,7 +1,11 @@
 package com.duapharma.mailroutine
 
 import android.content.Context
+import com.duapharma.mailroutine.ai.AiDrafter
+import com.duapharma.mailroutine.ai.AiProvider
 import com.duapharma.mailroutine.ai.AnthropicDrafter
+import com.duapharma.mailroutine.ai.GroqDrafter
+import com.duapharma.mailroutine.ai.ProviderDrafter
 import com.duapharma.mailroutine.data.AppDatabase
 import com.duapharma.mailroutine.data.RoomDeliveryStore
 import com.duapharma.mailroutine.data.RoomRoutineRepository
@@ -31,5 +35,13 @@ class AppContainer(context: Context) {
     val alarms = AlarmScheduler(app, store, clock)
     val sweeper = Sweeper(store, coordinator, scheduler, notifier, clock)
     val aiSettings = AiSettings(app)
-    val drafter = AnthropicDrafter(UrlConnectionTransport(), { aiSettings.apiKey }, { aiSettings.model })
+    private val aiTransport = UrlConnectionTransport()
+    /** Routes every AI call to the provider chosen in Settings; keys and models are read at call time. */
+    val drafter: AiDrafter = ProviderDrafter(
+        mapOf(
+            AiProvider.GROQ to GroqDrafter(aiTransport, { aiSettings.keyFor(AiProvider.GROQ) }, { aiSettings.modelFor(AiProvider.GROQ) }),
+            AiProvider.ANTHROPIC to AnthropicDrafter(aiTransport, { aiSettings.keyFor(AiProvider.ANTHROPIC) }, { aiSettings.modelFor(AiProvider.ANTHROPIC) }),
+        ),
+        { aiSettings.provider },
+    )
 }

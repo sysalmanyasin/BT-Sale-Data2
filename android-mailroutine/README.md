@@ -12,7 +12,7 @@ A native Android app (Kotlin, Jetpack Compose, MVVM, Room, WorkManager) for **re
 - Attachments copied into private app storage, validated (size, blocked types), checked again at send time.
 - Per-attempt history with timestamps, outcome and Gmail message ID.
 - Versioned, credential-free JSON backup/restore.
-- Optional AI-assisted drafting, off until an API key is added.
+- Optional AI writing assistant (Groq or Anthropic), off until an API key is added: draft a template from a sentence, one-tap improve / fix grammar / shorter / expand / formal / friendly / new subject, translate on request, and write or polish the text of any Text or Multiline field when you fill in an email. Suggestions only; you always review before anything is used or sent.
 
 ## Delivery safety model
 
@@ -39,7 +39,7 @@ Every send goes through one code path, `send/SendCoordinator`:
 ## Security
 
 - No Gmail password is ever requested. Authorization uses Google Identity Services with the single scope `https://www.googleapis.com/auth/gmail.send` (send-only; cannot read mail). Access tokens are short-lived and fetched on demand; the app stores **no** tokens or refresh tokens. Only a "connected" flag and the account address are kept.
-- The optional AI key is stored in Keystore-backed `EncryptedSharedPreferences`; if secure storage is unavailable, AI stays disabled.
+- The optional AI keys (one per provider) are stored in Keystore-backed `EncryptedSharedPreferences`; if secure storage is unavailable, AI stays disabled. Keys are never in backups, logs, request bodies or error messages. Only the instruction and the text being worked on go to the provider; recipients and other fields never do.
 - Auto-backup and device transfer are disabled (`allowBackup=false`). The in-app backup contains routine definitions only: no credentials, no consent, no history, no attachment data or paths. Imports are validated (format, version, size, field rules, addresses, time zone) and arrive **paused with automatic sending off**.
 - Attachment ids are validated before touching the filesystem; paths and contents are never logged. Nothing in the app logs message content, addresses or tokens.
 - No OAuth client secrets, keystores or service credentials are in this repository. No Supabase credentials exist in this app.
@@ -110,3 +110,11 @@ Room schema v1. `AppDatabase.VERSION` and `Migrations.ALL` must move together; `
 - **Rich (HTML) templates.** Body format can be Plain text or Rich (HTML). Rich bodies are sanitised to a small whitelist (no scripts, images or forms; links only http/https/mailto), field values are HTML-escaped on insertion, and the message is sent as multipart/alternative with an automatic plain-text version. A rich body is stored with a leading `<!--mr:html-->` marker, so there is no database migration and backups keep working unchanged.
 - **Design:** dark theme, bottom navigation, status pills and summary tiles on the dashboard, battery-optimisation shortcut in Settings.
 - **Privacy note** for AI drafting added to Settings (instruction and template text go to Anthropic's API with your key).
+
+## AI writing assistant (Groq / Anthropic)
+
+- **Providers.** Settings -> *AI writing assistant*. Groq (default, free tier available; default model `llama-3.3-70b-versatile`, OpenAI-compatible endpoint `https://api.groq.com/openai/v1/chat/completions`) or Anthropic. Each has its own key and model; the selected one is used immediately for every request. Existing installs that only have an Anthropic key stay on Anthropic.
+- **In the template editor** *Write with AI…*: describe the email, or tap a one-tap action (Improve, Fix grammar, Shorter, Expand, More formal, Friendlier, New subject) to rework what is there. Output may only use your field placeholders (`{{key}}`, `{{date}}`, ...); unknown placeholders are rejected. Applying a suggestion fills the editor only. It never saves, and it switches automatic sending off if approved content changed (the existing approval fingerprint). A body the AI left unchanged is not rewritten, so rich formatting survives *New subject*.
+- **When filling in an email** a Text or Multiline field gets *Write with AI…* / *Improve with AI…*. The result is checked against the field's rules (single line, max length) before it can be used, and the preview updates only after *Use this text*.
+- **Privacy.** Requests carry the instruction and the text being edited (the template with placeholders, or one field's text and label). No recipients, no other fields, no key in the body. Prompts and replies are never logged.
+- **Design.** `ai/ChatClient` is the only provider-specific code (`GroqChat`, `AnthropicChat`); `ai/AiDrafter` holds prompts and strict parsing; `ProviderDrafter` picks the active provider per call. Adding another OpenAI-compatible provider means one small `ChatClient` and an `AiProvider` entry. If Groq rejects JSON mode for a model (HTTP 400) the request is retried once without it.

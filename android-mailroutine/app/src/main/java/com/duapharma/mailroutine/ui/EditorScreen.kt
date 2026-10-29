@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.duapharma.mailroutine.ai.AiAction
 import com.duapharma.mailroutine.domain.FieldType
 import com.duapharma.mailroutine.domain.FieldValidator
 import com.duapharma.mailroutine.domain.HtmlTemplate
@@ -115,8 +116,8 @@ fun EditorScreen(vm: EditorViewModel, nav: NavState, isNew: Boolean) {
             } else {
                 Txt("Body", f.body, { v -> vm.edit { it.copy(body = v) } }, minLines = 6)
             }
-            if (vm.aiConfigured) OutlinedButton(onClick = { showAi = true }) { Text("Draft with AI…") }
-            else Note("AI drafting is off. Add an API key in Settings to enable it.")
+            if (vm.aiConfigured) OutlinedButton(onClick = { showAi = true }) { Text("Write with AI…") }
+            else Note("AI writing is off. Add a Groq or Anthropic API key in Settings to enable it.")
 
             SectionTitle("Fields you fill in each time")
             f.fields.forEachIndexed { i, fld ->
@@ -205,11 +206,18 @@ fun EditorScreen(vm: EditorViewModel, nav: NavState, isNew: Boolean) {
         var instruction by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { showAi = false; vm.discardAi() },
-            title = { Text("Draft with AI") },
+            title = { Text("Write with AI") },
             text = {
                 Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Txt("What should the email say?", instruction, { instruction = it }, minLines = 3)
-                    Note("Sent to the AI service: your instruction and the current subject/body template (placeholders only). Recipients and field values are not sent.")
+                    if (f.subject.isNotBlank() || f.body.isNotBlank()) {
+                        AiActionChips(AiAction.entries, enabled = !vm.aiBusy) { a -> instruction = a.instruction; vm.requestAi(a.instruction) }
+                    }
+                    Txt(
+                        "What should the email say?", instruction, { instruction = it }, minLines = 3,
+                        supporting = "Write it from scratch, or change what's there: make it polite, translate to Urdu, add a deadline…",
+                    )
+                    Note("Sent to ${vm.aiProviderLabel}: your instruction and the current subject/body template (placeholders only). Recipients and field values are not sent.")
+                    if (HtmlTemplate.isHtml(f.body)) Note("This body uses rich formatting. Suggestions are plain text, so formatting is dropped if the AI changes the body text.", MrColors.Amber)
                     if (vm.aiBusy) LinearProgressIndicator(Modifier.fillMaxWidth())
                     vm.aiError?.let { Text(it, color = MrColors.Red) }
                     vm.aiProposal?.let { p ->
