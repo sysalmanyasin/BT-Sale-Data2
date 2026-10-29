@@ -18,6 +18,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.duapharma.mailroutine.ai.AiProvider
 import com.duapharma.mailroutine.platform.AccountStatus
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -78,11 +79,26 @@ fun SettingsScreen(vm: SettingsViewModel, nav: NavState) {
             SectionTitle("AI drafting (optional)")
             if (!vm.aiStorageAvailable) Note("Secure storage isn't available on this device, so AI drafting stays disabled.", MrColors.Amber)
             else {
-                Note(if (vm.aiKeySet) "Enabled. Your key is stored encrypted on this device and is never included in backups." else "Disabled until you add an API key. Drafts are suggestions only and never change a routine by themselves.")
-                Note("Privacy: when you use Draft with AI, your instruction and the current subject and body template (field names only, never recipients or entered values) are sent to Anthropic's API using your key.", MrColors.Amber)
-                OutlinedTextField(value = aiKey, onValueChange = { aiKey = it }, label = { Text(if (vm.aiKeySet) "Replace API key" else "API key") }, singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = vm.aiModel, onValueChange = { vm.aiModel = it }, label = { Text("Model") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                Picker("AI provider", vm.aiProvider, AiProvider.entries, { it.displayName }) { vm.selectAiProvider(it) }
+                Note(
+                    if (vm.aiProvider == AiProvider.GROQ)
+                        "Groq offers a free developer tier with rate limits. The default is a production model; availability and free limits can change. You can edit the model ID if Groq retires a model."
+                    else
+                        "Anthropic uses your own API key and may charge according to your account's pricing.",
+                    MrColors.Amber,
+                )
+                Note(if (vm.aiKeySet) "Enabled. This provider's key is stored encrypted on this device and is never included in backups." else "Disabled until you add this provider's API key. Drafts are suggestions only and never change a routine by themselves.")
+                Note("Privacy: when you use Draft with AI, your instruction and current subject/body template (field names only, never recipients or entered values) are sent only to the selected provider.", MrColors.Amber)
+                OutlinedTextField(
+                    value = aiKey, onValueChange = { aiKey = it },
+                    label = { Text(if (vm.aiKeySet) "Replace ${vm.aiProvider.displayName} API key" else "${vm.aiProvider.displayName} API key") },
+                    singleLine = true, visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = vm.aiModel, onValueChange = { vm.aiModel = it },
+                    label = { Text("Model ID") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                    supportingText = { Text(if (vm.aiProvider == AiProvider.GROQ) "Default: openai/gpt-oss-20b" else "Enter a model ID available to your Anthropic account") },
+                )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = { vm.saveAi(aiKey); aiKey = "" }, enabled = aiKey.isNotBlank() || vm.aiKeySet) { Text("Save") }
                     if (vm.aiKeySet) OutlinedButton(onClick = { vm.clearAi() }) { Text("Remove key") }
