@@ -12,7 +12,7 @@ A native Android app (Kotlin, Jetpack Compose, MVVM, Room, WorkManager) for **re
 - Attachments copied into private app storage, validated (size, blocked types), checked again at send time.
 - Per-attempt history with timestamps, outcome and Gmail message ID.
 - Versioned, credential-free JSON backup/restore.
-- Optional AI-assisted drafting, off until an API key is added.
+- Optional AI-assisted drafting with **Groq (free developer tier)** or Anthropic. Provider selection and separate API keys are configured in Settings; drafts only fill the editor and never save or send.
 
 ## Delivery safety model
 
@@ -39,14 +39,14 @@ Every send goes through one code path, `send/SendCoordinator`:
 ## Security
 
 - No Gmail password is ever requested. Authorization uses Google Identity Services with the single scope `https://www.googleapis.com/auth/gmail.send` (send-only; cannot read mail). Access tokens are short-lived and fetched on demand; the app stores **no** tokens or refresh tokens. Only a "connected" flag and the account address are kept.
-- The optional AI key is stored in Keystore-backed `EncryptedSharedPreferences`; if secure storage is unavailable, AI stays disabled.
+- Groq and Anthropic API keys are stored separately in Keystore-backed `EncryptedSharedPreferences`; if secure storage is unavailable, AI stays disabled. Keys are excluded from backups. Groq's free tier has rate limits, and model availability/pricing can change.
 - Auto-backup and device transfer are disabled (`allowBackup=false`). The in-app backup contains routine definitions only: no credentials, no consent, no history, no attachment data or paths. Imports are validated (format, version, size, field rules, addresses, time zone) and arrive **paused with automatic sending off**.
 - Attachment ids are validated before touching the filesystem; paths and contents are never logged. Nothing in the app logs message content, addresses or tokens.
 - No OAuth client secrets, keystores or service credentials are in this repository. No Supabase credentials exist in this app.
 
 ## Build locally
 
-Requirements: JDK 17, Gradle 8.7 (the repo has no wrapper; CI uses `setup-gradle` 8.7), Android SDK platform 34.
+Requirements: JDK 17, Gradle 8.13 (the repo has no wrapper; CI installs Gradle 8.13), Android SDK platform 36 and Build Tools 36.0.0.
 
 ```bash
 cd android-mailroutine
@@ -54,7 +54,7 @@ gradle testDebugUnitTest      # JVM unit tests
 gradle assembleDebug          # app/build/outputs/apk/debug/
 ```
 
-Plugin versions are pinned as a compatible set (AGP 8.5.2, Kotlin 2.0.21, KSP 2.0.21-1.0.28, Compose BOM 2024.10.01, Room 2.6.1, WorkManager 2.9.1). Change them together. Do not copy versions from `android-attendance`, which currently pins a different AGP/Kotlin combination.
+Plugin versions are pinned as a compatible set (AGP 8.13.2, Gradle 8.13, Kotlin 2.0.21, KSP 2.0.21-1.0.28, Compose BOM 2024.10.01, Room 2.6.1, WorkManager 2.9.1). AGP 8.13 supports API 36. Keep AGP and Gradle compatible; do not copy versions from `android-attendance`, which uses a separate toolchain.
 
 ## Google OAuth configuration (one-time)
 
@@ -99,8 +99,16 @@ Room schema v1. `AppDatabase.VERSION` and `Migrations.ALL` must move together; `
 - Gmail "submission accepted" is the strongest signal available with send-only access; there is no delivery or read confirmation.
 - Ambiguous sends need a human check (by design).
 - Release builds are not minified; enabling R8 needs an on-device test pass first.
-- Single device, single Gmail account, plain-text bodies, no cloud sync.
+- Single device and single Gmail account; no cloud sync. Groq and Anthropic model IDs can be retired or change availability; the selected model ID is editable in Settings.
 - UI strings are not yet localized.
+
+## Changes in 1.2.0 (in progress)
+
+- Target Android 16 / API 36 for current Google Play submission requirements while retaining Android 8.0+ minimum support.
+- Upgrade to Android Gradle Plugin 8.13.2 and Gradle 8.13; CI installs Android SDK 36 / Build Tools 36.0.0.
+- Add Groq's OpenAI-compatible chat completions API as an AI drafting provider. Default model: `openai/gpt-oss-20b` (production model, not preview); the model ID can be changed in Settings.
+- Keep separate encrypted Groq and Anthropic API keys. AI drafting sends only the instruction and subject/body template, not recipients or entered field values.
+- Groq free-tier access is subject to rate limits and provider terms; no specific model is guaranteed to remain free or available indefinitely.
 
 ## Changes in 1.1.0
 
