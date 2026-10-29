@@ -28,12 +28,20 @@ android {
     }
 
     signingConfigs {
-        if (!debugKeystorePath.isNullOrBlank()) {
-            getByName("debug") {
+        // DEBUG signing: a stable key so the SHA-1 never changes. The default is the debug-only keystore
+        // committed at android-mailroutine/keystore/ (public by design; never use it for release).
+        // CI can override it with MAILROUTINE_DEBUG_* environment variables.
+        getByName("debug") {
+            if (!debugKeystorePath.isNullOrBlank()) {
                 storeFile = file(debugKeystorePath)
                 storePassword = System.getenv("MAILROUTINE_DEBUG_KEYSTORE_PASSWORD")
                 keyAlias = System.getenv("MAILROUTINE_DEBUG_KEY_ALIAS")
                 keyPassword = System.getenv("MAILROUTINE_DEBUG_KEYSTORE_PASSWORD")
+            } else {
+                storeFile = rootProject.file("keystore/mailroutine-debug.jks")
+                storePassword = "EfeUvpPkXnZRDvtrPpOekG3u"
+                keyAlias = "mailroutine-debug"
+                keyPassword = "EfeUvpPkXnZRDvtrPpOekG3u"
             }
         }
         if (!releaseKeystorePath.isNullOrBlank()) {

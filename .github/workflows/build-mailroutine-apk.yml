@@ -69,13 +69,13 @@ jobs:
         env:
           DBG_B64: ${{ secrets.MAILROUTINE_DEBUG_KEYSTORE_BASE64 }}
         run: |
-          # Secrets are unavailable on fork PRs; the build then falls back to a random debug key.
+          # Secrets are unavailable on fork PRs; the build then uses the committed debug keystore.
           if [ -n "$DBG_B64" ]; then
             echo "$DBG_B64" | base64 -d > "$RUNNER_TEMP/mailroutine-debug.jks"
             chmod 600 "$RUNNER_TEMP/mailroutine-debug.jks"
             echo "stable=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::warning::No MAILROUTINE_DEBUG_KEYSTORE_BASE64 secret; debug APK uses a random key and Gmail connect will fail."
+            echo "No debug keystore secret; using the debug keystore committed in android-mailroutine/keystore/."
           fi
 
       - name: Build debug APK

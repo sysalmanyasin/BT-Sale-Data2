@@ -15,3 +15,6 @@ captures/
 keystore.properties
 google-services.json
 secrets.properties
+
+# Debug-only keystore (public by design, see README)
+!keystore/mailroutine-debug.jks
