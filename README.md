@@ -213,6 +213,12 @@ BT-Sale-Data2/
 │   ├── str/                   # Stock transfer workflows
 │   ├── closing/               # Closing workflows
 │   ├── audit/                 # Audit integrations
+│   ├── emergency-billing/     # Emergency billing workflows
+│   ├── ledger/                # Ledger-related workflows
+│   ├── sheets/                # Notes and spreadsheet workflows
+│   ├── mail/                  # Mail briefing and follow-ups
+│   ├── cover/                 # Cover dashboard
+│   ├── lib/                   # Shared UI/utility libraries
 │   ├── agent/                 # Dua assistant core, tools and UI
 │   ├── ai-center/             # BT Intelligence
 │   └── herald/                # Deterministic operational headlines
