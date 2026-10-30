@@ -29,9 +29,9 @@
       "url": "./index.html?page=entry",
       "icons": [
         {
-          "src": "icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
+          "src": "icons/icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
         }
       ]
     },
@@ -42,9 +42,9 @@
       "url": "./index.html?page=dashboard",
       "icons": [
         {
-          "src": "icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
+          "src": "icons/icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
         }
       ]
     },
@@ -55,9 +55,9 @@
       "url": "./index.html?page=data",
       "icons": [
         {
-          "src": "icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
+          "src": "icons/icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
         }
       ]
     },
@@ -68,9 +68,9 @@
       "url": "./index.html?page=report",
       "icons": [
         {
-          "src": "icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
+          "src": "icons/icon.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
         }
       ]
     }
