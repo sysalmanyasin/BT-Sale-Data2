@@ -110,7 +110,7 @@ Each Android application is an independent Gradle project with its own source co
 
 | Application | Directory | Purpose |
 |---|---|---|
-| **Closing Summary Widgets** | `android-widget/` | 22 Android home-screen widgets for closing, sales, credit and inventory information |
+| **Closing Summary Widgets** | `android-widget/` | 22 home-screen widgets for Android, covering closing, sales, credit and inventory information |
 | **BT Attendance** | `android-attendance/` | Staff attendance using geofencing, check-in/check-out events and QR scanning |
 | **MailRoutine** | `android-mailroutine/` | Scheduled, template-driven work emails through an authorised Google Workspace/Gmail account |
 
