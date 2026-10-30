@@ -54,6 +54,7 @@ class SweepWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx,
     override suspend fun doWork(): Result = try {
         applicationContext.container.sweeper.sweep()
         applicationContext.container.alarms.rescheduleNext()
+        runCatching { applicationContext.container.widgets.refresh() } // a widget problem must never fail the sweep
         Result.success()
     } catch (e: kotlin.coroutines.cancellation.CancellationException) {
         throw e

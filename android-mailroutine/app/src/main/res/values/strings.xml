@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">MailRoutine</string>
+    <string name="widget_next_up_label">Next up</string>
+    <string name="widget_next_up_desc">Shows the next email MailRoutine will send.</string>
+    <string name="widget_upcoming_label">Upcoming emails</string>
+    <string name="widget_upcoming_desc">Counters plus the next few scheduled emails.</string>
 </resources>

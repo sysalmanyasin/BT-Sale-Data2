@@ -26,6 +26,26 @@
             </intent-filter>
         </activity>
 
+        <receiver
+            android:name=".platform.NextUpWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_next_up_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_next_up_info" />
+        </receiver>
+
+        <receiver
+            android:name=".platform.UpcomingWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_upcoming_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_upcoming_info" />
+        </receiver>
+
         <receiver android:name=".platform.AlarmReceiver" android:exported="false" />
 
         <receiver android:name=".platform.SystemEventReceiver" android:exported="false">

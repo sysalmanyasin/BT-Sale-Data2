@@ -14,6 +14,15 @@ A native Android app (Kotlin, Jetpack Compose, MVVM, Room, WorkManager) for **re
 - Versioned, credential-free JSON backup/restore.
 - Optional AI writing assistant (Groq or Anthropic), off until an API key is added: draft a template from a sentence, one-tap improve / fix grammar / shorter / expand / formal / friendly / new subject, translate on request, and write or polish the text of any Text or Multiline field when you fill in an email. Suggestions only; you always review before anything is used or sent.
 
+## Home-screen widgets
+
+Two widgets (long-press the home screen, then Widgets, then MailRoutine):
+
+- **Next up**: the next scheduled email, when it goes out, whether it sends automatically, and a red or amber line when something needs you or is due now.
+- **Upcoming emails**: the Need you / Due now / Upcoming counters plus the next few emails (more rows appear as you resize it).
+
+Tapping an email opens it in the app; tapping anywhere else opens the dashboard. Widgets refresh whenever the data changes, after every background sweep (about 15 min) and on the system's 30 min tick, so "in 4h 51m" can lag by a few minutes. Logic lives in `domain/WidgetSnapshot.kt` (unit tested) and `platform/Widgets.kt`.
+
 ## Delivery safety model
 
 Every send goes through one code path, `send/SendCoordinator`:

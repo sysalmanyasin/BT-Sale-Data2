@@ -34,6 +34,7 @@ class AppContainer(context: Context) {
     val scheduler = WorkSendScheduler(app)
     val alarms = AlarmScheduler(app, store, clock)
     val sweeper = Sweeper(store, coordinator, scheduler, notifier, clock)
+    val widgets = WidgetRefresher(app, repository, clock)
     val aiSettings = AiSettings(app)
     private val aiTransport = UrlConnectionTransport()
     /** Routes every AI call to the provider chosen in Settings; keys and models are read at call time. */
