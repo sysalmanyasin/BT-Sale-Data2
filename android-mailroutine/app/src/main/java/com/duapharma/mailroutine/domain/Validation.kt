@@ -67,7 +67,8 @@ object FieldValidator {
     /** Returns an error message, or null when [raw] is acceptable for [f]. Blank handled by caller for required. */
     fun validateValue(f: TemplateField, raw: String, allowBlank: Boolean = false): String? {
         if (raw.isBlank()) return if (allowBlank || !f.required) null else "Required"
-        if (raw.length > f.maxLength) return "Too long (max ${f.maxLength})"
+        // A time is already bounded by its format; older routines saved TIME fields with maxLength 5, which would reject "Absent".
+        if (f.type != FieldType.TIME && raw.length > f.maxLength) return "Too long (max ${f.maxLength})"
         if (f.type != FieldType.MULTILINE && raw.any { it == '\n' || it == '\r' }) return "Must be a single line"
         if (raw.any { it.isISOControl() && it != '\n' && it != '\r' && it != '\t' }) return "Contains control characters"
         return when (f.type) {

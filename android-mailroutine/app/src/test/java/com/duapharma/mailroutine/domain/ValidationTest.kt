@@ -91,6 +91,13 @@ class ValidationTest {
         assertTrue(FieldValidator.validateValues(listOf(f), mapOf("t" to "Leave")).isEmpty())
     }
 
+    @Test fun timeStatusIsNotCutByAnOldMaxLengthOf5() {
+        val old = TemplateField("t", "T", FieldType.TIME, false, maxLength = 5)
+        assertNull(FieldValidator.validateValue(old, "Absent"))
+        assertNull(FieldValidator.validateValue(old, "09:30"))
+        assertNotNull(FieldValidator.validateValue(old, "09:30:00"))
+    }
+
     @Test fun timeInIsPairedWithTheSamePersonsTimeOut() {
         fun tf(key: String, label: String) = TemplateField(key, label, FieldType.TIME, false)
         val fields = listOf(
