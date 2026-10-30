@@ -5,22 +5,24 @@
 <meta http-equiv="Content-Security-Policy" content="script-src 'self' https://cdn.jsdelivr.net https://accounts.google.com https://apis.google.com https://www.gstatic.com; object-src 'none'; base-uri 'self'">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover" id="vp-meta">
 <script src="js/platform/early-prefs.js?v=d2740a3a"></script>
-<meta name="theme-color" content="#101B2D">
+<meta name="theme-color" content="#2563eb">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BT Sales">
-<meta name="application-name" content="DuaPharma">
+<meta name="application-name" content="BT Sales IC">
 <meta name="format-detection" content="telephone=no">
-<meta name="description" content="DuaPharma BT Intelligence — pharmacy sales, inventory, reporting, and daily operations.">
+<meta name="description" content="Bahria Town Sales Intelligence Centre — pharmacy daily sales tracking, reporting, and manager tools.">
 
 <!-- PWA Manifest -->
 <link rel="manifest" href="manifest.json">
 
 <!-- Icons -->
 <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
 
-<title>DuaPharma — BT Sales</title>
+<title>Bahria Town — Sales IC</title>
 
 <!-- External Libraries -->
 <!-- No SRI on Google's GSI client by design: Google serves this from a
@@ -100,9 +102,9 @@
 <!-- ====== AUTH GATE ====== -->
 <!-- ══ AUTH GATE ══ -->
 <div id="pin-gate">
-  <div class="plogo"><img src="icons/icon.svg" alt="DuaPharma Intelligence Cross" width="64" height="64"></div>
-  <div class="ptitle">DuaPharma</div>
-  <div class="psub">BT Intelligence · Pharmacy Operations</div>
+  <div class="plogo"><img src="icons/icon.svg" alt="Bahria Town Sales IC" width="64" height="64"></div>
+  <div class="ptitle">Bahria Town Sales IC</div>
+  <div class="psub">Pharmacy Sales Intelligence Centre</div>
 
   <!-- ─ Panel 1: Setup (hidden — baked-in Client ID, no manual setup needed) ─ -->
   <div id="gauth-setup" style="display:none"></div>
@@ -168,8 +170,8 @@
          bottom tab bar's own ☰ Menu button on mobile — one nav system,
          two entry points into the same tree. -->
     <button type="button" class="navmenubtn" data-on-click="openSectionsDrawer" title="Search &amp; All Sections" aria-label="Open Search and All Sections"><span class="navmenu-ic">☰</span></button>
-    <div class="nlogo"><img src="icons/icon.svg" alt="DuaPharma Intelligence Cross" width="32" height="32"></div>
-    <div><div class="nbrand-text">BT Pharmacy Operations</div><div class="nbrand-sub" id="nbrand-sub-label">DuaPharma · BT Intelligence</div></div>
+    <div class="nlogo"><img src="icons/icon.svg" alt="Bahria Town Sales IC" width="32" height="32"></div>
+    <div><div class="nbrand-text">Bahria Town Sales IC</div><div class="nbrand-sub" id="nbrand-sub-label">Intelligence Centre</div></div>
   </div>
   <div class="nright">
     <div class="syncbadge" id="synci" data-on-click="handleSyncBadgeClick" title="Push all data to Supabase now (auto-pushes every 30s)">
@@ -260,7 +262,7 @@
       <div>
         <div class="cover-page-hero-badge">🏠 Intelligence Centre</div>
         <div class="cover-page-hero-greeting" id="cover-greeting"></div>
-        <div class="cover-page-hero-title">DuaPharma · BT Intelligence</div>
+        <div class="cover-page-hero-title">Bahria Town Sales IC</div>
         <div class="cover-page-hero-sub">Everything at a glance — sales, manager, closing &amp; audit</div>
       </div>
       <div class="cover-page-hero-date" id="cover-hero-date"></div>

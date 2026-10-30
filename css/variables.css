@@ -4,8 +4,8 @@
   --sh:0 1px 2px rgba(21,29,58,.05),0 1px 1px rgba(21,29,58,.04);
   --sh-md:0 6px 20px -6px rgba(21,29,58,.14);
   --sh-lg:0 20px 48px -12px rgba(21,29,58,.22);
-  --focus-ring:0 0 0 3px rgba(24,169,153,.22);
-  --accent:#18a999;--accent-dk:#117f76;--alt:#f2fbf9;--purple:#8b5cf6;--purple-lt:#fbf9ff;
+  --focus-ring:0 0 0 3px rgba(58,97,247,.16);
+  --accent:#3a61f7;--accent-dk:#2543c9;--alt:#f8faff;--purple:#8b5cf6;--purple-lt:#fbf9ff;
   --mgrblue:#0369a1;--mgrblue-lt:#f9fdff;
   /* Contrast pass (Aug 2026): the six semantic hues below were darkened
      just enough to clear WCAG AA (~4.6:1) for text/badge use against
@@ -30,7 +30,7 @@
      used anywhere a dark brand-blue banner is needed (modal headers,
      dialog chrome) so those surfaces stay on-brand instead of each
      hand-rolling a slightly-different navy/blue gradient. */
-  --grad-header:linear-gradient(135deg,#101B2D,var(--accent-dk) 65%,var(--accent));
+  --grad-header:linear-gradient(135deg,#141b3d,var(--accent-dk) 65%,var(--accent));
   /* Inventory status palette — ONE meaning per colour, reused by every chart
      and badge (Cover donut, Inventory Health, Stock Ledger tags). Aliases of
      the semantic hues above, so dark mode follows automatically. */
@@ -53,8 +53,8 @@
   --sh:0 1px 2px rgba(0,0,0,.4),0 1px 1px rgba(0,0,0,.3);
   --sh-md:0 6px 20px -6px rgba(0,0,0,.5);
   --sh-lg:0 20px 48px -12px rgba(0,0,0,.6);
-  --focus-ring:0 0 0 3px rgba(24,169,153,.28);
-  --accent:#2dd4bf;--accent-dk:#18a999;--alt:#102b31;--purple:#a78bfa;--purple-lt:#211a3a;
+  --focus-ring:0 0 0 3px rgba(91,130,255,.28);
+  --accent:#5b82ff;--accent-dk:#3a61f7;--alt:#1a2144;--purple:#a78bfa;--purple-lt:#211a3a;
   --mgrblue:#38bdf8;--mgrblue-lt:#0c2230;
   --teal:#2dd4bf;--teal-dk:#5eead4;--tlt:#0e2624;
   --green:#34d399;--glt:#0f2a20;--amber:#fbbf24;--alt2:#2a2110;
