@@ -30,7 +30,7 @@ object ChatErrors {
 
     fun forStatus(status: Int): String = when (status) {
         401, 403 -> KEY_REJECTED
-        404 -> "The AI service doesn't know that model. Check the model name in Settings."
+        404 -> "The AI service doesn't know that model. Pick one from the list in Settings."
         429 -> "The AI service is busy or your rate limit was reached. Wait a minute and try again."
         else -> "The AI service returned an error ($status)"
     }
@@ -89,6 +89,8 @@ class GroqChat(
                 .put(JSONObject().put("role", "user").put("content", user)))
             .put("max_completion_tokens", maxTokens)
             .put("temperature", 0.4) // rewriting should stay close to the input
+            // gpt-oss models reason before answering and that counts against the token limit; keep it short for rewriting.
+            .apply { if (model().startsWith("openai/gpt-oss")) put("reasoning_effort", "low") }
             .apply { if (jsonMode) put("response_format", JSONObject().put("type", "json_object")) }
             .toString().toByteArray(Charsets.UTF_8)
 

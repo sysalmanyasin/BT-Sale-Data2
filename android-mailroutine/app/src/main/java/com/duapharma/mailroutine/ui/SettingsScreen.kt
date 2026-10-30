@@ -95,8 +95,23 @@ fun SettingsScreen(vm: SettingsViewModel, nav: NavState) {
                 Note("Privacy: when you use Write with AI, your instruction and the text you are working on (the template in the editor, or one field of an email) are sent to ${vm.aiProvider.label} using your key. Recipients and other fields are never sent.", MrColors.Amber)
                 OutlinedTextField(value = aiKey, onValueChange = { aiKey = it }, label = { Text(if (vm.aiKeySet) "Replace ${vm.aiProvider.label} API key" else "${vm.aiProvider.label} API key") }, singleLine = true,
                     visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(value = vm.aiModel, onValueChange = { vm.aiModel = it }, label = { Text("Model") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
-                    supportingText = { Text("Default: ${vm.aiProvider.defaultModel}") })
+                var modelMenu by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(expanded = modelMenu, onExpandedChange = { modelMenu = it }) {
+                    OutlinedTextField(
+                        value = vm.aiModel, onValueChange = { vm.aiModel = it }, label = { Text("Model") }, singleLine = true,
+                        modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryEditable),
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = modelMenu) },
+                        supportingText = { Text("Pick one or type any model ID. Default: ${vm.aiProvider.defaultModel}") },
+                    )
+                    ExposedDropdownMenu(expanded = modelMenu, onDismissRequest = { modelMenu = false }) {
+                        vm.aiProvider.models.forEach { m ->
+                            DropdownMenuItem(
+                                text = { Column { Text(m.id); Text(m.note, style = MaterialTheme.typography.bodySmall) } },
+                                onClick = { vm.aiModel = m.id; modelMenu = false },
+                            )
+                        }
+                    }
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = { vm.saveAi(aiKey); aiKey = "" }, enabled = aiKey.isNotBlank() || vm.aiKeySet) { Text("Save") }
                     if (vm.aiKeySet) OutlinedButton(onClick = { vm.clearAi() }) { Text("Remove key") }

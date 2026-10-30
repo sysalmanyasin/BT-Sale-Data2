@@ -73,7 +73,7 @@ fun OccurrenceScreen(vm: OccurrenceViewModel, nav: NavState) {
             if (r.template.fields.isNotEmpty()) SectionTitle("Fill in")
             r.template.fields.forEach { fld ->
                 val aiCapable = editable && vm.aiConfigured && (fld.type == FieldType.TEXT || fld.type == FieldType.MULTILINE)
-                FieldInput(fld, vm.values[fld.key].orEmpty(), enabled = editable, onAi = if (aiCapable) ({ vm.discardFieldAi(); aiField = fld }) else null) { v -> vm.values[fld.key] = v }
+                FieldInput(fld, vm.values[fld.key].orEmpty(), enabled = editable, onAi = if (aiCapable) ({ vm.discardFieldAi(); aiField = fld }) else null) { v -> setFieldValue(r.template.fields, vm.values, fld, v) }
             }
 
             SectionTitle("Preview")
@@ -138,6 +138,22 @@ fun OccurrenceScreen(vm: OccurrenceViewModel, nav: NavState) {
     }
 }
 
+/**
+ * Stores a field value. Marking someone Absent/Leave on "Time in" fills their "Time out" with the same word when it is
+ * empty; changing "Time in" back to a real time (or clearing it) removes that mirrored word again.
+ */
+private fun setFieldValue(fields: List<TemplateField>, values: MutableMap<String, String>, f: TemplateField, v: String) {
+    val before = values[f.key].orEmpty()
+    values[f.key] = v
+    val out = TimeStatus.pairedOut(fields, f) ?: return
+    val outNow = values[out.key].orEmpty()
+    val mirrored = TimeStatus.isStatus(before) && outNow == before
+    when {
+        TimeStatus.isStatus(v) && (outNow.isBlank() || mirrored) -> values[out.key] = v
+        !TimeStatus.isStatus(v) && mirrored -> values[out.key] = ""
+    }
+}
+
 @Composable
 private fun FieldInput(f: TemplateField, value: String, enabled: Boolean, onAi: (() -> Unit)? = null, onChange: (String) -> Unit) {
     val label = f.label + if (f.required) " *" else ""
@@ -150,12 +166,21 @@ private fun FieldInput(f: TemplateField, value: String, enabled: Boolean, onAi: 
         }
         FieldType.TIME -> Column {
             val ctx = LocalContext.current
+            var statusMenu by remember { mutableStateOf(false) }
             val shown = value.ifBlank { f.defaultValue.orEmpty() }
             OutlinedTextField(
                 value = shown, onValueChange = {}, readOnly = true, enabled = enabled, label = { Text(label) },
                 placeholder = { Text("HH:mm") }, modifier = Modifier.fillMaxWidth(), isError = err != null, singleLine = true,
-                supportingText = { Text(err ?: "24-hour time") },
-                trailingIcon = { TextButton(enabled = enabled, onClick = { showTimeWheel(ctx, shown, onChange) }) { Text(if (shown.isBlank()) "Set" else "Change") } },
+                supportingText = { Text(err ?: "24-hour time, Absent or Leave") },
+                trailingIcon = {
+                    Box {
+                        TextButton(enabled = enabled, onClick = { statusMenu = true }) { Text(if (shown.isBlank()) "Set" else "Change") }
+                        DropdownMenu(expanded = statusMenu, onDismissRequest = { statusMenu = false }) {
+                            DropdownMenuItem(text = { Text("Pick a time…") }, onClick = { statusMenu = false; showTimeWheel(ctx, shown, onChange) })
+                            TimeStatus.ALL.forEach { s -> DropdownMenuItem(text = { Text(s) }, onClick = { statusMenu = false; onChange(s) }) }
+                        }
+                    }
+                },
             )
             if (value.isNotBlank() && enabled) TextButton(onClick = { onChange("") }) { Text("Clear") }
         }

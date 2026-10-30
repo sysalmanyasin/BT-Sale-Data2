@@ -74,7 +74,7 @@ object FieldValidator {
             FieldType.TEXT, FieldType.MULTILINE -> null
             FieldType.NUMBER -> if (runCatching { BigDecimal(raw.trim()) }.isSuccess) null else "Not a number"
             FieldType.DATE -> if (runCatching { LocalDate.parse(raw.trim()) }.isSuccess) null else "Use YYYY-MM-DD"
-            FieldType.TIME -> if (TIME_24H.matches(raw.trim())) null else "Use 24-hour HH:mm, 00:00 to 23:59"
+            FieldType.TIME -> if (TIME_24H.matches(raw.trim()) || TimeStatus.isStatus(raw)) null else "Use 24-hour HH:mm (00:00 to 23:59), Absent or Leave"
             FieldType.BOOLEAN -> if (raw.trim() == "true" || raw.trim() == "false") null else "Must be true or false"
             FieldType.CHOICE -> if (raw in f.choices) null else "Not one of the allowed choices"
         }
@@ -158,5 +158,27 @@ object AttachmentRules {
         sizeBytes <= 0 -> "File is empty"
         sizeBytes > Limits.MAX_ATTACHMENT_BYTES -> "File is larger than ${Limits.MAX_ATTACHMENT_BYTES / 1024 / 1024} MB"
         else -> null
+    }
+}
+
+/**
+ * Words a TIME field accepts instead of a clock time, for someone who did not work that day.
+ * They are stored and sent exactly as written, so the email shows "Absent" or "Leave" in that cell.
+ */
+object TimeStatus {
+    val ALL: List<String> = listOf("Absent", "Leave")
+    fun isStatus(v: String): Boolean = v.trim() in ALL
+
+    private val IN_LABEL = Regex("^(.*?)\\s*[-–—:]?\\s*time\\s*in$", RegexOption.IGNORE_CASE)
+    private val OUT_LABEL = Regex("^(.*?)\\s*[-–—:]?\\s*time\\s*out$", RegexOption.IGNORE_CASE)
+
+    /** For a field labelled "<name> - Time in", the "<name> - Time out" field of the same person, if the template has one. */
+    fun pairedOut(fields: List<TemplateField>, f: TemplateField): TemplateField? {
+        if (f.type != FieldType.TIME) return null
+        val name = IN_LABEL.matchEntire(f.label.trim())?.groupValues?.get(1) ?: return null
+        return fields.firstOrNull { o ->
+            o.type == FieldType.TIME && o.key != f.key &&
+                OUT_LABEL.matchEntire(o.label.trim())?.groupValues?.get(1).equals(name, ignoreCase = true)
+        }
     }
 }

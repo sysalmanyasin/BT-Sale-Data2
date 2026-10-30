@@ -81,4 +81,26 @@ class ValidationTest {
         listOf("00:00", "09:05", "16:22", "23:59").forEach { assertNull(it, FieldValidator.validateValue(f, it)) }
         listOf("24:00", "9:05", "12:60", "4:22 PM", "noon", "12-30").forEach { assertNotNull(it, FieldValidator.validateValue(f, it)) }
     }
+
+    @Test fun timeFieldAlsoAcceptsAbsentAndLeaveExactly() {
+        val f = TemplateField("t", "T", FieldType.TIME, true)
+        listOf("Absent", "Leave", " Absent ").forEach { assertNull(it, FieldValidator.validateValue(f, it)) }
+        listOf("absent", "Sick", "Absent 09:00", "Leaves").forEach { assertNotNull(it, FieldValidator.validateValue(f, it)) }
+        val other = TemplateField("n", "N", FieldType.TEXT, true)
+        assertNull(FieldValidator.validateValue(other, "Absent")) // plain text fields are unaffected
+        assertTrue(FieldValidator.validateValues(listOf(f), mapOf("t" to "Leave")).isEmpty())
+    }
+
+    @Test fun timeInIsPairedWithTheSamePersonsTimeOut() {
+        fun tf(key: String, label: String) = TemplateField(key, label, FieldType.TIME, false)
+        val fields = listOf(
+            tf("a_in", "Salman Yasin - Time in"), tf("a_out", "Salman Yasin - Time out"),
+            tf("b_in", "Mian Waqas - Time in"), tf("b_out", "Mian Waqas - Time out"),
+        )
+        assertEquals("a_out", TimeStatus.pairedOut(fields, fields[0])?.key)
+        assertEquals("b_out", TimeStatus.pairedOut(fields, fields[2])?.key)
+        assertNull("a Time out field has no pair", TimeStatus.pairedOut(fields, fields[1]))
+        assertNull(TimeStatus.pairedOut(fields, TemplateField("x", "Salman Yasin - Time in", FieldType.TEXT, false)))
+        assertNull(TimeStatus.pairedOut(listOf(fields[0]), fields[0]))
+    }
 }

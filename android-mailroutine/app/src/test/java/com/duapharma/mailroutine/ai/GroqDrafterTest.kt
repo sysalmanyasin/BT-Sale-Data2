@@ -261,7 +261,27 @@ class GroqDrafterTest {
         AiProvider.entries.forEach { assertEquals(it, AiProvider.fromName(it.name)) }
         assertNull(AiProvider.fromName("OPENAI"))
         assertNull(AiProvider.fromName(null))
-        assertEquals("llama-3.3-70b-versatile", AiProvider.GROQ.defaultModel)
+        assertEquals("openai/gpt-oss-120b", AiProvider.GROQ.defaultModel)
+    }
+
+    @Test fun everyDefaultIsOfferedAndNoRetiredModelIsOffered() {
+        AiProvider.entries.forEach { p ->
+            val ids = p.models.map { it.id }
+            assertTrue("${p.name} default must be in its list", p.defaultModel in ids)
+            assertEquals("no duplicate ids", ids.size, ids.toSet().size)
+            assertTrue("a retired model must not be offered", ids.none { it in p.retiredModels })
+            assertFalse(p.defaultModel in p.retiredModels)
+        }
+        assertTrue("llama-3.3-70b-versatile" in AiProvider.GROQ.retiredModels)
+    }
+
+    @Test fun gptOssGetsLowReasoningEffortOtherModelsDoNot() = runBlocking {
+        val rec = Recorder(groqReply("{\"subject\":\"s\",\"body\":\"b\"}"))
+        drafter(rec, model = "openai/gpt-oss-120b").draft("x", "", "", keys)
+        assertEquals("low", rec.calls.single().body.getString("reasoning_effort"))
+        val rec2 = Recorder(groqReply("{\"subject\":\"s\",\"body\":\"b\"}"))
+        drafter(rec2, model = "qwen/qwen3.8-27b").draft("x", "", "", keys)
+        assertFalse(rec2.calls.single().body.has("reasoning_effort"))
     }
 
     @Test fun everyActionHasAnInstructionAndSubjectIsNotAFieldAction() {

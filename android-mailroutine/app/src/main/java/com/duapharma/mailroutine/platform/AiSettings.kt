@@ -27,7 +27,8 @@ class AiSettings(context: Context) {
         prefs?.edit()?.apply { if (value.isNullOrBlank()) remove(keyName(p)) else putString(keyName(p), value.trim()) }?.apply()
     }
 
-    fun modelFor(p: AiProvider): String = prefs?.getString(modelName(p), null)?.takeIf { it.isNotBlank() } ?: p.defaultModel
+    fun modelFor(p: AiProvider): String =
+        prefs?.getString(modelName(p), null)?.takeIf { it.isNotBlank() && it !in p.retiredModels } ?: p.defaultModel
 
     fun setModel(p: AiProvider, value: String) {
         prefs?.edit()?.putString(modelName(p), value.trim().ifBlank { p.defaultModel })?.apply()
