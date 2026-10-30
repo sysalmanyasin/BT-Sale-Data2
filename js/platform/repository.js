@@ -12,6 +12,7 @@
 
 import { MONTHLY, DAILY, STAFF, newEntries } from './config.js';
 import { EventBus } from './event-bus.js';
+import { MGR_BLOB_KEY, noteManagerWrite } from './sync-dirty.js';
 
 export const Repository = (function () {
 
@@ -539,7 +540,11 @@ export const Repository = (function () {
     // phantom "EDIT" entries for the same handful of sections on every
     // sync tick even when nothing had actually changed. A genuine change
     // still writes + notifies exactly as before.
-    if (localStorage.getItem(key) === value) return;
+    const _prev = localStorage.getItem(key);
+    if (_prev === value) return;
+    // Manager blob: stamp which section/month changed so a background pull
+    // can't overwrite edits that haven't been pushed yet (see sync-dirty.js).
+    if (key === MGR_BLOB_KEY) { try { noteManagerWrite(_prev, value); } catch (_) { /* tracking is best-effort */ } }
     localStorage.setItem(key, value);
     _notify('item:changed', { key, value });
   }

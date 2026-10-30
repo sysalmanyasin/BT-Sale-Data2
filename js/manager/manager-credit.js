@@ -10,6 +10,7 @@ import { Repository } from '../platform/repository.js';
 import { STAFF } from '../platform/config.js';
 import { _ni, _fc2, _mgrPopSel, mgrLoad, mgrSave, mgrAutosave, reconcileStaffRows, activeStaff, _inp } from './manager-shared.js';
 import { act, arg } from '../shared/dom-actions.js';
+import { withEntryIds, newEntryId, rowKey, hasCreditData, entryTombstoneKeys } from '../shared/credit-merge.js';
 
 // ══════════════════════════════
 // STAFF CREDIT LEDGER
@@ -19,11 +20,16 @@ let _crdData_cur = []; // [{name, prevBal, entries:[{date,desc,amount}], salary,
 function _crdData(my) {
   const data = mgrLoad();
   const stored = data.credit && data.credit[my];
-  // Reconcile against the Staff Registry every load: drops rows for
-  // anyone no longer active/in the registry, merges accidental
-  // duplicates, and adds a blank row for anyone missing one.
-  return reconcileStaffRows(activeStaff(), stored, e =>
-    ({staffId: e.staffId, name: e.name, prevBal: 0, entries: [], salary: 0, lessGeneric: 0}));
+  // Reconcile against the Staff Registry every load: merges accidental
+  // duplicates and adds a blank row for anyone missing one. Rows that match
+  // nobody in the registry are KEPT when they carry money (inactive staff,
+  // renamed rows, registry not loaded yet) — dropping them here used to
+  // delete their data for good on the very next save.
+  const rows = reconcileStaffRows(activeStaff(), stored, e =>
+    ({staffId: e.staffId, name: e.name, prevBal: 0, entries: [], salary: 0, lessGeneric: 0}),
+    { keepOrphan: hasCreditData });
+  // Every entry gets a stable id (derived for legacy ones) so sync can merge entry-by-entry.
+  return rows.map(r => ({ ...r, entries: withEntryIds(r.entries) }));
 }
 
 function _crdNet(emp) {
@@ -150,98 +156,171 @@ function addCrdEntryFocused(ei) {
 }
 
 let _crdLoadedMonth = null;
-function loadCreditMonth(my) {
-  // Preserve any typed-but-unsaved prevBal/salary/lessGeneric/entries
-  // edits before reloading from storage — same class of bug already
-  // fixed in jazz-cash.js/ledger/ledger-page.js: a background Supabase pull
-  // re-triggering this for the SAME month via refreshManagerPage() used
-  // to silently discard them.
-  const _prevCrd = (my === _crdLoadedMonth) ? _crdData_cur : null;
-  _crdData_cur = _crdData(my);
-  if (_prevCrd) {
-    const _norm = s => (s||'').trim().toLowerCase();
-    _crdData_cur.forEach(emp => {
-      const p = _prevCrd.find(pe => _norm(pe.name) === _norm(emp.name));
-      if (p) { emp.prevBal = p.prevBal; emp.salary = p.salary; emp.lessGeneric = p.lessGeneric; emp.entries = p.entries; }
-    });
+
+const _tomb = key => { try { if (window.SyncTombstones) window.SyncTombstones.markDeleted(key); } catch (_) { /* best-effort */ } };
+const _crdNorm = s => (s || '').trim().toLowerCase();
+const _pushIfAuto = () => {
+  if (Repository.getItem('bt_auto_save') === '1' && typeof window.pushToSupabase === 'function') window.pushToSupabase();
+};
+const _sameEmp = (a, b) => (a.staffId && b.staffId) ? a.staffId === b.staffId : _crdNorm(a.name) === _crdNorm(b.name);
+
+// ── SINGLE SOURCE OF TRUTH = STORAGE ────────────────────────────────────
+// This sheet used to keep a whole-month copy in memory (_crdData_cur) and
+// write that copy back to storage on every autosave / "Save All". Anything
+// written to storage by another path in between (Quick Add, Staff Card,
+// Unmatched assignment, AI assistant, a sync pull) was therefore silently
+// overwritten by the stale in-memory copy — the "I saved it, synced, and it
+// vanished after reload" bug. Now every edit is a tiny PATCH applied to the
+// stored row (found by staffId/name, entries by id); _crdData_cur is only a
+// render cache rebuilt from storage by loadCreditMonth().
+function _crdStoredRow(data, my, mem) {
+  if (!data.credit) data.credit = {};
+  if (!Array.isArray(data.credit[my])) {
+    data.credit[my] = _crdData(my).map(r => ({ ...r, entries: r.entries.map(e => ({ ...e })) }));
   }
-  _crdLoadedMonth = my;
-  window._crdData_cur = _crdData_cur; // keep the window bridge live — it's a snapshot copy otherwise (Quick Add relies on this staying current)
-  renderCreditLedger(_crdData_cur);
+  const rows = data.credit[my];
+  let row = rows.find(r => _sameEmp(r, mem)) || rows.find(r => _crdNorm(r.name) === _crdNorm(mem.name));
+  if (!row) { row = { ...mem, entries: withEntryIds(mem.entries).map(e => ({ ...e })) }; rows.push(row); }
+  row.entries = withEntryIds(row.entries);
+  return row;
 }
 
-function crdEmpField(ei, field, val) { _crdData_cur[ei][field] = _ni(val); mgrAutosave('credit', () => saveCreditData(true)); }
+function _crdPatch(ei, fn) {
+  const mem = _crdData_cur[ei], my = _crdLoadedMonth;
+  if (!mem || !my) return null;
+  const data = mgrLoad();
+  const row = _crdStoredRow(data, my, mem);
+  fn(row, mem);
+  mgrSave(data);                       // instant, local, durable
+  mgrAutosave('credit', _pushIfAuto);  // debounce ONLY the network push (+ "✓ Saved" flash)
+  return row;
+}
+
+function _crdOpenBody(ei) {
+  const body = document.getElementById('crd-body-' + ei);
+  const chev = document.getElementById('crd-chev-' + ei);
+  if (body) body.style.display = '';
+  if (chev) chev.style.transform = 'rotate(90deg)';
+}
+
+function loadCreditMonth(my) {
+  if (!my) return;
+  const sameMonth = my === _crdLoadedMonth;
+  // Background refreshes (sync pull/push → rebuildAll → refreshManagerPage)
+  // must not rebuild the table under the cursor: it would drop focus and
+  // collapse the row being typed in. Nothing is lost by skipping — every
+  // keystroke is already in storage and edits patch storage by row/entry id.
+  const container = document.getElementById('crd-employees');
+  const ae = document.activeElement;
+  if (sameMonth && container && ae && container.contains(ae) && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;
+
+  const openKeys = new Set();
+  if (sameMonth) _crdData_cur.forEach((emp, ei) => {
+    const b = document.getElementById('crd-body-' + ei);
+    if (b && b.style.display !== 'none') openKeys.add(rowKey(emp));
+  });
+  _crdLoadedMonth = my;
+  _crdData_cur = _crdData(my);
+  window._crdData_cur = _crdData_cur; // keep the window bridge live — it's a snapshot copy otherwise
+  renderCreditLedger(_crdData_cur);
+  if (openKeys.size) _crdData_cur.forEach((emp, ei) => { if (openKeys.has(rowKey(emp))) _crdOpenBody(ei); });
+}
+
+function crdEmpField(ei, field, val) {
+  const v = _ni(val);
+  _crdPatch(ei, (row, mem) => { row[field] = v; mem[field] = v; });
+}
 // Per-employee, per-month flag: when true, this row is left out of both
 // the Credit "Print Summary" and "Print Detailed" reports (printCreditReport /
 // printCreditSummaryReport in manager-reports.js both filter on it). Purely
-// a print-time filter — the row, its balance, and its entries are untouched
-// on screen and in storage; only the printed report skips it. Autosaves like
-// any other credit field (or click "Save"/Copy → Next Month for an immediate write).
+// a print-time filter — the row, its balance, and its entries are untouched.
 function toggleCrdPrintSkip(ei) {
   const emp = _crdData_cur[ei];
   if (!emp) return;
-  emp.printSkip = !emp.printSkip;
-  // Re-render rebuilds the whole table (bodies default back to collapsed) —
-  // remember which row, if any, was expanded and restore it afterward.
+  const next = !emp.printSkip;
+  _crdPatch(ei, (row, mem) => { row.printSkip = next; mem.printSkip = next; });
   const openBody = document.querySelector('.crd-body-row:not([style*="display: none"])');
   const openEi = openBody ? openBody.id.replace('crd-body-', '') : null;
   renderCreditLedger(_crdData_cur);
-  if (openEi != null) {
-    const body = document.getElementById('crd-body-' + openEi);
-    const chev = document.getElementById('crd-chev-' + openEi);
-    if (body) body.style.display = '';
-    if (chev) chev.style.transform = 'rotate(90deg)';
-  }
-  mgrAutosave('credit', () => saveCreditData(true));
+  if (openEi != null) _crdOpenBody(openEi);
 }
 function crdEntryChange(ei, eni, field, val) {
-  _crdData_cur[ei].entries[eni][field] = field === 'amount' ? _ni(val) : val;
-  mgrAutosave('credit', () => saveCreditData(true));
+  const mem = _crdData_cur[ei];
+  const me = mem && mem.entries[eni];
+  if (!me) return;
+  const v = field === 'amount' ? _ni(val) : val;
+  _crdPatch(ei, row => {
+    let e = row.entries.find(x => x.id === me.id);
+    if (!e) { e = { ...me }; row.entries.push(e); }
+    e[field] = v;
+  });
+  me[field] = v;
 }
 function recalcCrdEmp(ei) {
   const el = document.getElementById('crd-net-' + ei);
   if (!el) return;
   const net = _crdNet(_crdData_cur[ei]);
-  el.textContent = 'Net: ₨' + _fc2(net);
+  el.textContent = '₨' + _fc2(net);
   el.style.color = net > 0 ? 'var(--green)' : net < 0 ? 'var(--red)' : 'var(--muted)';
 }
 function addCrdEntry(ei) {
   const today = new Date();
   const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const dateStr = String(today.getDate()).padStart(2,'0') + '-' + ms[today.getMonth()] + '-' + today.getFullYear();
-  _crdData_cur[ei].entries.push({date:dateStr, desc:'credit', amount:0});
+  const entry = { id: newEntryId(), date: dateStr, desc: 'credit', amount: 0 };
+  _crdPatch(ei, (row, mem) => { row.entries.push({ ...entry }); mem.entries.push(entry); });
   renderCreditLedger(_crdData_cur);
-  // Ensure the body stays open after re-render
-  const body = document.getElementById('crd-body-' + ei);
-  const chev = document.getElementById('crd-chev-' + ei);
-  if (body) body.style.display = '';
-  if (chev) chev.style.transform = 'rotate(90deg)';
-  mgrAutosave('credit', () => saveCreditData(true));
+  _crdOpenBody(ei); // keep the body open after re-render
 }
 function deleteCrdEntry(ei, eni) {
-  _crdData_cur[ei].entries.splice(eni, 1);
+  const mem = _crdData_cur[ei];
+  const me = mem && mem.entries[eni];
+  if (!me) return;
+  _tomb('crde:' + me.id); // delete must travel with sync, or the union merge would resurrect it
+  _crdPatch(ei, (row, m) => {
+    row.entries = row.entries.filter(x => x.id !== me.id);
+    m.entries.splice(eni, 1);
+  });
   renderCreditLedger(_crdData_cur);
-  mgrAutosave('credit', () => saveCreditData(true));
+  _crdOpenBody(ei);
 }
 function addCreditEmployee() {
-  _crdData_cur.push({name:'New Employee', prevBal:0, entries:[], salary:0, lessGeneric:0});
+  _crdData_cur.push({ name: 'New Employee', prevBal: 0, entries: [], salary: 0, lessGeneric: 0 });
+  _crdPatch(_crdData_cur.length - 1, () => {});
   renderCreditLedger(_crdData_cur);
-  mgrAutosave('credit', () => saveCreditData(true));
 }
 function deleteCrdEmp(ei) {
-  if (!confirm('Remove ' + _crdData_cur[ei].name + '?')) return;
+  const mem = _crdData_cur[ei];
+  const my = _crdLoadedMonth;
+  if (!mem || !my) return;
+  if (!confirm('Remove ' + mem.name + '?')) return;
+  const data = mgrLoad();
+  if (Array.isArray(data.credit && data.credit[my])) {
+    const stored = data.credit[my].find(r => _sameEmp(r, mem));
+    if (stored) entryTombstoneKeys(stored).forEach(_tomb);
+    data.credit[my] = data.credit[my].filter(r => !_sameEmp(r, mem));
+    mgrSave(data);
+  }
+  entryTombstoneKeys(mem).forEach(_tomb);
+  _tomb('crdr:' + my + '|' + rowKey(mem));
   _crdData_cur.splice(ei, 1);
   renderCreditLedger(_crdData_cur);
-  mgrAutosave('credit', () => saveCreditData(true));
+  mgrAutosave('credit', _pushIfAuto);
 }
+// "Save" button / Save All & Sync. Edits are already in storage (see above),
+// so this only (a) makes sure every row of the loaded month exists in
+// storage — without overwriting any stored value — and (b) pushes.
 function saveCreditData(silent) {
-  const my = document.getElementById('crd-month-sel').value;
-  const data = mgrLoad();
-  if (!data.credit) data.credit = {};
-  data.credit[my] = _crdData_cur.map(e => ({...e, entries:[...e.entries]}));
-  mgrSave(data);
-  if (!silent) toast('✓ Staff Credit saved for ' + my);
-  if (Repository.getItem('bt_auto_save')==='1') pushToSupabase();
+  const my = _crdLoadedMonth || document.getElementById('crd-month-sel')?.value;
+  if (!my) { if (!silent && typeof toast === 'function') toast('⚠ Select a month first', 'w'); return; }
+  if (my === _crdLoadedMonth && _crdData_cur.length) {
+    const data = mgrLoad();
+    _crdData_cur.forEach(mem => { if (hasCreditData(mem)) _crdStoredRow(data, my, mem); });
+    mgrSave(data);
+  }
+  if (!silent && typeof toast === 'function') toast('✓ Staff Credit saved for ' + my);
+  if (!silent) { if (typeof window.pushToSupabase === 'function') window.pushToSupabase(); }
+  else _pushIfAuto();
 }
 
 
@@ -249,12 +328,12 @@ function copyToNextMonth() {
   const sel = document.getElementById('crd-month-sel');
   const curMy = sel.value;
   if (!curMy) { toast('⚠ Select a month first', 'w'); return; }
+  if (curMy !== _crdLoadedMonth) loadCreditMonth(curMy);
 
-  // Save current month first
+  // Make sure the current month's rows are in storage first
+  saveCreditData(true);
   const data = mgrLoad();
   if (!data.credit) data.credit = {};
-  data.credit[curMy] = _crdData_cur.map(e => ({...e, entries:[...e.entries]}));
-  mgrSave(data);
 
   // Compute next month string
   const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -271,19 +350,20 @@ function copyToNextMonth() {
     if (!confirm(`${nextMy} already has data. Overwrite the Previous Balance values with this month's net balances? (Entries and salary fields will be kept as-is.)`)) return;
     // Merge: update prevBal only, keep existing entries/salary/lessGeneric
     const updated = existingNext.map(existing => {
-      const src = _crdData_cur.find(e => e.name === existing.name);
+      const src = _crdData_cur.find(e => _sameEmp(e, existing));
       return src ? {...existing, prevBal: _crdNet(src)} : existing;
     });
     // Add any employees present in current month but not in next
     _crdData_cur.forEach(src => {
-      if (!updated.find(e => e.name === src.name)) {
-        updated.push({name: src.name, prevBal: _crdNet(src), entries: [], salary: 0, lessGeneric: 0});
+      if (!updated.find(e => _sameEmp(e, src))) {
+        updated.push({staffId: src.staffId, name: src.name, prevBal: _crdNet(src), entries: [], salary: 0, lessGeneric: 0});
       }
     });
     data.credit[nextMy] = updated;
   } else {
     // Fresh next month: copy employee list, set prevBal = net, clear entries
     data.credit[nextMy] = _crdData_cur.map(e => ({
+      staffId: e.staffId,
       name: e.name,
       prevBal: _crdNet(e),
       entries: [],
@@ -300,7 +380,7 @@ function copyToNextMonth() {
   loadCreditMonth(nextMy);
 
   toast('✓ Copied to ' + nextMy + ' — net balances set as opening balances');
-  if (Repository.getItem('bt_auto_save')==='1') pushToSupabase();
+  if (typeof window.pushToSupabase === 'function') window.pushToSupabase();
 }
 
 const MONTH_NAMES_CR = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -339,7 +419,14 @@ function _scCreditRow(name, my) {
   if (!data.credit[my]) data.credit[my] = [];
   const norm = s => (s || '').trim().toLowerCase();
   let emp = data.credit[my].find(e => norm(e.name) === norm(name));
-  if (!emp) { emp = { name, prevBal: 0, entries: [], salary: 0, lessGeneric: 0 }; data.credit[my].push(emp); }
+  if (!emp) {
+    const st = STAFF.find(s => norm(s.name) === norm(name));
+    emp = { staffId: st && st.staffId, name, prevBal: 0, entries: [], salary: 0, lessGeneric: 0 };
+    data.credit[my].push(emp);
+  }
+  // Legacy id-less entries get their stable (derived) id BEFORE any edit, so
+  // editing one can't make it look like a brand-new entry to the sync merge.
+  emp.entries = withEntryIds(emp.entries);
   return { data, my, emp };
 }
 
@@ -359,7 +446,7 @@ function scCreditFieldChange(field, val) {
   mgrSave(data);
   _scCreditSync(my);
   renderStaffCreditCurrent(name);
-  if (Repository.getItem('bt_auto_save') === '1' && typeof pushToSupabase === 'function') pushToSupabase();
+  _pushIfAuto();
 }
 
 function scAddCreditEntry() {
@@ -368,11 +455,11 @@ function scAddCreditEntry() {
   const { data, my, emp } = _scCreditRow(name);
   const today = new Date();
   const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  emp.entries.push({ date: String(today.getDate()).padStart(2, '0') + '-' + ms[today.getMonth()] + '-' + today.getFullYear(), desc: '', amount: 0 });
+  emp.entries.push({ id: newEntryId(), date: String(today.getDate()).padStart(2, '0') + '-' + ms[today.getMonth()] + '-' + today.getFullYear(), desc: '', amount: 0 });
   mgrSave(data);
   _scCreditSync(my);
   renderStaffCreditCurrent(name);
-  if (Repository.getItem('bt_auto_save') === '1' && typeof pushToSupabase === 'function') pushToSupabase();
+  _pushIfAuto();
 }
 
 function scCreditEntryChange(eni, field, val) {
@@ -394,7 +481,7 @@ function scCreditEntryChange(eni, field, val) {
   // Local commit above is already instant (mgrSave); debounce just the
   // network push so a multi-digit amount doesn't fire one request per digit.
   mgrAutosave('credit-sc', () => {
-    if (Repository.getItem('bt_auto_save') === '1' && typeof pushToSupabase === 'function') pushToSupabase();
+    _pushIfAuto();
   });
 }
 
@@ -402,11 +489,12 @@ function scDeleteCreditEntry(eni) {
   const name = document.getElementById('sc-title-name')?.textContent;
   if (!name) return;
   const { data, my, emp } = _scCreditRow(name);
+  if (emp.entries[eni]) _tomb('crde:' + emp.entries[eni].id);
   emp.entries.splice(eni, 1);
   mgrSave(data);
   _scCreditSync(my);
   renderStaffCreditCurrent(name);
-  if (Repository.getItem('bt_auto_save') === '1' && typeof pushToSupabase === 'function') pushToSupabase();
+  _pushIfAuto();
 }
 
 function renderStaffCreditCurrent(name) {

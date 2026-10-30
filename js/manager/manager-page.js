@@ -156,14 +156,21 @@ function saveAllManagerSections() {
   const anyMonth = monthSels.map(id => (document.getElementById(id)||{}).value || '').find(v => v);
   if (!anyMonth) { toast('⚠ No month selected — open a tab and pick a month first','w'); return; }
   let saved = 0;
-  function tryCall(fn) { try { if (typeof fn === 'function') { fn(); saved++; } } catch(e) { /* best-effort: failure is intentionally non-fatal here */ } }
-  staffSave(); saved++; // always save staff registry
-  tryCall(saveSalaryData);
-  tryCall(saveGenericData);
-  tryCall(saveCreditData);
-  tryCall(savePettyData);
-  tryCall(saveIncentiveData);
-  toast('✓ All sections saved (' + saved + ')');
+  const failed = [];
+  // A failing section used to be swallowed while the toast still announced
+  // "All sections saved" — so a broken save looked identical to a good one.
+  function tryCall(name, fn) {
+    try { if (typeof fn === 'function') { fn(); saved++; } }
+    catch (e) { failed.push(name); console.error('[saveAllManagerSections] ' + name + ' failed:', e); }
+  }
+  try { staffSave(); saved++; } catch (e) { failed.push('Staff'); console.error('[saveAllManagerSections] Staff failed:', e); }
+  tryCall('Salary', saveSalaryData);
+  tryCall('Generic', saveGenericData);
+  tryCall('Credit', saveCreditData);
+  tryCall('Petty', savePettyData);
+  tryCall('Incentive', saveIncentiveData);
+  if (failed.length) toast('⚠ Saved ' + saved + ', but FAILED: ' + failed.join(', ') + ' — see console', 'e');
+  else toast('✓ All sections saved (' + saved + ')');
   // pushToSupabase is debounced — each save* call above already triggers it;
   // this call ensures a push happens even when auto-save is off.
   if (typeof pushToSupabase === 'function') pushToSupabase();

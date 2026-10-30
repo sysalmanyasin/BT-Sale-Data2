@@ -96,7 +96,7 @@ function resolveUnmatchedToStaff(id) {
     row = { staffId, name: emp?.name || staffId, prevBal: 0, entries: [], salary: 0, lessGeneric: 0 };
     mgrData.credit[my].push(row);
   }
-  row.entries.push({ date: entry.date, desc: entry.desc || `From Closing App (${entry.rawLabel})`, amount: entry.amount, source: 'closing_app' });
+  row.entries.push({ id: 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7), date: entry.date, desc: entry.desc || `From Closing App (${entry.rawLabel})`, amount: entry.amount, source: 'closing_app' });
   mgrSave(mgrData);
 
   entry.resolved = true;

@@ -191,7 +191,7 @@ export function openLedgerQuickAdd(prefill, onSaved) {
         const norm = s => (s || '').trim().toLowerCase();
         const emp = rows.find(e => norm(e.name) === norm(staffName));
         if (!emp) throw new Error('Could not find "' + staffName + '" in that month\'s Staff Credit sheet');
-        emp.entries.push({ date: ddMonYyyy(date), desc: desc || '', amount: parseFloat(amount) || 0, source: 'closing_app' });
+        emp.entries.push({ id: 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7), date: ddMonYyyy(date), desc: desc || '', amount: parseFloat(amount) || 0, source: 'closing_app' });
         const newIndex = emp.entries.length - 1;
 
         const data = mgrLoad();

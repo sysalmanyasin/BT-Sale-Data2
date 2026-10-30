@@ -11,10 +11,12 @@
 // not-yet-populated in-memory snapshot never fell back to a fresh
 // reload from storage the way the code's own comment claimed it did.
 //
-// The fix (see manager-reports.js) reloads the selected month via
-// loadCreditMonth(my) right before building either report whenever the
-// sheet is actually on screen for that month, and warns instead of
-// silently printing an empty report when nothing is left to print.
+// The fix (see manager-reports.js) builds either report straight from
+// storage via _crdData(my) — storage is the single source of truth for
+// credit data (every edit is persisted per keystroke; see manager-credit.js) —
+// and warns instead of silently printing an empty report when nothing is
+// left to print. Tests below edit through the real UI handlers
+// (crdEmpField / crdEntryChange / addCrdEntryFocused / toggleCrdPrintSkip).
 // ══════════════════════════════════════════════════════════════════════
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -64,8 +66,9 @@ describe('printCreditReport() / printCreditSummaryReport() — stale/empty-snaps
 
     selectMonth('August 2026');
     creditMod.loadCreditMonth('August 2026');
-    creditMod._crdData_cur[0].entries = [{ date: '06-Aug', desc: 'advance', amount: 1040 }];
-    creditMod.saveCreditData(true);
+    creditMod.addCrdEntryFocused(0);
+    creditMod.crdEntryChange(0, 0, 'desc', 'advance');
+    creditMod.crdEntryChange(0, 0, 'amount', 1040);
 
     // Load a different month into memory, simulating a stale snapshot
     // still sitting in _crdData_cur when the user switches back and
@@ -86,10 +89,11 @@ describe('printCreditReport() / printCreditSummaryReport() — stale/empty-snaps
     Actions.addEmployee({ name: 'Mian Waqas' });
 
     creditMod.loadCreditMonth('August 2026');
-    creditMod._crdData_cur[0].printSkip = true; // hide Salman Yasin
-    creditMod._crdData_cur[0].entries = [{ date: '05-Aug', desc: 'advance', amount: 5000 }];
-    creditMod._crdData_cur[1].entries = [{ date: '06-Aug', desc: 'advance', amount: 1040 }];
-    creditMod.saveCreditData(true);
+    creditMod.toggleCrdPrintSkip(0); // hide Salman Yasin
+    creditMod.addCrdEntryFocused(0);
+    creditMod.crdEntryChange(0, 0, 'amount', 5000);
+    creditMod.addCrdEntryFocused(1);
+    creditMod.crdEntryChange(1, 0, 'amount', 1040);
 
     const html = captureRenderedHtml(() => reportsMod.printCreditReport());
 
@@ -101,8 +105,7 @@ describe('printCreditReport() / printCreditSummaryReport() — stale/empty-snaps
   test('warns instead of silently printing a blank PDF when every row is hidden (Detailed)', () => {
     Actions.addEmployee({ name: 'Salman Yasin' });
     creditMod.loadCreditMonth('August 2026');
-    creditMod._crdData_cur[0].printSkip = true;
-    creditMod.saveCreditData(true);
+    creditMod.toggleCrdPrintSkip(0);
 
     const html = captureRenderedHtml(() => reportsMod.printCreditReport());
     assert.equal(html, null, 'must not render a header-only/blank PDF — should warn and bail instead');
@@ -111,8 +114,7 @@ describe('printCreditReport() / printCreditSummaryReport() — stale/empty-snaps
   test('Summary report gets the same reload + guard', () => {
     Actions.addEmployee({ name: 'Mian Waqas' });
     creditMod.loadCreditMonth('August 2026');
-    creditMod._crdData_cur[0].prevBal = 8646;
-    creditMod.saveCreditData(true);
+    creditMod.crdEmpField(0, 'prevBal', 8646);
     creditMod.loadCreditMonth('July 2026'); // stale snapshot in memory
     selectMonth('August 2026');
 

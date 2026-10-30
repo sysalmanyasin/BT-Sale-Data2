@@ -11,6 +11,8 @@ import { Repository } from './repository.js';
 import { Actions } from './actions.js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../shared/backend-config.js';
 import { SEND_LISTS_KEY, mergeSendLists } from '../shared/mail-compose.js';
+import { mergeManagerSections } from '../shared/credit-merge.js';
+import { runAsMerge, ensureBootstrapped, isDirty, clearDirtyUpTo, MGR_BLOB_KEY } from './sync-dirty.js';
 
 const SB_URL     = SUPABASE_URL;
 const SB_KEY     = SUPABASE_ANON_KEY;
@@ -20,6 +22,11 @@ const SB_PENDING = 'bt_sb_pending';    // dirty flag for offline queue
 const SB_HISTORY = 'bt_sync_history'; // last 10 sync events
 // targets.js is an ES module, so keep the shared storage key local here too.
 const TGT_K      = 'bt_targets';
+
+// One-time, at page load (before any pull can run): an install that already holds manager data from
+// before dirty-tracking existed may have unsynced edits — treat its existing months as dirty once so
+// the first pull cannot overwrite them. The first successful push clears the marks.
+try { ensureBootstrapped(JSON.parse(Repository.getItem(MGR_BLOB_KEY) || '{}')); } catch (_) { /* best-effort */ }
 
 let _sbClient      = null;
 let _sbChannel     = null;
@@ -281,21 +288,16 @@ function mergeIncomingData(data, isPull = false) {
 
   if (data.manager) {
     const cur = JSON.parse(Repository.getItem(MGR_KEY) || '{}');
-    const merged = JSON.parse(JSON.stringify(cur || {}));
-    ['salary', 'generic', 'expense', 'credit'].forEach(sec => {
-      if (data.manager[sec] && typeof data.manager[sec] === 'object') {
-        if (!merged[sec]) merged[sec] = {};
-        Object.keys(data.manager[sec]).forEach(month => {
-          // Per-month merge, not per-section: a section key always exists
-          // locally once that tab has been opened, so overwriting the whole
-          // section object (instead of just the months that conflict) would
-          // silently drop any month-only-on-the-other-side.
-          if (isPull) merged[sec][month] = data.manager[sec][month];          // remote wins on pull
-          else if (!(month in merged[sec])) merged[sec][month] = data.manager[sec][month]; // local wins on push — only fill gaps
-        });
-      }
-    });
-    Actions.saveFeatureData(MGR_KEY, JSON.stringify(merged));
+    // Staff Credit merges ENTRY-BY-ENTRY (union by entry id, tombstones for
+    // deletes) in BOTH directions. The old "replace the whole month array"
+    // rule let one side erase the other's entries — e.g. a credit folded in
+    // server-side from the Closing App inbox, or typed on another device, was
+    // wiped by the next push, and a pull landing before your push finished
+    // wiped your own edit. Other sections: remote wins on pull except for a
+    // month with unpushed local edits; local wins on push. See credit-merge.js.
+    const merged = mergeManagerSections(cur, data.manager, { isPull, isDirty, isDeleted: _isDel });
+    // Merge-originated writes must not flag months as "locally edited".
+    runAsMerge(() => Actions.saveFeatureData(MGR_KEY, JSON.stringify(merged)));
   }
 
   if (data.petty) {
@@ -580,22 +582,50 @@ async function _doPush() {
 
   setSyncBadge('syncing');
   sbLog('Pushing to Supabase…');
+  // Everything edited up to this instant is covered by this push; anything
+  // edited after it stays "dirty" until the NEXT successful push.
+  const pushStartedAt = Date.now();
   try {
+    // A value typed <700 ms ago may still be waiting in a debounce timer — commit it first.
+    if (typeof window.mgrFlushAutosaves === 'function') window.mgrFlushAutosaves();
     const db = _sb();
 
-    const { data: remote } = await db
-      .from(SB_TABLE).select('payload').eq('id', SB_ID).single();
-    if (remote && remote.payload) {
-      mergeIncomingData(remote.payload, false);
-      recomputeAllMonths();
+    // Compare-and-swap: the row is shared with server-side writers (the Closing
+    // App inbox trigger bt_fold_staff_credit_inbox adds credit entries straight
+    // into this payload) and with other devices. A blind upsert after reading
+    // the row meant anything written in that read→write window was silently
+    // overwritten. Now the write only lands if the row is still exactly the
+    // version we merged; otherwise re-read, re-merge, retry.
+    let landed = false;
+    for (let attempt = 0; attempt < 4 && !landed; attempt++) {
+      const { data: remote } = await db
+        .from(SB_TABLE).select('payload, updated_at').eq('id', SB_ID).single();
+      if (remote && remote.payload) {
+        mergeIncomingData(remote.payload, false);
+        recomputeAllMonths();
+      }
+      const payload = _buildPayload();
+      const stamp = new Date().toISOString();
+      if (remote && remote.updated_at) {
+        const { data: rows, error } = await db.from(SB_TABLE)
+          .update({ payload, updated_at: stamp })
+          .eq('id', SB_ID).eq('updated_at', remote.updated_at)
+          .select('id');
+        if (error) throw new Error(error.message);
+        landed = !!(rows && rows.length);
+        if (!landed) sbLog('↻ Remote changed while pushing — re-merging…', 'info');
+      } else {
+        const { error } = await db.from(SB_TABLE).upsert(
+          { id: SB_ID, payload, updated_at: stamp },
+          { onConflict: 'id' }
+        );
+        if (error) throw new Error(error.message);
+        landed = true;
+      }
     }
+    if (!landed) throw new Error('Remote kept changing during push — will retry');
 
-    const { error } = await db.from(SB_TABLE).upsert(
-      { id: SB_ID, payload: _buildPayload(), updated_at: new Date().toISOString() },
-      { onConflict: 'id' }
-    );
-    if (error) throw new Error(error.message);
-
+    clearDirtyUpTo(pushStartedAt);
     _clearPending();
     idbSaveData();
     rebuildAll();
@@ -644,6 +674,8 @@ async function pullFromSupabase(silent = false) {
   setSyncBadge('syncing');
   if (!silent) sbLog('Fetching from Supabase…');
   try {
+    // Commit anything still sitting in a debounce timer so the merge below sees it.
+    if (typeof window.mgrFlushAutosaves === 'function') window.mgrFlushAutosaves();
     const db = _sb();
     const { data, error } = await db
       .from(SB_TABLE).select('payload').eq('id', SB_ID).single();

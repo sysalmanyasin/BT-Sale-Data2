@@ -48,12 +48,27 @@ function mgrSave(data) { Actions.saveFeatureData(MGR_KEY, JSON.stringify(data));
 // works exactly as before, including any manual `toast()` confirmation;
 // it is just no longer the only path data ever reaches Supabase through.
 const _mgrAutosaveTimers = {};
+const _mgrAutosaveFns = {};
 function mgrAutosave(key, fn, delay) {
   clearTimeout(_mgrAutosaveTimers[key]);
+  _mgrAutosaveFns[key] = fn;
   _mgrAutosaveTimers[key] = setTimeout(() => {
     delete _mgrAutosaveTimers[key];
+    delete _mgrAutosaveFns[key];
     try { fn(); } finally { _mgrAutosaveFlash(key); }
   }, delay || 700);
+}
+// Runs every pending debounced autosave RIGHT NOW. Called before a push or a
+// pull so a value typed <700 ms ago is already in storage (and therefore in
+// the payload) instead of still living only in a timer closure.
+function mgrFlushAutosaves() {
+  Object.keys(_mgrAutosaveFns).forEach(key => {
+    const fn = _mgrAutosaveFns[key];
+    clearTimeout(_mgrAutosaveTimers[key]);
+    delete _mgrAutosaveTimers[key];
+    delete _mgrAutosaveFns[key];
+    try { fn(); } catch (e) { console.error('[mgrFlushAutosaves ' + key + ']', e); }
+  });
 }
 // Briefly relabels the sub-tab's own Save button (id="mgr-save-<key>",
 // see index.html) to confirm an autosave actually happened, without a
@@ -172,7 +187,11 @@ function _mergeStaffRow(a, b) {
   });
   return out;
 }
-function reconcileStaffRows(activeList, storedRows, blankFactory) {
+// opts.keepOrphan(row) → true keeps a stored row that matches NO active staff
+// member (inactive / renamed-without-id / not-yet-loaded registry) at the END
+// of the list. Credit uses it so a row carrying money is never silently
+// dropped by the next save just because the registry didn't match it.
+function reconcileStaffRows(activeList, storedRows, blankFactory, opts) {
   const rows = Array.isArray(storedRows) ? storedRows : [];
   const byId = new Map();
   const byName = new Map();
@@ -183,16 +202,36 @@ function reconcileStaffRows(activeList, storedRows, blankFactory) {
     const key = _rsrNorm(r.name);
     if (key) byName.set(key, byName.has(key) ? _mergeStaffRow(byName.get(key), r) : r);
   });
-  return (activeList || []).map(emp => {
+  const usedIds = new Set(), usedNames = new Set();
+  const out = (activeList || []).map(emp => {
     const key = _rsrNorm(emp.name);
-    const match = (emp.staffId && byId.get(emp.staffId)) || byName.get(key);
+    const byIdMatch = emp.staffId && byId.get(emp.staffId);
+    const match = byIdMatch || byName.get(key);
+    if (match) {
+      if (emp.staffId) usedIds.add(emp.staffId);
+      usedNames.add(key);
+      if (match.staffId) usedIds.add(match.staffId);
+      if (_rsrNorm(match.name)) usedNames.add(_rsrNorm(match.name));
+    }
     return match
       ? { ...match, name: emp.name, staffId: emp.staffId || match.staffId }
       : blankFactory(emp);
   });
+  if (opts && typeof opts.keepOrphan === 'function') {
+    const seen = new Set();
+    rows.forEach(r => {
+      const nk = _rsrNorm(r.name);
+      if ((r.staffId && usedIds.has(r.staffId)) || (nk && usedNames.has(nk))) return;
+      const ident = r.staffId ? 'id:' + r.staffId : 'n:' + nk;
+      if (seen.has(ident)) return;
+      seen.add(ident);
+      if (opts.keepOrphan(r)) out.push(r);
+    });
+  }
+  return out;
 }
 
-Object.assign(window, { MGR_KEY, mgrLoad, mgrSave, mgrAutosave, mgrMonths, _mgrPopSel, _ni, _fc2, _inp, _mgrEsc, reconcileStaffRows, _salExtrasNet });
+Object.assign(window, { MGR_KEY, mgrLoad, mgrSave, mgrAutosave, mgrFlushAutosaves, mgrMonths, _mgrPopSel, _ni, _fc2, _inp, _mgrEsc, reconcileStaffRows, _salExtrasNet });
 
 // Active staff, ordered by serial number. Lives here (a leaf of the manager cluster) so
 // salary/generic/credit don't have to import manager-staff.js (which imports them back).
@@ -207,4 +246,4 @@ const _mgrHooks = Object.create(null);
 function mgrOn(evt, fn) { (_mgrHooks[evt] = _mgrHooks[evt] || []).push(fn); }
 function mgrEmit(evt, ...args) { (_mgrHooks[evt] || []).forEach(fn => { try { fn(...args); } catch (e) { console.error('[manager hook ' + evt + ']', e); } }); }
 
-export { activeStaff, mgrOn, mgrEmit, MGR_KEY, mgrLoad, mgrSave, mgrAutosave, mgrMonths, _mgrPopSel, _ni, _fc2, _inp, _mgrEsc, reconcileStaffRows, _salExtrasNet };
+export { activeStaff, mgrOn, mgrEmit, MGR_KEY, mgrLoad, mgrSave, mgrAutosave, mgrFlushAutosaves, mgrMonths, _mgrPopSel, _ni, _fc2, _inp, _mgrEsc, reconcileStaffRows, _salExtrasNet };
