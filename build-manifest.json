@@ -1,6 +1,6 @@
 {
-  "cache": "bt-sales-v11.198",
-  "hash": "3f418fdeaafd",
+  "cache": "bt-sales-v11.199",
+  "hash": "e38fcae4a803",
   "files": {
     "css/activity-log.css": "08f3faa0",
     "css/agent.css": "887c7226",
@@ -8,7 +8,7 @@
     "css/ai-center.css": "7797e5ea",
     "css/attendance.css": "8463e920",
     "css/audit-native.css": "e7294094",
-    "css/auth.css": "0c56adb4",
+    "css/auth.css": "11c0de57",
     "css/cash-deposit-report.css": "a725c219",
     "css/closing-book-print.css": "80bc3517",
     "css/closing-native.css": "ec46c18a",
@@ -37,11 +37,12 @@
     "css/str-report.css": "92ddce50",
     "css/variables.css": "b51a12c1",
     "icons/apple-touch-icon.png": "6bcc96fe",
+    "icons/duapharma-wordmark-dark.svg": "05a35647",
     "icons/favicon-32.png": "7d726404",
     "icons/icon-192.png": "a9be27a2",
     "icons/icon-512.png": "ea63e1c0",
     "icons/icon.svg": "86713582",
-    "index.html": "42289549",
+    "index.html": "89f084f3",
     "js/agent/core/after-write.js": "e8376294",
     "js/agent/core/agent-client.js": "83ee391c",
     "js/agent/core/audit.js": "2ef45b8a",
@@ -218,6 +219,6 @@
     "js/ui/subtab-strip.js": "8b68b207",
     "js/ui/ui-extras.js": "96605d24",
     "js/ui/ui.js": "f37e3148",
-    "manifest.json": "4f4cac7c"
+    "manifest.json": "35d06b8e"
   }
 }

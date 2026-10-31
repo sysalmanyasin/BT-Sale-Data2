@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#FF101B2D</color>
+    <color name="ic_launcher_background">#FF2C5282</color>
     <!-- DuaPharma identity applied to the NEON GLASS theme: Primary Navy surfaces, Intelligence Teal edge/glow,
          Insight Amber for aggregates. Module accents (sales/credit/inventory/closing) and status colours are
          deliberately unchanged so each widget keeps its meaning.

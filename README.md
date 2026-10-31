@@ -73,7 +73,7 @@ The platform brings several pharmacy workflows into one operational environment.
 | JS modules under `js/` | 175 |
 | Supabase Edge Functions | 7 |
 | Dated SQL migrations | 28 |
-| Test files (`*.test.js`) | 119 |
+| Test files (`*.test.js`) | 120 |
 | Android home-screen widgets | 22 |
 | GitHub Actions workflows | 5 |
 <!-- repo-facts:end -->
@@ -464,7 +464,23 @@ If a credential is exposed, treat it as compromised and rotate or revoke it.
 | Slate | `#465166` | Secondary text |
 | White | `#FFFFFF` | Logo cross, text on navy |
 
-The logo is a geometric pharmacy cross with a rising data curve ending in an amber point. `icons/icon.svg` is the master; the PNG sizes, maskable icons, monochrome mark and watermarks in `icons/` are exported from the same geometry. The Android apps carry the same mark as vector adaptive icons (with a themed monochrome layer) and a monochrome `ic_stat_duapharma` notification icon.
+### Icon family
+
+All five apps carry the DuaPharma pharmacy cross in the same position and size. Each app gets its own background colour and one corner glyph, so they stay recognisable as one family but are easy to tell apart on a home screen. App labels share the `Dua` prefix; package names and application IDs are unchanged.
+
+| App | Label | Background | Glyph |
+| --- | --- | --- | --- |
+| Main PWA (`icons/`) | Dua BT Sales | Primary Navy | Rising line + amber point (the original logo) |
+| Inventory Search (`inventory-search/icons/`) | Dua Inv Search | Deep teal `#0C6A60` | Magnifier |
+| `android-attendance/` | Dua Attendance | Insight Amber (navy cross) | Location pin |
+| `android-widget/` | Dua Closing | Info blue `#2C5282` | 2×2 widget tiles |
+| `android-mailroutine/` | Dua Mail | Violet `#4C3A8A` | Envelope |
+
+![DuaPharma icon family](docs/brand/icon-family.png)
+
+`scripts/build-brand.mjs` generates everything except the main PWA's hand-exported masters: the Inventory Search SVG and PNG set, the Android adaptive foreground, themed monochrome and legacy layers, the launcher background colours, and the `duapharma-wordmark-*.svg` files (the wordmark is converted to outlines, so it needs no font). Change a glyph or colour there, then run `npm run brand` (text outputs) and `npm run brand:png` (PNGs; needs `npm i --no-save sharp`). `npm run brand:check` and `tests/static/brand-icons.test.js` fail if a generated file is stale or two apps share a launcher layer. Use `icons/duapharma-wordmark-dark.svg` on navy and `-light.svg` on white.
+
+The original logo is a geometric pharmacy cross with a rising data curve ending in an amber point. `icons/icon.svg` is the master; the PNG sizes, maskable icons, monochrome mark and watermarks in `icons/` are exported from the same geometry. The Android apps carry the same mark as vector adaptive icons (with a themed monochrome layer) and a monochrome `ic_stat_duapharma` notification icon.
 
 Semantic colours (success, warning, error, inventory status, MailRoutine "sending") are intentionally not brand colours. Inventory "excess" uses `--info`, the old blue, so it stays distinct from the teal accent. Changing shipped icons or CSS needs `npm run build` so the service-worker cache version moves.
 

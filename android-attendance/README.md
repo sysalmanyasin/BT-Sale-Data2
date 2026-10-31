@@ -1,4 +1,4 @@
-# BT Attendance (Android)
+# Dua Attendance (Android)
 
 Companion native app to BT-Sale-Data2's Manager → Attendance tab.
 Detects a staff member's phone entering/exiting the pharmacy's
@@ -92,7 +92,7 @@ to include `check_out` is a small change if you want that too.
 A phone can only be one mode at a time — set up as a staff phone, it
 never notifies; set up as a manager phone, it never geofences or shows
 the QR-scan button. To switch a phone's mode, clear the app's storage
-(Android Settings → Apps → BT Attendance → Storage → Clear storage)
+(Android Settings → Apps → Dua Attendance → Storage → Clear storage)
 so the "Set up this phone" dialog reappears.
 
 ## Known limitations (scaffold, not yet hardened)

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Closing Summary</string>
+    <string name="app_name">Dua Closing</string>
     <string name="widget_title">📊 LATEST CLOSING SUMMARY</string>
     <string name="widget_title_label">Closing Summary</string>
     <string name="sales_widget_title_label">Sales &amp; Target Pace</string>

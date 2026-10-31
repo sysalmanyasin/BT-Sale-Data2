@@ -180,7 +180,7 @@ class MainActivity : AppCompatActivity() {
         }
         logoWrap.addView(logo)
         val title = TextView(this).apply {
-            text = "BT Attendance"
+            text = "Dua Attendance"
             setTextColor(color(R.color.text_on_brand))
             textSize = 23f
             typeface = Typeface.create(typeface, Typeface.BOLD)
@@ -610,17 +610,17 @@ class MainActivity : AppCompatActivity() {
         val manufacturer = Build.MANUFACTURER.lowercase()
         val note = when {
             manufacturer.contains("xiaomi") ->
-                "On Xiaomi (MIUI): Settings → Apps → BT Attendance → Battery saver → " +
+                "On Xiaomi (MIUI): Settings → Apps → Dua Attendance → Battery saver → " +
                     "No restrictions, then also lock the app in your Recents screen " +
                     "(swipe down on the app card)."
             manufacturer.contains("oppo") || manufacturer.contains("realme") ->
-                "On Oppo/Realme (ColorOS): Settings → Battery → BT Attendance → " +
+                "On Oppo/Realme (ColorOS): Settings → Battery → Dua Attendance → " +
                     "Allow background activity, and disable \"Sleep standby optimization\" for this app."
             manufacturer.contains("vivo") ->
                 "On Vivo (Funtouch/OriginOS): Settings → Battery → Background power " +
-                    "consumption management → BT Attendance → Allow, and lock the app in Recents."
+                    "consumption management → Dua Attendance → Allow, and lock the app in Recents."
             manufacturer.contains("samsung") ->
-                "On Samsung: Settings → Apps → BT Attendance → Battery → " +
+                "On Samsung: Settings → Apps → Dua Attendance → Battery → " +
                     "Unrestricted (not \"Optimized\"), and remove it from \"Sleeping apps\" " +
                     "if it appears there."
             else -> null

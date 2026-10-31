@@ -71,6 +71,7 @@ body{
 }
 .empty-icon{font-size:40px;margin-bottom:10px;}
 .empty-sub{font-size:12px;margin-top:8px;opacity:.7;}
+.brand-wordmark{display:block;height:14px;width:auto;margin:22px auto 0;opacity:.75;}
 
 .results-list{padding:4px 12px 24px;display:flex;flex-direction:column;gap:8px;}
 .result-card{

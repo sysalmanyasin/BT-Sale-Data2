@@ -31,4 +31,5 @@
     <color name="danger_bg">#FBE7E7</color>
     <color name="pending">#4CB1FF</color>
     <color name="pending_bg">#E8F4FF</color>
+    <color name="ic_launcher_background">#F2B84B</color>
 </resources>
