@@ -94,10 +94,10 @@ android {
 }
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.19.1")
-    implementation("androidx.appcompat:appcompat:1.8.0")
-    implementation("androidx.work:work-runtime-ktx:2.12.0")
+    implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
     // Keystore-backed EncryptedSharedPreferences — used by WidgetAuthManager
     // to store the widget-service account's refresh token on-device.
-    implementation("androidx.security:security-crypto:1.1.0")
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
 }
