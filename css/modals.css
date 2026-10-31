@@ -99,7 +99,7 @@
 }
 
 /* Day-select date input focus ring (replaces inline onfocus/onblur handlers) */
-#ds-input:focus{border-color:var(--accent)!important;box-shadow:0 0 0 3px rgba(37,99,235,.1)!important;outline:none}
+#ds-input:focus{border-color:var(--accent)!important;box-shadow:0 0 0 3px rgba(14,128,116,.14)!important;outline:none}
 
 /* SEND VIA GMAIL dialog (js/lib/gmail-send.js) */
 .gms-modal{width:min(96vw,520px);}

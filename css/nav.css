@@ -7,12 +7,12 @@
   color: inherit;
 }
 /* NAV */
-nav{position:sticky;top:32px;z-index:200;background:radial-gradient(130% 220% at 92% -60%,rgba(37,67,201,.1),transparent 55%),radial-gradient(130% 220% at 8% 160%,rgba(20,27,61,.08),transparent 55%),linear-gradient(120deg,#e2e8f6 0%,#dbe3f4 55%,#e6ebf9 100%);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:env(safe-area-inset-top) 20px 0;height:56px;box-sizing:content-box;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+nav{position:sticky;top:32px;z-index:200;background:radial-gradient(130% 220% at 92% -60%,rgba(14,128,116,.1),transparent 55%),radial-gradient(130% 220% at 8% 160%,rgba(16,27,45,.08),transparent 55%),linear-gradient(120deg,#e3ebf2 0%,#dbe6ee 55%,#e6eff4 100%);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:env(safe-area-inset-top) 20px 0;height:56px;box-sizing:content-box;box-shadow:0 1px 3px rgba(0,0,0,.06);}
 /* Slim multicolor underline — echoes the segmented progress bar in the
    Cover hero card, so the nav reads as part of the same brand system
    instead of a plain white strip. Pseudo-element (not border-bottom)
    so it can be a gradient without fighting the existing box-shadow. */
-nav::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:linear-gradient(90deg,#141b3d 0%,var(--accent-dk) 50%,var(--accent) 100%);opacity:.7;}
+nav::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:linear-gradient(90deg,var(--brand-navy) 0%,var(--accent-dk) 45%,var(--brand-teal) 90%,var(--brand-amber) 100%);opacity:.8;}
 .nbrand{display:flex;align-items:center;gap:11px;}
 /* .nlogo used to be a plain "BT" text badge with its own gradient
    background; now it wraps the real brand mark (icons/icon.svg — same
@@ -20,7 +20,7 @@ nav::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;backg
    fill baked in. Kept as a fixed-size clipped box so the SVG's own
    100/512 corner radius lines up with the rest of the nav's rounding,
    and the box-shadow stays for depth against the nav's frosted glass. */
-.nlogo{width:32px;height:32px;border-radius:9px;overflow:hidden;flex-shrink:0;box-shadow:0 2px 8px -2px rgba(58,97,247,.5);}
+.nlogo{width:32px;height:32px;border-radius:9px;overflow:hidden;flex-shrink:0;box-shadow:0 2px 8px -2px rgba(16,27,45,.45);}
 .nlogo img{width:100%;height:100%;display:block;}
 .nbrand-text{font-weight:700;font-size:13px;letter-spacing:-.01em;color:var(--text);}
 .nbrand-sub{font-size:11px;color:var(--muted);}
@@ -70,7 +70,7 @@ nav::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;backg
    nav), visible on EVERY page (not just Cover/Manager Dashboard). nav's
    own sticky top offset (see nav{} above) is set to this bar's height
    (32px) so it stacks directly underneath instead of overlapping it. ── */
-.status-bar{position:sticky;top:0;z-index:210;background:linear-gradient(90deg,#0f172a,#1e3a5f);display:none;align-items:center;padding:0 20px;height:32px;box-shadow:0 1px 3px rgba(0,0,0,.08);}
+.status-bar{position:sticky;top:0;z-index:210;background:linear-gradient(90deg,#101B2D,#0e3b44);display:none;align-items:center;padding:0 20px;height:32px;box-shadow:0 1px 3px rgba(0,0,0,.08);}
 .status-bar-inner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;width:100%;}
 .status-pill{display:flex;align-items:center;gap:6px;text-decoration:none;color:#fff;font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,.08);transition:background .15s;cursor:pointer;}
 .status-pill:hover{background:rgba(255,255,255,.18);}

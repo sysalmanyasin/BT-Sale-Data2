@@ -346,7 +346,7 @@ function setThemePref(pref) {
   const resolved = _btResolveTheme(pref);
   document.documentElement.setAttribute('data-theme', resolved === 'dark' ? 'dark' : 'light');
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.content = resolved === 'dark' ? '#0e1320' : '#2563eb';
+  if (meta) meta.content = '#101B2D'; // brand navy for both themes
   document.querySelectorAll('.theme-opt').forEach(b => b.classList.toggle('active', b.dataset.theme === pref));
 }
 function _btInitThemeCard() {

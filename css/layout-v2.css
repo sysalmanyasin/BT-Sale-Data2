@@ -16,7 +16,7 @@ body{background-image:none;}
 
 /* 3. Dark mode: top nav + controls were hardcoded light (brand text vanished) */
 :root[data-theme="dark"] nav{
-  background:radial-gradient(130% 220% at 92% -60%,rgba(91,130,255,.14),transparent 55%),linear-gradient(120deg,#131a2b 0%,#161c2c 55%,#1a2236 100%);
+  background:radial-gradient(130% 220% at 92% -60%,rgba(24,169,153,.12),transparent 55%),linear-gradient(120deg,#0d1727 0%,#101B2D 55%,#14233a 100%);
 }
 :root[data-theme="dark"] .syncbadge,
 :root[data-theme="dark"] .lockbtn,

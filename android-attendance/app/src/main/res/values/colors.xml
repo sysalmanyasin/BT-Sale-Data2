@@ -1,21 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Brand (matches ic_launcher: navy field, blue ring) -->
-    <color name="brand_navy">#1E2530</color>
-    <color name="brand_navy_light">#2B3547</color>
-    <color name="brand_blue">#4CB1FF</color>
-    <color name="brand_blue_dark">#2C8FE0</color>
+    <!-- DuaPharma brand. Token names are historical (brand_blue*) so existing layouts/code keep resolving;
+         the VALUES are the DuaPharma palette: brand_blue = Intelligence Teal, brand_blue_dark = AA-safe teal
+         for text/strokes on light surfaces (4.8:1 on white). -->
+    <color name="brand_navy">#101B2D</color>
+    <color name="brand_navy_light">#1B2A42</color>
+    <color name="brand_teal">#18A999</color>
+    <color name="brand_amber">#F2B84B</color>
+    <color name="brand_slate">#465166</color>
+    <color name="brand_blue">#18A999</color>
+    <color name="brand_blue_dark">#0E8074</color>
 
     <!-- Surfaces -->
-    <color name="bg_app">#F2F5FA</color>
+    <color name="bg_app">#F2F6F9</color>
     <color name="surface_card">#FFFFFF</color>
     <color name="divider">#E6EAF1</color>
 
     <!-- Text -->
     <color name="text_primary">#1A2130</color>
-    <color name="text_secondary">#69748A</color>
+    <color name="text_secondary">#5A6579</color>
     <color name="text_on_brand">#FFFFFF</color>
-    <color name="text_on_brand_muted">#C6D9F2</color>
+    <color name="text_on_brand_muted">#C5D1E3</color>
 
     <!-- Status -->
     <color name="success">#18A06B</color>

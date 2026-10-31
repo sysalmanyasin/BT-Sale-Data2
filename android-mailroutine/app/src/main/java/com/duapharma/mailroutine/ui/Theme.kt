@@ -26,13 +26,14 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-// Palette: ink slate for text, cool paper surface, mail blue as the single brand accent.
+// Palette (DuaPharma identity): Primary Navy for text, cool paper surface, Intelligence Teal as the single brand accent.
 // Status colours carry meaning (amber = needs you, red = failed, green = accepted by Gmail). They are mid-tones
 // chosen to stay readable on both the light and the dark surface.
 object MrColors {
-    val Ink = Color(0xFF1F2A37)
-    val Paper = Color(0xFFF6F7F9)
-    val Blue = Color(0xFF3566B8)
+    val Ink = Color(0xFF101B2D)        // DuaPharma Primary Navy
+    val Paper = Color(0xFFF4F7F9)
+    val Accent = Color(0xFF0E8074)     // Intelligence Teal, AA-safe for white text (4.8:1); exact brand teal is #18A999
+    val Info = Color(0xFF3566B8)       // semantic "in progress" blue — deliberately NOT the brand accent
     val Amber = Color(0xFFC0801A)
     val Red = Color(0xFFD0453B)
     val Green = Color(0xFF2F8F5B)
@@ -42,16 +43,16 @@ object MrColors {
 // Per-routine accent for the dashboard bar, so different routines are told apart at a glance.
 // Failure/attention states keep their status colour (see stateColor).
 private val routineAccents = listOf(
-    MrColors.Blue, Color(0xFF7B5EA7), Color(0xFF2A8C8C), Color(0xFFB5527A), Color(0xFF5C7A2E), Color(0xFFB0643A),
+    MrColors.Accent, Color(0xFF7B5EA7), Color(0xFF2A8C8C), Color(0xFFB5527A), Color(0xFF5C7A2E), Color(0xFFB0643A),
 )
 fun routineAccent(name: String): Color = routineAccents[(name.hashCode() and Int.MAX_VALUE) % routineAccents.size]
 
 private val lightScheme = lightColorScheme(
-    primary = MrColors.Blue, onPrimary = Color.White,
-    primaryContainer = Color(0xFFDCE7F8), onPrimaryContainer = Color(0xFF0F2A52),
+    primary = MrColors.Accent, onPrimary = Color.White,
+    primaryContainer = Color(0xFFD3F0EB), onPrimaryContainer = Color(0xFF06302B),
     background = MrColors.Paper, onBackground = MrColors.Ink,
     surface = MrColors.Paper, onSurface = MrColors.Ink,
-    surfaceVariant = Color(0xFFE9EDF3), onSurfaceVariant = Color(0xFF3B4756),
+    surfaceVariant = Color(0xFFE9EDF3), onSurfaceVariant = Color(0xFF465166),
     surfaceContainerLowest = Color.White, surfaceContainerLow = Color.White, surfaceContainer = Color(0xFFF0F2F6),
     surfaceContainerHigh = Color(0xFFE9EDF3), surfaceContainerHighest = Color.White,
     outline = Color(0xFF8A94A2), outlineVariant = Color(0xFFDDE2E9),
@@ -59,14 +60,14 @@ private val lightScheme = lightColorScheme(
 )
 
 private val darkScheme = darkColorScheme(
-    primary = Color(0xFF8DB1EE), onPrimary = Color(0xFF0B2347),
-    primaryContainer = Color(0xFF1F3F72), onPrimaryContainer = Color(0xFFDCE7F8),
-    background = Color(0xFF11151B), onBackground = Color(0xFFE6E9EE),
-    surface = Color(0xFF11151B), onSurface = Color(0xFFE6E9EE),
-    surfaceVariant = Color(0xFF273040), onSurfaceVariant = Color(0xFFC1C9D4),
-    surfaceContainerLowest = Color(0xFF0D1015), surfaceContainerLow = Color(0xFF171C24), surfaceContainer = Color(0xFF1B212A),
-    surfaceContainerHigh = Color(0xFF222934), surfaceContainerHighest = Color(0xFF1E252F),
-    outline = Color(0xFF8A94A2), outlineVariant = Color(0xFF2E3744),
+    primary = Color(0xFF3CC4B3), onPrimary = Color(0xFF062B27),
+    primaryContainer = Color(0xFF0F4A44), onPrimaryContainer = Color(0xFFD3F0EB),
+    background = Color(0xFF0C1524), onBackground = Color(0xFFE6E9EE),
+    surface = Color(0xFF0C1524), onSurface = Color(0xFFE6E9EE),
+    surfaceVariant = Color(0xFF22324D), onSurfaceVariant = Color(0xFFC1C9D4),
+    surfaceContainerLowest = Color(0xFF09101C), surfaceContainerLow = Color(0xFF121D30), surfaceContainer = Color(0xFF15233A),
+    surfaceContainerHigh = Color(0xFF1B2B45), surfaceContainerHighest = Color(0xFF182840),
+    outline = Color(0xFF8A94A2), outlineVariant = Color(0xFF2A3C58),
     error = Color(0xFFFF8A80),
 )
 
@@ -86,7 +87,7 @@ fun stateColor(s: OccurrenceState): Color = when (s) {
     OccurrenceState.FAILED -> MrColors.Red
     OccurrenceState.UNCERTAIN, OccurrenceState.BLOCKED, OccurrenceState.FAILED_RETRYABLE -> MrColors.Amber
     OccurrenceState.SUBMITTED, OccurrenceState.CONFIRMED_SENT -> MrColors.Green
-    OccurrenceState.SENDING -> MrColors.Blue
+    OccurrenceState.SENDING -> MrColors.Info
     else -> MrColors.Grey
 }
 

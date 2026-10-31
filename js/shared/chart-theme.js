@@ -17,7 +17,7 @@
 // Fallbacks (light-theme values) used only if a token is missing, e.g. in tests.
 const FALLBACK = {
   '--text': '#12172b', '--muted': '#646b8d', '--grid': '#c3cadb',
-  '--surface': '#ffffff', '--accent': '#3a61f7',
+  '--surface': '#ffffff', '--accent': '#0e8074',
   '--st-healthy': '#0a7c4d', '--st-reorder': '#a35a05', '--st-excess': '#3a61f7',
   '--st-dead': '#d0291f', '--st-never': '#8b5cf6', '--st-zero': '#646b8d',
 };

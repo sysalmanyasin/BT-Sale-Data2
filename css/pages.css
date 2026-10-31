@@ -4,7 +4,7 @@
 @media(max-width:700px){.rpt-wrap{grid-template-columns:1fr;}}
 .dsearch{position:relative;}
 .dsearch input{width:100%;padding:8px 10px;background:var(--s2);border:1px solid var(--border);border-radius:7px;font-size:13px;font-family:var(--sans);color:var(--text);outline:none;}
-.dsearch input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.1);}
+.dsearch input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(14,128,116,.14);}
 .dsdrop{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:7px;box-shadow:var(--sh-md);max-height:240px;overflow-y:auto;z-index:100;margin-top:2px;display:none;}
 .dsdrop.on{display:block;}
 .dsopt{padding:7px 11px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
@@ -100,7 +100,7 @@
 .pr-tbl tr.tot td{font-weight:700;background:#eff6ff;border-top:2px solid #bfdbfe;color:#1e40af;}
 .pr-tbl tr.sub td{font-weight:700;background:#fef2f2;color:var(--red);border-top:1px solid #fecaca;}
 .pr-tbl tr.grp td{background:#f8fafc;font-weight:600;color:#334155;font-size:11px;text-transform:uppercase;letter-spacing:.07em;}
-.pr-header{background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;padding:14px 20px;border-radius:8px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;}
+.pr-header{background:linear-gradient(135deg,#101B2D,#0e3b44);color:#fff;padding:14px 20px;border-radius:8px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;}
 .pr-header h1{font-size:16px;font-weight:700;letter-spacing:-.01em;}
 .pr-header p{font-size:11px;opacity:.7;margin-top:2px;}
 .pr-header .pr-meta{text-align:right;font-size:11px;opacity:.8;}
@@ -197,7 +197,7 @@
    Rendered by js/ledger/ledger-page.js's renderLedgerView(); the markup only
    carries stable classnames (.ledger-header, .ledger-add-form, etc.),
    so all the visual work happens here — no JS changes needed. */
-.ledger-header{background:linear-gradient(135deg,#141b3d,#2543c9 65%,#3a61f7);color:#fff;border-radius:var(--r-md);padding:16px 20px!important;margin-bottom:14px!important;box-shadow:var(--sh-md);}
+.ledger-header{background:var(--grad-header);color:#fff;border-radius:var(--r-md);padding:16px 20px!important;margin-bottom:14px!important;box-shadow:var(--sh-md);}
 .ledger-header strong{font-size:14px;font-weight:700;letter-spacing:-.01em;}
 .ledger-header > div:last-child{font-size:12px;opacity:.85;}
 .ledger-header > div:last-child > div{font-size:22px!important;font-weight:700;font-family:var(--mono);opacity:1;letter-spacing:-.01em;}
@@ -205,7 +205,7 @@
 .ledger-opening-btn:hover{background:rgba(255,255,255,.24)!important;}
 
 .ledger-add-form{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);padding:12px 14px!important;box-shadow:var(--sh);align-items:center;}
-.ledger-add-form .btn{background:var(--accent);color:#fff;box-shadow:0 2px 8px -2px rgba(58,97,247,.5);margin-left:auto;}
+.ledger-add-form .btn{background:var(--accent);color:#fff;box-shadow:0 2px 8px -2px rgba(14,128,116,.5);margin-left:auto;}
 .ledger-add-form .btn:hover{background:var(--accent-dk);}
 
 .ledger-filter-bar{background:var(--s2)!important;border:1px solid var(--border);border-radius:var(--r-sm)!important;}

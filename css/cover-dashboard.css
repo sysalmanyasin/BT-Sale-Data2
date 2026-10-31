@@ -13,9 +13,9 @@
 /* ── Page hero banner ── */
 .cover-page-hero{
   position:relative;overflow:hidden;
-  background:linear-gradient(125deg,#0f172a 0%,#1e3a8a 42%,#2563eb 78%,#3b82f6 100%);
+  background:linear-gradient(125deg,#101B2D 0%,#0f3a45 42%,#0e8074 78%,#18A999 100%);
   border-radius:20px;padding:16px 22px 14px;margin-bottom:16px;color:#fff;
-  box-shadow:0 16px 36px -12px rgba(30,58,138,.55);
+  box-shadow:0 16px 36px -12px rgba(16,27,45,.55);
   border:1px solid rgba(255,255,255,.08);
 }
 .cover-page-hero::before{
@@ -25,7 +25,7 @@
 }
 .cover-page-hero::after{
   content:'';position:absolute;bottom:-80px;left:18%;width:240px;height:240px;
-  border-radius:50%;background:radial-gradient(circle,rgba(56,189,248,.22),transparent 70%);
+  border-radius:50%;background:radial-gradient(circle,rgba(24,169,153,.26),transparent 70%);
   pointer-events:none;
 }
 /* The big visible brand-mark watermark (Aug 2026 branding pass) — a
@@ -160,7 +160,7 @@
 .cover-kpi-tile.cls-green .cover-kpi-icon{background:rgba(10,124,77,.14);}
 .cover-kpi-tile.cls-amber .cover-kpi-icon{background:rgba(163,90,5,.14);}
 .cover-kpi-tile.cls-red .cover-kpi-icon{background:rgba(208,41,31,.14);}
-.cover-kpi-tile.cls-neutral .cover-kpi-icon{background:rgba(58,97,247,.14);}
+.cover-kpi-tile.cls-neutral .cover-kpi-icon{background:rgba(14,128,116,.14);}
 .cover-kpi-value{font-size:19px;font-weight:700;color:var(--text);line-height:1.15;font-family:var(--mono);}
 .cover-kpi-tile.cls-green .cover-kpi-value{color:var(--green);}
 .cover-kpi-tile.cls-amber .cover-kpi-value{color:var(--amber);}

@@ -1,15 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- NEON GLASS theme: deep-space surfaces, luminous accents.
+    <color name="ic_launcher_background">#FF101B2D</color>
+    <!-- DuaPharma identity applied to the NEON GLASS theme: Primary Navy surfaces, Intelligence Teal edge/glow,
+         Insight Amber for aggregates. Module accents (sales/credit/inventory/closing) and status colours are
+         deliberately unchanged so each widget keeps its meaning.
          Token names are unchanged so every widget layout picks this up. -->
 
     <!-- Surfaces -->
-    <color name="surface_card">#FF0B1228</color>
-    <color name="surface_card_top">#FF0F1A38</color>
-    <color name="surface_card_bottom">#FF060A18</color>
-    <color name="surface_inset">#FF0D1731</color>
-    <color name="surface_inset_border">#FF1F2F5C</color>
-    <color name="hairline">#FF1A2850</color>
+    <color name="surface_card">#FF101B2D</color>
+    <color name="surface_card_top">#FF15243C</color>
+    <color name="surface_card_bottom">#FF0A1322</color>
+    <color name="surface_inset">#FF12203A</color>
+    <color name="surface_inset_border">#FF26385A</color>
+    <color name="hairline">#FF223552</color>
 
     <!-- Ink (text on dark) -->
     <color name="ink_900">#FFF2F6FF</color>
@@ -50,27 +53,27 @@
     <color name="status_info_soft">#265CC8FF</color>
 
     <!-- Aggregated (gold on violet-black) -->
-    <color name="agg_bg_top">#FF1A1238</color>
-    <color name="agg_bg_bottom">#FF080616</color>
-    <color name="agg_hairline">#FF3A2D66</color>
-    <color name="agg_gold">#FFF4C56A</color>
+    <color name="agg_bg_top">#FF152540</color>
+    <color name="agg_bg_bottom">#FF0A1322</color>
+    <color name="agg_hairline">#FF2B3E5F</color>
+    <color name="agg_gold">#FFF2B84B</color>
     <color name="agg_gold_soft">#FFC9AB78</color>
-    <color name="agg_text_dim">#FFB7ADD6</color>
+    <color name="agg_text_dim">#FFB4C0D6</color>
     <color name="agg_mint">#FF4ADE80</color>
 
     <!-- Neon edge + ambient glows -->
-    <color name="neon_cyan">#FF22D3EE</color>
+    <color name="neon_cyan">#FF18A999</color>
     <color name="neon_violet">#FF8B7CFF</color>
-    <color name="neon_border">#4422D3EE</color>
-    <color name="glow_cyan_start">#2822D3EE</color>
-    <color name="glow_cyan_end">#0022D3EE</color>
+    <color name="neon_border">#4418A999</color>
+    <color name="glow_cyan_start">#2818A999</color>
+    <color name="glow_cyan_end">#0018A999</color>
     <color name="glow_violet_start">#248B7CFF</color>
     <color name="glow_violet_end">#008B7CFF</color>
-    <color name="glow_gold_start">#2AF4C56A</color>
-    <color name="glow_gold_end">#00F4C56A</color>
-    <color name="edge_fade_start">#0022D3EE</color>
+    <color name="glow_gold_start">#2AF2B84B</color>
+    <color name="glow_gold_end">#00F2B84B</color>
+    <color name="edge_fade_start">#0018A999</color>
     <color name="edge_fade_end">#008B7CFF</color>
-    <color name="edge_gold_start">#00F4C56A</color>
-    <color name="edge_gold_mid">#FFF4C56A</color>
+    <color name="edge_gold_start">#00F2B84B</color>
+    <color name="edge_gold_mid">#FFF2B84B</color>
     <color name="edge_gold_end">#00FF9F5A</color>
 </resources>

@@ -48,7 +48,7 @@ class AndroidNotifier(private val context: Context) : Notifier {
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         val pi = PendingIntent.getActivity(context, occurrence.id.hashCode(), intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val n = NotificationCompat.Builder(context, channel)
-            .setSmallIcon(R.drawable.ic_stat_mail)
+            .setSmallIcon(R.drawable.ic_stat_duapharma)
             .setContentTitle(routine.name)
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))

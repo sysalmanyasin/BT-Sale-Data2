@@ -109,7 +109,7 @@ class AttendanceForegroundService : Service() {
             // TODO: swap for a proper monochrome notification icon
             // (res/drawable, white silhouette on transparent) before a
             // real release — this system icon is a scaffold placeholder.
-            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+            .setSmallIcon(R.drawable.ic_stat_duapharma)
             .setContentTitle("Attendance tracking active")
             .setContentText("Automatic check-in/out is running")
             .setPriority(NotificationCompat.PRIORITY_LOW)

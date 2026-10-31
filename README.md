@@ -42,6 +42,7 @@ A pharmacy operations platform for sales, staff, inventory, reporting, closing, 
 - [Testing and continuous integration](#testing-and-continuous-integration)
 - [Backend and deployment](#backend-and-deployment)
 - [Security and data handling](#security-and-data-handling)
+- [Brand identity](#brand-identity)
 - [Development guidelines](#development-guidelines)
 - [Documentation](#documentation)
 
@@ -449,6 +450,23 @@ This application handles sensitive pharmacy, financial, staff and operational in
 **Important operational distinction:** the companion applications do not all have identical authentication or data-access models. Attendance, widgets, Emergency Billing, MailRoutine and the main PWA must be reviewed independently. Consult their current application documentation and database migrations before changing permissions or deploying a release.
 
 If a credential is exposed, treat it as compromised and rotate or revoke it.
+
+## Brand identity
+
+**DuaPharma** is the parent brand; **BT Pharmacy Operations** is the platform and **BT Intelligence** the AI layer. Product names, package IDs and application IDs are unchanged. Tagline: *Technology for better pharmacy operations.*
+
+| Colour | Hex | Use |
+| --- | --- | --- |
+| Primary Navy | `#101B2D` | Headers, launcher-icon field, dark surfaces, `theme-color` |
+| Intelligence Teal | `#18A999` | Logo line, highlights, glows. Not for white text (2.9:1) |
+| Teal, AA-safe | `#0E8074` (light) / `#14998B` (dark) | `--accent`: buttons, links, focus |
+| Insight Amber | `#F2B84B` | Logo endpoint, nav underline end, aggregate highlights |
+| Slate | `#465166` | Secondary text |
+| White | `#FFFFFF` | Logo cross, text on navy |
+
+The logo is a geometric pharmacy cross with a rising data curve ending in an amber point. `icons/icon.svg` is the master; the PNG sizes, maskable icons, monochrome mark and watermarks in `icons/` are exported from the same geometry. The Android apps carry the same mark as vector adaptive icons (with a themed monochrome layer) and a monochrome `ic_stat_duapharma` notification icon.
+
+Semantic colours (success, warning, error, inventory status, MailRoutine "sending") are intentionally not brand colours. Inventory "excess" uses `--info`, the old blue, so it stays distinct from the teal accent. Changing shipped icons or CSS needs `npm run build` so the service-worker cache version moves.
 
 ## Development guidelines
 

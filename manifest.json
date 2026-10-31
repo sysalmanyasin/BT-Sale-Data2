@@ -1,14 +1,14 @@
 {
   "name": "Bahria Town Sales IC",
   "short_name": "BT Sales",
-  "description": "Bahria Town Sales Intelligence Centre — pharmacy daily sales tracking, reporting, and manager tools.",
+  "description": "BT Pharmacy Operations by DuaPharma — Bahria Town Sales Intelligence Centre: daily sales tracking, reporting, and manager tools.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui", "browser"],
   "orientation": "portrait-primary",
-  "background_color": "#0f172a",
-  "theme_color": "#2563eb",
+  "background_color": "#101B2D",
+  "theme_color": "#101B2D",
   "lang": "en",
   "dir": "ltr",
   "id": "./index.html",
@@ -63,13 +63,13 @@
       "purpose": "any"
     },
     {
-      "src": "icons/icon-192.png",
+      "src": "icons/icon-maskable-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "icons/icon-512.png",
+      "src": "icons/icon-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

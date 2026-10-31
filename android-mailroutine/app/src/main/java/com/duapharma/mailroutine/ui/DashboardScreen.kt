@@ -109,7 +109,7 @@ private fun WorkTab(groups: Map<Bucket, List<WorkItem>>, nav: NavState) {
             Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 StatTile("Need you", count(Bucket.ATTENTION) + count(Bucket.OVERDUE), MrColors.Red, Modifier.weight(1f), filter == 0) { toggle(0) }
                 StatTile("Due now", count(Bucket.DUE), MrColors.Amber, Modifier.weight(1f), filter == 1) { toggle(1) }
-                StatTile("Upcoming", count(Bucket.UPCOMING), MrColors.Blue, Modifier.weight(1f), filter == 2) { toggle(2) }
+                StatTile("Upcoming", count(Bucket.UPCOMING), MrColors.Accent, Modifier.weight(1f), filter == 2) { toggle(2) }
             }
         }
         // When nothing needs you, lead with the single next email so the answer to "what's next?" is one glance.
@@ -218,7 +218,7 @@ private fun RoutinesTab(routines: List<Routine>, vm: DashboardViewModel, nav: Na
                                 Consent.isValid(r) -> "Sends automatically"
                                 else -> "You send it manually"
                             },
-                            color = if (!r.paused && Consent.isValid(r)) MrColors.Blue else MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = if (!r.paused && Consent.isValid(r)) MrColors.Accent else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     Switch(checked = !r.paused, onCheckedChange = { vm.setPaused(r.id, !it) })
