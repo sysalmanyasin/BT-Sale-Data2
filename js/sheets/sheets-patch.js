@@ -371,11 +371,6 @@
           const tr = startR + ri;
           const tc = startC + ci;
 
-          // Try global setter functions that notes-sheets.js may expose
-          if (typeof nsSetCellValue === 'function') { nsSetCellValue(tr, tc, val); pasted++; return; }
-          if (typeof setCellValue    === 'function') { setCellValue(tr, tc, val);    pasted++; return; }
-          if (typeof sheetSetCell    === 'function') { sheetSetCell(tr, tc, val);    pasted++; return; }
-
           // DOM fallback: find the cell by data attributes and simulate input
           const cell = root.querySelector(
             `[${rowAttr}="${tr}"][${colAttr}="${tc}"]`
@@ -457,10 +452,6 @@
 
   window.shtFmNew = function () {
     _closeFilePanel();
-    // Try the notes-sheets.js new-sheet function by a few common names
-    if (typeof nsNewSheet       === 'function') { nsNewSheet();        return; }
-    if (typeof addNewSheet      === 'function') { addNewSheet();       return; }
-    if (typeof sheetNew         === 'function') { sheetNew();          return; }
     // Click the "+" button in the sheet tab bar
     const addBtn = document.querySelector('#mgr-sheets [title*="new" i], #mgr-sheets [title*="add" i], #mgr-sheets button[onclick*="add" i]');
     if (addBtn) { addBtn.click(); return; }
@@ -491,9 +482,6 @@
 
   window.shtFmSave = function () {
     _closeFilePanel();
-    if (typeof saveAllSheets === 'function') { saveAllSheets(); return; }
-    if (typeof nsSaveAll     === 'function') { nsSaveAll();     return; }
-    if (typeof saveSheetData === 'function') { saveSheetData(); return; }
     // Click the save button in the toolbar
     const btn = document.querySelector(
       '#mgr-sheets [onclick*="save" i]:not(.sfm-row), #mgr-sheets [title*="save" i]:not(.sfm-row)'
@@ -510,10 +498,6 @@
       '#mgr-sheets [title*="xlsx" i]:not(.sfm-row), #mgr-sheets [title*="export" i]:not(.sfm-row)'
     );
     if (btn) { btn.click(); return; }
-    // Try direct function call
-    if (typeof exportSheetXLSX   === 'function') { exportSheetXLSX();   return; }
-    if (typeof nsExportXLSX      === 'function') { nsExportXLSX();      return; }
-    if (typeof downloadSheetXLSX === 'function') { downloadSheetXLSX(); return; }
     toast('Click the XLSX button in the toolbar to export', 'w');
   };
 

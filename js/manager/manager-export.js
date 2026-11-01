@@ -227,11 +227,6 @@ function _msBuildAlerts() {
       aimRulesCheckAll().forEach(f => alerts.push(f.msg));
     }
   } catch(_) { /* best-effort: failure is intentionally non-fatal here */ }
-  try {
-    if (typeof aimSectionZeroAlerts === 'function') {
-      aimSectionZeroAlerts().forEach(a => alerts.push(a));
-    }
-  } catch(_) { /* best-effort: failure is intentionally non-fatal here */ }
   if (!alerts.length) return '';
   return `
     <div class="ms-section">

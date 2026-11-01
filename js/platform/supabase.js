@@ -198,7 +198,6 @@ function _buildPayload() {
     incentive,
     custom:   JSON.parse(Repository.getItem(CSEC_KEY) || '{}'),
     targets:  JSON.parse(Repository.getItem(TGT_K)    || '{}'),
-    assistant: (typeof aimBuildAssistantPayload === 'function') ? aimBuildAssistantPayload() : null,
     jazzcash: JSON.parse(Repository.getItem(JC_KEY)       || 'null'),
     jcTally:  JSON.parse(Repository.getItem(JC_TALLY_KEY) || 'null'),
     // Generalized Ledger (Expense, Jazz Cash's Daily Ledger, any custom
@@ -353,10 +352,6 @@ function mergeIncomingData(data, isPull = false) {
       else if (!(month in merged)) merged[month] = data.targets[month]; // local wins on push — only fill gaps
     });
     Actions.saveFeatureData(TGT_K, JSON.stringify(merged));
-  }
-
-  if (data.assistant && typeof aimMergeAssistantIncoming === 'function') {
-    aimMergeAssistantIncoming(data.assistant, isPull);
   }
 
   // ── JazzCash ledger — entries merged by id, openingBalance follows the

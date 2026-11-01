@@ -10,12 +10,11 @@ import { aimRulesCheckAll } from '../lib/rules-engine.js';
  * ║  DASHBOARD INSIGHTS  —  BT Sales App  ·  Phase 3                   ║
  * ╠══════════════════════════════════════════════════════════════════════╣
  * ║  Adds to Dashboard (above existing KPI row):                        ║
- * ║   1. Daily Briefing card  — rotates on strongest signal             ║
- * ║   2. Target Pace card     — ₨/day needed to hit target              ║
- * ║   3. Rotating insight strip — weekday comp / staff outlier /        ║
+ * ║   1. Target Pace card     — ₨/day needed to hit target              ║
+ * ║   2. Rotating insight strip — weekday comp / staff outlier /        ║
  * ║                               expense spike / target pace           ║
- * ║   4. "Since You Last Looked" diff badge                             ║
- * ║   5. Rule Alerts stack    — surfaced from aimRulesCheckAll()        ║
+ * ║   3. "Since You Last Looked" diff badge                             ║
+ * ║   4. Rule Alerts stack    — surfaced from aimRulesCheckAll()        ║
  * ╠══════════════════════════════════════════════════════════════════════╣
  * ║  Public API:                                                        ║
  * ║    buildDashboardInsights()  — call from buildDashboard() at top    ║
@@ -40,40 +39,6 @@ import { aimRulesCheckAll } from '../lib/rules-engine.js';
   flex-direction: column;
   gap: 10px;
 }
-
-/* ── Briefing card ── */
-.dbi-briefing-card {
-  background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
-  border-radius: 14px;
-  padding: 14px 16px;
-  color: #fff;
-  position: relative;
-  overflow: hidden;
-}
-.dbi-briefing-card::before {
-  content: '';
-  position: absolute; inset: 0;
-  background: radial-gradient(ellipse at top right, rgba(59,130,246,.25) 0%, transparent 65%);
-  pointer-events: none;
-}
-.dbi-briefing-label {
-  font-size:11px; font-weight: 700; letter-spacing: .1em;
-  text-transform: uppercase; color: #7dd3fc; margin-bottom: 6px;
-  display: flex; align-items: center; gap: 6px;
-}
-.dbi-briefing-label::after {
-  content: ''; flex: 1; height: 1px; background: rgba(125,211,252,.25);
-}
-.dbi-briefing-text {
-  font-size: 13px; line-height: 1.6; color: #e2e8f0;
-}
-.dbi-briefing-text b { color: #fff; }
-.dbi-briefing-dismiss {
-  position: absolute; top: 10px; right: 12px;
-  background: none; border: none; color: rgba(255,255,255,.4);
-  font-size: 16px; cursor: pointer; padding: 0; line-height: 1;
-}
-.dbi-briefing-dismiss:hover { color: rgba(255,255,255,.8); }
 
 /* ── Target Pace card ── */
 .dbi-pace-card {
@@ -209,7 +174,6 @@ import { aimRulesCheckAll } from '../lib/rules-engine.js';
 /* ══════════════════════════════════════════════════════════════════════
    CONSTANTS & HELPERS
 ══════════════════════════════════════════════════════════════════════ */
-const _DBI_BRIEF_KEY    = 'bt_dbi_brief_dismissed'; // date string when dismissed
 const _DBI_LAST_KEY     = 'bt_dbi_last_session';    // { date, totalMonths, lastMonthTotal }
 const _DBI_INSIGHT_IDX  = 'bt_dbi_insight_idx';     // current rotating insight index
 
@@ -222,38 +186,6 @@ function _dbiCurrentMonthYear() {
 }
 function _dbiTgts() {
   try { return JSON.parse(Repository.getItem('bt_targets') || '{}'); } catch(_) { return {}; }
-}
-
-/* ══════════════════════════════════════════════════════════════════════
-   1. BRIEFING CARD
-══════════════════════════════════════════════════════════════════════ */
-function _dbiBuildBriefing() {
-  // Skip if dismissed today
-  const dismissed = Repository.getItem(_DBI_BRIEF_KEY);
-  if (dismissed === _dbiToday()) return '';
-
-  const briefText = (typeof aimBriefingGenerate === 'function') ? aimBriefingGenerate() : null;
-  if (!briefText) return '';
-
-  return `
-    <div class="dbi-briefing-card" id="dbi-briefing-card">
-      <button class="dbi-briefing-dismiss"${act('click', '_dbiDismissBriefing')} title="Dismiss for today">✕</button>
-      <div class="dbi-briefing-label">☀️ Daily Briefing</div>
-      <div class="dbi-briefing-text">${briefText}</div>
-    </div>`;
-}
-
-function _dbiDismissBriefing() {
-  Actions.saveFeatureData(_DBI_BRIEF_KEY, _dbiToday());
-  const el = document.getElementById('dbi-briefing-card');
-  if (el) {
-    el.style.transition = 'opacity .25s, max-height .3s, margin .3s, padding .3s';
-    el.style.opacity = '0';
-    el.style.maxHeight = '0';
-    el.style.padding = '0';
-    el.style.marginBottom = '0';
-    setTimeout(() => el.remove(), 350);
-  }
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -521,7 +453,6 @@ function buildDashboardInsights() {
 
   wrap.innerHTML = [
     _dbiBuildDiffBadge(),
-    _dbiBuildBriefing(),
     _dbiBuildTargetPace(),
     _dbiBuildInsightStrip(),
     _dbiBuildRuleAlerts(),
@@ -529,7 +460,6 @@ function buildDashboardInsights() {
 }
 
 // Bridge what's used externally or via a same-file onclick.
-window._dbiDismissBriefing = _dbiDismissBriefing;
 window._dbiBuildTargetPace = _dbiBuildTargetPace;
 window._dbiComputeInsights = _dbiComputeInsights;
 window._dbiGoInsight = _dbiGoInsight;

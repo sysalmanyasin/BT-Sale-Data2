@@ -112,7 +112,7 @@ function mgrMonths() {
     Repository.getKeysByPrefix('mw_incentive_').forEach(k => seen.add(k.slice('mw_incentive_'.length)));
   } catch(e) { /* best-effort: failure is intentionally non-fatal here */ }
   try {
-    const all = typeof _csecLoad === 'function' ? _csecLoad() : JSON.parse(Repository.getItem('mw_custom_sections_v1') || '{}');
+    const all = JSON.parse(Repository.getItem('mw_custom_sections_v1') || '{}');
     Object.values(all || {}).forEach(sec => Object.keys((sec && sec.months) || {}).forEach(m => seen.add(m)));
   } catch(e) { /* best-effort: failure is intentionally non-fatal here */ }
 

@@ -149,12 +149,6 @@ const Analytics = (function () {
       hasData = hasData || (typeof _pettyTotalForMonth === 'function' && _pettyTotalForMonth(my) !== 0);
     } catch(e) { /* best-effort: failure is intentionally non-fatal here */ }
     try {
-      const csecAll = typeof _csecLoad === 'function' ? _csecLoad() : {};
-      hasData = hasData || Object.values(csecAll).some(sec =>
-        ((sec && sec.months && sec.months[my]) || []).some(r =>
-          (parseFloat(r.amount) || 0) !== 0 || r.desc || r.notes));
-    } catch(e) { /* best-effort: failure is intentionally non-fatal here */ }
-    try {
       const inc = JSON.parse(Repository.getItem('mw_incentive_' + my) || '{}');
       hasData = hasData || Object.values(inc).some(v => (Math.round(Number(v) || 0)) !== 0);
     } catch(e) { /* best-effort: failure is intentionally non-fatal here */ }
@@ -172,11 +166,6 @@ const Analytics = (function () {
     } catch(e) { /* best-effort: failure is intentionally non-fatal here */ }
     try {
       Repository.getKeysByPrefix('mw_petty_').forEach(k => found.add(k.slice('mw_petty_'.length)));
-    } catch(e) { /* best-effort: failure is intentionally non-fatal here */ }
-    try {
-      const csecAll = typeof _csecLoad === 'function' ? _csecLoad() : {};
-      Object.values(csecAll).forEach(sec =>
-        Object.keys((sec && sec.months) || {}).forEach(m => found.add(m)));
     } catch(e) { /* best-effort: failure is intentionally non-fatal here */ }
     const current = _currentMonthVal();
     return Array.from(found)

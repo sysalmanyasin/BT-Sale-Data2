@@ -12,7 +12,7 @@ const ROOT = new URL('../../', import.meta.url).pathname;
 // (166 = the 165 left after the explicit-import pass + _fmCustom, which analytics.js must read lazily because
 // importing fields.js would pull DOM side effects into that pure-calculation module.)
 // +3 for names that cannot be imported without loading an index.html entry module twice (see no-double-loaded-modules.test.js).
-const LEGACY_GLOBAL_BUDGET = 169;
+const LEGACY_GLOBAL_BUDGET = 150;
 
 function walk(dir, out = []) {
   for (const n of readdirSync(join(ROOT, dir))) {

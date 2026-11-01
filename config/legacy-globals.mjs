@@ -37,12 +37,6 @@ export const LEGACY_GROUPS = {
   "defined in js/ui/ui.js, which exposes it only via window (add an export and import it to retire)": [
     'rebuildAll', 'rebuildDropdowns', 'toast', 'updateGhBadge',
   ],
-  "dead optional hooks (typeof-guarded calls to functions defined nowhere; delete the call sites)": [
-    '_csecLoad', '_selDate', '_selMy', 'addNewSheet', 'aimBriefingGenerate', 'aimBuildAssistantPayload',
-    'aimMergeAssistantIncoming', 'aimSectionZeroAlerts', 'downloadSheetXLSX', 'exportSheetXLSX', 'nsExportXLSX', 'nsNewSheet',
-    'nsSaveAll', 'nsSetCellValue', 'saveAllSheets', 'saveSheetData', 'setCellValue', 'sheetNew',
-    'sheetSetCell',
-  ],
   "module-defined, exposed through window bridges (core->domain coupling; invert via event-bus or shared/)": [
     // Not importable: each of these files is also an index.html entry, so an import would load it twice.
     'initStaffPayslipTab', 'initSyncCenter', 'scCanWrite',
