@@ -78,7 +78,7 @@ jobs:
         run: exit 1
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: closing-widget-debug-apk
           path: android-widget/app/build/outputs/apk/debug/app-debug.apk

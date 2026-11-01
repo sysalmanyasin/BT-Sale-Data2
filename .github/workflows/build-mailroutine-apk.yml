@@ -120,7 +120,7 @@ jobs:
 
       - name: Upload test reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mailroutine-test-reports
           path: android-mailroutine/app/build/reports/tests/
@@ -128,7 +128,7 @@ jobs:
           retention-days: 14
 
       - name: Upload debug APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mailroutine-debug-apk
           path: android-mailroutine/app/build/outputs/apk/debug/*.apk
@@ -136,7 +136,7 @@ jobs:
           retention-days: 30
 
       - name: Upload exported Room schema
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mailroutine-room-schemas
           path: android-mailroutine/app/schemas/
@@ -224,7 +224,7 @@ jobs:
         run: rm -f "$RUNNER_TEMP/mailroutine-release.jks"
 
       - name: Upload release APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mailroutine-release-apk
           path: android-mailroutine/app/build/outputs/apk/release/*.apk
