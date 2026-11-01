@@ -74,7 +74,7 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.9.1")
 
     // Geofencing + location fix at the moment of a transition.
-    implementation("com.google.android.gms:play-services-location:21.3.0")
+    implementation("com.google.android.gms:play-services-location:21.4.0")
 
     // QR fallback — a maintained, MIT-licensed wrapper around ZXing.
     // Chosen over ML Kit barcode scanning specifically to avoid a second
