@@ -27,7 +27,8 @@ A pharmacy operations platform for sales, staff, inventory, reporting, closing, 
 | Default branch | `main` |
 | Web hosting | GitHub Pages with a custom domain |
 | Main backend | Supabase |
-| Web application | Static HTML, CSS and JavaScript PWA |
+| Web application | Static HTML, CSS and JavaScript PWA (no production bundle) |
+| Release notes | [CHANGELOG.md](CHANGELOG.md); the live service-worker cache version is in `sw.js` and `build-manifest.json` |
 | Native applications | Kotlin-based Android projects |
 
 ## Contents
@@ -42,6 +43,7 @@ A pharmacy operations platform for sales, staff, inventory, reporting, closing, 
 - [Testing and continuous integration](#testing-and-continuous-integration)
 - [Backend and deployment](#backend-and-deployment)
 - [Security and data handling](#security-and-data-handling)
+- [Known limitations](#known-limitations)
 - [Brand identity](#brand-identity)
 - [Development guidelines](#development-guidelines)
 - [Documentation](#documentation)
@@ -52,7 +54,8 @@ The platform brings several pharmacy workflows into one operational environment.
 
 | Area | Main capabilities |
 |---|---|
-| **Sales** | Daily sales entry, dashboard, historical records, reports, payments, reconciliation and cash-deposit reporting |
+| **Cover** | Operational hub with a Summary / Detailed view, section tiles, cross-domain signals and Herald headlines |
+| **Sales** | Daily sales entry, dashboard, historical records, reports, payments, reconciliation, cash-deposit reporting and the Daily Check List |
 | **Management** | Staff Registry, staff notes, targets, ledger, salary, payslips, petty cash, credit, incentives and attendance |
 | **Inventory** | Inventory overview, Stock Ledger, excess stock, reorder analysis and inventory-health indicators |
 | **STR** | Stock transfer requests and awaited, dispatched and received workflows |
@@ -60,7 +63,7 @@ The platform brings several pharmacy workflows into one operational environment.
 | **Audit** | Audit assignments and read-only integration with the separate Pharmacy Audit Hub |
 | **Emergency Billing** | Break-glass billing, cart, held bills, receipts, history and validated refund operations |
 | **Documents and Sheets** | Notes, multi-file workbooks and live-data materialisation |
-| **Utilities** | Synchronisation, PDF Library, activity log, search, settings and backup tools |
+| **Utilities** | Sync Center, PDF Library, activity log, global search, read-only Gmail briefing, Send via Gmail, settings and Google Drive backup |
 | **Herald** | Rule-based daily operational headlines |
 | **BT Intelligence** | AI-assisted analysis, operational findings, forecasts, investigations and the Dua assistant |
 | **Inventory Search** | Standalone medicine-reference and inventory-search PWA |
@@ -92,16 +95,17 @@ The root directory contains the primary PWA.
 - Uses a service worker for app-shell caching and offline resilience.
 - Uses Supabase for authentication, database access, synchronisation, storage and server-side functions.
 - Includes the main sales, management, inventory, closing, STR, audit and intelligence workflows.
+- Works as a single-device-active workspace: Sync Center coordinates devices, and credit and ledger data merge entry by entry with delete tombstones rather than last-write-wins.
 
 **Entry point:** `index.html`
 
-**Important files:** `manifest.json`, `sw.js`, `build-manifest.json`, `js/` and `css/`.
+**Important files:** `manifest.json`, `sw.js`, `build-manifest.json`, `CHANGELOG.md`, `js/` and `css/`.
 
 ### 2. Inventory Search PWA
 
 Located in `inventory-search/`.
 
-A separate, lightweight PWA for medicine reference and inventory search, with an AI-assisted chat interface. It has its own application entry point and supporting Supabase Edge Functions.
+A separate, lightweight PWA for medicine reference and inventory search, with an AI-assisted chat interface. It has its own entry point, service worker (`inv-search-shell-*` cache) and icon set, and uses the public `inventory-chat` and `medicine-ai-info` Edge Functions (no sign-in step).
 
 It is a reference and operational search tool, not a clinical decision-support system.
 
@@ -111,18 +115,19 @@ Each Android application is an independent Gradle project with its own source co
 
 | Application | Directory | Purpose |
 |---|---|---|
-| **Closing Summary Widgets** | `android-widget/` | 22 home-screen widgets for Android, covering closing, sales, credit and inventory information |
-| **BT Attendance** | `android-attendance/` | Staff attendance using geofencing, check-in/check-out events and QR scanning |
-| **MailRoutine** | `android-mailroutine/` | Scheduled, template-driven work emails through an authorised Google Workspace/Gmail account |
+| **Dua Closing** (Closing Summary Widgets) | `android-widget/` | 22 home-screen widgets covering closing, sales, credit, inventory and STR information; mirrors key web calculations so it works without the PWA open |
+| **Dua Attendance** (BT Attendance) | `android-attendance/` | Staff attendance using geofencing, check-in/check-out events, QR fallback, offline queue and manager notifications |
+| **Dua Mail** (MailRoutine) | `android-mailroutine/` | Scheduled, template-driven work emails through an authorised Google Workspace/Gmail account, with two home-screen widgets |
 
-The Android projects do not share a single Gradle project or application lifecycle.
+The Android projects do not share a single Gradle project or application lifecycle. The former Trusted Web Activity wrapper (`android-app/`) has been removed.
 
 **MailRoutine highlights**
 - Recurring daily and weekly email routines.
 - Dynamic template fields and recipient management.
 - Local reminders, scheduling and send history.
+- Home-screen widgets: *Next up* and *Upcoming emails*.
 - Attachments and credential-free backup/restore.
-- Optional AI-assisted writing.
+- Optional AI-assisted writing (Groq or Anthropic; off until an API key is added).
 - Gmail sending through Google OAuth.
 
 MailRoutine scheduling is device-local and subject to Android background-execution restrictions. It is not a cloud scheduler.
@@ -136,13 +141,13 @@ See each application's README for setup, permissions, build instructions, securi
 | Web frontend | HTML, CSS, vanilla JavaScript and ES modules |
 | PWA | Web App Manifest, Service Worker and browser storage |
 | Backend | Supabase PostgreSQL, Auth, Storage, REST, RPC and Edge Functions |
-| AI | Supabase Edge Functions, external model providers, tool-based assistant and pgvector-backed knowledge search |
+| AI | `bt-agent` Edge Function over a fail-over pool of external providers (Groq, Cerebras, Gemini, OpenRouter), a browser-driven tool loop, pgvector-backed knowledge search and the browser's Web Speech API for voice |
 | Charts and documents | Chart.js, jsPDF, jsPDF-AutoTable, html2canvas and XLSX |
 | Android | Kotlin, Android SDK, Gradle, Jetpack Compose, Room and WorkManager where applicable |
-| Testing | Node.js built-in test runner, jsdom and ESLint |
+| Quality | Node.js built-in test runner, jsdom, ESLint (`no-undef` as an error, zero warnings), c8 coverage floor and an esbuild bundle check |
 | CI/CD | GitHub Actions |
 
-The web application is served as static files. Its release build script updates asset version stamps and service-worker cache metadata; it does not currently produce a bundled/minified production application.
+The web application is served as static files straight from the repository root. Its release build script updates content-hash asset stamps and service-worker cache metadata. **esbuild is used only to verify that every module entry resolves** (`npm run bundle:check`); no bundled or minified production build is shipped yet, so the app still relies on script load order.
 
 ## Architecture
 
@@ -173,23 +178,44 @@ UI refresh and dependent modules
 | **EventBus** | Notify other modules about meaningful changes |
 | **Shared modules** | Keep reusable calculations and business rules consistent |
 
+### Code layers inside `js/`
+
+- **Core layer:** `platform/` (state, sync, auth, boot), `ui/` (shell, navigation, search) and `lib/` (date, format, print, rules, Gmail send, PDF library).
+- **Domain folders:** `sales/`, `manager/`, `inventory/`, `str/`, `closing/`, `audit/`, `emergency-billing/`, `ledger/`, `sheets/`, `mail/`, `cover/`, `herald/`, plus `agent/` and `ai-center/`.
+- **`shared/`:** pure, reusable calculations and business rules. A domain may import only `shared/`, the core layer and its own folder; `tests/static/domain-boundaries.test.js` enforces this, and `scripts/move-module.mjs` moves modules and rewrites references.
+- **Delegated DOM actions:** there are no inline `on*=` handlers. `js/shared/dom-actions.js` dispatches `data-on-click` style attributes, and `tests/static/no-inline-handlers.test.js` keeps the count at zero.
+- **Legacy globals:** `no-undef` is an ESLint error. The names the app still reads as implicit globals are listed in `config/legacy-globals.mjs`, a registry that may only shrink (ratcheted by `tests/static/legacy-globals.test.js`).
+- **Script CSP:** `index.html` carries a `script-src` policy and has no inline scripts; `tests/static/csp-and-cors.test.js` keeps allowed script hosts consistent.
+- **One backend config:** Supabase URLs and public keys come from `js/shared/backend-config.js` only.
+
 **Important exceptions:** Emergency Billing has a separate cart, local held-bill state and database/RPC transaction path. Some integrations are read-only bridges to external or separately maintained data sources. Do not assume every screen writes through the standard Repository/Actions pipeline.
 
 ### BT Intelligence and AI assistant
 
-BT Intelligence is the operational intelligence interface, not a second business-data system.
+BT Intelligence (`#ai-center`) is the operational intelligence interface, not a second business-data system. It owns no business logic, no data layer and no write path.
 
-- Presents operational findings, system status and deeper analysis.
-- Includes sales forecasting, inventory insights, audit views and the Forecast Game.
-- Uses the existing Dua assistant for conversational investigation.
-- Read-only intelligence views do not create a separate write path.
-- Assistant changes use the existing tool registry, validation, approval, audit and undo mechanisms.
+- Command Deck tabs: Overview, Sales & Forecast, Inventory, Operations, Audit and More.
+- Includes weekday forecasting, inventory and STR insights, Audit & Variance, Near Expiry, Payments, agent health and activity, and the on-device **AI Forecast Game**.
+- **Dua**, the single shared assistant, is available on every page from the floating *Ask Dua* button; BT Intelligence has no chat of its own.
+- A missing data source is shown as unknown, never as an invented value.
 
-The AI Center opens the shared Dua assistant; it does not maintain an independent chat or business-data store.
+**Assistant safety model**
 
-AI output should be treated as assistance, not as an authoritative financial, inventory, medical or operational record. Provider availability and response quality can vary.
+- **Deterministic first.** Dashboard, Herald and the briefing alerts are rule-based and AI-free. The assistant never computes figures itself; it calls read-only tools that use the app's own calculators.
+- **Changes are locked by default** (device-local lock). Once unlocked, every change is an approval-gated proposal written only through `Actions` / `LedgerActions`, audited (`agent_audit`) and undoable, including after a reload.
+- **Gate in code, not in the prompt.** `tool-registry.runTool` refuses to run a `write` or `critical` tool when locked, unapproved or rejected. `BTAgent.decide()` refuses approvals that are not a trusted user gesture, so scripts and voice cannot approve.
+- **Deletes** need the user to type `DELETE`, and the model must name the exact record it read first.
+- **Hard blocks** (`js/agent/core/hard-blocks.js`) cover salary finalisation, refunds and bulk deletes. A server-side **kill switch** disables the assistant on all devices.
+- **Auditor and quotas.** `core/auditor.js` adds warnings for repeated or large changes; provider usage is rate-limited server-side.
+- **Provider routing.** `bt-agent` requires a signed-in session **and** an active `bt_authorized_users` row. Salary, credit, staff and email content is never sent to providers that may train on free-tier prompts, and arguments are redacted before storage.
+- **Voice** uses the browser's Web Speech API; nothing is recorded by the app.
+- **Evaluation:** `tests/eval/` holds routing, tool-offering and golden-answer cases, and requires every registered tool to appear in at least one case. It runs inside `npm test`, which also gates the Supabase deploy.
 
-For its internal design, see [AI Center architecture](docs/ai-center-architecture.md).
+AI output is assistance, not an authoritative financial, inventory, medical or operational record. Provider availability and quality vary.
+
+**Definitions used across the app:** the official daily sale is `TOTAL`; `COMP SALE` is a comparison figure and `DIFF = TOTAL − COMP SALE`. The dashboard, targets, daily push briefing and assistant all use `TOTAL`.
+
+For internals, see [AI Center architecture](docs/ai-center-architecture.md), [KPI verification](docs/ai-center-kpi-verification.md), [final report](docs/ai-center-final-report.md) and [Manager Intelligence status](README-manager-intelligence.md).
 
 ## Repository layout
 
@@ -201,44 +227,46 @@ BT-Sale-Data2/
 ├── manifest.json              # Web app manifest
 ├── sw.js                      # Service worker and app-shell cache
 ├── build-manifest.json        # Generated release/build metadata
+├── CHANGELOG.md               # Release notes (moved out of sw.js)
+├── eslint.config.js           # Lint rules (no-undef is an error)
 ├── package.json               # Scripts and development dependencies
-├── package-lock.json          # Locked npm dependency tree
 │
-├── js/                        # Main application JavaScript
-│   ├── shared/                # Shared business logic and calculations
-│   ├── platform/              # Data, authentication and platform services
-│   ├── ui/                    # Navigation and shared UI
-│   ├── sales/                 # Sales workflows
-│   ├── manager/               # Staff and management workflows
-│   ├── inventory/             # Inventory workflows
-│   ├── str/                   # Stock transfer workflows
-│   ├── closing/               # Closing workflows
-│   ├── audit/                 # Audit integrations
-│   ├── agent/                 # Dua assistant core, tools and UI
-│   ├── ai-center/             # BT Intelligence
-│   └── herald/                # Deterministic operational headlines
+├── js/                        # Main application JavaScript (see docs/module-index.md)
+│   ├── platform/ ui/ lib/     # Core layer: state, sync, auth, shell, navigation, utilities
+│   ├── shared/                # Shared business calculations and rules
+│   ├── sales/                 # Dashboard, entry, reports, payments, Daily Check List
+│   ├── manager/               # Staff Registry, salary, targets, attendance
+│   ├── ledger/                # Ledger, Petty Cash, Jazz Cash
+│   ├── inventory/ str/        # Inventory analytics and STR workflows
+│   ├── closing/ audit/        # Closing and Audit Hub bridges
+│   ├── emergency-billing/     # Break-glass billing
+│   ├── sheets/                # Notes and workbooks
+│   ├── mail/                  # Gmail briefing and Cover mail strip
+│   ├── cover/ herald/         # Cover hub and daily headlines
+│   ├── agent/                 # Dua assistant: core/, tools/, ui/
+│   └── ai-center/             # BT Intelligence
 │
-├── css/                       # Application styles
-├── icons/                     # PWA and application icons
+├── css/                       # Per-domain stylesheets
+├── icons/                     # Main PWA icons and DuaPharma wordmarks
+├── config/                    # legacy-globals.mjs (shrink-only registry)
 ├── inventory-search/          # Standalone Inventory Search PWA
 │
-├── android-widget/            # Closing Summary Android widgets
-├── android-attendance/        # Attendance Android application
-├── android-mailroutine/       # MailRoutine Android application
+├── android-widget/            # Dua Closing: 22 home-screen widgets
+├── android-attendance/        # Dua Attendance
+├── android-mailroutine/       # Dua Mail (MailRoutine)
 │
 ├── supabase/
-│   ├── config.toml            # Supabase CLI/function configuration
-│   ├── functions/             # Edge Functions
+│   ├── config.toml            # Per-function JWT settings
+│   ├── functions/             # Edge Functions (each with DEPLOY.md)
 │   ├── migrations/            # Dated database migrations
 │   ├── audit-project/         # SQL for the separate Audit Hub project
-│   ├── pdf_library/           # PDF Library backend documentation
-│   └── activity_log/          # Activity-log schema/documentation
+│   ├── pdf_library/           # PDF Library backend notes
+│   └── activity_log/          # Activity-log schema
 │
-├── docs/                      # Architecture and project documentation
-├── scripts/                   # Build, indexing and maintenance scripts
-├── tests/                     # Static, unit, DOM and evaluation tests
-└── .github/
-    └── workflows/             # Automated tests, deployment and APK builds
+├── docs/                      # Architecture, roadmap, brand and module docs
+├── scripts/                   # build, brand, bundle-check, readme-facts, repo index
+├── tests/                     # static/, unit/, dom/, eval/, helpers/
+└── .github/workflows/         # test, supabase-deploy and three APK builds
 ```
 
 For a curated map of important modules and their responsibilities, see [docs/module-index.md](docs/module-index.md).
@@ -317,6 +345,7 @@ Run these commands from the repository root unless a command explicitly changes 
 | `npm run eval` | Run the assistant evaluation tests |
 | `npm run eval:live` | Run advisory live-model evaluation; requires provider configuration |
 | `npm run index:repo` | Rebuild the repository intelligence index |
+| `npm run brand` / `brand:check` / `brand:png` | Regenerate or verify generated brand assets (`brand:png` needs `sharp`) |
 | `npm run readme:sync` | Regenerate the README repository-facts block |
 | `npm run readme:check` | Check that generated README facts are current |
 
@@ -329,8 +358,10 @@ npm run build
 npm run build:check
 npm run lint
 npm run bundle:check
-npm test
+npm run test:coverage   # or npm test
 ```
+
+CI (`test.yml`, Node 22) runs `lint`, `build:check`, `bundle:check` and `test:coverage` (floor: 68% lines, 72% branches, 65% functions). Release notes go in `CHANGELOG.md`, not in `sw.js`; `npm run build` only bumps the cache number.
 
 The build script:
 1. Adds content-hash version stamps to local script and stylesheet references in `index.html`.
@@ -354,7 +385,7 @@ The test suite includes:
 - AI Center and forecast tests.
 - Edge Function and secret-leak checks.
 
-The main CI workflow runs linting, build validation, module bundling checks and the coverage-enforced test suite.
+The main CI workflow runs linting, build validation, module bundling checks and the coverage-enforced test suite. Tests also guard architecture rules: domain boundaries, no inline handlers, legacy-global ratchet, CSP/CORS, file-size budgets, brand-icon consistency and README facts.
 
 ### GitHub Actions workflows
 
@@ -411,7 +442,7 @@ The Edge Functions currently cover these areas:
 - `inventory-chat` — inventory-context chat.
 - `medicine-ai-info` — medicine reference information.
 
-Deployment instructions are maintained beside the relevant function in its `DEPLOY.md`.
+`verify_jwt` is pinned per function in `supabase/config.toml`. `set-staff-login`, `medicine-ai-info` and `google-drive` allow only `https://bt.duapharma.com` as origin by default (`ALLOWED_ORIGINS` overrides); `bt-agent` uses `AGENT_ALLOWED_ORIGINS`. Deployment instructions are maintained beside each function in its `DEPLOY.md`.
 
 ### Database migrations
 
@@ -447,9 +478,39 @@ This application handles sensitive pharmacy, financial, staff and operational in
 - Never log access tokens, credentials, private message bodies or unnecessary personal information.
 - Keep Android release signing material in protected CI secrets, never in source control.
 
+**Current database posture (from the migrations; verify against the live project):**
+
+- A helper, `bt_is_authorized_user()`, checks that the caller's JWT email is an **active** row in `bt_authorized_users`. It exists because `signInWithIdToken` accepts any Google account, so "authenticated" alone does not mean "one of our people".
+- **Emergency Billing** is locked down: the public key can no longer read or write its tables or call its RPCs; only allow-listed users can, through wrapper RPCs that check authorisation first (`20261024120000`, `20261024130000`).
+- **Security hardening batches 1 and 2** (`20261024150000`, `20261024160000`): widget summary functions require an allow-listed user or the widget service account; `TRUNCATE`/`REFERENCES`/`TRIGGER` were removed from client roles; legacy open `bt_sessions` policies were dropped; attendance manager-PIN verification locks after repeated failures; attendance location writes need an allow-listed user; the `pdf-library` bucket is private and served through short-lived signed URLs.
+- Edge Functions that stay public (`inventory-chat`, `medicine-ai-info`, the ntfy functions) either hold no private data or authenticate with a shared secret header.
+- This repository is public. The ntfy topic names and secrets live only in Supabase, and `tests/static/ntfy-functions.test.js` scans `supabase/functions/` for leaks.
+
 **Important operational distinction:** the companion applications do not all have identical authentication or data-access models. Attendance, widgets, Emergency Billing, MailRoutine and the main PWA must be reviewed independently. Consult their current application documentation and database migrations before changing permissions or deploying a release.
 
 If a credential is exposed, treat it as compromised and rotate or revoke it.
+
+## Known limitations
+
+**Main PWA**
+- Single pharmacy and a single primary operator; not multi-tenant.
+- The ES-module migration is incomplete: some `window.*` bridges and the registry in `config/legacy-globals.mjs` remain, and several files exceed 1,000 lines (caps in `tests/static/file-size-budget.test.js`).
+- No production bundle; the app depends on script load order and a hand-maintained service-worker shell list.
+- Petty Cash keeps a deliberate legacy implementation.
+- Several integrations (Audit Hub, Candela POS sale payments) are read-only bridges that are not the PWA's source of truth.
+
+**Attendance**
+- Attendance tables still allow the public client key to read and insert events and devices (the Android app depends on it), so the key is not a per-device authentication boundary. `attendance_locations` is readable with the public key because the installed app reads the active location, including its QR secret, with it; closing that needs a new APK. Moving to authenticated users or Edge-Function-controlled writes is on the structure roadmap.
+- One primary geofence; multi-branch use needs a redesign. OEM battery management can affect background geofencing. Attendance is not wired to salary deductions.
+
+**Emergency Billing**
+- Break-glass only; transactions need reconciliation against normal sales entry. Cart, held bills and settings are device-local, and availability depends on inventory-bridge freshness. Thermal receipts need real-hardware testing.
+
+**BT Intelligence**
+- Depends on a free-provider pool whose quality and availability vary. The push briefing, closing push and Drive backup have no heartbeat, so health shows them as unknown. The repository index is a snapshot (`npm run index:repo`). `agent_schedules` exists but nothing executes it yet.
+
+**MailRoutine**
+- Scheduling is device-local and subject to Android background limits. Real Google sign-in and a real send are not covered by CI; use `android-mailroutine/docs/MANUAL_TEST.md`.
 
 ## Brand identity
 
@@ -508,13 +569,18 @@ Use these documents for deeper, feature-specific information:
 | Document | What it covers |
 |---|---|
 | [Module Index](docs/module-index.md) | Important JavaScript modules, responsibilities and conventions |
+| Per-domain READMEs | `js/<domain>/README.md` for agent, ai-center, audit, closing, cover, emergency-billing, herald, inventory, ledger, mail, manager, sales, sheets and str |
 | [AI Center Architecture](docs/ai-center-architecture.md) | BT Intelligence design, data sources, assistant integration and security model |
-| [Structure Roadmap](docs/structure-roadmap.md) | Architecture improvements and remaining refactoring work |
+| [AI Center KPI verification](docs/ai-center-kpi-verification.md) | Cross-check of AI Center figures against their source calculations |
+| [AI Center final report](docs/ai-center-final-report.md) | Delivery status of the AI Center work |
+| [Manager Intelligence status](README-manager-intelligence.md) | What is actually live in the manager-intelligence work |
+| [Structure Roadmap](docs/structure-roadmap.md) | Architecture phases, progress and remaining refactoring |
+| [Release notes](CHANGELOG.md) | Version history of the web app |
 | [Testing Guide](tests/README.md) | Test structure, execution and coverage boundaries |
-| [Closing Widgets](android-widget/README.md) | Widget features, setup and build instructions |
-| [BT Attendance](android-attendance/README.md) | Attendance installation, device setup and limitations |
-| [MailRoutine](android-mailroutine/README.md) | Email routines, Gmail OAuth, scheduling, backup and release process |
-| [Supabase Functions](supabase/functions/) | Function-specific implementation and deployment guides |
+| [Closing Widgets](android-widget/README.md) and [UX roadmap](docs/ANDROID_WIDGET_UX_ROADMAP.md) | Widget features, setup, build and planned improvements |
+| [Attendance](android-attendance/README.md) | Installation, device setup and limitations |
+| [MailRoutine](android-mailroutine/README.md) and [manual test](android-mailroutine/docs/MANUAL_TEST.md) | Email routines, Gmail OAuth, scheduling, backup and release process |
+| [Supabase Functions](supabase/functions/) | Function-specific implementation and deployment guides (`DEPLOY.md`) |
 
 ---
 
