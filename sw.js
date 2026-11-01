@@ -5,7 +5,7 @@
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v11.203'; // v11.203: auto-bumped by npm run build (content hash 077521927a0f). Previously v11.202: 
+const CACHE_NAME = 'bt-sales-v11.206'; // v11.206: auto-bumped by npm run build (content hash 430a40b0a863). Previously v11.205: 
 // Release history lives in CHANGELOG.md (keep this file small: every device downloads and parses it on each update).
 const APP_SHELL = [
   './',
@@ -128,6 +128,9 @@ const APP_SHELL = [
   './js/agent/core/telemetry-store.js',
   './js/ai-center/index.js',
   './js/ai-center/ui.js',
+  './js/ai-center/ui-base.js',
+  './js/ai-center/ui-panels.js',
+  './js/ai-center/ui-detail.js',
   './js/ai-center/avatar.js',
   './js/ai-center/deck-model.js',
   './js/ai-center/deck-icons.js',

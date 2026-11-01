@@ -9,7 +9,6 @@ const DEFAULT_MAX = 1000;
 // path -> current maximum line count. Only ever lower these.
 const LEGACY_CAPS = {
   'js/emergency-billing/emergency-billing-native.js': 1495,
-  'js/ai-center/ui.js': 1324,
   'js/inventory/stockledger.js': 1223,
   'js/platform/sync-center.js': 1148,
   'js/closing/closing-native.js': 1090,

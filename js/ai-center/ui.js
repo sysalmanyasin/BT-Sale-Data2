@@ -14,107 +14,18 @@ import * as V from '../agent/ui/voice.js';
 import * as AV from './avatar.js';
 import * as DK from './deck-model.js';
 import * as FG from './forecast-game.js';
-import { ICONS } from './deck-icons.js';
 import { listTools } from '../agent/core/tool-registry.js';
 import * as T from '../agent/core/telemetry.js';
-import { SPECIALISTS } from '../agent/core/specialists.js';
-import { renderMarkdown } from '../agent/core/markdown-lite.js';
 import { pushUndo, runUndo } from '../agent/core/undo.js';
 import { markUndone } from '../agent/core/undo-store.js';
 import { fetchAudit, summarizeAudit } from '../agent/core/usage-stats.js';
-import { collectSnapshot, collectHealth, collectActions, getSb, readTool } from './adapters.js';
+import { collectSnapshot, collectHealth, collectActions, getSb } from './adapters.js';
 import * as M from './model.js';
 import * as C from './copilot.js';
 import * as RI from './repo-intel.js';
-import { reorderDraftText } from '../shared/planning-metrics.js';
-
-const PAGE_ID = 'page-ai-center';
-const LS_VISIT = 'bt_aic_last_visit_v1', LS_DISMISS = 'bt_aic_dismissed_v1';
-const STALE_MS = 5 * 60000, REFRESH_MS = 45000;
-
-const S = {
-  tab: 'overview', snap: null, health: null, actions: null, history: [], loading: false, error: null,
-  voice: { talking: false }, mode: 'monitor', filter: 'all', baseline: null, started: false, tick: 0, toolsOpen: false, open: {},
-  awaitingFor: null, assess: {}, lastRefreshAt: 0, mounted: false, rafId: 0, deep: {}, repo: { state: 'idle', idx: null }, repoQ: '',
-};
-
-// ───────────────────────── tiny DOM helpers ─────────────────────────
-function h(tag, attrs, ...kids) {
-  const e = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs || {})) {
-    if (v == null || v === false) continue;
-    if (k === 'class') e.className = v;
-    else if (k === 'text') e.textContent = v;
-    else if (k.startsWith('on') && typeof v === 'function') e.addEventListener(k.slice(2), v);
-    else e.setAttribute(k, v === true ? '' : v);
-  }
-  const add = c => { if (c == null || c === false) return; if (Array.isArray(c)) c.forEach(add); else e.append(c.nodeType ? c : document.createTextNode(String(c))); };
-  kids.forEach(add);
-  return e;
-}
-const $ = sel => document.querySelector(sel);
-const root = () => document.getElementById('aic-root');
-const pageOn = () => { const p = document.getElementById(PAGE_ID); return !!(p && p.classList.contains('on')); };
-const clockFull = ts => (ts ? new Date(ts).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '');
-const clock = ts => ts ? new Date(ts).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—';
-const tone = status => M.STATUS_TONE[status] || 'mu';
-const pill = (status, text) => h('span', { class: 'aic-pill aic-' + tone(status), text: text || status });
-const lsGet = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (_) { return null; } };
-const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) { /* storage blocked: feature degrades silently */ } };
-
-function toast(msg) {
-  const el = h('div', { class: 'aic-toast', role: 'status', text: msg });
-  document.body.append(el); setTimeout(() => el.remove(), 3800);
-}
-
-// ───────────────────────── modal ─────────────────────────
-let modalEl = null, modalPrevFocus = null;
-
-// Keep keyboard focus inside the open dialog (WCAG 2.4.3): Tab wraps from the last control to the first and back.
-function trapTab(e) {
-  const box = modalEl && modalEl.querySelector('.aic-modal'); if (!box) return;
-  const f = [...box.querySelectorAll('button:not([disabled]),a[href],input:not([disabled]),select,textarea,summary,[tabindex]:not([tabindex="-1"])')].filter(x => !x.closest('[hidden]'));
-  if (!f.length) { e.preventDefault(); box.focus(); return; }
-  const first = f[0], last = f[f.length - 1], at = document.activeElement;
-  if (e.shiftKey && (at === first || at === box)) { e.preventDefault(); last.focus(); }
-  else if (!e.shiftKey && at === last) { e.preventDefault(); first.focus(); }
-  else if (!box.contains(at)) { e.preventDefault(); first.focus(); }
-}
-function closeModal() { if (modalEl) { modalEl.remove(); modalEl = null; if (modalPrevFocus && modalPrevFocus.focus) modalPrevFocus.focus(); } }
-function openModal(title, body, { sub = '', tonec = 'cy' } = {}) {
-  closeModal(); modalPrevFocus = document.activeElement;
-  const box = h('div', { class: 'aic-modal aic-t-' + tonec, role: 'dialog', 'aria-modal': 'true', 'aria-label': title, tabindex: '-1' },
-    h('div', { class: 'aic-mh' }, h('div', {}, h('h3', { text: title }), sub && h('div', { class: 'aic-sub', text: sub })), h('button', { class: 'aic-x', 'aria-label': 'Close', text: '✕', onclick: closeModal })),
-    h('div', { class: 'aic-mb' }, body));
-  modalEl = h('div', { class: 'aic-backdrop', onclick: ev => { if (ev.target === modalEl) closeModal(); } }, box);
-  document.body.append(modalEl); box.focus();
-}
-
-// ───────────────────────── Ask BT (the existing agent) ─────────────────────────
-function ask(q) {
-  q = String(q || '').trim(); if (!q) return;
-  const A = window.BTAgent;
-  if (!A) { toast('The assistant is still loading. Try again in a moment.'); return; }
-  if (A.isBusy()) { toast('Dua is already working on a request.'); return; }
-  Promise.resolve(A.ask(q)).catch(() => {});
-}
-function investigate(f) {
-  const A = window.BTAgent;
-  if (A && typeof A.investigate === 'function') {
-    if (A.isBusy()) { toast('Dua is already working on a request.'); return; }
-    S.awaitingFor = f.id; closeModal();
-    // A real investigation: the finding (with the rule evidence) goes to the orchestrator, which runs the relevant specialists.
-    Promise.resolve(A.investigate({
-      question: 'Investigate this finding: "' + f.title + '"', domains: M.domainsForFinding(f),
-      finding: { id: f.id, title: f.title, system: f.system, source: f.source, evidence: (f.evidence || []).map(e => ({ kind: e.kind, label: e.label, value: e.value })) },
-    })).catch(() => {});
-    return;
-  }
-  S.awaitingFor = f.id;
-  closeModal();
-  ask('Investigate this finding and show the evidence for it. Check the relevant data with your tools and say what is known and what is uncertain: "' + f.title + '"');
-}
-const openPage = href => { closeModal(); window.location.hash = href; };
+import { $, LS_DISMISS, LS_VISIT, PAGE_ID, REFRESH_MS, S, SCROLL_QUIET_MS, STALE_MS, ask, card, clock, closeModal, coreInfo, dkCard, dkWait, empty, h, ic, investigate, kvList, lsGet, lsSet, modalEl, openModal, openPage, pageOn, pill, root, scrollingNow, sectionHeader, skeleton, toast, tone, trapTab, visibleFindings, watchScrolling } from './ui-base.js';
+import { deepViews, draftsNode, eventList, openDraft, outcomeChip, secDkAudit, secDkExpiry, secDkGame, secDkPay, secHealth, secObs, secTools, tagEl } from './ui-detail.js';
+import { RUN_LABEL, RUN_TONE, allRuns, assessmentNode, openRun, ringGauge, runsBlock, secFleet, secForecast, secInvStr, secMoney, secNetwork, secRuns, weekdayBars } from './ui-panels.js';
 
 // ───────────────────────── data refresh ─────────────────────────
 async function refresh({ force = false } = {}) {
@@ -153,75 +64,6 @@ export function render() {
   // Never repaint under a moving finger either: replaceChildren() cancels touch/momentum scrolling.
   if (scrollingNow()) { clearTimeout(S.scrollT); S.scrollT = setTimeout(render, SCROLL_QUIET_MS + 50); return; }
   S.rafId = requestAnimationFrame(() => { S.rafId = 0; if (scrollingNow()) { clearTimeout(S.scrollT); S.scrollT = setTimeout(render, SCROLL_QUIET_MS + 50); return; } paint(); });
-}
-const SCROLL_QUIET_MS = 800;
-const scrollingNow = () => Date.now() - (S.lastScrollAt || 0) < SCROLL_QUIET_MS;
-function watchScrolling() {
-  if (typeof document === 'undefined' || window.__btAicScrollWatch) return; window.__btAicScrollWatch = true;
-  const mark = () => { S.lastScrollAt = Date.now(); };
-  ['touchstart', 'touchmove', 'wheel', 'scroll'].forEach(t => document.addEventListener(t, mark, { capture: true, passive: true })); // capture: element scrolls do not bubble
-}
-const dismissedToday = () => { const d = lsGet(LS_DISMISS) || {}; const today = M.isoDay(new Date()); return Object.keys(d).filter(k => d[k] === today); };
-
-function visibleFindings() {
-  const hide = new Set(dismissedToday());
-  return ((S.snap && S.snap.findings) || []).filter(f => !hide.has(f.id));
-}
-
-// ───────────────────────── sections ─────────────────────────
-function sectionHeader(title, right) { return h('div', { class: 'aic-sh' }, h('h2', { text: title }), right || null); }
-// Cards are collapsed by default (tap the title to open). Kept open: the one-line summary + status core, the Action Center
-// (pending approvals must never be hidden), the latest BT response, and Tool Intelligence (it already has its own toggle).
-// The open/closed choice lives in S.open so it survives the full repaint that runs on every refresh.
-const ALWAYS_OPEN = new Set(['dktiles', 'dkatt', 'dksales', 'dkinv', 'dkmoney', 'dkappr', 'dkops', 'ops', 'crit', 'copilot', 'core', 'runs', 'att', 'sys', 'fc', 'invstr', 'money', 'actc', 'tools']);
-
-// One-line, REAL summary shown in a collapsed card's header (hidden once the card is open). Returns [text, tone] or null.
-function foldSummary(id) {
-  const P = S.snap && S.snap.raw && S.snap.raw.planning;
-  switch (id) {
-    case 'fleet': { const n = activeAgentIds(coreInfo().live).on.size, total = Object.keys(SPECIALISTS).filter(k => k !== 'general').length; return [n ? n + ' running now' : total + ' ready · none running', n ? 'ok' : 'mu']; }
-    case 'net': { const n = activeAgentIds(coreInfo().live).on.size; return [n ? n + ' running now' : 'none running', n ? 'ok' : 'mu']; }
-    case 'reo': { const D = P && P.reorder; if (!S.snap) return null; return D ? (D.total_lines ? [D.total_lines + ' lines to buy', 'wn'] : ['nothing to reorder', 'ok']) : ['not available', 'mu']; }
-    case 'fill': { const F = P && P.fill; if (!S.snap) return null; return F && F.fill_rate_pct != null ? [F.fill_rate_pct + '% filled', F.fill_rate_pct < 90 ? 'wn' : 'ok'] : ['not measurable', 'mu']; }
-    case 'money': { const sc = P && P.money && P.money.staff_credit; if (!S.snap) return null; return sc ? ['Rs ' + M.fmtNum(sc.this_month.total_owed) + ' owed', 'mu'] : ['not available', 'mu']; }
-    case 'ops': { const live = coreInfo().live, run = activeAgentIds(live).on.size, r = S.health, ok = r ? r.filter(x => x.status === 'HEALTHY').length : null; return [(r ? ok + ' of ' + r.length + ' healthy' : 'health loading') + ' \u00B7 ' + (run ? run + ' agent(s) running' : 'no agent running'), r && ok < r.length ? 'wn' : 'mu']; }
-    case 'act': { const n = T.recent(150).length; return [n + (n === 1 ? ' event' : ' events'), 'mu']; }
-    case 'obs': { const o = M.observability(T.recent(400).reverse()); return [o.requests + ' requests · ' + o.errors + ' failed', o.errors ? 'wn' : 'mu']; }
-    case 'health': { const r = S.health; if (!r) return null; const ok = r.filter(x => x.status === 'HEALTHY').length; return [ok + ' of ' + r.length + ' healthy', ok < r.length ? 'wn' : 'ok']; }
-    default: return null;
-  }
-}
-function card(id, modes, ...kids) {
-  const first = kids[0];
-  const foldable = !ALWAYS_OPEN.has(id) && kids.length > 1 && first && first.nodeType === 1 && first.classList.contains('aic-sh');
-  if (!foldable) return h('section', { class: 'aic-card', id: 'aic-' + id, 'data-modes': modes }, kids);
-  const open = !!S.open[id];
-  const bodyId = 'aic-b-' + id;
-  const body = h('div', { class: 'aic-cbody', id: bodyId, hidden: !open }, kids.slice(1));
-  const sec = h('section', { class: 'aic-card aic-fold' + (open ? '' : ' aic-folded'), id: 'aic-' + id, 'data-modes': modes }, first, body);
-  const fs = foldSummary(id);
-  if (fs) first.append(h('span', { class: 'aic-fsum aic-fsum-' + fs[1], text: fs[0] }));
-  first.append(h('span', { class: 'aic-caret', 'aria-hidden': 'true', text: '\u25BE' }));
-  first.setAttribute('role', 'button'); first.setAttribute('tabindex', '0');
-  first.setAttribute('aria-controls', bodyId); first.setAttribute('aria-expanded', String(open));
-  const toggle = ev => {
-    if (ev.target && ev.target.closest && ev.target.closest('button,a,input,select,textarea')) return;
-    if (ev.type === 'keydown') { if (ev.key !== 'Enter' && ev.key !== ' ') return; ev.preventDefault(); }
-    const now = body.hidden; // hidden -> opening
-    S.open[id] = now; body.hidden = !now;
-    sec.classList.toggle('aic-folded', !now); first.setAttribute('aria-expanded', String(now));
-  };
-  first.addEventListener('click', toggle); first.addEventListener('keydown', toggle);
-  return sec;
-}
-function empty(text) { return h('div', { class: 'aic-empty', text }); }
-function skeleton(n = 3) { return h('div', { class: 'aic-skel', 'aria-label': 'Loading' }, Array.from({ length: n }, () => h('i'))); }
-
-function coreInfo() {
-  const live = T.liveState();
-  // The Center reads local app data, so only a real network loss makes it OFFLINE. Whether the assistant /
-  // Supabase session is usable is reported by the Health panel and by Ask BT itself.
-  return { live, core: M.deriveCoreState({ online: navigator.onLine !== false, authed: true, snapshotLoading: S.loading && !S.snap, snapshotReady: !!S.snap, live, now: Date.now() }) };
 }
 
 function secHeaderBar(core) {
@@ -456,334 +298,6 @@ function secSystems() {
   return card('sys', 'monitor', sectionHeader('BUSINESS SNAPSHOT', h('span', { class: 'aic-sub', text: S.snap ? 'tap a tile for detail' : 'loading' })),
     S.snap ? h('div', { class: 'aic-snap' }, tiles.map(snapTile)) : skeleton(3));
 }
-
-// Weekday-aware projection + today's expected sale (tool: weekday_forecast, maths in shared/planning-metrics.js).
-
-// Average sale per weekday, drawn from the tool's own weekday_baseline (no new calculation). Today's weekday is marked.
-function weekdayBars(W) {
-  const rows = (W.weekday_baseline || []).filter(b => b && Number.isFinite(b.avg));
-  if (!rows.length) return null;
-  const max = Math.max(...rows.map(b => b.avg), 1), today = W.today && W.today.weekday;
-  return h('div', { class: 'aic-wbars' },
-    h('div', { class: 'aic-k', text: 'AVERAGE SALE BY WEEKDAY (RS, RECENT WEEKS)' }),
-    h('ul', { class: 'aic-bars', 'aria-label': 'Average sale by weekday: ' + rows.map(b => b.weekday + ' Rs ' + M.fmtNum(b.avg)).join(', ') },
-      rows.map(b => h('li', { class: 'aic-bar' + (b.weekday === today ? ' today' : '') },
-        h('span', { class: 'aic-bv', title: 'Rs ' + M.fmtNum(b.avg), text: b.avg >= 10000 ? Math.round(b.avg / 1000) + 'k' : M.fmtNum(b.avg) }),
-        h('span', { class: 'aic-bf', style: 'height:' + Math.max(4, Math.round(b.avg / max * 100)) + '%', 'aria-hidden': 'true' }),
-        h('span', { class: 'aic-bl', text: b.weekday.slice(0, 3) + (b.weekday === today ? ' \u2022' : '') })))),
-    h('div', { class: 'aic-sub', text: 'Bars start at zero. The dot marks today. Values are the tool\u2019s recent weekday averages.' }));
-}
-function weekdayBlock() {
-  const P = S.snap && S.snap.raw && S.snap.raw.planning, W = P && P.weekday;
-  if (!W) return P && P.errors && P.errors.weekday ? h('div', { class: 'aic-sub', text: 'Weekday forecast unavailable: ' + P.errors.weekday }) : null;
-  const rows = [['EXPECTED MONTH-END', 'Rs ' + M.fmtNum(W.projected_month_end) + '  (typical Rs ' + M.fmtNum(W.projected_low) + ' to ' + M.fmtNum(W.projected_high) + ')']];
-  if (W.vs_target) rows.push(['VS TARGET', (W.vs_target.on_track ? 'On track' : 'Short by about Rs ' + M.fmtNum(-W.vs_target.gap_at_projection)) + '  (' + W.vs_target.pct_of_target_projected + '%)'],
-    ['NEED / DAY vs WEEKDAY PATTERN', 'Rs ' + M.fmtNum(W.vs_target.needed_per_remaining_day) + ' vs Rs ' + M.fmtNum(W.vs_target.expected_per_remaining_day)]);
-  rows.push([W.today.weekday.toUpperCase() + (W.today.entered ? ' (ENTERED)' : ' EXPECTED'), W.today.samples ? 'Rs ' + M.fmtNum(W.today.expected) + '  (typical Rs ' + M.fmtNum(W.today.typical_low) + ' to ' + M.fmtNum(W.today.typical_high) + ')' : 'not enough history']);
-  return h('div', { class: 'aic-wf' },
-    h('div', { class: 'aic-interp' }, h('span', { class: 'aic-tag', text: 'PREDICTION' }), ' Weekday-aware: each remaining day is expected at that weekday\'s recent average.'),
-    h('dl', { class: 'aic-met' }, rows.map(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })])),
-    weekdayBars(W));
-}
-
-function secForecast() {
-  const F = S.snap && S.snap.forecast;
-  let body;
-  if (!S.snap) body = skeleton(2);
-  else if (!F.available) body = empty(F.reason);
-  else {
-    const p = F.pace;
-    body = h('div', {},
-      h('dl', { class: 'aic-met aic-big' }, [['TARGET', 'Rs ' + M.fmtNum(p.target)], ['SOLD SO FAR', 'Rs ' + M.fmtNum(p.sold_so_far) + ' (' + p.pct_done + '%)'], ['NEEDED / DAY', 'Rs ' + M.fmtNum(p.needed_per_day)], ['ACTUAL / DAY', 'Rs ' + M.fmtNum(p.actual_per_day)]].map(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })])),
-      h('div', { class: 'aic-interp' }, h('span', { class: 'aic-tag', text: 'CALCULATION' }), ' ', F.summary),
-      (() => {
-        const raw = S.snap.raw, V = C.forecastVariance(F.pace, raw.planning && raw.planning.weekday, raw.briefing);
-        if (!V) return null;
-        return h('div', { class: 'aic-drivers' }, h('div', { class: 'aic-k', text: 'VARIANCE AND WHAT DRIVES THE FORECAST' }),
-          h('div', { class: 'aic-var aic-' + (V.behind ? 'wn' : 'ok') }, V.behind ? 'Behind by Rs ' + M.fmtNum(-V.perDay) + ' per day' : 'Ahead by Rs ' + M.fmtNum(V.perDay) + ' per day',
-            V.monthEndGap != null ? ' \u00B7 at this run rate the month ends about Rs ' + M.fmtNum(Math.abs(V.monthEndGap)) + (V.monthEndGap >= 0 ? ' above' : ' below') + ' target' : ''),
-          h('ul', { class: 'aic-list' }, V.drivers.map(d => h('li', {}, tagEl(d.kind), ' ', d.text))));
-      })(),
-      F.projection != null && F.disagree ? h('div', { class: 'aic-sub' }, h('span', { class: 'aic-tag', text: 'PREDICTION' }), ' Briefing projection (average × days in month): Rs ' + M.fmtNum(F.projection)) : null,
-      weekdayBlock(),
-      F.disagree ? h('div', { class: 'aic-note', text: 'Two existing calculations disagree on whether the target will be met (pace tracker vs briefing projection). Both are shown; the pace tracker is the one the Dashboard uses.' }) : null,
-      h('div', { class: 'aic-row' }, h('button', { text: 'Ask BT to interpret', onclick: () => ask('Interpret my target pace for this month and say what would need to change to reach the target.') })));
-  }
-  return card('fc', 'monitor', sectionHeader('SALES & FORECAST', h('span', { class: 'aic-sub', text: 'actual vs target \u00B7 get_target_pace' })), body);
-}
-
-// ── reorder draft ──
-function copyText(text, ok) {
-  const done = () => { if (typeof window.toast === 'function') window.toast(ok, 'success'); };
-  try { navigator.clipboard.writeText(text).then(done, () => window.prompt('Copy this list:', text)); } catch (_) { window.prompt('Copy this list:', text); }
-}
-function reorderLine(i) {
-  const tag = i.status === 'out_of_stock' ? '  [OUT]' : i.status === 'low' ? '  [LOW ' + i.cover_days + 'd]' : '';
-  return h('li', { text: i.name + ' — buy ' + i.suggested_qty + tag + (i.in_transit ? '  (in transit ' + i.in_transit + ')' : '') + (i.trend === 'rising' ? '  ↑' : '') });
-}
-function reorderGroup(g) {
-  const title = g.supplier + ' · ' + g.lines + ' lines' + (g.urgent_lines ? ' · ' + g.urgent_lines + ' urgent' : '') + ' · Rs ' + M.fmtNum(g.est_value_at_sale_price);
-  return h('details', { class: 'aic-det', open: g.urgent_lines > 0 ? '' : null }, h('summary', { text: title }), h('ul', {}, g.items.slice(0, 12).map(reorderLine)));
-}
-function reorderBody() {
-  const P = S.snap && S.snap.raw && S.snap.raw.planning, D = P && P.reorder;
-  let body;
-  if (!S.snap) body = skeleton(2);
-  else if (!D) body = empty((P && P.errors && P.errors.reorder) || 'Reorder draft not available.');
-  else if (!D.total_lines) body = empty('Nothing to reorder right now: stock covers ' + D.cover_days_target + ' days of sales (net of stock in transit).');
-  else body = h('div', {},
-    h('dl', { class: 'aic-met aic-big' }, [['LINES TO BUY', String(D.total_lines)], ['OUT OF STOCK, SELLING', String(D.out_of_stock_selling)], ['RUNNING LOW (≤7d)', String(D.low_cover)], ['SALES AT RISK / DAY', 'Rs ' + M.fmtNum(D.lost_sales_per_day)], ['EST. VALUE (SALE PRICE)', 'Rs ' + M.fmtNum(D.est_value_at_sale_price)]].map(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })])),
-    h('div', { class: 'aic-list' }, D.groups.slice(0, 6).map(reorderGroup)),
-    h('div', { class: 'aic-sub', text: D.method }),
-    h('div', { class: 'aic-row' },
-      h('button', { class: 'aic-p', text: 'Copy full list', onclick: () => copyText(reorderDraftText(D), 'Reorder list copied') }),
-      h('button', { text: 'Open Reorder Report', onclick: () => openPage('#reorder') }),
-      h('button', { text: 'Ask BT about this', onclick: () => ask('Draft my reorder list. Which items are most urgent and from which suppliers?') })));
-  return body;
-}
-
-// ── STR fill rate ──
-function fillBody() {
-  const P = S.snap && S.snap.raw && S.snap.raw.planning, F = P && P.fill;
-  let body;
-  if (!S.snap) body = skeleton(2);
-  else if (!F) body = empty((P && P.errors && P.errors.fill) || 'STR fill rate not available.');
-  else if (F.fill_rate_pct == null) body = empty('No dispatched incoming STR lines in the last ' + F.window_days + ' days to measure.' + (F.awaiting_dispatch.count ? ' ' + F.awaiting_dispatch.count + ' STR(s) still await dispatch.' : ''));
-  else body = h('div', {},
-    h('dl', { class: 'aic-met aic-big' }, [['FILL RATE', F.fill_rate_pct + '%'], ['LINES FILLED IN FULL', F.line_fill_pct + '%'], ['ZERO-DISPATCH LINES', String(F.zero_dispatch_lines)], ['SHORT LINES', String(F.short_lines)], ['RECEIPT ACCURACY', F.receipt_accuracy_pct == null ? 'n/a' : F.receipt_accuracy_pct + '%'], ['AWAITING DISPATCH', F.awaiting_dispatch.count + (F.awaiting_dispatch.oldest_age_days != null ? ' (oldest ' + F.awaiting_dispatch.oldest_age_days + 'd)' : '')]].map(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })])),
-    F.by_source.length ? h('div', { class: 'aic-sub', text: 'By source (worst first): ' + F.by_source.slice(0, 4).map(x => x.source + ' ' + x.fill_rate_pct + '% (' + x.strs + ' STRs)').join(' · ') }) : null,
-    F.worst_products.length ? h('div', { class: 'aic-sub', text: 'Most short: ' + F.worst_products.slice(0, 4).map(x => x.name + ' (-' + x.packs_short + ')').join(', ') }) : null,
-    h('div', { class: 'aic-sub', text: F.note }),
-    h('div', { class: 'aic-row' }, h('button', { text: 'Open zero-dispatch', onclick: () => openPage('#str-zero-dispatch') }), h('button', { text: 'Ask BT about this', onclick: () => ask('Which warehouses are short-dispatching our STRs and which products are affected?') })));
-  return body;
-}
-
-// ── staff credit + ledgers ──
-// A ledger is worth a block of its own only when it has money, categories or a flagged category this month.
-const ledgerHasActivity = L => !!L && (Number(L.month_to_date_total) > 0 || (L.categories || []).length > 0 || (L.running_above_usual || []).length > 0);
-function ledgerBody() {
-  const P = S.snap && S.snap.raw && S.snap.raw.planning, Mo = P && P.money;
-  let body;
-  if (!S.snap) body = skeleton(2);
-  else if (!Mo) body = empty((P && P.errors && P.errors.money) || 'Ledger overview not available.');
-  else {
-    const sc = Mo.staff_credit;
-    body = h('div', {},
-      sc ? h('div', {}, h('div', { class: 'aic-k', text: 'STAFF CREDIT OWED' }),
-        h('dl', { class: 'aic-met' }, [[sc.this_month.month, 'Rs ' + M.fmtNum(sc.this_month.total_owed) + ' · ' + sc.this_month.people + ' people'], [sc.last_month.month, 'Rs ' + M.fmtNum(sc.last_month.total_owed) + ' · ' + sc.last_month.people + ' people']].map(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })])),
-        (sc.this_month.top.length ? sc.this_month : sc.last_month).top.length ? h('div', { class: 'aic-sub', text: 'Largest balances (' + (sc.this_month.top.length ? sc.this_month.month : sc.last_month.month) + '): ' + (sc.this_month.top.length ? sc.this_month : sc.last_month).top.map(x => x.name + ' Rs ' + M.fmtNum(x.net)).join(' · ') }) : null) : null,
-      Mo.ledgers.filter(ledgerHasActivity).map(L => h('div', { class: 'aic-led' },
-        h('div', { class: 'aic-k', text: L.ledger.toUpperCase() + ' · MONTH TO DATE Rs ' + M.fmtNum(L.month_to_date_total) }),
-        L.categories.length ? h('div', { class: 'aic-sub', text: L.categories.slice(0, 5).map(c => c.category + ' Rs ' + M.fmtNum(c.amount)).join(' · ') }) : h('div', { class: 'aic-sub', text: 'No entries this month.' }),
-        L.running_above_usual.length ? h('div', { class: 'aic-note', text: 'Running above usual for this point of the month: ' + L.running_above_usual.map(x => x.category + ' (Rs ' + M.fmtNum(x.month_to_date) + (x.usual_same_period > 0 ? ' vs ~' + M.fmtNum(x.usual_same_period) : x.usual_full_month > 0 ? ', full month usually ~' + M.fmtNum(x.usual_full_month) : ', no earlier entries') + ')').join('; ') }) : null)),
-      Mo.ledgers.some(L => !ledgerHasActivity(L)) ? h('div', { class: 'aic-sub', text: 'No entries this month: ' + Mo.ledgers.filter(L => !ledgerHasActivity(L)).map(L => String(L.ledger).charAt(0).toUpperCase() + String(L.ledger).slice(1)).join(' · ') + '.' }) : null,
-      h('div', { class: 'aic-sub', text: Mo.note }),
-      h('div', { class: 'aic-row' }, h('button', { text: 'Open Manager', onclick: () => openPage('#manager-dashboard') }), h('button', { text: 'Ask BT about this', onclick: () => ask('Why is petty cash and other expenses high this month? Break it down by category.') })));
-  }
-  return body;
-}
-
-
-// ── Inventory & STR: one compact summary, detail on demand ──
-function secInvStr() {
-  const raw = S.snap && S.snap.raw, P = raw && raw.planning, R = P && P.reorder, F = P && P.fill, str = raw && raw.str, sp = raw && raw.strPending, inv = raw && raw.briefing && raw.briefing.inventory;
-  let body;
-  if (!S.snap) body = skeleton(2);
-  else {
-    const rows = [];
-    if (inv) rows.push(['STOCK-OUTS, STILL SELLING', String(inv.out_of_stock_but_selling)], ['RUN OUT WITHIN 7 DAYS', String(inv.running_out_within_7_days)]);
-    else if (R) rows.push(['STOCK-OUTS, STILL SELLING', String(R.out_of_stock_selling)], ['RUNNING LOW (≤7d)', String(R.low_cover)]);
-    if (R && R.lost_sales_per_day > 0) rows.push(['SALES AT RISK / DAY', 'Rs ' + M.fmtNum(R.lost_sales_per_day)]);
-    if (R && R.total_lines) rows.push(['REORDER LINES', R.total_lines + ' (est. Rs ' + M.fmtNum(R.est_value_at_sale_price) + ' at sale price)']);
-    if (sp) rows.push(['DELAYED TRANSFERS (3+ DAYS)', sp.matching + (sp.items && sp.items[0] ? ' · oldest ' + sp.items[0].age_days + ' days' : '')]);
-    else if (str) rows.push(['DISPATCHED, NOT RECEIVED', String(str.dispatched_not_received.all)]);
-    if (F && F.fill_rate_pct != null) rows.push(['STR FILL RATE', F.fill_rate_pct + '%'], ['SHORT / ZERO-DISPATCH LINES', F.short_lines + ' / ' + F.zero_dispatch_lines], ['SHORT RECEIPTS', F.receipt_accuracy_pct != null ? 'receipt accuracy ' + F.receipt_accuracy_pct + '%' : 'not measurable']);
-    const link = M.correlate(visibleFindings()).find(c => c.id === 'c_str_inv');
-    body = h('div', {},
-      rows.length ? h('dl', { class: 'aic-met aic-big' }, rows.map(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })])) : empty((P && P.errors && (P.errors.reorder || P.errors.fill)) || 'Inventory and transfer data not available.'),
-      link ? h('div', { class: 'aic-note' }, tagEl('CORRELATION'), ' ', link.title + '. ', link.why, ' ', h('button', { class: 'aic-g', text: 'Ask BT to check', onclick: () => ask('Check whether these are connected, using your tools, and say what is known and what is uncertain: ' + link.parts.map(p => p.title).join(' / ')) })) : null,
-      R ? h('details', { class: 'aic-det2', id: 'aic-d-reorder' }, h('summary', { text: 'Reorder recommendations' + (R.total_lines ? ' · ' + R.total_lines + ' lines' : '') }), reorderBody()) : null,
-      F ? h('details', { class: 'aic-det2', id: 'aic-d-fill' }, h('summary', { text: 'STR fill rate detail' + (F.fill_rate_pct != null ? ' · ' + F.fill_rate_pct + '%' : '') }), fillBody()) : null,
-      h('div', { class: 'aic-row' }, h('button', { text: 'Why are transfers delayed?', onclick: () => ask('Why are transfers delayed?') }), h('button', { text: 'Which reorders need review?', onclick: () => ask('Which reorder recommendations need review?') })));
-  }
-  return card('invstr', 'monitor', sectionHeader('INVENTORY & STR', h('span', { class: 'aic-sub', text: 'recommendations only · nothing is ordered' })), body);
-}
-
-// ── Closing, Cash & Money: compact totals, ledger detail on demand ──
-function secMoney() {
-  const raw = S.snap && S.snap.raw, P = raw && raw.planning, Mo = P && P.money;
-  let body;
-  if (!S.snap) body = skeleton(2);
-  else {
-    const rows = [], cl = raw.closing, today = cl && cl.days && cl.days[0], inc = cl && cl.incomplete_days, day = raw.day, cr = raw.briefing && raw.briefing.credit;
-    if (today) rows.push(['CLOSING TODAY', today.closed + ' of 3 shifts closed']);
-    if (inc) rows.push(['DAYS WITH OPEN SHIFTS (7D)', inc.length ? inc.length + ' · ' + inc.slice(0, 2).map(d => d.date + ': ' + d.missing.join(', ')).join(' | ') : '0']);
-    if (day) rows.push(['CASH DIFF (' + day.date + ')', 'Rs ' + M.fmtNum(day.diff)]);
-    if (cr && cr.month_net_owed != null) rows.push(['STAFF CREDIT OWED (' + cr.month + ')', 'Rs ' + M.fmtNum(cr.month_net_owed) + ' · ' + (cr.staff_owing || 0) + ' staff']);
-    if (Mo) Mo.ledgers.filter(ledgerHasActivity).forEach(L => rows.push([String(L.ledger).toUpperCase() + ' · MONTH TO DATE', 'Rs ' + M.fmtNum(L.month_to_date_total)]));
-    const exc = Mo ? Mo.ledgers.reduce((n, L) => n + (L.running_above_usual || []).length, 0) : 0, dup = cr ? cr.possible_duplicates : 0;
-    if (Mo || cr) rows.push(['LEDGER EXCEPTIONS', exc + ' running above usual · ' + (dup || 0) + ' possible duplicate' + (dup === 1 ? '' : 's')]);
-    body = h('div', {},
-      rows.length ? h('dl', { class: 'aic-met aic-big' }, rows.map(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })])) : empty((P && P.errors && P.errors.money) || 'Closing, cash and ledger data not available.'),
-      Mo || (P && P.errors && P.errors.money) ? h('details', { class: 'aic-det2', id: 'aic-d-ledger' }, h('summary', { text: 'Ledger detail · ' + ((Mo && Mo.month) || 'this month') }), ledgerBody()) : null,
-      h('div', { class: 'aic-row' }, h('button', { text: 'Open Closing Book', onclick: () => openPage('#closing') }), h('button', { text: 'Explain closing position', onclick: () => ask('Explain today’s closing position.') })));
-  }
-  return card('money', 'monitor', sectionHeader('CLOSING, CASH & MONEY', h('span', { class: 'aic-sub', text: 'closing_recent_days · money_overview' })), body);
-}
-
-// ── agent network ──
-const NODES = [['sales', 50, 12], ['manager', 85, 32], ['inventory', 85, 68], ['str', 50, 88], ['closing', 15, 68], ['billing', 15, 32], ['documents', 32, 50], ['analyst', 68, 50]];
-function agentStats(id) {
-  const label = SPECIALISTS[id].label, ev = T.recent(400, e => e.type === 'request_start' && e.agent === label);
-  return { runs: ev.length, last: ev[0] ? ev[0].timestamp : null };
-}
-function secNetwork(info) {
-  const live = info.live, active = new Set(), toolBy = {};
-  if (live.open && live.routed && live.routed.metadata) { (live.routed.metadata.domains || []).forEach(d => active.add(d)); if (live.routed.metadata.specialist) active.add(live.routed.metadata.specialist); if ((live.routed.metadata.domains || []).length > 1) active.add('analyst'); }
-  if (live.activeTool && live.activeTool.domain) { active.add(live.activeTool.domain); toolBy[live.activeTool.domain] = live.activeTool.tool; }
-  const lines = NODES.map(([, x, y]) => h2svg('line', { x1: 50, y1: 50, x2: x, y2: y }));
-  const nodes = NODES.map(([id, x, y]) => {
-    const st = agentStats(id), on = active.has(id);
-    return h('button', { class: 'aic-node' + (on ? ' on' : ''), style: 'left:' + x + '%;top:' + y + '%', onclick: () => openAgent(id), 'aria-label': SPECIALISTS[id].label + (on ? ' active' : st.runs ? ' ran ' + st.runs + ' times' : ' not run this session') },
-      h('b', { text: SPECIALISTS[id].label }), h('small', { text: on ? (toolBy[id] ? 'running ' + toolBy[id] : 'active') : st.runs ? 'last ' + M.ageLabel(st.last) : 'idle' }));
-  });
-  const svg = h2svg('svg', { class: 'aic-lines', viewBox: '0 0 100 100', 'aria-hidden': 'true' }); lines.forEach(l => svg.append(l));
-  return card('net', 'investigate', sectionHeader('AGENT NETWORK', h('span', { class: 'aic-sub', text: 'real specialists · lit only while running' })),
-    h('div', { class: 'aic-net' }, svg, h('div', { class: 'aic-hub' }, h('b', { text: 'BT' }), h('small', { text: 'Orchestrator' })), nodes),
-    h('div', { class: 'aic-sub', text: 'Specialists are chosen per question by rule-based routing (with a model fallback). The Analyst is used when 2+ areas match.' }));
-}
-
-// ── agent fleet ── one tile per REGISTERED specialist. Every value is read from the registry or real telemetry:
-// ACTIVE only while routed/running now; otherwise runs / last run / errors from this device's history (never invented).
-function activeAgentIds(live) {
-  const on = new Set(), tool = {};
-  const rm = live.open && live.routed && live.routed.metadata;
-  if (rm) { (rm.domains || []).forEach(d => on.add(d)); if (rm.specialist) on.add(rm.specialist); if ((rm.domains || []).length > 1) on.add('analyst'); }
-  if (live.activeTool && live.activeTool.domain) { on.add(live.activeTool.domain); tool[live.activeTool.domain] = live.activeTool.tool; }
-  return { on, tool };
-}
-// What each specialist is for, and one question it can answer right now. Questions are plain asks to the existing assistant.
-const FLEET_INFO = {
-  sales: { job: 'Sales, target pace and cash', q: 'How are sales against target this month?' },
-  manager: { job: 'Staff credit, salary and ledgers', q: 'Who owes staff credit and how much?' },
-  inventory: { job: 'Stock levels, reorder and risk', q: 'What inventory is at risk?' },
-  str: { job: 'Stock transfers and fill rate', q: 'Which stock transfers are waiting to be dispatched or received?' },
-  closing: { job: 'Daily closing and shifts', q: 'What is blocking closing?' },
-  billing: { job: 'Emergency billing entries', q: 'Is anything stuck in emergency billing?' },
-  documents: { job: 'Notes, sheets and documents', q: 'Summarise my recent notes and sheets.' },
-  analyst: { job: 'Combines several areas into one answer', q: 'What needs my attention?' },
-};
-function fleetTile(id, act) {
-  const sp = SPECIALISTS[id], st = agentStats(id), tools = listTools().filter(t => t.domain === id);
-  const errs = T.recent(400, e => e.type === 'error' && e.agent === sp.label).length;
-  const on = act.on.has(id);
-  const waiting = allRuns().some(r => r.status === 'awaiting_approval' && r.agents.includes(sp.label));
-  const state = on ? 'ACTIVE' : waiting ? 'NEEDS YOU' : st.runs ? 'STANDBY' : 'NO RUNS';
-  const detail = on ? (act.tool[id] ? 'Running ' + act.tool[id] : 'Working on the current request') : waiting ? 'Waiting for your approval' : st.runs ? 'Last run ' + M.ageLabel(st.last) : 'Not run in the last 7 days on this device';
-  const info = FLEET_INFO[id] || { job: '', q: '' };
-  const stats = id === 'analyst' ? st.runs + ' runs' : st.runs + ' runs' + (errs ? ' · ' + errs + ' errors' : '');
-  const cls = 'aic-ftile' + (on ? ' on' : '') + (waiting ? ' await' : '') + (!on && !waiting && !st.runs ? ' idle' : '');
-  return h('div', { class: cls, role: 'group', 'data-agent': id, 'aria-label': sp.label + ', ' + state.toLowerCase() + '. ' + detail },
-    h('button', { class: 'aic-fmain', onclick: () => openAgent(id), 'aria-label': 'Details for ' + sp.label + ': tools, latest run and events' },
-      h('span', { class: 'aic-fport', 'aria-hidden': 'true', text: id.slice(0, 2).toUpperCase() }),
-      h('span', { class: 'aic-fbody' },
-        h('b', { text: sp.label }),
-        h('span', { class: 'aic-pill aic-' + (on ? 'ok' : waiting ? 'wn' : 'mu'), text: state }),
-        info.job ? h('span', { class: 'aic-fjob', text: info.job }) : null,
-        h('small', { class: 'aic-fstats', text: detail + (on || waiting || !st.runs ? '' : ' · ' + stats) + ' · ' + (id === 'analyst' ? 'all tools' : tools.length + ' tools') }))),
-    info.q ? h('button', { class: 'aic-fask', onclick: () => ask(info.q), title: 'Ask DUA this question', text: 'Ask: ' + info.q }) : null);
-}
-
-// ── agent runs: timeline rebuilt from the real activity log ──
-const RUN_TONE = { complete: 'ok', running: 'ok', awaiting_approval: 'wn', failed: 'cr', cancelled: 'wn', unfinished: 'mu' };
-const RUN_LABEL = { complete: 'COMPLETE', running: 'RUNNING', awaiting_approval: 'AWAITING APPROVAL', failed: 'FAILED', cancelled: 'CANCELLED', unfinished: 'NOT FINISHED' };
-const allRuns = () => M.buildRuns(T.recent(400).slice().reverse(), (T.liveState().open || {}).request_id || null);
-function stageList(run) {
-  if (!run.stages.length) return empty('No stages recorded.');
-  return h('ol', { class: 'aic-tl' }, run.stages.map(st => h('li', { class: 'aic-tls aic-tl-' + st.status },
-    h('span', { class: 'aic-tld', 'aria-hidden': 'true' }),
-    h('b', { text: st.label }), ' ', h('time', { text: clock(st.at) }),
-    st.status === 'waiting' ? h('span', { class: 'aic-tag', text: 'WAITING FOR YOU' }) : st.status === 'failed' ? h('span', { class: 'aic-tag aic-tl-bad', text: 'FAILED' }) : null,
-    st.detail ? h('div', { class: 'aic-sub', text: st.detail }) : null)));
-}
-function openRun(run) {
-  openModal('Run · ' + (run.question ? run.question.slice(0, 60) : 'request'), h('div', {},
-    h('div', { class: 'aic-row' }, h('span', { class: 'aic-pill aic-' + RUN_TONE[run.status], text: RUN_LABEL[run.status] }), run.durationMs != null ? h('span', { class: 'aic-sub', text: 'took ' + (run.durationMs < 1000 ? run.durationMs + ' ms' : (run.durationMs / 1000).toFixed(1) + ' s') }) : h('span', { class: 'aic-sub', text: 'no end event recorded' }), run.historical ? h('span', { class: 'aic-tag aic-earlier', text: 'EARLIER SESSION' }) : null),
-    h('div', { class: 'aic-k', text: 'STAGES THAT ACTUALLY HAPPENED' }), stageList(run),
-    run.tools.length ? [h('div', { class: 'aic-k', text: 'TOOLS (' + run.tools.length + ')' }), h('ul', { class: 'aic-list' }, run.tools.map(t => h('li', {}, h('b', { text: t.tool }), ' ', h('span', { class: 'aic-pill aic-' + (t.status === 'ok' ? 'ok' : 'cr'), text: t.status || '?' }), t.duration != null ? h('span', { class: 'aic-sub', text: ' ' + t.duration + ' ms' }) : null)))] : null,
-    h('div', { class: 'aic-k', text: 'ALL EVENTS' }), eventList(run.events.slice().reverse())));
-}
-function runRow(run) {
-  const when = run.historical ? clockFull(run.startedAt) : clock(run.startedAt);
-  return h('li', { class: 'aic-run aic-run-' + run.status },
-    h('button', { class: 'aic-runb', onclick: () => openRun(run), 'aria-label': 'Open run: ' + (run.question || 'request') + ', ' + RUN_LABEL[run.status].toLowerCase() },
-      h('span', { class: 'aic-runq', text: run.question ? (run.question.length > 90 ? run.question.slice(0, 89).trimEnd() + '…' : run.question) : 'Request' }),
-      h('span', { class: 'aic-pill aic-' + RUN_TONE[run.status], text: RUN_LABEL[run.status] }),
-      h('span', { class: 'aic-sub', text: when + (run.durationMs != null ? ' · ' + (run.durationMs / 1000).toFixed(1) + ' s' : '') + (run.agents.length ? ' · ' + run.agents.join(' + ') : '') + (run.tools.length ? ' · ' + run.tools.length + ' tool' + (run.tools.length === 1 ? '' : 's') : '') }),
-      h('span', { class: 'aic-runst', 'aria-hidden': 'true' }, run.stages.map(st => h('i', { class: 'aic-tl-' + st.status, title: st.label })))));
-}
-function runsBlock(heading = true) {
-  const runs = allRuns();
-  return h('div', { class: 'aic-runs' }, heading ? h('div', { class: 'aic-k', text: 'RECENT RUNS · FROM THE REAL ACTIVITY LOG' }) : null,
-    runs.length ? h('ul', { class: 'aic-runl' }, runs.slice(0, 3).map(runRow)) : empty('No agent runs recorded on this device yet. Ask DUA something and the run appears here.'),
-    runs.length > 3 ? h('details', { class: 'aic-log' }, h('summary', { text: 'Earlier runs · ' + (runs.length - 3) }), h('ul', { class: 'aic-runl' }, runs.slice(3, 15).map(runRow))) : null);
-}
-
-
-// ── instrument tiles (compact gauges around the core). Every value is read from existing state; "—" means not available, never 0. ──
-const RING_C = 2 * Math.PI * 20;
-function ringGauge(pct, tn) {
-  const p = Math.max(0, Math.min(100, pct)), svg = h2svg('svg', { viewBox: '0 0 48 48', class: 'aic-ring-g aic-g-' + tn, 'aria-hidden': 'true', focusable: 'false' });
-  svg.append(h2svg('circle', { class: 'rg-track', cx: 24, cy: 24, r: 20 }),
-    h2svg('circle', { class: 'rg-val', cx: 24, cy: 24, r: 20, 'stroke-dasharray': (p / 100 * RING_C).toFixed(1) + ' ' + RING_C.toFixed(1), transform: 'rotate(-90 24 24)' }));
-  return svg;
-}
-
-function secFleet(info) {
-  const act = activeAgentIds(info.live);
-  const ids = Object.keys(SPECIALISTS).filter(id => id !== 'general');
-  return card('fleet', 'monitor investigate', sectionHeader('AGENT FLEET', h('span', { class: 'aic-sub', text: ids.length + ' specialists · tap one for its tools and events' })),
-    h('div', { class: 'aic-fleet' }, ids.map(id => fleetTile(id, act))));
-}
-function secRuns() {
-  return card('runs', 'monitor investigate', sectionHeader('RECENT RUNS', h('span', { class: 'aic-sub', text: 'from the real activity log' })), runsBlock(false));
-}
-function h2svg(tag, attrs) { const e = document.createElementNS('http://www.w3.org/2000/svg', tag); Object.entries(attrs).forEach(([k, v]) => e.setAttribute(k, v)); return e; }
-
-function openAgent(id) {
-  const sp = SPECIALISTS[id], st = agentStats(id), tools = listTools().filter(t => t.domain === id);
-  const ev = T.recent(60, e => e.agent === sp.label).slice(0, 10);
-  openModal(sp.label + ' specialist', h('div', {},
-    h('dl', { class: 'aic-met' }, [['Runs (7 days, this device)', String(st.runs)], ['Last run', st.last ? M.ageLabel(st.last) : 'not run yet'], ['Tools', String(id === 'analyst' ? 'all domains it is routed to' : tools.length)]].map(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })])),
-    tools.length ? h('ul', { class: 'aic-list' }, tools.map(t => h('li', {}, h('b', { text: t.name }), ' ', h('span', { class: 'aic-pill aic-' + (t.risk === 'read' || t.risk === 'ui' ? 'ok' : 'wn'), text: t.risk }), h('div', { class: 'aic-sub', text: t.description.slice(0, 140) })))) : null,
-    (() => { const mine = allRuns().filter(r => r.agents.includes(sp.label)).slice(0, 1)[0]; return mine ? [h('div', { class: 'aic-k', text: 'LATEST RUN · ' + RUN_LABEL[mine.status] }), stageList(mine)] : null; })(),
-    ev.length ? [h('div', { class: 'aic-k', text: 'RECENT EVENTS' }), eventList(ev)] : empty('No events from this specialist yet in this session.')));
-}
-
-// ── findings ──
-// BT's assessment. An orchestrated investigation shows what really happened (which specialists ran, what each returned), typed
-// evidence, the Analyst's confidence and the recommendation. A plain Ask BT answer keeps the old text-only view.
-const CLASS_NOTE = { 'AI INTERPRETATION': 'interpretation, not a calculation', CORRELATION: 'moved together, not proof of cause', FACT: 'as returned by the tool', RECOMMENDATION: 'advice from the Analyst' };
-function assessmentNode(A) {
-  const inv = A.investigation;
-  if (!inv || !inv.synthesis) return h('div', { class: 'aic-assess' }, h('div', {}, h('span', { class: 'aic-tag aic-k-ai', text: 'AI INTERPRETATION' }), ' ', h('span', { class: 'aic-sub', text: 'Confidence not rated. Treat as an explanation to check against the evidence above, not as a calculation.' })), h('div', { class: 'aic-md', html: null }, mdNode(A.text)));
-  const syn = inv.synthesis, st = inv.stats, rec = syn.recommendation;
-  const ran = inv.entries.map(e => h('span', { class: 'aic-tag aic-spec-' + (e.status === 'ok' && e.grounded ? 'ok' : 'bad'), title: e.error || '', text: e.label + ': ' + (e.status !== 'ok' ? e.status.toUpperCase() : e.grounded ? e.tools.length + ' tool call(s)' : 'NO DATA') }));
-  const items = (syn.evidence_items || []).map(it => h('li', {}, tagEl(it.class), ' ', h('b', { text: it.label + ': ' }), it.text, ' ', h('span', { class: 'aic-sub', text: '(' + it.source + (CLASS_NOTE[it.class] ? ', ' + CLASS_NOTE[it.class] : '') + (it.causal_language ? ', wording claimed a cause: unproven' : '') + ')' })));
-  return h('div', { class: 'aic-assess' },
-    h('div', {}, h('span', { class: 'aic-tag aic-k-ai', text: 'AI INTERPRETATION' }), ' ', h('span', { class: 'aic-sub', text: 'Confidence: ' + syn.confidence + (syn.confidence_reason ? ' - ' + syn.confidence_reason : '') + '. An explanation to check against the evidence, not a calculation.' })),
-    h('p', { text: syn.conclusion }),
-    h('div', { class: 'aic-k', text: 'SPECIALISTS THAT ACTUALLY RAN (' + st.grounded + ' of ' + st.members + ' returned data)' }), h('div', { class: 'aic-path' }, ran),
-    h('div', { class: 'aic-k', text: 'EVIDENCE USED' }), items.length ? h('ul', { class: 'aic-list' }, items) : empty('No evidence rows.'),
-    syn.conflicts.length ? [h('div', { class: 'aic-k', text: 'CONFLICTS BETWEEN SPECIALISTS' }), h('ul', { class: 'aic-list' }, syn.conflicts.map(c => h('li', { text: c.statement })))] : null,
-    syn.gaps.length || st.failed || st.ungrounded.length ? [h('div', { class: 'aic-k', text: 'NOT CHECKED / MISSING' }), h('ul', { class: 'aic-list' }, [...syn.gaps.map(g => h('li', { text: g })), ...inv.entries.filter(e => e.status !== 'ok').map(e => h('li', { text: e.label + ' specialist ' + e.status + (e.error ? ' (' + e.error + ')' : '') + ': its area was not checked.' })), ...st.ungrounded.map(id => h('li', { text: id + ' specialist retrieved no data, so it was not used as evidence.' }))])] : null,
-    rec
-      ? [h('div', { class: 'aic-k', text: 'AI RECOMMENDATION' }), h('div', {}, tagEl('RECOMMENDATION'), ' ', h('b', { text: rec.action })),
-        h('dl', { class: 'aic-met' }, [['Why', rec.why], ['Expected result', rec.expected_result || 'not stated'], ['Risk', rec.risk], ['Affects', rec.affected.join(', ') || 'not stated'], ['Based on', rec.evidence_from.join(' + ')],
-          ['Approval', rec.approval_required ? 'Required for any change; ' + rec.reversibility_note : 'Not needed: advice only, nothing is changed'], ['Verification', rec.how_verified]].map(([k, v]) => [h('dt', { text: k }), h('dd', { text: v })]))]
-      : [h('div', { class: 'aic-k', text: 'AI RECOMMENDATION' }), h('p', { class: 'aic-sub', text: syn.dropped_recommendation ? 'Withheld: the Analyst suggested something that was not tied to data a specialist retrieved.' : 'The Analyst did not recommend an action.' })],
-    h('div', { class: 'aic-sub', text: 'Investigation ' + inv.id + ' took ' + M.fmtDur(inv.ms) + '. Agreement/conflict and correlation are the Analyst\'s reading of the evidence; the tool outputs are the facts.' }));
-}
 function openFinding(f, entry) {
   const A = S.assess[f.id];
   const R = C.structureInvestigation(f, A, S.snap ? C.buildActionDrafts(S.snap.raw) : []);
@@ -811,7 +325,6 @@ function openFinding(f, entry) {
     sec('AUDIT REFERENCE', h('p', { class: 'aic-sub', text: f.audit_reference + '. Read-only detection: nothing was changed. Changes made later through BT appear in the audit log with their own reference.' }))),
   { sub: f.source, tonec: tone(f.severity === 'warning' ? 'WARNING' : 'HEALTHY') });
 }
-function mdNode(text) { const d = document.createElement('div'); d.innerHTML = renderMarkdown(text); return d; } // renderMarkdown escapes everything first
 
 function openSystem(name) {
   const s = S.snap && S.snap.systems[name]; if (!s) return;
@@ -827,21 +340,6 @@ function openSystem(name) {
     h('div', { class: 'aic-k', text: 'RECENT ACTIVITY' }), ev.length ? eventList(ev) : empty('No activity for this system yet on this device.'),
     h('div', { class: 'aic-row' }, h('button', { class: 'aic-p', text: 'Investigate with BT', onclick: () => { closeModal(); ask(SYSTEM_ASK[name]); } }), h('button', { text: 'Open ' + name.toLowerCase() + ' page', onclick: () => openPage(M.SYSTEM_PAGE[name]) }))),
   { tonec: tone(s.status) });
-}
-
-// ── activity ──
-function eventList(evs) {
-  return h('ul', { class: 'aic-ev' }, evs.map(e => h('li', { class: 'aic-evi aic-sev-' + (e.severity || 'info') + (e.historical ? ' aic-hist-ev' : '') },
-    h('time', { text: e.historical ? clockFull(e.timestamp) : clock(e.timestamp) }), e.historical ? h('span', { class: 'aic-tag aic-earlier', text: 'EARLIER', title: 'Restored from a previous session on this device. Not live.' }) : null, h('span', { class: 'aic-evt', text: M.describeEvent(e) }),
-    (e.type === 'tool_end' || e.type === 'tool_start') ? h('button', { class: 'aic-g aic-insp', text: 'inspect', onclick: () => inspect(e) }) : null)));
-}
-function inspect(e) {
-  const start = T.recent(400, x => x.type === 'tool_start' && x.entity_reference === e.entity_reference)[0];
-  const end = T.recent(400, x => x.type === 'tool_end' && x.entity_reference === e.entity_reference)[0];
-  const def = listTools().find(t => t.name === e.tool);
-  const rows = [['Agent', e.agent || (e.source === 'ai-center' ? 'BT Intelligence monitoring read' : '—')], ['Tool', e.tool], ['Domain', e.domain || '—'], ['Risk', (e.metadata && e.metadata.risk) || (def && def.risk) || '—'],
-    ['Input', JSON.stringify((start && start.metadata && start.metadata.args) || {}) + '  (sensitive keys redacted)'], ['Data source', 'Existing app data via the tool registry'], ['Status', (end && end.status) || 'running'], ['Duration', end && end.duration != null ? end.duration + ' ms' : '—'], ['Result', 'Not retained here. Results stay in the assistant conversation.'], ['Started', clock(start && start.timestamp)]];
-  openModal('Tool execution', h('dl', { class: 'aic-met aic-big aic-insp-dl' }, rows.map(([k, v]) => [h('dt', { text: k }), h('dd', { text: String(v) })])), { sub: 'Agent → Tool → Input → Result' });
 }
 function secActivity() {
   const evs = T.recent(150, e => M.eventMatches(e, S.filter)).slice(0, 40);
@@ -872,46 +370,6 @@ function secActions(info) {
   }
   return card('actc', 'act', sectionHeader('APPROVALS & RECENT ACTIVITY', h('span', { class: 'aic-sub', text: 'BT proposes \u00B7 you approve' })), body);
 }
-
-
-// Outcome chip for an audit row. "Executed" only when the audit log recorded success; a failure is shown as failed.
-function outcomeChip(r) {
-  const key = C.auditActionState({ change: true, status: r.status === 'applied' ? 'approved' : r.status });
-  const st = C.ACTION_STATES[key];
-  return h('span', { class: 'aic-pill aic-' + st.tone, title: st.note, text: st.label });
-}
-// Prepared drafts: text only. Creating or viewing one never changes, sends or approves anything.
-function draftsNode() {
-  if (!S.snap) return null;
-  const drafts = C.buildActionDrafts(S.snap.raw);
-  if (!drafts.length) return null;
-  return h('div', { class: 'aic-drafts' }, h('div', { class: 'aic-k', text: 'PREPARED DRAFTS (nothing is changed or sent)' }),
-    h('ul', { class: 'aic-list' }, drafts.map(d => h('li', {},
-      h('div', { class: 'aic-row' }, h('b', { text: d.title }), h('span', { class: 'aic-pill aic-' + C.ACTION_STATES[d.state].tone, title: C.ACTION_STATES[d.state].note, text: C.ACTION_STATES[d.state].label })),
-      h('div', { class: 'aic-sub', text: d.affected + ' · ' + d.amounts }),
-      h('button', { text: 'Preview', 'aria-label': 'Preview ' + d.title, onclick: () => openDraft(d.id) })))));
-}
-function openDraft(id) {
-  const d = S.snap && C.buildActionDrafts(S.snap.raw).find(x => x.id === id);
-  if (!d) { toast('That draft is no longer available. Refresh and try again.'); return; }
-  const st = C.ACTION_STATES[d.state];
-  openModal(d.title, h('div', {},
-    h('div', { class: 'aic-row' }, h('span', { class: 'aic-pill aic-' + st.tone, text: st.label }), h('span', { class: 'aic-sub', text: 'Built from ' + d.source + ' · data as of ' + clock(S.snap.at) })),
-    h('div', { class: 'aic-k', text: 'PURPOSE' }), h('p', { text: d.purpose }),
-    h('div', { class: 'aic-k', text: 'AFFECTED RECORDS' }), h('p', { text: d.affected }),
-    h('div', { class: 'aic-k', text: 'QUANTITIES / AMOUNTS' }), h('p', { text: d.amounts }),
-    h('div', { class: 'aic-k', text: 'EXPECTED IMPACT' }), h('p', { class: 'aic-sub', text: d.impact }),
-    h('div', { class: 'aic-k', text: 'PREVIEW (exactly what will be copied)' }), h('pre', { class: 'aic-pre', text: d.text }),
-    h('div', { class: 'aic-gate aic-ok', text: d.note + ' Any real change still needs your approval in the Action Center.' }),
-    h('div', { class: 'aic-row' },
-      h('button', { class: 'aic-p', text: 'Copy', onclick: () => copyText(d.text, d.title + ' copied') }),
-      h('button', { text: 'Open source page', onclick: () => openPage(d.href) }),
-      h('button', { class: 'aic-g', text: 'Ask BT to review', onclick: () => { closeModal(); ask('Review this ' + d.title.toLowerCase() + ' and tell me what is known and what is uncertain.'); } }))),
-  { sub: 'Prepared draft · read-only', tonec: 'cy' });
-}
-
-//  approval view (section 25): the real proposal, decided through the ONE shared controller
-const tagEl = k => h('span', { class: 'aic-tag aic-k-' + String(k).split(' ')[0].toLowerCase(), text: k });
 function afterDecision(r, action) {
   if (!r || r.ok !== true) {
     toast(r && r.needs === 'type' ? 'Type the confirmation word first.' : r && r.needs === 'confirm' ? 'Tap once more to confirm.' : (r && r.error) || 'Could not record that decision.');
@@ -943,62 +401,6 @@ function approvalCard(p) {
       h('button', { text: 'Reject', onclick: ev => decide('reject', ev) })),
     killed ? h('div', { class: 'aic-err', text: 'Kill switch is ON: changes are stopped.' }) : null);
 }
-
-//  correlation (rule-based co-occurrence of findings; never a claim of cause)
-
-//  observability (section 42): measured from real recorded events (last 7 days on this device + this session)
-function secObs() {
-  const o = M.observability(T.recent(400).reverse()), na = 'no data yet';
-  const row = (k, v) => [h('dt', { text: k }), h('dd', { text: v })];
-  return card('obs', 'investigate', sectionHeader('OBSERVABILITY', h('span', { class: 'aic-sub', text: 'last 7 days, this device' })),
-    h('dl', { class: 'aic-met aic-big' }, [
-      ...row('REQUESTS', o.requests + ' (' + o.answered + ' answered, ' + o.errors + ' failed)'), ...row('AVG INVESTIGATION', o.avgInvestigationMs != null ? M.fmtDur(o.avgInvestigationMs) : na), ...row('LONGEST', o.maxInvestigationMs != null ? M.fmtDur(o.maxInvestigationMs) : na),
-      ...row('APPROVALS', o.approvals + ' decided (' + o.approvalsRejected + ' rejected)'), ...row('AVG APPROVAL WAIT', o.avgApprovalWaitMs != null ? M.fmtDur(o.avgApprovalWaitMs) : na), ...row('RETRIES', String(o.retries)),
-      ...row('TOOL RUNS (THIS SESSION)', (() => { const st = T.toolStats(), c = Object.values(st).reduce((a, x) => a + x.calls, 0), f = Object.values(st).reduce((a, x) => a + x.failed, 0); return c ? c + ' (' + f + ' failed)' : na; })()),
-      ...row('VERIFIED CHANGES', o.verified + ' passed, ' + o.verifyFailed + ' failed')]),
-    h('div', { class: 'aic-sub', text: 'Requests = assistant questions on this device. System Health counts server calls from every device, so the two numbers can differ. Older than 7 days, or from another device, is not included. Cross-device history lives in the audit log.' }));
-}
-
-//  deeper system views: existing READ tools, loaded only when you ask
-const DEEP = {
-  INVENTORY: [['Fast movers running out', 'low_cover_items', { max_days: 15, limit: 8 }], ['Out of stock but selling', 'low_stock_items', { max_qty: 0, only_selling: true, limit: 8 }], ['Slow movers (no sale 30+ days)', 'slow_moving_stock', { days: 30, limit: 8 }], ['Dead stock (no sale 90+ days)', 'slow_moving_stock', { days: 90, limit: 8 }]],
-  SALES: [['Best sales days', 'top_sales_days', {}]], STR: [['Incoming STRs not received', 'list_pending_strs', { direction: 'in', limit: 8 }]], CLOSING: [['Last 14 days of closing', 'closing_recent_days', { days: 14 }]],
-};
-const scalar = v => v != null && typeof v !== 'object';
-function renderDeep(data) {
-  const arr = Object.entries(data || {}).find(([, v]) => Array.isArray(v)), head = Object.entries(data || {}).filter(([, v]) => scalar(v)).slice(0, 6);
-  return h('div', {}, head.length ? h('dl', { class: 'aic-met' }, head.map(([k, v]) => [h('dt', { text: k.replace(/_/g, ' ') }), h('dd', { text: typeof v === 'number' ? M.fmtNum(v) : String(v) })])) : null,
-    arr && arr[1].length ? h('ul', { class: 'aic-list' }, arr[1].slice(0, 12).map(it => { const o = it && typeof it === 'object' ? it : { value: it }, first = o.name || o.str || o.date || o.value || ''; const rest = Object.entries(o).filter(([k, v]) => scalar(v) && v !== first && !['name', 'str', 'date'].includes(k)).slice(0, 5).map(([k, v]) => k.replace(/_/g, ' ') + ' ' + (typeof v === 'number' ? M.fmtNum(v) : v)).join('  |  '); return h('li', {}, h('b', { text: String(first) }), rest ? h('div', { class: 'aic-sub', text: rest }) : null); })) : h('div', { class: 'aic-sub', text: 'Nothing matched.' }));
-}
-function deepViews(name) {
-  const defs = DEEP[name]; if (!defs) return null;
-  return h('div', {}, h('div', { class: 'aic-k', text: 'DEEPER VIEWS (existing read-only tools, loaded on request)' }), defs.map(([label, tool, args]) => {
-    const key = name + ':' + label, out = h('div', { class: 'aic-deep' });
-    const paint2 = () => { const d = S.deep[key]; out.replaceChildren(d ? (d.error ? h('div', { class: 'aic-err', text: d.error }) : renderDeep(d.data)) : ''); };
-    paint2();
-    return h('div', { class: 'aic-dv' }, h('button', { text: label, onclick: async ev => { const b = ev.currentTarget; b.disabled = true; try { S.deep[key] = { data: await readTool(tool, args) }; } catch (e) { S.deep[key] = { error: (e && e.message) || 'Could not read this.' }; } b.disabled = false; paint2(); } }), h('span', { class: 'aic-sub', text: ' ' + tool }), out);
-  }));
-}
-
-// ── health ──
-function secHealth() {
-  const rows = S.health;
-  return card('health', 'investigate', sectionHeader('SYSTEM HEALTH', h('span', { class: 'aic-sub', text: 'measured, not assumed' })),
-    rows ? h('ul', { class: 'aic-hl' }, rows.map(r => h('li', {}, h('span', { class: 'aic-hn', text: r.label }), pill(r.status), h('span', { class: 'aic-sub', text: r.detail })))) : skeleton(4));
-}
-
-// ── tools (lazy) ──
-function secTools() {
-  const body = h('div', { class: 'aic-toolsbody' });
-  const det = h('details', { class: 'aic-tooldet', ontoggle: ev => { S.toolsOpen = ev.target.open; if (S.toolsOpen) fillTools(body); } }, h('summary', { text: listTools().length + ' registered tools · risk, approval and 7-day stats on this device' }), body);
-  if (S.toolsOpen) { det.setAttribute('open', ''); fillTools(body); }
-  return card('tools', 'investigate', sectionHeader('TOOL INTELLIGENCE'), det);
-}
-function fillTools(el) {
-  const stats = T.toolStats(), by = {}, gate = { writesAllowed: window.BTAgent ? window.BTAgent.writesAllowed() : false, killed: window.BTAgent ? window.BTAgent.killed() : true };
-  listTools().forEach(t => (by[t.domain] = by[t.domain] || []).push(t));
-  el.replaceChildren(...Object.keys(by).sort().map(d => h('div', { class: 'aic-tg' }, h('div', { class: 'aic-k', text: d.toUpperCase() + ' TOOLS' }), h('div', { class: 'aic-twrap' }, h('table', {}, h('thead', {}, h('tr', {}, ['Tool', 'Purpose', 'Status', 'R/W', 'Risk', 'Approval', 'Runs', 'Success', 'Avg', 'Last used'].map(x => h('th', { text: x })))),
-    h('tbody', {}, by[d].map(t => { const st = stats[t.name], chg = t.risk === 'write' || t.risk === 'critical'; const ts = M.toolStatus(t, gate); return h('tr', {}, h('td', { text: t.name, title: t.description }), h('td', { class: 'aic-purp', text: M.toolPurpose(t) }), h('td', {}, h('span', { class: 'aic-pill aic-' + M.toolTone(ts.status), text: ts.status, title: ts.detail })), h('td', { text: chg ? 'Write' : t.risk === 'ui' ? 'UI' : 'Read' }), h('td', {}, h('span', { class: 'aic-pill aic-' + (chg ? (t.risk === 'critical' ? 'cr' : 'wn') : 'ok'), text: t.risk })), h('td', { text: chg ? 'Required' + (t.risk === 'critical' ? ' + typed word' : '') : 'No' }), h('td', { text: st ? String(st.calls) : '0' }), h('td', { text: st && st.successRate != null ? st.successRate + '%' : '—' }), h('td', { text: st && st.avgMs != null ? st.avgMs + ' ms' : '—' }), h('td', { text: st ? M.ageLabel(st.lastAt) : 'not in 7 days' })); }))))))); }
 
 // ── repository intelligence (loads the static index; shows NOT CONNECTED if it cannot) ──
 function loadRepoIndex() {
@@ -1081,17 +483,10 @@ const TABS = [['overview', 'Overview', 'home'], ['sales', 'Sales & Forecast', 'b
 const TAB_OF = { hero: '*', tabs: '*', crit: '*', dktiles: 'overview', dkatt: 'overview inventory', dksales: 'overview sales', fc: 'sales', dkinv: 'overview inventory', invstr: 'inventory',
   dkmoney: 'overview', money: 'sales', dkappr: 'overview operations', actc: 'operations', dkops: 'overview', ops: 'operations', dkgame: 'sales', dkaudit: 'audit', dkexp: 'audit', dkpay: 'audit', sys: 'more', att: 'more', hist: 'operations' };
 function setTab(id) { S.tab = TABS.some(t => t[0] === id) ? id : 'overview'; paint(); const el = document.getElementById('aic-tabs'); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'start' }); }
-const ic = (name, cls = 'dk-ic') => { const s = h2svg('svg', { viewBox: '0 0 24 24', class: cls, 'aria-hidden': 'true', focusable: 'false', fill: 'none', stroke: 'currentColor', 'stroke-width': 1.8, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }); s.append(h2svg('path', { d: ICONS[name] || ICONS.bars })); return s; };
 function secTabs() {
   return h('nav', { class: 'dk-tabs', id: 'aic-tabs', role: 'tablist', 'aria-label': 'BT Intelligence sections', 'data-tabs': '*' },
     TABS.map(([id, label, icon]) => h('button', { class: 'dk-tab' + (S.tab === id ? ' on' : ''), role: 'tab', 'aria-selected': String(S.tab === id), 'data-tab': id, onclick: () => setTab(id) }, ic(icon), h('span', { text: label }))));
 }
-function dkCard(id, icon, title, link, kids) {
-  return h('section', { class: 'aic-card dk-card', id: 'aic-' + id },
-    h('div', { class: 'dk-h' }, h('span', { class: 'dk-hic' }, ic(icon)), h('h2', { text: title }),
-      link ? h('button', { class: 'dk-link', onclick: link[1], 'aria-label': link[0] + ': ' + title }, link[0], ic('chevron', 'dk-chev')) : null), kids);
-}
-function dkWait() { return skeleton(3); }
 function secDkTiles() {
   if (!S.snap) return h('section', { class: 'dk-tiles', id: 'aic-dktiles' }, dkWait());
   const go = id => (id === 'risk' || id === 'fill' ? 'inventory' : 'sales');
@@ -1119,9 +514,6 @@ function secDkSales() {
         C0.bars.map(b => h('li', { class: b.today ? 'today' : '' }, h('span', { class: 'dk-bar', style: 'height:' + b.pct + '%', title: 'Rs ' + M.fmtNum(b.value) }), h('small', { text: b.day }))))),
     S.snap && C0 && C0.projected != null ? h('div', { class: 'dk-foot', text: 'Expected month-end: ' + DK.rs(C0.projected) }) : null);
 }
-function kvList(items, cls) {
-  return h('dl', { class: cls }, items.map(i => h('div', { class: 'dk-kv' + (i.tone ? ' dk-' + i.tone : '') }, h('dt', { text: i.label }), h('dd', { text: i.value }), i.note ? h('small', { text: i.note }) : null)));
-}
 function secDkInv() {
   const P = S.snap ? DK.inventoryPanel(S.snap) : null;
   return dkCard('dkinv', 'box', 'Inventory & STR', ['View Details', () => setTab('inventory')],
@@ -1132,40 +524,6 @@ function secDkMoney() {
   return dkCard('dkmoney', 'cash', 'Closing Cash & Money', ['View Details', () => setTab('sales')],
     !S.snap ? dkWait() : !P ? empty('Closing, cash and ledger data are not available.') : h('div', {}, h('div', { class: 'dk-two' }, kvList(P.left, 'dk-l'), kvList(P.right, 'dk-r')),
       P.foot ? h('div', { class: 'dk-foot', text: P.foot + (P.month ? ' \u00B7 ' + P.month : '') }) : null));
-}
-function dkList(rows) {
-  return h('div', { class: 'dk-rows dk-flat' }, rows.map(r => h('div', { class: 'dk-line' }, h('span', { class: 'dk-lt' }, h('b', { text: r.name }), h('small', { text: r.sub })), h('b', { class: 'dk-big dk-r-' + (r.tone || 'cy'), text: r.value }))));
-}
-function auditSrc() { const d = S.snap && S.snap.raw && S.snap.raw.deck; return d || {}; }
-function secDkAudit() {
-  const P = S.snap ? DK.auditPanel(auditSrc().ai) : null;
-  return dkCard('dkaudit', 'shield', 'Audit & Variance', null,
-    !S.snap ? dkWait() : !P ? empty('Audit data is not loaded yet. Open the Audit page once.') : h('div', {}, h('div', { class: 'dk-two' }, kvList(P.left, 'dk-l'), kvList(P.right, 'dk-r')),
-      P.top.length ? h('div', {}, h('div', { class: 'dk-foot', text: 'Biggest unresolved variances' }), dkList(P.top)) : null));
-}
-function secDkExpiry() {
-  const P = S.snap ? DK.expiryPanel(auditSrc().ai) : null;
-  return dkCard('dkexp', 'calendar', 'Near Expiry', null,
-    !S.snap ? dkWait() : !P ? empty('No expiry data yet.') : h('div', {}, h('div', { class: 'dk-two' }, kvList(P.left, 'dk-l'), kvList(P.right, 'dk-r')), P.months.length ? dkList(P.months) : null));
-}
-function secDkPay() {
-  const P = S.snap ? DK.paymentPanel(auditSrc().pay) : null;
-  return dkCard('dkpay', 'cash', 'Payments (Cash / Card / Credit)', null,
-    !S.snap ? dkWait() : !P ? empty('Payment data is not loaded yet. Open the Payments page once.') : h('div', {}, h('div', { class: 'dk-two' }, kvList(P.left, 'dk-l'), kvList(P.right, 'dk-r')), dkList(P.days), P.foot ? h('div', { class: 'dk-foot', text: P.foot }) : null));
-}
-const GRADE_ICON = { bullseye: '\uD83C\uDFAF', hit: '\u2705', close: '\uD83D\uDFE1', miss: '\u274C' };
-function secDkGame() {
-  const v = FG.view();
-  return dkCard('dkgame', 'target', 'AI Forecast Game', null,
-    !v ? empty('The AI needs at least 2 earlier same-weekday sales entries to make today\u2019s call.') : h('div', {},
-      h('div', { class: 'dk-two' }, kvList([{ label: 'AI\u2019s call for today', value: v.locked ? DK.rs(v.locked.expected) : '\u2014', note: v.locked ? 'range ' + DK.rs(v.locked.low) + ' \u2013 ' + DK.rs(v.locked.high) : 'needs 2+ earlier same-weekday entries' }, { label: 'Projected close', value: DK.rs(v.projected), note: v.basis }], 'dk-l'),
-        kvList([{ label: 'Sold so far (POS)', value: DK.rs(v.live), tone: v.status === 'reached' ? 'ok' : null, note: v.progressPct + '% of the call' }, { label: 'Status', value: ({ reached: 'Reached!', ahead: 'Ahead', on_track: 'On track', behind: 'Behind' })[v.status] || 'Waiting', tone: v.status === 'behind' ? 'wn' : v.status === 'waiting' ? null : 'ok' }], 'dk-r')),
-      h('div', { class: 'fg-bar', role: 'progressbar', 'aria-valuenow': String(v.progressPct), 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-label': 'Sold so far vs the AI call' }, h('s', { style: 'width:' + v.progressPct + '%' }), h('em', { style: 'left:100%' })),
-      h('div', { class: 'dk-foot', text: v.message }),
-      h('div', { class: 'dk-two fg-score' }, kvList([{ label: 'Streak', value: (v.score.streak ? '\uD83D\uDD25 ' : '') + v.score.streak, note: 'hits in a row' }, { label: 'Hit rate', value: v.score.played ? v.score.hits + ' / ' + v.score.played : '\u2014', note: v.score.bullseyes + ' bullseyes' }], 'dk-l'),
-        kvList([{ label: 'Points', value: String(v.score.points) }, { label: 'Recent', value: v.score.recent.length ? v.score.recent.map(r => GRADE_ICON[r.grade]).join(' ') : 'none yet', note: v.score.recent[0] ? 'last: ' + (v.score.recent[0].errPct > 0 ? '+' : '') + v.score.recent[0].errPct + '%' : null }], 'dk-r')),
-      h('div', { class: 'dk-foot', text: 'Bullseye (within 2%) = 3 pts \u00B7 Hit (5%) = 2 \u00B7 Close (10%) = 1. The AI locks one call per day and is graded on the final POS total; it celebrates when the sale reaches the call or it called a day within 5%.' }),
-      h('div', { class: 'aic-row' }, h('button', { class: 'dk-pill', text: 'Preview celebration', onclick: () => FG.celebrate('This is how I celebrate when we reach the forecast!') }))));
 }
 if (typeof window !== 'undefined' && !window.__btFgListen) { window.__btFgListen = true; window.addEventListener('bt-forecast-game', () => { try { if (pageOn()) paint(); } catch (_) { /* page not mounted */ } }); }
 function secDkApprovals() {

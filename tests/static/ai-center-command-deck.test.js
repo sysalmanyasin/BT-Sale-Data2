@@ -42,7 +42,8 @@ test('recent-run rows are start-aligned and the toast clears the chat bar', () =
   assert.match(bare, /body\.aic-open #toast\s*\{[^}]*bottom:\s*calc\(132px/);
 });
 test('Money & Ledgers folds empty ledgers and the spike tool skips ledgers with no history', () => {
-  const ui = readFileSync(new URL('../../js/ai-center/ui.js', import.meta.url), 'utf8');
+  // ui.js was split into ui.js + ui-base/ui-panels/ui-detail.js; the strings below live across that family.
+  const ui = ['ui.js', 'ui-base.js', 'ui-panels.js', 'ui-detail.js'].map((f) => readFileSync(new URL('../../js/ai-center/' + f, import.meta.url), 'utf8')).join('\n');
   const planning = readFileSync(new URL('../../js/agent/tools/planning.js', import.meta.url), 'utf8');
   assert.match(ui, /Mo\.ledgers\.filter\(ledgerHasActivity\)/);
   assert.match(ui, /No entries this month: /);
