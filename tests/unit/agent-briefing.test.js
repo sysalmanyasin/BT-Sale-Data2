@@ -59,7 +59,7 @@ describe('daily briefing', () => {
     assert.equal(b.target.days_left, A.daysLeft);
     assert.equal(b.target.needed_per_day, Math.round(A.neededPerDay));
     assert.equal(b.target.projected_month_end, Math.round(A.actualPerDay * A.daysInMonth));
-    const t = JSON.parse((await reg.runTool('get_target_pace', {})).text);
+    const t = JSON.parse((await reg.runTool('get_target_pace', { month_year: 'October 2026' })).text);
     assert.equal(b.target.days_left, t.days_left);
     assert.equal(b.target.needed_per_day, t.needed_per_day);
     assert.equal(b.target.sold_so_far, t.sold_so_far);
