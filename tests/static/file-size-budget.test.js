@@ -11,7 +11,6 @@ const LEGACY_CAPS = {
   'js/emergency-billing/emergency-billing-native.js': 1495,
   'js/inventory/stockledger.js': 1223,
   'js/platform/sync-center.js': 1148,
-  'js/closing/closing-native.js': 1090,
   'js/inventory/reorder-report.js': 1072,
 };
 const lineCount = (f) => (readFileSync(join(ROOT, f), 'utf8').match(/\n/g) || []).length; // same as `wc -l`
