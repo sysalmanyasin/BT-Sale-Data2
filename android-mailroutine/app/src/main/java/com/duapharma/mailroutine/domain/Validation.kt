@@ -8,7 +8,7 @@ import java.time.ZoneId
 object Limits {
     const val MAX_RECIPIENTS = 50
     const val MAX_ADDRESS_LENGTH = 254
-    const val MAX_FIELDS = 30
+    const val MAX_FIELDS = 100
     const val MAX_SUBJECT = 300
     const val MAX_BODY = 50_000
     const val MAX_NAME = 100
@@ -75,7 +75,7 @@ object FieldValidator {
             FieldType.TEXT, FieldType.MULTILINE -> null
             FieldType.NUMBER -> if (runCatching { BigDecimal(raw.trim()) }.isSuccess) null else "Not a number"
             FieldType.DATE -> if (runCatching { LocalDate.parse(raw.trim()) }.isSuccess) null else "Use YYYY-MM-DD"
-            FieldType.TIME -> if (TIME_24H.matches(raw.trim()) || TimeStatus.isStatus(raw)) null else "Use 24-hour HH:mm (00:00 to 23:59), Absent or Leave"
+            FieldType.TIME -> if (TIME_24H.matches(raw.trim()) || TimeStatus.isStatus(raw)) null else "Use 24-hour HH:mm (00:00 to 23:59), Weekly Off, Leave or Absent"
             FieldType.BOOLEAN -> if (raw.trim() == "true" || raw.trim() == "false") null else "Must be true or false"
             FieldType.CHOICE -> if (raw in f.choices) null else "Not one of the allowed choices"
         }
@@ -164,10 +164,10 @@ object AttachmentRules {
 
 /**
  * Words a TIME field accepts instead of a clock time, for someone who did not work that day.
- * They are stored and sent exactly as written, so the email shows "Absent" or "Leave" in that cell.
+ * They are stored and sent exactly as written, so the email shows "Weekly Off", "Leave" or "Absent" in that cell.
  */
 object TimeStatus {
-    val ALL: List<String> = listOf("Absent", "Leave")
+    val ALL: List<String> = listOf("Weekly Off", "Leave", "Absent")
     fun isStatus(v: String): Boolean = v.trim() in ALL
 
     private val IN_LABEL = Regex("^(.*?)\\s*[-–—:]?\\s*time\\s*in$", RegexOption.IGNORE_CASE)

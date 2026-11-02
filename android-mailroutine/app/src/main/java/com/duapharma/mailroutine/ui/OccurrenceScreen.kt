@@ -139,7 +139,7 @@ fun OccurrenceScreen(vm: OccurrenceViewModel, nav: NavState) {
 }
 
 /**
- * Stores a field value. Marking someone Absent/Leave on "Time in" fills their "Time out" with the same word when it is
+ * Stores a field value. Marking someone Weekly Off/Leave/Absent on "Time in" fills their "Time out" with the same word when it is
  * empty; changing "Time in" back to a real time (or clearing it) removes that mirrored word again.
  */
 private fun setFieldValue(fields: List<TemplateField>, values: MutableMap<String, String>, f: TemplateField, v: String) {
@@ -171,7 +171,7 @@ private fun FieldInput(f: TemplateField, value: String, enabled: Boolean, onAi: 
             OutlinedTextField(
                 value = shown, onValueChange = {}, readOnly = true, enabled = enabled, label = { Text(label) },
                 placeholder = { Text("HH:mm") }, modifier = Modifier.fillMaxWidth(), isError = err != null, singleLine = true,
-                supportingText = { Text(err ?: "24-hour time, Absent or Leave") },
+                supportingText = { Text(err ?: "24-hour time, Weekly Off, Leave or Absent") },
                 trailingIcon = {
                     Box {
                         TextButton(enabled = enabled, onClick = { statusMenu = true }) { Text(if (shown.isBlank()) "Set" else "Change") }

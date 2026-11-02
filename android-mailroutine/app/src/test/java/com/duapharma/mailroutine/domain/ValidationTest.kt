@@ -84,7 +84,7 @@ class ValidationTest {
 
     @Test fun timeFieldAlsoAcceptsAbsentAndLeaveExactly() {
         val f = TemplateField("t", "T", FieldType.TIME, true)
-        listOf("Absent", "Leave", " Absent ").forEach { assertNull(it, FieldValidator.validateValue(f, it)) }
+        listOf("Absent", "Leave", "Weekly Off", " Absent ").forEach { assertNull(it, FieldValidator.validateValue(f, it)) }
         listOf("absent", "Sick", "Absent 09:00", "Leaves").forEach { assertNotNull(it, FieldValidator.validateValue(f, it)) }
         val other = TemplateField("n", "N", FieldType.TEXT, true)
         assertNull(FieldValidator.validateValue(other, "Absent")) // plain text fields are unaffected
