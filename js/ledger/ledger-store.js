@@ -104,7 +104,7 @@ function _runSignFlipMigrationOnce() {
     });
   });
   Repository.setItem(SIGN_FLIP_DONE_KEY, '1');
-  Repository.setItem(CUSTOM_TYPES_KEY, JSON.stringify(_customLedgerTypes));
+  _write(CUSTOM_TYPES_KEY, JSON.stringify(_customLedgerTypes));
 }
 
 function _ensureCustomTypesLoaded() {
@@ -118,11 +118,30 @@ function _ensureCustomTypesLoaded() {
   _runSignFlipMigrationOnce();
 }
 
-function _persistCustomTypes() {
-  Repository.setItem(CUSTOM_TYPES_KEY, JSON.stringify(_customLedgerTypes));
-  EventBus.notify('ledger:customTypesChanged', { types: _customLedgerTypes });
+// Sync-aware write: flags our own storage writes so the external-change
+// listener below can tell them apart from sync-merge writes.
+let _selfWrite = false;
+function _write(key, value) {
+  _selfWrite = true;
+  try { Repository.setItem(key, value); } finally { _selfWrite = false; }
 }
 
+// Edits must reach Supabase without waiting for something else to push —
+// the inline edit/delete in ledger-page.js never called pushToSupabase, so a
+// change sat unsynced until the 30s timer and could be overwritten by a pull
+// in the meantime. Same gate as every other module (bt_auto_save).
+function _requestPush() {
+  try {
+    if (Repository.getItem('bt_auto_save') === '1' && typeof window.pushToSupabase === 'function') window.pushToSupabase();
+  } catch (_) { /* best-effort */ }
+}
+
+function _persistCustomTypes(changedType) {
+  if (changedType && _customLedgerTypes[changedType]) _customLedgerTypes[changedType]._updatedAt = Date.now();
+  _write(CUSTOM_TYPES_KEY, JSON.stringify(_customLedgerTypes));
+  EventBus.notify('ledger:customTypesChanged', { types: _customLedgerTypes });
+  _requestPush();
+}
 export function getCategoryList(ledgerType) {
   if (LEDGER_CATEGORIES[ledgerType]) return LEDGER_CATEGORIES[ledgerType];
   _ensureCustomTypesLoaded();
@@ -149,7 +168,7 @@ export function createCustomLedgerType(sectionId, label, categories) {
     throw new Error('LedgerStore: createCustomLedgerType requires at least one category');
   }
   _customLedgerTypes[ledgerType] = { label: label || sectionId, categories };
-  _persistCustomTypes();
+  _persistCustomTypes(ledgerType);
   return ledgerType;
 }
 
@@ -171,7 +190,7 @@ export function updateCustomLedgerType(ledgerType, { label, categories } = {}) {
   if (label !== undefined && label !== null && String(label).trim()) {
     existing.label = String(label).trim();
   }
-  _persistCustomTypes();
+  _persistCustomTypes(ledgerType);
   return existing;
 }
 
@@ -201,6 +220,8 @@ export function deleteCustomLedgerType(ledgerType, force) {
   Tombstones.markDeleted('sec:' + ledgerType);
   delete _customLedgerTypes[ledgerType];
   delete _openingBalances[ledgerType];
+  delete _openingBalancesAt[ledgerType];
+  _persist();
   _persistCustomTypes();
   return true;
 }
@@ -222,6 +243,7 @@ export function getAllLedgerTypes() {
 // sequence before this module is even imported.
 let _entries = null;
 let _openingBalances = null; // { [ledgerType]: number }
+let _openingBalancesAt = null; // { [ledgerType]: edit time ms } — lets sync merge pick the newest opening balance
 
 function _ensureLoaded() {
   if (_entries !== null) return;
@@ -230,15 +252,33 @@ function _ensureLoaded() {
     const parsed = raw ? JSON.parse(raw) : null;
     _entries = (parsed && Array.isArray(parsed.entries)) ? parsed.entries : [];
     _openingBalances = (parsed && parsed.openingBalances) ? parsed.openingBalances : {};
+    _openingBalancesAt = (parsed && parsed.openingBalancesAt) ? parsed.openingBalancesAt : {};
   } catch (e) {
     _entries = [];
     _openingBalances = {};
+    _openingBalancesAt = {};
   }
 }
 
+// STALE-CACHE FIX: a sync pull/merge writes the ledger straight to storage
+// (Actions.saveFeatureData), but this module serves reads from the in-memory
+// copy above. Without this, the next edit/add/delete persisted the OLD
+// in-memory array over the freshly merged data — reverting synced changes.
+// Any write that is not our own drops the cache so the next access reloads.
+EventBus.onChange((eventName, payload) => {
+  if (_selfWrite || !payload) return;
+  if (eventName === 'item:changed' || eventName === 'item:removed') {
+    if (payload.key === LEDGER_KEY) { _entries = null; _openingBalances = null; _openingBalancesAt = null; }
+    else if (payload.key === CUSTOM_TYPES_KEY) { _customLedgerTypes = null; }
+    else return;
+    EventBus.notify(payload.key === LEDGER_KEY ? 'ledger:syncedIn' : 'ledger:customTypesSyncedIn', {});
+  }
+});
+
 function _persist() {
-  Repository.setItem(LEDGER_KEY, JSON.stringify({ entries: _entries, openingBalances: _openingBalances }));
+  _write(LEDGER_KEY, JSON.stringify({ entries: _entries, openingBalances: _openingBalances, openingBalancesAt: _openingBalancesAt }));
   EventBus.notify('ledger:changed', { entries: _entries });
+  _requestPush();
 }
 
 function _stamp(entry) {
@@ -263,6 +303,7 @@ export function getOpeningBalance(ledgerType) {
 export function setOpeningBalance(ledgerType, value) {
   _ensureLoaded();
   _openingBalances[ledgerType] = Number(value) || 0;
+  _openingBalancesAt[ledgerType] = Date.now();
   _persist();
 }
 

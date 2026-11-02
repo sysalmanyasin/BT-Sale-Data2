@@ -12,6 +12,7 @@ import { Actions } from './actions.js';
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../shared/backend-config.js';
 import { SEND_LISTS_KEY, mergeSendLists } from '../shared/mail-compose.js';
 import { mergeManagerSections } from '../shared/credit-merge.js';
+import { mergeLedgerEntries, mergeOpeningBalances, mergeCustomTypes } from '../shared/ledger-merge.js';
 import { runAsMerge, ensureBootstrapped, isDirty, clearDirtyUpTo, MGR_BLOB_KEY } from './sync-dirty.js';
 
 const SB_URL     = SUPABASE_URL;
@@ -359,17 +360,10 @@ function mergeIncomingData(data, isPull = false) {
   if (data.jazzcash) {
     const local  = JSON.parse(Repository.getItem(JC_KEY) || 'null') || { openingBalance: 0, entries: [] };
     const remote = data.jazzcash;
-    const byId = {};
-    (local.entries || []).forEach(e => { if (e && e.id && !_isDel('led:' + e.id)) byId[e.id] = e; });
-    (remote.entries || []).forEach(e => {
-      if (!e || !e.id) return;
-      if (_isDel('led:' + e.id)) return;
-      if (isPull) byId[e.id] = e;              // remote wins on pull
-      else if (!byId[e.id]) byId[e.id] = e;     // local wins on push — fill gaps only
-    });
     const merged = {
       openingBalance: isPull ? (remote.openingBalance ?? local.openingBalance ?? 0) : (local.openingBalance ?? remote.openingBalance ?? 0),
-      entries: Object.values(byId)
+      // newest-edit-wins per id (see ledger-merge.js); ties keep the old direction rule
+      entries: mergeLedgerEntries(local.entries, remote.entries, { isPull, isDeleted: _isDel })
     };
     Actions.saveFeatureData(JC_KEY, JSON.stringify(merged));
   }
@@ -405,23 +399,14 @@ function mergeIncomingData(data, isPull = false) {
   if (data.ledger) {
     const local  = JSON.parse(Repository.getItem(LEDGER_KEY) || 'null') || { entries: [], openingBalances: {} };
     const remote = data.ledger;
-    const byId = {};
-    // Tombstoned ids are dropped from BOTH sides — this is what actually
-    // stops a delete from being resurrected (see sync-tombstones.js).
-    (local.entries || []).forEach(e => { if (e && e.id && !_isDel('led:' + e.id)) byId[e.id] = e; });
-    (remote.entries || []).forEach(e => {
-      if (!e || !e.id) return;
-      if (_isDel('led:' + e.id)) return;
-      if (isPull) byId[e.id] = e;
-      else if (!byId[e.id]) byId[e.id] = e;
-    });
-    const localOB = local.openingBalances || {}, remoteOB = remote.openingBalances || {};
-    const mergedOB = Object.assign({}, localOB);
-    Object.keys(remoteOB).forEach(t => {
-      if (isPull) mergedOB[t] = remoteOB[t];
-      else if (!(t in mergedOB)) mergedOB[t] = remoteOB[t];
-    });
-    Actions.saveFeatureData(LEDGER_KEY, JSON.stringify({ entries: Object.values(byId), openingBalances: mergedOB }));
+    const opts = { isPull, isDeleted: _isDel };
+    // Per-id LAST-WRITE-WINS on `_updatedAt` in BOTH directions (ledger-merge.js).
+    // The old "remote always wins on pull" rule erased an edit that had not been
+    // pushed yet, and "local always wins on push" let a stale device overwrite a
+    // newer edit made elsewhere. Tombstoned ids are dropped from both sides.
+    const entries = mergeLedgerEntries(local.entries, remote.entries, opts);
+    const ob = mergeOpeningBalances(local, remote, opts);
+    Actions.saveFeatureData(LEDGER_KEY, JSON.stringify({ entries, openingBalances: ob.openingBalances, openingBalancesAt: ob.openingBalancesAt }));
   }
 
   // ── Unmatched entries from Closing App — merged by id, same
@@ -445,14 +430,7 @@ function mergeIncomingData(data, isPull = false) {
   // same convention ──
   if (data.ledgerCustomTypes) {
     const local  = JSON.parse(Repository.getItem(LEDGER_CUSTOM_TYPES_KEY) || 'null') || {};
-    const remote = data.ledgerCustomTypes;
-    const merged = {};
-    Object.keys(local).forEach(t => { if (!_isDel('sec:' + t)) merged[t] = local[t]; });
-    Object.keys(remote).forEach(t => {
-      if (_isDel('sec:' + t)) return;
-      if (isPull) merged[t] = remote[t];
-      else if (!(t in merged)) merged[t] = remote[t];
-    });
+    const merged = mergeCustomTypes(local, data.ledgerCustomTypes, { isPull, isDeleted: _isDel });
     Actions.saveFeatureData(LEDGER_CUSTOM_TYPES_KEY, JSON.stringify(merged));
   }
 
