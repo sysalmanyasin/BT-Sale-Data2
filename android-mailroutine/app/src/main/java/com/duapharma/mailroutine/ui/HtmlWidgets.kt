@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.duapharma.mailroutine.domain.HtmlTemplate
@@ -22,10 +23,10 @@ import com.duapharma.mailroutine.domain.HtmlTemplate
  * navigation (link taps) swallowed, so previewing can never fetch anything or leave the app.
  */
 @Composable
-fun HtmlPreview(html: String, modifier: Modifier = Modifier) {
+fun HtmlPreview(html: String, modifier: Modifier = Modifier, fixedHeight: Dp? = 320.dp) {
     val doc = remember(html) { HtmlTemplate.document(html) }
     AndroidView(
-        modifier = modifier.fillMaxWidth().height(320.dp),
+        modifier = modifier.fillMaxWidth().let { if (fixedHeight != null) it.height(fixedHeight) else it },
         factory = { ctx ->
             WebView(ctx).apply {
                 settings.javaScriptEnabled = false

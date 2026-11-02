@@ -11,6 +11,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.duapharma.mailroutine.domain.*
 import com.duapharma.mailroutine.platform.AccountStatus
@@ -30,6 +32,7 @@ fun OccurrenceScreen(vm: OccurrenceViewModel, nav: NavState) {
     var confirmSend by remember { mutableStateOf(false) }
     var confirmResend by remember { mutableStateOf(false) }
     var aiField by remember { mutableStateOf<TemplateField?>(null) }
+    var fullPreview by remember { mutableStateOf(false) }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
@@ -82,6 +85,7 @@ fun OccurrenceScreen(vm: OccurrenceViewModel, nav: NavState) {
                     Text(rendered.subject, style = MaterialTheme.typography.titleMedium)
                     val h = rendered.html
                     if (h != null) HtmlPreview(h) else Text(rendered.body)
+                    if (h != null) TextButton(onClick = { fullPreview = true }) { Text("View full preview") }
                     if (rendered.missingKeys.isNotEmpty()) Note("Missing: ${rendered.missingKeys.joinToString()}", MrColors.Amber)
                 }
             }
@@ -112,6 +116,18 @@ fun OccurrenceScreen(vm: OccurrenceViewModel, nav: NavState) {
             Spacer(Modifier.height(32.dp))
         }
 
+        val fullHtml = rendered.html
+        if (fullPreview && fullHtml != null) Dialog(onDismissRequest = { fullPreview = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+            Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                Column(Modifier.systemBarsPadding().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(rendered.subject, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                        TextButton(onClick = { fullPreview = false }) { Text("Close") }
+                    }
+                    HtmlPreview(fullHtml, Modifier.weight(1f), fixedHeight = null)
+                }
+            }
+        }
         if (confirmSend) AlertDialog(
             onDismissRequest = { confirmSend = false },
             title = { Text("Send this email now?") },
