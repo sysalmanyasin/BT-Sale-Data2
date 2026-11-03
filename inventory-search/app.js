@@ -96,6 +96,21 @@ async function fetchAllProducts(client) {
 
 let PRODUCTS = [];
 let fetchedAt = 0;
+// (2026-11 egress cleanup) The inventory_sync_log.synced_at the cached
+// PRODUCTS were downloaded from. While the server's latest synced_at is
+// still this value, the full table download is skipped.
+let cachedSyncedAt = null;
+
+async function fetchLatestSyncedAt(client) {
+  const { data, error } = await client
+    .from('inventory_sync_log')
+    .select('synced_at')
+    .order('synced_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? data.synced_at : null;
+}
 
 function loadCache() {
   try {
@@ -128,6 +143,20 @@ async function doRefresh(force) {
   els.refreshBtn.classList.add('spinning');
   setStatus('Syncing inventory…', true);
   try {
+    // 1-row probe. Unchanged since our cached copy -> keep it, skip the
+    // ~6-page download. A failed probe never blocks a refresh: it falls
+    // through to the full download exactly as before. A manual/forced
+    // refresh always re-downloads (the probe only records the version).
+    let probedSyncedAt = null;
+    try { probedSyncedAt = await fetchLatestSyncedAt(client); } catch (e) { probedSyncedAt = null; }
+    if (!force && PRODUCTS.length && probedSyncedAt && probedSyncedAt === cachedSyncedAt) {
+      fetchedAt = Date.now();
+      saveCache({ products: PRODUCTS, fetchedAt, syncedAt: cachedSyncedAt });
+      setStatus('', false);
+      els.lastSyncLine.textContent = PRODUCTS.length.toLocaleString('en-PK') + ' products • synced just now';
+      runSearch();
+      return;
+    }
     let products = await fetchAllProducts(client);
     // An empty result is suspicious (the sync job reloads the table, or access
     // is blocked). Retry once before believing it.
@@ -145,7 +174,8 @@ async function doRefresh(force) {
     }
     PRODUCTS = products;
     fetchedAt = Date.now();
-    saveCache({ products, fetchedAt });
+    cachedSyncedAt = probedSyncedAt; // probed BEFORE the download: a sync landing mid-download just causes one extra refresh later
+    saveCache({ products, fetchedAt, syncedAt: cachedSyncedAt });
     setStatus('', false);
     els.lastSyncLine.textContent = products.length.toLocaleString('en-PK') + ' products • synced just now';
     runSearch();
@@ -431,6 +461,7 @@ chatEls.form.addEventListener('submit', (e) => {
   if (cached && cached.products) {
     PRODUCTS = cached.products;
     fetchedAt = cached.fetchedAt || 0;
+    cachedSyncedAt = cached.syncedAt || null;
     els.lastSyncLine.textContent = PRODUCTS.length
       ? PRODUCTS.length.toLocaleString('en-PK') + ' products • last synced ' + new Date(fetchedAt).toLocaleTimeString('en-PK')
       : '';

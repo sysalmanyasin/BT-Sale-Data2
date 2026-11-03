@@ -87,10 +87,63 @@ object InventoryRepository {
     // ---------------------------------------------------------------
     // Fetch — paginated, mirrors inventory-bridge.js's _fetchAllProducts.
     // ---------------------------------------------------------------
-    fun fetchAllProducts(): List<Product> {
+    // (2026-11 egress cleanup) Eight widget providers (Health, Total, Excess, Dead stock, Negative,
+    // Never sold, Reorder, Top running) each call fetchAllProducts() on their own schedule. Each one
+    // used to re-download the whole ~6-page inventory_products table every update. They now share one
+    // in-process copy:
+    //   * a copy younger than PRODUCTS_FRESH_MS is reused as-is (widgets updating in the same burst
+    //     cost one download in total);
+    //   * otherwise a 1-row inventory_sync_log read decides whether the server data moved at all --
+    //     unchanged means the held copy is still exact and nothing is downloaded;
+    //   * only a COMPLETE download is ever kept (a failed page never replaces a good copy);
+    //   * any doubt (no copy yet, probe failed, synced_at changed) falls back to the full download,
+    //     exactly like before. The returned list and every call site are unchanged.
+    // The copy lives in memory only, so it is dropped whenever Android kills the app process.
+    private const val PRODUCTS_FRESH_MS = 2 * 60 * 1000L
+    private val productsLock = Any()
+    private var productsCache: List<Product>? = null
+    private var productsSyncedAt: String? = null
+    private var productsCachedAtMs = 0L
+
+    /** Latest inventory_sync_log.synced_at (1-row read), or null when it cannot be read. */
+    private fun fetchLatestSyncedAt(): String? {
+        val endpoint = "$INV_SUPABASE_URL/rest/v1/inventory_sync_log?select=synced_at&order=synced_at.desc&limit=1"
+        val arr = fetchJsonArray(endpoint, INV_SUPABASE_ANON_KEY) ?: return null
+        if (arr.length() == 0) return null
+        val row = arr.getJSONObject(0)
+        return if (row.isNull("synced_at")) null else row.optString("synced_at", "").ifEmpty { null }
+    }
+
+    fun fetchAllProducts(): List<Product> = synchronized(productsLock) { loadProductsLocked() }
+
+    private fun loadProductsLocked(): List<Product> {
+        val now = System.currentTimeMillis()
+        val held = productsCache
+        if (held != null && now - productsCachedAtMs < PRODUCTS_FRESH_MS) return held
+
+        val latest = fetchLatestSyncedAt()
+        if (held != null && latest != null && latest == productsSyncedAt) {
+            productsCachedAtMs = now
+            return held
+        }
+
+        val (downloaded, complete) = downloadAllProducts()
+        if (complete && downloaded.isNotEmpty()) {
+            productsCache = downloaded
+            productsSyncedAt = latest // read BEFORE the download: a sync landing mid-download only costs one extra refresh later
+            productsCachedAtMs = now
+            return downloaded
+        }
+        // Download failed or came back partial: a complete older copy beats a truncated list.
+        return held ?: downloaded
+    }
+
+    /** The original paginated download. Second value is false when a page request failed. */
+    private fun downloadAllProducts(): Pair<List<Product>, Boolean> {
         val all = ArrayList<Product>()
         var from = 0
         val pageSize = 1000
+        var complete = true
         while (true) {
             val cols = "code,name,qty,price,company,generic,supplier,conversion_factor," +
                 "creation_date,last_receive_date,last_sale_date," +
@@ -99,13 +152,14 @@ object InventoryRepository {
                 "sale_value_excl_tax_30_days,sale_value_excl_tax_60_days,sale_value_excl_tax_90_days," +
                 "net_qty_today,sale_value_incl_tax_today,sale_value_excl_tax_today,is_taxable"
             val endpoint = "$INV_SUPABASE_URL/rest/v1/inventory_products?select=$cols&order=name.asc&offset=$from&limit=$pageSize"
-            val page = fetchJsonArray(endpoint, INV_SUPABASE_ANON_KEY) ?: break
+            val page = fetchJsonArray(endpoint, INV_SUPABASE_ANON_KEY)
+            if (page == null) { complete = false; break }
             if (page.length() == 0) break
             for (i in 0 until page.length()) all.add(rowToProduct(page.getJSONObject(i)))
             if (page.length() < pageSize) break
             from += pageSize
         }
-        return all
+        return Pair(all, complete)
     }
 
     private fun rowToProduct(row: JSONObject): Product {

@@ -25,6 +25,7 @@
 // project, just different tables.
 import { AUDIT_HUB_URL, AUDIT_HUB_PUBLISHABLE_KEY } from '../shared/backend-config.js';
 import { isPaused } from '../platform/hub-gate.js';
+import { fetchLatestSyncedAt as _fetchLastSyncedAt } from '../platform/hub-sync-probe.js'; // shared 1-row probe (one request per resume, not one per bridge)
 const INV_SUPABASE_URL = AUDIT_HUB_URL;
 const INV_SUPABASE_ANON_KEY = AUDIT_HUB_PUBLISHABLE_KEY;
 const FULLDATA_CACHE_KEY = 'bt_inventory_fulldata_v1';
@@ -167,17 +168,6 @@ export function getFullData() {
     if (raw) return (_fullData = JSON.parse(raw));
   } catch (e) { /* fall through */ }
   return null;
-}
-
-async function _fetchLastSyncedAt(client) {
-  const { data, error } = await client
-    .from('inventory_sync_log')
-    .select('synced_at')
-    .order('synced_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error) throw error;
-  return data ? data.synced_at : null;
 }
 
 // (2026-09 egress cleanup) Previously refetched the full 6-page

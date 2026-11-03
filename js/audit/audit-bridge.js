@@ -173,15 +173,41 @@ export async function refreshFullData(force) {
       const client = _getClient();
       if (!client) return cached;
 
-      const [{ data: engagements }, { data: rounds }, { data: assignments }, { data: compiledRounds }, { data: finalSnapshots }] = await Promise.all([
+      // (2026-11 egress cleanup) rounds.item_snapshot and final_snapshots.report are the
+      // heaviest columns here and are IMMUTABLE once a row exists (Random never updates
+      // either: updateRound has no item_snapshot field, final_snapshots is insert-only).
+      // So fetch only the light columns every time, and the heavy ones only for ids this
+      // device has not downloaded yet. assignments.items and compiled_rounds.variances CAN
+      // change (manual transfers, recompiles) and there is no updated_at to detect that,
+      // so those are still fetched in full, exactly as before.
+      const known = getFullData() || {};
+      const knownSnap = new Map((known.rounds || []).filter(r => r.item_snapshot !== undefined).map(r => [r.id, r.item_snapshot]));
+      const knownReport = new Map((known.finalSnapshots || []).filter(f => f.report !== undefined).map(f => [f.id, f.report]));
+
+      const [{ data: engagements }, { data: roundsLight }, { data: assignments }, { data: compiledRounds }, { data: snapsLight }] = await Promise.all([
         client.from('engagements').select('id,name,status,scope_type,scope_companies,scope_codes,created_at'),
-        client.from('rounds').select('id,engagement_id,round_number,round_suffix,unit,state,base_round_id,item_snapshot,created_at,locked_at,compiled_at,finalized_at'),
+        client.from('rounds').select('id,engagement_id,round_number,round_suffix,unit,state,base_round_id,created_at,locked_at,compiled_at,finalized_at'),
         client.from('assignments').select('id,round_id,engagement_id,auditor_id,auditor_name,unit,companies,items,method,status,progress_count,live_snapshot,created_at'),
         client.from('compiled_rounds').select('id,round_id,variances,compiled_with_missing,missing_assignment_ids,compiled_at'),
-        client.from('final_snapshots').select('id,engagement_id,report,generated_at').order('generated_at', { ascending: false }),
+        client.from('final_snapshots').select('id,engagement_id,generated_at').order('generated_at', { ascending: false }),
       ]);
 
-      const data = { engagements: engagements || [], rounds: rounds || [], assignments: assignments || [], compiledRounds: compiledRounds || [], finalSnapshots: finalSnapshots || [], fetchedAt: Date.now() };
+      // Heavy column for ids we do not hold yet (chunked so the .in() URL stays short). Any
+      // error throws -> outer catch keeps the last good copy, never a half-empty one.
+      async function fetchHeavy(table, col, ids, into) {
+        for (let i = 0; i < ids.length; i += 40) {
+          const { data: part, error } = await client.from(table).select('id,' + col).in('id', ids.slice(i, i + 40));
+          if (error) throw error;
+          (part || []).forEach(row => into.set(row.id, row[col]));
+        }
+      }
+      await fetchHeavy('rounds', 'item_snapshot', (roundsLight || []).filter(r => !knownSnap.has(r.id)).map(r => r.id), knownSnap);
+      await fetchHeavy('final_snapshots', 'report', (snapsLight || []).filter(f => !knownReport.has(f.id)).map(f => f.id), knownReport);
+
+      const rounds = (roundsLight || []).map(r => Object.assign({}, r, { item_snapshot: knownSnap.has(r.id) ? knownSnap.get(r.id) : null }));
+      const finalSnapshots = (snapsLight || []).map(f => Object.assign({}, f, { report: knownReport.has(f.id) ? knownReport.get(f.id) : null }));
+
+      const data = { engagements: engagements || [], rounds, assignments: assignments || [], compiledRounds: compiledRounds || [], finalSnapshots, fetchedAt: Date.now() };
       _fullData = data;
       try { _setLocal(FULLDATA_CACHE_KEY, JSON.stringify(data)); } catch (e) { /* best-effort — fine if too big, _fullData in-memory still works this session */ }
       if (typeof window.auditNativeOnRefresh === 'function') window.auditNativeOnRefresh();

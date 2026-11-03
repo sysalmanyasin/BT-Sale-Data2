@@ -30,6 +30,7 @@
 // Same Supabase project as inventory-bridge.js.
 import { AUDIT_HUB_URL, AUDIT_HUB_PUBLISHABLE_KEY } from '../shared/backend-config.js';
 import { isPaused } from '../platform/hub-gate.js';
+import { fetchLatestSyncedAt as _fetchLastSyncedAt } from '../platform/hub-sync-probe.js'; // shared 1-row probe (one request per resume, not one per bridge)
 const STR_SUPABASE_URL = AUDIT_HUB_URL;
 const STR_SUPABASE_ANON_KEY = AUDIT_HUB_PUBLISHABLE_KEY;
 const FULLDATA_CACHE_KEY = 'bt_str_fulldata_v1';
@@ -172,17 +173,6 @@ export function getFullData() {
 // str_headers/str_line_items are written by the same sync-inventory-
 // from-dropbox run, so this signal covers this bridge's full refresh
 // too, including the _fetchProductMeta call inside it.
-async function _fetchLastSyncedAt(client) {
-  const { data, error } = await client
-    .from('inventory_sync_log')
-    .select('synced_at')
-    .order('synced_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error) throw error;
-  return data ? data.synced_at : null;
-}
-
 export async function refreshFullData(force) {
   const cached = _fullData || getFullData();
   if (isPaused()) return cached; // egress gate: no network while paused

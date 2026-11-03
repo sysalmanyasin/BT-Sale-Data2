@@ -1111,37 +1111,34 @@ window.StockLedgerApp = (function(){
       // 5 min either way, so a genuinely new Dropbox sync is picked up
       // just as fast as before — most ticks just get much cheaper.
       let _lastKnownSyncedAt = null;
-      async function _syncedAtChanged(client){
+      async function _probeSyncedAt(client){ // ok:false = the 1-row read failed -> caller refetches
         try {
-          const { data, error } = await client
-            .from('inventory_sync_log')
-            .select('synced_at')
-            .order('synced_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+          const { data, error } = await client.from('inventory_sync_log').select('synced_at').order('synced_at', { ascending: false }).limit(1).maybeSingle();
           if (error) throw error;
-          const latest = data ? data.synced_at : null;
-          if (latest && latest === _lastKnownSyncedAt) return false; // nothing new
-          _lastKnownSyncedAt = latest;
-          return true;
-        } catch (e) {
-          return true; // unsure — fail open and refetch rather than silently going stale
-        }
+          return { ok: true, value: data ? data.synced_at : null };
+        } catch (e) { return { ok: false, value: null }; }
       }
-
+      // (2026-11 egress) ONE gate for the 5-min tick, the foreground refresh AND the manual-Resume
+      // catch-up (which always re-pulled all ~6 pages, so every Pause/Resume cost a full download).
+      // synced_at is remembered only after a fetch SUCCEEDED, so a failed load can't look "current".
+      async function _refreshIfChanged(){
+        if(!(sbConfig.autoLoad && sbConfig.client)) return false;
+        const table = (($('#sl-sbTable') && $('#sl-sbTable').value) || sbConfig.table || 'inventory_products').trim();
+        if (table !== 'inventory_products') return fetchFromSupabase(true);
+        const probe = await _probeSyncedAt(sbConfig.client);
+        if (probe.ok && probe.value && probe.value === _lastKnownSyncedAt) return false; // nothing new
+        const ok = await fetchFromSupabase(true);
+        if (ok && probe.ok && probe.value) _lastKnownSyncedAt = probe.value;
+        return ok;
+      }
       async function _autoRefreshTick(){
         if(hubPaused() || !(sbConfig.autoLoad && sbConfig.client)) return;
         _lastAutoRefresh = Date.now();
-        const table = (($('#sl-sbTable') && $('#sl-sbTable').value) || sbConfig.table || 'inventory_products').trim();
-        if (table === 'inventory_products') {
-          const changed = await _syncedAtChanged(sbConfig.client);
-          if (!changed) return;
-        }
-        fetchFromSupabase(true).catch(()=>{ /* silent — same as boot-time auto-load */ });
+        _refreshIfChanged().catch(()=>{ /* silent, same as boot-time auto-load */ });
       }
 
       setInterval(_autoRefreshTick, REFRESH_INTERVAL_MS);
-      window.addEventListener('bt-hub-resume', ()=>{ if(sbConfig.autoLoad && sbConfig.client) fetchFromSupabase(true).catch(()=>{}); }); // one catch-up load on manual Resume
+      window.addEventListener('bt-hub-resume', ()=>{ _refreshIfChanged().catch(()=>{}); }); // one catch-up load on manual Resume
 
       // Also refresh whenever the app/tab comes back to the foreground —
       // covers "opened the app, left it in the background for an hour,
