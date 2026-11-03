@@ -20,7 +20,7 @@ describe('Print engine (smoke)', () => {
   });
 
   test('exposes the full API surface every report page calls', () => {
-    for (const fn of ['render', 'renderNewTab', 'renderThermal', 'renderThermalTable']) {
+    for (const fn of ['render', 'renderNewTab', 'renderThermal', 'renderThermalTable', 'renderDoc']) {
       assert.equal(typeof Print[fn], 'function', `Print.${fn} should be a function`);
     }
   });
