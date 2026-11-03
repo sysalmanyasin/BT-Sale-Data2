@@ -3,6 +3,7 @@
 // today (once), projects the close, settles earlier days against their final POS total, and celebrates when the live
 // sale reaches the call or a finished day was called within 5%. Nothing is written to the business data.
 import { DAILY } from '../platform/config.js';
+import { isPaused } from '../platform/hub-gate.js';
 import { weekdayForecast } from '../shared/planning-metrics.js';
 import * as F from '../shared/today-forecast.js';
 import * as V from '../agent/ui/voice.js';
@@ -81,7 +82,8 @@ export async function tick(now = new Date(), { pay } = {}) {
 
 export function start() {
   if (timer || typeof window === 'undefined') return;
-  const run = () => { tick().catch(() => {}); };
+  // Audit Hub paused: no tracking at all (it would only re-sample stale cached POS data).
+  const run = () => { if (isPaused()) return; tick().catch(() => {}); };
   setTimeout(run, 6000); timer = setInterval(run, 90 * 1000);
   if (timer && typeof timer.unref === 'function') timer.unref();
 }

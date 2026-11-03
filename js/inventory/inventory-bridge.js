@@ -24,6 +24,7 @@
 // audit engagements/rounds/etc all live in the one Pharmacy Audit Hub
 // project, just different tables.
 import { AUDIT_HUB_URL, AUDIT_HUB_PUBLISHABLE_KEY } from '../shared/backend-config.js';
+import { isPaused } from '../platform/hub-gate.js';
 const INV_SUPABASE_URL = AUDIT_HUB_URL;
 const INV_SUPABASE_ANON_KEY = AUDIT_HUB_PUBLISHABLE_KEY;
 const FULLDATA_CACHE_KEY = 'bt_inventory_fulldata_v1';
@@ -187,8 +188,11 @@ async function _fetchLastSyncedAt(client) {
 // inventory_sync_log first and only pays for the real fetch if it
 // actually advanced. Call frequency/cadence is unchanged — this just
 // makes most of those calls nearly free instead of full downloads.
-export async function refreshFullData(force) {
+// opts.bypassPause is used ONLY by Emergency Billing (it loads when its page is opened, never in the
+// background), so billing can check stock while the rest of the app is paused.
+export async function refreshFullData(force, opts) {
   const cached = _fullData || getFullData();
+  if (isPaused() && !(opts && opts.bypassPause)) return cached; // egress gate: no network while paused
   if (!force && cached && (Date.now() - cached.fetchedAt) < FULLDATA_MIN_REFRESH_MS) return cached;
   if (_fullInFlight) return _fullInFlight; // de-dupe concurrent callers
 

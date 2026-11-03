@@ -640,6 +640,8 @@ export function renderCoverDashboard() {
       e.stopPropagation();
       const fn = GROUP_BRIDGE_REFRESH[btn.dataset.bridgeRefresh];
       if (!fn) return;
+      // Audit Hub paused: a manual refresh tap is an explicit Resume (the gate then does one catch-up fetch).
+      if (window.btHubGate && window.btHubGate.isPaused()) { window.btHubGate.resume(); return; }
       btn.classList.add('spinning');
       Promise.resolve(fn()).finally(() => renderCoverDashboard());
     });

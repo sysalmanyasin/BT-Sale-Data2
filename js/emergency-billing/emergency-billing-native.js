@@ -171,7 +171,9 @@ import { escapeHtml as esc } from '../shared/html.js';
     if (el && !_isInventoryLoaded()) el.innerHTML = '<span class="eb-inv-dot eb-inv-dot-warn"></span>Loading BT Inventory…';
     try {
       if (typeof window.inventoryBridgeRefresh === 'function') {
-        await window.inventoryBridgeRefresh(!!force);
+        // Emergency Billing is the one exemption from the Audit Hub pause: this runs only when the POS page is
+        // opened or Refresh is tapped (never in the background), and is a 1-row sync-log check unless stock moved.
+        await window.inventoryBridgeRefresh(!!force, { bypassPause: true });
       }
     } catch (e) { /* best-effort — status line below reflects whatever we ended up with */ }
     renderInventoryStatus();

@@ -61,7 +61,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="css/variables.css?v=b51a12c1">
 <link rel="stylesheet" href="css/auth.css?v=11c0de57">
-<link rel="stylesheet" href="css/nav.css?v=3fe1b8fb">
+<link rel="stylesheet" href="css/nav.css?v=5f4514e4">
 <link rel="stylesheet" href="css/closing-native.css?v=ec46c18a">
 <link rel="stylesheet" href="css/closing-book-print.css?v=80bc3517">
 <link rel="stylesheet" href="css/emergency-billing.css?v=bbf6fdee">
@@ -155,6 +155,10 @@
     <a href="#cover" class="status-pill status-sale" id="sb-sale" title="Today's Sale — live POS">
       <span class="sb-ic">🧾</span><span class="sb-label" id="sb-sale-label">Today's Sale</span><span class="sb-val" id="sb-sale-val">—</span>
     </a>
+    <!-- Audit Hub pause/resume (js/ui/hub-gate-ui.js). Starts paused every launch; resume is manual only. -->
+    <button type="button" class="status-hub" id="sb-hub" data-state="paused" aria-pressed="false" title="Audit Hub is paused to save data. Tap to resume.">
+      <span class="sb-ic" id="sb-hub-ic">▶</span><span class="sb-label" id="sb-hub-label">Resume</span><span class="sb-hub-note" id="sb-hub-note">Hub paused</span>
+    </button>
     <span class="status-bar-time" id="sb-updated"></span>
   </div>
 </div>
@@ -2616,19 +2620,20 @@
 <script type="module" src="js/ledger/ledger-store.js?v=03c96ce0"></script>
 <script type="module" src="js/ledger/ledger-actions.js?v=e3f43a1e"></script>
 <script type="module" src="js/ledger/ledger-page.js?v=90f73c81"></script>
-<script type="module" src="js/cover/cover-dashboard.js?v=3bbfe45c"></script>
+<script type="module" src="js/cover/cover-dashboard.js?v=8a39e381"></script>
 <script type="module" src="js/herald/herald-engine.js?v=913d1cea"></script>
 <script type="module" src="js/herald/herald-page.js?v=6f06a95d"></script>
 <script type="module" src="js/ui/status-bar.js?v=8654ed27"></script>
+<script type="module" src="js/ui/hub-gate-ui.js?v=0970789b"></script>
 <script type="module" src="js/sales/record-day.js?v=d6e0cddb"></script>
 <script type="module" src="js/manager/staff-notes.js?v=18147966"></script>
 <script type="module" src="js/closing/closing-bridge.js?v=1e22c51e"></script>
 <script type="module" src="js/closing/closing-ledger-marks.js?v=fa7bd9b4"></script>
 <script type="module" src="js/ledger/ledger-quick-add.js?v=2895d406"></script>
 <script type="module" src="js/closing/closing-native.js?v=e442cb4f"></script>
-<script type="module" src="js/audit/audit-bridge.js?v=fc09658a"></script>
+<script type="module" src="js/audit/audit-bridge.js?v=1534cefc"></script>
 <script type="module" src="js/audit/audit-native.js?v=57e029f2"></script>
-<script type="module" src="js/inventory/inventory-bridge.js?v=adb59c10"></script>
+<script type="module" src="js/inventory/inventory-bridge.js?v=1b78c656"></script>
 <script type="module" src="js/inventory/inventory-native.js?v=f292a8e1"></script>
 <!-- Emergency Billing: bridge (reads inventory-bridge's cache, writes to
      its own emergency_* tables) + native UI (Phase 3 — cart/checkout/
@@ -2637,14 +2642,14 @@
      signal card are a later phase — open directly via #emergency-billing
      for now. -->
 <script type="module" src="js/emergency-billing/emergency-billing-bridge.js?v=25431d80"></script>
-<script type="module" src="js/emergency-billing/emergency-billing-native.js?v=9363a294"></script>
-<script type="module" src="js/str/str-bridge.js?v=3530abc2"></script>
+<script type="module" src="js/emergency-billing/emergency-billing-native.js?v=70c49e55"></script>
+<script type="module" src="js/str/str-bridge.js?v=bf409ffc"></script>
 <script type="module" src="js/str/str-native.js?v=fc236730"></script>
 <script type="module" src="js/str/str-report-native.js?v=5bc69ef9"></script>
 <script type="module" src="js/str/str-zero-dispatch.js?v=dee995ac"></script>
-<script type="module" src="js/sales/sale-payments-bridge.js?v=75cf71ef"></script>
+<script type="module" src="js/sales/sale-payments-bridge.js?v=94b214a1"></script>
 <script type="module" src="js/sales/sale-payments-native.js?v=57f4bce4"></script>
-<script type="module" src="js/inventory/stockledger.js?v=26bd74ee"></script>
+<script type="module" src="js/inventory/stockledger.js?v=a9227d16"></script>
 <script type="module" src="js/inventory/excess-working.js?v=1ce4e6f3"></script>
 <script type="module" src="js/inventory/reorder-report.js?v=8e4ef80c"></script>
 <script type="module" src="js/inventory/inventory-health-dashboard.js?v=1badcdd8"></script>

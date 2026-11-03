@@ -26,6 +26,7 @@
 // ══════════════════════════════════════════════════════════════════════
 
 import { AUDIT_HUB_URL, AUDIT_HUB_PUBLISHABLE_KEY } from '../shared/backend-config.js';
+import { isPaused } from '../platform/hub-gate.js';
 const AUDIT_SUPABASE_URL = AUDIT_HUB_URL;
 const AUDIT_SUPABASE_ANON_KEY = AUDIT_HUB_PUBLISHABLE_KEY;
 const CACHE_KEY = 'bt_audit_cache_v1'; // local-only summary cache
@@ -101,6 +102,7 @@ export function getCachedSummary() { return _loadCache(); }
 // ── Public: refresh from Supabase (async, rate-limited) ─────────────
 export async function refresh(force) {
   const cached = _loadCache();
+  if (isPaused()) { _renderStatusLine('Hub paused'); return cached; } // egress gate: no network while paused
   if (!force && cached && (Date.now() - cached.fetchedAt) < MIN_REFRESH_MS) return cached;
   if (_inFlight) return _inFlight; // de-dupe concurrent callers
 
@@ -161,6 +163,7 @@ export function getFullData() {
 }
 
 export async function refreshFullData(force) {
+  if (isPaused()) return getFullData(); // egress gate: no network while paused
   const cached = _fullData;
   if (!force && cached && (Date.now() - cached.fetchedAt) < FULLDATA_MIN_REFRESH_MS) return cached;
   if (_fullInFlight) return _fullInFlight;
@@ -210,6 +213,7 @@ export function getAiOverview() {
 
 export async function refreshAiOverview(force) {
   const cached = getAiOverview();
+  if (isPaused()) return cached; // egress gate: no network while paused
   if (!force && cached && (Date.now() - cached.fetchedAt) < AI_MIN_REFRESH_MS) return cached;
   if (_aiInFlight) return _aiInFlight;
   _aiInFlight = (async () => {

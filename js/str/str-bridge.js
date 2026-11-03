@@ -29,6 +29,7 @@
 
 // Same Supabase project as inventory-bridge.js.
 import { AUDIT_HUB_URL, AUDIT_HUB_PUBLISHABLE_KEY } from '../shared/backend-config.js';
+import { isPaused } from '../platform/hub-gate.js';
 const STR_SUPABASE_URL = AUDIT_HUB_URL;
 const STR_SUPABASE_ANON_KEY = AUDIT_HUB_PUBLISHABLE_KEY;
 const FULLDATA_CACHE_KEY = 'bt_str_fulldata_v1';
@@ -184,6 +185,7 @@ async function _fetchLastSyncedAt(client) {
 
 export async function refreshFullData(force) {
   const cached = _fullData || getFullData();
+  if (isPaused()) return cached; // egress gate: no network while paused
   if (!force && cached && (Date.now() - cached.fetchedAt) < FULLDATA_MIN_REFRESH_MS) return cached;
   if (_fullInFlight) return _fullInFlight; // de-dupe concurrent callers
 

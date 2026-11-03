@@ -25,6 +25,7 @@
 // sales_payment_summary and sales_credit_by_customer live in the one
 // Pharmacy Audit Hub project, just different tables.
 import { AUDIT_HUB_URL, AUDIT_HUB_PUBLISHABLE_KEY } from '../shared/backend-config.js';
+import { isPaused } from '../platform/hub-gate.js';
 const SP_SUPABASE_URL = AUDIT_HUB_URL;
 const SP_SUPABASE_ANON_KEY = AUDIT_HUB_PUBLISHABLE_KEY;
 const SP_FULLDATA_CACHE_KEY = 'bt_salepayments_fulldata_v1';
@@ -117,6 +118,7 @@ export function getFullData() {
 
 export async function refreshFullData(force) {
   const cached = _fullData || getFullData();
+  if (isPaused()) return cached; // egress gate: no network while paused
   if (!force && cached && (Date.now() - cached.fetchedAt) < SP_FULLDATA_MIN_REFRESH_MS) return cached;
   if (_fullInFlight) return _fullInFlight; // de-dupe concurrent callers
 

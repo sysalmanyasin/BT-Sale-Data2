@@ -2,7 +2,7 @@ import { AUDIT_HUB_URL, AUDIT_HUB_PUBLISHABLE_KEY } from '../shared/backend-conf
 import { escapeHtml as esc } from '../shared/html.js';
 window.StockLedgerApp = (function(){
   "use strict";
-  let initialized = false;
+  let initialized = false, hubPaused = ()=> !!(window.btHubGate && window.btHubGate.isPaused()); // Audit Hub egress gate (js/platform/hub-gate.js)
 
   // Same project + anon/publishable key already baked into js/audit/audit-bridge.js
   // (itself sourced from js/actions/auth-actions.js's DEFAULT_SUPABASE_ANON_KEY
@@ -796,6 +796,7 @@ window.StockLedgerApp = (function(){
       }
 
       async function fetchFromSupabase(silent){
+        if(hubPaused()){ if(!silent) sbSetStatus('Hub paused — tap Resume in the top bar to load'); return false; }
         // inventory_products is the SAME table the Random/BT Sale IC app
         // already reads for its own inventory view — not a separate
         // table. Its columns are named differently (qty/price/
@@ -1082,8 +1083,8 @@ window.StockLedgerApp = (function(){
       // Supabase (primary) first; if that's unavailable, fall back to a saved
       // Dropbox refresh token so a fresh file is already loaded without any clicks.
       (async function autoLoadInventory(){
-        let loaded = false;
-        if(sbConfig.autoLoad && sbConfig.client){
+        let loaded = hubPaused(); // boot starts paused: skip Supabase AND the Dropbox fallback until Resume
+        if(!loaded && sbConfig.autoLoad && sbConfig.client){
           loaded = await fetchFromSupabase(true);
         }
         if(!loaded && dbx.appKey && dbx.refreshToken){
@@ -1095,11 +1096,9 @@ window.StockLedgerApp = (function(){
       // The boot-time auto-load above only ever fires once. Left open for a
       // while, the session would keep showing whatever it loaded at boot even
       // as the sync-inventory-from-dropbox Edge Function moves Supabase's
-      // `inventory_products` table forward underneath it — exactly the drift
-      // that caused Cover Dashboard numbers to mismatch a fresh Dropbox pull
-      // during a long-open session. Both paths below reuse fetchFromSupabase(true),
-      // the same silent call the boot-time load already makes, so a refresh
-      // here behaves identically — just re-triggered instead of one-shot.
+      // `inventory_products` table forward underneath it (the drift that made
+      // Cover numbers mismatch a fresh Dropbox pull). Both paths below reuse
+      // fetchFromSupabase(true), the same silent call the boot-time load makes.
       const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // matches Supabase's own ~5 min lag behind Dropbox
       let _lastAutoRefresh = Date.now();
 
@@ -1131,7 +1130,7 @@ window.StockLedgerApp = (function(){
       }
 
       async function _autoRefreshTick(){
-        if(!(sbConfig.autoLoad && sbConfig.client)) return;
+        if(hubPaused() || !(sbConfig.autoLoad && sbConfig.client)) return;
         _lastAutoRefresh = Date.now();
         const table = (($('#sl-sbTable') && $('#sl-sbTable').value) || sbConfig.table || 'inventory_products').trim();
         if (table === 'inventory_products') {
@@ -1142,6 +1141,7 @@ window.StockLedgerApp = (function(){
       }
 
       setInterval(_autoRefreshTick, REFRESH_INTERVAL_MS);
+      window.addEventListener('bt-hub-resume', ()=>{ if(sbConfig.autoLoad && sbConfig.client) fetchFromSupabase(true).catch(()=>{}); }); // one catch-up load on manual Resume
 
       // Also refresh whenever the app/tab comes back to the foreground —
       // covers "opened the app, left it in the background for an hour,
