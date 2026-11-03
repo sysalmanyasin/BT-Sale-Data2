@@ -5,7 +5,7 @@
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v11.209'; // v11.209: auto-bumped by npm run build (content hash f012b281b47a). Previously v11.208: 
+const CACHE_NAME = 'bt-sales-v11.211'; // v11.211: auto-bumped by npm run build (content hash 3a93680ca16a). Previously v11.210: 
 // Release history lives in CHANGELOG.md (keep this file small: every device downloads and parses it on each update).
 const APP_SHELL = [
   './',
@@ -211,6 +211,9 @@ const APP_SHELL = [
   './js/sales/data-page.js',
   './js/sales/entry-prefill.js',
   './js/sales/diff-report.js',
+  './js/sales/sale-book.js',
+  './js/sales/sale-book-pdf.js',
+  './js/shared/sale-book-calc.js',
   './js/sales/reports-print.js',
   './js/manager/manager-export.js',
   './js/sheets/sheets-api.js',

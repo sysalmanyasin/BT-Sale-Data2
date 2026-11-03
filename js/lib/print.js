@@ -474,7 +474,16 @@ export function renderThermalTable(spec, opts) {
   return true;
 }
 
-export const Print = { render, renderNewTab, renderThermal, renderThermalTable };
+// Vector document built by the caller (e.g. js/sales/sale-book.js's Sale Book). `build` is a
+// function returning { doc, title, filename? } (a finished jsPDF doc); this only delivers it
+// through the same single PdfLibrary popup (View / Download / Save to Library).
+export function renderDoc(build, opts) {
+  opts = opts || {};
+  _generateAndDeliver(build, opts, async (fn) => fn());
+  return true;
+}
+
+export const Print = { render, renderNewTab, renderThermal, renderThermalTable, renderDoc };
 
 // Bridged — see header note. Remove once every consumer imports Print
 // directly (blocked on the same ui.js/manager.js circular-dependency

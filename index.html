@@ -2001,7 +2001,7 @@
     <div class="tcard-body">
       <div class="tdesc">Generate printable PDF reports for any day, month, or full year. Use your browser's Print → Save as PDF to export.</div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:0">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:0">
         <!-- Daily -->
         <div style="background:var(--s2);border:1px solid var(--border);border-radius:9px;padding:14px">
           <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin-bottom:10px">📅 Daily Report</div>
@@ -2016,6 +2016,7 @@
           <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--purple);margin-bottom:10px">📆 Monthly Report</div>
           <div class="fg" style="margin-bottom:10px"><label>Select Month</label><select id="pr-month-sel" style="font-size:13px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;background:var(--surface);width:100%;font-family:var(--sans);color:var(--text);outline:none"><option value="">Select…</option></select></div>
           <button class="btn" style="width:100%;background:var(--purple);color:#fff" data-on-click="printMonthFromTools">🖨 Print Monthly</button>
+          <button class="btn" style="width:100%;margin-top:8px;background:var(--brand-navy);color:#fff" data-on-click="saleBookMonth">📖 Monthly Sale Book (PDF)</button>
         </div>
 
         <!-- Yearly -->
@@ -2023,6 +2024,14 @@
           <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--green);margin-bottom:10px">📊 Yearly Report</div>
           <div class="fg" style="margin-bottom:10px"><label>Select Year</label><select id="pr-year-sel" style="font-size:13px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;background:var(--surface);width:100%;font-family:var(--sans);color:var(--text);outline:none"><option value="">Select…</option></select></div>
           <button class="btn btn-g" style="width:100%" data-on-click="printYearFromTools">🖨 Print Yearly</button>
+          <button class="btn" style="width:100%;margin-top:8px;background:var(--brand-navy);color:#fff" data-on-click="saleBookYear">📖 Yearly Sale Book (PDF)</button>
+        </div>
+
+        <!-- All-time Sale Book -->
+        <div style="background:var(--s2);border:1px solid var(--border);border-radius:9px;padding:14px">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--brand-slate);margin-bottom:10px">📚 All-Time Sale Book</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:10px">Every recorded day since the start, grouped by year and month, in landscape A4. Date, Day, Cash, Returns, Banks, Credit Clients, Total, Computer Sale, Difference, Customers, FDPP.</div>
+          <button class="btn" style="width:100%;background:var(--brand-navy);color:#fff" data-on-click="saleBookAll">📖 All-Time Sale Book (PDF)</button>
         </div>
       </div>
       <div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.7">
@@ -2552,7 +2561,7 @@
 <!-- 1b. Shared service layer -->
 <script type="module" src="js/shared/dom-actions.js?v=838a63d0"></script>
 <script type="module" src="js/lib/bt-format.js?v=47e80cb3"></script>
-<script type="module" src="js/lib/print.js?v=56a96588"></script>
+<script type="module" src="js/lib/print.js?v=6a0a74ca"></script>
 <script type="module" src="js/lib/bt-date.js?v=3a70aae9"></script>
 <script type="module" src="js/lib/bt-search.js?v=ca91b810"></script>
 
@@ -2698,6 +2707,7 @@
 <script type="module" src="js/sales/diff-report.js?v=aa6fc666"></script>
 
 <!-- 11b. Reports print helpers (extracted from manager.js — Step 8) -->
+<script type="module" src="js/sales/sale-book.js?v=f872049d"></script>
 <script type="module" src="js/sales/reports-print.js?v=5fc25bec"></script>
 
 <!-- 11c. Manager Summary Export (Phase 5) -->
