@@ -46,7 +46,16 @@ const CLOSING_SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
 
 const CACHE_KEY      = 'bt_closing_cache_v1';     // local-only summary cache
 const FULLDB_CACHE_KEY = 'bt_closing_fulldb_v1';  // local-only, best-effort persistence across reloads
-const MIN_REFRESH_MS = 15 * 1000;                 // refresh every 15s — near-real-time across devices (was 5 min)
+// 2026-11 egress cleanup: this used to re-download ALL of sheets/credit_ledger/
+// activity_log (~3.8 MB) every 15 s, forever, even in a hidden tab. Now: a ~100 B
+// change-token probe every 60 s (visible tab only), and when something did change
+// only the changed rows are fetched (full re-read at most every 6 h or on force).
+const MIN_REFRESH_MS = 60 * 1000;
+const CURSOR_KEY       = 'bt_closing_cursor_v1';
+const FULL_RESYNC_MS   = 6 * 60 * 60 * 1000;
+const DELTA_OVERLAP_MS = 90 * 1000;
+const AL_OVERLAP_MS    = 5 * 60 * 1000;
+const EPOCH_ISO        = '1970-01-01T00:00:00.000Z';
 
 const PRESENCE_CACHE_KEY    = 'bt_closing_presence_v1';
 const PRESENCE_MIN_REFRESH_MS = 60 * 1000;  // presence should feel live — refresh more often than the shift summary
@@ -173,6 +182,57 @@ export async function refreshOnlineStaff(force) {
   return _presenceInFlight;
 }
 
+// ── Pure merge (exported for tests) ──────────────────────────────────
+// prev = the previously assembled {settings, sheets, creditLedger[], activityLog[]};
+// d    = what came back: {sheets, creditLedger, activityLog} row arrays,
+//        settings (row or null) and tombstoneKeys.
+// delta=true → d holds only CHANGED rows and is applied on top of prev;
+// delta=false → d is the whole table and replaces prev.
+const _alId = e => `${e.ts}|${e.actor}|${e.key}|${e.action}`;
+const _alStrip = e => ({ ts: e.ts, actor: e.actor, key: e.key, action: e.action, changes: e.changes });
+export function mergeClosingRows(prev, d, delta) {
+  const sheets = delta ? { ...((prev && prev.sheets) || {}) } : {};
+  (d.sheets || []).forEach(r => { sheets[r.key] = r.data; });
+  const cl = delta ? Object.fromEntries(((prev && prev.creditLedger) || []).map(r => [r.key, r])) : {};
+  (d.creditLedger || []).forEach(r => { cl[r.key] = r.data; });
+  // Closing treats a tombstone as final (sync.js filters deleted_records out of
+  // sheets AND credit_ledger) — mirror that so a removed shift never shows here.
+  (d.tombstoneKeys || []).forEach(k => { delete sheets[k]; delete cl[k]; });
+  const incoming = (d.activityLog || []).map(_alStrip);
+  let al;
+  if (delta) {
+    const base = (prev && prev.activityLog) || [];
+    const seen = new Set(base.map(_alId));
+    al = base.concat(incoming.filter(e => !seen.has(_alId(e))));
+  } else {
+    al = incoming;
+  }
+  al = al.slice().sort((a, b) => (a.ts || 0) - (b.ts || 0));
+  return {
+    settings: (d.settings && d.settings.data) || (delta && prev && prev.settings) || null,
+    sheets, creditLedger: Object.values(cl), activityLog: al,
+  };
+}
+export function maxIso(rows, field, prev) {
+  let best = prev || null, bestMs = best ? Date.parse(best) : -Infinity;
+  (rows || []).forEach(r => {
+    const ms = r && r[field] ? Date.parse(r[field]) : NaN;
+    if (!isNaN(ms) && ms > bestMs) { best = r[field]; bestMs = ms; }
+  });
+  return best;
+}
+const _since = (iso, overlap) => new Date(Date.parse(iso) - overlap).toISOString();
+function _loadCursor() { try { return JSON.parse(_getLocal(CURSOR_KEY) || 'null'); } catch (e) { return null; } }
+
+// One tiny round-trip that says whether ANYTHING changed (see migration
+// 20261104120000_egress_reduction.sql). null = probe unavailable → just fetch the delta.
+async function _probeToken(client) {
+  try {
+    const { data, error } = await client.rpc('closing_change_token');
+    return (!error && typeof data === 'string') ? data : null;
+  } catch (e) { return null; }
+}
+
 // ── Public: refresh from Supabase (async, rate-limited) ──────────────
 export async function refresh(force) {
   const cached = _loadCache();
@@ -185,26 +245,54 @@ export async function refresh(force) {
       const client = _getClient();
       if (!client) { _renderStatusLine('Supabase not loaded yet'); return cached; }
 
-      const [sheetsRes, clRes, settingsRes, alRes] = await Promise.all([
-        client.from('sheets').select('key, data'),
-        client.from('credit_ledger').select('key, data'),
+      const cursor = _loadCursor();
+      const prev = getFullDb();
+      const delta = !force && !!cursor && !!prev && cursor.fullAt > 0 && (Date.now() - cursor.fullAt) < FULL_RESYNC_MS;
+
+      // Probe BEFORE reading, so a change landing mid-fetch is caught next time.
+      const token = await _probeToken(client);
+      if (delta && token && token === cursor.token) {
+        const same = _summarize(prev);
+        _saveCache(same);
+        _renderStatusLine('Synced ' + new Date(same.fetchedAt).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' }));
+        return same;
+      }
+
+      let sQ = client.from('sheets').select('key, data, server_updated_at');
+      let cQ = client.from('credit_ledger').select('key, data, server_updated_at');
+      let aQ = client.from('activity_log').select('ts, actor, key, action, changes, created_at');
+      if (delta) {
+        sQ = sQ.gte('server_updated_at', _since(cursor.sheets, DELTA_OVERLAP_MS));
+        cQ = cQ.gte('server_updated_at', _since(cursor.cl, DELTA_OVERLAP_MS));
+        aQ = aQ.gte('created_at', _since(cursor.al, AL_OVERLAP_MS));
+      }
+      aQ = aQ.order('created_at', { ascending: true });
+
+      const [sheetsRes, clRes, settingsRes, alRes, delRes] = await Promise.all([
+        sQ, cQ,
         client.from('settings').select('data, updated_at').eq('id', 1).maybeSingle(),
-        client.from('activity_log').select('ts, actor, key, action, changes').order('ts', { ascending: true }),
+        aQ,
+        client.from('deleted_records').select('key'),   // tiny; a failure just means "no tombstones"
       ]);
       if (sheetsRes.error) throw sheetsRes.error;
       if (clRes.error) throw clRes.error;
       if (settingsRes.error) throw settingsRes.error;
       if (alRes.error) throw alRes.error;
 
-      const closingDb = {
-        settings:     settingsRes.data?.data || null,
-        sheets:       Object.fromEntries((sheetsRes.data || []).map(r => [r.key, r.data])),
-        creditLedger: (clRes.data || []).map(r => r.data),
-        activityLog:  alRes.data || [],
-      };
+      const closingDb = mergeClosingRows(prev, {
+        sheets: sheetsRes.data, creditLedger: clRes.data, settings: settingsRes.data,
+        activityLog: alRes.data, tombstoneKeys: (delRes.data || []).map(r => r.key),
+      }, delta);
 
       _fullDb = closingDb;
       try { _setLocal(FULLDB_CACHE_KEY, JSON.stringify(closingDb)); } catch (e) { /* best-effort — fine if it's too big for localStorage, _fullDb in-memory still works this session */ }
+      _setLocal(CURSOR_KEY, JSON.stringify({
+        sheets: maxIso(sheetsRes.data, 'server_updated_at', delta ? cursor.sheets : null) || EPOCH_ISO,
+        cl:     maxIso(clRes.data,     'server_updated_at', delta ? cursor.cl     : null) || EPOCH_ISO,
+        al:     maxIso(alRes.data,     'created_at',        delta ? cursor.al     : null) || EPOCH_ISO,
+        fullAt: delta ? cursor.fullAt : Date.now(),
+        token,
+      }));
       const summary = _summarize(closingDb);
       _saveCache(summary);
       _renderStatusLine('Synced ' + new Date(summary.fetchedAt).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' }));
@@ -240,9 +328,18 @@ window.closingBridgeGetFullDb = getFullDb; // read-only; used by the AI assistan
 // connect/disconnect state to gate this behind anymore, same as
 // audit-bridge.js. Cover Dashboard tile stays fresh even if the user
 // never taps into a page that would otherwise trigger a refresh.
+// Visible tab only — a hidden/backgrounded PWA must not keep polling. Coming
+// back to the foreground refreshes right away (rate-limited by MIN_REFRESH_MS).
+const _tabVisible = () => typeof document === 'undefined' || document.visibilityState !== 'hidden';
+const _unref = (t) => { if (t && typeof t.unref === 'function') t.unref(); return t; }; // Node (tests) only; browsers return a number
 refresh(false);
-setInterval(() => { refresh(false); }, MIN_REFRESH_MS);
+_unref(setInterval(() => { if (_tabVisible()) refresh(false); }, MIN_REFRESH_MS));
 
 // Presence refreshes on its own, faster loop — see PRESENCE_MIN_REFRESH_MS.
 refreshOnlineStaff(false);
-setInterval(() => { refreshOnlineStaff(false); }, PRESENCE_MIN_REFRESH_MS);
+_unref(setInterval(() => { if (_tabVisible()) refreshOnlineStaff(false); }, PRESENCE_MIN_REFRESH_MS));
+if (typeof document !== 'undefined' && document.addEventListener) {
+  document.addEventListener('visibilitychange', () => {
+    if (_tabVisible()) { refresh(false); refreshOnlineStaff(false); }
+  });
+}

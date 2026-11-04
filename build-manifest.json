@@ -1,6 +1,6 @@
 {
-  "cache": "bt-sales-v11.213",
-  "hash": "0e2675c5a9b8",
+  "cache": "bt-sales-v11.214",
+  "hash": "ec8a8469a67b",
   "files": {
     "css/activity-log.css": "08f3faa0",
     "css/agent.css": "887c7226",
@@ -42,7 +42,7 @@
     "icons/icon-192.png": "a9be27a2",
     "icons/icon-512.png": "ea63e1c0",
     "icons/icon.svg": "86713582",
-    "index.html": "5e55a9bf",
+    "index.html": "cbdbaaf8",
     "js/agent/core/after-write.js": "e8376294",
     "js/agent/core/agent-client.js": "83ee391c",
     "js/agent/core/audit.js": "2ef45b8a",
@@ -111,7 +111,7 @@
     "js/audit/audit-native.js": "57e029f2",
     "js/closing/closing-book-page.js": "03b392ff",
     "js/closing/closing-book-reader.js": "b5bf6f5f",
-    "js/closing/closing-bridge.js": "1e22c51e",
+    "js/closing/closing-bridge.js": "9ababd94",
     "js/closing/closing-engine.js": "a9025fe0",
     "js/closing/closing-ledger-marks.js": "fa7bd9b4",
     "js/closing/closing-native.js": "e442cb4f",
