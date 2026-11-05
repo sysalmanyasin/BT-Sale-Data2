@@ -14,6 +14,7 @@ import { SEND_LISTS_KEY, mergeSendLists } from '../shared/mail-compose.js';
 import { mergeManagerSections } from '../shared/credit-merge.js';
 import { mergeLedgerEntries, mergeOpeningBalances, mergeCustomTypes } from '../shared/ledger-merge.js';
 import { runAsMerge, ensureBootstrapped, isDirty, clearDirtyUpTo, MGR_BLOB_KEY } from './sync-dirty.js';
+import { SB_SIGNAL_TABLE, _sbLoadCursor, _sbSaveCursor, _sbCommitCursor, _sbCursorUsable, _sbPickMode, _sbProbeStamp, _sbFetchRemote } from './supabase-split-read.js';
 
 const SB_URL     = SUPABASE_URL;
 const SB_KEY     = SUPABASE_ANON_KEY;
@@ -570,30 +571,44 @@ async function _doPush() {
     // overwritten. Now the write only lands if the row is still exactly the
     // version we merged; otherwise re-read, re-merge, retry.
     let landed = false;
+    let cursor = _sbLoadCursor();
+    let newStamp = null, dailyCursor = cursor ? cursor.daily : null, didFull = false;
     for (let attempt = 0; attempt < 4 && !landed; attempt++) {
-      const { data: remote } = await db
-        .from(SB_TABLE).select('payload, updated_at').eq('id', SB_ID).single();
-      if (remote && remote.payload) {
-        mergeIncomingData(remote.payload, false);
-        recomputeAllMonths();
+      // Probe (~100 B): row still at the version we last merged/wrote → nothing to merge, skip the big read. Retries re-read.
+      const probe = await _sbProbeStamp(db, SB_TABLE, SB_ID);
+      let remoteStamp = null;
+      if (attempt === 0 && probe && _sbCursorUsable(cursor, DAILY.length) && probe === cursor.stamp) {
+        remoteStamp = probe;
+      } else {
+        const mode = _sbPickMode(cursor, false, DAILY.length);
+        const r = await _sbFetchRemote(db, SB_TABLE, SB_ID, mode, cursor);
+        if (r.error && r.error.code !== 'PGRST116') throw new Error(r.error.message);
+        const remote = r.data;
+        if (remote && remote.payload) {
+          mergeIncomingData(remote.payload, false);
+          recomputeAllMonths();
+        }
+        remoteStamp = remote?.updated_at || null;
+        dailyCursor = r.dailyCursor || dailyCursor; didFull = didFull || mode === 'full';
       }
       const payload = _buildPayload();
       const stamp = new Date().toISOString();
-      if (remote && remote.updated_at) {
+      if (remoteStamp) {
         const { data: rows, error } = await db.from(SB_TABLE)
           .update({ payload, updated_at: stamp })
-          .eq('id', SB_ID).eq('updated_at', remote.updated_at)
-          .select('id');
+          .eq('id', SB_ID).eq('updated_at', remoteStamp)
+          .select('id, updated_at');
         if (error) throw new Error(error.message);
         landed = !!(rows && rows.length);
-        if (!landed) sbLog('↻ Remote changed while pushing — re-merging…', 'info');
+        if (landed) newStamp = rows[0].updated_at;
+        else sbLog('↻ Remote changed while pushing — re-merging…', 'info');
       } else {
         const { error } = await db.from(SB_TABLE).upsert(
           { id: SB_ID, payload, updated_at: stamp },
           { onConflict: 'id' }
         );
         if (error) throw new Error(error.message);
-        landed = true;
+        landed = true;       // newStamp stays null → no cursor → next read is a full one
       }
     }
     if (!landed) throw new Error('Remote kept changing during push — will retry');
@@ -601,6 +616,7 @@ async function _doPush() {
     clearDirtyUpTo(pushStartedAt);
     _clearPending();
     idbSaveData();
+    _sbCommitCursor(newStamp, dailyCursor, cursor, didFull, DAILY.length);
     rebuildAll();
     sbLog('✓ Pushed successfully', 'ok');
     setSyncBadge('ok');
@@ -650,8 +666,19 @@ async function pullFromSupabase(silent = false) {
     // Commit anything still sitting in a debounce timer so the merge below sees it.
     if (typeof window.mgrFlushAutosaves === 'function') window.mgrFlushAutosaves();
     const db = _sb();
-    const { data, error } = await db
-      .from(SB_TABLE).select('payload').eq('id', SB_ID).single();
+    const cursor = _sbLoadCursor();
+    // Manual pulls / no trustworthy cursor → whole row; otherwise probe first, then read only what changed.
+    const mode = _sbPickMode(cursor, !silent, DAILY.length);
+    if (mode === 'delta') {
+      const probe = await _sbProbeStamp(db, SB_TABLE, SB_ID);
+      if (probe && probe === cursor.stamp) {
+        // NOT markSynced(): nothing merged, so the conflict baseline must not pass unpushed local edits.
+        sbLog('✓ Already up to date — nothing to download', 'ok');
+        setSyncBadge('ok'); _updateLastPollDisplay(); return;
+      }
+    }
+    const r = await _sbFetchRemote(db, SB_TABLE, SB_ID, mode, cursor);
+    const { data, error } = r;
 
     if (error && error.code === 'PGRST116') {
       sbLog('No data in Supabase yet — push first.', 'info');
@@ -665,7 +692,7 @@ async function pullFromSupabase(silent = false) {
     rebuildAll();
     idbSaveData();
     Repository.markSynced();
-
+    _sbCommitCursor(data.updated_at, r.dailyCursor, cursor, mode === 'full', DAILY.length);
     const pendingConflicts = Repository.getPendingConflicts().length;
     const summary = `+${mN} new months / ${mU} updated · +${dN} new daily / ${dU} updated`
       + ` · [in-memory: MONTHLY=${MONTHLY.length} DAILY=${DAILY.length}]`
@@ -702,10 +729,11 @@ function _startRealtime() {
   if (_sbChannel) { try { db.removeChannel(_sbChannel); } catch(_) { /* best-effort: failure is intentionally non-fatal here */ } }
   _sbChannel = db
     .channel('bt-sync')
-    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: SB_TABLE }, (payload) => {
+    // bt_sync_signal (tiny, trigger-maintained) instead of the 2.5 MB bt_salesdata row: updates no longer ship the whole payload.
+    .on('postgres_changes', { event: '*', schema: 'public', table: SB_SIGNAL_TABLE }, (payload) => {
+      if (payload?.new?.id && payload.new.id !== SB_ID) return;
       // FIX 1: Ignore events that were triggered by our own push.
-      // The payload row stores device_id inside the JSON payload column.
-      const remoteDeviceId = payload?.new?.payload?.device_id;
+      const remoteDeviceId = payload?.new?.device_id;
       const ownUDID = (typeof _sc_getUDID === 'function') ? _sc_getUDID()
                     : Repository.getItem('bt_device_udid');
       if (remoteDeviceId && ownUDID && remoteDeviceId === ownUDID) {
@@ -919,6 +947,7 @@ let _supabaseStarted = false;
 
 function resetSupabaseSync() {
   _supabaseStarted = false;
+  _sbSaveCursor(null);   // a re-linked / reset install must re-read everything once
 }
 
 async function startSupabaseSync() {

@@ -1,6 +1,6 @@
 {
-  "cache": "bt-sales-v11.214",
-  "hash": "ec8a8469a67b",
+  "cache": "bt-sales-v11.216",
+  "hash": "c226a0b400eb",
   "files": {
     "css/activity-log.css": "08f3faa0",
     "css/agent.css": "887c7226",
@@ -42,7 +42,7 @@
     "icons/icon-192.png": "a9be27a2",
     "icons/icon-512.png": "ea63e1c0",
     "icons/icon.svg": "86713582",
-    "index.html": "cbdbaaf8",
+    "index.html": "5fece3b4",
     "js/agent/core/after-write.js": "e8376294",
     "js/agent/core/agent-client.js": "83ee391c",
     "js/agent/core/audit.js": "2ef45b8a",
@@ -183,7 +183,7 @@
     "js/platform/hub-sync-probe.js": "b14764c5",
     "js/platform/repository.js": "a623e37b",
     "js/platform/storage.js": "fba4d2c2",
-    "js/platform/supabase.js": "d4dc032f",
+    "js/platform/supabase.js": "98a2fcf3",
     "js/platform/sw-register.js": "30abe0b3",
     "js/platform/sync-center.js": "7d6e5659",
     "js/platform/sync-dirty.js": "e3b472b7",
