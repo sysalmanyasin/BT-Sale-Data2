@@ -51,7 +51,6 @@ const FULLDB_CACHE_KEY = 'bt_closing_fulldb_v1';  // local-only, best-effort per
 // change-token probe every 60 s (visible tab only), and when something did change
 // only the changed rows are fetched (full re-read at most every 6 h or on force).
 const MIN_REFRESH_MS = 60 * 1000;
-const CURSOR_KEY       = 'bt_closing_cursor_v1';
 const FULL_RESYNC_MS   = 6 * 60 * 60 * 1000;
 const DELTA_OVERLAP_MS = 90 * 1000;
 const AL_OVERLAP_MS    = 5 * 60 * 1000;
@@ -222,7 +221,9 @@ export function maxIso(rows, field, prev) {
   return best;
 }
 const _since = (iso, overlap) => new Date(Date.parse(iso) - overlap).toISOString();
-function _loadCursor() { try { return JSON.parse(_getLocal(CURSOR_KEY) || 'null'); } catch (e) { return null; } }
+// The cursor lives INSIDE the cached full db (`_cursor`), never in a separate shared key: tabs share localStorage,
+// and a cursor written by another tab would claim rows that THIS tab's copy of the data does not have.
+const _cursorOf = (db) => (db && db._cursor) || null;
 
 // One tiny round-trip that says whether ANYTHING changed (see migration
 // 20261104120000_egress_reduction.sql). null = probe unavailable → just fetch the delta.
@@ -245,8 +246,8 @@ export async function refresh(force) {
       const client = _getClient();
       if (!client) { _renderStatusLine('Supabase not loaded yet'); return cached; }
 
-      const cursor = _loadCursor();
       const prev = getFullDb();
+      const cursor = _cursorOf(prev);
       const delta = !force && !!cursor && !!prev && cursor.fullAt > 0 && (Date.now() - cursor.fullAt) < FULL_RESYNC_MS;
 
       // Probe BEFORE reading, so a change landing mid-fetch is caught next time.
@@ -284,15 +285,15 @@ export async function refresh(force) {
         activityLog: alRes.data, tombstoneKeys: (delRes.data || []).map(r => r.key),
       }, delta);
 
-      _fullDb = closingDb;
-      try { _setLocal(FULLDB_CACHE_KEY, JSON.stringify(closingDb)); } catch (e) { /* best-effort — fine if it's too big for localStorage, _fullDb in-memory still works this session */ }
-      _setLocal(CURSOR_KEY, JSON.stringify({
+      closingDb._cursor = {
         sheets: maxIso(sheetsRes.data, 'server_updated_at', delta ? cursor.sheets : null) || EPOCH_ISO,
         cl:     maxIso(clRes.data,     'server_updated_at', delta ? cursor.cl     : null) || EPOCH_ISO,
         al:     maxIso(alRes.data,     'created_at',        delta ? cursor.al     : null) || EPOCH_ISO,
         fullAt: delta ? cursor.fullAt : Date.now(),
         token,
-      }));
+      };
+      _fullDb = closingDb;
+      try { _setLocal(FULLDB_CACHE_KEY, JSON.stringify(closingDb)); } catch (e) { /* best-effort — fine if it's too big for localStorage, _fullDb in-memory still works this session */ }
       const summary = _summarize(closingDb);
       _saveCache(summary);
       _renderStatusLine('Synced ' + new Date(summary.fetchedAt).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' }));

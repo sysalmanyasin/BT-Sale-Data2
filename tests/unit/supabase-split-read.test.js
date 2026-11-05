@@ -138,7 +138,7 @@ function seed(n = 40) {
   serverPush(p => { p.daily[0].Total += 1; p.daily[0]._updatedAt += 1; return p; });
 }
 
-beforeEach(() => { resetStorage(); seed(); tick(5000); });
+beforeEach(() => { resetStorage(); sb._sbSaveCursor(null); seed(); tick(5000); });
 
 describe('pull', () => {
   test('cold start reads the whole row once, then a no-change pull downloads almost nothing', async () => {

@@ -1,8 +1,5 @@
 // bt_salesdata READ-SIDE SPLIT — split out of supabase.js (file-size budget).
 // See the block comment below for the design; supabase.js owns the write path and merge rules.
-import { Repository } from './repository.js';
-import { Actions } from './actions.js';
-
 // ══════════════════════════════════════════════════════════════════
 // READ-SIDE SPLIT  (2026-11 egress cleanup)
 // The bt_salesdata row is ~2.5 MB of JSON, 82% of it `daily`. It used to be
@@ -21,7 +18,6 @@ import { Actions } from './actions.js';
 export const SB_CORE_VIEW    = 'bt_salesdata_core';
 const SB_DAILY_TABLE  = 'bt_daily';
 export const SB_SIGNAL_TABLE = 'bt_sync_signal';
-const SB_CURSOR_KEY   = 'bt_sb_cursor_v1';
 const SB_FULL_RESYNC_MS   = 6 * 60 * 60 * 1000;
 const SB_DAILY_OVERLAP_MS = 90 * 1000;   // commits can land slightly out of order
 const SB_DAILY_PAGE   = 1000;            // PostgREST caps a response at 1000 rows
@@ -39,18 +35,14 @@ export function _sbMaxIso(rows, field, prev) {
   return best;
 }
 
-export function _sbLoadCursor() {
-  try {
-    const c = JSON.parse(Repository.getItem(SB_CURSOR_KEY) || 'null');
-    return (c && typeof c === 'object') ? c : null;
-  } catch (_) { return null; }
-}
-export function _sbSaveCursor(c) {
-  try {
-    if (c) Actions.saveFeatureData(SB_CURSOR_KEY, JSON.stringify(c));
-    else   Actions.clearFeatureData(SB_CURSOR_KEY);
-  } catch (_) { /* best-effort — no cursor just means the next read is a full one */ }
-}
+// The cursor is deliberately IN-MEMORY and per tab/page-load, never in localStorage. localStorage is shared
+// by every tab of the browser profile: a cursor written by tab A would tell tab B it had already merged
+// changes that only A has, and B would then skip a read and push a stale payload over them. Held in memory,
+// a cursor always describes exactly what THIS page has merged; a fresh page load starts with none, so its
+// first read is the original full one (a few MB once per load instead of once per push).
+let _cursor = null;
+export function _sbLoadCursor() { return _cursor; }
+export function _sbSaveCursor(c) { _cursor = c || null; }
 
 // A cursor is only trusted if it is complete, fresh, and the local data hasn't
 // SHRUNK since it was written (a wiped/restored local store must re-read everything).
