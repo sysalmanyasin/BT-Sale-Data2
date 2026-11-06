@@ -75,7 +75,7 @@ The platform brings several pharmacy workflows into one operational environment.
 |---|---|
 | JS modules under `js/` | 199 |
 | Supabase Edge Functions | 7 |
-| Dated SQL migrations | 30 |
+| Dated SQL migrations | 31 |
 | Test files (`*.test.js`) | 128 |
 | Android home-screen widgets | 22 |
 | GitHub Actions workflows | 5 |
