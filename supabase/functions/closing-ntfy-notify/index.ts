@@ -5,6 +5,11 @@
 // (via public.notify_admin_shift_saved) whenever a closing shift is saved.
 // Sends the closing summary to a public ntfy.sh topic.
 //
+// The notification carries an "Open PDF" button (and tapping the notification opens it).
+// The link points at the `closing-pdf` Edge Function, which serves <key>.pdf from the private
+// `closing-pdfs` bucket. It is signed with NOTIFY_SHARED_SECRET and resolved at click time,
+// so it works even though the app uploads the PDF a few seconds after the notification.
+//
 // Secrets (Project Settings -> Edge Functions -> Secrets):
 //   NOTIFY_SHARED_SECRET  required, must match the Bearer token used by the trigger
 //   NTFY_CLOSING_TOPIC    REQUIRED. Never commit the topic to the public repository.
@@ -18,6 +23,7 @@ const SHARED_SECRET = Deno.env.get("NOTIFY_SHARED_SECRET") ?? "";
 const NTFY_URL       = "https://ntfy.sh/";
 const NTFY_TOPIC     = Deno.env.get("NTFY_CLOSING_TOPIC") ?? "";
 const NTFY_ALERT_AT  = parseFloat(Deno.env.get("NTFY_VARIANCE_ALERT") ?? "500") || 500;
+const PDF_LINK_BASE  = (Deno.env.get("SUPABASE_URL") ?? "https://wetbugzzchkghpzmowod.supabase.co") + "/functions/v1/closing-pdf";
 
 /* Read per request and normalise: strips whitespace, surrounding quotes and an
    accidental leading "Bearer " so a pasted secret still works. */
@@ -35,6 +41,22 @@ function num(n: unknown): number {
 }
 function rs(n: unknown): string {
   return "Rs. " + Math.round(num(n)).toLocaleString("en-PK");
+}
+
+async function hmacHex(secret: string, msg: string): Promise<string> {
+  const k = await crypto.subtle.importKey(
+    "raw", new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" }, false, ["sign"],
+  );
+  const sig = await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(msg));
+  return Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/* Signed link to the closing-pdf function for this sheet key ("" if it can't be built). */
+async function pdfLink(key: string): Promise<string> {
+  if (!SHARED_SECRET || !/^[A-Za-z0-9_.-]{3,80}$/.test(key)) return "";
+  const sig = await hmacHex(SHARED_SECRET, key);
+  return `${PDF_LINK_BASE}?key=${encodeURIComponent(key)}&sig=${sig}`;
 }
 
 /* All non-zero credit entries (named + tier + aux) as separate lines. */
@@ -64,7 +86,7 @@ type Summary = {
   carriedCC: string; totalDeposits: string; openingCredit: string; totalCredit: string;
 };
 
-async function sendNtfy(s: Summary, d: Record<string, unknown>, key: string): Promise<string> {
+async function sendNtfy(s: Summary, d: Record<string, unknown>, key: string, pdfUrl: string): Promise<string> {
   const credits = creditLines(d);
   const message = [
     `Net cash: ${s.netCash}`,
@@ -97,6 +119,11 @@ async function sendNtfy(s: Summary, d: Record<string, unknown>, key: string): Pr
       // Re-saves of the same shift replace the earlier notification
       // instead of stacking duplicates (needs ntfy >= 2.14; ignored otherwise).
       sequence_id: key,
+      // PDF link: tap the notification, or use the "Open PDF" button.
+      ...(pdfUrl ? {
+        click: pdfUrl,
+        actions: [{ action: "view", label: "Open PDF", url: pdfUrl }],
+      } : {}),
     }),
   });
   if (!res.ok) {
@@ -179,11 +206,13 @@ Deno.serve(async (req: Request) => {
   };
 
   const seqKey = key || `${date}_${shift}`;
+  // The PDF file is named after the sheet key (e.g. 2026-11-10_Morning.pdf).
+  const pdfUrl = await pdfLink(seqKey).catch(() => "");
   try {
-    await sendNtfy(summary, d, seqKey);
+    await sendNtfy(summary, d, seqKey, pdfUrl);
   } catch (e) {
     console.error((e as Error).message);
     return new Response(JSON.stringify({ ntfy: (e as Error).message }), { status: 502 });
   }
-  return new Response(JSON.stringify({ ntfy: "ok" }), { status: 200 });
+  return new Response(JSON.stringify({ ntfy: "ok", pdf_link: !!pdfUrl }), { status: 200 });
 });

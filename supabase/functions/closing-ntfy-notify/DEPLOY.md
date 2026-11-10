@@ -1,6 +1,6 @@
 # closing-ntfy-notify
 
-Production Edge Function for the Closing app. The deployed production source (v12 at the time this file was reconciled) matches `supabase/functions/closing-ntfy-notify/index.ts`.
+Production Edge Function for the Closing app. The deployed production source (v13: adds the signed "Open PDF" link via `closing-pdf`) matches `supabase/functions/closing-ntfy-notify/index.ts`.
 
 ## Required Supabase Edge Function secrets
 - `NOTIFY_SHARED_SECRET`: must match the Bearer token sent by the database trigger.
@@ -23,3 +23,6 @@ These versions are already recorded as applied in the production Supabase migrat
 The `.github/workflows/supabase-deploy.yml` workflow deploys changed Edge Function folders from this repository. It only considers newly added migration files, rejects edits/deletions of historical migrations, and skips any migration version already recorded by Supabase.
 
 Do not deploy a local/older copy of this function over production. Update the tracked source first, review it, then deploy through the repository workflow.
+
+## PDF link
+The notification links to the `closing-pdf` function (`supabase/functions/closing-pdf/index.ts`, `verify_jwt = false` in `config.toml`). The link is `?key=<sheet key>&sig=<HMAC-SHA256(key, NOTIFY_SHARED_SECRET)>` and is resolved at tap time to a fresh 5-minute signed URL for `closing-pdfs/<key>.pdf`, so it works even though the app uploads the PDF a few seconds after the notification fires. Both functions need `NOTIFY_SHARED_SECRET`; `closing-pdf` also uses the built-in `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Deploy both together.

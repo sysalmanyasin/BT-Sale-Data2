@@ -21,6 +21,11 @@ verify_jwt = false
 [functions.closing-ntfy-notify]
 verify_jwt = false
 
+# Opens a closing PDF from the private closing-pdfs bucket. Public on purpose (tapped from the ntfy
+# notification): access is gated by an HMAC signature over the sheet key, checked in code.
+[functions.closing-pdf]
+verify_jwt = false
+
 # Closing App staff logins. verify_jwt stays off, but the function itself requires a signed-in
 # ACTIVE bt_authorized_users session (v21). Do not remove that check.
 [functions.set-staff-login]
