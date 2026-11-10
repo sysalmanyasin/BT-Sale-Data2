@@ -78,10 +78,245 @@ jobs:
           else
             if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then RANGE="HEAD~1..HEAD"; else RANGE="$BEFORE..HEAD"; fi
             changed=$(git diff --name-only "$RANGE" || true)
-            funcs=$(echo "$changed" | grep -E '^supabase/functions/[^/]+/' | cut -d/ -f3 | sort -u | tr '\n' ' ' || true)
+            added=$(git diff --diff-filter=A --name-only "$RANGE" || true)
+            funcs=$(printf '%s\n' "$changed" | grep -E '^supabase/functions/[^/]+/' | cut -d/ -f3 | sort -u | tr '\n' ' ' || true)
             # config.toml change => redeploy every function so JWT settings apply
-            if echo "$changed" | grep -q '^supabase/config.toml$'; then funcs=$(ls -1 supabase/functions | grep -v '^_' | tr '\n' ' '); fi
-            migs=$(echo "$changed" | grep -E '^supabase/migrations/.+\.sql$' | xargs -r -n1 basename | sort | tr '\n' ' ' || true)
+            if printf '%s\n' "$changed" | grep -q '^supabase/config.toml
+          fi
+          echo "functions=$(echo $funcs | xargs)" >> "$GITHUB_OUTPUT"
+          echo "migrations=$(echo $migs | xargs)" >> "$GITHUB_OUTPUT"
+          echo "Functions: $funcs"; echo "Migrations: $migs"
+
+      - name: Check required secrets
+        id: check
+        env:
+          TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          DBURL: ${{ secrets.SUPABASE_DB_URL }}
+          FUNCS: ${{ steps.plan.outputs.functions }}
+          MIGS: ${{ steps.plan.outputs.migrations }}
+        run: |
+          # Missing secrets are a warning, not a failure: deploys can also be
+          # done through the connected Supabase integration, so a push must not
+          # show a red X just because CI isn't configured.
+          skip_funcs=false; skip_migs=false
+          if [ -n "$FUNCS" ] && [ -z "$TOKEN" ]; then echo "::warning::SUPABASE_ACCESS_TOKEN not set - skipping function deploy"; skip_funcs=true; fi
+          if [ -n "$MIGS" ] && [ -z "$DBURL" ]; then echo "::warning::SUPABASE_DB_URL not set - skipping migrations"; skip_migs=true; fi
+          echo "skip_funcs=$skip_funcs" >> "$GITHUB_OUTPUT"
+          echo "skip_migs=$skip_migs" >> "$GITHUB_OUTPUT"
+
+      # Migrations run BEFORE functions so new tables exist when new code ships.
+      # Only files added/changed in this push are run (never the whole history),
+      # each in one transaction, stopping on the first error. Files must be
+      # idempotent (create if not exists / drop policy if exists).
+      - name: Apply new migrations
+        if: steps.plan.outputs.migrations != '' && steps.check.outputs.skip_migs != 'true'
+        env:
+          DBURL: ${{ secrets.SUPABASE_DB_URL }}
+          MIGS: ${{ steps.plan.outputs.migrations }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client >/dev/null
+          # Fail fast with a readable reason. GitHub runners are IPv4-only, and Supabase's direct
+          # host (db.<ref>.supabase.co) is IPv6-only: use the *Session pooler* connection string
+          # (aws-0-<region>.pooler.supabase.com:5432, user postgres.<ref>) for SUPABASE_DB_URL.
+          if ! psql "$DBURL" -v ON_ERROR_STOP=1 -tAc 'select 1' >/dev/null 2>/tmp/psql_err; then
+            echo "::error title=Cannot connect with SUPABASE_DB_URL::$(tr '\n' ' ' </tmp/psql_err | cut -c1-300) -- if this says 'Network is unreachable' or 'could not translate host', switch the secret to the Session pooler string."
+            exit 1
+          fi
+          for f in $MIGS; do
+            echo "::group::$f"
+            if ! psql "$DBURL" -v ON_ERROR_STOP=1 --single-transaction -f "supabase/migrations/$f" 2>/tmp/psql_err; then
+              echo "::error title=Migration failed: $f::$(tr '\n' ' ' </tmp/psql_err | cut -c1-400)"
+              exit 1
+            fi
+            echo "::endgroup::"
+          done
+
+      - name: Set up Supabase CLI
+        if: steps.plan.outputs.functions != '' && steps.check.outputs.skip_funcs != 'true'
+        uses: supabase/setup-cli@v3
+        with:
+          version: latest
+
+      - name: Deploy Edge Functions
+        if: steps.plan.outputs.functions != '' && steps.check.outputs.skip_funcs != 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          FUNCS: ${{ steps.plan.outputs.functions }}
+        run: |
+          set -euo pipefail
+          for fn in $FUNCS; do
+            if [ -f "supabase/functions/$fn/index.ts" ]; then
+              echo "::group::deploy $fn"
+              supabase functions deploy "$fn" --project-ref "$PROJECT_REF"
+              echo "::endgroup::"
+            else
+              echo "skip $fn (no index.ts — removed or not a function)"
+            fi
+          done
+; then funcs=$(ls -1 supabase/functions | grep -v '^_' | tr '\n' ' '); fi
+
+            # Migration files are immutable. Never auto-run an edited or deleted
+            # historical migration: add a new timestamped migration instead.
+            migration_paths=$(printf '%s\n' "$changed" | grep -E '^supabase/migrations/.+\.sql
+          fi
+          echo "functions=$(echo $funcs | xargs)" >> "$GITHUB_OUTPUT"
+          echo "migrations=$(echo $migs | xargs)" >> "$GITHUB_OUTPUT"
+          echo "Functions: $funcs"; echo "Migrations: $migs"
+
+      - name: Check required secrets
+        id: check
+        env:
+          TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          DBURL: ${{ secrets.SUPABASE_DB_URL }}
+          FUNCS: ${{ steps.plan.outputs.functions }}
+          MIGS: ${{ steps.plan.outputs.migrations }}
+        run: |
+          # Missing secrets are a warning, not a failure: deploys can also be
+          # done through the connected Supabase integration, so a push must not
+          # show a red X just because CI isn't configured.
+          skip_funcs=false; skip_migs=false
+          if [ -n "$FUNCS" ] && [ -z "$TOKEN" ]; then echo "::warning::SUPABASE_ACCESS_TOKEN not set - skipping function deploy"; skip_funcs=true; fi
+          if [ -n "$MIGS" ] && [ -z "$DBURL" ]; then echo "::warning::SUPABASE_DB_URL not set - skipping migrations"; skip_migs=true; fi
+          echo "skip_funcs=$skip_funcs" >> "$GITHUB_OUTPUT"
+          echo "skip_migs=$skip_migs" >> "$GITHUB_OUTPUT"
+
+      # Migrations run BEFORE functions so new tables exist when new code ships.
+      # Only files added/changed in this push are run (never the whole history),
+      # each in one transaction, stopping on the first error. Files must be
+      # idempotent (create if not exists / drop policy if exists).
+      - name: Apply new migrations
+        if: steps.plan.outputs.migrations != '' && steps.check.outputs.skip_migs != 'true'
+        env:
+          DBURL: ${{ secrets.SUPABASE_DB_URL }}
+          MIGS: ${{ steps.plan.outputs.migrations }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client >/dev/null
+          # Fail fast with a readable reason. GitHub runners are IPv4-only, and Supabase's direct
+          # host (db.<ref>.supabase.co) is IPv6-only: use the *Session pooler* connection string
+          # (aws-0-<region>.pooler.supabase.com:5432, user postgres.<ref>) for SUPABASE_DB_URL.
+          if ! psql "$DBURL" -v ON_ERROR_STOP=1 -tAc 'select 1' >/dev/null 2>/tmp/psql_err; then
+            echo "::error title=Cannot connect with SUPABASE_DB_URL::$(tr '\n' ' ' </tmp/psql_err | cut -c1-300) -- if this says 'Network is unreachable' or 'could not translate host', switch the secret to the Session pooler string."
+            exit 1
+          fi
+          for f in $MIGS; do
+            echo "::group::$f"
+            if ! psql "$DBURL" -v ON_ERROR_STOP=1 --single-transaction -f "supabase/migrations/$f" 2>/tmp/psql_err; then
+              echo "::error title=Migration failed: $f::$(tr '\n' ' ' </tmp/psql_err | cut -c1-400)"
+              exit 1
+            fi
+            echo "::endgroup::"
+          done
+
+      - name: Set up Supabase CLI
+        if: steps.plan.outputs.functions != '' && steps.check.outputs.skip_funcs != 'true'
+        uses: supabase/setup-cli@v3
+        with:
+          version: latest
+
+      - name: Deploy Edge Functions
+        if: steps.plan.outputs.functions != '' && steps.check.outputs.skip_funcs != 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          FUNCS: ${{ steps.plan.outputs.functions }}
+        run: |
+          set -euo pipefail
+          for fn in $FUNCS; do
+            if [ -f "supabase/functions/$fn/index.ts" ]; then
+              echo "::group::deploy $fn"
+              supabase functions deploy "$fn" --project-ref "$PROJECT_REF"
+              echo "::endgroup::"
+            else
+              echo "skip $fn (no index.ts — removed or not a function)"
+            fi
+          done
+ || true)
+            non_new_migrations=""
+            while IFS= read -r path; do
+              [ -z "$path" ] && continue
+              if ! printf '%s\n' "$added" | grep -Fxq "$path"; then
+                non_new_migrations="$non_new_migrations $path"
+              fi
+            done <<< "$migration_paths"
+            if [ -n "$non_new_migrations" ]; then
+              echo "::error::Existing migration files must not be edited or deleted. Add a new migration instead:$non_new_migrations"
+              exit 1
+            fi
+            migs=$(printf '%s\n' "$added" | grep -E '^supabase/migrations/.+\.sql
+          fi
+          echo "functions=$(echo $funcs | xargs)" >> "$GITHUB_OUTPUT"
+          echo "migrations=$(echo $migs | xargs)" >> "$GITHUB_OUTPUT"
+          echo "Functions: $funcs"; echo "Migrations: $migs"
+
+      - name: Check required secrets
+        id: check
+        env:
+          TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          DBURL: ${{ secrets.SUPABASE_DB_URL }}
+          FUNCS: ${{ steps.plan.outputs.functions }}
+          MIGS: ${{ steps.plan.outputs.migrations }}
+        run: |
+          # Missing secrets are a warning, not a failure: deploys can also be
+          # done through the connected Supabase integration, so a push must not
+          # show a red X just because CI isn't configured.
+          skip_funcs=false; skip_migs=false
+          if [ -n "$FUNCS" ] && [ -z "$TOKEN" ]; then echo "::warning::SUPABASE_ACCESS_TOKEN not set - skipping function deploy"; skip_funcs=true; fi
+          if [ -n "$MIGS" ] && [ -z "$DBURL" ]; then echo "::warning::SUPABASE_DB_URL not set - skipping migrations"; skip_migs=true; fi
+          echo "skip_funcs=$skip_funcs" >> "$GITHUB_OUTPUT"
+          echo "skip_migs=$skip_migs" >> "$GITHUB_OUTPUT"
+
+      # Migrations run BEFORE functions so new tables exist when new code ships.
+      # Only files added/changed in this push are run (never the whole history),
+      # each in one transaction, stopping on the first error. Files must be
+      # idempotent (create if not exists / drop policy if exists).
+      - name: Apply new migrations
+        if: steps.plan.outputs.migrations != '' && steps.check.outputs.skip_migs != 'true'
+        env:
+          DBURL: ${{ secrets.SUPABASE_DB_URL }}
+          MIGS: ${{ steps.plan.outputs.migrations }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client >/dev/null
+          # Fail fast with a readable reason. GitHub runners are IPv4-only, and Supabase's direct
+          # host (db.<ref>.supabase.co) is IPv6-only: use the *Session pooler* connection string
+          # (aws-0-<region>.pooler.supabase.com:5432, user postgres.<ref>) for SUPABASE_DB_URL.
+          if ! psql "$DBURL" -v ON_ERROR_STOP=1 -tAc 'select 1' >/dev/null 2>/tmp/psql_err; then
+            echo "::error title=Cannot connect with SUPABASE_DB_URL::$(tr '\n' ' ' </tmp/psql_err | cut -c1-300) -- if this says 'Network is unreachable' or 'could not translate host', switch the secret to the Session pooler string."
+            exit 1
+          fi
+          for f in $MIGS; do
+            echo "::group::$f"
+            if ! psql "$DBURL" -v ON_ERROR_STOP=1 --single-transaction -f "supabase/migrations/$f" 2>/tmp/psql_err; then
+              echo "::error title=Migration failed: $f::$(tr '\n' ' ' </tmp/psql_err | cut -c1-400)"
+              exit 1
+            fi
+            echo "::endgroup::"
+          done
+
+      - name: Set up Supabase CLI
+        if: steps.plan.outputs.functions != '' && steps.check.outputs.skip_funcs != 'true'
+        uses: supabase/setup-cli@v3
+        with:
+          version: latest
+
+      - name: Deploy Edge Functions
+        if: steps.plan.outputs.functions != '' && steps.check.outputs.skip_funcs != 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          FUNCS: ${{ steps.plan.outputs.functions }}
+        run: |
+          set -euo pipefail
+          for fn in $FUNCS; do
+            if [ -f "supabase/functions/$fn/index.ts" ]; then
+              echo "::group::deploy $fn"
+              supabase functions deploy "$fn" --project-ref "$PROJECT_REF"
+              echo "::endgroup::"
+            else
+              echo "skip $fn (no index.ts — removed or not a function)"
+            fi
+          done
+ | xargs -r -n1 basename | sort | tr '\n' ' ' || true)
           fi
           echo "functions=$(echo $funcs | xargs)" >> "$GITHUB_OUTPUT"
           echo "migrations=$(echo $migs | xargs)" >> "$GITHUB_OUTPUT"
