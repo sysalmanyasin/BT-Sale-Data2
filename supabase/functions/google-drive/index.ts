@@ -16,9 +16,8 @@
      status         → { connected, email, lastBackupAt }
      oauth_callback → exchanges a Google `code` for tokens, stores them
      backup         → pulls current data from Supabase, uploads a NEW
-                       timestamped JSON file to Drive (versioned —
-                       nothing is ever overwritten), prunes anything
-                       past MAX_VERSIONS_KEPT
+                       timestamped JSON file to the visible Closing Backups
+                       folder, prunes anything past MAX_VERSIONS_KEPT
      list_versions  → { versions: [{id, name, createdTime, size}] }
      restore        → { fileId } — downloads that version and replaces
                        ALL current data with it (sheets, credit ledger,
@@ -210,11 +209,8 @@ async function handleOauthCallback(code: string, redirectUri: string) {
   return { connected: true, email };
 }
 
-/* Kept as a prefix so list_versions can find our files among anything
-   else Drive might ever put in appDataFolder, and so the timestamp in
-   each name is human-readable if anyone ever inspects Drive directly
-   (appDataFolder is hidden from the normal Drive UI, but visible via
-   the API/"Manage Apps" screen). */
+/* Prefixes keep JSON snapshots and shift PDFs separate in the visible
+   Closing Backups folder, with independent retention limits. */
 const BACKUP_FILE_PREFIX = 'closing-backup-';
 const MAX_VERSIONS_KEPT = 30;
 
@@ -324,11 +320,8 @@ async function handleBackup() {
   };
   const body = JSON.stringify(payload, null, 2);
 
-  /* Versioned: every backup is its OWN file (name carries the
-     timestamp), never overwritten — so "restore" can offer a real
-     history instead of just the last snapshot. Lives in the app's
-     hidden "appDataFolder" so it doesn't clutter the visible Drive
-     (requires the drive.appdata scope — see drive-backup.js). */
+  /* Versioned: every JSON backup is its OWN timestamped file in the
+     visible Closing Backups folder, so restore can offer real history. */
   const fileName = `${BACKUP_FILE_PREFIX}${payload.exportedAt.replace(/[:.]/g, '-')}.json`;
   const boundary = 'closingbackupboundary';
   const folderId = await getDriveFolder(accessToken);
