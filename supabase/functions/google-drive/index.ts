@@ -270,8 +270,10 @@ async function handleBackupPdf(req: Request, pdfBase64: unknown, fileKey: unknow
   const existing = (await driveFilesList(accessToken, folderId)).filter((f: { name: string }) => f.name === fileName);
   const boundary = 'closingpdfboundary';
   const metadata = { name: fileName, mimeType: 'application/pdf', parents: [folderId] };
-  const binary = Array.from(bytes, b => String.fromCharCode(b)).join('');
-  const body = `--${boundary}\\r\\nContent-Type: application/json; charset=UTF-8\\r\\n\\r\\n${JSON.stringify(metadata)}\\r\\n--${boundary}\\r\\nContent-Type: application/pdf\\r\\nContent-Transfer-Encoding: binary\\r\\n\\r\\n${binary}\\r\\n--${boundary}--`;
+  const encoder = new TextEncoder();
+  const header = encoder.encode(`--${boundary}\\r\\nContent-Type: application/json; charset=UTF-8\\r\\n\\r\\n${JSON.stringify(metadata)}\\r\\n--${boundary}\\r\\nContent-Type: application/pdf\\r\\nContent-Transfer-Encoding: binary\\r\\n\\r\\n`);
+  const footer = encoder.encode(`\\r\\n--${boundary}--`);
+  const body = new Blob([header, bytes, footer], { type: `multipart/related; boundary=${boundary}` });
   const endpoint = existing.length
     ? `https://www.googleapis.com/upload/drive/v3/files/${existing[0].id}?uploadType=multipart`
     : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
