@@ -83,6 +83,21 @@ function unauthorized(): never {
   });
 }
 
+async function requireActiveStaff(req: Request) {
+  const header = req.headers.get('Authorization') || '';
+  const token = header.replace(/^Bearer\\s+/i, '');
+  if (!token || token === Deno.env.get('SUPABASE_ANON_KEY')) unauthorized();
+  const userClient = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_ANON_KEY') || '', {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data: userData, error: userError } = await userClient.auth.getUser(token);
+  if (userError || !userData?.user) unauthorized();
+  const { data: active, error } = await userClient.rpc('is_active_staff', { p_uid: userData.user.id });
+  if (error || active !== true) unauthorized();
+  return userData.user.id;
+}
+
 async function requireAdmin(pin: unknown) {
   const adminPin = await getAdminPin();
   if (!adminPin || typeof pin !== 'string' || pin !== adminPin) unauthorized();
@@ -203,16 +218,79 @@ async function handleOauthCallback(code: string, redirectUri: string) {
 const BACKUP_FILE_PREFIX = 'closing-backup-';
 const MAX_VERSIONS_KEPT = 30;
 
-async function driveFilesList(accessToken: string) {
+const DRIVE_FOLDER_NAME = 'Closing Backups';
+const PDF_FILE_PREFIX = 'closing-pdf-';
+
+async function driveFilesList(accessToken: string, folderId: string) {
   const url = new URL('https://www.googleapis.com/drive/v3/files');
-  url.searchParams.set('spaces', 'appDataFolder');
-  url.searchParams.set('fields', 'files(id,name,createdTime,size)');
+  url.searchParams.set('q', `'${folderId}' in parents and trashed=false`);
+  url.searchParams.set('fields', 'files(id,name,createdTime,size,mimeType)');
   url.searchParams.set('orderBy', 'createdTime desc');
   url.searchParams.set('pageSize', '100');
   const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
   const data = await resp.json();
   if (!resp.ok) throw new Error(`Drive list failed: ${JSON.stringify(data)}`);
-  return (data.files || []).filter((f: { name: string }) => f.name.startsWith(BACKUP_FILE_PREFIX));
+  return data.files || [];
+}
+
+async function getDriveFolder(accessToken: string) {
+  const q = encodeURIComponent(`name='${DRIVE_FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+  const listed = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&pageSize=100`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const data = await listed.json();
+  if (!listed.ok) throw new Error(`Drive folder lookup failed: ${JSON.stringify(data)}`);
+  if (data.files?.length) return data.files[0].id as string;
+  const created = await fetch('https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: DRIVE_FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' }),
+  });
+  const folder = await created.json();
+  if (!created.ok) throw new Error(`Drive folder creation failed: ${JSON.stringify(folder)}`);
+  return folder.id as string;
+}
+
+async function handleBackupPdf(req: Request, pdfBase64: unknown, fileKey: unknown) {
+  await requireActiveStaff(req);
+  if (typeof pdfBase64 !== 'string' || !pdfBase64 || typeof fileKey !== 'string' || !fileKey) {
+    throw new Error('Missing PDF data or file key.');
+  }
+  const raw = atob(pdfBase64);
+  if (raw.length > 10 * 1024 * 1024) throw new Error('PDF exceeds the 10 MiB limit.');
+  const bytes = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+  if (bytes.length < 5 || new TextDecoder().decode(bytes.slice(0, 5)) !== '%PDF-') throw new Error('Invalid PDF file.');
+  const row = await getRow();
+  if (!row?.refresh_token) throw new Error('Google Drive is not connected.');
+  const accessToken = await getAccessToken(row);
+  const folderId = await getDriveFolder(accessToken);
+  const safeKey = fileKey.replace(/[^A-Za-z0-9_.-]/g, '_').slice(0, 100);
+  const fileName = `${PDF_FILE_PREFIX}${safeKey}.pdf`;
+  const existing = (await driveFilesList(accessToken, folderId)).filter((f: { name: string }) => f.name === fileName);
+  const boundary = 'closingpdfboundary';
+  const metadata = { name: fileName, mimeType: 'application/pdf', parents: [folderId] };
+  const binary = Array.from(bytes, b => String.fromCharCode(b)).join('');
+  const body = `--${boundary}\\r\\nContent-Type: application/json; charset=UTF-8\\r\\n\\r\\n${JSON.stringify(metadata)}\\r\\n--${boundary}\\r\\nContent-Type: application/pdf\\r\\nContent-Transfer-Encoding: binary\\r\\n\\r\\n${binary}\\r\\n--${boundary}--`;
+  const endpoint = existing.length
+    ? `https://www.googleapis.com/upload/drive/v3/files/${existing[0].id}?uploadType=multipart`
+    : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+  const resp = await fetch(endpoint, {
+    method: existing.length ? 'PATCH' : 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': `multipart/related; boundary=${boundary}` },
+    body,
+  });
+  const saved = await resp.json();
+  if (!resp.ok) throw new Error(`Drive PDF upload failed: ${JSON.stringify(saved)}`);
+  const pdfs = (await driveFilesList(accessToken, folderId))
+    .filter((f: { name: string }) => f.name.startsWith(PDF_FILE_PREFIX))
+    .sort((a: { createdTime: string }, b: { createdTime: string }) => Date.parse(b.createdTime) - Date.parse(a.createdTime));
+  for (const stale of pdfs.slice(10)) {
+    await fetch(`https://www.googleapis.com/drive/v3/files/${stale.id}`, {
+      method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` },
+    }).catch(() => {});
+  }
+  return { saved: true, fileId: saved.id, fileName };
 }
 
 async function handleBackup() {
@@ -251,7 +329,7 @@ async function handleBackup() {
      (requires the drive.appdata scope — see drive-backup.js). */
   const fileName = `${BACKUP_FILE_PREFIX}${payload.exportedAt.replace(/[:.]/g, '-')}.json`;
   const boundary = 'closingbackupboundary';
-  const metadata = { name: fileName, parents: ['appDataFolder'] };
+  const folderId = await getDriveFolder(accessToken);\n  const metadata = { name: fileName, parents: [folderId] };
   const multipartBody =
     `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n` +
     `--${boundary}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${boundary}--`;
@@ -362,7 +440,7 @@ async function handle(req: Request): Promise<Response> {
     return new Response(null);
   }
   try {
-    const { action, code, redirectUri, pin, autoKey, fileId } = await req.json();
+    const { action, code, redirectUri, pin, autoKey, fileId, pdfBase64, fileKey } = await req.json();\n\n    if (action === 'backup_pdf') return json(await handleBackupPdf(req, pdfBase64, fileKey));
 
     if (action === 'backup') {
       await requireBackupAuth(pin, autoKey);
