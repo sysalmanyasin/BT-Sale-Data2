@@ -442,7 +442,9 @@ async function handle(req: Request): Promise<Response> {
     return new Response(null);
   }
   try {
-    const { action, code, redirectUri, pin, autoKey, fileId, pdfBase64, fileKey } = await req.json();\n\n    if (action === 'backup_pdf') return json(await handleBackupPdf(req, pdfBase64, fileKey));
+    const { action, code, redirectUri, pin, autoKey, fileId, pdfBase64, fileKey } = await req.json();
+
+    if (action === 'backup_pdf') return json(await handleBackupPdf(req, pdfBase64, fileKey));
 
     if (action === 'backup') {
       await requireBackupAuth(pin, autoKey);
