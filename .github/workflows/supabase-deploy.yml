@@ -140,6 +140,12 @@ jobs:
             exit 1
           fi
           for f in $MIGS; do
+            version="${f%%_*}"
+            applied=$(psql "$DBURL" -v ON_ERROR_STOP=1 -tAc "select 1 from supabase_migrations.schema_migrations where version = '$version' limit 1")
+            if [ "$applied" = "1" ]; then
+              echo "skip $f (migration $version already applied)"
+              continue
+            fi
             echo "::group::$f"
             if ! psql "$DBURL" -v ON_ERROR_STOP=1 --single-transaction -f "supabase/migrations/$f" 2>/tmp/psql_err; then
               echo "::error title=Migration failed: $f::$(tr '\n' ' ' </tmp/psql_err | cut -c1-400)"
