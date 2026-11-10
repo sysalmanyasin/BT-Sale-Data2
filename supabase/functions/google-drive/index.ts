@@ -85,7 +85,7 @@ function unauthorized(): never {
 
 async function requireActiveStaff(req: Request) {
   const header = req.headers.get('Authorization') || '';
-  const token = header.replace(/^Bearer\\s+/i, '');
+  const token = header.replace(/^Bearer\s+/i, '');
   if (!token || token === Deno.env.get('SUPABASE_ANON_KEY')) unauthorized();
   const userClient = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_ANON_KEY') || '', {
     global: { headers: { Authorization: `Bearer ${token}` } },
@@ -271,8 +271,8 @@ async function handleBackupPdf(req: Request, pdfBase64: unknown, fileKey: unknow
   const boundary = 'closingpdfboundary';
   const metadata = { name: fileName, mimeType: 'application/pdf', parents: [folderId] };
   const encoder = new TextEncoder();
-  const header = encoder.encode(`--${boundary}\\r\\nContent-Type: application/json; charset=UTF-8\\r\\n\\r\\n${JSON.stringify(metadata)}\\r\\n--${boundary}\\r\\nContent-Type: application/pdf\\r\\nContent-Transfer-Encoding: binary\\r\\n\\r\\n`);
-  const footer = encoder.encode(`\\r\\n--${boundary}--`);
+  const header = encoder.encode(`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n--${boundary}\r\nContent-Type: application/pdf\r\nContent-Transfer-Encoding: binary\r\n\r\n`);
+  const footer = encoder.encode(`\r\n--${boundary}--`);
   const body = new Blob([header, bytes, footer], { type: `multipart/related; boundary=${boundary}` });
   const endpoint = existing.length
     ? `https://www.googleapis.com/upload/drive/v3/files/${existing[0].id}?uploadType=multipart`
@@ -331,7 +331,8 @@ async function handleBackup() {
      (requires the drive.appdata scope — see drive-backup.js). */
   const fileName = `${BACKUP_FILE_PREFIX}${payload.exportedAt.replace(/[:.]/g, '-')}.json`;
   const boundary = 'closingbackupboundary';
-  const folderId = await getDriveFolder(accessToken);\n  const metadata = { name: fileName, parents: [folderId] };
+  const folderId = await getDriveFolder(accessToken);
+  const metadata = { name: fileName, parents: [folderId] };
   const multipartBody =
     `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n` +
     `--${boundary}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${boundary}--`;
@@ -349,7 +350,9 @@ async function handleBackup() {
   /* Prune anything past MAX_VERSIONS_KEPT, oldest first — best-effort,
      a failed delete here shouldn't fail the backup that just succeeded. */
   try {
-    const files = await driveFilesList(accessToken);
+    const folderId = await getDriveFolder(accessToken);
+    const files = (await driveFilesList(accessToken, folderId))
+      .filter((f: { name: string }) => f.name.startsWith(BACKUP_FILE_PREFIX));
     const stale = files.slice(MAX_VERSIONS_KEPT);
     for (const f of stale) {
       await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}`, {
@@ -366,7 +369,9 @@ async function handleListVersions() {
   const row = await getRow();
   if (!row?.refresh_token) throw new Error('Google Drive is not connected.');
   const accessToken = await getAccessToken(row);
-  const files = await driveFilesList(accessToken);
+  const folderId = await getDriveFolder(accessToken);
+  const files = (await driveFilesList(accessToken, folderId))
+    .filter((f: { name: string }) => f.name.startsWith(BACKUP_FILE_PREFIX));
   return {
     versions: files.map((f: { id: string; name: string; createdTime: string; size?: string }) => ({
       id: f.id, name: f.name, createdTime: f.createdTime, size: f.size ? Number(f.size) : null,
