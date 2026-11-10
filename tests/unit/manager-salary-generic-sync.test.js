@@ -87,7 +87,7 @@ describe('Generic → Salary sync', () => {
     assert.equal(salaryMod._salRows_cur[0].generic, 0, 'September Generic must not leak into October Salary');
   });
 
-  test('an already-saved Salary month has its stored generic brought up to date', async () => {
+  test('opening the Salary tab only displays — it never writes salary data', async () => {
     Actions.addEmployee({ name: 'Salman Yasin', designation: 'Manager' });
     salaryMod.loadSalaryMonth('October 2026');
     salaryMod.saveSalaryData(true);                        // saved with generic 0
@@ -96,10 +96,24 @@ describe('Generic → Salary sync', () => {
     genericMod._genRows_cur[0].genericSale = 147066;
     genericMod.saveGenericData(true);
 
-    salaryMod.refreshSalaryOnOpen();
     const { mgrFlushAutosaves, mgrLoad } = await import('../../js/manager/manager-shared.js');
+    salaryMod.refreshSalaryOnOpen();
     mgrFlushAutosaves();
 
-    assert.equal(mgrLoad().salary['October 2026'][0].generic, 5883, 'payslip/report read this saved value');
+    assert.equal(salaryMod._salRows_cur[0].generic, 5883, 'shown on screen');
+    assert.equal(mgrLoad().salary['October 2026'][0].generic, 0, 'but nothing was written by merely opening the tab');
+  });
+
+  test('typing in Generic does update the saved salary row (so payslip/reports stay correct)', async () => {
+    Actions.addEmployee({ name: 'Salman Yasin', designation: 'Manager' });
+    salaryMod.loadSalaryMonth('October 2026');
+    salaryMod.saveSalaryData(true);
+    genericMod.loadGenericMonth('October 2026');
+    genericMod._genRows_cur[0].genericSale = 147066;
+    genericMod.recalcGenRow(0);
+
+    const { mgrFlushAutosaves, mgrLoad } = await import('../../js/manager/manager-shared.js');
+    mgrFlushAutosaves();
+    assert.equal(mgrLoad().salary['October 2026'][0].generic, 5883);
   });
 });

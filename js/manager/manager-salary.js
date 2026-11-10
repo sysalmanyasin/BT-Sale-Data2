@@ -168,8 +168,6 @@ function loadSalaryMonth(my, opts) {
   // Only gate advance on alreadySaved (don't overwrite manual advance edits)
   const data = mgrLoad();
   const alreadySaved = !!(data.salary && data.salary[my]);
-  const _storedGen = {};
-  ((data.salary && data.salary[my]) || []).forEach(r => { _storedGen[norm(r.name)] = _ni(r.generic); });
   _salRows_cur = _salRows_cur.map(row => {
     const rName = norm(row.name);
     if (!rName) return row;
@@ -190,13 +188,6 @@ function loadSalaryMonth(my, opts) {
   });
   window._salRows_cur = _salRows_cur; // keep the window bridge live (see file header note)
   renderSalaryTable(_salRows_cur);
-  // Keep the SAVED salary in step with the pulled Generic values, otherwise the
-  // payslip / reports / exports (which read saved data) keep showing the old
-  // figure. Only when the month was already saved: a first save would switch off
-  // the Advance auto-fill above.
-  if (alreadySaved && _salRows_cur.some(r => norm(r.name) in _storedGen && _storedGen[norm(r.name)] !== _ni(r.generic))) {
-    mgrAutosave('salary', () => saveSalaryData(true));
-  }
 }
 
 // Called when the Salary tab is opened: push any pending Generic/Salary edits to
@@ -206,6 +197,8 @@ function refreshSalaryOnOpen() {
   const my = sel && sel.value;
   if (!my) return;
   mgrFlushAutosaves();
+  // Display only: opening a tab must never write data (it can run during page
+  // load via #manager/salary). The sheet is saved by typing (autosave) or 💾 Save.
   loadSalaryMonth(my, { genericFromStorage: true });
 }
 

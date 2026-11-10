@@ -1,6 +1,6 @@
 {
-  "cache": "bt-sales-v11.218",
-  "hash": "b32b5e3edaa2",
+  "cache": "bt-sales-v11.219",
+  "hash": "02b917e84451",
   "files": {
     "css/activity-log.css": "08f3faa0",
     "css/agent.css": "887c7226",
@@ -42,7 +42,7 @@
     "icons/icon-192.png": "a9be27a2",
     "icons/icon-512.png": "ea63e1c0",
     "icons/icon.svg": "86713582",
-    "index.html": "592d02c4",
+    "index.html": "70a62fa8",
     "js/agent/core/after-write.js": "e8376294",
     "js/agent/core/agent-client.js": "83ee391c",
     "js/agent/core/audit.js": "2ef45b8a",
@@ -163,7 +163,7 @@
     "js/manager/manager-payslip.js": "5afcb1cb",
     "js/manager/manager-petty.js": "d469e26f",
     "js/manager/manager-reports.js": "f13232d2",
-    "js/manager/manager-salary.js": "ba94d21b",
+    "js/manager/manager-salary.js": "c83c5bd5",
     "js/manager/manager-shared.js": "289e4343",
     "js/manager/manager-staff.js": "805f26a3",
     "js/manager/manager-unmatched.js": "c730b744",
