@@ -41,10 +41,11 @@ Deno.serve(async(req:Request)=>{
   const b=await req.json().catch(()=>({}));if(typeof b.autoKey!=="string"||!b.autoKey)return Response.json({error:"Unauthorized"},{status:401});
   const {data:drive,error:de}=await db.from("google_drive_backup").select("refresh_token,access_token,access_token_expires_at,auto_key").eq("id",1).maybeSingle();
   if(de||!drive?.refresh_token||!drive.auto_key||b.autoKey!==drive.auto_key)return Response.json({error:"Unauthorized"},{status:401});
-  const [m,l,t,s,st]=await Promise.all([db.from("bt_manager").select("section,month,data"),db.from("bt_ledger_entries").select("id,data"),db.from("bt_ledger_custom_types").select("type,data"),db.from("sheets").select("key").eq("draft",false),db.from("bt_staff").select("id")]);
-  for(const x of [m,l,t,s,st])if(x.error)throw x.error;
+  async function allLedgerRows(){const out:any[]=[];for(let offset=0;offset<50000;offset+=1000){const page=await db.from("bt_ledger_entries").select("id,data").range(offset,offset+999);if(page.error)throw page.error;out.push(...(page.data||[]));if((page.data||[]).length<1000)break;}return out;}
+  const [m,l,t,s,st]=await Promise.all([db.from("bt_manager").select("section,month,data"),allLedgerRows(),db.from("bt_ledger_custom_types").select("type,data"),db.from("sheets").select("key").eq("draft",false),db.from("bt_staff").select("id")]);
+  for(const x of [m,t,s,st])if(x.error)throw x.error;
   const months=(m.data||[]).filter(x=>x.section==="credit").map(x=>x.month);const now=new Intl.DateTimeFormat("en-US",{month:"long",year:"numeric",timeZone:"Asia/Karachi"}).format(new Date());const month=months.includes(now)?now:months.sort((a,b)=>Date.parse("1 "+b)-Date.parse("1 "+a))[0]||now;
-  const data={generatedAt:new Date().toISOString(),month,manager:m.data||[],ledger:(l.data||[]).map(x=>x.data),types:t.data||[],sheetCount:(s.data||[]).length,staffCount:(st.data||[]).length};
+  const data={generatedAt:new Date().toISOString(),month,manager:m.data||[],ledger:l.map(x=>x.data),types:t.data||[],sheetCount:(s.data||[]).length,staffCount:(st.data||[]).length};
   const htmlDoc=html(data);const tk=await token(drive);const folderId=await folder(tk);const filename="manager-dashboard-"+datePK(new Date())+".html";const fileId=await upload(tk,folderId,filename,htmlDoc);
   const {error:logErr}=await db.from("manager_dashboard_archive_runs").insert({file_name:filename,drive_file_id:fileId,generated_at:new Date().toISOString(),status:"success",record_counts:{manager:data.manager.length,ledger:data.ledger.length,sheets:data.sheetCount,staff:data.staffCount}});
   if(logErr)console.error("archive audit insert failed",logErr.message);
