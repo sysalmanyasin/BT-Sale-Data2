@@ -60,7 +60,11 @@ async function getAdminPin(): Promise<string | null> {
 // CORS: browser calls are limited to the production site. Override with ALLOWED_ORIGINS (comma list) for local dev.
 // Applied to EVERY response by the wrapper at the bottom of this file, so error paths are covered too.
 const DEFAULT_ORIGIN = 'https://bt.duapharma.com';
-const allowedOrigins = (Deno.env.get('ALLOWED_ORIGINS') || DEFAULT_ORIGIN).split(',').map((s) => s.trim()).filter(Boolean);
+const DEFAULT_ORIGINS = 'https://bt.duapharma.com,https://closing.duapharma.com';
+const allowedOrigins = [...new Set([
+  ...DEFAULT_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean),
+  ...(Deno.env.get('ALLOWED_ORIGINS') || '').split(',').map((s) => s.trim()).filter(Boolean),
+])];
 function cors(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') || '';
   const allow = allowedOrigins.includes('*') ? '*' : (allowedOrigins.includes(origin) ? origin : allowedOrigins[0] || DEFAULT_ORIGIN);
