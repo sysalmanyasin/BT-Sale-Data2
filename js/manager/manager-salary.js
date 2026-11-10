@@ -18,7 +18,7 @@
 // ══════════════════════════════════════════════════════════════════════
 import { Repository } from '../platform/repository.js';
 import { STAFF } from '../platform/config.js';
-import { _ni, _fc2, _mgrEsc, mgrLoad, mgrSave, mgrAutosave, mgrFlushAutosaves, reconcileStaffRows, _salExtrasNet, activeStaff, mgrOn } from './manager-shared.js';
+import { _ni, _fc2, _mgrEsc, mgrLoad, mgrSave, mgrAutosave, reconcileStaffRows, _salExtrasNet, activeStaff, mgrOn } from './manager-shared.js';
 import { _crdData, _crdData_cur } from './manager-credit.js';
 import { _genRows, _genRows_cur, _genFinal } from './manager-generic.js';
 import { act, arg, registerActions } from '../shared/dom-actions.js';
@@ -102,7 +102,7 @@ function renderSalaryTable(rows) {
       <td class="mgr-td sal-c" style="width:88px"><input type="number" value="${r.days ?? 31}" class="mgr-inp sal-num" placeholder="31"${act('input', 'salRowChange', i, 'days', arg.value)}></td>
       <td class="mgr-td"><input type="number" value="${r.hoSal||0}" class="mgr-inp sal-num" placeholder="0"${act('input', { then: [['recalcSalNet', i]] }, 'salRowChange', i, 'hoSal', arg.value)}></td>
       <td class="mgr-td" ${_advTitle ? 'title="'+_advTitle+'" style="position:relative"' : ''}><input type="number" value="${r.advance||0}" class="mgr-inp sal-num${_advTitle?' sal-adv-linked':''}" placeholder="0"${act('input', { then: [['recalcSalNet', i]] }, 'salRowChange', i, 'advance', arg.value)}>${_advTitle ? '<span style="position:absolute;top:2px;right:3px;font-size:11px;color:var(--accent);pointer-events:none" title="'+_advTitle+'">💳</span>' : ''}</td>
-      <td class="mgr-td"><input type="number" id="sal-gen-${i}" value="${r.generic||0}" class="mgr-inp sal-num" placeholder="0"${act('input', { then: [['recalcSalNet', i]] }, 'salRowChange', i, 'generic', arg.value)}></td>
+      <td class="mgr-td"><input type="number" value="${r.generic||0}" class="mgr-inp sal-num" placeholder="0"${act('input', { then: [['recalcSalNet', i]] }, 'salRowChange', i, 'generic', arg.value)}></td>
       ${_cols.map(c => `<td class="mgr-td"><input type="number" value="${_ni(r.extras.find(e => e.id === c.id)?.amount) || 0}" class="mgr-inp sal-num" placeholder="0"${act('input', { then: [['recalcSalNet', i]] }, 'salExtraChange', i, String(c.id), arg.value)}></td>`).join('')}
       <td class="mgr-td"><input type="number" id="sal-net-${i}" class="mgr-inp calc sal-num" value="${_salNet(r)}" readonly></td>
       <td class="mgr-td sal-c"><button class="crd-print-toggle${skipped ? ' is-off' : ''}"${act('click', 'toggleSalPrintSkip', i)} title="${skipped ? 'Excluded from print — click to include' : 'Included in print — click to exclude'}">${skipped ? '🖨🚫' : '🖨'}</button></td>
@@ -135,7 +135,7 @@ function _salRenderHeader(cols) {
 let _salRows_cur = [];
 let _salLoadedMonth = null;
 
-function loadSalaryMonth(my, opts) {
+function loadSalaryMonth(my) {
   // Preserve any typed-but-unsaved days/hoSal edits already applied
   // in-memory by salRowChange() before this reloads from storage — same
   // class of bug already fixed in jazz-cash.js/ledger/ledger-page.js: a
@@ -158,18 +158,11 @@ function loadSalaryMonth(my, opts) {
     ? _crdData_cur : _crdData(my);
   // Use in-memory generic data if generic tab is on the same month
   const genSel = document.getElementById('gen-month-sel');
-  // opts.genericFromStorage (used when the Salary tab is opened, after pending
-  // autosaves were flushed): read Generic from storage, which is the one source
-  // of truth shared by every loaded copy of manager-generic.js. index.html loads
-  // that module AND other modules import it bare, so the in-memory
-  // _genRows_cur seen here can be a stale copy.
-  const genRowsData = (!(opts && opts.genericFromStorage) && genSel && genSel.value === my && _genRows_cur.length)
+  const genRowsData = (genSel && genSel.value === my && _genRows_cur.length)
     ? _genRows_cur : _genRows(my);
   // Only gate advance on alreadySaved (don't overwrite manual advance edits)
   const data = mgrLoad();
   const alreadySaved = !!(data.salary && data.salary[my]);
-  const _storedGen = {};
-  ((data.salary && data.salary[my]) || []).forEach(r => { _storedGen[norm(r.name)] = _ni(r.generic); });
   _salRows_cur = _salRows_cur.map(row => {
     const rName = norm(row.name);
     if (!rName) return row;
@@ -190,23 +183,6 @@ function loadSalaryMonth(my, opts) {
   });
   window._salRows_cur = _salRows_cur; // keep the window bridge live (see file header note)
   renderSalaryTable(_salRows_cur);
-  // Keep the SAVED salary in step with the pulled Generic values, otherwise the
-  // payslip / reports / exports (which read saved data) keep showing the old
-  // figure. Only when the month was already saved: a first save would switch off
-  // the Advance auto-fill above.
-  if (alreadySaved && _salRows_cur.some(r => norm(r.name) in _storedGen && _storedGen[norm(r.name)] !== _ni(r.generic))) {
-    mgrAutosave('salary', () => saveSalaryData(true));
-  }
-}
-
-// Called when the Salary tab is opened: push any pending Generic/Salary edits to
-// storage, then re-pull Generic so the sheet never shows a stale 0.
-function refreshSalaryOnOpen() {
-  const sel = document.getElementById('sal-month-sel');
-  const my = sel && sel.value;
-  if (!my) return;
-  mgrFlushAutosaves();
-  loadSalaryMonth(my, { genericFromStorage: true });
 }
 
 function salRowChange(i, field, val) {
@@ -359,7 +335,7 @@ function autoFillSalaryFromSheets() {
 
 Object.assign(window, {
   _salRows, _salRows_cur, renderSalaryTable, loadSalaryMonth, salRowChange, addSalaryRow,
-  deleteSalRow, saveSalaryData, autoFillSalaryFromSheets, refreshSalaryOnOpen, _salNet, _salUpdateFooter, toggleSalPrintSkip,
+  deleteSalRow, saveSalaryData, autoFillSalaryFromSheets, _salNet, _salUpdateFooter, toggleSalPrintSkip,
   _salCols, salExtraChange, salAddColumn, salAddColumnFromBar, salToggleColSign, salRenameColumn, salRemoveColumn,
 });
 
@@ -368,24 +344,16 @@ Object.assign(window, {
 // never has to import this module.
 mgrOn('generic-changed', (genRow) => {
   const norm = s => (s||'').trim().toLowerCase();
-  // Only when Salary and Generic are showing the same month — otherwise a
-  // Generic edit for one month would leak into another month's salary rows.
-  const salSel = document.getElementById('sal-month-sel');
-  const genSel = document.getElementById('gen-month-sel');
-  if (!salSel || !genSel || salSel.value !== genSel.value) return;
   const salIdx = _salRows_cur.findIndex(r => norm(r.name) === norm(genRow.name));
   if (salIdx === -1) return;
   _salRows_cur[salIdx].generic = _genFinal(genRow);
-  const genEl = document.getElementById('sal-gen-' + salIdx);
-  if (genEl) genEl.value = _salRows_cur[salIdx].generic;
   const netEl = document.getElementById('sal-net-' + salIdx);
   if (netEl) netEl.value = _salNet(_salRows_cur[salIdx]);
   _salUpdateFooter(_salRows_cur);
-  mgrAutosave('salary', () => saveSalaryData(true));
 });
 
 export {
   _salRows, _salRows_cur, renderSalaryTable, loadSalaryMonth, salRowChange, addSalaryRow,
-  deleteSalRow, saveSalaryData, autoFillSalaryFromSheets, refreshSalaryOnOpen, _salNet, _salUpdateFooter, toggleSalPrintSkip,
+  deleteSalRow, saveSalaryData, autoFillSalaryFromSheets, _salNet, _salUpdateFooter, toggleSalPrintSkip,
   _salCols, salExtraChange, salAddColumn, salAddColumnFromBar, salToggleColSign, salRenameColumn, salRemoveColumn,
 };
