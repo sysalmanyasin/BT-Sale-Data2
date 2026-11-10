@@ -56,6 +56,9 @@ function switchMgrTab(tab) {
     if (window.location.hash !== _newHash) history.replaceState(null, '', _newHash);
   } catch(_) { /* best-effort: failure is intentionally non-fatal here */ }
   if (tab === 'staff') renderStaffRegistry();
+  // Re-pull Generic into Salary every time the Salary tab is opened (it used to
+  // only happen on page load / month change / Auto-Fill, so Salary showed 0).
+  if (tab === 'salary' && typeof window.refreshSalaryOnOpen === 'function') window.refreshSalaryOnOpen();
   if (tab === 'attendance' && typeof AttendanceUI !== 'undefined') AttendanceUI.renderAttendanceTab();
   if (tab === 'jazzcash' && typeof renderJazzCash === 'function') renderJazzCash();
   if (tab === 'sheets' && typeof renderNotesSheets === 'function') renderNotesSheets();
