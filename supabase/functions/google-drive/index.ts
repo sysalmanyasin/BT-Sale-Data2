@@ -23,7 +23,8 @@
      list_versions  → { versions: [{id, name, createdTime, size}] }
      restore        → { fileId } — downloads that version and replaces
                        ALL current data with it (sheets, credit ledger,
-                       settings, activity log, deleted-record tombstones)
+                       settings, deleted-record tombstones, and the activity log
+                       only when the backup file contains one)
      set_auto_key   → { autoKey } — manually overrides the auto_key
                        (rotation utility; normally generated automatically
                        by oauth_callback and read by the Postgres trigger
@@ -328,17 +329,19 @@ async function handleBackup() {
   if (!row?.refresh_token) throw new Error('Google Drive is not connected.');
   const accessToken = await getAccessToken(row);
 
-  /* Same four tables sync.js's pull already reads — see sync.js
-     header comment for why this is the full picture of app data. */
+  /* The same tables sync.js's pull reads, MINUS activity_log: it is ~80% of
+     every snapshot's bytes and only an audit trail, not business data. Leaving it
+     out keeps each backup small (Supabase free-plan egress). The payload carries
+     activityLogIncluded:false so admin_restore_backup() keeps the live log instead
+     of wiping it (see migration 20261111150000). Older backups still contain it. */
   const client = admin();
-  const [sheets, creditLedger, settings, activityLog, deleted] = await Promise.all([
+  const [sheets, creditLedger, settings, deleted] = await Promise.all([
     client.from('sheets').select('key, data'),
     client.from('credit_ledger').select('key, data'),
     client.from('settings').select('data').eq('id', 1).maybeSingle(),
-    client.from('activity_log').select('ts, actor, key, action, changes').order('ts', { ascending: true }),
     client.from('deleted_records').select('key, deleted_at'),
   ]);
-  for (const r of [sheets, creditLedger, settings, activityLog]) {
+  for (const r of [sheets, creditLedger, settings]) {
     if (r.error) throw r.error;
   }
 
@@ -347,7 +350,7 @@ async function handleBackup() {
     settings: settings.data?.data || null,
     sheets: Object.fromEntries((sheets.data || []).map(r => [r.key, r.data])),
     creditLedger: (creditLedger.data || []).map(r => r.data),
-    activityLog: activityLog.data || [],
+    activityLogIncluded: false,
     deletedKeys: deleted.data || [],
   };
   const body = JSON.stringify(payload, null, 2);
