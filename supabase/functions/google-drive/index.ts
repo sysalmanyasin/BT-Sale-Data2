@@ -260,7 +260,10 @@ async function uploadPdfToDrive(bytes: Uint8Array, fileKey: string) {
   const fileName = `${PDF_FILE_PREFIX}${safeKey}.pdf`;
   const existing = (await driveFilesList(accessToken, folderId)).filter((f: { name: string }) => f.name === fileName);
   const boundary = 'closingpdfboundary';
-  const metadata = { name: fileName, mimeType: 'application/pdf', parents: [folderId] };
+  /* Drive rejects `parents` on an update (PATCH); it is only valid on create. */
+  const metadata = existing.length
+    ? { name: fileName, mimeType: 'application/pdf' }
+    : { name: fileName, mimeType: 'application/pdf', parents: [folderId] };
   const encoder = new TextEncoder();
   const header = encoder.encode(`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n--${boundary}\r\nContent-Type: application/pdf\r\nContent-Transfer-Encoding: binary\r\n\r\n`);
   const footer = encoder.encode(`\r\n--${boundary}--`);
