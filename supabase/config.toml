@@ -35,3 +35,7 @@ verify_jwt = false
 [functions.google-drive]
 verify_jwt = true
 
+# Daily Manager Dashboard archive -> Google Drive (pg_cron 16:00 PKT). verify_jwt stays off: the caller is
+# pg_net/cron and the function authenticates itself with the google_drive_backup.auto_key secret in the body.
+[functions.manager-dashboard-archive]
+verify_jwt = false
