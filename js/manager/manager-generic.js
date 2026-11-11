@@ -9,10 +9,11 @@
 // ══════════════════════════════════════════════════════════════════════
 import { Repository } from '../platform/repository.js';
 import { STAFF } from '../platform/config.js';
-import { _ni, _fc2, _inp, _mgrEsc, mgrLoad, mgrSave, mgrAutosave, reconcileStaffRows, activeStaff, mgrEmit } from './manager-shared.js';
+import { _ni, _fc2, _inp, _mgrEsc, mgrLoad, mgrSave, mgrAutosave, reconcileStaffRows, activeStaff, mgrEmit, mgrSheetState, mgrReplaceRows } from './manager-shared.js';
 import { act, arg } from '../shared/dom-actions.js';
 
-let _genRows_cur = [];
+// One array for the whole page, shared by every copy of this module (see mgrSheetState in manager-shared.js).
+const _genRows_cur = mgrSheetState.gen;
 
 function _genRows(my) {
   const data = mgrLoad();
@@ -64,7 +65,6 @@ function renderGenericTable(rows) {
   _genUpdateFooter(rows);
 }
 
-let _genLoadedMonth = null;
 function loadGenericMonth(my) {
   // Preserve any typed-but-unsaved genericSale/extra edits already
   // applied in-memory by genRowChange() (fires live, on every keystroke,
@@ -75,8 +75,8 @@ function loadGenericMonth(my) {
   // bug already fixed in jazz-cash.js/_renderTally() and
   // ledger-page.js/renderLedgerView() — only applies on a same-month
   // refresh; an actual month switch intentionally starts fresh.
-  const _prevRows = (my === _genLoadedMonth) ? _genRows_cur : null;
-  _genRows_cur = _genRows(my);
+  const _prevRows = (my === mgrSheetState.genMonth) ? _genRows_cur.slice() : null;
+  mgrReplaceRows(_genRows_cur, _genRows(my));
   if (_prevRows) {
     const _norm = s => (s||'').trim().toLowerCase();
     _genRows_cur.forEach(r => {
@@ -84,7 +84,7 @@ function loadGenericMonth(my) {
       if (p) { r.genericSale = p.genericSale; r.extra = p.extra; }
     });
   }
-  _genLoadedMonth = my;
+  mgrSheetState.genMonth = my;
   window._genRows_cur = _genRows_cur; // keep the window bridge live — ai-bridge.js reads this bare global
   renderGenericTable(_genRows_cur);
 }

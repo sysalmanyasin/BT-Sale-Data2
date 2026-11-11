@@ -21,6 +21,23 @@ import { escapeHtml as _mgrEsc } from '../shared/html.js';
 
 const MGR_KEY = 'BT_ManagerWork_v1';
 
+// ── State shared across module copies ───────────────────────────────────
+// index.html loads each manager module as `manager-x.js?v=<hash>` while sibling modules import it bare
+// (`./manager-x.js`). A browser treats those as two different modules, so every `let` below used to exist
+// TWICE with independent contents: Save All / Auto-Fill / print / Staff-propagation could run against a
+// stale copy and silently overwrite what the visible sheet had just saved (HO Salary reset to 0, old
+// Advance / Generic pulled in). Anything mutable that must be one-per-page lives on this global object
+// instead — the same pattern js/shared/dom-actions.js already uses. Row arrays are mutated IN PLACE
+// (never reassigned) so every copy and every importer holds the very same array.
+const _G = typeof window !== 'undefined' ? window : globalThis;
+const mgrSheetState = (_G.__btMgrSheets ||= {
+  sal: [], gen: [], crd: [],                       // rows currently loaded in each sheet
+  salMonth: null, genMonth: null, crdMonth: null,  // month each sheet last loaded
+  autosaveTimers: {}, autosaveFns: {}, hooks: Object.create(null),
+});
+// Replace the contents of a shared row array without changing its identity.
+function mgrReplaceRows(arr, rows) { arr.splice(0, arr.length, ...rows); return arr; }
+
 // Routed through Repository (Floor 1) instead of calling localStorage
 // directly — closes the gap where drive.js and supabase.js were
 // independently reading/writing this same key with their own raw
@@ -47,8 +64,8 @@ function mgrSave(data) { Actions.saveFeatureData(MGR_KEY, JSON.stringify(data));
 // an explicit "save right now" fallback, not removed — clicking it still
 // works exactly as before, including any manual `toast()` confirmation;
 // it is just no longer the only path data ever reaches Supabase through.
-const _mgrAutosaveTimers = {};
-const _mgrAutosaveFns = {};
+const _mgrAutosaveTimers = mgrSheetState.autosaveTimers;
+const _mgrAutosaveFns = mgrSheetState.autosaveFns;
 function mgrAutosave(key, fn, delay) {
   clearTimeout(_mgrAutosaveTimers[key]);
   _mgrAutosaveFns[key] = fn;
@@ -242,8 +259,18 @@ function activeStaff() {
 
 // Minimal intra-manager hook bus. Lets a lower-level module (generic) notify a higher-level
 // one (salary) WITHOUT importing it, which is what created the generic <-> salary cycle.
-const _mgrHooks = Object.create(null);
-function mgrOn(evt, fn) { (_mgrHooks[evt] = _mgrHooks[evt] || []).push(fn); }
-function mgrEmit(evt, ...args) { (_mgrHooks[evt] || []).forEach(fn => { try { fn(...args); } catch (e) { console.error('[manager hook ' + evt + ']', e); } }); }
+const _mgrHooks = mgrSheetState.hooks;
+// `id` (optional) makes registration idempotent: with two copies of a module each registering its own
+// listener, the hook would otherwise fire twice per event.
+function mgrOn(evt, fn, id) {
+  const list = (_mgrHooks[evt] = _mgrHooks[evt] || []);
+  if (id) {
+    if (list.some(h => h.id === id)) return;
+    const inner = fn;
+    fn = Object.assign((...a) => inner(...a), { id });
+  }
+  list.push(fn);
+}
+function mgrEmit(evt, ...args) { (_mgrHooks[evt] || []).slice().forEach(fn => { try { fn(...args); } catch (e) { console.error('[manager hook ' + evt + ']', e); } }); }
 
-export { activeStaff, mgrOn, mgrEmit, MGR_KEY, mgrLoad, mgrSave, mgrAutosave, mgrFlushAutosaves, mgrMonths, _mgrPopSel, _ni, _fc2, _inp, _mgrEsc, reconcileStaffRows, _salExtrasNet };
+export { mgrSheetState, mgrReplaceRows, activeStaff, mgrOn, mgrEmit, MGR_KEY, mgrLoad, mgrSave, mgrAutosave, mgrFlushAutosaves, mgrMonths, _mgrPopSel, _ni, _fc2, _inp, _mgrEsc, reconcileStaffRows, _salExtrasNet };

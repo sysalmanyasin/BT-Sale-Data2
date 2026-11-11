@@ -18,9 +18,9 @@
 // ══════════════════════════════════════════════════════════════════════
 import { Repository } from '../platform/repository.js';
 import { STAFF } from '../platform/config.js';
-import { _ni, _fc2, _mgrEsc, mgrLoad, mgrSave, mgrAutosave, mgrFlushAutosaves, reconcileStaffRows, _salExtrasNet, activeStaff, mgrOn } from './manager-shared.js';
-import { _crdData, _crdData_cur } from './manager-credit.js';
-import { _genRows, _genRows_cur, _genFinal } from './manager-generic.js';
+import { _ni, _fc2, _mgrEsc, mgrLoad, mgrSave, mgrAutosave, mgrFlushAutosaves, reconcileStaffRows, _salExtrasNet, activeStaff, mgrOn, mgrSheetState, mgrReplaceRows } from './manager-shared.js';
+import { _crdData } from './manager-credit.js';
+import { _genRows, _genFinal } from './manager-generic.js';
 import { act, arg, registerActions } from '../shared/dom-actions.js';
 
 function _salRows(my) {
@@ -132,8 +132,25 @@ function _salRenderHeader(cols) {
   });
 }
 
-let _salRows_cur = [];
-let _salLoadedMonth = null;
+// One array for the whole page, shared by every copy of this module (see mgrSheetState in manager-shared.js).
+// index.html loads this file as manager-salary.js?v=<hash> while manager-page/-staff/-reports import it
+// bare; with a per-copy array, Save All & Sync wrote a stale copy (HO Salary back to 0) over what the
+// visible sheet had saved. Never reassign it — replace its contents with mgrReplaceRows().
+const _salRows_cur = mgrSheetState.sal;
+
+// Match a salary row to a Credit/Generic row: by staffId when both have one, otherwise by name.
+const _salNormName = s => (s || '').trim().toLowerCase();
+function _salFindFor(list, row) {
+  if (row.staffId) {
+    const byId = list.find(x => x.staffId === row.staffId);
+    if (byId) return byId;
+  }
+  const n = _salNormName(row.name);
+  return n ? list.find(x => _salNormName(x.name) === n) : undefined;
+}
+// Signed sum of ALL credit entries (advances drawn minus deductions/repayments) — the same total the
+// Credit ledger's Net uses, so Advance here can never drift from the Credit sheet.
+const _salAdvanceFrom = crd => crd.entries.reduce((s, e) => s + _ni(e.amount), 0);
 
 function loadSalaryMonth(my, opts) {
   // Preserve any typed-but-unsaved days/hoSal edits already applied
@@ -142,50 +159,35 @@ function loadSalaryMonth(my, opts) {
   // background Supabase pull re-triggering this for the SAME month via
   // refreshManagerPage() used to silently discard them. advance/generic
   // are intentionally left to the auto-pull logic below, unaffected.
-  const _prevSalRows = (my === _salLoadedMonth) ? _salRows_cur : null;
-  _salRows_cur = _salRows(my);
-  const norm = s => (s||'').trim().toLowerCase();
+  const _prevSalRows = (my === mgrSheetState.salMonth) ? _salRows_cur.slice() : null;
+  mgrReplaceRows(_salRows_cur, _salRows(my));
   if (_prevSalRows) {
     _salRows_cur.forEach(r => {
-      const p = _prevSalRows.find(pr => norm(pr.name) === norm(r.name));
+      const p = _prevSalRows.find(pr => _salNormName(pr.name) === _salNormName(r.name));
       if (p) { r.days = p.days; r.hoSal = p.hoSal; if (p.extras) r.extras = JSON.parse(JSON.stringify(p.extras)); }
     });
   }
-  _salLoadedMonth = my;
-  // Use in-memory credit data if credit tab is on the same month
-  const crdSel = document.getElementById('crd-month-sel');
-  const crdRows = (crdSel && crdSel.value === my && _crdData_cur.length)
-    ? _crdData_cur : _crdData(my);
-  // Use in-memory generic data if generic tab is on the same month
-  const genSel = document.getElementById('gen-month-sel');
-  // opts.genericFromStorage (used when the Salary tab is opened, after pending
-  // autosaves were flushed): read Generic from storage, which is the one source
-  // of truth shared by every loaded copy of manager-generic.js. index.html loads
-  // that module AND other modules import it bare, so the in-memory
-  // _genRows_cur seen here can be a stale copy.
-  const genRowsData = (!(opts && opts.genericFromStorage) && genSel && genSel.value === my && _genRows_cur.length)
-    ? _genRows_cur : _genRows(my);
+  mgrSheetState.salMonth = my;
+  // Credit and Generic are both read from storage — the single source of truth. Credit edits patch
+  // storage instantly and Generic edits are flushed by the callers that need it (refreshSalaryOnOpen,
+  // autoFillSalaryFromSheets); the in-memory copies could be a stale snapshot of a different module copy.
+  const crdRows = _crdData(my);
+  const genRowsData = _genRows(my);
   // Only gate advance on alreadySaved (don't overwrite manual advance edits)
   const data = mgrLoad();
   const alreadySaved = !!(data.salary && data.salary[my]);
-  _salRows_cur = _salRows_cur.map(row => {
-    const rName = norm(row.name);
-    if (!rName) return row;
-    const crd = crdRows.find(c => norm(c.name) === rName);
-    const gen = genRowsData.find(g => norm(g.name) === rName);
-    // Sum ALL credit entries (advances drawn minus deductions/repayments),
-    // so this matches the same total the Credit ledger's Net already uses
-    // — a negative entry there must also reduce Advance here, or the two
-    // sheets drift apart the moment any deduction is logged.
-    const entryTotal = crd ? crd.entries.reduce((s,e) => s + _ni(e.amount), 0) : 0;
+  mgrReplaceRows(_salRows_cur, _salRows_cur.map(row => {
+    if (!_salNormName(row.name)) return row;
+    const crd = _salFindFor(crdRows, row);
+    const gen = _salFindFor(genRowsData, row);
     return {
       ...row,
       // Advance: only auto-fill if salary not yet saved for this month
-      advance: alreadySaved ? row.advance : entryTotal,
+      advance: alreadySaved ? row.advance : (crd ? _salAdvanceFrom(crd) : row.advance),
       // Generic: always pull latest Final value from Generic Working sheet
       generic: gen ? _genFinal(gen) : row.generic
     };
-  });
+  }));
   window._salRows_cur = _salRows_cur; // keep the window bridge live (see file header note)
   renderSalaryTable(_salRows_cur);
 }
@@ -310,43 +312,30 @@ function saveSalaryData(silent) {
 }
 
 // ── Auto-fill Advance from Credit sheet & Generic from Generic Working ──────
+// Explicit user action, so unlike loadSalaryMonth() it overwrites Advance even when this month was
+// already saved. Both sources are read from STORAGE after flushing any pending autosave (a value typed
+// <700 ms ago, on either sheet, is therefore included), and the result is saved right away.
 function autoFillSalaryFromSheets() {
   const my = document.getElementById('sal-month-sel').value;
   if (!my) { toast('⚠ Select a month first','w'); return; }
-  // Use in-memory credit data if credit tab is on same month (unsaved changes)
-  const crdSel = document.getElementById('crd-month-sel');
-  const crdRows = (crdSel && crdSel.value === my && _crdData_cur.length)
-    ? _crdData_cur : _crdData(my);
-  // Use in-memory generic data if generic tab is on same month (unsaved changes)
-  const genSel = document.getElementById('gen-month-sel');
-  const genRowsData = (genSel && genSel.value === my && _genRows_cur.length)
-    ? _genRows_cur : _genRows(my);
-  const norm = s => (s||'').trim().toLowerCase();
+  mgrFlushAutosaves();
+  const crdRows = _crdData(my);
+  const genRowsData = _genRows(my);
   let filledAdv = 0, filledGen = 0;
-  _salRows_cur = _salRows_cur.map(row => {
-    const rName = norm(row.name);
-    if (!rName) return row;
-    // Sum ALL entries, signed — advances given minus deductions/repayments —
-    // matching the Credit ledger's Net (see loadSalaryMonth for details).
-    const crd = crdRows.find(c => norm(c.name) === rName);
+  mgrReplaceRows(_salRows_cur, _salRows_cur.map(row => {
+    if (!_salNormName(row.name)) return row;
     let advance = row.advance;
-    if (crd) {
-      const entryTotal = crd.entries.reduce((s, e) => s + _ni(e.amount), 0);
-      advance = entryTotal;
-      filledAdv++;
-    }
-    // Always pull latest Final value from Generic Working sheet
-    const gen = genRowsData.find(g => norm(g.name) === rName);
+    const crd = _salFindFor(crdRows, row);
+    if (crd) { advance = _salAdvanceFrom(crd); filledAdv++; }
     let generic = row.generic;
-    if (gen) {
-      generic = _genFinal(gen);
-      filledGen++;
-    }
+    const gen = _salFindFor(genRowsData, row);
+    if (gen) { generic = _genFinal(gen); filledGen++; }
     return { ...row, advance, generic };
-  });
+  }));
   window._salRows_cur = _salRows_cur; // keep the window bridge live (see file header note)
   renderSalaryTable(_salRows_cur);
-  toast(`⚡ Auto-filled: ${filledAdv} advance${filledAdv!==1?'s':''}, ${filledGen} generic value${filledGen!==1?'s':''} — click 💾 Save to keep`);
+  saveSalaryData(true);
+  toast(`⚡ Auto-filled & saved: ${filledAdv} advance${filledAdv!==1?'s':''}, ${filledGen} generic value${filledGen!==1?'s':''}`);
 }
 
 
@@ -360,13 +349,12 @@ Object.assign(window, {
 // 'generic' column and net cell (no full re-render). Registered here so manager-generic.js
 // never has to import this module.
 mgrOn('generic-changed', (genRow) => {
-  const norm = s => (s||'').trim().toLowerCase();
   // Only when Salary and Generic are showing the same month — otherwise a
   // Generic edit for one month would leak into another month's salary rows.
   const salSel = document.getElementById('sal-month-sel');
   const genSel = document.getElementById('gen-month-sel');
   if (!salSel || !genSel || salSel.value !== genSel.value) return;
-  const salIdx = _salRows_cur.findIndex(r => norm(r.name) === norm(genRow.name));
+  const salIdx = _salRows_cur.findIndex(r => _salFindFor([genRow], r));
   if (salIdx === -1) return;
   _salRows_cur[salIdx].generic = _genFinal(genRow);
   const genEl = document.getElementById('sal-gen-' + salIdx);
@@ -375,7 +363,7 @@ mgrOn('generic-changed', (genRow) => {
   if (netEl) netEl.value = _salNet(_salRows_cur[salIdx]);
   _salUpdateFooter(_salRows_cur);
   mgrAutosave('salary', () => saveSalaryData(true));
-});
+}, 'salary-generic-sync'); // id: idempotent across the two loaded copies of this module
 
 export {
   _salRows, _salRows_cur, renderSalaryTable, loadSalaryMonth, salRowChange, addSalaryRow,

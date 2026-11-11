@@ -8,14 +8,15 @@
 // ══════════════════════════════════════════════════════════════════════
 import { Repository } from '../platform/repository.js';
 import { STAFF } from '../platform/config.js';
-import { _ni, _fc2, _mgrPopSel, mgrLoad, mgrSave, mgrAutosave, reconcileStaffRows, activeStaff, _inp } from './manager-shared.js';
+import { _ni, _fc2, _mgrPopSel, mgrLoad, mgrSave, mgrAutosave, reconcileStaffRows, activeStaff, _inp, mgrSheetState, mgrReplaceRows } from './manager-shared.js';
 import { act, arg } from '../shared/dom-actions.js';
 import { withEntryIds, newEntryId, rowKey, hasCreditData, entryTombstoneKeys } from '../shared/credit-merge.js';
 
 // ══════════════════════════════
 // STAFF CREDIT LEDGER
 // ══════════════════════════════
-let _crdData_cur = []; // [{name, prevBal, entries:[{date,desc,amount}], salary, lessGeneric}]
+// One array for the whole page, shared by every copy of this module (see mgrSheetState in manager-shared.js).
+const _crdData_cur = mgrSheetState.crd; // [{name, prevBal, entries:[{date,desc,amount}], salary, lessGeneric}]
 
 function _crdData(my) {
   const data = mgrLoad();
@@ -155,7 +156,6 @@ function addCrdEntryFocused(ei) {
   }, 80);
 }
 
-let _crdLoadedMonth = null;
 
 const _tomb = key => { try { if (window.SyncTombstones) window.SyncTombstones.markDeleted(key); } catch (_) { /* best-effort */ } };
 const _crdNorm = s => (s || '').trim().toLowerCase();
@@ -186,7 +186,7 @@ function _crdStoredRow(data, my, mem) {
 }
 
 function _crdPatch(ei, fn) {
-  const mem = _crdData_cur[ei], my = _crdLoadedMonth;
+  const mem = _crdData_cur[ei], my = mgrSheetState.crdMonth;
   if (!mem || !my) return null;
   const data = mgrLoad();
   const row = _crdStoredRow(data, my, mem);
@@ -205,7 +205,7 @@ function _crdOpenBody(ei) {
 
 function loadCreditMonth(my) {
   if (!my) return;
-  const sameMonth = my === _crdLoadedMonth;
+  const sameMonth = my === mgrSheetState.crdMonth;
   // Background refreshes (sync pull/push → rebuildAll → refreshManagerPage)
   // must not rebuild the table under the cursor: it would drop focus and
   // collapse the row being typed in. Nothing is lost by skipping — every
@@ -219,8 +219,8 @@ function loadCreditMonth(my) {
     const b = document.getElementById('crd-body-' + ei);
     if (b && b.style.display !== 'none') openKeys.add(rowKey(emp));
   });
-  _crdLoadedMonth = my;
-  _crdData_cur = _crdData(my);
+  mgrSheetState.crdMonth = my;
+  mgrReplaceRows(_crdData_cur, _crdData(my));
   window._crdData_cur = _crdData_cur; // keep the window bridge live — it's a snapshot copy otherwise
   renderCreditLedger(_crdData_cur);
   if (openKeys.size) _crdData_cur.forEach((emp, ei) => { if (openKeys.has(rowKey(emp))) _crdOpenBody(ei); });
@@ -291,7 +291,7 @@ function addCreditEmployee() {
 }
 function deleteCrdEmp(ei) {
   const mem = _crdData_cur[ei];
-  const my = _crdLoadedMonth;
+  const my = mgrSheetState.crdMonth;
   if (!mem || !my) return;
   if (!confirm('Remove ' + mem.name + '?')) return;
   const data = mgrLoad();
@@ -311,9 +311,9 @@ function deleteCrdEmp(ei) {
 // so this only (a) makes sure every row of the loaded month exists in
 // storage — without overwriting any stored value — and (b) pushes.
 function saveCreditData(silent) {
-  const my = _crdLoadedMonth || document.getElementById('crd-month-sel')?.value;
+  const my = mgrSheetState.crdMonth || document.getElementById('crd-month-sel')?.value;
   if (!my) { if (!silent && typeof toast === 'function') toast('⚠ Select a month first', 'w'); return; }
-  if (my === _crdLoadedMonth && _crdData_cur.length) {
+  if (my === mgrSheetState.crdMonth && _crdData_cur.length) {
     const data = mgrLoad();
     _crdData_cur.forEach(mem => { if (hasCreditData(mem)) _crdStoredRow(data, my, mem); });
     mgrSave(data);
@@ -328,7 +328,7 @@ function copyToNextMonth() {
   const sel = document.getElementById('crd-month-sel');
   const curMy = sel.value;
   if (!curMy) { toast('⚠ Select a month first', 'w'); return; }
-  if (curMy !== _crdLoadedMonth) loadCreditMonth(curMy);
+  if (curMy !== mgrSheetState.crdMonth) loadCreditMonth(curMy);
 
   // Make sure the current month's rows are in storage first
   saveCreditData(true);
