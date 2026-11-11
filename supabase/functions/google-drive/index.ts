@@ -15,6 +15,8 @@
    stored auto_key, see requireBackupAuth()):
      status         → { connected, email, lastBackupAt }
      oauth_callback → exchanges a Google `code` for tokens, stores them
+     backup_pdf_stored → { autoKey, fileKey } — copies a PDF already in the
+                       closing-pdfs bucket to Drive (server-side, no staff session)
      backup         → pulls current data from Supabase, uploads a NEW
                        timestamped JSON file to the visible Closing Backups
                        folder, prunes anything past MAX_VERSIONS_KEPT
@@ -247,15 +249,8 @@ async function getDriveFolder(accessToken: string) {
   return folder.id as string;
 }
 
-async function handleBackupPdf(req: Request, pdfBase64: unknown, fileKey: unknown) {
-  await requireActiveStaff(req);
-  if (typeof pdfBase64 !== 'string' || !pdfBase64 || typeof fileKey !== 'string' || !fileKey) {
-    throw new Error('Missing PDF data or file key.');
-  }
-  const raw = atob(pdfBase64);
-  if (raw.length > 10 * 1024 * 1024) throw new Error('PDF exceeds the 10 MiB limit.');
-  const bytes = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+async function uploadPdfToDrive(bytes: Uint8Array, fileKey: string) {
+  if (bytes.length > 10 * 1024 * 1024) throw new Error('PDF exceeds the 10 MiB limit.');
   if (bytes.length < 5 || new TextDecoder().decode(bytes.slice(0, 5)) !== '%PDF-') throw new Error('Invalid PDF file.');
   const row = await getRow();
   if (!row?.refresh_token) throw new Error('Google Drive is not connected.');
@@ -280,7 +275,15 @@ async function handleBackupPdf(req: Request, pdfBase64: unknown, fileKey: unknow
   });
   const saved = await resp.json();
   if (!resp.ok) throw new Error(`Drive PDF upload failed: ${JSON.stringify(saved)}`);
-  const pdfs = (await driveFilesList(accessToken, folderId))
+  /* Two uploads of the same shift can race and both create the file —
+     keep the one we just wrote and remove same-named duplicates. */
+  const all = await driveFilesList(accessToken, folderId);
+  for (const dup of all.filter((f: { name: string; id: string }) => f.name === fileName && f.id !== saved.id)) {
+    await fetch(`https://www.googleapis.com/drive/v3/files/${dup.id}`, {
+      method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` },
+    }).catch(() => {});
+  }
+  const pdfs = all
     .filter((f: { name: string }) => f.name.startsWith(PDF_FILE_PREFIX))
     .sort((a: { createdTime: string }, b: { createdTime: string }) => Date.parse(b.createdTime) - Date.parse(a.createdTime));
   for (const stale of pdfs.slice(10)) {
@@ -289,6 +292,32 @@ async function handleBackupPdf(req: Request, pdfBase64: unknown, fileKey: unknow
     }).catch(() => {});
   }
   return { saved: true, fileId: saved.id, fileName };
+}
+
+/* Browser path: needs a linked, active staff session. */
+async function handleBackupPdf(req: Request, pdfBase64: unknown, fileKey: unknown) {
+  await requireActiveStaff(req);
+  if (typeof pdfBase64 !== 'string' || !pdfBase64 || typeof fileKey !== 'string' || !fileKey) {
+    throw new Error('Missing PDF data or file key.');
+  }
+  const raw = atob(pdfBase64);
+  const bytes = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+  return await uploadPdfToDrive(bytes, fileKey);
+}
+
+/* Server path: copies a PDF that is ALREADY in the private `closing-pdfs`
+   bucket to Drive. Called by the storage.objects trigger
+   (drive_pdf_on_storage_upload) with the auto key, so it works no matter
+   who closed the shift or whether they had a linked staff session. */
+const PDF_BUCKET = 'closing-pdfs';
+async function handleBackupPdfStored(autoKey: unknown, fileKey: unknown) {
+  await requireBackupAuth(null, autoKey);
+  if (typeof fileKey !== 'string' || !/^[A-Za-z0-9_.-]{3,100}$/.test(fileKey)) throw new Error('Bad file key.');
+  const path = `${fileKey.replace(/[^A-Za-z0-9_.-]/g, '_')}.pdf`;
+  const { data, error } = await admin().storage.from(PDF_BUCKET).download(path);
+  if (error || !data) throw new Error(`Storage download failed for ${path}: ${error?.message || 'no data'}`);
+  return await uploadPdfToDrive(new Uint8Array(await data.arrayBuffer()), fileKey);
 }
 
 async function handleBackup() {
@@ -443,6 +472,7 @@ async function handle(req: Request): Promise<Response> {
     const { action, code, redirectUri, pin, autoKey, fileId, pdfBase64, fileKey } = await req.json();
 
     if (action === 'backup_pdf') return json(await handleBackupPdf(req, pdfBase64, fileKey));
+    if (action === 'backup_pdf_stored') return json(await handleBackupPdfStored(autoKey, fileKey));
 
     if (action === 'backup') {
       await requireBackupAuth(pin, autoKey);
