@@ -5,9 +5,10 @@
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v11.220'; // v11.220: auto-bumped by npm run build (content hash 2f1f1af72dd3). Previously v11.219: 
+const CACHE_NAME = 'bt-sales-v11.224'; // logo binary corrected; app hash fcf4b00c440e. Previously v11.223: 
 // Release history lives in CHANGELOG.md (keep this file small: every device downloads and parses it on each update).
 const APP_SHELL = [
+  './assets/invoice-desk/safari-book-land-logo.jpg',
   './',
   './index.html',
   './manifest.json',
@@ -20,6 +21,7 @@ const APP_SHELL = [
   './css/closing-native.css',
   './css/closing-book-print.css',
   './css/emergency-billing.css',
+  './css/invoice-desk.css',
   './css/audit-native.css',
   './css/inventory-native.css',
   './css/stockledger.css',
@@ -255,6 +257,13 @@ const APP_SHELL = [
   './js/platform/drive.js',
   './js/emergency-billing/emergency-billing-bridge.js',
   './js/emergency-billing/emergency-billing-native.js',
+  './js/invoice-desk/index.js',
+  './js/invoice-desk/ui/page.js',
+  './js/invoice-desk/core/invoice-engine.js',
+  './js/invoice-desk/core/invoice-validator.js',
+  './js/invoice-desk/businesses/business-registry.js',
+  './js/invoice-desk/templates/receipt-template.js',
+  './js/invoice-desk/printing/print-engine.js',
 
   /* ── Icons ── */
   './icons/icon.svg',
