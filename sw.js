@@ -20,6 +20,7 @@ const APP_SHELL = [
   './css/closing-native.css',
   './css/closing-book-print.css',
   './css/emergency-billing.css',
+  './css/invoice-desk.css',
   './css/audit-native.css',
   './css/inventory-native.css',
   './css/stockledger.css',
@@ -255,6 +256,13 @@ const APP_SHELL = [
   './js/platform/drive.js',
   './js/emergency-billing/emergency-billing-bridge.js',
   './js/emergency-billing/emergency-billing-native.js',
+  './js/invoice-desk/index.js',
+  './js/invoice-desk/ui/page.js',
+  './js/invoice-desk/core/invoice-engine.js',
+  './js/invoice-desk/core/invoice-validator.js',
+  './js/invoice-desk/businesses/business-registry.js',
+  './js/invoice-desk/templates/receipt-template.js',
+  './js/invoice-desk/printing/print-engine.js',
 
   /* ── Icons ── */
   './icons/icon.svg',

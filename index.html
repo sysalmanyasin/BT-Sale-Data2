@@ -65,6 +65,7 @@
 <link rel="stylesheet" href="css/closing-native.css?v=ec46c18a">
 <link rel="stylesheet" href="css/closing-book-print.css?v=80bc3517">
 <link rel="stylesheet" href="css/emergency-billing.css?v=bbf6fdee">
+<link rel="stylesheet" href="css/invoice-desk.css">
 <link rel="stylesheet" href="css/audit-native.css?v=e7294094">
 <link rel="stylesheet" href="css/inventory-native.css?v=acfe8ce5">
 <link rel="stylesheet" href="css/str-report.css?v=92ddce50">
@@ -1679,6 +1680,32 @@
     </div>
   </div>
 </section>
+<!-- DUA INVOICE DESK — independent multi-business invoice module. -->
+<section class="page id-app app-page" id="page-invoice-desk">
+ <div class="id-wrap">
+  <header class="id-header"><div><p class="eyebrow">Business documents</p><h1>Invoice Desk</h1><p class="id-sub">One invoice workspace for all workbook business formats.</p></div><span class="id-phase">Draft / print foundation</span></header>
+  <div class="id-toolbar">
+   <label>Business / template<select id="id-business"></select></label>
+   <label>Invoice date<input id="id-date" type="date"></label>
+   <label>Invoice / receipt no.<input id="id-number" type="text" placeholder="Assigned after database setup"></label>
+  </div>
+  <div class="id-grid">
+   <section class="id-panel"><h2>Business identity</h2><div class="id-fields">
+    <label>Business name<input id="id-business-name" type="text"></label><label>Address<input id="id-address" type="text"></label>
+    <label>Phone<input id="id-phone" type="tel"></label><label>Cashier / prepared by<input id="id-cashier" type="text"></label>
+    <label>Customer name<input id="id-customer" type="text"></label><label>Customer phone<input id="id-customer-phone" type="tel"></label>
+   </div></section>
+   <section class="id-panel"><h2>Invoice items</h2>
+    <div class="id-add-row"><label>Item description<input id="id-item-name" type="text" placeholder="Product / service"></label><label>Qty<input id="id-item-qty" type="number" min="0.01" step="0.01" value="1"></label><label>Unit price (Rs.)<input id="id-item-price" type="number" min="0" step="0.01" value="0"></label><button id="id-add-item" type="button" class="id-primary">Add item</button></div>
+    <div class="id-table-wrap"><table class="id-items"><thead><tr><th>Description</th><th>Qty</th><th>Rate</th><th>Amount</th><th></th></tr></thead><tbody id="id-items-body"><tr><td colspan="5" class="id-empty">No items added yet.</td></tr></tbody></table></div>
+    <div class="id-totals"><label>Discount (Rs.)<input id="id-discount" type="number" min="0" step="0.01" value="0"></label><div><span>Subtotal</span><strong id="id-subtotal">Rs. 0.00</strong></div><div><span>Net payable</span><strong id="id-net">Rs. 0.00</strong></div></div>
+   </section>
+  </div>
+  <section class="id-panel id-actions"><div><h2>Preview &amp; print</h2><p>Review before printing. Shared invoice history and official numbering require the next database phase.</p></div><div class="id-action-buttons"><button id="id-preview" type="button" class="id-secondary">Preview</button><button id="id-print-a4" type="button" class="id-primary">A4 / PDF</button><button id="id-print-58" type="button" class="id-secondary">58mm</button><button id="id-print-80" type="button" class="id-secondary">80mm</button></div><div id="id-status" class="id-status" role="status" aria-live="polite">Draft only — no invoice has been saved.</div></section>
+  <section class="id-preview-panel" id="id-preview-panel" hidden><div class="id-preview-head"><h2>Invoice preview</h2><button id="id-close-preview" type="button" class="id-secondary">Close</button></div><div id="id-preview-content"></div></section>
+ </div>
+</section>
+
 
 <!-- TOOLS -->
 <div class="page" id="page-tools">
@@ -2643,6 +2670,7 @@
      for now. -->
 <script type="module" src="js/emergency-billing/emergency-billing-bridge.js?v=25431d80"></script>
 <script type="module" src="js/emergency-billing/emergency-billing-native.js?v=70c49e55"></script>
+<script type="module" src="js/invoice-desk/index.js"></script>
 <script type="module" src="js/str/str-bridge.js?v=c9a8dd9b"></script>
 <script type="module" src="js/str/str-native.js?v=fc236730"></script>
 <script type="module" src="js/str/str-report-native.js?v=5bc69ef9"></script>

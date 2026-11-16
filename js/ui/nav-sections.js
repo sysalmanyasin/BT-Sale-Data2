@@ -78,6 +78,7 @@ import { act, arg, registerActions } from '../shared/dom-actions.js';
     reports: [
       { label: 'Excess Stock Control', icon: '📦', href: 'https://reports.duapharma.com/excess-stock-control.html', external: true },
       { label: 'Branch Invoice Desk', icon: '🧮', href: 'https://reports.duapharma.com/invoice-desk.html', external: true },
+      { label: 'Dua Invoice Desk', icon: '🧾', href: '#invoice-desk' },
     ],
   };
 
