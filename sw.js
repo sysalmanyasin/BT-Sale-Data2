@@ -5,7 +5,7 @@
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v11.223'; // v11.223: invoice logo asset and templates updated (content hash ffae6b7f4610). Previously v11.222: 
+const CACHE_NAME = 'bt-sales-v11.224'; // logo binary corrected; app hash fcf4b00c440e. Previously v11.223: 
 // Release history lives in CHANGELOG.md (keep this file small: every device downloads and parses it on each update).
 const APP_SHELL = [
   './assets/invoice-desk/safari-book-land-logo.jpg',

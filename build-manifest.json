@@ -1,6 +1,6 @@
 {
-  "cache": "bt-sales-v11.223",
-  "hash": "ffae6b7f4610",
+  "cache": "bt-sales-v11.224",
+  "hash": "fcf4b00c440e",
   "files": {
     "css/activity-log.css": "08f3faa0",
     "css/agent.css": "887c7226",
@@ -253,6 +253,6 @@
     "manifest.json": "35d06b8e",
     "tests/unit/invoice-desk.test.js": "fac574b1",
     "sw.js": "d18db349",
-    "assets/invoice-desk/safari-book-land-logo.jpg": "1028e734"
+    "assets/invoice-desk/safari-book-land-logo.jpg": "e469c8a7"
   }
 }
