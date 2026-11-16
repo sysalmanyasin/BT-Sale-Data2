@@ -19,4 +19,4 @@ test('invoice requires at least one valid line',()=>{
 test('workbook business families are registered',()=>{
  assert.deepEqual(BUSINESSES.map((b)=>b.name),['B.S MART','Safari Book Land','Best Choice Store','Book Land & Sports','Spare Parts Replace Invoice']);
 });
-test('PKR formatter returns two decimal places',()=>assert.match(formatPKR(1200),'Rs.'));
+test('PKR formatter returns two decimal places',()=>assert.ok(formatPKR(1200).startsWith('Rs. ')));
