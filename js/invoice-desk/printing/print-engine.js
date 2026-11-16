@@ -2,17 +2,29 @@ import { renderDoc, renderThermal } from '../../lib/print.js';
 import { renderInvoiceHtml } from '../templates/receipt-template.js';
 import { formatPKR } from '../core/invoice-engine.js';
 
+function loadImage(src) {
+ return new Promise((resolve,reject) => {
+  const image = new Image();
+  image.onload = () => resolve(image);
+  image.onerror = () => reject(new Error('Could not load the original business logo: '+src));
+  image.src = src;
+ });
+}
 function renderA4(invoice) {
- if (!window.jspdf?.jsPDF) throw new Error('PDF library is not available. Check your connection and try again.');
- renderDoc(() => {
+ renderDoc(async () => {
+  if (!window.jspdf?.jsPDF) throw new Error('PDF library is not available. Check your connection and try again.');
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit:'mm', format:'a4', orientation:'portrait' });
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = 15;
+  const pageWidth = doc.internal.pageSize.getWidth(), margin = 15;
+  let y = 20;
+  if (invoice.logo) {
+   const logo = await loadImage(invoice.logo);
+   doc.addImage(logo,'JPEG',pageWidth/2-22,9,44,18);
+   y = 33;
+  }
   doc.setFont('helvetica','bold'); doc.setFontSize(19);
-  doc.text(invoice.businessName || 'Invoice', pageWidth/2, 20, {align:'center'});
-  doc.setFont('helvetica','normal'); doc.setFontSize(9);
-  let y = 27;
+  doc.text(invoice.businessName || 'Invoice', pageWidth/2, y, {align:'center'});
+  doc.setFont('helvetica','normal'); doc.setFontSize(9); y += 7;
   if (invoice.address) { doc.text(invoice.address, pageWidth/2, y, {align:'center'}); y += 5; }
   if (invoice.phone) { doc.text(invoice.phone, pageWidth/2, y, {align:'center'}); y += 5; }
   y += 5;
@@ -39,10 +51,9 @@ function renderA4(invoice) {
   });
   doc.setFont('helvetica','normal');doc.setFontSize(9);
   doc.text(invoice.footer || 'Thank you.',pageWidth/2,Math.min(ty+10,280),{align:'center'});
-  return {doc,title:(invoice.businessName||'Invoice'),filename:(invoice.businessName||'Invoice')+'-'+(invoice.invoiceNumber||'draft')};
+  return {doc,title:(invoice.businessName||'Invoice')};
  }, {filename:(invoice.businessName||'Invoice')+'-'+(invoice.invoiceNumber||'draft')});
 }
-
 export function printInvoice(invoice, format='a4') {
  const filename=(invoice.businessName||'Invoice')+'-'+(invoice.invoiceNumber||'draft');
  if(format==='58mm'||format==='80mm'){

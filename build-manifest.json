@@ -1,6 +1,6 @@
 {
-  "cache": "bt-sales-v11.222",
-  "hash": "9c34cc235b2f",
+  "cache": "bt-sales-v11.223",
+  "hash": "ffae6b7f4610",
   "files": {
     "css/activity-log.css": "08f3faa0",
     "css/agent.css": "887c7226",
@@ -137,12 +137,12 @@
     "js/inventory/reorder-report.js": "8e4ef80c",
     "js/inventory/reorder-table.js": "e2100b8e",
     "js/inventory/stockledger.js": "16c02472",
-    "js/invoice-desk/businesses/business-registry.js": "d49463c9",
+    "js/invoice-desk/businesses/business-registry.js": "f9d688d6",
     "js/invoice-desk/core/invoice-engine.js": "b1746eff",
     "js/invoice-desk/core/invoice-validator.js": "588251a3",
     "js/invoice-desk/index.js": "22db279c",
-    "js/invoice-desk/printing/print-engine.js": "4cbbe826",
-    "js/invoice-desk/templates/receipt-template.js": "7f18ef00",
+    "js/invoice-desk/printing/print-engine.js": "a8145652",
+    "js/invoice-desk/templates/receipt-template.js": "e344de18",
     "js/invoice-desk/ui/page.js": "8611b820",
     "js/ledger/jazz-cash.js": "c38371f0",
     "js/ledger/ledger-actions.js": "e3f43a1e",
@@ -250,6 +250,9 @@
     "js/ui/subtab-strip.js": "8b68b207",
     "js/ui/ui-extras.js": "96605d24",
     "js/ui/ui.js": "f37e3148",
-    "manifest.json": "35d06b8e"
+    "manifest.json": "35d06b8e",
+    "tests/unit/invoice-desk.test.js": "fac574b1",
+    "sw.js": "d18db349",
+    "assets/invoice-desk/safari-book-land-logo.jpg": "1028e734"
   }
 }

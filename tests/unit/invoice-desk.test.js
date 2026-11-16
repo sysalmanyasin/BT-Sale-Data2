@@ -20,3 +20,4 @@ test('workbook business families are registered',()=>{
  assert.deepEqual(BUSINESSES.map((b)=>b.name),['B.S MART','Safari Book Land','Best Choice Store','Book Land & Sports','Spare Parts Replace Invoice']);
 });
 test('PKR formatter returns two decimal places',()=>assert.ok(formatPKR(1200).startsWith('Rs. ')));
+test('Safari Book Land uses the extracted workbook logo',()=>assert.equal(BUSINESSES.find((b)=>b.id==='safari-book-land').logo,'/assets/invoice-desk/safari-book-land-logo.jpg'));
