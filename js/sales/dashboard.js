@@ -159,6 +159,61 @@ function _dashCreditMonthOptions(n_) {
     .slice(0, n_ || 6);
 }
 
+// Lifetime sales hero is sourced from the normalized Supabase monthly view.
+// This view combines daily-derived months with non-overlapping monthly-only
+// historical imports, so no archived month is silently omitted or double-counted.
+let _lifetimeHeroCache = null;
+let _lifetimeHeroPromise = null;
+let _lifetimeHeroFetchedAt = 0;
+function _renderLifetimeSalesHero(stats) {
+  if (!stats) return;
+  const amount = document.getElementById('grand-total');
+  const sub = document.getElementById('hero-sub');
+  if (amount) amount.textContent = fc(stats.total);
+  if (sub) sub.textContent = stats.months + ' months · '
+    + stats.dailyRecords.toLocaleString('en-PK') + ' daily records'
+    + (stats.monthlyOnly ? ' · ' + stats.monthlyOnly + ' historical monthly record' + (stats.monthlyOnly === 1 ? '' : 's') : '')
+    + ' · Through ' + stats.through + ' · Supabase';
+}
+function _refreshLifetimeSalesHero() {
+  const now = Date.now();
+  if (_lifetimeHeroCache) _renderLifetimeSalesHero(_lifetimeHeroCache);
+  if (_lifetimeHeroCache && now - _lifetimeHeroFetchedAt < 60000) return Promise.resolve(_lifetimeHeroCache);
+  if (_lifetimeHeroPromise) return _lifetimeHeroPromise;
+  const client = typeof window.btGetSupabaseClient === 'function' ? window.btGetSupabaseClient() : null;
+  if (!client) return Promise.resolve(null);
+  const today = new Date();
+  const currentMonth = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-01';
+  _lifetimeHeroPromise = client.from('v_monthly_full')
+    .select('month,days,total,monthly_only')
+    .gte('month', '2020-04-01')
+    .lte('month', currentMonth)
+    .order('month', { ascending: true })
+    .then(({ data, error }) => {
+      if (error) throw error;
+      const rows = (data || []).filter(r => r && r.month && Number.isFinite(Number(r.total)));
+      if (!rows.length) throw new Error('No lifetime sales rows returned by v_monthly_full');
+      const total = rows.reduce((sum, r) => sum + Number(r.total || 0), 0);
+      const dailyRecords = rows.reduce((sum, r) => sum + Number(r.days || 0), 0);
+      const monthlyOnly = rows.filter(r => r.monthly_only === true).length;
+      const lastMonth = new Date(rows[rows.length - 1].month + 'T00:00:00');
+      const stats = {
+        total, dailyRecords, monthlyOnly, months: rows.length,
+        through: lastMonth.toLocaleDateString('en-PK', { month: 'short', year: 'numeric' }),
+      };
+      _lifetimeHeroCache = stats;
+      _lifetimeHeroFetchedAt = Date.now();
+      _renderLifetimeSalesHero(stats);
+      return stats;
+    })
+    .catch(error => {
+      console.warn('[dashboard] lifetime Supabase sales unavailable; keeping local total', error);
+      return null;
+    })
+    .finally(() => { _lifetimeHeroPromise = null; });
+  return _lifetimeHeroPromise;
+}
+
 function buildDashboard() {
   if (typeof buildDashboardInsights === 'function') buildDashboardInsights();
   if (!MONTHLY.length || MONTHLY.length < 2) return;
@@ -181,6 +236,8 @@ function buildDashboard() {
   document.getElementById('grand-total').textContent = fc(gTotal);
   document.getElementById('hero-sub').textContent =
     MONTHLY.length + ' months · ' + dailyRecordCount + ' records · Latest: ' + lat.Month_Year;
+  // Replace the local fallback with the complete Supabase lifetime ledger when available.
+  void _refreshLifetimeSalesHero();
 
   // ── Build KPI card array (pure data → template strings) ────────
   const yr   = document.getElementById('dash-year')?.value;
