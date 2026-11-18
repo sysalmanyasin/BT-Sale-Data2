@@ -82,7 +82,7 @@
 <link rel="stylesheet" href="css/sheets-app.css?v=6171a00c">
 <link rel="stylesheet" href="css/attendance.css?v=8463e920">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,400,0,0">
-<link rel="stylesheet" href="css/components.css?v=7cd5b668">
+<link rel="stylesheet" href="css/components.css?v=ded449c0">
 <link rel="stylesheet" href="css/modals.css?v=ae173613">
 <link rel="stylesheet" href="css/pages.css?v=f33dbd61">
 <link rel="stylesheet" href="css/cover-dashboard.css?v=cad6dff5">
@@ -299,11 +299,27 @@
 
 <!-- DASHBOARD -->
 <div class="page" id="page-dashboard">
-  <div class="hero">
-    <div class="hlabel">Cumulative since April 2020</div>
-    <div class="hamount">₨ <span id="grand-total"></span></div>
-    <div class="hsub" style="margin-top:4px" id="hero-sub"></div>
-  </div>
+  <section class="hero lifetime-sales-hero" aria-label="All-time cumulative sales">
+    <div class="lifetime-sales-topline">
+      <div class="lifetime-sales-brand">
+        <span class="lifetime-sales-brand-mark" aria-hidden="true">D</span>
+        <span class="lifetime-sales-brand-name">DuaPharma</span>
+        <span class="lifetime-sales-brand-divider" aria-hidden="true"></span>
+        <span class="lifetime-sales-brand-unit">SALES INTELLIGENCE</span>
+      </div>
+      <span class="lifetime-sales-chip"><span class="lifetime-sales-live-dot" aria-hidden="true"></span> ALL-TIME</span>
+    </div>
+    <div class="lifetime-sales-heading">Your business at a glance</div>
+    <div class="lifetime-sales-caption">TOTAL CUMULATIVE SALES</div>
+    <div class="hamount"><span class="lifetime-sales-currency">₨</span><span id="grand-total"></span></div>
+    <div class="hsub lifetime-sales-sub" id="hero-sub"></div>
+    <div class="lifetime-sales-footer">
+      <span><span aria-hidden="true">◷</span> Since April 2020</span>
+      <span>Every month. Every sale. One story.</span>
+    </div>
+    <span class="lifetime-sales-orbit lifetime-sales-orbit-one" aria-hidden="true"></span>
+    <span class="lifetime-sales-orbit lifetime-sales-orbit-two" aria-hidden="true"></span>
+  </section>
   <div class="krow" id="krow"></div>
   <div class="frow no-print" style="margin-bottom:14px">
     <span style="font-size:11px;font-weight:600;color:var(--muted)">YEAR</span>
