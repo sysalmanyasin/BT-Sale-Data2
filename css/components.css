@@ -326,3 +326,202 @@ tfoot td{font-weight:700;color:var(--text);background:var(--s2);border-top:2px s
    baseline look as its five siblings above, so the watermark has
    something styled to sit behind instead of bare unstyled text. */
 .ns-empty { text-align:center; padding:40px 20px; color:var(--muted); font-size:13px; }
+
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   LIFETIME SALES HERO — DuaPharma branded dashboard banner
+   Scoped to the sales dashboard so other domain heroes remain untouched.
+   ═══════════════════════════════════════════════════════════════════ */
+#page-dashboard .lifetime-sales-hero {
+  --hero-tint: var(--brand-teal);
+  isolation: isolate;
+  min-height: 218px;
+  padding: 24px 30px 20px;
+  margin-bottom: 18px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 22px;
+  background:
+    radial-gradient(ellipse at 88% 12%, rgba(24,169,153,.28), transparent 38%),
+    radial-gradient(ellipse at 8% 110%, rgba(242,184,75,.13), transparent 42%),
+    linear-gradient(118deg, #101b2d 0%, #142c3d 54%, #0b655f 100%);
+  box-shadow: 0 16px 36px -16px rgba(16,27,45,.58), inset 0 1px 0 rgba(255,255,255,.12);
+}
+#page-dashboard .lifetime-sales-hero::after {
+  width: 220px;
+  height: 220px;
+  right: 12px;
+  bottom: -66px;
+  opacity: .16;
+  z-index: -1;
+}
+#page-dashboard .lifetime-sales-hero::before {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--brand-amber) 22%, var(--brand-teal) 72%, transparent);
+  opacity: .9;
+}
+#page-dashboard .lifetime-sales-topline,
+#page-dashboard .lifetime-sales-brand,
+#page-dashboard .lifetime-sales-footer {
+  display: flex;
+  align-items: center;
+}
+#page-dashboard .lifetime-sales-topline {
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 1;
+}
+#page-dashboard .lifetime-sales-brand { gap: 9px; min-width: 0; }
+#page-dashboard .lifetime-sales-brand-mark {
+  display: grid;
+  place-items: center;
+  width: 29px;
+  height: 29px;
+  flex: 0 0 29px;
+  border-radius: 9px;
+  color: #101b2d;
+  background: linear-gradient(145deg, #fff 0%, #dff8f2 100%);
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: -.06em;
+  box-shadow: 0 3px 10px rgba(0,0,0,.16);
+}
+#page-dashboard .lifetime-sales-brand-name {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -.025em;
+}
+#page-dashboard .lifetime-sales-brand-divider {
+  width: 1px;
+  height: 15px;
+  background: rgba(255,255,255,.3);
+  margin: 0 2px;
+}
+#page-dashboard .lifetime-sales-brand-unit {
+  color: rgba(255,255,255,.68);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .13em;
+}
+#page-dashboard .lifetime-sales-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 11px;
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 999px;
+  background: rgba(255,255,255,.09);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .13em;
+  white-space: nowrap;
+}
+#page-dashboard .lifetime-sales-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #55e0b7;
+  box-shadow: 0 0 0 3px rgba(85,224,183,.13), 0 0 12px rgba(85,224,183,.7);
+}
+#page-dashboard .lifetime-sales-heading {
+  color: rgba(255,255,255,.9);
+  font-size: clamp(17px, 2vw, 21px);
+  font-weight: 700;
+  letter-spacing: -.035em;
+  line-height: 1.2;
+  position: relative;
+  z-index: 1;
+}
+#page-dashboard .lifetime-sales-caption {
+  color: #f4c96f;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .19em;
+  margin-top: 13px;
+  position: relative;
+  z-index: 1;
+}
+#page-dashboard .lifetime-sales-hero .hamount {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  margin-top: 2px;
+  color: #fff;
+  font-size: clamp(30px, 4.2vw, 46px);
+  font-weight: 800;
+  letter-spacing: -.055em;
+  line-height: 1.2;
+  text-shadow: 0 3px 18px rgba(0,0,0,.16);
+  position: relative;
+  z-index: 1;
+}
+#page-dashboard .lifetime-sales-currency {
+  color: #f4c96f;
+  font-family: var(--font, inherit);
+  font-size: .72em;
+  font-weight: 700;
+  letter-spacing: -.03em;
+}
+#page-dashboard .lifetime-sales-sub {
+  color: rgba(255,255,255,.72);
+  font-size: 11px;
+  margin-top: 7px;
+  position: relative;
+  z-index: 1;
+}
+#page-dashboard .lifetime-sales-footer {
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 17px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,.13);
+  color: rgba(255,255,255,.72);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .015em;
+  position: relative;
+  z-index: 1;
+}
+#page-dashboard .lifetime-sales-footer span:first-child { color: #f5d58e; }
+#page-dashboard .lifetime-sales-orbit {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 50%;
+}
+#page-dashboard .lifetime-sales-orbit-one {
+  width: 280px; height: 280px; right: -86px; top: -150px;
+}
+#page-dashboard .lifetime-sales-orbit-two {
+  width: 205px; height: 205px; right: -49px; top: -112px;
+  border-color: rgba(242,184,75,.15);
+}
+@media (max-width: 600px) {
+  #page-dashboard .lifetime-sales-hero {
+    min-height: 0;
+    padding: 19px 17px 15px;
+    margin-bottom: 15px;
+    border-radius: 18px;
+  }
+  #page-dashboard .lifetime-sales-topline { margin-bottom: 17px; }
+  #page-dashboard .lifetime-sales-brand { gap: 7px; }
+  #page-dashboard .lifetime-sales-brand-mark { width: 26px; height: 26px; flex-basis: 26px; }
+  #page-dashboard .lifetime-sales-brand-name { font-size: 12px; }
+  #page-dashboard .lifetime-sales-brand-unit { font-size: 8px; letter-spacing: .08em; }
+  #page-dashboard .lifetime-sales-chip { padding: 6px 8px; font-size: 8px; }
+  #page-dashboard .lifetime-sales-heading { font-size: 17px; }
+  #page-dashboard .lifetime-sales-hero .hamount { font-size: clamp(27px, 7.4vw, 36px); gap: 7px; overflow-wrap: anywhere; }
+  #page-dashboard .lifetime-sales-sub { font-size: 10px; line-height: 1.5; }
+  #page-dashboard .lifetime-sales-footer { font-size: 9px; margin-top: 14px; padding-top: 10px; }
+  #page-dashboard .lifetime-sales-footer span:last-child { text-align: right; }
+}
+@media (max-width: 360px) {
+  #page-dashboard .lifetime-sales-brand-unit,
+  #page-dashboard .lifetime-sales-brand-divider { display: none; }
+  #page-dashboard .lifetime-sales-footer { align-items: flex-start; }
+}
