@@ -5,7 +5,7 @@
    Data (Supabase / Drive / Groq API calls) always go to network.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_NAME = 'bt-sales-v11.221'; // v11.221: auto-bumped for Supabase lifetime sales hero.
+const CACHE_NAME = 'bt-sales-v11.222'; // v11.222: branded all-time sales hero banner.
 // Release history lives in CHANGELOG.md (keep this file small: every device downloads and parses it on each update).
 const APP_SHELL = [
   './',
